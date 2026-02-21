@@ -20,6 +20,10 @@ tokens/
 # ===========================
 node_modules/
 dist/
+.venv/
+venv/
+env/
+ENV/
 __pycache__/
 *.py[cod]
 *.pyc

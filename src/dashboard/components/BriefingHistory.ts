@@ -12,10 +12,12 @@ export class BriefingHistory extends HTMLElement {
   async fetchBriefings() {
     try {
       const response = await fetch('/api/dashboard/briefings');
-      const data = await response.json();
+      if (!response.ok) throw new Error('API error');
+      const text = await response.text();
+      if (!text) throw new Error('Empty response');
+      const data = JSON.parse(text);
       this.displayBriefings(data);
     } catch (e) {
-      console.error('Failed to fetch briefings', e);
       const list = this.shadowRoot?.querySelector('#briefing-list');
       if (list) list.textContent = 'No briefings yet.';
     }
