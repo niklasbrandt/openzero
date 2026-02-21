@@ -1,0 +1,55 @@
+# OpenZero Configuration
+# Copy this file to `config.yaml` to customize the behavior of your AI Operating System.
+# This file allows you to toggle features on/off and adjust the scheduling (turnus) of background tasks.
+
+# ------------------------------------------------------------------------------
+# 1. Feature Toggles
+# ------------------------------------------------------------------------------
+features:
+  # Core Interfaces
+  messenger_bot: true             # Enable the Messenger Bot interface (e.g., Telegram)
+  task_board_integration: false   # Enable Planka Kanban board syncing and task creation
+
+  # External Integrations
+  email_monitoring: false         # Enable reading and summarizing unread emails
+  calendar_monitoring: false      # Enable checking your calendar for upcoming events
+  
+  # Experimental / Future Integrations
+  weather_briefing: false         # Include daily weather forecast in morning briefing
+  financial_monitoring: false     # Include budget/expense tracking in weekly review
+
+# ------------------------------------------------------------------------------
+# 2. Schedules & Time Turnus
+# ------------------------------------------------------------------------------
+schedules:
+  # Recurring Briefings & Reviews
+  morning_briefing:
+    enabled: true
+    time: "07:30"                 # 24-hour format
+    days: "mon-fri"               # "mon-fri", "all", "mon,wed,fri", etc.
+    
+  weekly_review:
+    enabled: true
+    time: "10:00"
+    day: "sun"                    # Day of the week to send the weekly review
+
+  monthly_review:
+    enabled: true
+    time: "10:00"
+    date: "1"                     # Day of the month to send the big-picture review
+
+  # Background Polling Intervals (in minutes)
+  email_polling_interval_minutes: 10
+  calendar_sync_interval_minutes: 15
+  task_board_sync_interval_minutes: 5
+
+# ------------------------------------------------------------------------------
+# 3. System Preferences
+# ------------------------------------------------------------------------------
+preferences:
+  timezone: "auto"                # Dynamically determined based on where you are or will be (via calendar)
+  language: "en"                  # Agent language for responses and reports
+  
+  # Behavior & Thresholds
+  max_emails_per_briefing: 10     # Max number of emails to explicitly summarize
+  stagnation_warning_days: 14     # Warn if a project card hasn't moved in X days

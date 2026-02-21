@@ -1,0 +1,59 @@
+# These are some examples of commonly ignored file patterns.
+# You should customize this list as applicable to your project.
+# Learn more about .gitignore:
+#     https://www.atlassian.com/git/tutorials/saving-changes/gitignore
+
+# ===========================
+# Personal data (NEVER commit)
+# ===========================
+personal/
+
+# ===========================
+# Secrets & environment files
+# ===========================
+.env
+.env.planka
+tokens/
+
+# ===========================
+# Runtime & build artifacts
+# ===========================
+node_modules/
+dist/
+__pycache__/
+*.py[cod]
+*.pyc
+
+# ===========================
+# Backups (contain DB dumps)
+# ===========================
+backups/
+
+# ===========================
+# Logs
+# ===========================
+*.log
+
+# ===========================
+# OS generated
+# ===========================
+.DS_Store
+Thumbs.db
+
+# ===========================
+# IDE
+# ===========================
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ===========================
+# Large media files
+# ===========================
+*.mp4
+*.tiff
+*.avi
+*.flv
+*.mov
+*.wmv
