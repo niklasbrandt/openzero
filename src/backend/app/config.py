@@ -1,7 +1,11 @@
+import os
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional
 
 class Settings(BaseSettings):
+    # Environment Detection
+    IS_DOCKER: bool = os.path.exists('/.dockerenv') or os.environ.get('RUNNING_IN_DOCKER') == 'true'
+
     # Database
     DB_USER: str = "zero"
     DB_PASSWORD: str = ""
@@ -47,6 +51,36 @@ class Settings(BaseSettings):
 
     def __init__(self, **values):
         super().__init__(**values)
+        
+        # --- Smart Host Normalization ---
+        # Map: Localhost <-> Docker Service Name
+        host_map = {
+            "DB_HOST": "postgres",
+            "QDRANT_HOST": "qdrant",
+            "OLLAMA_BASE_URL": "http://ollama:11434",
+            "WHISPER_BASE_URL": "http://whisper:9000",
+            "TTS_BASE_URL": "http://tts:8000",
+            "PLANKA_BASE_URL": "http://planka:1337"
+        }
+
+        for attr, docker_val in host_map.items():
+            current_val = getattr(self, attr)
+            is_url = "://" in docker_val
+            
+            local_val = "localhost"
+            if is_url:
+                local_val = docker_val.replace(docker_val.split("://")[1].split(":")[0], "localhost")
+
+            if self.IS_DOCKER:
+                # If in Docker but config says localhost, switch to service name
+                if current_val == local_val:
+                    setattr(self, attr, docker_val)
+            else:
+                # If not in Docker but config says service name, switch to localhost
+                if current_val == docker_val:
+                    setattr(self, attr, local_val)
+
+        # Finalize Database URL
         if not self.DATABASE_URL:
             self.DATABASE_URL = f"postgresql+asyncpg://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
 

@@ -6,5 +6,6 @@ import '../components/EmailRules'
 import '../components/CircleManager'
 import '../components/ChatPrompt'
 import '../components/CreateProject'
+import '../components/CalendarAgenda'
 
 console.log('🚀 OpenZero Dashboard Initialized');

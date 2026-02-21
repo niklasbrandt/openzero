@@ -70,6 +70,7 @@ class Person(Base):
     context = Column(Text)  # Homework, hobbies, special dates
     circle_type = Column(String, default="inner")  # inner, close
     calendar_id = Column(String)  # Optional Google Calendar ID/Email
+    use_my_calendar = Column(Boolean, default=False)
     last_interaction = Column(DateTime)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 

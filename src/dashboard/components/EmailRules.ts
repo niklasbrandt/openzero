@@ -12,10 +12,12 @@ export class EmailRules extends HTMLElement {
   async fetchRules() {
     try {
       const response = await fetch('/api/dashboard/email-rules');
-      const data = await response.json();
+      if (!response.ok) throw new Error('API error');
+      const text = await response.text();
+      if (!text) throw new Error('Empty response');
+      const data = JSON.parse(text);
       this.displayRules(data);
     } catch (e) {
-      console.error('Failed to fetch rules', e);
       const list = this.shadowRoot?.querySelector('#rules-list');
       if (list) list.textContent = 'No rules defined.';
     }
