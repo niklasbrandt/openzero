@@ -1,10 +1,10 @@
-version: '3.8'
-
 services:
 
   postgres:
     image: postgres:16-alpine
     restart: always
+    ports:
+      - "5432:5432"
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
@@ -22,6 +22,8 @@ services:
   qdrant:
     image: qdrant/qdrant:latest
     restart: always
+    ports:
+      - "6333:6333"
     environment:
       QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY}
     volumes:
@@ -30,8 +32,10 @@ services:
       - internal
 
   ollama:
-    image: ollama/ollama:latest
+    image: ollama/ollama:0.5.7
     restart: always
+    ports:
+      - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
       - ./scripts/ollama-entrypoint.sh:/entrypoint.sh
@@ -44,26 +48,20 @@ services:
   whisper:
     image: onuryilmaz/whisper-asr-webservice:latest
     restart: always
-    environment:
-      - ASR_MODEL=base
-      - ASR_ENGINE=openai_whisper
     networks:
       - internal
 
   tts:
     image: ghcr.io/moshloop/openedai-speech:latest
     restart: always
-    environment:
-      - TTS_HOME=/app/models
-      - PRELOAD_MODELS=en-us-librispeech-low
-    volumes:
-      - tts_models:/app/models
     networks:
       - internal
 
   planka:
     image: ghcr.io/plankanban/planka:latest
     restart: always
+    ports:
+      - "1337:1337"
     depends_on:
       postgres:
         condition: service_healthy

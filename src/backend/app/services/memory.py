@@ -1,12 +1,17 @@
 from qdrant_client import QdrantClient, models
-from sentence_transformers import SentenceTransformer
 from app.config import settings
 import uuid
 
-# Load embedding model once at import time
-# Note: This will download the model (~80MB) on first use
-embedder = SentenceTransformer("all-MiniLM-L6-v2")
+# Embedder will be loaded lazily to prevent startup crashes if libraries are broken
+embedder = None
 COLLECTION_NAME = "personal_memory"
+
+def get_embedder():
+    global embedder
+    if embedder is None:
+        from sentence_transformers import SentenceTransformer
+        embedder = SentenceTransformer("all-MiniLM-L6-v2")
+    return embedder
 
 def get_qdrant() -> QdrantClient:
     return QdrantClient(
@@ -34,7 +39,7 @@ async def ensure_collection():
 async def store_memory(text: str, metadata: dict = None):
     """Embed text and store in Qdrant."""
     client = get_qdrant()
-    embedding = embedder.encode(text).tolist()
+    embedding = get_embedder().encode(text).tolist()
     client.upsert(
         collection_name=COLLECTION_NAME,
         points=[
@@ -49,7 +54,7 @@ async def store_memory(text: str, metadata: dict = None):
 async def semantic_search(query: str, top_k: int = 5) -> str:
     """Search memory and return formatted results."""
     client = get_qdrant()
-    query_vector = embedder.encode(query).tolist()
+    query_vector = get_embedder().encode(query).tolist()
     try:
         results = client.search(
             collection_name=COLLECTION_NAME,

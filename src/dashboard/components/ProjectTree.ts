@@ -27,14 +27,16 @@ export class ProjectTree extends HTMLElement {
   async fetchData() {
     try {
       const response = await fetch('/api/dashboard/projects');
-      const data = await response.json();
+      if (!response.ok) throw new Error('API error');
+      const text = await response.text();
+      if (!text) throw new Error('Empty response');
+      const data = JSON.parse(text);
       if (data.tree) {
         this.updateTree(data.tree);
       } else {
         this.showEmpty();
       }
     } catch (e) {
-      console.error('Failed to fetch project tree', e);
       this.showEmpty();
     }
   }

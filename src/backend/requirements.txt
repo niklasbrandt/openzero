@@ -12,7 +12,7 @@ apscheduler>=3.10.0
 google-api-python-client>=2.160.0
 google-auth-oauthlib>=1.2.0
 google-auth-httplib2>=0.2.0
-plankapy>=2.0.0
+plankapy>=1.0.0
 pytz
 pydub
 openai
