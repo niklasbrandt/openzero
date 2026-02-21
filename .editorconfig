@@ -1,0 +1,24 @@
+# EditorConfig rules: https://EditorConfig.org
+
+# top-most EditorConfig file
+root = true
+
+# All files default to tabs as per AI Agent Guidelines
+[*]
+indent_style = tab
+indent_size = 4
+trim_trailing_whitespace = true
+insert_final_newline = true
+end_of_line = lf
+charset = utf-8
+
+# YAML files rigidly require spaces
+[*.{yml,yaml}]
+indent_style = space
+indent_size = 2
+
+# Python files (using 4 spaces is standard PEP8, but repo rules say tabs unless explicitly required. 
+# We'll stick to tabs as per `agents.md`, adjust here if PEP8 is strictly needed)
+# [*.py]
+# indent_style = space
+# indent_size = 4

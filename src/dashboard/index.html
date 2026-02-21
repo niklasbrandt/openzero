@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OpenZero Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div id="app">
+        <div class="dashboard-header">
+            <h1>openZero Dashboard</h1>
+            <div id="status-badge" class="status-online">System Online</div>
+        </div>
+
+        <div class="dashboard-card chat-card">
+            <chat-prompt></chat-prompt>
+        </div>
+
+        <div class="dashboard-card">
+            <project-tree></project-tree>
+            <create-project></create-project>
+        </div>
+
+        <div class="dashboard-card">
+            <memory-search></memory-search>
+        </div>
+
+        <div class="dashboard-card">
+            <briefing-history></briefing-history>
+        </div>
+
+        <div class="dashboard-card">
+            <circle-manager type="inner"></circle-manager>
+        </div>
+
+        <div class="dashboard-card">
+            <circle-manager type="close"></circle-manager>
+        </div>
+
+        <div class="dashboard-card">
+            <email-rules></email-rules>
+        </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+</body>
+
+</html>

@@ -1,0 +1,108 @@
+version: '3.8'
+
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $${DB_USER}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    restart: always
+    environment:
+      QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY}
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - internal
+
+  ollama:
+    image: ollama/ollama:latest
+    restart: always
+    volumes:
+      - ollama_data:/root/.ollama
+      - ./scripts/ollama-entrypoint.sh:/entrypoint.sh
+    entrypoint: [ "/bin/bash", "/entrypoint.sh" ]
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    networks:
+      - internal
+
+  whisper:
+    image: onuryilmaz/whisper-asr-webservice:latest
+    restart: always
+    environment:
+      - ASR_MODEL=base
+      - ASR_ENGINE=openai_whisper
+    networks:
+      - internal
+
+  tts:
+    image: ghcr.io/moshloop/openedai-speech:latest
+    restart: always
+    environment:
+      - TTS_HOME=/app/models
+      - PRELOAD_MODELS=en-us-librispeech-low
+    volumes:
+      - tts_models:/app/models
+    networks:
+      - internal
+
+  planka:
+    image: ghcr.io/plankanban/planka:latest
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file: .env.planka
+    volumes:
+      - planka_avatars:/app/public/user-avatars
+      - planka_backgrounds:/app/public/project-background-images
+      - planka_attachments:/app/private/attachments
+    networks:
+      - internal
+
+  backend:
+    build:
+      context: .
+      dockerfile: src/backend/Dockerfile
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+      ollama:
+        condition: service_started
+    env_file: .env
+    volumes:
+      - gmail_tokens:/app/tokens
+    networks:
+      - internal
+
+networks:
+  internal:
+    driver: bridge
+
+volumes:
+  pgdata:
+  qdrant_data:
+  ollama_data:
+  planka_avatars:
+  planka_backgrounds:
+  planka_attachments:
+  gmail_tokens:
+  tts_models:
