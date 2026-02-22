@@ -30,8 +30,10 @@ async def start_telegram_bot():
     bot_app.add_handler(CommandHandler("tree", cmd_tree))
     bot_app.add_handler(CommandHandler("review", cmd_review))
     bot_app.add_handler(CommandHandler("memory", cmd_memory))
-    bot_app.add_handler(CommandHandler("weekly", cmd_weekly))
-    bot_app.add_handler(CommandHandler("daily", cmd_daily))
+    bot_app.add_handler(CommandHandler("week", cmd_week))
+    bot_app.add_handler(CommandHandler("month", cmd_month))
+    bot_app.add_handler(CommandHandler("day", cmd_day))
+    bot_app.add_handler(CommandHandler("year", cmd_year))
     bot_app.add_handler(CommandHandler("add", cmd_add_topic))
     bot_app.add_handler(CommandHandler("think", cmd_think))
     bot_app.add_handler(CallbackQueryHandler(handle_approval, pattern="^think_"))
@@ -42,6 +44,15 @@ async def start_telegram_bot():
     await bot_app.initialize()
     await bot_app.start()
     await bot_app.updater.start_polling(drop_pending_updates=True)
+
+    # Proactive greeting
+    try:
+        from app.services.llm import chat
+        greeting = await chat("System startup. Greet the user contextually (e.g. 'Z is online and ready' or similar). Keep it sharp and concise.")
+        await send_notification(f"⚡ {greeting}")
+    except Exception as e:
+        print(f"Could not send startup greeting: {e}")
+        await send_notification("⚡ Z is online.")
 
 async def stop_telegram_bot():
     """Gracefully stop the bot."""
@@ -104,15 +115,27 @@ async def cmd_review(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(report, parse_mode="Markdown")
 
 @owner_only
-async def cmd_weekly(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def cmd_week(update: Update, context: ContextTypes.DEFAULT_TYPE):
     from app.tasks.weekly import weekly_review
     report = await weekly_review()
     await update.message.reply_text(report, parse_mode="Markdown")
 
 @owner_only
-async def cmd_daily(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def cmd_month(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    from app.tasks.monthly import monthly_review
+    report = await monthly_review()
+    await update.message.reply_text(report, parse_mode="Markdown")
+
+@owner_only
+async def cmd_day(update: Update, context: ContextTypes.DEFAULT_TYPE):
     from app.tasks.morning import morning_briefing
     await morning_briefing()
+
+@owner_only
+async def cmd_year(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    from app.tasks.yearly import yearly_review
+    report = await yearly_review()
+    await update.message.reply_text(report, parse_mode="Markdown")
 
 @owner_only
 async def cmd_memory(update: Update, context: ContextTypes.DEFAULT_TYPE):

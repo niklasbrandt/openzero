@@ -68,6 +68,7 @@ export class EmailRules extends HTMLElement {
     if (this.shadowRoot) {
       this.shadowRoot.innerHTML = `
         <style>
+          h2 { font-size: 1.5rem; font-weight: bold; margin: 0 0 1rem 0; color: #fff; letter-spacing: 0.02em; }
           :host { display: block; }
           .add-box { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
           input {

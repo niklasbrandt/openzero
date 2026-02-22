@@ -58,7 +58,7 @@ class PendingThought(Base):
 class Briefing(Base):
     __tablename__ = "briefings"
     id = Column(Integer, primary_key=True)
-    type = Column(String, nullable=False)  # daily, weekly, monthly
+    type = Column(String, nullable=False)  # day, week, month, year
     content = Column(Text, nullable=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
@@ -69,9 +69,19 @@ class Person(Base):
     relationship = Column(String)
     context = Column(Text)  # Homework, hobbies, special dates
     circle_type = Column(String, default="inner")  # inner, close
-    calendar_id = Column(String)  # Optional Google Calendar ID/Email
-    use_my_calendar = Column(Boolean, default=False)
+    birthday = Column(String)  # Optional birthday string (e.g. MM-DD or YYYY-MM-DD)
     last_interaction = Column(DateTime)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+class LocalEvent(Base):
+    __tablename__ = "local_events"
+    id = Column(Integer, primary_key=True)
+    summary = Column(String, nullable=False)
+    description = Column(Text)
+    start_time = Column(DateTime, nullable=False)
+    end_time = Column(DateTime, nullable=False)
+    person_id = Column(Integer, ForeignKey("people.id"), nullable=True) # Optional link to a person
+    is_completed = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
 from sqlalchemy import select

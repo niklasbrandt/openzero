@@ -55,7 +55,7 @@ export class ProjectTree extends HTMLElement {
   updateTree(treeData: string) {
     const pre = this.shadowRoot?.querySelector('pre');
     if (pre) {
-      pre.textContent = treeData;
+      pre.innerHTML = treeData;
     }
   }
 
@@ -63,6 +63,7 @@ export class ProjectTree extends HTMLElement {
     if (this.shadowRoot) {
       this.shadowRoot.innerHTML = `
         <style>
+          h2 { font-size: 1.5rem; font-weight: bold; margin: 0 0 1rem 0; color: #fff; letter-spacing: 0.02em; }
           :host { display: block; }
           .header {
             display: flex;
@@ -70,13 +71,7 @@ export class ProjectTree extends HTMLElement {
             align-items: center;
             margin-bottom: 1rem;
           }
-          h2 {
-            margin: 0;
-            font-family: Inter, sans-serif;
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: #fff;
-          }
+          
           #new-project-btn {
             background: rgba(20, 184, 166, 0.12);
             color: #14B8A6;
@@ -105,6 +100,13 @@ export class ProjectTree extends HTMLElement {
             border: 1px solid rgba(255, 255, 255, 0.05);
             overflow-x: auto;
             margin: 0;
+          }
+          pre a {
+            transition: color 0.2s ease, text-shadow 0.2s ease;
+          }
+          pre a:hover {
+            color: #0066FF !important;
+            text-shadow: 0 0 8px rgba(0, 102, 255, 0.4);
           }
         </style>
         <div class="card">
