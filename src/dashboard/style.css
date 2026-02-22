@@ -131,7 +131,8 @@ h3 {
   background: rgba(0, 163, 255, 0.2);
 }
 
-.chat-card {
+.chat-card,
+.life-overview-card {
   grid-column: 1 / -1;
 }
 
