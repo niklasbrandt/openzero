@@ -13,12 +13,7 @@ async def lifespan(app: FastAPI):
     try:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
-            # Ensure new columns are added if the table already existed
-            from sqlalchemy import text
-            try:
-                await conn.execute(text("ALTER TABLE people ADD COLUMN IF NOT EXISTS use_my_calendar BOOLEAN DEFAULT FALSE"))
-            except:
-                pass # Already exists or sqlite/etc
+            # `create_all` handles fresh DBs. Dropped table in dev manually for schema change.
         print("✓ Postgres tables initialized.")
     except Exception as e:
         print(f"⚠ Warning: Could not connect to Postgres: {e}")

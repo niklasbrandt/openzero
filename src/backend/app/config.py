@@ -1,3 +1,16 @@
+"""
+System Configuration Module
+---------------------------
+This module centralizes all environment-based settings for the OpenZero OS.
+It uses Pydantic Settings for:
+1. Typed validation of environment variables.
+2. Smart defaulting for local development.
+3. Automatic host normalization (Localhost vs. Docker Service Names).
+
+Usage:
+To override any setting, add it to the `.env` file in the project root.
+"""
+
 import os
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional
@@ -23,6 +36,7 @@ class Settings(BaseSettings):
 
     # Ollama
     OLLAMA_BASE_URL: str = "http://ollama:11434"
+    OLLAMA_MODEL: str = "llama3.1:8b"
 
     # Whisper
     WHISPER_BASE_URL: str = "http://whisper:9000"
@@ -46,8 +60,15 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: Optional[str] = None
     DEEP_THINK_PROVIDER: Optional[str] = None
     DEEP_THINK_MODEL: Optional[str] = None
+    
+    # Scheduling
+    TASK_BOARD_SYNC_INTERVAL_MINUTES: int = 5
 
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    model_config = SettingsConfigDict(
+        env_file=os.path.join(os.path.dirname(__file__), "../../../.env"), 
+        extra="ignore"
+    )
 
     def __init__(self, **values):
         super().__init__(**values)

@@ -31,13 +31,7 @@ export class ChatPrompt extends HTMLElement {
 			}
 		});
 
-		// Auto-resize textarea
-		input?.addEventListener('input', () => {
-			if (input) {
-				input.style.height = 'auto';
-				input.style.height = Math.min(input.scrollHeight, 160) + 'px';
-			}
-		});
+		// Removed auto-resize textarea to maintain alignment with send button
 	}
 
 	private async handleSend() {
@@ -49,7 +43,6 @@ export class ChatPrompt extends HTMLElement {
 		this.messages.push({ role: 'user', content: message, timestamp: new Date() });
 		if (input) {
 			input.value = '';
-			input.style.height = 'auto';
 		}
 		this.renderMessages();
 		this.scrollToBottom();
@@ -58,6 +51,20 @@ export class ChatPrompt extends HTMLElement {
 		this.isLoading = true;
 		this.updateSendButton();
 		this.showTypingIndicator();
+
+		// UX for slow local CPU generation
+		const slowWarningTimer = setTimeout(() => {
+			const typingBubble = this.shadowRoot?.querySelector('.typing-bubble');
+			if (typingBubble) {
+				const warning = document.createElement('div');
+				warning.style.fontSize = '0.75rem';
+				warning.style.color = 'rgba(255, 255, 255, 0.78)';
+				warning.style.marginTop = '0.5rem';
+				warning.style.marginLeft = '0.5rem';
+				warning.innerText = 'First message warms up local engine and loads model in RAM (this takes minutes on older or slower CPU/devices/VPS)...';
+				typingBubble.parentElement?.appendChild(warning);
+			}
+		}, 6000);
 
 		try {
 			const response = await fetch('/api/dashboard/chat', {
@@ -99,6 +106,7 @@ export class ChatPrompt extends HTMLElement {
 				timestamp: new Date(),
 			});
 		} finally {
+			clearTimeout(slowWarningTimer);
 			this.isLoading = false;
 			this.updateSendButton();
 			this.renderMessages();
@@ -160,6 +168,15 @@ export class ChatPrompt extends HTMLElement {
 					<div class="empty-icon">${this.chatSVG()}</div>
 					<p>Start a conversation with Z</p>
 					<span>Ask anything — manage tasks, query memories, or get briefed.</span>
+					<div class="command-hints">
+						<span class="cmd-chip">/day</span>
+						<span class="cmd-chip">/week</span>
+						<span class="cmd-chip">/month</span>
+						<span class="cmd-chip">/year</span>
+						<span class="cmd-chip">/memory</span>
+						<span class="cmd-chip">/add</span>
+						<span class="cmd-chip">/think</span>
+					</div>
 				</div>
 			`;
 			return;
@@ -199,20 +216,12 @@ export class ChatPrompt extends HTMLElement {
 		if (!this.shadowRoot) return;
 		this.shadowRoot.innerHTML = `
 		<style>
+          h2 { font-size: 1.5rem; font-weight: bold; margin: 0 0 1rem 0; color: #fff; letter-spacing: 0.02em; }
 			:host {
 				display: block;
 			}
 
-			h2 {
-				color: #fff;
-				font-weight: 200;
-				letter-spacing: -0.025em;
-				margin: 0 0 1rem 0;
-				font-size: 1.25rem;
-				display: flex;
-				align-items: center;
-				gap: 0.5rem;
-			}
+			
 
 			h2 .badge {
 				font-size: 0.65rem;
@@ -256,20 +265,39 @@ export class ChatPrompt extends HTMLElement {
 			}
 
 			.empty-icon {
-				color: rgba(255,255,255,0.15);
+				color: rgba(255,255,255,0.333);
 				margin-bottom: 0.25rem;
 			}
 
 			.empty-state p {
-				color: rgba(255,255,255,0.5);
+				color: rgba(255, 255, 255, 0.75);
 				font-size: 1rem;
 				font-weight: 500;
 				margin: 0;
 			}
 
 			.empty-state span {
-				color: rgba(255,255,255,0.25);
+				color: rgba(255,255,255,0.66);
 				font-size: 0.85rem;
+			}
+
+			.command-hints {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 0.5rem;
+				justify-content: center;
+				margin-top: 1rem;
+			}
+			
+			.cmd-chip {
+				background: rgba(20, 184, 166, 0.1);
+				border: 1px solid rgba(20, 184, 166, 0.2);
+				color: #14B8A6;
+				padding: 0.2rem 0.5rem;
+				border-radius: 0.4rem;
+				font-size: 0.75rem;
+				font-family: inherit;
+				cursor: default;
 			}
 
 			/* ── Message bubbles ── */
@@ -367,18 +395,18 @@ export class ChatPrompt extends HTMLElement {
 				border-radius: 0.75rem;
 				padding: 0.6rem 1rem;
 				color: #fff;
-				font-family: 'Inter', system-ui, -apple-system, sans-serif;
-				font-size: 0.9rem;
-				line-height: 1.5;
+				font-family: 'Inter', system-ui, sans-serif;
+				font-size: 1.1rem;
+				line-height: 1.2;
 				outline: none;
 				transition: border-color 0.3s ease, background 0.3s ease, box-shadow 0.3s ease;
-				min-height: 44px;
+				min-height: 63px;
 				max-height: 160px;
 				overflow-y: auto;
 			}
 
 			textarea::placeholder {
-				color: rgba(255,255,255,0.25);
+				color: rgba(255, 255, 255, 0.64);
 			}
 
 			textarea:focus {
@@ -388,8 +416,8 @@ export class ChatPrompt extends HTMLElement {
 			}
 
 			#send-btn {
-				width: 44px;
-				height: 44px;
+				width: 84px;
+				height: 84px;
 				border-radius: 0.6rem;
 				border: 1px solid rgba(20, 184, 166, 0.2);
 				background: rgba(20, 184, 166, 0.12);
@@ -426,11 +454,6 @@ export class ChatPrompt extends HTMLElement {
 				to   { opacity: 1; transform: translateY(0); }
 			}
 		</style>
-
-		<h2>
-			Chat with Z
-			<span class="badge">AI</span>
-		</h2>
 
 		<div id="messages">
 			<div class="empty-state">
