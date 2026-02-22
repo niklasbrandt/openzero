@@ -50,13 +50,27 @@ Run the following command to build the Docker images:
 docker compose build
 ```
 
-## Step 4: Starting the System
+## Step 4: Starting the System (Production)
 
 Once built, start all services in the background:
 
 ```bash
 docker compose up -d
 ```
+
+## Local Development Mode (Recommended for Building)
+
+If you are modifying the code or want a faster feedback loop, use the dedicated **Dev Mode** script. This starts the heavy infrastructure (Databases, AI) in Docker but runs the app logic directly on your machine.
+
+```bash
+./scripts/dev.sh
+```
+
+**What this does:**
+1. **Infrastructure**: Automatically starts Postgres, Qdrant, Ollama, and Planka in Docker.
+2. **Environment**: Sets up your local Python `.venv` and installs Node dependencies if needed.
+3. **Hot Reload**: Starts the FastAPI backend and Vite dashboard with live-reloading enabled.
+4. **Clean Exit**: Stopping the script (Ctrl+C) automatically shuts down the background Docker containers.
 
 ## Step 5: Post-Deployment Setup
 
@@ -66,7 +80,7 @@ docker compose up -d
    ```
 2. **Access Planka**: Connect to Tailscale and open `http://localhost:1337` (or your Tailscale IP).
 3. **Verify AI**: Send `/start` to your Telegram bot.
-4. **Access Dashboard**: Open `http://localhost:8000` (or your Tailscale IP on port 8000) to view your Zero Control Center.
+4. **Access Dashboard**: Open `http://localhost:8000` (or your Tailscale IP on port 8000) to view your OpenZero Dashboard.
 
 ## Troubleshooting
 

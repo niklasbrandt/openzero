@@ -38,12 +38,12 @@ export class CircleManager extends HTMLElement {
     }
   }
 
-  async addPerson(name: string, relationship: string, context: string, calendar_id: string = '', use_my_calendar: boolean = false) {
+  async addPerson(name: string, relationship: string, context: string, birthday: string = '') {
     try {
       await fetch('/api/dashboard/people', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, relationship, context, circle_type: this.circleType, calendar_id, use_my_calendar })
+        body: JSON.stringify({ name, relationship, context, circle_type: this.circleType, birthday })
       });
       this.fetchPeople();
     } catch (e) {
@@ -68,7 +68,7 @@ export class CircleManager extends HTMLElement {
           <div class="info">
             <span class="name">${p.name}</span>
             <span class="rel">${p.relationship}</span>
-            ${p.use_my_calendar ? '<span class="cal-badge">📅 My calendar</span>' : ''}
+            ${p.birthday ? `<span class="cal-badge">🎂 ${p.birthday}</span>` : ''}
             <p class="ctx">${p.context || 'No specific focus set.'}</p>
           </div>
           <button class="delete-btn" data-id="${p.id}">Remove</button>
@@ -91,6 +91,7 @@ export class CircleManager extends HTMLElement {
 
       this.shadowRoot.innerHTML = `
         <style>
+          h2 { font-size: 1.5rem; font-weight: bold; margin: 0 0 1rem 0; color: #fff; letter-spacing: 0.02em; }
           :host { display: block; }
           .add-form { display: grid; gap: 0.5rem; margin-bottom: 1.5rem; }
           input, textarea {
@@ -148,10 +149,7 @@ export class CircleManager extends HTMLElement {
             margin-left: 0.5rem;
           }
           .checkbox-row {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.25rem 0;
+            display: none; /* Removed */
           }
           .checkbox-row input[type="checkbox"] {
             width: 16px;
@@ -165,7 +163,7 @@ export class CircleManager extends HTMLElement {
             cursor: pointer;
             user-select: none;
           }
-          #calInput.hidden {
+          #bdayInput.hidden {
             display: none;
           }
           button#addBtn {
@@ -191,13 +189,7 @@ export class CircleManager extends HTMLElement {
           <div class="add-form">
             <input type="text" id="nameInput" placeholder="Name">
             <input type="text" id="relInput" placeholder="Relationship (e.g. Son, Friend)">
-            ${this.circleType === 'inner' ? `
-              <div class="checkbox-row">
-                <input type="checkbox" id="useMyCalCheckbox">
-                <label for="useMyCalCheckbox">Manage on my calendar</label>
-              </div>
-            ` : ''}
-            <input type="text" id="calInput" placeholder="Calendar Email/ID (Optional)">
+            <input type="text" id="bdayInput" placeholder="Birthday (e.g. MM-DD or YYYY-MM-DD)">
             <textarea id="ctxInput" placeholder="Focus..."></textarea>
             <button id="addBtn">Add to Circle</button>
           </div>
@@ -205,34 +197,17 @@ export class CircleManager extends HTMLElement {
         </div>
       `;
 
-      // Toggle calendar input visibility based on checkbox
-      const checkbox = this.shadowRoot.querySelector('#useMyCalCheckbox') as HTMLInputElement;
-      const calInput = this.shadowRoot.querySelector('#calInput') as HTMLInputElement;
-      if (checkbox && calInput) {
-        checkbox.addEventListener('change', () => {
-          if (checkbox.checked) {
-            calInput.classList.add('hidden');
-            calInput.value = '';
-          } else {
-            calInput.classList.remove('hidden');
-          }
-        });
-      }
-
       this.shadowRoot.querySelector('#addBtn')?.addEventListener('click', () => {
         const name = (this.shadowRoot?.querySelector('#nameInput') as HTMLInputElement).value;
         const rel = (this.shadowRoot?.querySelector('#relInput') as HTMLInputElement).value;
         const ctx = (this.shadowRoot?.querySelector('#ctxInput') as HTMLTextAreaElement).value;
-        const cal = (this.shadowRoot?.querySelector('#calInput') as HTMLInputElement).value;
-        const useMyCal = (this.shadowRoot?.querySelector('#useMyCalCheckbox') as HTMLInputElement)?.checked || false;
+        const bday = (this.shadowRoot?.querySelector('#bdayInput') as HTMLInputElement).value;
         if (name && rel) {
-          this.addPerson(name, rel, ctx, cal, useMyCal);
+          this.addPerson(name, rel, ctx, bday);
           (this.shadowRoot?.querySelector('#nameInput') as HTMLInputElement).value = '';
           (this.shadowRoot?.querySelector('#relInput') as HTMLInputElement).value = '';
           (this.shadowRoot?.querySelector('#ctxInput') as HTMLTextAreaElement).value = '';
-          (this.shadowRoot?.querySelector('#calInput') as HTMLInputElement).value = '';
-          if (checkbox) checkbox.checked = false;
-          calInput?.classList.remove('hidden');
+          (this.shadowRoot?.querySelector('#bdayInput') as HTMLInputElement).value = '';
         }
       });
     }

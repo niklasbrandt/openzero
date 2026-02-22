@@ -53,3 +53,5 @@ preferences:
   # Behavior & Thresholds
   max_emails_per_briefing: 10     # Max number of emails to explicitly summarize
   stagnation_warning_days: 14     # Warn if a project card hasn't moved in X days
+
+  # Note: AI engine selection (Ollama/Groq) and models are configured in .env

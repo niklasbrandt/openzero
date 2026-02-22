@@ -1,13 +1,33 @@
-from fastapi import APIRouter, Depends, HTTPException
+"""
+Dashboard API Endpoints
+-----------------------
+This module defines the primary REST API for the OpenZero Dashboard.
+It handles:
+1. Project & Task management (via Planka integration)
+2. Semantic memory search (via Qdrant)
+3. Calendar & People context
+4. AI Chat (Z Agent)
+5. Operator mission control (Task centralization)
+
+Core Philosophy: 
+No complex frontend state. The backend serves as the source of truth for all 
+integrations, allowing the Web Components to stay lightweight and fast.
+"""
+
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from app.models.db import AsyncSessionLocal, Project, EmailRule, Briefing, Person
 from app.services.memory import semantic_search
 from app.services.planka import get_project_tree
+from app.services.operator_board import operator_service
 from app.services.llm import chat as llm_chat
 from pydantic import BaseModel
 from typing import List, Optional
 import datetime
+import httpx
+from app.config import settings
 
 router = APIRouter(prefix="/api/dashboard")
 
@@ -28,11 +48,78 @@ class ChatRequest(BaseModel):
 @router.post("/chat")
 async def dashboard_chat(req: ChatRequest, db: AsyncSession = Depends(get_db)):
     """Chat with Z from the dashboard."""
+    msg = req.message.strip()
+    
+    # Handle Slash Commands
+    if msg == "/day":
+        from app.tasks.morning import morning_briefing
+        await morning_briefing()
+        return {"reply": "✅ Daily briefing generated and saved to History."}
+    elif msg == "/week":
+        from app.tasks.weekly import weekly_review
+        report = await weekly_review()
+        return {"reply": report}
+    elif msg == "/month":
+        from app.tasks.monthly import monthly_review
+        report = await monthly_review()
+        return {"reply": report}
+    elif msg == "/year":
+        from app.tasks.yearly import yearly_review
+        report = await yearly_review()
+        return {"reply": report}
+    elif msg == "/tree":
+        # Life Tree Overview - combines projects, inner circle, and status
+        from app.services.planka import get_project_tree
+        tree = await get_project_tree(as_html=False)
+        
+        # 1. Inner Circle
+        result = await db.execute(select(Person).where(Person.circle_type == "inner"))
+        inner_circle = result.scalars().all()
+        circle_text = "\n".join([f"• {p.name} ({p.relationship})" for p in inner_circle]) if inner_circle else "No direct connections added yet."
+        
+        # 2. Upcoming Calendar
+        from app.services.calendar import fetch_calendar_events
+        events = await fetch_calendar_events(max_results=3, days_ahead=3)
+        if not events:
+            # Check local events if google is empty
+            from app.models.db import LocalEvent
+            today = datetime.datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+            end = today + datetime.timedelta(days=3)
+            res = await db.execute(select(LocalEvent).where(LocalEvent.start_time >= today, LocalEvent.start_time <= end))
+            events = res.scalars().all()
+            if events:
+                event_list = "\n".join([f"• {e.summary} ({e.start_time.strftime('%a %H:%M')})" for e in events[:3]])
+            else:
+                event_list = "No upcoming events for the next 3 days."
+        else:
+            event_list = "\n".join([f"• {e.summary} ({datetime.datetime.fromisoformat(e['start'].replace('Z', '')).strftime('%a %H:%M')})" for e in events[:3]])
+
+        life_tree = (
+            "🌳 **Your Life Tree Overview**\n\n"
+            "**Mission Control (Projects & Progress):**\n"
+            f"{tree}\n\n"
+            "**Inner Circle (People):**\n"
+            f"{circle_text}\n\n"
+            "**Timeline (Next 3 Days):**\n"
+            f"{event_list}\n\n"
+            "*\"Z: Stay focused. I've got the mental tabs from here.\"*"
+        )
+        return {"reply": life_tree}
+    elif msg.startswith("/memory "):
+        query = msg.replace("/memory", "").strip()
+        results = await semantic_search(query)
+        return {"reply": results}
+    elif msg.startswith("/add "):
+        topic = msg.replace("/add", "").strip()
+        from app.services.memory import store_memory
+        await store_memory(topic)
+        return {"reply": f"✅ Stored to memory: {topic}"}
+    
     # Get people info for context
     result = await db.execute(select(Person).where(Person.circle_type == "inner"))
     people = result.scalars().all()
     people_context = "\n".join([
-        f"- {p.name} ({p.relationship}): Managed on my calendar: {p.use_my_calendar}"
+        f"- {p.name} ({p.relationship}): Birthday: {p.birthday or 'Unknown'}"
         for p in people
     ])
     
@@ -61,6 +148,112 @@ async def get_projects():
     # Implementing a simplified JSON tree for the dashboard
     tree = await get_project_tree()
     return {"tree": tree}
+
+@router.get("/planka-redirect")
+async def planka_redirect(request: Request, target: str = ""):
+    """
+    Planka Autologin Bridge
+    -----------------------
+    This endpoint solves the 'double login' problem. It:
+    1. Authenticates against the Planka API using the configured admin credentials.
+    2. Retrieves an HTTP-only token.
+    3. Injects this token as a cookie in the user's browser.
+    4. Redirects the user to the Planka PWA.
+    
+    If 'target' is provided (e.g., 'operator'), it attempts to resolve specific board IDs.
+    """
+    login_url = f"{settings.PLANKA_BASE_URL}/api/access-tokens?withHttpOnlyToken=true"
+    payload = {
+        "emailOrUsername": settings.PLANKA_ADMIN_EMAIL,
+        "password": settings.PLANKA_ADMIN_PASSWORD
+    }
+    
+    # Determine the host the user is using
+    raw_host = request.headers.get("host", "localhost")
+    host_only = raw_host.split(":")[0]
+    
+    # We want to redirect the user to the same host they are using
+    planka_root = f"http://{host_only}:1337"
+    
+    async with httpx.AsyncClient() as client:
+        try:
+            print(f"DEBUG: Requesting Planka token for host: {host_only}")
+            resp = await client.post(login_url, json=payload, timeout=5.0)
+            
+            token_data = resp.json()
+            cookie_val = resp.cookies.get("httpOnlyToken")
+            access_token = token_data.get("item")
+            
+            print(f"DEBUG: Login success: {resp.status_code == 200}")
+            
+            redirect_url = f"{planka_root}/"
+            # Get specific board ID if provided
+            target_board_id = request.query_params.get("target_board_id")
+            
+            if target_board_id:
+                redirect_url = f"{planka_root}/boards/{target_board_id}"
+            elif target == "operator" and access_token:
+                try:
+                    headers = {"Authorization": f"Bearer {access_token}"}
+                    proj_resp = await client.get(f"{settings.PLANKA_BASE_URL}/api/projects", headers=headers)
+                    projects = proj_resp.json().get("items", [])
+                    project = next((p for p in projects if p["name"] == "OpenZero"), None)
+                    if project:
+                        detail = (await client.get(f"{settings.PLANKA_BASE_URL}/api/projects/{project['id']}", headers=headers)).json()
+                        boards = detail.get("included", {}).get("boards", [])
+                        board = next((b for b in boards if b["name"] == "Operator Board"), None)
+                        if board:
+                            redirect_url = f"{planka_root}/boards/{board['id']}"
+                except Exception as e:
+                    print(f"DEBUG: Operator navigation failed: {e}")
+
+            print(f"DEBUG: Redirecting user to: {redirect_url}")
+            response = RedirectResponse(url=redirect_url, status_code=307)
+            
+            # Use host_only as domain if not localhost (browsers are picky about domain=localhost)
+            domain = None if host_only == "localhost" else host_only
+
+            if cookie_val:
+                response.set_cookie(
+                    "httpOnlyToken", 
+                    cookie_val, 
+                    httponly=True, 
+                    samesite="lax", 
+                    path="/", 
+                    domain=domain,
+                    max_age=31536000
+                )
+            
+            if access_token:
+                response.set_cookie(
+                    "accessToken", 
+                    access_token, 
+                    httponly=False, 
+                    samesite="lax", 
+                    path="/", 
+                    domain=domain,
+                    max_age=31536000
+                )
+                
+            return response
+        except Exception as e:
+            print(f"DEBUG: Planka Auth Error: {e}")
+            return RedirectResponse(url=f"{planka_root}/")
+            
+    return RedirectResponse(url=f"{planka_root}/")
+
+@router.post("/operator/sync")
+async def sync_operator():
+    """
+    Operator Board Sync
+    -------------------
+    Centralizes tasks across all project boards.
+    - Tasks with '!!' go to Today.
+    - Tasks with '!' go to This Week.
+    - Inbox cards move to Backlog.
+    """
+    result = await operator_service.sync_operator_tasks()
+    return {"status": "success", "message": result}
 
 # --- Create Project ---
 class ProjectCreate(BaseModel):
@@ -121,8 +314,7 @@ class PersonCreate(BaseModel):
     relationship: str
     context: str = ""
     circle_type: str = "inner"
-    calendar_id: Optional[str] = None
-    use_my_calendar: bool = False
+    birthday: Optional[str] = None
 
 @router.get("/people")
 async def get_people(circle_type: Optional[str] = None, db: AsyncSession = Depends(get_db)):
@@ -139,8 +331,7 @@ async def create_person(person: PersonCreate, db: AsyncSession = Depends(get_db)
         relationship=person.relationship, 
         context=person.context,
         circle_type=person.circle_type,
-        calendar_id=person.calendar_id,
-        use_my_calendar=person.use_my_calendar
+        birthday=person.birthday
     )
     db.add(db_person)
     await db.commit()
@@ -158,16 +349,37 @@ from app.services.calendar import fetch_calendar_events
 
 @router.get("/calendar")
 async def get_calendar(db: AsyncSession = Depends(get_db)):
-    """Fetch user's primary calendar events and detect family members."""
-    events = await fetch_calendar_events(calendar_id="primary", max_results=20, days_ahead=7)
+    """Fetch user's primary calendar events (Google + Local) and detect family members."""
+    # 1. Fetch Google Events
+    google_events = await fetch_calendar_events(calendar_id="primary", max_results=20, days_ahead=7)
     
-    # Get all people to match prefixes
+    # 2. Fetch Local Events from DB
+    from app.models.db import LocalEvent
+    today = datetime.datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    end_date = today + datetime.timedelta(days=7)
+    
+    result = await db.execute(select(LocalEvent).where(LocalEvent.start_time >= today, LocalEvent.start_time <= end_date))
+    local_events = result.scalars().all()
+    
+    # 3. Format Local Events to match Google structure
+    formatted_local = []
+    for e in local_events:
+        formatted_local.append({
+            "summary": e.summary,
+            "start": e.start_time.isoformat() + "Z",
+            "end": e.end_time.isoformat() + "Z",
+            "is_local": True
+        })
+
+    all_events = google_events + formatted_local
+    
+    # 4. Get all people to match prefixes
     result = await db.execute(select(Person))
     people = result.scalars().all()
     
-    # Enrich events with person info
+    # 5. Enrich events with person info
     enriched_events = []
-    for event in events:
+    for event in all_events:
         summary = event.get("summary", "")
         person_name = None
         for p in people:
@@ -180,4 +392,32 @@ async def get_calendar(db: AsyncSession = Depends(get_db)):
             "person": person_name
         })
     
+    # Sort all events by start time
+    enriched_events.sort(key=lambda x: x["start"])
+    
     return enriched_events
+
+# --- System Status ---
+@router.get("/system")
+async def get_system_status():
+    """Get system status and trigger an early LLM warmup."""
+    from app.config import settings
+    import asyncio
+    
+    provider = settings.LLM_PROVIDER.lower()
+    model_name = "Unknown"
+    
+    if provider == "ollama":
+        model_name = settings.OLLAMA_MODEL
+        # Fire-and-forget an empty/dummy request to trick Ollama into loading the weights into memory
+        asyncio.create_task(llm_chat("System boot ping.", system_override="Respond tightly: Online."))
+    elif provider == "groq":
+        model_name = "Cloud Engine"
+    elif provider == "openai":
+        model_name = "Cloud Engine"
+        
+    return {
+        "status": "online",
+        "llm_provider": provider,
+        "llm_model": model_name
+    }

@@ -3,14 +3,15 @@ from app.services.planka import get_project_tree
 from app.models.db import AsyncSessionLocal, Briefing
 import datetime
 
-async def weekly_review():
-    """Generate and store the weekly review."""
+async def yearly_review():
+    """Generate and store the yearly review."""
     
     tree = await get_project_tree()
     
     prompt = (
-        "Z, perform a weekly review. Looking at these projects, summarize progress, "
-        "highlight roadblocks, and propose 3 main goals for next week.\n\n"
+        "Z, perform a yearly overview review. Look closely at these current projects and goals, "
+        "summarize the high-level progress, and identify overarching themes or missing long-term "
+        "objectives. Propose 3 major goals for the upcoming year.\n\n"
         f"PROJECTS:\n{tree}"
     )
     
@@ -18,7 +19,7 @@ async def weekly_review():
     
     # Store in Database
     async with AsyncSessionLocal() as session:
-        briefing = Briefing(type="week", content=content)
+        briefing = Briefing(type="yearly", content=content)
         session.add(briefing)
         await session.commit()
     
