@@ -8,6 +8,8 @@ import '../components/CircleManager'
 import '../components/ChatPrompt'
 import '../components/CreateProject'
 import '../components/CalendarAgenda'
+import '../components/LifeOverview'
+import '../components/WelcomeOnboarding'
 
 console.log('🚀 OpenZero Dashboard Initialized');
 
@@ -38,4 +40,32 @@ async function checkSystemStatus() {
     }
 }
 
+// Background auto-login for Planka
+// This ensures that when the user opens Planka (separately or via link), 
+// they are already authenticated via the dashboard session.
+async function plankaAutoLogin() {
+    console.log('🔐 Initializing Planka background login...');
+    try {
+        // Trigger the redirect bridge in a hidden iframe.
+        // The bridge sets the httpOnlyToken and accessToken cookies.
+        const iframe = document.createElement('iframe');
+        iframe.src = '/api/dashboard/planka-redirect';
+        iframe.setAttribute('style', 'display:none; width:0; height:0; border:0; position:absolute; visibility:hidden;');
+        iframe.setAttribute('aria-hidden', 'true');
+        document.body.appendChild(iframe);
+
+        // Remove after 10 seconds to keep the DOM clean 
+        // after the redirect cycle has likely finished.
+        setTimeout(() => {
+            if (document.body.contains(iframe)) {
+                document.body.removeChild(iframe);
+                console.log('✅ Planka background login cycle complete');
+            }
+        }, 10000);
+    } catch (error) {
+        console.warn('Planka background login failed:', error);
+    }
+}
+
 checkSystemStatus();
+plankaAutoLogin();
