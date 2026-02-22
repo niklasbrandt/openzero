@@ -11,6 +11,11 @@ export class CreateProject extends HTMLElement {
 		this.setupListeners();
 	}
 
+	public toggle() {
+		const isOpen = this.getAttribute('data-open') === 'true';
+		this.setAttribute('data-open', (!isOpen).toString());
+	}
+
 	private setupListeners() {
 		const form = this.shadowRoot?.querySelector('#project-form');
 		const cancelBtn = this.shadowRoot?.querySelector('#cancel-btn');

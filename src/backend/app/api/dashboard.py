@@ -142,6 +142,86 @@ async def dashboard_chat(req: ChatRequest, db: AsyncSession = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# --- Life Tree & Onboarding ---
+@router.get("/life-tree")
+async def get_life_tree(db: AsyncSession = Depends(get_db)):
+    """Fetch the rich Life Tree overview for the dashboard widget."""
+    from app.services.planka import get_project_tree
+    tree = await get_project_tree(as_html=True)
+    
+    # 1. Inner Circle
+    result = await db.execute(select(Person).where(Person.circle_type == "inner"))
+    inner_circle = result.scalars().all()
+    circle_data = [{"name": p.name, "relationship": p.relationship} for p in inner_circle]
+    
+    # 2. Upcoming Calendar
+    from app.services.calendar import fetch_calendar_events
+    events = await fetch_calendar_events(max_results=5, days_ahead=3)
+    formatted_events = []
+    
+    if not events:
+        from app.models.db import LocalEvent
+        today = datetime.datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        end = today + datetime.timedelta(days=3)
+        res = await db.execute(select(LocalEvent).where(LocalEvent.start_time >= today, LocalEvent.start_time <= end))
+        local_events = res.scalars().all()
+        for e in local_events:
+            formatted_events.append({
+                "summary": e.summary,
+                "time": e.start_time.strftime('%a %H:%M'),
+                "is_local": True
+            })
+    else:
+        for e in events:
+            # Handle date-only and date-time
+            start_str = e['start']
+            try:
+                dt = datetime.datetime.fromisoformat(start_str.replace('Z', ''))
+                time_fmt = dt.strftime('%a %H:%M')
+            except:
+                time_fmt = start_str # Fallback
+                
+            formatted_events.append({
+                "summary": e['summary'],
+                "time": time_fmt,
+                "is_local": False
+            })
+
+    return {
+        "projects_tree": tree,
+        "inner_circle": circle_data,
+        "timeline": formatted_events[:5]
+    }
+
+@router.get("/onboarding-status")
+async def get_onboarding_status(db: AsyncSession = Depends(get_db)):
+    """Check if the user has completed basic setup (Inner circle, about-me)."""
+    # 1. Check if any people are added
+    result = await db.execute(select(Person))
+    people_count = len(result.scalars().all())
+    
+    # 2. Check if about-me.md has been modified from example (placeholder check)
+    import os
+    about_me_path = "/app/personal/about-me.md"
+    has_profile = False
+    if os.path.exists(about_me_path):
+        size = os.path.getsize(about_me_path)
+        if size > 100: # Simple heuristic
+            has_profile = True
+            
+    # 3. Check calendar sync
+    from app.services.calendar import get_calendar_service
+    has_calendar = get_calendar_service() is not None
+    
+    return {
+        "needs_onboarding": (people_count == 0) or not has_profile or not has_calendar,
+        "steps": {
+            "inner_circle": people_count > 0,
+            "profile": has_profile,
+            "calendar": has_calendar
+        }
+    }
+
 # --- Projects ---
 @router.get("/projects")
 async def get_projects():
