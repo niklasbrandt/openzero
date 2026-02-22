@@ -26,8 +26,8 @@ export class BriefingHistory extends HTMLElement {
   displayBriefings(briefings: any[]) {
     const list = this.shadowRoot?.querySelector('#briefing-list');
     if (list) {
-      list.innerHTML = briefings.map((b, index) => `
-        <div class="briefing-item ${index === 0 ? 'active' : ''}">
+      list.innerHTML = briefings.map((b) => `
+        <div class="briefing-item">
           <div class="meta" onclick="this.parentElement.classList.toggle('active')">
             <div class="meta-left">
               <span class="type">${b.type.toUpperCase()}</span>
@@ -40,7 +40,9 @@ export class BriefingHistory extends HTMLElement {
             </div>
           </div>
           <div class="content-wrapper">
-            <div class="content">${b.content}</div>
+            <div class="content-inner">
+              <div class="content">${b.content}</div>
+            </div>
           </div>
         </div>
       `).join('') || 'No briefings yet.';
@@ -69,7 +71,7 @@ export class BriefingHistory extends HTMLElement {
             margin-bottom: 0.75rem;
             border: 1px solid rgba(255, 255, 255, 0.05);
             overflow: hidden;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: background 0.3s ease, border-color 0.3s ease;
           }
           .briefing-item:hover {
             background: rgba(255, 255, 255, 0.04);
@@ -78,7 +80,6 @@ export class BriefingHistory extends HTMLElement {
           .briefing-item.active {
             background: rgba(255, 255, 255, 0.04);
             border-color: rgba(20, 184, 166, 0.2);
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
           }
           .meta { 
             display: flex; 
@@ -116,12 +117,16 @@ export class BriefingHistory extends HTMLElement {
           }
           
           .content-wrapper {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            display: grid;
+            grid-template-rows: 0fr;
+            transition: grid-template-rows 0.4s cubic-bezier(0.4, 0, 0.2, 1);
           }
           .briefing-item.active .content-wrapper {
-            max-height: 2000px; /* High enough for long briefings */
+            grid-template-rows: 1fr;
+          }
+          .content-inner {
+            overflow: hidden;
+            min-height: 0;
           }
           .content { 
             padding: 0 1.25rem 1.25rem 1.25rem;
