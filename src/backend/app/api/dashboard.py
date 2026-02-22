@@ -248,26 +248,28 @@ async def planka_redirect(request: Request, target: str = ""):
         "password": settings.PLANKA_ADMIN_PASSWORD
     }
     
-    # Determine the host the user is using
-    raw_host = request.headers.get("host", "localhost")
-    host_only = raw_host.split(":")[0]
-    
-    # We want to redirect the user to the same host they are using
-    planka_root = f"http://{host_only}:1337"
-    
     async with httpx.AsyncClient() as client:
         try:
-            print(f"DEBUG: Requesting Planka token for host: {host_only}")
             resp = await client.post(login_url, json=payload, timeout=5.0)
-            
             token_data = resp.json()
             cookie_val = resp.cookies.get("httpOnlyToken")
             access_token = token_data.get("item")
+
+            # Determine target host and port
+            raw_host = request.headers.get("host", "localhost")
             
-            print(f"DEBUG: Login success: {resp.status_code == 200}")
-            
-            redirect_url = f"{planka_root}/"
-            # Get specific board ID if provided
+            # If the user is accessing via port 8000 (direct backend), 
+            # we might still want to redirect to 1337 for direct Planka access.
+            if ":8000" in raw_host:
+                host_only = raw_host.split(":")[0]
+                planka_root = f"http://{host_only}:1337"
+            else:
+                # Assuming port 80 (Nginx Proxy) or production domain
+                # We stay on the same origin (IP/Domain + Port)
+                planka_root = f"http://{raw_host}"
+
+            # Redirect to /boards to ensure we hit a Planka route in Nginx
+            redirect_url = f"{planka_root}/boards"
             target_board_id = request.query_params.get("target_board_id")
             
             if target_board_id:
@@ -276,51 +278,25 @@ async def planka_redirect(request: Request, target: str = ""):
                 try:
                     headers = {"Authorization": f"Bearer {access_token}"}
                     proj_resp = await client.get(f"{settings.PLANKA_BASE_URL}/api/projects", headers=headers)
-                    projects = proj_resp.json().get("items", [])
-                    project = next((p for p in projects if p["name"] == "OpenZero"), None)
+                    project = next((p for p in proj_resp.json().get("items", []) if p["name"] == "OpenZero"), None)
                     if project:
                         detail = (await client.get(f"{settings.PLANKA_BASE_URL}/api/projects/{project['id']}", headers=headers)).json()
-                        boards = detail.get("included", {}).get("boards", [])
-                        board = next((b for b in boards if b["name"] == "Operator Board"), None)
+                        board = next((b for b in detail.get("included", {}).get("boards", []) if b["name"] == "Operator Board"), None)
                         if board:
                             redirect_url = f"{planka_root}/boards/{board['id']}"
                 except Exception as e:
                     print(f"DEBUG: Operator navigation failed: {e}")
 
-            print(f"DEBUG: Redirecting user to: {redirect_url}")
+            print(f"DEBUG: Final Redirect URL: {redirect_url}")
             response = RedirectResponse(url=redirect_url, status_code=307)
-            
-            # Use host_only as domain if not localhost (browsers are picky about domain=localhost)
-            domain = None if host_only == "localhost" else host_only
-
             if cookie_val:
-                response.set_cookie(
-                    "httpOnlyToken", 
-                    cookie_val, 
-                    httponly=True, 
-                    samesite="lax", 
-                    path="/", 
-                    domain=domain,
-                    max_age=31536000
-                )
-            
+                response.set_cookie("httpOnlyToken", cookie_val, httponly=True, samesite="lax", path="/", max_age=31536000, secure=False)
             if access_token:
-                response.set_cookie(
-                    "accessToken", 
-                    access_token, 
-                    httponly=False, 
-                    samesite="lax", 
-                    path="/", 
-                    domain=domain,
-                    max_age=31536000
-                )
-                
+                response.set_cookie("accessToken", access_token, httponly=False, samesite="lax", path="/", max_age=31536000, secure=False)
             return response
         except Exception as e:
             print(f"DEBUG: Planka Auth Error: {e}")
-            return RedirectResponse(url=f"{planka_root}/")
-            
-    return RedirectResponse(url=f"{planka_root}/")
+            return RedirectResponse(url=f"http://{request.headers.get('host', 'localhost')}/")
 
 @router.post("/operator/sync")
 async def sync_operator():
