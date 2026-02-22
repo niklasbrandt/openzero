@@ -31,13 +31,8 @@ async def morning_briefing():
     
     async def get_person_briefing_data(p: Person):
         data = f"- {p.name} ({p.relationship}): {p.context}"
-        if p.calendar_id:
-            events = await fetch_calendar_events(calendar_id=p.calendar_id)
-            if events:
-                event_str = ", ".join([f"{e['summary']} ({e['start']})" for e in events])
-                data += f" | Calendar: {event_str}"
-            else:
-                data += " | Calendar: No events today."
+        if p.birthday:
+            data += f" | Birthday: {p.birthday}"
         return data
 
     inner_circle_tasks = [get_person_briefing_data(p) for p in people if p.circle_type == "inner"]
@@ -80,7 +75,7 @@ async def morning_briefing():
 
     # 4. Store in Database for Dashboard
     async with AsyncSessionLocal() as session:
-        briefing = Briefing(type="daily", content=content)
+        briefing = Briefing(type="day", content=content)
         session.add(briefing)
         await session.commit()
     

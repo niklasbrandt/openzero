@@ -105,6 +105,7 @@ export class CreateProject extends HTMLElement {
 		if (!this.shadowRoot) return;
 		this.shadowRoot.innerHTML = `
 		<style>
+          h2 { font-size: 1.5rem; font-weight: bold; margin: 0 0 1rem 0; color: #fff; letter-spacing: 0.02em; }
 			:host {
 				display: block;
 				max-height: 0;
@@ -124,16 +125,7 @@ export class CreateProject extends HTMLElement {
 				border-top-color: rgba(255, 255, 255, 0.06);
 			}
 
-			h2 {
-				color: #fff;
-				font-weight: 200;
-				letter-spacing: -0.025em;
-				margin: 0 0 1.25rem 0;
-				font-size: 1.25rem;
-				display: flex;
-				align-items: center;
-				gap: 0.5rem;
-			}
+			
 
 			h2 svg { color: rgba(255,255,255,0.4); }
 
@@ -157,7 +149,7 @@ export class CreateProject extends HTMLElement {
 				border-radius: 0.75rem;
 				padding: 0.6rem 1rem;
 				color: #fff;
-				font-family: 'Inter', system-ui, -apple-system, sans-serif;
+				font-family: 'Inter', system-ui, sans-serif;
 				font-size: 0.9rem;
 				outline: none;
 				transition: border-color 0.3s ease, background 0.3s ease, box-shadow 0.3s ease;
@@ -194,7 +186,7 @@ export class CreateProject extends HTMLElement {
 			}
 
 			button {
-				font-family: 'Inter', system-ui, -apple-system, sans-serif;
+				font-family: 'Inter', system-ui, sans-serif;
 				font-weight: 600;
 				font-size: 0.8rem;
 				border: 1px solid rgba(20, 184, 166, 0.2);

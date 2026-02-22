@@ -14,7 +14,7 @@ services:
     networks:
       - internal
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U $${DB_USER}" ]
+      test: [ "CMD-SHELL", "pg_isready -U $$POSTGRES_USER" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -42,17 +42,18 @@ services:
     entrypoint: [ "/bin/bash", "/entrypoint.sh" ]
     environment:
       - OLLAMA_HOST=0.0.0.0
+      - OLLAMA_MODEL=${OLLAMA_MODEL}
     networks:
       - internal
 
   whisper:
-    image: onuryilmaz/whisper-asr-webservice:latest
+    image: onerahmet/openai-whisper-asr-webservice:latest
     restart: always
     networks:
       - internal
 
   tts:
-    image: ghcr.io/moshloop/openedai-speech:latest
+    image: ghcr.io/matatonic/openedai-speech:latest
     restart: always
     networks:
       - internal
@@ -90,6 +91,8 @@ services:
       - gmail_tokens:/app/tokens
     networks:
       - internal
+    ports:
+      - "8000:8000"
 
 networks:
   internal:

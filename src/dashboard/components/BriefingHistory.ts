@@ -42,6 +42,7 @@ export class BriefingHistory extends HTMLElement {
     if (this.shadowRoot) {
       this.shadowRoot.innerHTML = `
         <style>
+          h2 { font-size: 1.5rem; font-weight: bold; margin: 0 0 1rem 0; color: #fff; letter-spacing: 0.02em; }
           :host { display: block; }
           .briefing-item {
             background: rgba(255, 255, 255, 0.03);

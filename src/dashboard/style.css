@@ -1,5 +1,17 @@
+/*
+ * OpenZero CSS Architecture
+ * -------------------------
+ * This file contains global CSS variables (design tokens), base body styles, 
+ * and generic animations that span the entire application.
+ * 
+ * NOTE: Individual Web Components (e.g., `<chat-prompt>`, `<project-tree>`) do NOT 
+ * keep their styles here. They use inline `<style>` blocks inside their respective 
+ * `.ts` template wrappers. This ensures perfect Shadow DOM encapsulation, meaning 
+ * component styles never leak, and eliminates the need for complex CSS build steps.
+ */
+
 :root {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
@@ -17,7 +29,7 @@
   --accent-glow: rgba(20, 184, 166, 0.4);
   --bg-surface: rgba(20, 25, 45, 0.6);
   --border-color: rgba(255, 255, 255, 0.06);
-  --glass-blur: blur(32px) saturate(16);
+  --glass-blur: blur(24px) saturate(8);
 }
 
 body {
@@ -25,11 +37,9 @@ body {
   display: flex;
   min-width: 320px;
   min-height: 100vh;
-  background-image:
-    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(20, 184, 166, 0.15) 0%, transparent 60%),
-    radial-gradient(ellipse 50% 50% at 100% 100%, rgba(0, 102, 255, 0.12) 0%, transparent 60%),
-    radial-gradient(ellipse 40% 40% at 0% 80%, rgba(0, 102, 255, 0.08) 0%, transparent 50%);
+  background-color: #202c45;
   overflow-x: hidden;
+  flex-wrap: wrap;
 }
 
 #app {
@@ -42,11 +52,16 @@ body {
   grid-gap: 2rem;
 }
 
-h1,
+h1 {
+  color: #fff;
+  font-weight: 200;
+  letter-spacing: -0.025em;
+}
+
 h2,
 h3 {
   color: #fff;
-  font-weight: 200;
+  font-weight: bold;
   letter-spacing: -0.025em;
 }
 
@@ -80,6 +95,42 @@ h3 {
   margin-bottom: 1rem;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.planka-btn {
+  display: flex;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: white;
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(10px);
+}
+
+.planka-btn.operator-btn {
+  background: rgba(0, 163, 255, 0.1);
+  border-color: rgba(0, 163, 255, 0.3);
+}
+
+.planka-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-1px);
+}
+
+.planka-btn.operator-btn:hover {
+  background: rgba(0, 163, 255, 0.2);
+}
+
 .chat-card {
   grid-column: 1 / -1;
 }
@@ -87,21 +138,21 @@ h3 {
 .dashboard-header h1 {
   font-size: 2.5rem;
   margin: 0;
-  background: linear-gradient(135deg, #fff 0%, #14B8A6 50%, #0066FF 100%);
+  color: #fff;
+}
+
+.dashboard-header h1 .gradient-text {
+  background: linear-gradient(135deg, #14B8A6 0%, #0066FF 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .status-online {
-  background: rgba(34, 197, 94, 0.12);
-  backdrop-filter: blur(12px) saturate(16);
-  -webkit-backdrop-filter: blur(12px) saturate(16);
   color: #4ade80;
   padding: 0.4rem 1.2rem;
-  border-radius: 2rem;
   font-size: 0.85rem;
   font-weight: 500;
-  border: 1px solid rgba(34, 197, 94, 0.15);
   letter-spacing: 0.03em;
 }
 
@@ -127,10 +178,9 @@ button:hover {
 input,
 textarea {
   background: rgba(0, 0, 0, 0.2);
-  backdrop-filter: blur(8px) saturate(16);
-  -webkit-backdrop-filter: blur(8px) saturate(16);
+  /* backdrop-filter: blur(8px) saturate(16);
+  -webkit-backdrop-filter: blur(8px) saturate(16); */
   border: 1px solid var(--border-color);
-  border-radius: 0.75rem;
   padding: 0.6rem 1rem;
   color: #fff;
   width: 100%;
@@ -194,6 +244,45 @@ pre {
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
 }
 
+/* Tooltips */
+[data-tooltip] {
+  position: relative;
+}
+
+[data-tooltip]::before {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: 100%;
+  /* Position below */
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  background: rgba(10, 15, 25, 0.95);
+  backdrop-filter: blur(8px);
+  color: #e2e8f0;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: pre-wrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease, transform 0.2s ease;
+  pointer-events: none;
+  border: 1px solid rgba(20, 184, 166, 0.3);
+  z-index: 100;
+  width: max-content;
+  max-width: 250px;
+  text-align: center;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  line-height: 1.4;
+}
+
+[data-tooltip]:hover::before {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(10px);
+}
+
 /* Animations */
 @keyframes fadeIn {
   from {
@@ -252,4 +341,39 @@ pre {
   .dashboard-header h1 {
     font-size: 1.8rem;
   }
+}
+
+/* Footer Section */
+.dashboard-footer {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2rem 0;
+  margin-top: 2rem;
+  border-top: 1px solid var(--border-color);
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.85rem;
+  width: 100%;
+  padding: 1rem 5vw;
+}
+
+.github-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(255, 255, 255, 0.4);
+  text-decoration: none;
+  transition: all 0.3s ease;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.github-link:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px);
 }

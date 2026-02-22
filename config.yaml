@@ -8,7 +8,7 @@
 features:
   # Core Interfaces
   messenger_bot: true             # Enable the Messenger Bot interface (e.g., Telegram)
-  task_board_integration: false   # Enable Planka Kanban board syncing and task creation
+  task_board_integration: true    # Enable Planka Kanban board syncing and task creation
 
   # External Integrations
   email_monitoring: false         # Enable reading and summarizing unread emails
@@ -53,5 +53,3 @@ preferences:
   # Behavior & Thresholds
   max_emails_per_briefing: 10     # Max number of emails to explicitly summarize
   stagnation_warning_days: 14     # Warn if a project card hasn't moved in X days
-
-  # Note: AI engine selection (Ollama/Groq) and models are configured in .env

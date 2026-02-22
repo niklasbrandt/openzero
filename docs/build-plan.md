@@ -56,14 +56,14 @@ apt update && apt upgrade -y
 
 ### Step 2: Create Non-Root User
 ```bash
-adduser aios
-usermod -aG sudo aios
+adduser openzero
+usermod -aG sudo openzero
 ```
 
 ### Step 3: Copy SSH Key for New User
 ```bash
 # On your Mac (in a new terminal):
-ssh-copy-id aios@YOUR_SERVER_IP
+ssh-copy-id openzero@YOUR_SERVER_IP
 ```
 
 ### Step 4: Disable Root Login & Password Auth
@@ -134,17 +134,17 @@ sudo apt update
 sudo apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
 
 # Allow non-root user to use Docker
-sudo usermod -aG docker zero
+sudo usermod -aG docker openzero
 ```
 
-Log out and back in as `zero` for Docker access without sudo.
+Log out and back in as `openzero` for Docker access without sudo.
 
 ---
 
 # 3. Project Structure
 
 ```
-/home/user/openzero/
+/home/openzero/openzero/
 ├── docker-compose.yml
 ├── .env                        # Backend secrets (NEVER commit)
 ├── .env.planka                 # Planka-specific env
@@ -221,14 +221,15 @@ services:
       - internal
 
   ollama:
-    image: ollama/ollama:latest
+    image: ollama/ollama:0.5.7
     restart: always
     volumes:
       - ollama_data:/root/.ollama
-      - ./ollama-entrypoint.sh:/entrypoint.sh
+      - ./scripts/ollama-entrypoint.sh:/entrypoint.sh
     entrypoint: ["/bin/bash", "/entrypoint.sh"]
     environment:
       - OLLAMA_HOST=0.0.0.0
+      - OLLAMA_MODEL=${OLLAMA_MODEL}
     networks:
       - internal
 
@@ -261,6 +262,8 @@ services:
       - gmail_tokens:/app/tokens
     networks:
       - internal
+    ports:
+      - "8000:8000"
 
 networks:
   internal:
@@ -295,21 +298,23 @@ done
 echo "Ollama is ready."
 
 # Pull model if not already present
-if ! ollama list | grep -q "llama3.1"; then
-  echo "Pulling llama3.1:8b model..."
-  ollama pull llama3.1:8b
-  echo "Model pulled successfully."
-else
-  echo "Model llama3.1:8b already present."
+if [ -n "$OLLAMA_MODEL" ]; then
+  if ! ollama list | grep -q "$OLLAMA_MODEL"; then
+    echo "Pulling $OLLAMA_MODEL model..."
+    ollama pull "$OLLAMA_MODEL"
+    echo "Model pulled successfully."
+  else
+    echo "Model $OLLAMA_MODEL already present."
+  fi
 fi
 
 # Keep Ollama running in the foreground
 wait
 ```
 
-> **Why llama3.1:8b?** It is the best 8B-class model for structured output (JSON),
-> summarization, and instruction-following. At Q4 quantization it uses ~5 GB RAM,
-> leaving 19 GB free for all other services on your 24 GB VPS.
+> **Why llama3.2:3b?** It is a highly efficient model optimized for edge devices and
+> general task handling. It offers rapid response times on CPUs while maintaining 
+> strong reasoning capabilities for daily automation.
 
 ---
 
