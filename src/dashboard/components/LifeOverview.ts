@@ -1,51 +1,54 @@
 export class LifeOverview extends HTMLElement {
-    constructor() {
-        super();
-        this.attachShadow({ mode: 'open' });
+  constructor() {
+    super();
+    this.attachShadow({ mode: 'open' });
+  }
+
+  connectedCallback() {
+    this.render();
+    this.fetchData();
+    window.addEventListener('refresh-data', () => {
+      this.fetchData();
+    });
+  }
+
+  async fetchData() {
+    try {
+      const response = await fetch('/api/dashboard/life-tree');
+      if (!response.ok) throw new Error('API error');
+      const data = await response.json();
+      this.updateUI(data);
+    } catch (e) {
+      console.error('Failed to fetch life tree', e);
+      this.showError();
     }
+  }
 
-    connectedCallback() {
-        this.render();
-        this.fetchData();
+  showError() {
+    const container = this.shadowRoot?.querySelector('#overview-container');
+    if (container) {
+      container.innerHTML = '<div class="error">Unable to load Life Overview. Check backend connection.</div>';
     }
+  }
 
-    async fetchData() {
-        try {
-            const response = await fetch('/api/dashboard/life-tree');
-            if (!response.ok) throw new Error('API error');
-            const data = await response.json();
-            this.updateUI(data);
-        } catch (e) {
-            console.error('Failed to fetch life tree', e);
-            this.showError();
-        }
-    }
+  updateUI(data: any) {
+    const container = this.shadowRoot?.querySelector('#overview-container');
+    if (!container) return;
 
-    showError() {
-        const container = this.shadowRoot?.querySelector('#overview-container');
-        if (container) {
-            container.innerHTML = '<div class="error">Unable to load Life Overview. Check backend connection.</div>';
-        }
-    }
+    const peopleHtml = data.inner_circle.length > 0
+      ? data.inner_circle.map((p: any) => `<li>${p.name} <span class="rel">(${p.relationship})</span></li>`).join('')
+      : '<li>No direct connections added yet.</li>';
 
-    updateUI(data: any) {
-        const container = this.shadowRoot?.querySelector('#overview-container');
-        if (!container) return;
-
-        const peopleHtml = data.inner_circle.length > 0
-            ? data.inner_circle.map((p: any) => `<li>${p.name} <span class="rel">(${p.relationship})</span></li>`).join('')
-            : '<li>No direct connections added yet.</li>';
-
-        const timelineHtml = data.timeline.length > 0
-            ? data.timeline.map((e: any) => `
+    const timelineHtml = data.timeline.length > 0
+      ? data.timeline.map((e: any) => `
           <div class="timeline-item">
             <span class="time">${e.time}</span>
             <span class="summary">${e.summary} ${e.is_local ? '<small>(local)</small>' : ''}</span>
           </div>
         `).join('')
-            : '<div class="empty">No upcoming events for the next 3 days.</div>';
+      : '<div class="empty">No upcoming events for the next 3 days.</div>';
 
-        container.innerHTML = `
+    container.innerHTML = `
       <div class="overview-grid">
         <section class="mission-control">
           <div class="section-header">
@@ -68,11 +71,11 @@ export class LifeOverview extends HTMLElement {
         </div>
       </div>
     `;
-    }
+  }
 
-    render() {
-        if (this.shadowRoot) {
-            this.shadowRoot.innerHTML = `
+  render() {
+    if (this.shadowRoot) {
+      this.shadowRoot.innerHTML = `
         <style>
           :host { display: block; }
           h2 { font-size: 1.5rem; font-weight: bold; margin: 0 0 1.5rem 0; color: #fff; letter-spacing: 0.02em; }
@@ -162,8 +165,8 @@ export class LifeOverview extends HTMLElement {
           </div>
         </div>
       `;
-        }
     }
+  }
 }
 
 customElements.define('life-overview', LifeOverview);

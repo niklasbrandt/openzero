@@ -24,6 +24,15 @@ async def poll_gmail():
                 break
         else:
             # Non-urgent: store summary for morning briefing
-            summary = await summarize_email(email["snippet"])
-            # Store in Postgres for the morning briefing to pick up
-            # (Logic to store in DB would go here)
+            from app.models.db import AsyncSessionLocal, EmailSummary
+            
+            async with AsyncSessionLocal() as db:
+                summary = await summarize_email(email["snippet"])
+                db_summary = EmailSummary(
+                    sender=email["from"],
+                    subject=subject,
+                    summary=summary,
+                    is_urgent=False
+                )
+                db.add(db_summary)
+                await db.commit()
