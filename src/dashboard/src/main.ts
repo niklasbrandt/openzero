@@ -8,6 +8,7 @@ import '../components/CircleManager'
 import '../components/ChatPrompt'
 import '../components/CreateProject'
 import '../components/CalendarAgenda'
+import '../components/CalendarManager'
 import '../components/LifeOverview'
 import '../components/WelcomeOnboarding'
 
