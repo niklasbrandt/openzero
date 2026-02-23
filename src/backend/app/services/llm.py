@@ -31,6 +31,7 @@ Core behavior:
 - Reference the user's goals. Connect today's actions to what they're building.
 - Celebrate progress. Most people never build what this user is building.
 - Be honest. If a plan has a gap, say so — then offer the path forward.
+- **Never invent or assume the existence of people.** Only refer to individuals explicitly mentioned in the provided context (INNER CIRCLE / CLOSE CIRCLE). If the context is empty, ask the user to add their inner circle via the dashboard or /add command.
 - Treat projects like missions, goals like campaigns, weekly reviews like board meetings.
 
 Time Awareness & Preciseness:
@@ -48,7 +49,10 @@ Rules:
 - If the external calendar is offline, seamlessly offer to save the event to the **Local Zero Calendar**.
 
 You remember what matters to them. Act like it.
-Your name is Z. The user's time is {current_time}. Keep responses tight and mission-focused. """
+Your name is Z. The user's time is {current_time}.
+The dashboard is located at: {base_url}/
+The task boards are located at: {base_url}/boards
+Keep responses tight and mission-focused. """
 
 async def chat(
     user_message: str, 
@@ -60,8 +64,15 @@ async def chat(
     user_tz = pytz.timezone(settings.USER_TIMEZONE)
     current_time = datetime.now(user_tz).strftime("%A, %Y-%m-%d %H:%M:%S %Z")
     
+    # Format the root prompt with dynamic values
+    base_url = settings.BASE_URL.rstrip('/')
+    formatted_system_prompt = SYSTEM_PROMPT.format(
+        current_time=current_time,
+        base_url=base_url
+    )
+    
     context_header = f"Current Local Time: {current_time}\n\n"
-    system_prompt = context_header + (system_override or SYSTEM_PROMPT)
+    system_prompt = context_header + (system_override or formatted_system_prompt)
     
     provider = (provider or settings.LLM_PROVIDER).lower()
 
@@ -129,6 +140,78 @@ async def chat(
                 return f"Error connecting to OpenAI: {str(e)}"
 
         return f"Unknown LLM provider: {provider}"
+
+async def chat_with_context(
+    user_message: str, 
+    history: list = None,
+    include_projects: bool = False,
+    include_people: bool = True
+) -> str:
+    """
+    Wraps the standard chat with a rich snapshot of the user's world.
+    This ensures Z always knows who matters and what's being built.
+    """
+    from app.models.db import AsyncSessionLocal, Person
+    from sqlalchemy import select
+    from app.services.memory import semantic_search
+    
+    # 1. Get Inner Circle (People)
+    people_context = ""
+    if include_people:
+        try:
+            async with AsyncSessionLocal() as session:
+                result = await session.execute(select(Person).where(Person.circle_type == "inner"))
+                people = result.scalars().all()
+                if people:
+                    people_context = "INNER CIRCLE (From Database):\n" + "\n".join([
+                        f"- {p.name} ({p.relationship}): Birthday: {p.birthday or 'Unknown'}"
+                        for p in people
+                    ])
+                else:
+                    people_context = "INNER CIRCLE: No family/contacts configured in the dashboard yet."
+        except Exception:
+            people_context = "INNER CIRCLE: (Database connection unavailable)"
+
+    # 2. Get Project Status
+    project_context = ""
+    if include_projects:
+        try:
+            from app.services.planka import get_project_tree
+            tree = await get_project_tree()
+            project_context = f"PROJECT MISSION CONTROL:\n{tree}"
+        except Exception:
+            project_context = "PROJECTS: (Board integration unavailable)"
+
+    # 3. Semantic Memory Recall
+    memories = ""
+    try:
+        memories = await semantic_search(user_message, top_k=3)
+        if "No memories found" in memories:
+            memories = ""
+        else:
+            memories = f"RELEVANT MEMORIES:\n{memories}"
+    except Exception:
+        pass
+
+    # 4. History Formatting (Last 5 rounds)
+    history_text = ""
+    if history:
+        history_history = []
+        for m in history[-5:]:
+            role = "User" if m.get("role") == "user" else "Z"
+            history_history.append(f"{role}: {m.get('content')}")
+        history_text = "CONVERSATION HISTORY:\n" + "\n".join(history_history)
+
+    # 5. Assemble and Send
+    full_prompt = "\n\n".join(filter(None, [
+        people_context, 
+        project_context, 
+        memories,
+        history_text, 
+        f"USER'S LATEST MESSAGE: {user_message}"
+    ]))
+    
+    return await chat(full_prompt)
 
 async def generate_context_proposal(query: str) -> dict:
     """Use Local LLM to identify relevant information for the user to approve."""
