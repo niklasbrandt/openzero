@@ -12,7 +12,7 @@ import '../components/CalendarManager'
 import '../components/LifeOverview'
 import '../components/WelcomeOnboarding'
 
-console.log('🚀 OpenZero Dashboard Initialized');
+console.log('🚀 openZero Dashboard Initialized');
 
 // Fetch system status and LLM info to display in the header
 // This implicitly calls the backend to warm up the local LLM

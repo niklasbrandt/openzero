@@ -1,7 +1,7 @@
 """
 System Configuration Module
 ---------------------------
-This module centralizes all environment-based settings for the OpenZero OS.
+This module centralizes all environment-based settings for the openZero OS.
 It uses Pydantic Settings for:
 1. Typed validation of environment variables.
 2. Smart defaulting for local development.

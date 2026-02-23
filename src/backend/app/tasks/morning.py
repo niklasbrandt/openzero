@@ -45,9 +45,23 @@ async def morning_briefing():
     close_context = "\n".join(close_context_list) if close_context_list else "No specific friend connections planned."
     
     tree = await get_project_tree()
-    emails = await fetch_unread_emails(max_results=5)
     
-    email_summary = "\n".join([f"- {e['from']}: {e['subject']}" for e in emails]) if emails else "No new emails."
+    # 2.3 Gather latest email context
+    from app.models.db import EmailSummary
+    async with AsyncSessionLocal() as session:
+        # Get summaries not yet included
+        res = await session.execute(select(EmailSummary).where(EmailSummary.included_in_briefing == False))
+        summaries = res.scalars().all()
+        
+        if summaries:
+            email_summary = "\n".join([f"- {s.sender}: {s.subject} (Summary: {s.summary})" for s in summaries])
+            # Mark as read
+            for s in summaries: s.included_in_briefing = True
+            await session.commit()
+        else:
+            # Fallback to direct fetch if no cached summaries
+            emails = await fetch_unread_emails(max_results=5)
+            email_summary = "\n".join([f"- {e['from']}: {e['subject']}" for e in emails]) if emails else "No new emails."
     
     full_prompt = (
         f"{mindset_prompt}\n\n"
