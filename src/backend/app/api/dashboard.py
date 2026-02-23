@@ -200,7 +200,7 @@ async def get_onboarding_status(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Person))
     people_count = len(result.scalars().all())
     
-    # 2. Check if about-me.md has been modified from example (placeholder check)
+    # 2. Check if about-me.md has been modified or if there's enough profile memory
     import os
     about_me_path = "/app/personal/about-me.md"
     has_profile = False
@@ -208,10 +208,23 @@ async def get_onboarding_status(db: AsyncSession = Depends(get_db)):
         size = os.path.getsize(about_me_path)
         if size > 100: # Simple heuristic
             has_profile = True
+    
+    if not has_profile:
+        # Check memory for profile-related entries
+        from app.services.memory import semantic_search
+        memories = await semantic_search("my identity, profession, goals and background", top_k=3)
+        if memories and "No memories found" not in memories:
+            has_profile = True
             
-    # 3. Check calendar sync
+    # 3. Check calendar sync (Google or Local)
     from app.services.calendar import get_calendar_service
-    has_calendar = get_calendar_service() is not None
+    from app.models.db import LocalEvent
+    has_google = get_calendar_service() is not None
+    
+    result = await db.execute(select(LocalEvent))
+    local_count = len(result.scalars().all())
+    
+    has_calendar = has_google or (local_count > 0)
     
     return {
         "needs_onboarding": (people_count == 0) or not has_profile or not has_calendar,
@@ -452,6 +465,26 @@ async def get_calendar(db: AsyncSession = Depends(get_db)):
     enriched_events.sort(key=lambda x: x["start"])
     
     return enriched_events
+
+class LocalEventCreate(BaseModel):
+    summary: str
+    description: Optional[str] = ""
+    start_time: datetime.datetime
+    end_time: datetime.datetime
+
+@router.post("/calendar/local")
+async def create_local_event(event: LocalEventCreate, db: AsyncSession = Depends(get_db)):
+    from app.models.db import LocalEvent
+    db_event = LocalEvent(
+        summary=event.summary,
+        description=event.description,
+        start_time=event.start_time,
+        end_time=event.end_time
+    )
+    db.add(db_event)
+    await db.commit()
+    await db.refresh(db_event)
+    return db_event
 
 # --- System Status ---
 @router.get("/system")
