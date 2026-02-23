@@ -21,7 +21,11 @@ async def lifespan(app: FastAPI):
     # 2. Initialize Qdrant collection
     try:
         await ensure_collection()
-        print("✓ Qdrant collection ready.")
+        from app.services.memory import get_memory_stats
+        stats = await get_memory_stats()
+        if stats['status'] == 'error':
+            raise Exception("Stats check failed")
+        print(f"✓ Qdrant collection ready ({stats['points']} points).")
     except Exception as e:
         print(f"⚠ Warning: Could not connect to Qdrant: {e}")
     
@@ -29,8 +33,13 @@ async def lifespan(app: FastAPI):
     try:
         await start_scheduler()
         await start_telegram_bot()
+        
+        # Initial Operator Board Sync
+        from app.services.operator_board import operator_service
+        sync_res = await operator_service.sync_operator_tasks()
+        print(f"✓ {sync_res}")
     except Exception as e:
-        print(f"⚠ Warning: Background tasks failed to start: {e}")
+        print(f"⚠ Warning: Background startup failed: {e}")
         
     yield
     # --- SHUTDOWN ---
@@ -56,8 +65,17 @@ app.add_middleware(
 app.include_router(dashboard_router)
 
 # Serve the Dashboard
+@app.get("/", include_in_schema=False)
+async def serve_dashboard():
+    from fastapi.responses import FileResponse
+    if os.path.exists("static/index.html"):
+        return FileResponse("static/index.html")
+    return {"detail": "Dashboard not found"}
+
 if os.path.exists("static"):
-    app.mount("/", StaticFiles(directory="static", html=True), name="static")
+    app.mount("/dashboard-assets", StaticFiles(directory="static/dashboard-assets"), name="dashboard-assets")
+    # Also mount the rest of static without html=True fallback
+    app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/health")
 async def health():

@@ -85,7 +85,7 @@ class OperatorBoardService:
             board = resp.json()["item"]
             
         # 3. Get/Create Lists
-        board_detail_resp = await client.get(f"/api/boards/{board['id']}")
+        board_detail_resp = await client.get(f"/api/boards/{board['id']}", params={"included": "lists"})
         board_detail_resp.raise_for_status()
         board_detail = board_detail_resp.json()
         current_lists = board_detail.get("included", {}).get("lists", [])
@@ -126,7 +126,7 @@ class OperatorBoardService:
                     boards = p_detail.get("included", {}).get("boards", [])
                     
                     for board in boards:
-                        b_detail = (await client.get(f"/api/boards/{board['id']}")).json()
+                        b_detail = (await client.get(f"/api/boards/{board['id']}", params={"included": "cards"})).json()
                         cards = b_detail.get("included", {}).get("cards", [])
                         
                         for card in cards:

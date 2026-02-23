@@ -18,6 +18,8 @@ def get_qdrant() -> QdrantClient:
         host=settings.QDRANT_HOST,
         port=settings.QDRANT_PORT,
         api_key=settings.QDRANT_API_KEY,
+        https=False,
+        timeout=10.0,
     )
 
 async def ensure_collection():
@@ -70,3 +72,29 @@ async def semantic_search(query: str, top_k: int = 5) -> str:
     for i, hit in enumerate(results, 1):
         lines.append(f"{i}. (score: {hit.score:.2f}) {hit.payload['text']}")
     return "\n".join(lines)
+
+async def get_memory_stats() -> dict:
+    """Return point counts and collection status."""
+    client = get_qdrant()
+    try:
+        info = client.get_collection(COLLECTION_NAME)
+        return {
+            "points": info.points_count,
+            "status": str(info.status),
+            "vectors": info.vectors_count if hasattr(info, 'vectors_count') else info.points_count
+        }
+    except Exception as e:
+        print(f"Memory stats error: {e}")
+        return {"points": 0, "status": "error", "vectors": 0}
+
+async def wipe_collection(confirm: bool = False):
+    """Delete and recreate the collection."""
+    if not confirm:
+        return False
+    client = get_qdrant()
+    try:
+        client.delete_collection(COLLECTION_NAME)
+        await ensure_collection()
+        return True
+    except Exception:
+        return False

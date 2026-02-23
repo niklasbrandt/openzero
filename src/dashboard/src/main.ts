@@ -50,7 +50,9 @@ async function plankaAutoLogin() {
         // Trigger the redirect bridge in a hidden iframe.
         // The bridge sets the httpOnlyToken and accessToken cookies.
         const iframe = document.createElement('iframe');
-        iframe.src = '/api/dashboard/planka-redirect';
+        // IMPORTANT: Must load from port 1337 to set LocalStorage for that origin
+        const plankaUrl = `${window.location.protocol}//${window.location.hostname}:1337/api/dashboard/planka-redirect?background=true`;
+        iframe.src = plankaUrl;
         iframe.setAttribute('style', 'display:none; width:0; height:0; border:0; position:absolute; visibility:hidden;');
         iframe.setAttribute('aria-hidden', 'true');
         document.body.appendChild(iframe);
