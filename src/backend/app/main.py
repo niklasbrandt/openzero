@@ -34,6 +34,16 @@ async def lifespan(app: FastAPI):
         await start_scheduler()
         await start_telegram_bot()
         
+        # 4. Warm up intelligence engine
+        print("⚡ Warming up intelligence engine...")
+        from app.services.memory import get_embedder
+        import asyncio
+        # Pre-load embedder in a thread to not block startup too much, 
+        # though lifespan is async anyway.
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, get_embedder)
+        print("✓ AI models loaded in memory.")
+        
         # Initial Operator Board Sync
         from app.services.operator_board import operator_service
         sync_res = await operator_service.sync_operator_tasks()

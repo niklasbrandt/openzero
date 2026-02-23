@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 class OperatorBoardService:
     def __init__(self):
-        self.project_name = "OpenZero"
+        self.project_name = "openZero"
         self.board_name = "Operator Board"
         self.mandatory_lists = ["Today", "This Week", "Backlog", "Done"]
         self._token = None
@@ -96,6 +96,7 @@ class OperatorBoardService:
                 logger.info(f"Creating list {lname}")
                 await client.post(f"/api/boards/{board['id']}/lists", json={
                     "name": lname,
+                    "type": "active",
                     "position": (i + 1) * 65535
                 })
                 

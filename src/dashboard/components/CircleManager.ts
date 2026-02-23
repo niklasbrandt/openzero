@@ -22,6 +22,11 @@ export class CircleManager extends HTMLElement {
     this.circleType = this.getAttribute('type') || 'inner';
     this.render();
     this.fetchPeople();
+    window.addEventListener('refresh-data', (e: any) => {
+      if (e.detail.actions.includes('people')) {
+        this.fetchPeople();
+      }
+    });
   }
 
   async fetchPeople() {

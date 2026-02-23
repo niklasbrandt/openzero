@@ -1,7 +1,7 @@
 """
 Planka Integration Service
 --------------------------
-This service provides the low-level bridge between the OpenZero backend and the 
+This service provides the low-level bridge between the openZero backend and the 
 Planka Kanban instance. It handles API communication for project tree fetching 
 and task creation.
 
@@ -29,8 +29,19 @@ async def get_planka_auth_token() -> str:
         resp.raise_for_status()
         return resp.json().get("item")
 
+import asyncio
+import time
+
+_tree_cache = {} # cache_key -> (timestamp, data)
+
 async def get_project_tree(as_html: bool = True) -> str:
-    """Recursively build a semantic text tree of all projects, boards, and progress stats from Planka."""
+    """Recursively build a semantic text tree. Uses parallel requests and caching for speed."""
+    cache_key = f"tree_{as_html}"
+    if cache_key in _tree_cache:
+        timestamp, data = _tree_cache[cache_key]
+        if time.time() - timestamp < 30: # 30s TTL
+            return data
+
     try:
         token = await get_planka_auth_token()
         headers = {"Authorization": f"Bearer {token}"}
@@ -42,53 +53,70 @@ async def get_project_tree(as_html: bool = True) -> str:
             
             if not projects:
                 return "No projects found. Use Planka to create your first mission."
-                
+
+            # Fetch all project details in parallel
+            project_tasks = [client.get(f"/api/projects/{p['id']}") for p in projects]
+            project_resps = await asyncio.gather(*project_tasks)
+            
             tree_lines = []
-            for project in projects:
-                # Fetch detailed project to get boards
-                detail_resp = await client.get(f"/api/projects/{project['id']}")
-                detail_resp.raise_for_status()
-                detail = detail_resp.json()
+            board_tasks = []
+            board_metadata = [] # Keep track of which board task belongs to which project/name
+
+            for i, p_resp in enumerate(project_resps):
+                p_resp.raise_for_status()
+                detail = p_resp.json()
                 boards = detail.get("included", {}).get("boards", [])
                 
+                project = projects[i]
                 project_name = f"<b>{project['name']}</b>" if as_html else f"[{project['name']}]"
-                tree_lines.append(project_name)
+                tree_lines.append((i, "project", project_name))
                 
                 for board in boards:
-                    board_id = board['id']
-                    board_name = board['name']
-                    
-                    # Fetch board detail to get lists and card counts
-                    try:
-                        b_resp = await client.get(f"/api/boards/{board_id}", params={"included": "lists,cards"})
-                        b_detail = b_resp.json()
-                        lists = b_detail.get("included", {}).get("lists", [])
-                        cards = b_detail.get("included", {}).get("cards", [])
-                        
-                        total_cards = len(cards)
-                        done_cards = 0
-                        
-                        # Identify 'Done' lists
-                        done_list_ids = [l['id'] for l in lists if l.get('name') and any(kw in l['name'].lower() for kw in ['done', 'complete', 'finish'])]
-                        done_cards = len([c for c in cards if c['listId'] in done_list_ids])
-                        
-                        progress_pct = int((done_cards / total_cards) * 100) if total_cards > 0 else 0
-                        
-                        if as_html:
-                            progress_str = f" <span style='color: #4ade80; font-size: 0.8rem;'>({progress_pct}%)</span>" if total_cards > 0 else ""
-                            line = f"  └── <a href='/api/dashboard/planka-redirect?target_board_id={board_id}' target='_blank' style='color: inherit; text-decoration: none;'>{board_name}</a>{progress_str}"
-                        else:
-                            progress_str = f" ({progress_pct}%)" if total_cards > 0 else ""
-                            line = f"  └── {board_name}{progress_str}"
-                            
-                        tree_lines.append(line)
-                    except Exception as be:
-                        logger.error(f"Error fetching stats for board {board_name}: {be}")
-                        tree_lines.append(f"  └── {board_name} (Stats offline)")
-                        
-                tree_lines.append("") # Spacer
-                    
-            return "\n".join(tree_lines)
+                    task = client.get(f"/api/boards/{board['id']}", params={"included": "lists,cards"})
+                    board_tasks.append(task)
+                    board_metadata.append({"project_idx": i, "name": board['name'], "id": board['id']})
+
+            # Fetch all board details in parallel
+            board_resps = await asyncio.gather(*board_tasks, return_exceptions=True)
+            
+            # Map board responses back to their projects
+            project_boards = {i: [] for i in range(len(projects))}
+            for meta, b_resp in zip(board_metadata, board_resps):
+                if isinstance(b_resp, Exception):
+                    project_boards[meta["project_idx"]].append(f"  └── {meta['name']} (Stats offline)")
+                    continue
+
+                b_detail = b_resp.json()
+                lists = b_detail.get("included", {}).get("lists", [])
+                cards = b_detail.get("included", {}).get("cards", [])
+                
+                total_cards = len(cards)
+                done_list_ids = [l['id'] for l in lists if l.get('name') and any(kw in l['name'].lower() for kw in ['done', 'complete', 'finish'])]
+                done_cards = len([c for c in cards if c['listId'] in done_list_ids])
+                
+                progress_pct = int((done_cards / total_cards) * 100) if total_cards > 0 else 0
+                board_id = meta["id"]
+                board_name = meta["name"]
+
+                if as_html:
+                    progress_str = f" <span style='color: #4ade80; font-size: 0.8rem;'>({progress_pct}%)</span>" if total_cards > 0 else ""
+                    line = f"  └── <a href='/api/dashboard/planka-redirect?target_board_id={board_id}' target='_blank' style='color: inherit; text-decoration: none;'>{board_name}</a>{progress_str}"
+                else:
+                    progress_str = f" ({progress_pct}%)" if total_cards > 0 else ""
+                    line = f"  └── {board_name}{progress_str}"
+                
+                project_boards[meta["project_idx"]].append(line)
+
+            # Assemble final tree
+            final_lines = []
+            for i, p_type, p_name in tree_lines:
+                final_lines.append(p_name)
+                final_lines.extend(project_boards[i])
+                final_lines.append("")
+
+            result = "\n".join(final_lines)
+            _tree_cache[cache_key] = (time.time(), result)
+            return result
     except Exception as e:
         logger.error(f"Planka project tree error: {e}")
         return f"Planka connection issue: {str(e)}"
@@ -115,10 +143,11 @@ async def create_task(board_name: str, list_name: str, title: str) -> bool:
                 for board in boards:
                     if board["name"] == board_name:
                         # 2. Find the list
-                        board_detail = (await client.get(f"/api/boards/{board['id']}")).json()
+                        b_resp = await client.get(f"/api/boards/{board['id']}", params={"included": "lists"})
+                        board_detail = b_resp.json()
                         lists = board_detail.get("included", {}).get("lists", [])
                         
-                        target_list = next((l for l in lists if l["name"] == list_name), None)
+                        target_list = next((l for l in lists if l.get("name") == list_name), None)
                         if target_list:
                             # 3. Create the card
                             await client.post(f"/api/boards/{board['id']}/cards", json={
@@ -160,6 +189,7 @@ async def create_board(project_id: str, name: str) -> dict:
         board = resp.json().get("item")
         await client.post(f"/api/boards/{board['id']}/lists", json={
             "name": "Inbox",
+            "type": "active",
             "position": 65535
         })
         

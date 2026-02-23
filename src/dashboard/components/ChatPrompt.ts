@@ -87,6 +87,12 @@ export class ChatPrompt extends HTMLElement {
 				content: data.reply || 'No response received.',
 				timestamp: new Date(),
 			});
+
+			if (data.actions && data.actions.length > 0) {
+				window.dispatchEvent(new CustomEvent('refresh-data', {
+					detail: { actions: data.actions }
+				}));
+			}
 		} catch (e) {
 			// Simulate a brief delay for natural feel
 			await new Promise(r => setTimeout(r, 800));
@@ -96,7 +102,7 @@ export class ChatPrompt extends HTMLElement {
 				`Received: "${message}"\n\nZ is currently in standby. Deploy the backend to enable live responses.`,
 				`Message queued. Z will process this once the backend is online.`,
 				`Got it. The backend API isn't connected yet — once it is, Z will handle conversations like this in real time.`,
-				`Noted. Connect the OpenZero backend to unlock live AI chat.`,
+				`Noted. Connect the openZero backend to unlock live AI chat.`,
 			];
 			const reply = offlineReplies[this.messages.length % offlineReplies.length];
 
@@ -332,8 +338,8 @@ export class ChatPrompt extends HTMLElement {
 
 			.message.assistant .bubble {
 				background: rgba(255, 255, 255, 0.06);
-				backdrop-filter: blur(12px) saturate(1.2);
-				-webkit-backdrop-filter: blur(12px) saturate(1.2);
+				backdrop-filter: blur(12px);
+				-webkit-backdrop-filter: blur(12px);
 				color: rgba(255, 255, 255, 0.9);
 				border: 1px solid rgba(255, 255, 255, 0.06);
 				border-bottom-left-radius: 0.35rem;

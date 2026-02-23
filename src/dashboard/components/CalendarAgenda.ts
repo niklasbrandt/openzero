@@ -10,6 +10,11 @@ export class CalendarAgenda extends HTMLElement {
   connectedCallback() {
     this.render();
     this.fetchEvents();
+    window.addEventListener('refresh-data', (e: any) => {
+      if (e.detail.actions.includes('calendar')) {
+        this.fetchEvents();
+      }
+    });
   }
 
   async fetchEvents() {
