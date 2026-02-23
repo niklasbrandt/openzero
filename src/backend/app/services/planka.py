@@ -60,7 +60,7 @@ async def get_project_tree(as_html: bool = True) -> str:
                     
                     # Fetch board detail to get lists and card counts
                     try:
-                        b_resp = await client.get(f"/api/boards/{board_id}")
+                        b_resp = await client.get(f"/api/boards/{board_id}", params={"included": "lists,cards"})
                         b_detail = b_resp.json()
                         lists = b_detail.get("included", {}).get("lists", [])
                         cards = b_detail.get("included", {}).get("cards", [])
@@ -69,7 +69,7 @@ async def get_project_tree(as_html: bool = True) -> str:
                         done_cards = 0
                         
                         # Identify 'Done' lists
-                        done_list_ids = [l['id'] for l in lists if any(kw in l['name'].lower() for kw in ['done', 'complete', 'finish'])]
+                        done_list_ids = [l['id'] for l in lists if l.get('name') and any(kw in l['name'].lower() for kw in ['done', 'complete', 'finish'])]
                         done_cards = len([c for c in cards if c['listId'] in done_list_ids])
                         
                         progress_pct = int((done_cards / total_cards) * 100) if total_cards > 0 else 0
@@ -83,6 +83,7 @@ async def get_project_tree(as_html: bool = True) -> str:
                             
                         tree_lines.append(line)
                     except Exception as be:
+                        logger.error(f"Error fetching stats for board {board_name}: {be}")
                         tree_lines.append(f"  └── {board_name} (Stats offline)")
                         
                 tree_lines.append("") # Spacer
@@ -130,3 +131,36 @@ async def create_task(board_name: str, list_name: str, title: str) -> bool:
     except Exception as e:
         logger.error(f"Task creation failed: {e}")
         return False
+
+async def create_project(name: str, description: str = "") -> dict:
+    """Create a new project in Planka."""
+    token = await get_planka_auth_token()
+    headers = {"Authorization": f"Bearer {token}"}
+    async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, headers=headers) as client:
+        resp = await client.post("/api/projects", json={
+            "name": name, 
+            "description": description,
+            "type": "private"
+        })
+        resp.raise_for_status()
+        return resp.json().get("item")
+
+async def create_board(project_id: str, name: str) -> dict:
+    """Create a new board in a project."""
+    token = await get_planka_auth_token()
+    headers = {"Authorization": f"Bearer {token}"}
+    async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, headers=headers) as client:
+        resp = await client.post(f"/api/projects/{project_id}/boards", json={
+            "name": name,
+            "position": 65535
+        })
+        resp.raise_for_status()
+        
+        # Also create a default 'Inbox' list
+        board = resp.json().get("item")
+        await client.post(f"/api/boards/{board['id']}/lists", json={
+            "name": "Inbox",
+            "position": 65535
+        })
+        
+        return board

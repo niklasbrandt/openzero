@@ -1,31 +1,32 @@
 export class WelcomeOnboarding extends HTMLElement {
-    constructor() {
-        super();
-        this.attachShadow({ mode: 'open' });
-    }
+  constructor() {
+    super();
+    this.attachShadow({ mode: 'open' });
+  }
 
-    connectedCallback() {
-        this.checkStatus();
-    }
+  connectedCallback() {
+    this.checkStatus();
+  }
 
-    async checkStatus() {
-        try {
-            const response = await fetch('/api/dashboard/onboarding-status');
-            if (!response.ok) return;
-            const data = await response.json();
-            if (data.needs_onboarding) {
-                this.render(data.steps);
-            } else {
-                this.style.display = 'none';
-            }
-        } catch (e) {
-            console.warn('Could not check onboarding status');
-        }
+  async checkStatus() {
+    try {
+      const response = await fetch('/api/dashboard/onboarding-status');
+      if (!response.ok) return;
+      const data = await response.json();
+      if (data.needs_onboarding) {
+        this.render(data);
+      } else {
+        this.style.display = 'none';
+      }
+    } catch (e) {
+      console.warn('Could not check onboarding status');
     }
+  }
 
-    render(steps: any) {
-        if (this.shadowRoot) {
-            this.shadowRoot.innerHTML = `
+  render(data: any) {
+    const steps = data.steps;
+    if (this.shadowRoot) {
+      this.shadowRoot.innerHTML = `
         <style>
           :host { display: block; grid-column: 1 / -1; margin-bottom: 2rem; }
           .card {
@@ -112,11 +113,13 @@ export class WelcomeOnboarding extends HTMLElement {
             </div>
           </div>
 
-          <button class="cta" onclick="this.parentElement.style.opacity='0.5'; setTimeout(()=>this.parentElement.parentElement.style.display='none', 300)">Dismiss Onboarding</button>
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 1rem;">
+            <button class="cta" onclick="this.parentElement.parentElement.style.opacity='0.5'; setTimeout(()=>this.parentElement.parentElement.parentElement.style.display='none', 300)">Dismiss Onboarding</button>
+          </div>
         </div>
       `;
-        }
     }
+  }
 }
 
 customElements.define('welcome-onboarding', WelcomeOnboarding);

@@ -4,6 +4,7 @@ export default defineConfig({
     root: '.',
     build: {
         outDir: 'dist',
+        assetsDir: 'dashboard-assets',
         emptyOutDir: true,
     },
     server: {

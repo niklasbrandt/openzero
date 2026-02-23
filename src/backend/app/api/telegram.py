@@ -12,6 +12,9 @@ import asyncio
 
 bot_app: Application | None = None
 
+# --- Context Persistence ---
+chat_histories = {} # chat_id -> list of dicts {'role': 'user/z', 'content': str}
+
 async def start_telegram_bot():
     """Start the Telegram bot in polling mode within the FastAPI event loop."""
     global bot_app
@@ -30,6 +33,7 @@ async def start_telegram_bot():
     bot_app.add_handler(CommandHandler("tree", cmd_tree))
     bot_app.add_handler(CommandHandler("review", cmd_review))
     bot_app.add_handler(CommandHandler("memory", cmd_memory))
+    bot_app.add_handler(CommandHandler("wipe_memory", cmd_wipe_memory))
     bot_app.add_handler(CommandHandler("week", cmd_week))
     bot_app.add_handler(CommandHandler("month", cmd_month))
     bot_app.add_handler(CommandHandler("day", cmd_day))
@@ -37,6 +41,7 @@ async def start_telegram_bot():
     bot_app.add_handler(CommandHandler("add", cmd_add_topic))
     bot_app.add_handler(CommandHandler("think", cmd_think))
     bot_app.add_handler(CallbackQueryHandler(handle_approval, pattern="^think_"))
+    bot_app.add_handler(CallbackQueryHandler(handle_wipe_confirm, pattern="^wipe_"))
     bot_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_freetext))
     bot_app.add_handler(MessageHandler(filters.VOICE, handle_voice))
 
@@ -45,11 +50,33 @@ async def start_telegram_bot():
     await bot_app.start()
     await bot_app.updater.start_polling(drop_pending_updates=True)
 
-    # Proactive greeting
+    # Proactive greeting with Context & Stats
     try:
         from app.services.llm import chat
-        greeting = await chat("System startup. Greet the user contextually (e.g. 'Z is online and ready' or similar). Keep it sharp and concise.")
-        await send_notification(f"⚡ {greeting}")
+        from app.services.memory import get_memory_stats
+        
+        stats = await get_memory_stats()
+        stats_text = f"Memory: {stats['points']} points" if stats['status'] != 'error' else "Memory: Offline"
+        
+        # Recall important stuff for today
+        try:
+            from app.services.calendar import fetch_calendar_events
+            import asyncio
+            events = await asyncio.wait_for(fetch_calendar_events(max_results=3, days_ahead=1), timeout=5.0)
+            event_summary = ""
+            if events:
+                ev_list = [f"• {e['summary']} ({e['start'].split('T')[1][:5] if 'T' in e['start'] else 'All Day'})" for e in events]
+                event_summary = "\nUpcoming today:\n" + "\n".join(ev_list)
+        except Exception as ce:
+            print(f"Calendar fetch failed during greeting: {ce}")
+            event_summary = ""
+
+        greeting_prompt = (
+            f"Z is coming online. System status: Ready. {stats_text}. {event_summary}\n\n"
+            "Greet the user sharply. Remind them of any urgent calendar events mentioned above if applicable. Use only provided info, don't invent anything."
+        )
+        greeting = await chat(greeting_prompt)
+        await send_notification(f"⚡ {greeting}\n\n_System: {stats_text}_")
     except Exception as e:
         print(f"Could not send startup greeting: {e}")
         await send_notification("⚡ Z is online.")
@@ -152,10 +179,62 @@ async def cmd_add_topic(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"✅ Stored: {topic}")
 
 @owner_only
+async def cmd_wipe_memory(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Trigger memory wipe with confirmation."""
+    keyboard = [
+        [
+            InlineKeyboardButton("🔥 Confirm Wipe", callback_data="wipe_confirm"),
+            InlineKeyboardButton("❌ Cancel", callback_data="wipe_cancel"),
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text(
+        "⚠️ *DANGER ZONE*\n\nYou are about to wipe all semantic memories. This cannot be undone. Confirm?",
+        parse_mode="Markdown",
+        reply_markup=reply_markup
+    )
+
+async def handle_wipe_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    
+    if query.data == "wipe_confirm":
+        from app.services.memory import wipe_collection
+        success = await wipe_collection(confirm=True)
+        if success:
+            await query.edit_message_text("✅ Semantic memory has been completely wiped.")
+        else:
+            await query.edit_message_text("❌ Failed to wipe memory. Check logs.")
+    else:
+        await query.edit_message_text("Cancelled. Memories are safe.")
+
+@owner_only
 async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Process freeform text via the default LLM."""
-    from app.services.llm import chat
-    response = await chat(update.message.text)
+    """Process freeform text via the default LLM with Context & History."""
+    chat_id = update.effective_chat.id
+    if chat_id not in chat_histories:
+        chat_histories[chat_id] = []
+    
+    from app.services.llm import chat_with_context
+    
+    # Show typing action
+    await context.bot.send_chat_action(chat_id=chat_id, action="typing")
+    
+    response = await chat_with_context(
+        update.message.text, 
+        history=chat_histories[chat_id],
+        include_projects=True,
+        include_people=True
+    )
+    
+    # Update local history
+    chat_histories[chat_id].append({"role": "user", "content": update.message.text})
+    chat_histories[chat_id].append({"role": "z", "content": response})
+    
+    # Keep history manageable
+    if len(chat_histories[chat_id]) > 20:
+        chat_histories[chat_id] = chat_histories[chat_id][-20:]
+        
     await update.message.reply_text(response)
 
 @owner_only
@@ -178,8 +257,21 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"📝 *Transcript:* _{transcript}_", parse_mode="Markdown")
     
     # 3. Process as text
-    from app.services.llm import chat
-    response = await chat(transcript)
+    from app.services.llm import chat_with_context
+    chat_id = update.effective_chat.id
+    if chat_id not in chat_histories:
+        chat_histories[chat_id] = []
+
+    response = await chat_with_context(
+        transcript,
+        history=chat_histories[chat_id],
+        include_projects=True,
+        include_people=True
+    )
+    
+    chat_histories[chat_id].append({"role": "user", "content": transcript})
+    chat_histories[chat_id].append({"role": "z", "content": response})
+    
     await update.message.reply_text(response)
 
 @owner_only
