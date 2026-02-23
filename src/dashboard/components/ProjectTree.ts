@@ -8,6 +8,11 @@ export class ProjectTree extends HTMLElement {
     this.render();
     this.fetchData();
     this.setupToggle();
+    window.addEventListener('refresh-data', (e: any) => {
+      if (e.detail.actions.includes('project') || e.detail.actions.includes('board')) {
+        this.fetchData();
+      }
+    });
   }
 
   private setupToggle() {

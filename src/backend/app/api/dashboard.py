@@ -1,7 +1,7 @@
 """
 Dashboard API Endpoints
 -----------------------
-This module defines the primary REST API for the OpenZero Dashboard.
+This module defines the primary REST API for the openZero Dashboard.
 It handles:
 1. Project & Task management (via Planka integration)
 2. Semantic memory search (via Qdrant)
@@ -126,7 +126,14 @@ async def dashboard_chat(req: ChatRequest, db: AsyncSession = Depends(get_db)):
             include_projects=True,
             include_people=True
         )
-        return {"reply": reply}
+        
+        from app.services.agent_actions import parse_and_execute_actions
+        clean_reply, executed_cmds = await parse_and_execute_actions(reply, db=db)
+
+        return {
+            "reply": clean_reply,
+            "actions": executed_cmds
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -285,7 +292,7 @@ async def planka_redirect(request: Request, target: str = "", background: bool =
                 headers = {"Authorization": f"Bearer {access_token}"}
                 proj_resp = await client.get(f"{settings.PLANKA_BASE_URL}/api/projects", headers=headers)
                 items = proj_resp.json().get("items", [])
-                project = next((p for p in items if p["name"] == "OpenZero"), None)
+                project = next((p for p in items if p["name"] == "openZero"), None)
                 if project:
                     detail_resp = await client.get(f"{settings.PLANKA_BASE_URL}/api/projects/{project['id']}", headers=headers)
                     detail = detail_resp.json()
@@ -301,7 +308,7 @@ async def planka_redirect(request: Request, target: str = "", background: bool =
             <!DOCTYPE html>
             <html>
             <head>
-                <title>OpenZero SSO</title>
+                <title>openZero SSO</title>
                 <script>
                     function setupSession() {{
                         try {{

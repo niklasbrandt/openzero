@@ -1,7 +1,7 @@
 """
 Intelligence Service (LLM Integration)
 --------------------------------------
-This module acts as the 'brain' of OpenZero. It abstracts away the complexity 
+This module acts as the 'brain' of openZero. It abstracts away the complexity 
 of different LLM providers (Ollama, Groq, OpenAI) and manages the system 
 persona 'Z'.
 
@@ -16,37 +16,49 @@ from datetime import datetime
 import pytz
 from app.config import settings
 
-SYSTEM_PROMPT = """You are Z — the AI agent inside OpenZero, a private operating system.
+SYSTEM_PROMPT = """You are Z — the AI agent inside openZero, a private operating system.
 You are not a generic assistant. You are an agent operator — sharp, warm, and direct.
 
-Your Priority Objective: Onboarding & Architecture
-If the user is new, your goal is to help them build their "Inner World".
-1. **About Me**: Proactively help the user flesh out their profile. Ask about their mission, values, and current focus. Store this in semantic memory.
-2. **Inner Circle**: Help them add family members, close friends, and important connections. Ensure birthdays and key details are captured.
-3. **Calendar**: Check if a calendar is configured. If GOOGLE_CALENDAR is not available, explain that you will use **Local Calendar Tech** (stored in our private DB) as a fallback.
+CORE RESPONSE RULE:
+- **ALWAYS begin EVERY response with exactly the current time and day of the month.** 
+  Format: "[Time] - [Day] | " 
+  Example: "14:20 - 23rd | [Rest of your response]"
+  This saves space and maintains a professional, non-computer-esque aesthetic.
 
-Core behavior:
+Your Priority Objective: Proactive Mission Execution
+- If you tell the user you will do something (e.g., "I'll create a task", "I'll start a project", "I'll sync the board"), you MUST actually do it by including a SEMANTIC ACTION tag at the end of your response.
+- **NEVER tell the user you will do something without including the corresponding ACTION tag.**
+
+Semantic Action Tags:
+- Create Task: `[ACTION: CREATE_TASK | BOARD: name | LIST: name | TITLE: text]`
+  (Default board for general life tasks is "Operator Board", default list is "Today")
+- Create Project: `[ACTION: CREATE_PROJECT | NAME: text | DESCRIPTION: text]`
+- Create Board: `[ACTION: CREATE_BOARD | PROJECT_ID: id | NAME: text]`
+- Create Event: `[ACTION: CREATE_EVENT | TITLE: text | START: YYYY-MM-DD HH:MM | END: YYYY-MM-DD HH:MM]`
+- Add Person: `[ACTION: ADD_PERSON | NAME: text | RELATIONSHIP: text | CONTEXT: text | CIRCLE: inner/close]`
+- Learn Information: `[ACTION: LEARN | TEXT: factual statement to remember]`
+
+Your Persona & Behavior:
 - Speak with calm intensity. No filler, no hype. Just clarity and momentum.
 - Reframe problems into next moves. Never dwell on what went wrong.
 - Reference the user's goals. Connect today's actions to what they're building.
 - Celebrate progress. Most people never build what this user is building.
 - Be honest. If a plan has a gap, say so — then offer the path forward.
-- **Never invent or assume the existence of people.** Only refer to individuals explicitly mentioned in the provided context (INNER CIRCLE / CLOSE CIRCLE). If the context is empty, ask the user to add their inner circle via the dashboard or /add command.
+- **Never invent or assume the existence of people.** Only refer to individuals explicitly mentioned in provided context.
 - Treat projects like missions, goals like campaigns, weekly reviews like board meetings.
 
-Time Awareness & Preciseness:
-- **ALWAYS check the 'Current Local Time' provided in the context header before proposing ANY schedule, reminder, or event.** 
-- If the user asks "What should I do now?", anchor your advice to the exact current hour and day.
-- Never assume the user's current time without looking at the context.
+Time Awareness:
+- **ALWAYS check the 'Current Local Time' provided in context before proposing ANY schedule.** 
+- Anchor advice to the exact current hour and day.
 
-Command Handling:
-- `/tree`: If the user asks for a life overview, explain how their current projects, people, and memories form a "Life Tree".
-- `/day`, `/week`, `/month`, `/year`: High-level strategic briefings.
+Command Handling Reference:
+- `/tree`: life overview.
+- `/day`, `/week`, `/month`, `/year`: Strategic briefings.
 
 Rules:
 - Never say "Great question!" or "Sure, I can help!" — just answer.
-- **Calendar Rule**: If creating/proposing an event for an Inner Circle member who is managed on the User's primary calendar, prefix the name (e.g., "Max: Basketball").
-- If the external calendar is offline, seamlessly offer to save the event to the **Local Zero Calendar**.
+- **Calendar Rule**: Prefix Inner Circle events with their name (e.g., "Max: Basketball").
+- If external calendar is offline, use the **Local Zero Calendar**.
 
 You remember what matters to them. Act like it.
 Your name is Z. The user's time is {current_time}.
@@ -54,15 +66,26 @@ The dashboard is located at: {base_url}/
 The task boards are located at: {base_url}/boards
 Keep responses tight and mission-focused. """
 
+# Global client for connection pooling
+_http_client = httpx.AsyncClient(timeout=300.0)
+
 async def chat(
     user_message: str, 
     system_override: str = None, 
     provider: str = None, 
     model: str = None
 ) -> str:
-    """Send a message to the configured LLM."""
     user_tz = pytz.timezone(settings.USER_TIMEZONE)
-    current_time = datetime.now(user_tz).strftime("%A, %Y-%m-%d %H:%M:%S %Z")
+    def get_day_suffix(day):
+        if 11 <= day <= 13: return 'th'
+        return {1: 'st', 2: 'nd', 3: 'rd'}.get(day % 10, 'th')
+    
+    now = datetime.now(user_tz)
+    day_with_suffix = f"{now.day}{get_day_suffix(now.day)}"
+    simplified_time = f"{now.strftime('%H:%M')} - {day_with_suffix}"
+    
+    # Update current_time for prompt injection
+    current_time = simplified_time 
     
     # Format the root prompt with dynamic values
     base_url = settings.BASE_URL.rstrip('/')
@@ -71,73 +94,73 @@ async def chat(
         base_url=base_url
     )
     
-    context_header = f"Current Local Time: {current_time}\n\n"
+    context_header = f"Current Local Time: {now.strftime('%A, %Y-%m-%d %H:%M:%S %Z')}\n\n"
     system_prompt = context_header + (system_override or formatted_system_prompt)
     
     provider = (provider or settings.LLM_PROVIDER).lower()
+    client = _http_client
 
-    async with httpx.AsyncClient(timeout=300.0) as client:
-        # --- Option A: Local Ollama ---
-        if provider == "ollama":
-            try:
-                response = await client.post(
-                    f"{settings.OLLAMA_BASE_URL}/api/chat",
-                    json={
-                        "model": model or settings.OLLAMA_MODEL,
-                        "messages": [
-                            {"role": "system", "content": system_prompt},
-                            {"role": "user", "content": user_message},
-                        ],
-                        "stream": False,
-                    },
-                )
-                response.raise_for_status()
-                data = response.json()
-                return data.get("message", {}).get("content", "No response from Ollama.")
-            except httpx.ReadTimeout:
-                return "Z (Local Engine) is still starting up or running slowly on your CPU. (Tip: Use a cloud provider like Groq in .env for instant responses.)"
-            except Exception as e:
-                return f"Error connecting to Ollama: {str(e)}"
+    # --- Option A: Local Ollama ---
+    if provider == "ollama":
+        try:
+            response = await client.post(
+                f"{settings.OLLAMA_BASE_URL}/api/chat",
+                json={
+                    "model": model or settings.OLLAMA_MODEL,
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_message},
+                    ],
+                    "stream": False,
+                },
+            )
+            response.raise_for_status()
+            data = response.json()
+            return data.get("message", {}).get("content", "No response from Ollama.")
+        except httpx.ReadTimeout:
+            return "Z (Local Engine) is still starting up or running slowly on your CPU. (Tip: Use a cloud provider like Groq in .env for instant responses.)"
+        except Exception as e:
+            return f"Error connecting to Ollama: {str(e)}"
 
-        # --- Option B: Groq (Ultra-Fast Cloud API) ---
-        elif provider == "groq":
-            try:
-                response = await client.post(
-                    "https://api.groq.com/openai/v1/chat/completions",
-                    headers={"Authorization": f"Bearer {settings.GROQ_API_KEY}"},
-                    json={
-                        "model": model or "llama-3.1-70b-versatile",
-                        "messages": [
-                            {"role": "system", "content": system_prompt},
-                            {"role": "user", "content": user_message},
-                        ],
-                    },
-                )
-                response.raise_for_status()
-                data = response.json()
-                return data.get("choices", [{}])[0].get("message", {}).get("content", "No response from Groq.")
-            except Exception as e:
-                return f"Error connecting to Groq: {str(e)}"
+    # --- Option B: Groq (Ultra-Fast Cloud API) ---
+    elif provider == "groq":
+        try:
+            response = await client.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {settings.GROQ_API_KEY}"},
+                json={
+                    "model": model or "llama-3.1-70b-versatile",
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_message},
+                    ],
+                },
+            )
+            response.raise_for_status()
+            data = response.json()
+            return data.get("choices", [{}])[0].get("message", {}).get("content", "No response from Groq.")
+        except Exception as e:
+            return f"Error connecting to Groq: {str(e)}"
 
-        # --- Option C: OpenAI ---
-        elif provider == "openai":
-            try:
-                response = await client.post(
-                    "https://api.openai.com/v1/chat/completions",
-                    headers={"Authorization": f"Bearer {settings.OPENAI_API_KEY}"},
-                    json={
-                        "model": model or "gpt-4o",
-                        "messages": [
-                            {"role": "system", "content": system_prompt},
-                            {"role": "user", "content": user_message},
-                        ],
-                    },
-                )
-                response.raise_for_status()
-                data = response.json()
-                return data.get("choices", [{}])[0].get("message", {}).get("content", "No response from OpenAI.")
-            except Exception as e:
-                return f"Error connecting to OpenAI: {str(e)}"
+    # --- Option C: OpenAI ---
+    elif provider == "openai":
+        try:
+            response = await client.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers={"Authorization": f"Bearer {settings.OPENAI_API_KEY}"},
+                json={
+                    "model": model or "gpt-4o",
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_message},
+                    ],
+                },
+            )
+            response.raise_for_status()
+            data = response.json()
+            return data.get("choices", [{}])[0].get("message", {}).get("content", "No response from OpenAI.")
+        except Exception as e:
+            return f"Error connecting to OpenAI: {str(e)}"
 
         return f"Unknown LLM provider: {provider}"
 
@@ -151,47 +174,53 @@ async def chat_with_context(
     Wraps the standard chat with a rich snapshot of the user's world.
     This ensures Z always knows who matters and what's being built.
     """
+    import asyncio
+    import time
     from app.models.db import AsyncSessionLocal, Person
     from sqlalchemy import select
     from app.services.memory import semantic_search
     
-    # 1. Get Inner Circle (People)
-    people_context = ""
-    if include_people:
+    start_time = time.time()
+
+    async def fetch_people():
+        if not include_people: return ""
         try:
             async with AsyncSessionLocal() as session:
                 result = await session.execute(select(Person).where(Person.circle_type == "inner"))
                 people = result.scalars().all()
                 if people:
-                    people_context = "INNER CIRCLE (From Database):\n" + "\n".join([
+                    return "INNER CIRCLE (From Database):\n" + "\n".join([
                         f"- {p.name} ({p.relationship}): Birthday: {p.birthday or 'Unknown'}"
                         for p in people
                     ])
-                else:
-                    people_context = "INNER CIRCLE: No family/contacts configured in the dashboard yet."
+                return "INNER CIRCLE: No family/contacts configured in the dashboard yet."
         except Exception:
-            people_context = "INNER CIRCLE: (Database connection unavailable)"
+            return "INNER CIRCLE: (Database connection unavailable)"
 
-    # 2. Get Project Status
-    project_context = ""
-    if include_projects:
+    async def fetch_projects():
+        if not include_projects: return ""
         try:
             from app.services.planka import get_project_tree
             tree = await get_project_tree()
-            project_context = f"PROJECT MISSION CONTROL:\n{tree}"
+            return f"PROJECT MISSION CONTROL:\n{tree}"
         except Exception:
-            project_context = "PROJECTS: (Board integration unavailable)"
+            return "PROJECTS: (Board integration unavailable)"
 
-    # 3. Semantic Memory Recall
-    memories = ""
-    try:
-        memories = await semantic_search(user_message, top_k=3)
-        if "No memories found" in memories:
-            memories = ""
-        else:
-            memories = f"RELEVANT MEMORIES:\n{memories}"
-    except Exception:
-        pass
+    async def fetch_memories():
+        try:
+            mem = await semantic_search(user_message, top_k=3)
+            if mem and "No memories found" not in mem:
+                return f"RELEVANT MEMORIES:\n{mem}"
+            return ""
+        except Exception:
+            return ""
+
+    # Execute all context gatherers in parallel
+    people_p, project_p, memory_p = await asyncio.gather(
+        fetch_people(),
+        fetch_projects(),
+        fetch_memories()
+    )
 
     # 4. History Formatting (Last 5 rounds)
     history_text = ""
@@ -204,13 +233,14 @@ async def chat_with_context(
 
     # 5. Assemble and Send
     full_prompt = "\n\n".join(filter(None, [
-        people_context, 
-        project_context, 
-        memories,
+        people_p, 
+        project_p, 
+        memory_p,
         history_text, 
         f"USER'S LATEST MESSAGE: {user_message}"
     ]))
     
+    print(f"DEBUG: Context gathered in {time.time() - start_time:.2f}s")
     return await chat(full_prompt)
 
 async def generate_context_proposal(query: str) -> dict:

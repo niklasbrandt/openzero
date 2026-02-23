@@ -227,7 +227,13 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
         include_people=True
     )
     
-    # Update local history
+    from app.services.agent_actions import parse_and_execute_actions
+    from app.models.db import AsyncSessionLocal
+    
+    async with AsyncSessionLocal() as db:
+        clean_reply, _ = await parse_and_execute_actions(response, db=db)
+    
+    # Update local history (use original response to keep actions in context for Z)
     chat_histories[chat_id].append({"role": "user", "content": update.message.text})
     chat_histories[chat_id].append({"role": "z", "content": response})
     
@@ -235,7 +241,7 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(chat_histories[chat_id]) > 20:
         chat_histories[chat_id] = chat_histories[chat_id][-20:]
         
-    await update.message.reply_text(response)
+    await update.message.reply_text(clean_reply)
 
 @owner_only
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -269,10 +275,16 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         include_people=True
     )
     
+    from app.services.agent_actions import parse_and_execute_actions
+    from app.models.db import AsyncSessionLocal
+    
+    async with AsyncSessionLocal() as db:
+        clean_reply, _ = await parse_and_execute_actions(response, db=db)
+    
     chat_histories[chat_id].append({"role": "user", "content": transcript})
     chat_histories[chat_id].append({"role": "z", "content": response})
     
-    await update.message.reply_text(response)
+    await update.message.reply_text(clean_reply)
 
 @owner_only
 async def cmd_think(update: Update, context: ContextTypes.DEFAULT_TYPE):

@@ -40,8 +40,8 @@ export class WelcomeOnboarding extends HTMLElement {
             animation: slideIn 0.5s ease-out;
           }
           @keyframes slideIn {
-            from { opacity: 0; transform: translateY(-20px); }
-            to { opacity: 1; transform: translateY(0); }
+            from { opacity: 0; }
+            to { opacity: 1; }
           }
           h2 { margin: 0; font-size: 1.8rem; background: linear-gradient(135deg, #14B8A6, #0066FF); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
           p { margin: 0; color: rgba(255, 255, 255, 0.8); line-height: 1.6; }
@@ -88,7 +88,7 @@ export class WelcomeOnboarding extends HTMLElement {
         </style>
         <div class="card">
           <div>
-            <h2>Welcome to OpenZero</h2>
+            <h2>Welcome to openZero</h2>
             <p>Your private agent OS is online. Let's finish the setup to unlock Z's full potential.</p>
           </div>
           

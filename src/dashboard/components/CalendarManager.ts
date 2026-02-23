@@ -81,7 +81,7 @@ export class CalendarManager extends HTMLElement {
             
             .modal {
                 background: rgba(15, 15, 15, 0.85);
-                backdrop-filter: blur(25px) saturate(180%);
+                backdrop-filter: blur(25px) ;
                 border: 1px solid rgba(255, 255, 255, 0.1);
                 border-radius: 2rem;
                 width: 100%;
