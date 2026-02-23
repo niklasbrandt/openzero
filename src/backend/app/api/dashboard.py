@@ -115,29 +115,17 @@ async def dashboard_chat(req: ChatRequest, db: AsyncSession = Depends(get_db)):
         await store_memory(topic)
         return {"reply": f"✅ Stored to memory: {topic}"}
     
-    # Get people info for context
-    result = await db.execute(select(Person).where(Person.circle_type == "inner"))
-    people = result.scalars().all()
-    people_context = "\n".join([
-        f"- {p.name} ({p.relationship}): Birthday: {p.birthday or 'Unknown'}"
-        for p in people
-    ])
-    
-    context_prefix = f"Inner Circle Context:\n{people_context}\n\n" if people_context else ""
-
-    # Build conversation context from history
-    history_text = ""
-    if req.history:
-        history_text = "\n".join(
-            f"{'User' if m.role == 'user' else 'Z'}: {m.content}"
-            for m in req.history[-10:]  # Last 10 messages for context
-        )
-        history_text = f"\n\nConversation so far:\n{history_text}\n\nUser: {req.message}"
-    
-    prompt = context_prefix + (history_text if history_text else req.message)
+    # Use consolidated chat with context
+    from app.services.llm import chat_with_context
+    history = [{"role": m.role, "content": m.content} for m in req.history]
     
     try:
-        reply = await llm_chat(prompt)
+        reply = await chat_with_context(
+            msg, 
+            history=history,
+            include_projects=True,
+            include_people=True
+        )
         return {"reply": reply}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -228,6 +216,7 @@ async def get_onboarding_status(db: AsyncSession = Depends(get_db)):
     
     return {
         "needs_onboarding": (people_count == 0) or not has_profile or not has_calendar,
+        "base_url": settings.BASE_URL,
         "steps": {
             "inner_circle": people_count > 0,
             "profile": has_profile,
@@ -243,18 +232,32 @@ async def get_projects():
     return {"tree": tree}
 
 @router.get("/planka-redirect")
-async def planka_redirect(request: Request, target: str = ""):
+async def planka_redirect(request: Request, target: str = "", background: bool = False):
     """
     Planka Autologin Bridge
     -----------------------
-    This endpoint solves the 'double login' problem. It:
-    1. Authenticates against the Planka API using the configured admin credentials.
-    2. Retrieves an HTTP-only token.
-    3. Injects this token as a cookie in the user's browser.
-    4. Redirects the user to the Planka PWA.
-    
-    If 'target' is provided (e.g., 'operator'), it attempts to resolve specific board IDs.
+    Ensures the user is authenticated on the correct origin (Port 1337).
     """
+    # 1. Origin Check: Must be on Port 1337 to set LocalStorage for Planka.
+    # If called from the dashboard (Port 80), redirect to Port 1337.
+    host_header = request.headers.get("host", "localhost")
+    forwarded_port = request.headers.get("x-forwarded-port")
+    
+    if forwarded_port:
+        current_port = int(forwarded_port)
+    else:
+        host_parts = host_header.split(':')
+        current_port = int(host_parts[1]) if len(host_parts) > 1 else (80 if request.url.scheme == "http" else 443)
+    
+    host_name = host_header.split(':')[0]
+    
+    if current_port != 1337:
+        new_url = f"http://{host_name}:1337{request.url.path}"
+        if request.query_params:
+            new_url += f"?{str(request.query_params)}"
+        return RedirectResponse(url=new_url)
+
+    # 2. Authenticate
     login_url = f"{settings.PLANKA_BASE_URL}/api/access-tokens?withHttpOnlyToken=true"
     payload = {
         "emailOrUsername": settings.PLANKA_ADMIN_EMAIL,
@@ -267,49 +270,93 @@ async def planka_redirect(request: Request, target: str = ""):
             token_data = resp.json()
             cookie_val = resp.cookies.get("httpOnlyToken")
             access_token = token_data.get("item")
-
-            # Determine target host and port
-            raw_host = request.headers.get("host", "localhost")
             
-            # If the user is accessing via port 8000 (direct backend), 
-            # we might still want to redirect to 1337 for direct Planka access.
-            if ":8000" in raw_host:
-                host_only = raw_host.split(":")[0]
-                planka_root = f"http://{host_only}:1337"
-            else:
-                # Assuming port 80 (Nginx Proxy) or production domain
-                # We stay on the same origin (IP/Domain + Port)
-                planka_root = f"http://{raw_host}"
+            if not access_token:
+                raise Exception("Auth failed - no token")
 
-            # Redirect to /boards to ensure we hit a Planka route in Nginx
-            redirect_url = f"{planka_root}/boards"
+            # 3. Determine Redirect URL
+            planka_root = f"http://{host_name}:1337"
+            redirect_url = f"{planka_root}/"
             target_board_id = request.query_params.get("target_board_id")
             
             if target_board_id:
                 redirect_url = f"{planka_root}/boards/{target_board_id}"
-            elif target == "operator" and access_token:
-                try:
-                    headers = {"Authorization": f"Bearer {access_token}"}
-                    proj_resp = await client.get(f"{settings.PLANKA_BASE_URL}/api/projects", headers=headers)
-                    project = next((p for p in proj_resp.json().get("items", []) if p["name"] == "OpenZero"), None)
-                    if project:
-                        detail = (await client.get(f"{settings.PLANKA_BASE_URL}/api/projects/{project['id']}", headers=headers)).json()
-                        board = next((b for b in detail.get("included", {}).get("boards", []) if b["name"] == "Operator Board"), None)
-                        if board:
-                            redirect_url = f"{planka_root}/boards/{board['id']}"
-                except Exception as e:
-                    print(f"DEBUG: Operator navigation failed: {e}")
+            elif target == "operator":
+                headers = {"Authorization": f"Bearer {access_token}"}
+                proj_resp = await client.get(f"{settings.PLANKA_BASE_URL}/api/projects", headers=headers)
+                items = proj_resp.json().get("items", [])
+                project = next((p for p in items if p["name"] == "OpenZero"), None)
+                if project:
+                    detail_resp = await client.get(f"{settings.PLANKA_BASE_URL}/api/projects/{project['id']}", headers=headers)
+                    detail = detail_resp.json()
+                    board = next((b for b in detail.get("included", {}).get("boards", []) if b["name"] == "Operator Board"), None)
+                    if board:
+                        redirect_url = f"{planka_root}/boards/{board['id']}"
 
-            print(f"DEBUG: Final Redirect URL: {redirect_url}")
-            response = RedirectResponse(url=redirect_url, status_code=307)
+            # 4. Serve Bridge HTML
+            js_redirect = "" if background else f"setTimeout(() => {{ window.location.replace('{redirect_url}'); }}, 500);"
+            
+            from fastapi.responses import HTMLResponse
+            html_content = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>OpenZero SSO</title>
+                <script>
+                    function setupSession() {{
+                        try {{
+                            const token = "{access_token}";
+                            console.log("SSO: Setting tokens...");
+                            
+                            // 1. LocalStorage - Primary for Planka frontend
+                            localStorage.setItem('accessToken', token);
+                            localStorage.setItem('token', token);
+                            
+                            // 2. Document Cookies - Fallback for some API calls
+                            const expiry = "; max-age=31536000; path=/; SameSite=Lax";
+                            document.cookie = "accessToken=" + token + expiry;
+                            document.cookie = "token=" + token + expiry;
+                            
+                            console.log("SSO: Success. Redirecting to {redirect_url}...");
+                            {js_redirect}
+                        }} catch (e) {{ 
+                            console.error('SSO Error:', e);
+                            document.getElementById('status').innerText = 'Error setting session. Please try again.';
+                            document.getElementById('retry').style.display = 'block';
+                        }}
+                    }}
+                    window.onload = setupSession;
+                </script>
+            </head>
+            <body style="background: #0f172a; color: white; font-family: -apple-system, system-ui, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0;">
+                <div style="text-align: center; max-width: 400px; padding: 2rem; background: #1e293b; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);">
+                    <div style="margin-bottom: 1.5rem;">
+                        <svg style="width: 48px; height: 48px; color: #38bdf8;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                        </svg>
+                    </div>
+                    <h2 style="margin: 0 0 0.5rem 0; font-size: 1.25rem;">openZero SSO</h2>
+                    <p id="status" style="color: #94a3b8; font-size: 0.875rem;">{ "Syncing session..." if background else "Connecting to your task board..." }</p>
+                    <div id="retry" style="display: none; margin-top: 1rem;">
+                        <a href="{redirect_url}" style="display: inline-block; padding: 0.5rem 1rem; background: #38bdf8; color: #0f172a; text-decoration: none; border-radius: 6px; font-weight: 600;">Continue to Planka</a>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+            
+            response = HTMLResponse(content=html_content)
             if cookie_val:
-                response.set_cookie("httpOnlyToken", cookie_val, httponly=True, samesite="lax", path="/", max_age=31536000, secure=False)
-            if access_token:
-                response.set_cookie("accessToken", access_token, httponly=False, samesite="lax", path="/", max_age=31536000, secure=False)
+                response.set_cookie(
+                    "httpOnlyToken", cookie_val, 
+                    httponly=True, samesite="lax", path="/", 
+                    max_age=31536000, secure=False
+                )
             return response
+            
         except Exception as e:
             print(f"DEBUG: Planka Auth Error: {e}")
-            return RedirectResponse(url=f"http://{request.headers.get('host', 'localhost')}/")
+            return RedirectResponse(url=settings.BASE_URL)
 
 @router.post("/operator/sync")
 async def sync_operator():

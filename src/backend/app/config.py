@@ -18,6 +18,7 @@ from typing import Optional
 class Settings(BaseSettings):
     # Environment Detection
     IS_DOCKER: bool = os.path.exists('/.dockerenv') or os.environ.get('RUNNING_IN_DOCKER') == 'true'
+    BASE_URL: str = "http://localhost" # Default for local dev
 
     # Database
     DB_USER: str = "zero"
