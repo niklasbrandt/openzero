@@ -24,10 +24,20 @@ async def get_planka_auth_token() -> str:
         "emailOrUsername": settings.PLANKA_ADMIN_EMAIL,
         "password": settings.PLANKA_ADMIN_PASSWORD
     }
+    print(f"DEBUG: Attempting Planka auth at {login_url} for {settings.PLANKA_ADMIN_EMAIL}")
     async with httpx.AsyncClient(timeout=10.0) as client:
-        resp = await client.post(login_url, json=payload)
-        resp.raise_for_status()
-        return resp.json().get("item")
+        try:
+            resp = await client.post(login_url, json=payload)
+            if resp.status_code != 200:
+                print(f"DEBUG: Planka auth failed with status {resp.status_code}: {resp.text}")
+                resp.raise_for_status()
+            token = resp.json().get("item")
+            if token:
+                 print("DEBUG: Planka auth successful.")
+            return token
+        except Exception as e:
+            print(f"DEBUG: Planka auth exception: {e}")
+            raise
 
 import asyncio
 import time
@@ -68,7 +78,14 @@ async def get_project_tree(as_html: bool = True) -> str:
                 boards = detail.get("included", {}).get("boards", [])
                 
                 project = projects[i]
-                project_name = f"<b>{project['name']}</b>" if as_html else f"[{project['name']}]"
+                project_id = project['id']
+                
+                # Make project names clickable
+                if as_html:
+                    project_name = f"<b><a href='/api/dashboard/planka-redirect?target_project_id={project_id}' target='_blank' style='color: inherit; text-decoration: none;'>{project['name']}</a></b>"
+                else:
+                    project_name = f"*[{project['name']}]({settings.BASE_URL}/api/dashboard/planka-redirect?target_project_id={project_id})*"
+                
                 tree_lines.append((i, "project", project_name))
                 
                 for board in boards:
@@ -103,7 +120,8 @@ async def get_project_tree(as_html: bool = True) -> str:
                     line = f"  └── <a href='/api/dashboard/planka-redirect?target_board_id={board_id}' target='_blank' style='color: inherit; text-decoration: none;'>{board_name}</a>{progress_str}"
                 else:
                     progress_str = f" ({progress_pct}%)" if total_cards > 0 else ""
-                    line = f"  └── {board_name}{progress_str}"
+                    # Use a simpler bullet for Telegram to avoid breaking Markdown links
+                    line = f" • _[{board_name}]({settings.BASE_URL}/api/dashboard/planka-redirect?target_board_id={board_id})_{progress_str}"
                 
                 project_boards[meta["project_idx"]].append(line)
 
@@ -122,73 +140,61 @@ async def get_project_tree(as_html: bool = True) -> str:
         return f"Planka connection issue: {str(e)}"
 
 async def create_task(board_name: str, list_name: str, title: str) -> bool:
-    """ Creates a task on a specific board and list. Returns True if successful. """
-    logger.info(f"Attempting to create task: '{title}' on board: '{board_name}' list: '{list_name}'")
+    """Creates a card on the specified board and list."""
+    print(f"DEBUG: create_task requested -> Board: {board_name}, List: {list_name}, Title: {title}")
     try:
         from app.services.operator_board import operator_service
         token = await get_planka_auth_token()
         headers = {"Authorization": f"Bearer {token}"}
         
-        async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, timeout=15.0, headers=headers) as client:
-            # Special Case: Operator Board (ensure it exists)
+        async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, timeout=10.0, headers=headers) as client:
+            # 1. SPECIAL CASE: Operator Board
+            target_board = None
             if board_name.lower() == "operator board":
-                logger.info("Targeting Operator Board, ensuring initialization...")
-                _, target_board_id = await operator_service.initialize_board(client)
-                
-                # Find list
-                b_resp = await client.get(f"/api/boards/{target_board_id}", params={"included": "lists"})
-                board_detail = b_resp.json()
-                lists = board_detail.get("included", {}).get("lists", [])
-                
-                target_list = next((l for l in lists if l.get("name", "").lower() == list_name.lower()), None)
-                if not target_list and lists:
-                    target_list = lists[0] # Fallback to first list if Today/whatever isn't there
-                
-                if target_list:
-                    logger.info(f"Creating card in list: {target_list['name']}")
-                    await client.post(f"/api/boards/{target_board_id}/cards", json={
-                        "listId": target_list["id"],
-                        "name": title,
-                        "position": 65535
-                    })
-                    return True
-                logger.warning("No list found on Operator Board.")
-                return False
-
-            # General Case: Search projects
-            logger.info(f"Searching for project board: {board_name}")
-            proj_resp = await client.get("/api/projects")
-            projects = proj_resp.json().get("items", [])
+                print("DEBUG: Targeting Operator Board, ensuring initialization...")
+                _, b_id = await operator_service.initialize_board(client)
+                target_board = {"id": b_id, "name": "Operator Board"}
+            else:
+                # General Search
+                projects_resp = await client.get("/api/projects")
+                projects = projects_resp.json().get("items", [])
+                for p in projects:
+                    p_det = (await client.get(f"/api/projects/{p['id']}")).json()
+                    match = next((b for b in p_det.get("included", {}).get("boards", []) if b["name"].lower() == board_name.lower()), None)
+                    if match:
+                        target_board = match
+                        break
             
-            for project in projects:
-                detail_resp = await client.get(f"/api/projects/{project['id']}")
-                detail = detail_resp.json()
-                boards = detail.get("included", {}).get("boards", [])
-                
-                for board in boards:
-                    if board["name"].lower() == board_name.lower():
-                        logger.info(f"Found board: {board['name']}")
-                        # 2. Find the list
-                        b_resp = await client.get(f"/api/boards/{board['id']}", params={"included": "lists"})
-                        board_detail = b_resp.json()
-                        lists = board_detail.get("included", {}).get("lists", [])
-                        
-                        target_list = next((l for l in lists if l.get("name", "").lower() == list_name.lower()), None)
-                        if not target_list and lists:
-                            target_list = lists[0]
-                            
-                        if target_list:
-                            logger.info(f"Creating card in list: {target_list['name']}")
-                            await client.post(f"/api/boards/{board['id']}/cards", json={
-                                "listId": target_list["id"],
-                                "name": title,
-                                "position": 65535
-                            })
-                            return True
-        logger.warning(f"Target board '{board_name}' not found.")
-        return False
+            if not target_board:
+                print(f"DEBUG: Board '{board_name}' not found. Defaulting to Operator Board.")
+                _, b_id = await operator_service.initialize_board(client)
+                target_board = {"id": b_id, "name": "Operator Board"}
+
+            # 2. Find List
+            board_id = target_board["id"]
+            b_detail = (await client.get(f"/api/boards/{board_id}", params={"included": "lists"})).json()
+            lists = b_detail.get("included", {}).get("lists", [])
+            target_list = next((l for l in lists if l["name"].lower() == list_name.lower()), None)
+            
+            if not target_list:
+                if lists:
+                    target_list = lists[0]
+                else:
+                    l_resp = await client.post(f"/api/boards/{board_id}/lists", json={"name": "Inbox", "position": 65535})
+                    target_list = l_resp.json()["item"]
+
+            # 3. Create Card
+            res = await client.post(f"/api/boards/{board_id}/cards", json={
+                "boardId": board_id,
+                "listId": target_list["id"],
+                "name": title,
+                "position": 65535
+            })
+            res.raise_for_status()
+            print(f"DEBUG: Card created successfully in {target_board['name']} -> {target_list['name']}")
+            return True
     except Exception as e:
-        logger.error(f"Task creation failed: {e}")
+        print(f"DEBUG: create_task failed: {e}")
         return False
 
 async def create_project(name: str, description: str = "") -> dict:

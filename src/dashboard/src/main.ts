@@ -11,6 +11,8 @@ import '../components/CalendarAgenda'
 import '../components/CalendarManager'
 import '../components/LifeOverview'
 import '../components/WelcomeOnboarding'
+import '../components/AgentCore'
+import '../components/IdentityCard'
 
 console.log('🚀 openZero Dashboard Initialized');
 
@@ -72,3 +74,11 @@ async function plankaAutoLogin() {
 
 checkSystemStatus();
 plankaAutoLogin();
+
+// Check for deep-link overlays
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('open') === 'calendar') {
+    setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('open-calendar'));
+    }, 500);
+}

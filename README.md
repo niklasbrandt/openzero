@@ -27,14 +27,18 @@ The local AI connects the dots between your email, your calendar, your tasks, an
 - **Planka (Self-Hosted Kanban)**: The visual engine for your journey. Accessible as a secure mobile PWA.
 - **Zero-Trust Security:** The entire stack is sealed behind a Tailscale VPN. There are absolutely no public-facing ports.
 
-### Core Intelligence: Memory Depth & Recall
+### Core Intelligence: Memory Depth, Recall & Semantic Grounding
 
-openZero is designed with native "Long-Term Retention" logic to ensure Z never asks the same question twice and maintains total context over long-running missions:
+openZero is designed with native "Long-Term Retention" logic to ensure Z never asks the same question twice and maintains total context over long-running missions. This is powered by a sophisticated **Retrieval-Augmented Generation (RAG)** pipeline:
+
 - **Ultra Fast Memory (L3 Context)**: With a **10-message active window** and **Context Compression**, Z maintains sharp thread continuity while ensuring lightning-fast local inference.
 - **LLM Pre-Warming**: The system proactively loads the LLM weights into memory as you prepare to type, eliminating "first-message lag."
+- **Semantic Chunking**: Your notes and emails are broken into meaningful fragments and transformed into high-dimensional vectors using local embedding models.
+- **Vector Space (Qdrant)**: These vectors are stored in a private Qdrant instance. When you ask a question, Z calculates the "semantic distance" between your request and every memory you've ever recorded—finding matches based on *meaning*, not just keywords.
+- **Precision Context Injection**: The most relevant memories are injected directly into the LLM's prompt at inference time, ensuring advice is always grounded in your actual history.
 - **Ultra Deep Recall**: Using **Multi-Query Semantic Retrieval**, Z extracts key entities from every message to perform parallel searches across your personal database.
 - **Autonomous Learning**: Every interaction, decision, and fact shared is automatically stored in your semantic vault via **Continuous Background Archiving**. 
-- **Proactive Knowledge Rule**: Z treats your "Circle of Trust" (People, Relationships, Birthdays) as absolute truth. It executes actions proactively based on stored context.
+- **Proactive Knowledge Rule**: Z treats your "Circle of Trust" (People, Relationships, Birthdays) as absolute truth.
 
 > **Performance Note**: While **Autonomous Learning** ensures a perfectly synchronized second brain, increasing the complexity of background reasoning (e.g., recursive self-summarization or deeper multi-step memory searches) will increase the CPU response time for local LLMs.
 
@@ -46,6 +50,7 @@ All interaction with openZero happens via your messenger bot or directly through
 
 | Command | Action | Management Value |
 |:---|:---|:---|
+| `/help` | **Quick Manual** | Shows the primary command matrix and usage tips. |
 | `/day` | **Inbox & Goal Triage** | Z filters 100+ unread emails, summarizes only the relevant ones, and cross-references your calendar to block out "Deep Work" time. |
 | `/week` | **Strategic Review** | Z audits your Planka boards and identifies "stagnant" projects. It acts as a project manager, suggesting the specific micro-tasks needed to get things moving again. |
 | `/month` | **Monthly Overview** | High-level 30-day review of tree state and project progress, ensuring momentum is maintained. |
@@ -56,6 +61,7 @@ All interaction with openZero happens via your messenger bot or directly through
 | `/memory` | **Context Retrieval** | Powered by Qdrant vector database, this is profoundly more powerful than writing notes on Post-its, standard to-do lists, or SimpleNote. It uses semantic search technology—meaning you don't search by exact keywords, but by the *concept*. Search for "that conversation about the server" and the AI understands the context, instantly retrieving details that would normally be lost in physical notebooks or flat symptom lists. |
 | `/start` | **System Status** | Pings the system to ensure your 24/7 assistant is online and connected to all data streams. |
 | *any text* | **Local Deliberation** | Brainstorm privately. Draft professional emails, plan critical conversations, or work through complex problems. |
+
 
 ---
 
@@ -230,6 +236,8 @@ If you use a Cloud VPS, you can have the AI automate the entire deployment proce
 - **OS**: Ubuntu 24.04 LTS
 - **RAM**: 24 GB+ (Recommended for local LLM performance)
 
+> **Pro-Tip**: You don't *need* a VPS. For maximum privacy and zero monthly cost, you can run openZero on a local machine (e.g., Mac Mini, old laptop, or home server) and use Tailscale to access it securely from anywhere in the world.
+
 ### Step 2: Connection & Setup
 1. Provide the AI with your **Server IP** and **Root Password**.
 2. The AI will:
@@ -342,19 +350,6 @@ If you need more speed or more intelligence, change `OLLAMA_MODEL` in your `.env
 
 ---
 
-## Monthly Cost
-
-| Item | Cost |
-|:---|:---|
-| Cloud VPS Provider | ~$15–20/month |
-| Tailscale | Free (personal use) |
-| Planka | Free (open source) |
-| Ollama + Llama 3.1 | Free (open source) |
-| Messenger Bot | Free |
-| Gmail API or other mail client API | Free |
-| **Total** | **~$15–20/month** |
-
----
 
 ## File Structure
 
@@ -401,5 +396,21 @@ This project is continuously evolving thanks to the community.
 If you are using openZero, star the repository and join the movement towards sovereign AI.
 
 ---
+
+---
+
+<div align="center">
+  <pre>
+   ━━━━━━┓
+         ┃
+        ┃
+       ┃
+      ┃
+     ┃
+    ┃
+   ┗━━━━━━
+  </pre>
+  <p><b>THE AGENT OPERATOR OS</b></p>
+</div>
 
 *Built with privacy in mind. Powered by open-source software. Runs on your terms.*

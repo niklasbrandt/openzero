@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from app.models.db import engine, Base
+from app.models.db import engine, Base, AsyncSessionLocal, Person
+from sqlalchemy import select
 from app.services.memory import ensure_collection
 from app.tasks.scheduler import start_scheduler, stop_scheduler
 from app.api.telegram import start_telegram_bot, stop_telegram_bot
@@ -31,8 +32,11 @@ async def lifespan(app: FastAPI):
     
     # 3. Start background tasks & bot
     try:
+        print("Starting scheduler...")
         await start_scheduler()
+        print("Starting Telegram bot...")
         await start_telegram_bot()
+        print("Background tasks & bot started.")
         
         # 4. Warm up intelligence engine
         print("⚡ Warming up intelligence engine...")
@@ -44,6 +48,19 @@ async def lifespan(app: FastAPI):
         await loop.run_in_executor(None, get_embedder)
         print("✓ AI models loaded in memory.")
         
+        # 5. Ensure Identity Record
+        async with AsyncSessionLocal() as session:
+            res = await session.execute(select(Person).where(Person.circle_type == "identity"))
+            if not res.scalar_one_or_none():
+                session.add(Person(
+                    name="User", 
+                    relationship="Self", 
+                    circle_type="identity",
+                    context="Z is beginning to understand your core parameters."
+                ))
+                await session.commit()
+                print("✓ Identity record initialized.")
+
         # Initial Operator Board Sync
         from app.services.operator_board import operator_service
         sync_res = await operator_service.sync_operator_tasks()
@@ -73,6 +90,16 @@ app.add_middleware(
 )
 
 app.include_router(dashboard_router)
+
+@app.get("/calendar", include_in_schema=False)
+async def calendar_redirect():
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/?open=calendar")
+
+@app.get("/boards", include_in_schema=False)
+async def boards_redirect():
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/api/dashboard/planka-redirect")
 
 # Serve the Dashboard
 @app.get("/", include_in_schema=False)

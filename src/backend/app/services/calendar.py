@@ -32,7 +32,7 @@ async def fetch_calendar_events(calendar_id: str = "primary", max_results: int =
     """Fetch upcoming events for a specific calendar."""
     service = get_calendar_service()
     if not service:
-        return []
+        raise RuntimeError("Google Calendar service not configured or credentials missing.")
 
     try:
         now = datetime.datetime.utcnow().isoformat() + "Z"  # 'Z' indicates UTC time
