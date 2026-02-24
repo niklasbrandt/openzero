@@ -39,7 +39,7 @@ async def get_project_tree(as_html: bool = True) -> str:
     cache_key = f"tree_{as_html}"
     if cache_key in _tree_cache:
         timestamp, data = _tree_cache[cache_key]
-        if time.time() - timestamp < 30: # 30s TTL
+        if time.time() - timestamp < 60: # 1 minute TTL
             return data
 
     try:
@@ -120,18 +120,43 @@ async def get_project_tree(as_html: bool = True) -> str:
     except Exception as e:
         logger.error(f"Planka project tree error: {e}")
         return f"Planka connection issue: {str(e)}"
-    except Exception as e:
-        logger.error(f"Planka project tree error: {e}")
-        return f"Planka connection issue: {str(e)}"
 
 async def create_task(board_name: str, list_name: str, title: str) -> bool:
     """ Creates a task on a specific board and list. Returns True if successful. """
+    logger.info(f"Attempting to create task: '{title}' on board: '{board_name}' list: '{list_name}'")
     try:
+        from app.services.operator_board import operator_service
         token = await get_planka_auth_token()
         headers = {"Authorization": f"Bearer {token}"}
         
-        async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, timeout=10.0, headers=headers) as client:
-            # 1. Find the project/board
+        async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, timeout=15.0, headers=headers) as client:
+            # Special Case: Operator Board (ensure it exists)
+            if board_name.lower() == "operator board":
+                logger.info("Targeting Operator Board, ensuring initialization...")
+                _, target_board_id = await operator_service.initialize_board(client)
+                
+                # Find list
+                b_resp = await client.get(f"/api/boards/{target_board_id}", params={"included": "lists"})
+                board_detail = b_resp.json()
+                lists = board_detail.get("included", {}).get("lists", [])
+                
+                target_list = next((l for l in lists if l.get("name", "").lower() == list_name.lower()), None)
+                if not target_list and lists:
+                    target_list = lists[0] # Fallback to first list if Today/whatever isn't there
+                
+                if target_list:
+                    logger.info(f"Creating card in list: {target_list['name']}")
+                    await client.post(f"/api/boards/{target_board_id}/cards", json={
+                        "listId": target_list["id"],
+                        "name": title,
+                        "position": 65535
+                    })
+                    return True
+                logger.warning("No list found on Operator Board.")
+                return False
+
+            # General Case: Search projects
+            logger.info(f"Searching for project board: {board_name}")
             proj_resp = await client.get("/api/projects")
             projects = proj_resp.json().get("items", [])
             
@@ -141,21 +166,26 @@ async def create_task(board_name: str, list_name: str, title: str) -> bool:
                 boards = detail.get("included", {}).get("boards", [])
                 
                 for board in boards:
-                    if board["name"] == board_name:
+                    if board["name"].lower() == board_name.lower():
+                        logger.info(f"Found board: {board['name']}")
                         # 2. Find the list
                         b_resp = await client.get(f"/api/boards/{board['id']}", params={"included": "lists"})
                         board_detail = b_resp.json()
                         lists = board_detail.get("included", {}).get("lists", [])
                         
-                        target_list = next((l for l in lists if l.get("name") == list_name), None)
+                        target_list = next((l for l in lists if l.get("name", "").lower() == list_name.lower()), None)
+                        if not target_list and lists:
+                            target_list = lists[0]
+                            
                         if target_list:
-                            # 3. Create the card
+                            logger.info(f"Creating card in list: {target_list['name']}")
                             await client.post(f"/api/boards/{board['id']}/cards", json={
                                 "listId": target_list["id"],
                                 "name": title,
                                 "position": 65535
                             })
                             return True
+        logger.warning(f"Target board '{board_name}' not found.")
         return False
     except Exception as e:
         logger.error(f"Task creation failed: {e}")

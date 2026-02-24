@@ -130,6 +130,14 @@ async def dashboard_chat(req: ChatRequest, db: AsyncSession = Depends(get_db)):
         from app.services.agent_actions import parse_and_execute_actions
         clean_reply, executed_cmds = await parse_and_execute_actions(reply, db=db)
 
+        # Auto-store to memory for Deep Recall
+        try:
+            import asyncio
+            from app.services.memory import store_memory
+            asyncio.create_task(store_memory(f"Conversation ({datetime.datetime.now().strftime('%Y-%m-%d')}):\nUser: {msg}\nZ: {clean_reply}", metadata={"type": "chat"}))
+        except Exception as me:
+            print(f"DEBUG: Auto-memory failed: {me}")
+
         return {
             "reply": clean_reply,
             "actions": executed_cmds
@@ -281,8 +289,18 @@ async def planka_redirect(request: Request, target: str = "", background: bool =
             if not access_token:
                 raise Exception("Auth failed - no token")
 
+            # 2.5 Fetch user ID (Planka's frontend often needs both token and userId in LocalStorage)
+            user_id = None
+            try:
+                me_resp = await client.get(f"{settings.PLANKA_BASE_URL}/api/users/me", headers={"Authorization": f"Bearer {access_token}"})
+                if me_resp.status_code == 200:
+                    user_id = me_resp.json().get("id")
+            except Exception as e:
+                print(f"DEBUG: Could not fetch userId: {e}")
+
             # 3. Determine Redirect URL
-            planka_root = f"http://{host_name}:1337"
+            scheme = request.url.scheme
+            planka_root = f"{scheme}://{host_name}:1337"
             redirect_url = f"{planka_root}/"
             target_board_id = request.query_params.get("target_board_id")
             
@@ -292,11 +310,11 @@ async def planka_redirect(request: Request, target: str = "", background: bool =
                 headers = {"Authorization": f"Bearer {access_token}"}
                 proj_resp = await client.get(f"{settings.PLANKA_BASE_URL}/api/projects", headers=headers)
                 items = proj_resp.json().get("items", [])
-                project = next((p for p in items if p["name"] == "openZero"), None)
+                project = next((p for p in items if p["name"].lower() == "openzero"), None)
                 if project:
                     detail_resp = await client.get(f"{settings.PLANKA_BASE_URL}/api/projects/{project['id']}", headers=headers)
                     detail = detail_resp.json()
-                    board = next((b for b in detail.get("included", {}).get("boards", []) if b["name"] == "Operator Board"), None)
+                    board = next((b for b in detail.get("included", {}).get("boards", []) if b["name"].lower() == "operator board"), None)
                     if board:
                         redirect_url = f"{planka_root}/boards/{board['id']}"
 
@@ -318,6 +336,10 @@ async def planka_redirect(request: Request, target: str = "", background: bool =
                             // 1. LocalStorage - Primary for Planka frontend
                             localStorage.setItem('accessToken', token);
                             localStorage.setItem('token', token);
+                            const userId = "{user_id}";
+                            if (userId && userId !== "None") {{
+                                localStorage.setItem('userId', userId);
+                            }}
                             
                             // 2. Document Cookies - Fallback for some API calls
                             const expiry = "; max-age=31536000; path=/; SameSite=Lax";
