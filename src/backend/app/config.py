@@ -32,8 +32,9 @@ class Settings(BaseSettings):
     TELEGRAM_BOT_TOKEN: str = ""
     TELEGRAM_ALLOWED_USER_ID: str = ""
 
-    # Timezone
+    # Timezone & Location
     USER_TIMEZONE: str = "America/New_York"
+    USER_LOCATION: str = "Berlin, DE" # Default location for weather
 
     # Ollama
     OLLAMA_BASE_URL: str = "http://ollama:11434"

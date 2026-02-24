@@ -1,10 +1,19 @@
 #!/bin/bash
 set -e
 
-# Configuration
-REMOTE_USER="openzero"
-REMOTE_HOST="your_vps_ip"
-REMOTE_DIR="/home/openzero/openzero"
+# Configuration (Load from .env if available)
+if [ -f .env ]; then
+  # Load env vars while ignoring comments and empty lines
+  export $(grep -v '^#' .env | grep -v '^$' | sed 's/[[:space:]]*#.*$//' | xargs)
+fi
+
+REMOTE_USER="${REMOTE_USER:-openzero}"
+# Extract host from BASE_URL if REMOTE_HOST isn't set
+if [ -z "$REMOTE_HOST" ] && [ -n "$BASE_URL" ]; then
+  REMOTE_HOST=$(echo "$BASE_URL" | sed -e 's|^[^/]*//||' -e 's|/.*$||' -e 's|:.*$||')
+fi
+REMOTE_HOST="${REMOTE_HOST:-your_vps_ip}"
+REMOTE_DIR="${REMOTE_DIR:-/home/openzero/openzero}"
 
 # Strict exclusions per agents.md rule 9
 EXCLUDES=(
