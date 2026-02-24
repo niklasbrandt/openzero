@@ -115,7 +115,7 @@ async def morning_briefing():
     
     # 5. Send to Telegram (Proactive delivery)
     from app.config import settings
-    await send_notification(f"☀️ *Good Morning!*\n\n{content}\n\n🔗 [Open Dashboard]({settings.BASE_URL})")
+    await send_notification(f"☀️ *Good Morning!*\n\n{content}\n\n🔗 [Dashboard]({settings.BASE_URL})")
     if audio_briefing:
         await send_voice_message(audio_briefing, caption="🎙️ Audio Briefing")
 
