@@ -3,6 +3,7 @@ from app.services.llm import chat
 from app.services.planka import get_project_tree
 from app.services.gmail import fetch_unread_emails
 from app.services.calendar import fetch_calendar_events
+from app.services.weather import get_weather_forecast
 from app.services.tts import generate_speech
 from app.api.telegram import send_notification, send_voice_message
 from app.models.db import AsyncSessionLocal, Briefing, Project, Person
@@ -44,6 +45,23 @@ async def morning_briefing():
     inner_context = "\n".join(inner_context_list) if inner_context_list else "No primary family focus today."
     close_context = "\n".join(close_context_list) if close_context_list else "No specific friend connections planned."
     
+    # 2.2 Gather Calendar & Weather Context
+    calendar_events = await fetch_calendar_events(days_ahead=0)
+    calendar_summary = "\n".join([f"- {e['summary']}" for e in calendar_events]) if calendar_events else "No events scheduled for today."
+    
+    # Simple travel detection
+    detected_location = None
+    for event in calendar_events:
+        summary = event['summary'].lower()
+        if any(kw in summary for kw in ["flight to", "trip to", "stay in", "travel to", "moving to"]):
+            for kw in ["to ", "in "]:
+                if kw in summary:
+                    detected_location = event['summary'].split(kw.strip())[-1].strip()
+                    break
+        if detected_location: break
+    
+    weather_report = await get_weather_forecast(detected_location)
+    
     tree = await get_project_tree()
     
     # 2.3 Gather latest email context
@@ -69,6 +87,8 @@ async def morning_briefing():
         f"AUTOMATED SYSTEM ACTIONS (Tasks created based on Circle Calendars):\n{automation_summary}\n\n"
         f"INNER CIRCLE (Family/Care):\n{inner_context}\n\n"
         f"CLOSE CIRCLE (Friends/Social):\n{close_context}\n\n"
+        f"CALENDAR TODAY:\n{calendar_summary}\n\n"
+        f"WEATHER FORECAST:\n{weather_report}\n\n"
         f"PROJECTS:\n{tree}\n\n"
         f"LATEST EMAILS:\n{email_summary}\n\n"
         "Format the output beautifully for Telegram. In the briefing, proactively suggest actions "
@@ -94,7 +114,8 @@ async def morning_briefing():
         await session.commit()
     
     # 5. Send to Telegram (Proactive delivery)
-    await send_notification(f"☀️ *Good Morning!*\n\n{content}")
+    from app.config import settings
+    await send_notification(f"☀️ *Good Morning!*\n\n{content}\n\n🔗 [Open Dashboard]({settings.BASE_URL})")
     if audio_briefing:
         await send_voice_message(audio_briefing, caption="🎙️ Audio Briefing")
 
