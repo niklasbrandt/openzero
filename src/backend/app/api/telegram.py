@@ -132,7 +132,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 @owner_only
 async def cmd_tree(update: Update, context: ContextTypes.DEFAULT_TYPE):
     from app.services.planka import get_project_tree
-    tree = await get_project_tree()
+    tree = await get_project_tree(as_html=False)
     await update.message.reply_text(f"```\n{tree}\n```", parse_mode="Markdown")
 
 @owner_only

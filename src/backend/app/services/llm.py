@@ -21,8 +21,8 @@ You are not a generic assistant. You are an agent operator — sharp, warm, and 
 
 CORE RESPONSE RULE:
 - **ALWAYS begin EVERY response with exactly the current time and day of the month.** 
-  Format: "[Time] - [Day] | " 
-  Example: "14:20 - 23rd | [Rest of your response]"
+  Format: "[Time] - [Day] " 
+  Example: "14:20 - 23rd [Rest of your response]"
   This saves space and maintains a professional, non-computer-esque aesthetic.
 
 Your Priority Objective: Proactive Mission Execution
@@ -57,6 +57,9 @@ Command Handling Reference:
 
 Rules:
 - Never say "Great question!" or "Sure, I can help!" — just answer.
+- **Knowledge Rule**: You have access to the user's "Circle of Trust" (inner and close circles), "Deep Recall" (semantic memory), and the **Conversation History**. If a fact, birthday, or detail was mentioned earlier or is in your database, DO NOT ask for confirmation. Treat it as absolute truth.
+- **Proactive Execution**: If you have enough information to fulfill a request (e.g., adding a person, creating a task, or storing a fact), DO IT immediately using an ACTION tag. Do not ask "Would you like me to...?" first.
+- **Memory Rule**: Use `[ACTION: LEARN | TEXT: factual statement]` proactively when the user shares new personal details, preferences, or project updates.
 - **Calendar Rule**: Prefix Inner Circle events with their name (e.g., "Max: Basketball").
 - If external calendar is offline, use the **Local Zero Calendar**.
 
@@ -186,33 +189,63 @@ async def chat_with_context(
         if not include_people: return ""
         try:
             async with AsyncSessionLocal() as session:
-                result = await session.execute(select(Person).where(Person.circle_type == "inner"))
+                result = await session.execute(select(Person))
                 people = result.scalars().all()
                 if people:
-                    return "INNER CIRCLE (From Database):\n" + "\n".join([
-                        f"- {p.name} ({p.relationship}): Birthday: {p.birthday or 'Unknown'}"
-                        for p in people
-                    ])
-                return "INNER CIRCLE: No family/contacts configured in the dashboard yet."
+                    inner = [f"- {p.name} ({p.relationship}): Birthday: {p.birthday or 'Unknown'}" for p in people if p.circle_type == "inner"]
+                    close = [f"- {p.name} ({p.relationship}): Birthday: {p.birthday or 'Unknown'}" for p in people if p.circle_type == "close"]
+                    
+                    context = ""
+                    if inner: context += "INNER CIRCLE:\n" + "\n".join(inner) + "\n"
+                    if close: context += "CLOSE CIRCLE:\n" + "\n".join(close)
+                    return context
+                return "CIRCLE OF TRUST: No family/contacts configured yet."
         except Exception:
-            return "INNER CIRCLE: (Database connection unavailable)"
+            return "CIRCLE OF TRUST: (Database connection unavailable)"
 
     async def fetch_projects():
         if not include_projects: return ""
+        # Optimization: Only inject full project tree if message is mission-related
+        mission_keywords = ["task", "board", "status", "mission", "tree", "project", "plan", "build", "do"]
+        if not any(kw in user_message.lower() for kw in mission_keywords):
+            return ""
+            
         try:
             from app.services.planka import get_project_tree
-            tree = await get_project_tree()
+            tree = await get_project_tree(as_html=False)
             return f"PROJECT MISSION CONTROL:\n{tree}"
         except Exception:
             return "PROJECTS: (Board integration unavailable)"
 
     async def fetch_memories():
         try:
-            mem = await semantic_search(user_message, top_k=3)
-            if mem and "No memories found" not in mem:
-                return f"RELEVANT MEMORIES:\n{mem}"
+            # Extract potential entities and nouns
+            import re
+            words = re.findall(r'\b[A-Z][a-z]+\b|\b\w{6,}\b', user_message)
+            # Optimized to top 2 entities + full message = 3 queries total
+            queries = list(set([user_message] + words[:2]))
+            
+            all_results = []
+            seen_content = set()
+            
+            # Increased top_k per query to 10
+            search_tasks = [semantic_search(q, top_k=10) for q in queries]
+            results = await asyncio.gather(*search_tasks)
+            
+            for res in results:
+                if res and "No memories found" not in res and "Memory system" not in res:
+                    for line in res.split('\n'):
+                        content = line.split(') ', 1)[-1] if ') ' in line else line
+                        if content not in seen_content:
+                            all_results.append(line)
+                            seen_content.add(content)
+            
+            if all_results:
+                # Returning up to 25 high-relevance memories
+                return f"RELEVANT MEMORIES (Ultra Deep Recall):\n" + "\n".join(all_results[:25])
             return ""
-        except Exception:
+        except Exception as e:
+            print(f"DEBUG: Memory fetch error: {e}")
             return ""
 
     # Execute all context gatherers in parallel
@@ -222,14 +255,14 @@ async def chat_with_context(
         fetch_memories()
     )
 
-    # 4. History Formatting (Last 5 rounds)
+    # 4. History Formatting (Optimized Memory: Last 25 rounds)
     history_text = ""
     if history:
         history_history = []
-        for m in history[-5:]:
+        for m in history[-25:]:
             role = "User" if m.get("role") == "user" else "Z"
             history_history.append(f"{role}: {m.get('content')}")
-        history_text = "CONVERSATION HISTORY:\n" + "\n".join(history_history)
+        history_text = "CONVERSATION HISTORY (Last 25 messages):\n" + "\n".join(history_history)
 
     # 5. Assemble and Send
     full_prompt = "\n\n".join(filter(None, [
