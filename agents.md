@@ -21,6 +21,7 @@
 - **File Endings:** Ensure all files end with a single newline character.
 ## 3. Documentation Standards
 - **No Emojis:** Do not use emojis in any Markdown (`.md`) files. Documentation should remain clean and professional without decorative symbols.
+- **Naming Convention:** Always spell the project name as **openZero** (lowercase 'o', uppercase 'Z'). Never use "OpenZero", "Openzero", or "OPENZERO".
 
 ## 4. Configuration & Example Files
 - **Example Clones:** Many configuration files (like `.env` or `config.yaml`) have `.example` clones (e.g., .env.example, config.example.yaml). If you modify the structure or options of a configuration file, **you MUST apply those same structural changes to the corresponding example file.** This ensures that new users have an up-to-date template to follow.
