@@ -9,9 +9,8 @@ async def yearly_review():
     tree = await get_project_tree()
     
     prompt = (
-        "Z, perform a yearly overview review. Look closely at these current projects and goals, "
-        "summarize the high-level progress, and identify overarching themes or missing long-term "
-        "objectives. Propose 3 major goals for the upcoming year.\n\n"
+        "Z, yearly review. Summarize high-level progress, identifying themes or missing objectives. "
+        "Propose 3 year-long goals. Be visionary but concise.\n\n"
         f"PROJECTS:\n{tree}"
     )
     

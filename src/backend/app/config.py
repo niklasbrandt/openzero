@@ -38,7 +38,9 @@ class Settings(BaseSettings):
 
     # Ollama
     OLLAMA_BASE_URL: str = "http://ollama:11434"
-    OLLAMA_MODEL: str = "llama3.1:8b"
+    OLLAMA_MODEL: str = "llama3.1:8b" # Keep for backwards compat
+    OLLAMA_MODEL_FAST: str = "llama3.2:3b"
+    OLLAMA_MODEL_SMART: str = "llama3.1:8b"
 
     # Whisper
     WHISPER_BASE_URL: str = "http://whisper:9000"

@@ -44,6 +44,10 @@ export class CalendarAgenda extends HTMLElement {
       this.displayEvents();
     } catch (e) {
       console.error('Failed to fetch calendar', e);
+      const list = this.shadowRoot?.querySelector('#event-list');
+      if (list) {
+        list.innerHTML = '<div class="empty">Unable to load agenda. Check backend/integration.</div>';
+      }
     }
   }
 
@@ -66,15 +70,16 @@ export class CalendarAgenda extends HTMLElement {
         const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         const day = date.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' });
 
+        const isBirthday = e.summary.toLowerCase().includes('birthday');
         return `
-          <div class="event-item">
+          <div class="event-item ${isBirthday ? 'birthday-item' : ''}">
             <div class="time-box">
               <span class="day">${day}</span>
               <span class="time">${time !== '00:00' ? time : 'All day'}</span>
             </div>
             <div class="details">
               <span class="summary">
-                ${e.is_local ? '<span class="local-indicator">Local</span> ' : ''}
+                ${!e.is_local ? '<span class="local-indicator" style="color: #14B8A6; background: rgba(20, 184, 166, 0.1); border-color: rgba(20, 184, 166, 0.2);">Google</span> ' : ''}
                 ${e.summary}
               </span>
               ${e.person ? `<span class="person-badge">${e.person}</span>` : ''}
@@ -178,6 +183,21 @@ export class CalendarAgenda extends HTMLElement {
             margin-right: 0.3rem;
             vertical-align: middle;
           }
+          @keyframes rainbow-border {
+            0% { border-color: #ff0000; box-shadow: 0 0 5px #ff000033; }
+            20% { border-color: #ff8800; }
+            40% { border-color: #ffff00; }
+            60% { border-color: #00ff00; }
+            80% { border-color: #0088ff; }
+            100% { border-color: #cc00ff; box-shadow: 0 0 5px #cc00ff33; }
+          }
+          .birthday-item {
+            border: 1px solid #ff0000 !important;
+            animation: rainbow-border 3s linear infinite;
+            background: rgba(255, 255, 255, 0.05) !important;
+          }
+          .birthday-item .day { color: #f472b6 !important; }
+          .birthday-item .summary { color: #fbcfe8 !important; }
           .empty { font-size: 0.85rem; color: rgba(255, 255, 255, 0.3); text-align: center; padding: 2rem; }
         </style>
         <div class="card">

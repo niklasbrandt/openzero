@@ -9,9 +9,8 @@ async def monthly_review():
     tree = await get_project_tree()
     
     prompt = (
-        "Z, perform a monthly review. Looking at these active projects and tasks over the last 30 days, "
-        "summarize the progress made, point out any stalled initiatives, and propose 3 major goals "
-        "to focus on for the upcoming month.\n\n"
+        "Z, monthly review. Summarize 30-day progress, stalled initiatives, and 3 major goals for next month. "
+        "Strictly data-driven.\n\n"
         f"PROJECTS:\n{tree}"
     )
     

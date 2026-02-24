@@ -62,7 +62,7 @@ async def get_project_tree(as_html: bool = True) -> str:
             projects = resp.json().get("items", [])
             
             if not projects:
-                return "No projects found. Use Planka to create your first mission."
+                return "No active projects found."
 
             # Fetch all project details in parallel
             project_tasks = [client.get(f"/api/projects/{p['id']}") for p in projects]
@@ -80,13 +80,17 @@ async def get_project_tree(as_html: bool = True) -> str:
                 project = projects[i]
                 project_id = project['id']
                 
+                project_name = project['name']
+                if project_name.lower() == "openzero":
+                    project_name = "Boards"
+
                 # Make project names clickable
                 if as_html:
-                    project_name = f"<b><a href='/api/dashboard/planka-redirect?target_project_id={project_id}' target='_blank' style='color: inherit; text-decoration: none;'>{project['name']}</a></b>"
+                    p_display = f"<b><a href='/api/dashboard/planka-redirect?target_project_id={project_id}' target='_blank' style='color: inherit; text-decoration: none;'>{project_name}</a></b>"
                 else:
-                    project_name = f"*[{project['name']}]({settings.BASE_URL}/api/dashboard/planka-redirect?target_project_id={project_id})*"
+                    p_display = f"*[{project_name}]({settings.BASE_URL}/api/dashboard/planka-redirect?target_project_id={project_id})*"
                 
-                tree_lines.append((i, "project", project_name))
+                tree_lines.append((i, "project", p_display))
                 
                 for board in boards:
                     task = client.get(f"/api/boards/{board['id']}", params={"included": "lists,cards"})

@@ -16,8 +16,14 @@ bot_app: Application | None = None
 async def _get_stats_footer() -> str:
     """Consolidated footer for Z's messages."""
     from app.services.memory import get_memory_stats
+    from app.services.llm import last_model_used
     stats = await get_memory_stats()
-    stats_text = f"🧠 Memories: {stats['points']}" if stats['status'] != 'error' else "🧠 Memory: Offline"
+    
+    # Determine Model Level from actual use
+    model_name = last_model_used.get()
+    model_tag = f" | 🤖 {model_name}"
+
+    stats_text = f"🧠 Memories: {stats['points']}{model_tag}" if stats['status'] != 'error' else "🧠 Memory: Offline"
     
     base_url = settings.BASE_URL
     links = f"🔗 [Dashboard]({base_url}) 🔗 [Boards]({base_url}/boards) 🔗 [Calendar]({base_url}/calendar)"
@@ -99,8 +105,12 @@ async def start_telegram_bot():
                         time_str = e['start'].split('T')[1][:5] if 'T' in e['start'] else 'All Day'
                         event_summary_parts.append(f"• {e['summary']} ({time_str})")
             except Exception as ce:
-                print(f"Google Calendar fetch failed: {ce}")
-                calendar_offline = True
+                # Differentiate between "not set up" and "actual error"
+                if "credentials missing" in str(ce).lower() or "not configured" in str(ce).lower():
+                    calendar_offline = False 
+                else:
+                    print(f"Google Calendar fetch failed: {ce}")
+                    calendar_offline = True
 
             # 2. Local & Birthdays
             async with AsyncSessionLocal() as session:
@@ -108,6 +118,7 @@ async def start_telegram_bot():
                 res_people = await session.execute(select(Person).where(Person.birthday.isnot(None)))
                 for p in res_people.scalars().all():
                     try:
+                        # Shared parsing logic for birthdays
                         pts = p.birthday.split('.')
                         if len(pts) >= 2:
                             bday = datetime(now.year, int(pts[1]), int(pts[0]))
@@ -124,15 +135,13 @@ async def start_telegram_bot():
                 for le in res_local.scalars().all():
                     event_summary_parts.append(f"• {le.summary} ({le.start_time.strftime('%H:%M')})")
 
-            event_summary = "\n".join(event_summary_parts) if event_summary_parts else "No upcoming events scheduled."
-            if calendar_offline and not event_summary_parts:
-                event_summary = "Calendar Integration: OFFLINE (Check credentials/service)."
-
+            event_summary = "\n".join(event_summary_parts) if event_summary_parts else "No upcoming events."
+            
             greeting_prompt = (
-                f"Z is coming online. System status: Ready. {stats_text}. CONTEXT: {event_summary}\n\n"
-                "Greet the user with 'Welcome back.' then a very short status update strictly based on the provided CONTEXT. "
-                "CRITICAL: If CONTEXT says 'OFFLINE', inform the user that you couldn't check the schedule. "
-                "Mention birthdays prominently if found. NEVER invent or hallucinate. Be extremely concise. One short sentence."
+                f"Z system status check: Ready. {stats_text}. CONTEXT: {event_summary}\n\n"
+                "Welcome the user back with 'Welcome back.' then provide a 1-sentence status update strictly based on CONTEXT. "
+                "If Google Calendar is not configured, do not treat it as an error; simply focus on the local Calendar facts. "
+                "Mention birthdays prominently. NEVER invent data. Be extremely concise."
             )
             print("Generating greeting...")
             greeting = await chat(greeting_prompt)
@@ -353,6 +362,13 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Update local history (use original response to keep actions in context for Z)
     chat_histories[chat_id].append({"role": "user", "content": update.message.text})
     chat_histories[chat_id].append({"role": "z", "content": response})
+
+    # Auto-store USER part to memory for Deep Recall
+    try:
+        from app.services.memory import store_memory
+        asyncio.create_task(store_memory(f"User Perspective (Telegram - {datetime.now().strftime('%Y-%m-%d')}): {update.message.text}", metadata={"type": "user_input", "source": "telegram"}))
+    except Exception as me:
+        print(f"DEBUG: Auto-memory (Telegram) failed: {me}")
     
     # Keep history manageable
     if len(chat_histories[chat_id]) > 20:
