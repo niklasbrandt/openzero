@@ -15,6 +15,7 @@ async def parse_and_execute_actions(reply: str, db: AsyncSession = None) -> (str
     executed_cmds = []
 
     for action_str in actions:
+        print(f"DEBUG: Detected semantic action: {action_str}")
         # Hide the action tag from the user
         clean_reply = clean_reply.replace(f"[ACTION: {action_str}]", "").strip()
         
@@ -28,12 +29,13 @@ async def parse_and_execute_actions(reply: str, db: AsyncSession = None) -> (str
             cmd = action_str.split('|')[0].strip()
             
             if cmd == "CREATE_TASK":
-                await create_task(
+                success = await create_task(
                     board_name=parts.get("BOARD", "Operator Board"),
                     list_name=parts.get("LIST", "Today"),
                     title=parts.get("TITLE", "New Task")
                 )
-                executed_cmds.append("task")
+                if success:
+                    executed_cmds.append("task")
             elif cmd == "CREATE_PROJECT":
                 await create_project(
                     name=parts.get("NAME", "New Project"),
@@ -71,7 +73,8 @@ async def parse_and_execute_actions(reply: str, db: AsyncSession = None) -> (str
                     name=parts.get("NAME", "Unknown"),
                     relationship=parts.get("RELATIONSHIP", "Contact"),
                     context=parts.get("CONTEXT", ""),
-                    circle_type=parts.get("CIRCLE", "inner").lower()
+                    circle_type=parts.get("CIRCLE", "inner").lower(),
+                    birthday=parts.get("BIRTHDAY")
                 )
                 db.add(db_p)
                 await db.commit()
