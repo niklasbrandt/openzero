@@ -74,14 +74,19 @@ async def semantic_search(query: str, top_k: int = 5) -> str:
     return "\n".join(lines)
 
 async def get_memory_stats() -> dict:
-    """Return point counts and collection status."""
+    """Return accurate point counts and collection status."""
     client = get_qdrant()
     try:
+        # Use count() for real-time accuracy
+        count_result = client.count(
+            collection_name=COLLECTION_NAME,
+            exact=True
+        )
         info = client.get_collection(COLLECTION_NAME)
         return {
-            "points": info.points_count,
+            "points": count_result.count,
             "status": str(info.status),
-            "vectors": info.vectors_count if hasattr(info, 'vectors_count') else info.points_count
+            "vectors": count_result.count
         }
     except Exception as e:
         print(f"Memory stats error: {e}")
