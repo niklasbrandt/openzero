@@ -18,7 +18,7 @@ Most AI assistants force a trade-off: you get convenience, but you surrender you
 The local AI connects the dots between your email, your calendar, your tasks, and your personal memory to help you stay organized and make better decisions.
 
 - **Operator board (The Hub)**: A central "Mission Control" board that automatically pulls high-priority tasks (marked with `!!` or `!`) from all other project boards. It identifies what matters *today*, so you don't have to go looking for it.
-- **Unified Master Calendar**: Z integrates with a single primary calendar for total clarity. Instead of managing multiple calendars, Z identifies family routines, work commits, and social milestones on one unified timeline, cross-referencing them to protect your focus.
+- **Unified Master Calendar**: Z integrates with a single primary calendar for total clarity. Instead of managing multiple calendars, Z identifies family routines, work commits, and social milestones on one unified timeline, cross-referencing them to protect your focus. **Pro-tip:** Add shared family or team calendars to your primary account; Z can automatically coordinate between them, identifying bottlenecks and optimizing your collaborative schedule.
 - **Privacy-First Intelligence**: By default, the system runs locally via Ollama. Use the smart **Llama 3.1 8B** for deep reasoning, or toggle to the lightning-fast **Llama 3.2 3B** for instant CPU responses. For absolute edge cases, trigger "Deep Thinking" cloud models with one click but you always choose exactly what data is shared and need to approve it beforehand.
 - **Voice & Text Freedom**: Z fluidly understands text and voice messages. Record a spoken thought while walking; Z transcribes it locally via Whisper, and updates your boards or memory immediately.
 - **Multi-Modal Briefings**: Receive a hands-free morning briefing. Z can send a high-quality local TTS voice note summarizing your upcoming commits and priority tasks.
@@ -105,6 +105,8 @@ All interaction with openZero happens via your messenger bot or directly through
 - Every Sunday at 10:00, the AI sends me a structured weekly review via messenger: what went well, what's stuck, and what to focus on next week.
 - **Project Stagnation Warnings:** As part of the review, the AI inherently flags projects that haven't moved. If there are many stagnant projects, it lists them explicitly to help me refocus.
 - I can also trigger it anytime with `/weekly`.
+
+> **Pro-Tip**: Use **Google Shared Calendars** to sync family or project schedules. Z can see these if they are added to your primary account, making it a powerful coordinator for shared lives.
 
 ---
 
@@ -396,21 +398,5 @@ This project is continuously evolving thanks to the community.
 If you are using openZero, star the repository and join the movement towards sovereign AI.
 
 ---
-
----
-
-<div align="center">
-  <pre>
-   ━━━━━━┓
-         ┃
-        ┃
-       ┃
-      ┃
-     ┃
-    ┃
-   ┗━━━━━━
-  </pre>
-  <p><b>THE AGENT OPERATOR OS</b></p>
-</div>
 
 *Built with privacy in mind. Powered by open-source software. Runs on your terms.*

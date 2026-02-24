@@ -95,8 +95,7 @@ async def dashboard_chat(req: ChatRequest, db: AsyncSession = Depends(get_db)):
             event_list = "\n".join([f"• {e.summary} ({datetime.datetime.fromisoformat(e['start'].replace('Z', '')).strftime('%a %H:%M')})" for e in events[:3]])
 
         life_tree = (
-            "🌳 **Your Life Tree Overview**\n\n"
-            "**Mission Control (Projects & Progress):**\n"
+            "🌳 **Boards**\n\n"
             f"{tree}\n\n"
             "**Inner Circle (People):**\n"
             f"{circle_text}\n\n"
@@ -130,26 +129,26 @@ async def dashboard_chat(req: ChatRequest, db: AsyncSession = Depends(get_db)):
         from app.services.agent_actions import parse_and_execute_actions
         clean_reply, executed_cmds = await parse_and_execute_actions(reply, db=db)
 
-        # Auto-store to memory for Deep Recall
+        # Auto-store USER part only to memory for Deep Recall
         try:
             import asyncio
             from app.services.memory import store_memory
-            asyncio.create_task(store_memory(f"Conversation ({datetime.datetime.now().strftime('%Y-%m-%d')}):\nUser: {msg}\nZ: {clean_reply}", metadata={"type": "chat"}))
+            # Store ONLY user message to reduce noise from AI responses/formatting
+            asyncio.create_task(store_memory(f"User Perspective ({datetime.datetime.now().strftime('%Y-%m-%d')}): {msg}", metadata={"type": "user_input"}))
         except Exception as me:
             print(f"DEBUG: Auto-memory failed: {me}")
 
+        from app.services.llm import last_model_used
         return {
             "reply": clean_reply,
-            "actions": executed_cmds
+            "actions": executed_cmds,
+            "model": last_model_used.get()
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 # --- Life Tree & Onboarding ---
-@router.get("/calendar")
-async def calendar_shortcut():
-    """Shortcut to open calendar from URL."""
-    return RedirectResponse(url="/?open=calendar")
+# Handle by main.py /calendar
 
 @router.get("/life-tree")
 async def get_life_tree(db: AsyncSession = Depends(get_db)):
@@ -171,7 +170,11 @@ async def get_life_tree(db: AsyncSession = Depends(get_db)):
     
     # 2. Upcoming Calendar & Birthdays
     from app.services.calendar import fetch_calendar_events
-    events = await fetch_calendar_events(max_results=5, days_ahead=7)
+    try:
+        events = await fetch_calendar_events(max_results=5, days_ahead=7)
+    except Exception as ce:
+        print(f"Calendar fetch failed: {ce}")
+        events = []
     formatted_events = []
 
     # Inject Birthdays from People table
@@ -483,13 +486,42 @@ async def create_project(project: ProjectCreate):
 
 # --- Memory ---
 @router.get("/memory/search")
-async def search_memory(query: str):
+async def search_memory(query: str, db: AsyncSession = Depends(get_db)):
     if not query:
         return {"results": []}
-    results = await semantic_search(query)
-    # Parsing the string results back to a list for the UI
-    lines = results.split("\n")
-    return {"results": [line for line in lines if line.strip()]}
+    
+    # 1. Semantic Search (Qdrant)
+    try:
+        semantic_results = await semantic_search(query)
+        semantic_lines = semantic_results.split("\n")
+    except:
+        semantic_lines = []
+
+    final_hits = []
+
+    # 2. People DB Search
+    res_people = await db.execute(select(Person).where(Person.name.ilike(f"%{query}%")))
+    people = res_people.scalars().all()
+    for p in people:
+        final_hits.append(f"👤 PERSONAL PROFILE: {p.name} ({p.relationship}) - {p.context[:150]}...")
+
+    # 3. Project Search (Placeholder or direct DB)
+    # If Planka is used, this might be partial, but let's check local if any
+    from app.models.db import Project
+    res_proj = await db.execute(select(Project).where(Project.name.ilike(f"%{query}%")))
+    projs = res_proj.scalars().all()
+    for prj in projs:
+        final_hits.append(f"🌳 MISSION: {prj.name} (Status: {prj.status})")
+
+    # Merge semantic lines (cleaning out scores/formatting if possible)
+    for line in semantic_lines:
+        if line.strip() and "No memories found" not in line and "Memory system not" not in line:
+            # Strip the index "1. (score: 0.90)"
+            clean_line = line.split(")", 1)[-1].strip() if ")" in line else line
+            final_hits.append(f"🧠 RECALL: {clean_line}")
+
+    # Return top 15 results
+    return {"results": final_hits[:15]}
 
 # --- Briefings ---
 @router.get("/briefings")
@@ -522,6 +554,17 @@ async def delete_email_rule(rule_id: int, db: AsyncSession = Depends(get_db)):
     await db.commit()
     return {"status": "deleted"}
 
+@router.put("/email-rules/{rule_id}")
+async def update_email_rule(rule_id: int, rule: EmailRuleCreate, db: AsyncSession = Depends(get_db)):
+    res = await db.execute(select(EmailRule).where(EmailRule.id == rule_id))
+    db_rule = res.scalar_one_or_none()
+    if not db_rule: raise HTTPException(status_code=404, detail="Not found")
+    db_rule.sender_pattern = rule.sender_pattern
+    db_rule.action = rule.action
+    await db.commit()
+    await db.refresh(db_rule)
+    return db_rule
+
 # --- People (Inner/Close Circle) ---
 class PersonCreate(BaseModel):
     name: str
@@ -529,6 +572,32 @@ class PersonCreate(BaseModel):
     context: str = ""
     circle_type: str = "inner"
     birthday: Optional[str] = None
+    gender: Optional[str] = None
+    residency: Optional[str] = None
+    work_times: Optional[str] = None
+    briefing_time: Optional[str] = None
+
+@router.put("/people/identity")
+async def update_identity(person: PersonCreate, db: AsyncSession = Depends(get_db)):
+    """Update the 'Self' identity record."""
+    res = await db.execute(select(Person).where(Person.circle_type == "identity"))
+    me = res.scalar_one_or_none()
+    if not me:
+        me = Person(circle_type="identity", relationship="Self")
+        db.add(me)
+    
+    me.name = person.name
+    me.birthday = person.birthday
+    me.context = person.context
+    me.gender = person.gender
+    me.residency = person.residency
+    me.work_times = person.work_times
+    me.briefing_time = person.briefing_time
+    me.relationship = "Self"
+    
+    await db.commit()
+    await db.refresh(me)
+    return me
 
 @router.get("/people")
 async def get_people(circle_type: Optional[str] = None, db: AsyncSession = Depends(get_db)):
@@ -545,12 +614,36 @@ async def create_person(person: PersonCreate, db: AsyncSession = Depends(get_db)
         relationship=person.relationship, 
         context=person.context,
         circle_type=person.circle_type,
-        birthday=person.birthday
+        birthday=person.birthday,
+        gender=person.gender,
+        residency=person.residency,
+        work_times=person.work_times,
+        briefing_time=person.briefing_time
     )
     db.add(db_person)
     await db.commit()
     await db.refresh(db_person)
     return db_person
+
+@router.put("/people/{person_id}")
+async def update_person(person_id: int, person: PersonCreate, db: AsyncSession = Depends(get_db)):
+    res = await db.execute(select(Person).where(Person.id == person_id))
+    db_p = res.scalar_one_or_none()
+    if not db_p: raise HTTPException(status_code=404, detail="Not found")
+    
+    db_p.name = person.name
+    db_p.relationship = person.relationship
+    db_p.context = person.context
+    db_p.circle_type = person.circle_type
+    db_p.birthday = person.birthday
+    db_p.gender = person.gender
+    db_p.residency = person.residency
+    db_p.work_times = person.work_times
+    db_p.briefing_time = person.briefing_time
+    
+    await db.commit()
+    await db.refresh(db_p)
+    return db_p
 
 @router.delete("/people/{person_id}")
 async def delete_person(person_id: int, db: AsyncSession = Depends(get_db)):
@@ -579,11 +672,15 @@ async def get_calendar(year: Optional[int] = None, month: Optional[int] = None, 
         end_date = start_date + datetime.timedelta(days=35)
 
     # 1. Fetch Google Events
-    google_events = await fetch_calendar_events(
-        calendar_id="primary", 
-        max_results=100, 
-        days_ahead=60 # Fetch a bit more to handle overlaps
-    )
+    try:
+        google_events = await fetch_calendar_events(
+            calendar_id="primary", 
+            max_results=100, 
+            days_ahead=60 # Fetch a bit more to handle overlaps
+        )
+    except Exception as ce:
+        print(f"Calendar fetch failed in get_calendar: {ce}")
+        google_events = []
     
     # 2. Fetch Local Events from DB
     from app.models.db import LocalEvent
@@ -714,7 +811,7 @@ async def get_system_status():
     model_name = "Unknown"
     
     if provider == "ollama":
-        model_name = settings.OLLAMA_MODEL
+        model_name = "Scaled (3B/8B)"
         # Fire-and-forget an empty/dummy request to trick Ollama into loading the weights into memory
         asyncio.create_task(llm_chat("System boot ping.", system_override="Respond tightly: Online."))
     elif provider == "groq":

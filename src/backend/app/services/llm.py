@@ -14,7 +14,11 @@ Core Functions:
 import httpx
 from datetime import datetime
 import pytz
+from contextvars import ContextVar
 from app.config import settings
+
+# Track the model used for the current request context
+last_model_used: ContextVar[str] = ContextVar("last_model_used", default="Ollama")
 
 SYSTEM_PROMPT = """You are Z — the privacy first personal AI agent.
 You are not a generic assistant. You are an agent operator — sharp, warm, and direct.
@@ -28,6 +32,7 @@ CORE RESPONSE RULE:
 Your Priority Objective: Proactive Mission Execution
 - If you tell the user you will do something (e.g., "I'll create a task", "I'll start a project", "I'll sync the board"), you MUST actually do it by including a SEMANTIC ACTION tag at the end of your response.
 - **NEVER tell the user you will do something without including the corresponding ACTION tag.**
+- **TAG VISIBILITY**: Action tags are INVISIBLE to the user. Never say "I'll use a tag" or mention them. Just confirm the action naturally.
 
 Semantic Action Tags:
 - Create Task: `[ACTION: CREATE_TASK | BOARD: name | LIST: name | TITLE: text]`
@@ -63,6 +68,10 @@ Rules:
 - **Calendar Rule**: Prefix Inner Circle events with their name.
 - **Identity Rule**: You are talking to {user_name}. Always address them by this name or a nickname they've provided. If the name is generic (e.g., "User") or unknown, proactively ask for their preferred name or nickname during the conversation.
 - **STRICT GROUNDING**: NEVER invent or assume the existence of projects, people, events, or statistics. Only reference information explicitly provided in the current context (Memory, Calendar, Projects). If the context is empty, state that no information is currently available.
+- **NO PERSON HALLUCINATION**: You must be extremely disciplined about people. If a person is not listed in the 'CIRCLE OF TRUST' or 'RECENT CONVERSATION' context, they do not exist. Never invent 'friends' or 'contacts' like 'Alex' or 'Sarah'.
+- **BIRTHDAY RULE**: Mention birthdays ONLY if explicitly found in Context as 'Birthday: DD.MM.YYYY'. Do not speculate.
+- **ZERO FILLER**: Avoid AI-isms like "Based on your context...", "I see that...", "Sure!", "Of course", or "I understand". Start your response directly with the requested information. 
+- **NO GROWTH TIPS**: Never include sections like "Z's Growth Tip", "Mindset Quote", or generic life advice unless explicitly asked.
 - If external calendar is offline, use the **Local Zero Calendar**.
 
 You remember what matters to them. Act like it.
@@ -95,11 +104,27 @@ async def chat(
     
     # Format the root prompt with dynamic values
     base_url = settings.BASE_URL.rstrip('/')
+    user_name = kwargs.get("user_name", "User")
+    
+    # Inject Identity Details if available
+    user_id_context = ""
+    if "user_profile" in kwargs:
+        p = kwargs["user_profile"]
+        fields = []
+        if p.get("birthday"): fields.append(f"Birthday: {p['birthday']}")
+        if p.get("gender"): fields.append(f"Gender: {p['gender']}")
+        if p.get("residency"): fields.append(f"Residency: {p['residency']}")
+        if p.get("work_times"): fields.append(f"Work Schedule: {p['work_times']}")
+        if p.get("briefing_time"): fields.append(f"Preferred Briefing: {p['briefing_time']}")
+        if p.get("context"): fields.append(f"LIFE GOALS & VALUES: {p['context']}")
+        if fields:
+            user_id_context = "\nSUBJECT ZERO PROFILE (HIGH CONTEXT):\n" + "\n".join(fields)
+
     formatted_system_prompt = SYSTEM_PROMPT.format(
         current_time=current_time,
         base_url=base_url,
-        user_name=kwargs.get("user_name", "User")
-    )
+        user_name=user_name
+    ) + user_id_context
     
     context_header = f"Current Local Time: {now.strftime('%A, %Y-%m-%d %H:%M:%S %Z')}\n\n"
     system_prompt = context_header + (system_override or formatted_system_prompt)
@@ -107,10 +132,19 @@ async def chat(
     provider = (provider or settings.LLM_PROVIDER).lower()
     client = _http_client
 
+    # --- Model Selection Logic (Dynamic Scaling) ---
+    target_model = model
+    if not target_model and provider == "ollama":
+        # Categories needing 'Smart' model
+        complex_keywords = ["plan", "reason", "strategic", "complex", "code", "math", "summarize session", "briefing", "mission", "campaign"]
+        is_complex = any(kw in user_message.lower() for kw in complex_keywords) or len(user_message) > 300
+        target_model = settings.OLLAMA_MODEL_SMART if is_complex else settings.OLLAMA_MODEL_FAST
+
     # --- Option A: Local Ollama ---
     if provider == "ollama":
-        target_model = model or settings.OLLAMA_MODEL
-        print(f"DEBUG: Calling Ollama with model: {target_model}")
+        target_model = target_model or settings.OLLAMA_MODEL_FAST
+        last_model_used.set(target_model)
+        print(f"DEBUG: Calling Ollama with model: {target_model} (Reasoning Scaled)")
         
         try:
             response = await client.post(
@@ -134,6 +168,8 @@ async def chat(
 
     # --- Option B: Groq (Ultra-Fast Cloud API) ---
     elif provider == "groq":
+        target_model = target_model or settings.GROQ_MODEL
+        last_model_used.set(f"Groq: {target_model}")
         try:
             response = await client.post(
                 "https://api.groq.com/openai/v1/chat/completions",
@@ -193,15 +229,26 @@ async def chat_with_context(
     start_time = time.time()
 
     async def fetch_people():
-        if not include_people: return ""
+        if not include_people: return "", "User", {}
         try:
             async with AsyncSessionLocal() as session:
                 result = await session.execute(select(Person))
                 people = result.scalars().all()
                 identity_name = "User"
+                user_profile = {}
                 if people:
                     ident = next((p for p in people if p.circle_type == "identity"), None)
-                    if ident: identity_name = ident.name
+                    if ident: 
+                        identity_name = ident.name
+                        user_profile = {
+                            "name": ident.name,
+                            "birthday": ident.birthday,
+                            "gender": ident.gender,
+                            "residency": ident.residency,
+                            "work_times": ident.work_times,
+                            "briefing_time": ident.briefing_time,
+                            "context": ident.context
+                        }
                     
                     inner = [f"- {p.name} ({p.relationship}): Birthday: {p.birthday or 'Unknown'}" for p in people if p.circle_type == "inner"]
                     close = [f"- {p.name} ({p.relationship}): Birthday: {p.birthday or 'Unknown'}" for p in people if p.circle_type == "close"]
@@ -209,10 +256,10 @@ async def chat_with_context(
                     context = ""
                     if inner: context += "INNER CIRCLE:\n" + "\n".join(inner) + "\n"
                     if close: context += "CLOSE CIRCLE:\n" + "\n".join(close)
-                    return context, identity_name
-                return "CIRCLE OF TRUST: No family/contacts configured yet.", identity_name
+                    return context, identity_name, user_profile
+                return "CIRCLE OF TRUST: No family/contacts configured yet.", identity_name, {}
         except Exception:
-            return "CIRCLE OF TRUST: (Database connection unavailable)", "User"
+            return "CIRCLE OF TRUST: (Database connection unavailable)", "User", {}
 
     async def fetch_projects():
         if not include_projects: return ""
@@ -260,7 +307,7 @@ async def chat_with_context(
             return ""
 
     # Execute all context gatherers in parallel
-    (people_p, user_name), project_p, memory_p = await asyncio.gather(
+    (people_p, user_name, user_profile), project_p, memory_p = await asyncio.gather(
         fetch_people(),
         fetch_projects(),
         fetch_memories()
@@ -286,7 +333,7 @@ async def chat_with_context(
     ]))
     
     print(f"DEBUG: Context gathered in {time.time() - start_time:.2f}s")
-    return await chat(full_prompt, user_name=user_name)
+    return await chat(full_prompt, user_name=user_name, user_profile=user_profile)
 
 async def generate_context_proposal(query: str) -> dict:
     """Use Local LLM to identify relevant information for the user to approve."""

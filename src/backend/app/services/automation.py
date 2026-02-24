@@ -13,7 +13,11 @@ async def run_contextual_automation(people: list[Person]):
     actions = []
     
     # Fetch primary events once ahead of time for efficiency
-    primary_events = await fetch_calendar_events(calendar_id="primary", days_ahead=7)
+    try:
+        primary_events = await fetch_calendar_events(calendar_id="primary", days_ahead=7)
+    except Exception as ce:
+        print(f"DEBUG: Automation calendar scan skipped: {ce}")
+        primary_events = []
 
     for person in people:
         prefix = f"{person.name}:"

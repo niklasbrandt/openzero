@@ -9,8 +9,8 @@ async def weekly_review():
     tree = await get_project_tree()
     
     prompt = (
-        "Z, perform a weekly review. Looking at these projects, summarize progress, "
-        "highlight roadblocks, and propose 3 main goals for next week.\n\n"
+        "Z, weekly review. Summarize progress, roadblocks, and 3 goals for next week. "
+        "Be direct. No filler.\n\n"
         f"PROJECTS:\n{tree}"
     )
     

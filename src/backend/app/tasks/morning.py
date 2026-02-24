@@ -14,12 +14,7 @@ import datetime
 async def morning_briefing():
     """Generate and store the daily morning briefing."""
     
-    # 1. Start with the Daily Mindsetter
-    mindset_prompt = (
-        "Z, start the morning briefing. First, lead with a very short mindsetter (max 2 sentences). "
-        "Base it strictly on my current mission status or a generally stoic observation of my path. "
-        "Then proceed with the actual briefing."
-    )
+    # 1. Zero-Noise Mode (Facts Only)
     
     # 2. Gather context
     async with AsyncSessionLocal() as session:
@@ -46,7 +41,12 @@ async def morning_briefing():
     close_context = "\n".join(close_context_list) if close_context_list else "No specific friend connections planned."
     
     # 2.2 Gather Calendar & Weather Context
-    calendar_events = await fetch_calendar_events(days_ahead=0)
+    try:
+        calendar_events = await fetch_calendar_events(days_ahead=0)
+    except Exception as ce:
+        print(f"DEBUG: Calendar fetch during briefing skipped: {ce}")
+        calendar_events = []
+
     calendar_summary = "\n".join([f"- {e['summary']}" for e in calendar_events]) if calendar_events else "No events scheduled for today."
     
     # Simple travel detection
@@ -82,7 +82,7 @@ async def morning_briefing():
             email_summary = "\n".join([f"- {e['from']}: {e['subject']}" for e in emails]) if emails else "No new emails."
     
     full_prompt = (
-        f"{mindset_prompt}\n\n"
+        "Z, morning briefing. Summarize the mission status based on CONTEXT.\n\n"
         f"CONTEXT:\n"
         f"AUTOMATED SYSTEM ACTIONS (Tasks created based on Circle Calendars):\n{automation_summary}\n\n"
         f"INNER CIRCLE (Family/Care):\n{inner_context}\n\n"

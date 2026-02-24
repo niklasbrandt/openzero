@@ -55,7 +55,7 @@ body {
 h1 {
   color: #fff;
   font-weight: 200;
-  letter-spacing: -0.025em;
+  letter-spacing: -0.04em;
 }
 
 h2,
@@ -149,6 +149,7 @@ h3 {
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
+  font-weight: 800;
 }
 
 .status-online {
@@ -285,53 +286,6 @@ pre {
   transform: translateX(-50%) translateY(10px);
 }
 
-/* Animations */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
-}
-
-.dashboard-card {
-  animation: fadeIn 0.6s ease forwards;
-}
-
-.dashboard-card:nth-child(2) {
-  animation-delay: 0.05s;
-}
-
-.dashboard-card:nth-child(3) {
-  animation-delay: 0.10s;
-}
-
-.dashboard-card:nth-child(4) {
-  animation-delay: 0.15s;
-}
-
-.dashboard-card:nth-child(5) {
-  animation-delay: 0.20s;
-}
-
-.dashboard-card:nth-child(6) {
-  animation-delay: 0.25s;
-}
-
-.dashboard-card:nth-child(7) {
-  animation-delay: 0.30s;
-}
-
-.dashboard-card:nth-child(8) {
-  animation-delay: 0.35s;
-}
-
-.dashboard-card:nth-child(9) {
-  animation-delay: 0.40s;
-}
-
 @media (max-width: 768px) {
   #app {
     grid-template-columns: 1fr;
@@ -349,7 +303,7 @@ pre {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 2rem 0;
+  padding: 2rem 2vw;
   margin-top: 2rem;
   border-top: 1px solid var(--border-color);
   color: rgba(255, 255, 255, 0.4);
