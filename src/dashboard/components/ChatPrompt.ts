@@ -31,6 +31,11 @@ export class ChatPrompt extends HTMLElement {
 			}
 		});
 
+		// LLM Pre-Warming: Load model into RAM when user prepares to type
+		input?.addEventListener('focus', () => {
+			fetch('/api/dashboard/system').catch(() => { });
+		}, { once: true }); // Only once per session/load
+
 		// Removed auto-resize textarea to maintain alignment with send button
 	}
 

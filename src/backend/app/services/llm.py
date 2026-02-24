@@ -241,8 +241,8 @@ async def chat_with_context(
                             seen_content.add(content)
             
             if all_results:
-                # Returning up to 25 high-relevance memories
-                return f"RELEVANT MEMORIES (Ultra Deep Recall):\n" + "\n".join(all_results[:25])
+                # Optimized for speed: 10 high-precision matches for standard chat
+                return f"RELEVANT MEMORIES (Precision Recall):\n" + "\n".join(all_results[:10])
             return ""
         except Exception as e:
             print(f"DEBUG: Memory fetch error: {e}")
@@ -255,14 +255,15 @@ async def chat_with_context(
         fetch_memories()
     )
 
-    # 4. History Formatting (Optimized Memory: Last 25 rounds)
+    # 4. History Formatting (Speed Optimized: Last 10 messages)
+    # Note: Previous messages are still searchable via Semantic Memory.
     history_text = ""
     if history:
         history_history = []
-        for m in history[-25:]:
+        for m in history[-10:]:
             role = "User" if m.get("role") == "user" else "Z"
             history_history.append(f"{role}: {m.get('content')}")
-        history_text = "CONVERSATION HISTORY (Last 25 messages):\n" + "\n".join(history_history)
+        history_text = "RECENT CONVERSATION (Last 10 messages):\n" + "\n".join(history_history)
 
     # 5. Assemble and Send
     full_prompt = "\n\n".join(filter(None, [

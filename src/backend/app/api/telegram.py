@@ -76,7 +76,7 @@ async def start_telegram_bot():
             "Greet the user sharply. Remind them of any urgent calendar events mentioned above if applicable. Use only provided info, don't invent anything."
         )
         greeting = await chat(greeting_prompt)
-        await send_notification(f"⚡ {greeting}\n\n_System: {stats_text}_")
+        await send_notification(f"⚡ {greeting}\n\n_System: {stats_text}_\n🔗 [Dashboard]({settings.BASE_URL})")
     except Exception as e:
         print(f"Could not send startup greeting: {e}")
         await send_notification("⚡ Z is online.")
