@@ -146,21 +146,62 @@ async def dashboard_chat(req: ChatRequest, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 # --- Life Tree & Onboarding ---
+@router.get("/calendar")
+async def calendar_shortcut():
+    """Shortcut to open calendar from URL."""
+    return RedirectResponse(url="/?open=calendar")
+
 @router.get("/life-tree")
 async def get_life_tree(db: AsyncSession = Depends(get_db)):
     """Fetch the rich Life Tree overview for the dashboard widget."""
     from app.services.planka import get_project_tree
     tree = await get_project_tree(as_html=True)
     
-    # 1. Inner Circle
-    result = await db.execute(select(Person).where(Person.circle_type == "inner"))
-    inner_circle = result.scalars().all()
-    circle_data = [{"name": p.name, "relationship": p.relationship} for p in inner_circle]
+    # 1. Social Circles
+    res_inner = await db.execute(select(Person).where(Person.circle_type == "inner"))
+    inner_circle = res_inner.scalars().all()
     
-    # 2. Upcoming Calendar
+    res_close = await db.execute(select(Person).where(Person.circle_type == "close"))
+    close_circle = res_close.scalars().all()
+    
+    social_data = {
+        "inner": [{"name": p.name, "relationship": p.relationship} for p in inner_circle],
+        "close": [{"name": p.name, "relationship": p.relationship} for p in close_circle]
+    }
+    
+    # 2. Upcoming Calendar & Birthdays
     from app.services.calendar import fetch_calendar_events
-    events = await fetch_calendar_events(max_results=5, days_ahead=3)
+    events = await fetch_calendar_events(max_results=5, days_ahead=7)
     formatted_events = []
+
+    # Inject Birthdays from People table
+    res_people = await db.execute(select(Person).where(Person.birthday.isnot(None)))
+    all_people = res_people.scalars().all()
+    now = datetime.datetime.now()
+    
+    for p in all_people:
+        try:
+            # Parse birthday (expected DD.MM.YY or DD.MM.YYYY or DD.MM)
+            parts = p.birthday.split('.')
+            if len(parts) >= 2:
+                day = int(parts[0])
+                month = int(parts[1])
+                bday_this_year = datetime.datetime(now.year, month, day)
+                
+                # If it already passed this year, look at next year
+                if bday_this_year < now.replace(hour=0, minute=0, second=0):
+                    bday_this_year = datetime.datetime(now.year + 1, month, day)
+                
+                days_until = (bday_this_year - now.replace(hour=0, minute=0, second=0)).days
+                if 0 <= days_until <= 7:
+                    formatted_events.append({
+                        "summary": f"🎂 {p.name}'s Birthday",
+                        "time": bday_this_year.strftime('%a, %d %b'),
+                        "is_local": True,
+                        "sort_key": bday_this_year
+                    })
+        except Exception as be:
+            print(f"Error parsing birthday for {p.name}: {be}")
     
     if not events:
         from app.models.db import LocalEvent
@@ -181,45 +222,53 @@ async def get_life_tree(db: AsyncSession = Depends(get_db)):
             try:
                 dt = datetime.datetime.fromisoformat(start_str.replace('Z', ''))
                 time_fmt = dt.strftime('%a %H:%M')
+                sort_key = dt
             except:
                 time_fmt = start_str # Fallback
+                sort_key = now + datetime.timedelta(days=10) # Push to end
                 
             formatted_events.append({
                 "summary": e['summary'],
                 "time": time_fmt,
-                "is_local": False
+                "is_local": False,
+                "sort_key": sort_key
             })
+
+    # Sort all events by date
+    formatted_events.sort(key=lambda x: x.get('sort_key', now))
 
     return {
         "projects_tree": tree,
-        "inner_circle": circle_data,
+        "social_circles": social_data,
         "timeline": formatted_events[:5]
     }
 
-@router.get("/onboarding-status")
-async def get_onboarding_status(db: AsyncSession = Depends(get_db)):
-    """Check if the user has completed basic setup (Inner circle, about-me)."""
+    # 0. Check if explicitly dismissed
+    from app.models.db import Preference
+    res_dismiss = await db.execute(select(Preference).where(Preference.key == "onboarding_dismissed"))
+    dismissed = res_dismiss.scalar_one_or_none()
+    is_dismissed = dismissed and dismissed.value == "true"
+    
     # 1. Check if any people are added
     result = await db.execute(select(Person))
     people_count = len(result.scalars().all())
     
-    # 2. Check if about-me.md has been modified or if there's enough profile memory
+    # 2. Check if about-me.md has been modified
     import os
     about_me_path = "/app/personal/about-me.md"
     has_profile = False
     if os.path.exists(about_me_path):
         size = os.path.getsize(about_me_path)
-        if size > 100: # Simple heuristic
+        if size > 100:
             has_profile = True
     
     if not has_profile:
-        # Check memory for profile-related entries
         from app.services.memory import semantic_search
-        memories = await semantic_search("my identity, profession, goals and background", top_k=3)
+        memories = await semantic_search("my identity and goals", top_k=3)
         if memories and "No memories found" not in memories:
             has_profile = True
             
-    # 3. Check calendar sync (Google or Local)
+    # 3. Check calendar sync
     from app.services.calendar import get_calendar_service
     from app.models.db import LocalEvent
     has_google = get_calendar_service() is not None
@@ -229,8 +278,10 @@ async def get_onboarding_status(db: AsyncSession = Depends(get_db)):
     
     has_calendar = has_google or (local_count > 0)
     
+    needs_onboarding = (not is_dismissed) and ((people_count == 0) or not has_profile or not has_calendar)
+    
     return {
-        "needs_onboarding": (people_count == 0) or not has_profile or not has_calendar,
+        "needs_onboarding": needs_onboarding,
         "base_url": settings.BASE_URL,
         "steps": {
             "inner_circle": people_count > 0,
@@ -238,6 +289,21 @@ async def get_onboarding_status(db: AsyncSession = Depends(get_db)):
             "calendar": has_calendar
         }
     }
+
+@router.post("/onboarding-dismiss")
+async def dismiss_onboarding(db: AsyncSession = Depends(get_db)):
+    """Persistently dismiss the onboarding hints."""
+    from app.models.db import Preference
+    stmt = select(Preference).where(Preference.key == "onboarding_dismissed")
+    res = await db.execute(stmt)
+    pref = res.scalar_one_or_none()
+    if not pref:
+        pref = Preference(key="onboarding_dismissed", value="true")
+        db.add(pref)
+    else:
+        pref.value = "true"
+    await db.commit()
+    return {"status": "ok"}
 
 # --- Projects ---
 @router.get("/projects")
@@ -303,9 +369,12 @@ async def planka_redirect(request: Request, target: str = "", background: bool =
             planka_root = f"{scheme}://{host_name}:1337"
             redirect_url = f"{planka_root}/"
             target_board_id = request.query_params.get("target_board_id")
+            target_project_id = request.query_params.get("target_project_id")
             
             if target_board_id:
                 redirect_url = f"{planka_root}/boards/{target_board_id}"
+            elif target_project_id:
+                redirect_url = f"{planka_root}/projects/{target_project_id}"
             elif target == "operator":
                 headers = {"Authorization": f"Bearer {access_token}"}
                 proj_resp = await client.get(f"{settings.PLANKA_BASE_URL}/api/projects", headers=headers)
@@ -424,8 +493,8 @@ async def search_memory(query: str):
 
 # --- Briefings ---
 @router.get("/briefings")
-async def get_briefings(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Briefing).order_by(Briefing.created_at.desc()).limit(10))
+async def get_briefings(limit: int = 10, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Briefing).order_by(Briefing.created_at.desc()).limit(limit))
     briefings = result.scalars().all()
     return briefings
 
@@ -493,51 +562,123 @@ async def delete_person(person_id: int, db: AsyncSession = Depends(get_db)):
 from app.services.calendar import fetch_calendar_events
 
 @router.get("/calendar")
-async def get_calendar(db: AsyncSession = Depends(get_db)):
-    """Fetch user's primary calendar events (Google + Local) and detect family members."""
+async def get_calendar(year: Optional[int] = None, month: Optional[int] = None, db: AsyncSession = Depends(get_db)):
+    """Fetch user's primary calendar events (Google + Local) + Virtual Birthdays."""
+    now = datetime.datetime.utcnow()
+    
+    # Calculate range: One month view based on year/month params, or 30 days ahead from now
+    if year and month:
+        start_date = datetime.datetime(year, month, 1)
+        if month == 12:
+            end_date = datetime.datetime(year + 1, 1, 1) - datetime.timedelta(seconds=1)
+        else:
+            end_date = datetime.datetime(year, month + 1, 1) - datetime.timedelta(seconds=1)
+    else:
+        # Default to a rolling 35-day window to cover current month view
+        start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_date = start_date + datetime.timedelta(days=35)
+
     # 1. Fetch Google Events
-    google_events = await fetch_calendar_events(calendar_id="primary", max_results=20, days_ahead=7)
+    google_events = await fetch_calendar_events(
+        calendar_id="primary", 
+        max_results=100, 
+        days_ahead=60 # Fetch a bit more to handle overlaps
+    )
     
     # 2. Fetch Local Events from DB
     from app.models.db import LocalEvent
-    today = datetime.datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-    end_date = today + datetime.timedelta(days=7)
-    
-    result = await db.execute(select(LocalEvent).where(LocalEvent.start_time >= today, LocalEvent.start_time <= end_date))
+    result = await db.execute(
+        select(LocalEvent).where(
+            LocalEvent.start_time >= start_date - datetime.timedelta(days=7), # Buffer
+            LocalEvent.start_time <= end_date + datetime.timedelta(days=7)
+        )
+    )
     local_events = result.scalars().all()
     
-    # 3. Format Local Events to match Google structure
+    # 3. Format Local Events
     formatted_local = []
     for e in local_events:
         formatted_local.append({
             "summary": e.summary,
             "start": e.start_time.isoformat() + "Z",
             "end": e.end_time.isoformat() + "Z",
-            "is_local": True
+            "is_local": True,
+            "id": f"local_{e.id}"
         })
 
-    all_events = google_events + formatted_local
-    
-    # 4. Get all people to match prefixes
+    # 4. Generate Virtual Birthdays
     result = await db.execute(select(Person))
     people = result.scalars().all()
+    birthday_events = []
     
-    # 5. Enrich events with person info
+    for p in people:
+        if p.birthday:
+            # Flexible parsing for: DD.MM.YY, DD.MM.YYYY, MM-DD, YYYY-MM-DD
+            import re
+            match = re.search(r'(\d{1,4})[.-](\d{1,2})[.-](\d{1,4})', p.birthday)
+            if not match:
+                # Try just MM-DD or DD.MM
+                match = re.search(r'(\d{1,2})[.-](\d{1,2})', p.birthday)
+            
+            if match:
+                g = match.groups()
+                try:
+                    # Heuristic: 
+                    # If 3 groups:
+                    #   If g[0] > 31 -> YYYY-MM-DD
+                    #   If g[2] > 31 -> DD-MM-YYYY or MM-DD-YYYY
+                    # User style is DD.MM.YY (27.2.19)
+                    if len(g) == 3:
+                        v1, v2, v3 = int(g[0]), int(g[1]), int(g[2])
+                        if v1 > 31: # YYYY-MM-DD
+                            month, day = v2, v3
+                        elif v1 <= 31 and v2 <= 12: # DD.MM.YYYY or DD.MM.YY
+                            day, month = v1, v2
+                        else: # Fallback
+                            month, day = v1, v2
+                    else:
+                        # 2 groups: assume user style DD.MM
+                        day, month = int(g[0]), int(g[1])
+                    
+                    # Generate for relevant years
+                    for y in range(start_date.year, end_date.year + 1):
+                        try:
+                            # We treat birthdays as "local" dates by not forcing UTC Z if possible,
+                            # but for the API consistency we'll use T00:00:00Z for all-day.
+                            # Frontend should handle showing "All Day".
+                            bday = datetime.datetime(y, month, day)
+                            if start_date <= bday <= end_date:
+                                birthday_events.append({
+                                    "summary": f"🎂 {p.name}'s Birthday",
+                                    "start": bday.isoformat(),
+                                    "end": (bday + datetime.timedelta(days=1)).isoformat(),
+                                    "is_local": True,
+                                    "is_birthday": True,
+                                    "person": p.name
+                                })
+                        except ValueError: continue
+                except: continue
+
+    all_events = google_events + formatted_local + birthday_events
+    
+    # 5. Enrich events with person info (for Google events)
     enriched_events = []
     for event in all_events:
         summary = event.get("summary", "")
-        person_name = None
-        for p in people:
-            if summary.startswith(f"{p.name}:"):
-                person_name = p.name
-                break
+        person_name = event.get("person") # Might be set by birthdays
+        
+        if not person_name:
+            for p in people:
+                if summary.startswith(f"{p.name}:"):
+                    person_name = p.name
+                    break
         
         enriched_events.append({
             **event,
             "person": person_name
         })
     
-    # Sort all events by start time
+    # Sort by start time
     enriched_events.sort(key=lambda x: x["start"])
     
     return enriched_events

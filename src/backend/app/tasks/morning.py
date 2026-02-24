@@ -16,8 +16,8 @@ async def morning_briefing():
     
     # 1. Start with the Daily Mindsetter
     mindset_prompt = (
-        "Z, start the morning briefing. First, lead with a small mindsetter exercise. "
-        "Express 3 things we are thankful for today (generic but inspiring or based on my character). "
+        "Z, start the morning briefing. First, lead with a very short mindsetter (max 2 sentences). "
+        "Base it strictly on my current mission status or a generally stoic observation of my path. "
         "Then proceed with the actual briefing."
     )
     
@@ -92,7 +92,8 @@ async def morning_briefing():
         f"PROJECTS:\n{tree}\n\n"
         f"LATEST EMAILS:\n{email_summary}\n\n"
         "Format the output beautifully for Telegram. In the briefing, proactively suggest actions "
-        "to maintain deep connections with both circles (e.g. asking about homework, hobby progress, or suggesting a quick check-in call with a friend)."
+        "to maintain deep connections with both circles ONLY using information present in the CONTEXT. "
+        "IF CONTEXT IS EMPTY for a section, acknowledge it or skip it. NEVER invent family names, tasks, or projects."
     )
     
     # 3. Generate Briefing

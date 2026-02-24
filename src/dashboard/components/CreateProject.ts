@@ -119,6 +119,7 @@ export class CreateProject extends HTMLElement {
 				margin-top: 0;
 				padding-top: 0;
 				border-top: 1px solid transparent;
+				pointer-events: none;
 				transition: max-height 0.4s ease, opacity 0.3s ease, margin-top 0.3s ease, padding-top 0.3s ease, border-color 0.3s ease;
 			}
 
@@ -128,6 +129,7 @@ export class CreateProject extends HTMLElement {
 				margin-top: 1.5rem;
 				padding-top: 1.5rem;
 				border-top-color: rgba(255, 255, 255, 0.06);
+				pointer-events: auto;
 			}
 
 			

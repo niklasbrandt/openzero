@@ -9,13 +9,13 @@ export class BriefingHistory extends HTMLElement {
     this.fetchBriefings();
   }
 
+  private currentLimit = 5;
+
   async fetchBriefings() {
     try {
-      const response = await fetch('/api/dashboard/briefings');
+      const response = await fetch(`/api/dashboard/briefings?limit=${this.currentLimit}`);
       if (!response.ok) throw new Error('API error');
-      const text = await response.text();
-      if (!text) throw new Error('Empty response');
-      const data = JSON.parse(text);
+      const data = await response.json();
       this.displayBriefings(data);
     } catch (e) {
       const list = this.shadowRoot?.querySelector('#briefing-list');
@@ -23,10 +23,16 @@ export class BriefingHistory extends HTMLElement {
     }
   }
 
+  showMore() {
+    this.currentLimit += 15;
+    this.fetchBriefings();
+  }
+
   displayBriefings(briefings: any[]) {
     const list = this.shadowRoot?.querySelector('#briefing-list');
-    if (list) {
-      list.innerHTML = briefings.map((b) => `
+    if (!list) return;
+
+    const itemsHtml = briefings.map((b) => `
         <div class="briefing-item">
           <div class="meta" onclick="this.parentElement.classList.toggle('active')">
             <div class="meta-left">
@@ -45,8 +51,12 @@ export class BriefingHistory extends HTMLElement {
             </div>
           </div>
         </div>
-      `).join('') || 'No briefings yet.';
-    }
+      `).join('');
+
+    list.innerHTML = `
+      ${itemsHtml || 'No briefings yet.'}
+      ${briefings.length >= 5 ? `<button class="load-more" onclick="this.closest('briefing-history').showMore()">Show More History</button>` : ''}
+    `;
   }
 
   render() {
@@ -119,10 +129,12 @@ export class BriefingHistory extends HTMLElement {
           .content-wrapper {
             display: grid;
             grid-template-rows: 0fr;
+            pointer-events: none;
             transition: grid-template-rows 0.4s cubic-bezier(0.4, 0, 0.2, 1);
           }
           .briefing-item.active .content-wrapper {
             grid-template-rows: 1fr;
+            pointer-events: auto;
           }
           .content-inner {
             overflow: hidden;
@@ -136,6 +148,24 @@ export class BriefingHistory extends HTMLElement {
             color: rgba(255, 255, 255, 0.8); 
             border-top: 1px solid rgba(255, 255, 255, 0.03);
             padding-top: 1rem;
+          }
+          .load-more {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px dashed rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.4);
+            padding: 0.75rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 0.5rem;
+            transition: all 0.2s;
+          }
+          .load-more:hover {
+            background: rgba(20, 184, 166, 0.05);
+            color: #14B8A6;
+            border-color: rgba(20, 184, 166, 0.3);
           }
         </style>
         <div class="card">
