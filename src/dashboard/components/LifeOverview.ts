@@ -47,7 +47,7 @@ export class LifeOverview extends HTMLElement {
       ? data.timeline.map((e: any) => `
           <div class="timeline-item">
             <span class="time">${e.time}</span>
-            <span class="summary">${e.summary} ${e.is_local ? '<small>(local)</small>' : ''}</span>
+            <span class="summary">${e.summary} ${!e.is_local ? '<small style="color: #14B8A6;">(Google)</small>' : ''}</span>
           </div>
         `).join('')
       : '<div class="empty">No upcoming events for the next 3 days.</div>';
@@ -56,8 +56,8 @@ export class LifeOverview extends HTMLElement {
       <div class="overview-grid">
         <section class="mission-control">
           <div class="section-header">
-            <h3>Mission Control</h3>
-            <button class="action-btn" onclick="this.closest('life-overview').parentElement.querySelector('create-project').toggle()">+ New Mission</button>
+            <h3>Boards</h3>
+            <button class="action-btn" onclick="this.closest('life-overview').parentElement.querySelector('create-project').toggle()">+ New Board</button>
           </div>
           <div class="tree-content">${data.projects_tree || 'Initializing projects...'}</div>
         </section>

@@ -1,5 +1,6 @@
 export class CircleManager extends HTMLElement {
   private circleType: string = 'inner';
+  private editingId: number | null = null;
 
   constructor() {
     super();
@@ -57,6 +58,7 @@ export class CircleManager extends HTMLElement {
   }
 
   async deletePerson(id: number) {
+    if (!confirm('Are you sure you want to remove this person from your circle?')) return;
     try {
       await fetch(`/api/dashboard/people/${id}`, { method: 'DELETE' });
       this.fetchPeople();
@@ -65,7 +67,26 @@ export class CircleManager extends HTMLElement {
     }
   }
 
+  async updatePerson(id: number, name: string, relationship: string, context: string, birthday: string) {
+    try {
+      await fetch(`/api/dashboard/people/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, relationship, context, circle_type: this.circleType, birthday })
+      });
+      this.editingId = null;
+      this.render();
+      this.fetchPeople();
+    } catch (e) {
+      console.error('Failed to update person', e);
+      alert('Update failed');
+    }
+  }
+
+  private currentPeople: any[] = [];
+
   displayPeople(people: any[]) {
+    this.currentPeople = people;
     const list = this.shadowRoot?.querySelector('#people-list');
     if (list) {
       list.innerHTML = people.map(p => `
@@ -76,14 +97,34 @@ export class CircleManager extends HTMLElement {
             ${p.birthday ? `<span class="cal-badge">🎂 ${p.birthday}</span>` : ''}
             <p class="ctx">${p.context || 'No specific focus set.'}</p>
           </div>
-          <button class="delete-btn" data-id="${p.id}">Remove</button>
+          <div class="item-actions">
+            <button class="edit-btn" data-id="${p.id}">Edit</button>
+            <button class="delete-btn" data-id="${p.id}">Remove</button>
+          </div>
         </div>
       `).join('') || `No people added to this circle.`;
 
       list.querySelectorAll('.delete-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
-          const id = (e.target as HTMLElement).getAttribute('data-id');
+          const id = (e.currentTarget as HTMLElement).getAttribute('data-id');
           if (id) this.deletePerson(parseInt(id));
+        });
+      });
+
+      list.querySelectorAll('.edit-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const id = (e.currentTarget as HTMLElement).getAttribute('data-id');
+          const person = people.find(p => p.id === parseInt(id!));
+          if (person) {
+            this.editingId = person.id;
+            this.render();
+            this.displayPeople(this.currentPeople); // Re-render list immediately
+            // Populate fields
+            (this.shadowRoot?.querySelector('#nameInput') as HTMLInputElement).value = person.name;
+            (this.shadowRoot?.querySelector('#relInput') as HTMLInputElement).value = person.relationship;
+            (this.shadowRoot?.querySelector('#bdayInput') as HTMLInputElement).value = person.birthday || '';
+            (this.shadowRoot?.querySelector('#ctxInput') as HTMLTextAreaElement).value = person.context || '';
+          }
         });
       });
     }
@@ -143,6 +184,18 @@ export class CircleManager extends HTMLElement {
             background: rgba(239, 68, 68, 0.22);
             border-color: rgba(239, 68, 68, 0.4);
           }
+          .edit-btn {
+            background: rgba(255, 255, 255, 0.05);
+            color: rgba(255, 255, 255, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 0.4rem 0.8rem;
+            border-radius: 0.6rem;
+            cursor: pointer;
+            font-size: 0.8rem;
+            margin-right: 0.5rem;
+          }
+          .edit-btn:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
+          .item-actions { display: flex; align-items: center; }
           .cal-badge {
             display: inline-block;
             font-size: 0.7rem;
@@ -196,7 +249,10 @@ export class CircleManager extends HTMLElement {
             <input type="text" id="relInput" placeholder="Relationship (e.g. Son, Friend)">
             <input type="text" id="bdayInput" placeholder="Birthday (e.g. 27.02.19)">
             <textarea id="ctxInput" placeholder="Focus..."></textarea>
-            <button id="addBtn">Add to Circle</button>
+            <div style="display: flex; gap: 0.5rem;">
+              <button id="addBtn">${this.editingId ? 'Update Person' : 'Add to Circle'}</button>
+              ${this.editingId ? '<button id="cancelEditBtn" style="background:transparent; border:1px solid rgba(255,255,255,0.2); color:#fff; border-radius:0.6rem; padding:0.4rem 1rem; cursor:pointer; font-size:0.8rem;">Cancel</button>' : ''}
+            </div>
           </div>
           <div id="people-list">Loading...</div>
         </div>
@@ -207,13 +263,35 @@ export class CircleManager extends HTMLElement {
         const rel = (this.shadowRoot?.querySelector('#relInput') as HTMLInputElement).value;
         const ctx = (this.shadowRoot?.querySelector('#ctxInput') as HTMLTextAreaElement).value;
         const bday = (this.shadowRoot?.querySelector('#bdayInput') as HTMLInputElement).value;
+
         if (name && rel) {
-          this.addPerson(name, rel, ctx, bday);
+          if (this.editingId) {
+            this.updatePerson(this.editingId, name, rel, ctx, bday);
+          } else {
+            this.addPerson(name, rel, ctx, bday);
+          }
+
           (this.shadowRoot?.querySelector('#nameInput') as HTMLInputElement).value = '';
           (this.shadowRoot?.querySelector('#relInput') as HTMLInputElement).value = '';
           (this.shadowRoot?.querySelector('#ctxInput') as HTMLTextAreaElement).value = '';
           (this.shadowRoot?.querySelector('#bdayInput') as HTMLInputElement).value = '';
         }
+      });
+
+      this.shadowRoot.querySelector('#cancelEditBtn')?.addEventListener('click', () => {
+        this.editingId = null;
+        this.render();
+        this.fetchPeople();
+      });
+
+      // Accessibility: Submit on Enter
+      this.shadowRoot.querySelectorAll('input, textarea').forEach(el => {
+        el.addEventListener('keydown', (e: any) => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            this.shadowRoot?.querySelector<HTMLButtonElement>('#addBtn')?.click();
+          }
+        });
       });
     }
   }
