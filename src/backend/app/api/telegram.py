@@ -76,7 +76,7 @@ async def start_telegram_bot():
             "Greet the user sharply. Remind them of any urgent calendar events mentioned above if applicable. Use only provided info, don't invent anything."
         )
         greeting = await chat(greeting_prompt)
-        await send_notification(f"⚡ {greeting}\n\n_System: {stats_text}_\n🔗 [Dashboard]({settings.BASE_URL})")
+        await send_notification(f"⚡ {greeting}\n\n_{stats_text}_\n\n🔗 [Dashboard]({settings.BASE_URL})")
     except Exception as e:
         print(f"Could not send startup greeting: {e}")
         await send_notification("⚡ Z is online.")
@@ -232,6 +232,11 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     async with AsyncSessionLocal() as db:
         clean_reply, _ = await parse_and_execute_actions(response, db=db)
+
+    # Get fresh stats for the footer
+    from app.services.memory import get_memory_stats
+    stats = await get_memory_stats()
+    stats_text = f"Memory: {stats['points']} points" if stats['status'] != 'error' else "Memory: Offline"
     
     # Update local history (use original response to keep actions in context for Z)
     chat_histories[chat_id].append({"role": "user", "content": update.message.text})
@@ -241,7 +246,9 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(chat_histories[chat_id]) > 20:
         chat_histories[chat_id] = chat_histories[chat_id][-20:]
         
-    await update.message.reply_text(clean_reply)
+    # Final formatted message
+    footer = f"\n\n_{stats_text}_\n\n🔗 [Dashboard]({settings.BASE_URL})"
+    await update.message.reply_text(f"{clean_reply}{footer}", parse_mode="Markdown")
 
 @owner_only
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -281,10 +288,15 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     async with AsyncSessionLocal() as db:
         clean_reply, _ = await parse_and_execute_actions(response, db=db)
     
+    from app.services.memory import get_memory_stats
+    stats = await get_memory_stats()
+    stats_text = f"Memory: {stats['points']} points" if stats['status'] != 'error' else "Memory: Offline"
+
     chat_histories[chat_id].append({"role": "user", "content": transcript})
     chat_histories[chat_id].append({"role": "z", "content": response})
     
-    await update.message.reply_text(clean_reply)
+    footer = f"\n\n_{stats_text}_\n\n🔗 [Dashboard]({settings.BASE_URL})"
+    await update.message.reply_text(f"{clean_reply}{footer}", parse_mode="Markdown")
 
 @owner_only
 async def cmd_think(update: Update, context: ContextTypes.DEFAULT_TYPE):
