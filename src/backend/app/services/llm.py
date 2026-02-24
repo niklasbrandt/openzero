@@ -16,7 +16,7 @@ from datetime import datetime
 import pytz
 from app.config import settings
 
-SYSTEM_PROMPT = """You are Z — the AI agent inside openZero, a private operating system.
+SYSTEM_PROMPT = """You are Z — the privacy first personal AI agent.
 You are not a generic assistant. You are an agent operator — sharp, warm, and direct.
 
 CORE RESPONSE RULE:
@@ -44,8 +44,8 @@ Your Persona & Behavior:
 - Reference the user's goals. Connect today's actions to what they're building.
 - Celebrate progress. Most people never build what this user is building.
 - Be honest. If a plan has a gap, say so — then offer the path forward.
-- **Never invent or assume the existence of people.** Only refer to individuals explicitly mentioned in provided context.
-- Treat projects like missions, goals like campaigns, weekly reviews like board meetings.
+- **Never invent or assume the existence of projects or people.** Only refer to individuals and missions explicitly mentioned in provided context.
+- Treat projects as established missions and goals as prioritized campaigns.
 
 Time Awareness:
 - **ALWAYS check the 'Current Local Time' provided in context before proposing ANY schedule.** 
@@ -60,7 +60,9 @@ Rules:
 - **Knowledge Rule**: You have access to the user's "Circle of Trust" (inner and close circles), "Deep Recall" (semantic memory), and the **Conversation History**. If a fact, birthday, or detail was mentioned earlier or is in your database, DO NOT ask for confirmation. Treat it as absolute truth.
 - **Proactive Execution**: If you have enough information to fulfill a request (e.g., adding a person, creating a task, or storing a fact), DO IT immediately using an ACTION tag. Do not ask "Would you like me to...?" first.
 - **Memory Rule**: Use `[ACTION: LEARN | TEXT: factual statement]` proactively when the user shares new personal details, preferences, or project updates.
-- **Calendar Rule**: Prefix Inner Circle events with their name (e.g., "Max: Basketball").
+- **Calendar Rule**: Prefix Inner Circle events with their name.
+- **Identity Rule**: You are talking to {user_name}. Always address them by this name or a nickname they've provided. If the name is generic (e.g., "User") or unknown, proactively ask for their preferred name or nickname during the conversation.
+- **STRICT GROUNDING**: NEVER invent or assume the existence of projects, people, events, or statistics. Only reference information explicitly provided in the current context (Memory, Calendar, Projects). If the context is empty, state that no information is currently available.
 - If external calendar is offline, use the **Local Zero Calendar**.
 
 You remember what matters to them. Act like it.
@@ -76,7 +78,8 @@ async def chat(
     user_message: str, 
     system_override: str = None, 
     provider: str = None, 
-    model: str = None
+    model: str = None,
+    **kwargs
 ) -> str:
     user_tz = pytz.timezone(settings.USER_TIMEZONE)
     def get_day_suffix(day):
@@ -94,7 +97,8 @@ async def chat(
     base_url = settings.BASE_URL.rstrip('/')
     formatted_system_prompt = SYSTEM_PROMPT.format(
         current_time=current_time,
-        base_url=base_url
+        base_url=base_url,
+        user_name=kwargs.get("user_name", "User")
     )
     
     context_header = f"Current Local Time: {now.strftime('%A, %Y-%m-%d %H:%M:%S %Z')}\n\n"
@@ -105,11 +109,14 @@ async def chat(
 
     # --- Option A: Local Ollama ---
     if provider == "ollama":
+        target_model = model or settings.OLLAMA_MODEL
+        print(f"DEBUG: Calling Ollama with model: {target_model}")
+        
         try:
             response = await client.post(
                 f"{settings.OLLAMA_BASE_URL}/api/chat",
                 json={
-                    "model": model or settings.OLLAMA_MODEL,
+                    "model": target_model,
                     "messages": [
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_message},
@@ -191,17 +198,21 @@ async def chat_with_context(
             async with AsyncSessionLocal() as session:
                 result = await session.execute(select(Person))
                 people = result.scalars().all()
+                identity_name = "User"
                 if people:
+                    ident = next((p for p in people if p.circle_type == "identity"), None)
+                    if ident: identity_name = ident.name
+                    
                     inner = [f"- {p.name} ({p.relationship}): Birthday: {p.birthday or 'Unknown'}" for p in people if p.circle_type == "inner"]
                     close = [f"- {p.name} ({p.relationship}): Birthday: {p.birthday or 'Unknown'}" for p in people if p.circle_type == "close"]
                     
                     context = ""
                     if inner: context += "INNER CIRCLE:\n" + "\n".join(inner) + "\n"
                     if close: context += "CLOSE CIRCLE:\n" + "\n".join(close)
-                    return context
-                return "CIRCLE OF TRUST: No family/contacts configured yet."
+                    return context, identity_name
+                return "CIRCLE OF TRUST: No family/contacts configured yet.", identity_name
         except Exception:
-            return "CIRCLE OF TRUST: (Database connection unavailable)"
+            return "CIRCLE OF TRUST: (Database connection unavailable)", "User"
 
     async def fetch_projects():
         if not include_projects: return ""
@@ -249,7 +260,7 @@ async def chat_with_context(
             return ""
 
     # Execute all context gatherers in parallel
-    people_p, project_p, memory_p = await asyncio.gather(
+    (people_p, user_name), project_p, memory_p = await asyncio.gather(
         fetch_people(),
         fetch_projects(),
         fetch_memories()
@@ -275,7 +286,7 @@ async def chat_with_context(
     ]))
     
     print(f"DEBUG: Context gathered in {time.time() - start_time:.2f}s")
-    return await chat(full_prompt)
+    return await chat(full_prompt, user_name=user_name)
 
 async def generate_context_proposal(query: str) -> dict:
     """Use Local LLM to identify relevant information for the user to approve."""
@@ -291,3 +302,40 @@ async def summarize_email(snippet: str) -> str:
     """Generate a one-line summary of an email snippet."""
     prompt = f"Summarize this email in one sentence:\n\n{snippet}"
     return await chat(prompt, system_override="You are a concise email summarizer.")
+async def detect_calendar_events(text: str) -> list[dict]:
+    """Analyze text for potential calendar events. Returns a list of structured events."""
+    import json
+    import re
+    
+    prompt = f"""Analyze the following text and extract any potential calendar events (appointments, meetings, deadlines, celebrations).
+If events are found, provide them in the following JSON format:
+{{
+  "events": [
+    {{
+      "summary": "Event Title",
+      "start": "YYYY-MM-DD HH:MM",
+      "end": "YYYY-MM-DD HH:MM (estimate 1 hour if not specified)",
+      "description": "Brief context"
+    }}
+  ]
+}}
+If no event is found, return {{"events": []}}.
+
+TEXT:
+{text}
+
+RULES:
+- Today's date is: {datetime.now().strftime('%Y-%m-%d')} ({datetime.now().strftime('%A')})
+- Use YYYY-MM-DD HH:MM format.
+- If no year/time is specified, use common sense based on today's date.
+- Output MUST be valid JSON and nothing else.
+"""
+    try:
+        response = await chat(prompt, system_override="You are a data extraction agent. Return ONLY JSON.")
+        # Sometimes LLMs wrap JSON in backticks
+        clean_json = re.sub(r'```json\n?|\n?```', '', response).strip()
+        data = json.loads(clean_json)
+        return data.get("events", [])
+    except Exception as e:
+        print(f"DEBUG: Calendar detection failed: {e}")
+        return []

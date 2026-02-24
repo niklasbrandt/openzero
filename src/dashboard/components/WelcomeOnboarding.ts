@@ -114,7 +114,7 @@ export class WelcomeOnboarding extends HTMLElement {
           </div>
 
           <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 1rem;">
-            <button class="cta" onclick="this.parentElement.parentElement.style.opacity='0.5'; setTimeout(()=>this.parentElement.parentElement.parentElement.style.display='none', 300)">Dismiss Onboarding</button>
+            <button class="cta" onclick="const p = this.closest('welcome-onboarding'); p.style.opacity='0'; p.style.pointerEvents='none'; fetch('/api/dashboard/onboarding-dismiss', {method: 'POST'}); setTimeout(() => p.style.display='none', 500)">Dismiss Onboarding</button>
           </div>
         </div>
       `;

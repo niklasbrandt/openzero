@@ -1,6 +1,9 @@
 from qdrant_client import QdrantClient, models
 from app.config import settings
 import uuid
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Embedder will be loaded lazily to prevent startup crashes if libraries are broken
 embedder = None
@@ -58,19 +61,23 @@ async def semantic_search(query: str, top_k: int = 5) -> str:
     client = get_qdrant()
     query_vector = get_embedder().encode(query).tolist()
     try:
-        results = client.search(
+        # Use modern query_points API which is more robust
+        response = client.query_points(
             collection_name=COLLECTION_NAME,
-            query_vector=query_vector,
+            query=query_vector,
             limit=top_k,
         )
-    except Exception:
-        return "Memory system not initialized or unreachable."
+        points = response.points
+    except Exception as e:
+        logger.error(f"Memory semantic search failed: {e}")
+        return f"Memory system not initialized or unreachable."
 
-    if not results:
+    if not points:
         return "No memories found."
     lines = []
-    for i, hit in enumerate(results, 1):
-        lines.append(f"{i}. (score: {hit.score:.2f}) {hit.payload['text']}")
+    for i, hit in enumerate(points, 1):
+        text = hit.payload.get('text', '[No Text]')
+        lines.append(f"{i}. (score: {hit.score:.2f}) {text}")
     return "\n".join(lines)
 
 async def get_memory_stats() -> dict:

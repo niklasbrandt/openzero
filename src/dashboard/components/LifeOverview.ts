@@ -35,9 +35,13 @@ export class LifeOverview extends HTMLElement {
     const container = this.shadowRoot?.querySelector('#overview-container');
     if (!container) return;
 
-    const peopleHtml = data.inner_circle.length > 0
-      ? data.inner_circle.map((p: any) => `<li>${p.name} <span class="rel">(${p.relationship})</span></li>`).join('')
-      : '<li>No direct connections added yet.</li>';
+    const innerHtml = data.social_circles.inner.length > 0
+      ? data.social_circles.inner.map((p: any) => `<li>${p.name} <span class="rel">(${p.relationship})</span></li>`).join('')
+      : '<li class="empty-li">No family connections.</li>';
+
+    const closeHtml = data.social_circles.close.length > 0
+      ? data.social_circles.close.map((p: any) => `<li>${p.name} <span class="rel">(${p.relationship})</span></li>`).join('')
+      : '<li class="empty-li">No social circle added.</li>';
 
     const timelineHtml = data.timeline.length > 0
       ? data.timeline.map((e: any) => `
@@ -53,15 +57,21 @@ export class LifeOverview extends HTMLElement {
         <section class="mission-control">
           <div class="section-header">
             <h3>Mission Control</h3>
-            <button class="action-btn" onclick="document.querySelector('create-project').toggle()">+ New Mission</button>
+            <button class="action-btn" onclick="this.closest('life-overview').parentElement.querySelector('create-project').toggle()">+ New Mission</button>
           </div>
           <div class="tree-content">${data.projects_tree || 'Initializing projects...'}</div>
         </section>
         
         <div class="side-panel">
-          <section class="inner-circle">
-            <h3>Inner Circle</h3>
-            <ul>${peopleHtml}</ul>
+          <section class="social-section">
+            <div class="circle-group">
+                <h3>Inner Circle <small>(Family & Care)</small></h3>
+                <ul>${innerHtml}</ul>
+            </div>
+            <div class="circle-group" style="margin-top: 1.5rem;">
+                <h3>Close Circle <small>(Friends & Social)</small></h3>
+                <ul>${closeHtml}</ul>
+            </div>
           </section>
 
           <section class="timeline">
@@ -80,6 +90,7 @@ export class LifeOverview extends HTMLElement {
           :host { display: block; }
           h2 { font-size: 1.5rem; font-weight: bold; margin: 0 0 1.5rem 0; color: #fff; letter-spacing: 0.02em; }
           h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255, 255, 255, 0.4); margin-bottom: 1rem; }
+          h3 small { font-size: 0.65rem; text-transform: none; letter-spacing: 0.02em; opacity: 0.8; margin-left: 0.4rem; font-weight: 400; }
           
           .overview-grid {
             display: grid;
@@ -134,6 +145,7 @@ export class LifeOverview extends HTMLElement {
           ul { list-style: none; padding: 0; margin: 0; }
           li { 
             font-size: 0.95rem; 
+            line-height: 1.4;
             color: #fff; 
             margin-bottom: 0.5rem; 
             display: flex;
@@ -141,6 +153,7 @@ export class LifeOverview extends HTMLElement {
             gap: 0.5rem;
           }
           .rel { color: rgba(255, 255, 255, 0.4); font-size: 0.8rem; }
+          .empty-li { font-size: 0.85rem; color: rgba(255, 255, 255, 0.25); font-style: italic; }
 
           .timeline-list { display: flex; flex-direction: column; gap: 0.75rem; }
           .timeline-item {

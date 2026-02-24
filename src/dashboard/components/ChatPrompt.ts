@@ -196,19 +196,30 @@ export class ChatPrompt extends HTMLElement {
 		container.innerHTML = this.messages.map(msg => `
 			<div class="message ${msg.role}">
 				<div class="bubble">
-					<div class="bubble-content">${this.escapeHTML(msg.content)}</div>
+					<div class="bubble-content">${this.renderContent(msg.content)}</div>
 					<span class="time">${this.formatTime(msg.timestamp)}</span>
 				</div>
 			</div>
 		`).join('');
 	}
 
-	private escapeHTML(str: string): string {
-		return str
+	private renderContent(str: string): string {
+		// 1. Basic HTML escaping
+		let html = str
 			.replace(/&/g, '&amp;')
 			.replace(/</g, '&lt;')
-			.replace(/>/g, '&gt;')
-			.replace(/\n/g, '<br>');
+			.replace(/>/g, '&gt;');
+
+		// 2. Bold: **text**
+		html = html.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+
+		// 3. Links: [text](url)
+		html = html.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" class="chat-link">$1</a>');
+
+		// 4. Newlines to <br>
+		html = html.replace(/\n/g, '<br>');
+
+		return html;
 	}
 
 	private sendSVG(): string {
@@ -360,6 +371,20 @@ export class ChatPrompt extends HTMLElement {
 
 			.message.assistant .bubble .time {
 				text-align: left;
+			}
+
+			.bubble-content a {
+				color: #14B8A6;
+				text-decoration: underline;
+				text-underline-offset: 4px;
+				transition: color 0.2s;
+			}
+			.message.user .bubble-content a {
+				color: #fff;
+				text-decoration-color: rgba(255, 255, 255, 0.4);
+			}
+			.bubble-content a:hover {
+				color: #0066FF;
 			}
 
 			/* ── Typing indicator ── */

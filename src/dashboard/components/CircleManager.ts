@@ -194,7 +194,7 @@ export class CircleManager extends HTMLElement {
           <div class="add-form">
             <input type="text" id="nameInput" placeholder="Name">
             <input type="text" id="relInput" placeholder="Relationship (e.g. Son, Friend)">
-            <input type="text" id="bdayInput" placeholder="Birthday (e.g. MM-DD or YYYY-MM-DD)">
+            <input type="text" id="bdayInput" placeholder="Birthday (e.g. 27.02.19)">
             <textarea id="ctxInput" placeholder="Focus..."></textarea>
             <button id="addBtn">Add to Circle</button>
           </div>

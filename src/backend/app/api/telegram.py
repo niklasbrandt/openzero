@@ -9,8 +9,20 @@ from telegram.ext import (
 )
 from app.config import settings
 import asyncio
+from datetime import datetime, timedelta
 
 bot_app: Application | None = None
+
+async def _get_stats_footer() -> str:
+    """Consolidated footer for Z's messages."""
+    from app.services.memory import get_memory_stats
+    stats = await get_memory_stats()
+    stats_text = f"🧠 Memories: {stats['points']}" if stats['status'] != 'error' else "🧠 Memory: Offline"
+    
+    base_url = settings.BASE_URL
+    links = f"🔗 [Dashboard]({base_url}) 🔗 [Boards]({base_url}/boards) 🔗 [Calendar]({base_url}/calendar)"
+    
+    return f"\n\n{links}\n\n{stats_text}"
 
 # --- Context Persistence ---
 chat_histories = {} # chat_id -> list of dicts {'role': 'user/z', 'content': str}
@@ -22,6 +34,7 @@ async def start_telegram_bot():
         print("TELEGRAM_BOT_TOKEN not set. Bot will not start.")
         return
 
+    print("DEBUG: start_telegram_bot - step 1: Building app")
     bot_app = (
         Application.builder()
         .token(settings.TELEGRAM_BOT_TOKEN)
@@ -29,6 +42,7 @@ async def start_telegram_bot():
     )
 
     # Register handlers
+    print("DEBUG: start_telegram_bot - step 2: Registering handlers")
     bot_app.add_handler(CommandHandler("start", cmd_start))
     bot_app.add_handler(CommandHandler("tree", cmd_tree))
     bot_app.add_handler(CommandHandler("review", cmd_review))
@@ -42,44 +56,96 @@ async def start_telegram_bot():
     bot_app.add_handler(CommandHandler("think", cmd_think))
     bot_app.add_handler(CallbackQueryHandler(handle_approval, pattern="^think_"))
     bot_app.add_handler(CallbackQueryHandler(handle_wipe_confirm, pattern="^wipe_"))
+    bot_app.add_handler(CallbackQueryHandler(handle_calendar_approval, pattern="^cal_"))
+    bot_app.add_handler(CommandHandler("help", cmd_help))
+    bot_app.add_handler(CommandHandler("commands", cmd_help))
+    bot_app.add_handler(CommandHandler("status", cmd_status))
     bot_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_freetext))
     bot_app.add_handler(MessageHandler(filters.VOICE, handle_voice))
 
     # Initialize and start polling (non-blocking)
+    print("DEBUG: start_telegram_bot - step 3: Initializing")
     await bot_app.initialize()
+    print("DEBUG: start_telegram_bot - step 4: Starting")
     await bot_app.start()
+    print("DEBUG: start_telegram_bot - step 5: Start Polling")
     await bot_app.updater.start_polling(drop_pending_updates=True)
+    print("DEBUG: start_telegram_bot - step 6: Polling started")
 
-    # Proactive greeting with Context & Stats
-    try:
-        from app.services.llm import chat
-        from app.services.memory import get_memory_stats
-        
-        stats = await get_memory_stats()
-        stats_text = f"Memory: {stats['points']} points" if stats['status'] != 'error' else "Memory: Offline"
-        
-        # Recall important stuff for today
+    # Proactive greeting with Context & Stats (Run in background to avoid blocking startup)
+    async def send_startup_greeting():
         try:
-            from app.services.calendar import fetch_calendar_events
-            import asyncio
-            events = await asyncio.wait_for(fetch_calendar_events(max_results=3, days_ahead=1), timeout=5.0)
-            event_summary = ""
-            if events:
-                ev_list = [f"• {e['summary']} ({e['start'].split('T')[1][:5] if 'T' in e['start'] else 'All Day'})" for e in events]
-                event_summary = "\nUpcoming today:\n" + "\n".join(ev_list)
-        except Exception as ce:
-            print(f"Calendar fetch failed during greeting: {ce}")
-            event_summary = ""
+            from app.services.llm import chat
+            from app.services.memory import get_memory_stats
+            from app.models.db import AsyncSessionLocal, Person, LocalEvent
+            from sqlalchemy import select
+            
+            print("DEBUG: start_telegram_bot - step 7: Fetching stats for greeting")
+            stats = await get_memory_stats()
+            stats_text = f"Memories: {stats['points']}" if stats['status'] != 'error' else "Memory: Offline"
+            
+            # Context gathering
+            event_summary_parts = []
+            now = datetime.now()
 
-        greeting_prompt = (
-            f"Z is coming online. System status: Ready. {stats_text}. {event_summary}\n\n"
-            "Greet the user sharply. Remind them of any urgent calendar events mentioned above if applicable. Use only provided info, don't invent anything."
-        )
-        greeting = await chat(greeting_prompt)
-        await send_notification(f"⚡ {greeting}\n\n_{stats_text}_\n\n🔗 [Dashboard]({settings.BASE_URL})")
-    except Exception as e:
-        print(f"Could not send startup greeting: {e}")
-        await send_notification("⚡ Z is online.")
+            calendar_offline = False
+            # 1. Google Calendar
+            try:
+                from app.services.calendar import fetch_calendar_events
+                import asyncio
+                g_events = await asyncio.wait_for(fetch_calendar_events(max_results=3, days_ahead=1), timeout=5.0)
+                if g_events:
+                    for e in g_events:
+                        time_str = e['start'].split('T')[1][:5] if 'T' in e['start'] else 'All Day'
+                        event_summary_parts.append(f"• {e['summary']} ({time_str})")
+            except Exception as ce:
+                print(f"Google Calendar fetch failed: {ce}")
+                calendar_offline = True
+
+            # 2. Local & Birthdays
+            async with AsyncSessionLocal() as session:
+                # Birthdays
+                res_people = await session.execute(select(Person).where(Person.birthday.isnot(None)))
+                for p in res_people.scalars().all():
+                    try:
+                        pts = p.birthday.split('.')
+                        if len(pts) >= 2:
+                            bday = datetime(now.year, int(pts[1]), int(pts[0]))
+                            if bday.date() == now.date():
+                                event_summary_parts.append(f"🎂 Today is {p.name}'s Birthday!")
+                            elif (bday.date() - now.date()).days == 1:
+                                event_summary_parts.append(f"🎂 Tomorrow: {p.name}'s Birthday")
+                    except: pass
+                
+                # Local Events
+                today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+                tomorrow_end = today_start + timedelta(days=2)
+                res_local = await session.execute(select(LocalEvent).where(LocalEvent.start_time >= today_start, LocalEvent.start_time < tomorrow_end))
+                for le in res_local.scalars().all():
+                    event_summary_parts.append(f"• {le.summary} ({le.start_time.strftime('%H:%M')})")
+
+            event_summary = "\n".join(event_summary_parts) if event_summary_parts else "No upcoming events scheduled."
+            if calendar_offline and not event_summary_parts:
+                event_summary = "Calendar Integration: OFFLINE (Check credentials/service)."
+
+            greeting_prompt = (
+                f"Z is coming online. System status: Ready. {stats_text}. CONTEXT: {event_summary}\n\n"
+                "Greet the user with 'Welcome back.' then a very short status update strictly based on the provided CONTEXT. "
+                "CRITICAL: If CONTEXT says 'OFFLINE', inform the user that you couldn't check the schedule. "
+                "Mention birthdays prominently if found. NEVER invent or hallucinate. Be extremely concise. One short sentence."
+            )
+            print("Generating greeting...")
+            greeting = await chat(greeting_prompt)
+            print("Greeting generated.")
+            
+            footer = await _get_stats_footer()
+            await send_notification(f"⚡ {greeting}{footer}")
+            print("Startup notification sent.")
+        except Exception as e:
+            print(f"FAILED to send Telegram startup greeting: {e}")
+
+    # Launch greeting in background
+    asyncio.create_task(send_startup_greeting())
 
 async def stop_telegram_bot():
     """Gracefully stop the bot."""
@@ -124,6 +190,39 @@ def owner_only(func):
         return await func(update, context)
     return wrapper
 
+@owner_only
+async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Deep status check of all integrations."""
+    from app.services.memory import get_memory_stats
+    from app.services.planka import get_planka_auth_token
+    
+    # 1. Memory
+    m_stats = await get_memory_stats()
+    m_text = "🟢 Active" if m_stats['status'] == 'ok' else "🔴 Offline"
+    
+    # 2. Planka
+    p_text = "🔴 Offline"
+    try:
+        token = await get_planka_auth_token()
+        if token: p_text = "🟢 Connected"
+    except: pass
+    
+    # 3. LLM
+    try:
+        from app.services.llm import chat
+        await chat("hi", model="llama3.2:3b")
+        l_text = "🟢 Ready"
+    except: l_text = "🔴 Error"
+
+    status_report = (
+        "🛰️ *System Status Report*\n\n"
+        f"🧠 *Memory (Qdrant):* {m_text} ({m_stats.get('points', 0)} pts)\n"
+        f"📋 *Task Board (Planka):* {p_text}\n"
+        f"🤖 *Intelligence (Ollama):* {l_text}\n"
+        f"📍 *Time:* {datetime.now().strftime('%H:%M:%S')}"
+    )
+    await update.message.reply_text(status_report, parse_mode="Markdown")
+
 # --- Command Handlers ---
 @owner_only
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -133,7 +232,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cmd_tree(update: Update, context: ContextTypes.DEFAULT_TYPE):
     from app.services.planka import get_project_tree
     tree = await get_project_tree(as_html=False)
-    await update.message.reply_text(f"```\n{tree}\n```", parse_mode="Markdown")
+    await update.message.reply_text(tree, parse_mode="Markdown")
 
 @owner_only
 async def cmd_review(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -170,6 +269,24 @@ async def cmd_memory(update: Update, context: ContextTypes.DEFAULT_TYPE):
     from app.services.memory import semantic_search
     results = await semantic_search(query)
     await update.message.reply_text(results)
+
+@owner_only
+async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    help_text = (
+        "🤖 *Z Operator Controls*\n\n"
+        "*Missions:*\n"
+        "• `/tree` \\- OS Mission Overview\n"
+        "• `/add <topic>` \\- Store something in memory\n\n"
+        "*Intelligence:*\n"
+        "• `/think <query>` \\- Multi-step reasoning\n"
+        "• `/memory <query>` \\- Semantic search\n"
+        "• `/day`, `/week`, `/month`, `/year` \\- Strategic briefings\n\n"
+        "*System:*\n"
+        "• `/wipe_memory` \\- Clear LLM recall\n"
+        "• `/start` \\- Check status\n\n"
+        "Type any message to chat with Z directly."
+    )
+    await update.message.reply_text(help_text, parse_mode="Markdown")
 
 @owner_only
 async def cmd_add_topic(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -233,11 +350,6 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
     async with AsyncSessionLocal() as db:
         clean_reply, _ = await parse_and_execute_actions(response, db=db)
 
-    # Get fresh stats for the footer
-    from app.services.memory import get_memory_stats
-    stats = await get_memory_stats()
-    stats_text = f"Memory: {stats['points']} points" if stats['status'] != 'error' else "Memory: Offline"
-    
     # Update local history (use original response to keep actions in context for Z)
     chat_histories[chat_id].append({"role": "user", "content": update.message.text})
     chat_histories[chat_id].append({"role": "z", "content": response})
@@ -245,9 +357,9 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Keep history manageable
     if len(chat_histories[chat_id]) > 20:
         chat_histories[chat_id] = chat_histories[chat_id][-20:]
-        
+
     # Final formatted message
-    footer = f"\n\n_{stats_text}_\n\n🔗 [Dashboard]({settings.BASE_URL})"
+    footer = await _get_stats_footer()
     await update.message.reply_text(f"{clean_reply}{footer}", parse_mode="Markdown")
 
 @owner_only
@@ -288,14 +400,10 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     async with AsyncSessionLocal() as db:
         clean_reply, _ = await parse_and_execute_actions(response, db=db)
     
-    from app.services.memory import get_memory_stats
-    stats = await get_memory_stats()
-    stats_text = f"Memory: {stats['points']} points" if stats['status'] != 'error' else "Memory: Offline"
-
     chat_histories[chat_id].append({"role": "user", "content": transcript})
     chat_histories[chat_id].append({"role": "z", "content": response})
     
-    footer = f"\n\n_{stats_text}_\n\n🔗 [Dashboard]({settings.BASE_URL})"
+    footer = await _get_stats_footer()
     await update.message.reply_text(f"{clean_reply}{footer}", parse_mode="Markdown")
 
 @owner_only
@@ -372,3 +480,43 @@ async def handle_approval(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text=response,
         parse_mode="Markdown"
     )
+
+async def handle_calendar_approval(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle User approving a detected calendar event from email."""
+    query = update.callback_query
+    await query.answer()
+    
+    data = query.data
+    event_id = data.split("_")[-1]
+    
+    if "ignore" in data:
+        await query.edit_message_text("✅ Event ignored.")
+        return
+
+    from app.models.db import get_pending_thought, AsyncSessionLocal, LocalEvent
+    import json
+    from datetime import datetime
+    
+    thought = await get_pending_thought(event_id)
+    if not thought:
+        await query.edit_message_text("❌ Error: Request expired or not found.")
+        return
+    
+    try:
+        event_data = json.loads(thought["context_data"])
+        
+        async with AsyncSessionLocal() as db:
+            # Simple ISO parsing: YYYY-MM-DD HH:MM
+            new_event = LocalEvent(
+                summary=event_data["summary"],
+                description=event_data.get("description", ""),
+                start_time=datetime.fromisoformat(event_data["start"].replace(" ", "T")),
+                end_time=datetime.fromisoformat(event_data["end"].replace(" ", "T"))
+            )
+            db.add(new_event)
+            await db.commit()
+        
+        await query.edit_message_text(f"🚀 *Added to Calendar:* {event_data['summary']}", parse_mode="Markdown")
+    except Exception as e:
+        print(f"DEBUG: Calendar approval failed: {e}")
+        await query.edit_message_text(f"❌ Failed to add event: {str(e)}")
