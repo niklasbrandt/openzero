@@ -30,8 +30,9 @@ The local AI connects the dots between your email, your calendar, your tasks, an
 ### Core Intelligence: Memory Depth & Recall
 
 openZero is designed with native "Long-Term Retention" logic to ensure Z never asks the same question twice and maintains total context over long-running missions:
-- **Ultra Fast Memory (L3 Context)**: With a **25-message active window**, Z maintains sharp thread continuity while ensuring lightning-fast local inference.
-- **Ultra Deep Recall**: Using **Multi-Query Semantic Retrieval**, Z extracts key entities from every message to perform parallel searches across your personal database, injecting the most relevant matches into its live reasoning.
+- **Ultra Fast Memory (L3 Context)**: With a **10-message active window** and **Context Compression**, Z maintains sharp thread continuity while ensuring lightning-fast local inference.
+- **LLM Pre-Warming**: The system proactively loads the LLM weights into memory as you prepare to type, eliminating "first-message lag."
+- **Ultra Deep Recall**: Using **Multi-Query Semantic Retrieval**, Z extracts key entities from every message to perform parallel searches across your personal database.
 - **Autonomous Learning**: Every interaction, decision, and fact shared is automatically stored in your semantic vault via **Continuous Background Archiving**. 
 - **Proactive Knowledge Rule**: Z treats your "Circle of Trust" (People, Relationships, Birthdays) as absolute truth. It executes actions proactively based on stored context.
 
@@ -81,15 +82,16 @@ All interaction with openZero happens via your messenger bot or directly through
 
 
 ### Email Intelligence
-- Every 10 minutes, the system checks my email (via Gmail API or other mail client API, read-only, it cannot send or delete anything).
+- Every 10 minutes, the system checks my email (via Gmail API or other mail client API). Note: Z can read your inbox and create **draft replies**, but it cannot send or delete anything without your manual interaction.
 - **Rule-based Actions & Filters:** You can create custom rules and filters to handle large sets of emails all at once—so if an email matches (e.g., from my kid's school), it immediately pings me on my Messenger App or gets archived.
 - **Auto-Tagging & Badging:** Z can automatically apply custom named badges to specific incoming emails based on your rules, making it incredibly easy to recall or recover them later via chat.
 - All other emails are summarized and bundled into the morning briefing.
 
 ### Calendar Intelligence & Auto-Timezone
-- Z integrates securely with your Calendar APIs, serving as your single source of truth. Since we avoid juggling other people's calendars, you just manage your inner circle's events on this single calendar. 
-- **Privacy Fallback (Local Calendar):** If you prefer not to connect to Google or other external services, Z includes a built-in **Local Calendar**. Events are stored encrypted in your private Postgres database and managed entirely within your own infrastructure.
-- You can grant read-only access for Z to silently learn about your schedule. However, **granting read-write access is highly recommended.** Without write access, you miss out on Z's ability to orchestrate your time—like dynamically creating task-blocks, auto-scheduling actionable steps, and syncing events across your other ecosystems (e.g. Apple Reminders via calendar sync).
+- Z integrates securely with your Calendar APIs, serving as your single source of truth. Since we avoid juggling other people's calendars, you just manage your inner circle's events on this single calendar.
+- **Zero-Trust (Local Calendar):** If you prefer not to connect to Google or other external services, Z includes a high-performance **Local Calendar**. This is a **Zero-Trust** implementation: all events are stored in your private Postgres instance and are strictly accessible only via your Tailscale VPN. No metadata or schedule patterns are ever shared with third-party providers.
+- **Unified Interaction Matrix:** Highlights include an **Interactive Month Matrix** and **Day-Cell Interaction**, allowing you to schedule events directly from the visual grid.
+- **Deep Integration:** Optionally grant read-write access for Z to manage events and sync your schedule across your devices. Z can dynamically create task-blocks and auto-schedule actionable steps.
 - **Context-Aware Briefings:** Z parses your calendar before your daily briefing so it can mentally prepare you for the day ahead, warning you if you have back-to-back blocks or early commitments.
 - **Dynamic Timezone Scaling:** Instead of statically setting a single timezone string (e.g. `Europe/Berlin`), you can configure the timezone as `auto`. The system automatically parses your calendar events to deduce where you are—or where you *will be*—and adjusts scheduled background tasks (like Morning Briefings) so you always wake up to them at the correct local time.
 
@@ -107,7 +109,7 @@ All interaction with openZero happens via your messenger bot or directly through
 | **Server** | Cloud VPS Provider | e.g. 8 vCPU, 24 GB RAM, 200 GB NVMe |
 | **OS** | Ubuntu 24.04 LTS | Stable, secure Linux foundation |
 | **Backend** | [Python](https://www.python.org/) / [FastAPI](https://fastapi.tiangolo.com/) | Async API server, coordinates all services |
-| **Local AI** | [Ollama](https://ollama.com/) | **Llama 3.1 8B** (Smart) or **Llama 3.2 3B** (Fast) |
+| **Local AI** | [Ollama](https://ollama.com/) | **Llama 3.1 8B (Smart)** or **Llama 3.2 3B (Fast)** |
 | **Cloud AI** (Opt) | [Groq](https://groq.com/) / [OpenAI](https://openai.com/) | Optional high-power reasoning via `/think` command |
 | **Database** | [PostgreSQL 16](https://www.postgresql.org/) | Projects, preferences, email rules, conversations |
 | **Vector Memory** | [Qdrant](https://qdrant.tech/) | Semantic search over your memories and notes |
@@ -119,7 +121,6 @@ All interaction with openZero happens via your messenger bot or directly through
 | **Scheduler** | [APScheduler](https://apscheduler.readthedocs.io/) | Morning briefings, weekly reviews, email polling |
 | **VPN** | [Tailscale](https://tailscale.com/) | Zero-trust private network — no public ports |
 | **Containers** | [Docker Compose](https://docs.docker.com/compose/) | Everything runs in isolated containers |
-| **VPN** | [Tailscale](https://tailscale.com/) | Zero-trust private network — no public ports |
 
 ---
 
@@ -253,12 +254,13 @@ To avoid Telegram bot conflicts, ensure you have stopped any local instances of 
 ## Security & Privacy
 
 This system is designed with a privacy-first approach:
-
+- **100% Privacy by Design:** Everything you share with Z stays on your server. No cloud data harvesting.
+- **Local AI — Llama runs on your server, not in the cloud.**
+- **Multi-Service OS:** Includes a Task Board (Planka), Vector Memory (Qdrant), and a Secure Proxy (Nginx).
 - **No public ports** — all services are behind Tailscale VPN
-- **Local AI** — Llama 3.1 runs on your server, not in the cloud
-- **Email access is read-only** — the system reads your email via API but cannot delete or modify anything (write capabilities for drafting are included)
-- **Unified Calendar control** — optionally grant read-write access so Z can manage events and sync your schedule across your devices.
-- **Operator Board (Mission Control)** — a central priority hub that you control; Z only suggests and organizes, you execute.
+- **Drafting Engine (Not Sending):** The system interacts with your email via API to read and **create proposed replies in your Drafts folder**. This allows Z to prepare your communications while keeping you in total control—nothing is sent until you manually review and click 'Send' in your mail client.
+- **Zero-Trust (Local Calendar):** All events are stored in your private Postgres instance and are strictly accessible only via your Tailscale VPN. No metadata or schedule patterns are ever shared with third-party providers.
+- **Operator Board (Mission Control):** A central priority hub that you control; Z only suggests and organizes, you execute.
 - **SSH keys only** — password login is disabled
 - **Fail2Ban** — brute-force protection on SSH
 - **Human-in-the-Loop (HITL) Approval** — Z asks for your consent before sharing any context with Cloud LLMs (while using /think)

@@ -47,3 +47,11 @@
   - `personal/` (All private local files)
   - Raw database files or Docker volume folders if mapped locally.
 - **Volume Safety:** NEVER use commands that delete Docker volumes (like `docker compose down -v`) unless explicitly instructed for a specific reset task.
+
+## 11. Secret & Privacy Protection
+- **STRICT LEAK PREVENTION:** NEVER commit or include real secrets (API keys, passwords, tokens) or personal identifiers (real emails, public IPs, Tailscale IPs) in the repository's codebase, scripts, or documentation.
+- **Use Placeholders:** Always use generic placeholders like `your_api_key`, `your_vps_ip`, or `admin@example.com` in `.example` files and shared scripts.
+- **Verify Gitignore:** Before creating new files that might contain sensitive data (logs, temp state, credentials), ensure their pattern is covered in `.gitignore`.
+- **Sanitize Scripts:** Ensure utility scripts (e.g., `sync.sh`) load sensitive configuration from environment variables or `.env` files rather than hardcoding them.
+- **No Personal Data:** Avoid using the user's real name, company email, or specific location in any code comments or example data.
+- **Audit Before Sync:** Always perform a quick audit for hardcoded secrets when preparing a deployment or large code change.

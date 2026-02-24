@@ -14,6 +14,10 @@ personal/
 .env
 .env.planka
 tokens/
+scripts/pass.txt
+scripts/*.log
+scripts/*.exp
+personal/
 
 # ===========================
 # Runtime & build artifacts

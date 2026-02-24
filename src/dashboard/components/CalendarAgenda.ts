@@ -22,6 +22,25 @@ export class CalendarAgenda extends HTMLElement {
       const response = await fetch('/api/dashboard/calendar');
       if (!response.ok) throw new Error('API error');
       this.events = await response.json();
+
+      // Check if we have any non-local events (simple heuristic for Google sync)
+      const hasGoogle = this.events.some(e => !e.is_local);
+      const link = this.shadowRoot?.querySelector('.calendar-link');
+      if (link) {
+        if (hasGoogle) {
+          link.setAttribute('href', 'https://calendar.google.com');
+          link.setAttribute('target', '_blank');
+          link.setAttribute('title', 'Open Google Calendar'); // Ensure title is set for Google
+        } else {
+          link.setAttribute('href', '#');
+          link.addEventListener('click', (e) => {
+            e.preventDefault();
+            window.dispatchEvent(new CustomEvent('open-calendar'));
+          });
+          link.setAttribute('title', 'Open Local Calendar');
+        }
+      }
+
       this.displayEvents();
     } catch (e) {
       console.error('Failed to fetch calendar', e);
