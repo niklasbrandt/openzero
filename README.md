@@ -15,6 +15,8 @@ This is a **Personal AI Operating System** — a system that runs 24/7 on a remo
 
 Most AI assistants force a trade-off: you get convenience, but you surrender your private conversations, schedule, and emails to corporate servers. **openZero rejects that trade-off.**
 
+The local AI connects the dots between your email, your calendar, your tasks, and your personal memory to help you stay organized and make better decisions.
+
 - **Operator board (The Hub)**: A central "Mission Control" board that automatically pulls high-priority tasks (marked with `!!` or `!`) from all other project boards. It identifies what matters *today*, so you don't have to go looking for it.
 - **Unified Master Calendar**: Z integrates with a single primary calendar for total clarity. Instead of managing multiple calendars, Z identifies family routines, work commits, and social milestones on one unified timeline, cross-referencing them to protect your focus.
 - **Privacy-First Intelligence**: By default, the system runs locally via Ollama. Use the smart **Llama 3.1 8B** for deep reasoning, or toggle to the lightning-fast **Llama 3.2 3B** for instant CPU responses. For absolute edge cases, trigger "Deep Thinking" cloud models with one click but you always choose exactly what data is shared and need to approve it beforehand.
@@ -25,7 +27,15 @@ Most AI assistants force a trade-off: you get convenience, but you surrender you
 - **Planka (Self-Hosted Kanban)**: The visual engine for your journey. Accessible as a secure mobile PWA.
 - **Zero-Trust Security:** The entire stack is sealed behind a Tailscale VPN. There are absolutely no public-facing ports.
 
-The local AI connects the dots between your email, your calendar, your tasks, and your personal memory to help you stay organized and make better decisions.
+### Core Intelligence: Memory Depth & Recall
+
+openZero is designed with native "Long-Term Retention" logic to ensure Z never asks the same question twice and maintains total context over long-running missions:
+- **Ultra Fast Memory (L3 Context)**: With a **25-message active window**, Z maintains sharp thread continuity while ensuring lightning-fast local inference.
+- **Ultra Deep Recall**: Using **Multi-Query Semantic Retrieval**, Z extracts key entities from every message to perform parallel searches across your personal database, injecting the most relevant matches into its live reasoning.
+- **Autonomous Learning**: Every interaction, decision, and fact shared is automatically stored in your semantic vault via **Continuous Background Archiving**. 
+- **Proactive Knowledge Rule**: Z treats your "Circle of Trust" (People, Relationships, Birthdays) as absolute truth. It executes actions proactively based on stored context.
+
+> **Performance Note**: While **Autonomous Learning** ensures a perfectly synchronized second brain, increasing the complexity of background reasoning (e.g., recursive self-summarization or deeper multi-step memory searches) will increase the CPU response time for local LLMs.
 
 ---
 
