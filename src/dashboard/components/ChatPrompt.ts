@@ -2,6 +2,7 @@ interface ChatMessage {
 	role: 'user' | 'assistant';
 	content: string;
 	timestamp: Date;
+	model?: string;
 }
 
 export class ChatPrompt extends HTMLElement {
@@ -66,7 +67,7 @@ export class ChatPrompt extends HTMLElement {
 				warning.style.color = 'rgba(255, 255, 255, 0.78)';
 				warning.style.marginTop = '0.5rem';
 				warning.style.marginLeft = '0.5rem';
-				warning.innerText = 'First message warms up local engine and loads model in RAM (this takes minutes on older or slower CPU/devices/VPS)...';
+				warning.innerText = 'Warming up local engine...';
 				typingBubble.parentElement?.appendChild(warning);
 			}
 		}, 6000);
@@ -91,6 +92,7 @@ export class ChatPrompt extends HTMLElement {
 				role: 'assistant',
 				content: data.reply || 'No response received.',
 				timestamp: new Date(),
+				model: data.model,
 			});
 
 			if (data.actions && data.actions.length > 0) {
@@ -197,7 +199,10 @@ export class ChatPrompt extends HTMLElement {
 			<div class="message ${msg.role}">
 				<div class="bubble">
 					<div class="bubble-content">${this.renderContent(msg.content)}</div>
-					<span class="time">${this.formatTime(msg.timestamp)}</span>
+					<div class="bubble-footer">
+						${msg.model ? `<span class="model-tag">${msg.model}</span>` : ''}
+						<span class="time">${this.formatTime(msg.timestamp)}</span>
+					</div>
 				</div>
 			</div>
 		`).join('');
@@ -365,8 +370,23 @@ export class ChatPrompt extends HTMLElement {
 				display: block;
 				font-size: 0.65rem;
 				color: rgba(255,255,255,0.35);
-				margin-top: 0.35rem;
 				text-align: right;
+			}
+
+			.bubble-footer {
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+				gap: 0.5rem;
+				margin-top: 0.35rem;
+			}
+
+			.model-tag {
+				font-size: 0.6rem;
+				color: rgba(20, 184, 166, 0.6);
+				text-transform: uppercase;
+				letter-spacing: 0.05em;
+				font-weight: 600;
 			}
 
 			.message.assistant .bubble .time {

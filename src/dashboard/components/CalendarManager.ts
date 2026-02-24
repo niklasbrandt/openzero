@@ -93,12 +93,258 @@ export class CalendarManager extends HTMLElement {
     render() {
         if (!this.shadowRoot) return;
 
+        // 1. First-time template injection
+        if (!this.shadowRoot.querySelector('.modal')) {
+            this.shadowRoot.innerHTML = `
+                <style>
+                    :host {
+                        display: none;
+                        position: fixed;
+                        top: 0; left: 0; width: 100%; height: 100%;
+                        background: rgba(0, 0, 0, 0.4);
+                        backdrop-filter: blur(12px);
+                        z-index: 2000;
+                        align-items: center;
+                        justify-content: center;
+                        padding: 1.5rem;
+                        font-family: 'Inter', system-ui, sans-serif;
+                    }
+                    :host([open]) { display: flex; }
+                    
+                    .modal {
+                        background: rgba(20, 20, 25, 0.9);
+                        border: 1px solid rgba(255, 255, 255, 0.12);
+                        border-radius: 2rem;
+                        width: 100%;
+                        max-width: 1000px;
+                        max-height: 85vh;
+                        display: flex;
+                        flex-direction: column;
+                        overflow: hidden;
+                        box-shadow: 0 40px 120px -20px rgba(0, 0, 0, 0.6);
+                        animation: modalPop 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+                    }
+                    @keyframes modalPop {
+                        from { opacity: 0; transform: scale(0.95) translateY(30px); }
+                        to { opacity: 1; transform: scale(1) translateY(0); }
+                    }
+                    
+                    .header {
+                        padding: 1.5rem 2rem;
+                        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        background: rgba(255, 255, 255, 0.02);
+                    }
+                    
+                    .nav-controls {
+                        display: flex;
+                        align-items: center;
+                        gap: 1.5rem;
+                    }
+                    .month-label { 
+                        font-size: 1.25rem; 
+                        font-weight: 700; 
+                        color: #fff; 
+                        min-width: 180px; 
+                        text-align: center;
+                        letter-spacing: -0.01em;
+                    }
+                    .nav-btn {
+                        background: rgba(255, 255, 255, 0.06);
+                        border: 1px solid rgba(255, 255, 255, 0.1);
+                        color: #fff;
+                        width: 32px; height: 32px;
+                        border-radius: 8px;
+                        display: flex; align-items: center; justify-content: center;
+                        cursor: pointer;
+                        transition: all 0.2s;
+                    }
+                    .nav-btn:hover { background: rgba(255, 255, 255, 0.12); border-color: rgba(255,255,255,0.2); }
+
+                    .close-btn {
+                        background: transparent;
+                        border: none;
+                        color: rgba(255, 255, 255, 0.4);
+                        font-size: 1.5rem;
+                        cursor: pointer;
+                        transition: color 0.2s;
+                    }
+                    .close-btn:hover { color: #fff; }
+
+                    .content-grid {
+                        flex: 1;
+                        display: grid;
+                        grid-template-columns: 1fr 340px;
+                        overflow: hidden;
+                    }
+                    
+                    .calendar-panel {
+                        padding: 2rem;
+                        border-right: 1px solid rgba(255, 255, 255, 0.06);
+                        display: flex;
+                        flex-direction: column;
+                        gap: 2rem;
+                    }
+                    .month-grid {
+                        display: grid;
+                        grid-template-columns: repeat(7, 1fr);
+                        gap: 8px;
+                    }
+                    .weekday { text-align: center; font-size: 0.7rem; color: rgba(255,255,255,0.3); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding-bottom: 0.5rem; }
+                    .day-cell {
+                        aspect-ratio: 1.2;
+                        background: rgba(255, 255, 255, 0.03);
+                        border: 1px solid rgba(255, 255, 255, 0.06);
+                        border-radius: 12px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 0.95rem;
+                        color: rgba(255,255,255,0.6);
+                        position: relative;
+                        cursor: pointer;
+                        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+                    }
+                    .day-cell:hover { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.2); color: #fff; transform: translateY(-2px); }
+                    .day-cell.today { border-color: #14B8A6; color: #14B8A6; background: rgba(20, 184, 166, 0.08); font-weight: 700; }
+                    .day-cell.selected { background: #14B8A6; color: #000; border-color: #14B8A6; transform: translateY(-2px); box-shadow: 0 10px 20px -5px rgba(20, 184, 166, 0.4); font-weight: 700; }
+                    
+                    .event-dot {
+                        position: absolute;
+                        bottom: 6px;
+                        width: 4px; height: 4px;
+                        background: #14B8A6;
+                        border-radius: 50%;
+                        opacity: 0.8;
+                    }
+                    .day-cell.selected .event-dot { background: #000; }
+
+                    .agenda-panel {
+                        background: rgba(255, 255, 255, 0.015);
+                        display: flex;
+                        flex-direction: column;
+                        overflow: hidden;
+                    }
+                    
+                    .agenda-header {
+                        padding: 1.5rem 1.5rem 0.75rem;
+                        font-size: 0.75rem;
+                        font-weight: 700;
+                        text-transform: uppercase;
+                        letter-spacing: 0.1em;
+                        color: rgba(255, 255, 255, 0.4);
+                    }
+
+                    .events-list {
+                        flex: 1;
+                        overflow-y: auto;
+                        padding: 0 1.5rem;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 0.75rem;
+                    }
+                    .events-list::-webkit-scrollbar { width: 4px; }
+                    .events-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+                    
+                    .event-card {
+                        padding: 1rem;
+                        background: rgba(255, 255, 255, 0.04);
+                        border-radius: 14px;
+                        border-left: 3px solid #14B8A6;
+                        transition: transform 0.2s;
+                    }
+                    .event-card.birthday { border-left-color: #F472B6; background: rgba(244, 114, 182, 0.05); }
+                    .event-card.local { border-left-color: #60A5FA; }
+
+                    .event-card:hover { transform: translateX(4px); background: rgba(255, 255, 255, 0.07); }
+                    
+                    .event-title { font-size: 0.9rem; font-weight: 600; color: #fff; margin-bottom: 0.25rem; display: block; }
+                    .event-meta { font-size: 0.75rem; color: rgba(255,255,255,0.4); display: flex; align-items: center; gap: 0.5rem; }
+                    .badge { font-size: 0.6rem; padding: 1px 4px; border-radius: 4px; background: rgba(255,255,255,0.1); }
+
+                    .quick-add {
+                        padding: 1.5rem;
+                        border-top: 1px solid rgba(255, 255, 255, 0.06);
+                        background: rgba(0, 0, 0, 0.2);
+                    }
+                    .event-form { display: flex; flex-direction: column; gap: 0.75rem; }
+                    .input-group { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+                    
+                    input { 
+                        background: rgba(255, 255, 255, 0.05); 
+                        border: 1px solid rgba(255, 255, 255, 0.1); 
+                        padding: 0.6rem 0.8rem; 
+                        border-radius: 10px; 
+                        color: #fff; 
+                        font-size: 0.85rem;
+                        outline: none;
+                    }
+                    input:focus { border-color: #14B8A6; background: rgba(255, 255, 255, 0.08); }
+                    
+                    button.submit { 
+                        background: #14B8A6; 
+                        color: #000; 
+                        border: none; 
+                        padding: 0.75rem; 
+                        border-radius: 10px; 
+                        font-weight: 700; 
+                        cursor: pointer; 
+                        font-size: 0.85rem;
+                        transition: transform 0.2s, opacity 0.2s;
+                    }
+                    button.submit:hover { transform: translateY(-1px); opacity: 0.9; }
+                </style>
+                
+                <div class="modal">
+                    <div class="header">
+                        <div class="nav-controls">
+                            <button class="nav-btn" id="prev-month">&larr;</button>
+                            <div class="month-label"></div>
+                            <button class="nav-btn" id="next-month">&rarr;</button>
+                        </div>
+                        <button class="close-btn" id="close-modal">&times;</button>
+                    </div>
+                    
+                    <div class="content-grid">
+                        <div class="calendar-panel">
+                            <div class="month-grid"></div>
+                        </div>
+                        
+                        <div class="agenda-panel">
+                            <div class="agenda-header"></div>
+                            <div class="events-list"></div>
+                            
+                            <div class="quick-add">
+                                <form class="event-form" id="add-event-form">
+                                    <input type="text" name="summary" placeholder="Quick add event..." required>
+                                    <div class="input-group">
+                                        <input type="datetime-local" name="start" required>
+                                        <input type="datetime-local" name="end" required>
+                                    </div>
+                                    <button type="submit" class="submit">Add to Calendar</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            this.shadowRoot.querySelector('#close-modal')?.addEventListener('click', () => this.toggle(false));
+            this.shadowRoot.querySelector('#prev-month')?.addEventListener('click', () => this.changeMonth(-1));
+            this.shadowRoot.querySelector('#next-month')?.addEventListener('click', () => this.changeMonth(1));
+            this.shadowRoot.querySelector('#add-event-form')?.addEventListener('submit', (e) => this.addEvent(e));
+        }
+
+        // 2. Dynamic Update (Partial Rendering)
         const now = new Date();
         const firstDay = new Date(this.viewYear, this.viewMonth, 1).getDay();
         const daysInMonth = new Date(this.viewYear, this.viewMonth + 1, 0).getDate();
         const monthName = new Date(this.viewYear, this.viewMonth).toLocaleString('default', { month: 'long' });
 
-        // Days with events in the VIEW month
+        this.shadowRoot.querySelector('.month-label')!.textContent = `${monthName} ${this.viewYear}`;
+
         const eventDays = new Set(
             this.events.filter(e => {
                 const d = new Date(e.start);
@@ -106,17 +352,14 @@ export class CalendarManager extends HTMLElement {
             }).map(e => new Date(e.start).getDate())
         );
 
-        // Filter events for selected date if applicable
         let displayedEvents = this.events;
         if (this.selectedDate) {
             displayedEvents = this.events.filter(e => {
                 if (!e.start) return false;
                 const d = new Date(e.start);
-                if (isNaN(d.getTime())) return false;
                 return d.getDate() === this.selectedDate && d.getMonth() === this.viewMonth && d.getFullYear() === this.viewYear;
             });
         } else {
-            // Show upcoming (all in this view, sorted)
             displayedEvents = this.events.filter(e => {
                 const d = new Date(e.start);
                 return d >= now || (d.getMonth() === now.getMonth() && d.getDate() === now.getDate());
@@ -138,258 +381,24 @@ export class CalendarManager extends HTMLElement {
             `;
         }).join('') || '<div style="padding: 2rem; text-align: center; opacity: 0.3;">Clear schedule.</div>';
 
-        this.shadowRoot.innerHTML = `
-        <style>
-            :host {
-                display: none;
-                position: fixed;
-                top: 0; left: 0; width: 100%; height: 100%;
-                background: rgba(0, 0, 0, 0.4);
-                backdrop-filter: blur(12px);
-                z-index: 2000;
-                align-items: center;
-                justify-content: center;
-                padding: 1.5rem;
-                font-family: 'Inter', system-ui, sans-serif;
-            }
-            :host([open]) { display: flex; }
-            
-            .modal {
-                background: rgba(20, 20, 25, 0.9);
-                border: 1px solid rgba(255, 255, 255, 0.12);
-                border-radius: 2rem;
-                width: 100%;
-                max-width: 1000px;
-                max-height: 85vh;
-                display: flex;
-                flex-direction: column;
-                overflow: hidden;
-                box-shadow: 0 40px 120px -20px rgba(0, 0, 0, 0.6);
-                animation: modalPop 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-            }
-            @keyframes modalPop {
-                from { opacity: 0; transform: scale(0.95) translateY(30px); }
-                to { opacity: 1; transform: scale(1) translateY(0); }
-            }
-            
-            .header {
-                padding: 1.5rem 2rem;
-                border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                background: rgba(255, 255, 255, 0.02);
-            }
-            
-            .nav-controls {
-                display: flex;
-                align-items: center;
-                gap: 1.5rem;
-            }
-            .month-label { 
-                font-size: 1.25rem; 
-                font-weight: 700; 
-                color: #fff; 
-                min-width: 180px; 
-                text-align: center;
-                letter-spacing: -0.01em;
-            }
-            .nav-btn {
-                background: rgba(255, 255, 255, 0.06);
-                border: 1px solid rgba(255, 255, 255, 0.1);
-                color: #fff;
-                width: 32px; height: 32px;
-                border-radius: 8px;
-                display: flex; align-items: center; justify-content: center;
-                cursor: pointer;
-                transition: all 0.2s;
-            }
-            .nav-btn:hover { background: rgba(255, 255, 255, 0.12); border-color: rgba(255,255,255,0.2); }
-
-            .close-btn {
-                background: transparent;
-                border: none;
-                color: rgba(255, 255, 255, 0.4);
-                font-size: 1.5rem;
-                cursor: pointer;
-                transition: color 0.2s;
-            }
-            .close-btn:hover { color: #fff; }
-
-            .content-grid {
-                flex: 1;
-                display: grid;
-                grid-template-columns: 1fr 340px;
-                overflow: hidden;
-            }
-            
-            /* Left Panel: Calendar */
-            .calendar-panel {
-                padding: 2rem;
-                border-right: 1px solid rgba(255, 255, 255, 0.06);
-                display: flex;
-                flex-direction: column;
-                gap: 2rem;
-            }
-            .month-grid {
-                display: grid;
-                grid-template-columns: repeat(7, 1fr);
-                gap: 8px;
-            }
-            .weekday { text-align: center; font-size: 0.7rem; color: rgba(255,255,255,0.3); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding-bottom: 0.5rem; }
-            .day-cell {
-                aspect-ratio: 1.2;
-                background: rgba(255, 255, 255, 0.03);
-                border: 1px solid rgba(255, 255, 255, 0.06);
-                border-radius: 12px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 0.95rem;
-                color: rgba(255,255,255,0.6);
-                position: relative;
-                cursor: pointer;
-                transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-            }
-            .day-cell:hover { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.2); color: #fff; transform: translateY(-2px); }
-            .day-cell.today { border-color: #14B8A6; color: #14B8A6; background: rgba(20, 184, 166, 0.08); font-weight: 700; }
-            .day-cell.selected { background: #14B8A6; color: #000; border-color: #14B8A6; transform: translateY(-2px); box-shadow: 0 10px 20px -5px rgba(20, 184, 166, 0.4); font-weight: 700; }
-            
-            .event-dot {
-                position: absolute;
-                bottom: 6px;
-                width: 4px; height: 4px;
-                background: #14B8A6;
-                border-radius: 50%;
-                opacity: 0.8;
-            }
-            .day-cell.selected .event-dot { background: #000; }
-
-            /* Right Panel: Agenda & Form */
-            .agenda-panel {
-                background: rgba(255, 255, 255, 0.015);
-                display: flex;
-                flex-direction: column;
-                overflow: hidden;
-            }
-            
-            .agenda-header {
-                padding: 1.5rem 1.5rem 0.75rem;
-                font-size: 0.75rem;
-                font-weight: 700;
-                text-transform: uppercase;
-                letter-spacing: 0.1em;
-                color: rgba(255, 255, 255, 0.4);
-            }
-
-            .events-list {
-                flex: 1;
-                overflow-y: auto;
-                padding: 0 1.5rem;
-                display: flex;
-                flex-direction: column;
-                gap: 0.75rem;
-            }
-            .events-list::-webkit-scrollbar { width: 4px; }
-            .events-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
-            
-            .event-card {
-                padding: 1rem;
-                background: rgba(255, 255, 255, 0.04);
-                border-radius: 14px;
-                border-left: 3px solid #14B8A6;
-                transition: transform 0.2s;
-            }
-            .event-card.birthday { border-left-color: #F472B6; background: rgba(244, 114, 182, 0.05); }
-            .event-card.local { border-left-color: #60A5FA; }
-
-            .event-card:hover { transform: translateX(4px); background: rgba(255, 255, 255, 0.07); }
-            
-            .event-title { font-size: 0.9rem; font-weight: 600; color: #fff; margin-bottom: 0.25rem; display: block; }
-            .event-meta { font-size: 0.75rem; color: rgba(255,255,255,0.4); display: flex; align-items: center; gap: 0.5rem; }
-            .badge { font-size: 0.6rem; padding: 1px 4px; border-radius: 4px; background: rgba(255,255,255,0.1); }
-
-            .quick-add {
-                padding: 1.5rem;
-                border-top: 1px solid rgba(255, 255, 255, 0.06);
-                background: rgba(0, 0, 0, 0.2);
-            }
-            .event-form { display: flex; flex-direction: column; gap: 0.75rem; }
-            .input-group { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
-            
-            input { 
-                background: rgba(255, 255, 255, 0.05); 
-                border: 1px solid rgba(255, 255, 255, 0.1); 
-                padding: 0.6rem 0.8rem; 
-                border-radius: 10px; 
-                color: #fff; 
-                font-size: 0.85rem;
-                outline: none;
-            }
-            input:focus { border-color: #14B8A6; background: rgba(255, 255, 255, 0.08); }
-            
-            button.submit { 
-                background: #14B8A6; 
-                color: #000; 
-                border: none; 
-                padding: 0.75rem; 
-                border-radius: 10px; 
-                font-weight: 700; 
-                cursor: pointer; 
-                font-size: 0.85rem;
-                transition: transform 0.2s, opacity 0.2s;
-            }
-            button.submit:hover { transform: translateY(-1px); opacity: 0.9; }
-        </style>
-        
-        <div class="modal">
-            <div class="header">
-                <div class="nav-controls">
-                    <button class="nav-btn" id="prev-month">&larr;</button>
-                    <div class="month-label">${monthName} ${this.viewYear}</div>
-                    <button class="nav-btn" id="next-month">&rarr;</button>
-                </div>
-                <button class="close-btn" id="close-modal">&times;</button>
-            </div>
-            
-            <div class="content-grid">
-                <div class="calendar-panel">
-                    <div class="month-grid">
-                        ${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => `<div class="weekday">${d}</div>`).join('')}
-                        ${Array(firstDay).fill(null).map(() => `<div></div>`).join('')}
-                        ${Array(daysInMonth).fill(null).map((_, i) => {
+        const monthGrid = this.shadowRoot.querySelector('.month-grid')!;
+        monthGrid.innerHTML = `
+            ${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => `<div class="weekday">${d}</div>`).join('')}
+            ${Array(firstDay).fill(null).map(() => `<div></div>`).join('')}
+            ${Array(daysInMonth).fill(null).map((_, i) => {
             const day = i + 1;
             const isToday = day === now.getDate() && this.viewMonth === now.getMonth() && this.viewYear === now.getFullYear();
             const isSelected = day === this.selectedDate;
             return `
-                                <div class="day-cell ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}" data-day="${day}">
-                                    ${day}
-                                    ${eventDays.has(day) ? '<div class="event-dot"></div>' : ''}
-                                </div>`;
+                    <div class="day-cell ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}" data-day="${day}">
+                        ${day}
+                        ${eventDays.has(day) ? '<div class="event-dot"></div>' : ''}
+                    </div>`;
         }).join('')}
-                    </div>
-                </div>
-                
-                <div class="agenda-panel">
-                    <div class="agenda-header">${this.selectedDate ? `Schedule for ${monthName} ${this.selectedDate}` : 'Coming Up'}</div>
-                    <div class="events-list">
-                        ${eventsListHtml}
-                    </div>
-                    
-                    <div class="quick-add">
-                        <form class="event-form" id="add-event-form">
-                            <input type="text" name="summary" placeholder="Quick add event..." required>
-                            <div class="input-group">
-                                <input type="datetime-local" name="start" required>
-                                <input type="datetime-local" name="end" required>
-                            </div>
-                            <button type="submit" class="submit">Add to Calendar</button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
         `;
+
+        this.shadowRoot.querySelector('.events-list')!.innerHTML = eventsListHtml;
+        this.shadowRoot.querySelector('.agenda-header')!.textContent = this.selectedDate ? `Schedule for ${monthName} ${this.selectedDate}` : 'Coming Up';
 
         this.shadowRoot.querySelector('#close-modal')?.addEventListener('click', () => this.toggle(false));
         this.shadowRoot.querySelector('#prev-month')?.addEventListener('click', () => this.changeMonth(-1));

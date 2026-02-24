@@ -14,11 +14,17 @@ async def parse_and_execute_actions(reply: str, db: AsyncSession = None) -> (str
     clean_reply = reply
     executed_cmds = []
 
+    # 1. Clean the reply first
+    for action_str in actions:
+        clean_reply = clean_reply.replace(f"[ACTION: {action_str}]", "")
+    
+    clean_reply = clean_reply.strip()
+    # Remove dangling colon/punctuation if the action was at the end of a sentence
+    clean_reply = re.sub(r'[:\s]+$', '', clean_reply)
+
+    # 2. Execute actions
     for action_str in actions:
         print(f"DEBUG: Detected semantic action: {action_str}")
-        # Hide the action tag from the user
-        clean_reply = clean_reply.replace(f"[ACTION: {action_str}]", "").strip()
-        
         try:
             parts = {}
             for p in action_str.split('|'):

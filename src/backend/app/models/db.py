@@ -68,8 +68,12 @@ class Person(Base):
     name = Column(String, nullable=False)
     relationship = Column(String)
     context = Column(Text)  # Homework, hobbies, special dates
-    circle_type = Column(String, default="inner")  # inner, close
-    birthday = Column(String)  # Optional birthday string (e.g. MM-DD or YYYY-MM-DD)
+    circle_type = Column(String, default="inner")  # inner, close, identity
+    birthday = Column(String)  # Optional birthday string (e.g. DD.MM.YYYY)
+    gender = Column(String)
+    residency = Column(String)
+    work_times = Column(String)
+    briefing_time = Column(String) # e.g. "08:00"
     last_interaction = Column(DateTime)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
