@@ -5,6 +5,7 @@ from sqlalchemy import select
 from app.services.memory import ensure_collection
 from app.tasks.scheduler import start_scheduler, stop_scheduler
 from app.api.telegram import start_telegram_bot, stop_telegram_bot
+from sqlalchemy import text
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -14,8 +15,19 @@ async def lifespan(app: FastAPI):
     try:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
-            # `create_all` handles fresh DBs. Dropped table in dev manually for schema change.
-        print("✓ Postgres tables initialized.")
+            
+            # --- Migrations ---
+            # 1. Add 'badge' column to 'email_rules' if not exists
+            res = await conn.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='email_rules' AND column_name='badge'"))
+            if not res.fetchone():
+                await conn.execute(text("ALTER TABLE email_rules ADD COLUMN badge VARCHAR"))
+            
+            # 2. Add 'badge' column to 'email_summaries' if not exists
+            res = await conn.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='email_summaries' AND column_name='badge'"))
+            if not res.fetchone():
+                await conn.execute(text("ALTER TABLE email_summaries ADD COLUMN badge VARCHAR"))
+
+        print("✓ Postgres tables initialized and migrated.")
     except Exception as e:
         print(f"⚠ Warning: Could not connect to Postgres: {e}")
     
