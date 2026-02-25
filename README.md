@@ -146,41 +146,41 @@ The better Z understands your context, values, and mission, the better it can su
 
 ```
 ┌─────────────────────────────────────────────┐
-│              Your Devices                    │
-│  (Phone / Laptop / Tablet)                   │
-│                                              │
-│  Messenger App ──── Chat with AI             │
-│  Planka PWA  ──── Kanban Board               │
+│							 Your Devices										 │
+│	 (Phone / Laptop / Tablet)									 │
+│																							 │
+│	 Messenger App ──── Chat with AI						 │
+│	 Planka PWA	 ──── Kanban Board							 │
 └──────────────┬───────────────────────────────┘
-               │  Tailscale VPN (encrypted)
-               ▼
+							 │	Tailscale VPN (encrypted)
+							 ▼
 ┌─────────────────────────────────────────────┐
-│               VPS Provider                   │
-│                                              │
-│  ┌─────────────────────────────────────┐     │
-│  │  FastAPI Backend                    │     │
-│  │    ├── Messenger Bot (polling)      │     │
-│  │    ├── APScheduler (cron jobs)      │     │
-│  │    └── LLM Client → Ollama         │     │
-│  └─────────────────────────────────────┘     │
-│                                              │
-│  ┌──────────┐  ┌────────┐  ┌──────────┐     │
-│  │ Postgres │  │ Qdrant │  │  Ollama  │     │
-│  │ (data)   │  │(memory)│  │  (AI)    │     │
-│  └──────────┘  └────────┘  └──────────┘     │
-│                                              │
-│  ┌──────────┐  ┌────────┐                   │
-│  │ Whisper  │  │  TTS   │ ← Voice Engines    │
-│  │ (STT)    │  │ (Audio)│                   │
-│  └──────────┘  └────────┘                   │
-│                                              │
-│  ┌──────────┐                                │
-│  │  Planka  │ ← Kanban board                 │
-│  └──────────┘                                │
-│                                              │
-│  External APIs:                              │
-│    → Email API (read-only, polling 10 min)   │
-│    → Calendar APIs (optional read-write)     │
+│								VPS Provider									 │
+│																							 │
+│	 ┌─────────────────────────────────────┐		 │
+│	 │	FastAPI Backend										 │		 │
+│	 │		├── Messenger Bot (polling)			 │		 │
+│	 │		├── APScheduler (cron jobs)			 │		 │
+│	 │		└── LLM Client → Ollama					│			│
+│	 └─────────────────────────────────────┘		 │
+│																							 │
+│	 ┌──────────┐	 ┌────────┐	 ┌──────────┐			│
+│	 │ Postgres │	 │ Qdrant │	 │	Ollama	│			│
+│	 │ (data)		│	 │(memory)│	 │	(AI)		│			│
+│	 └──────────┘	 └────────┘	 └──────────┘			│
+│																							 │
+│	 ┌──────────┐	 ┌────────┐										│
+│	 │ Whisper	│	 │	TTS		│ ← Voice Engines		 │
+│	 │ (STT)		│	 │ (Audio)│										│
+│	 └──────────┘	 └────────┘										│
+│																							 │
+│	 ┌──────────┐																 │
+│	 │	Planka	│ ← Kanban board								 │
+│	 └──────────┘																 │
+│																							 │
+│	 External APIs:															 │
+│		 → Email API (read-only, polling 10 min)	 │
+│		 → Calendar APIs (optional read-write)		 │
 └─────────────────────────────────────────────┘
 ```
 
@@ -243,12 +243,12 @@ If you use a Cloud VPS, you can have the AI automate the entire deployment proce
 ### Step 2: Connection & Setup
 1. Provide the AI with your **Server IP** and **Root Password**.
 2. The AI will:
-   - Perform initial server hardening (Security updates, firewall setup).
-   - Install **Docker** & **Tailscale** official engines.
-   - Create a dedicated system user named `openzero`.
-   - Setup SSH key-only access (Disabling insecure password logins).
-   - Sync your code and environment secrets to the server.
-   - Start all services using `docker compose`.
+	 - Perform initial server hardening (Security updates, firewall setup).
+	 - Install **Docker** & **Tailscale** official engines.
+	 - Create a dedicated system user named `openzero`.
+	 - Setup SSH key-only access (Disabling insecure password logins).
+	 - Sync your code and environment secrets to the server.
+	 - Start all services using `docker compose`.
 
 ### Step 3: Secure Your Access (Tailscale)
 Once the setup is complete, you need to manually link your server to your Tailscale network to access the private ports:
@@ -315,9 +315,9 @@ If you're moving your intelligence layer to a more powerful server or rebuilding
 2. Transfer and extract your `.env` and `.env.planka` config files into the new directory.
 3. Bring up the new infrastructure quickly (`docker compose up -d`) and then immediately shut it down (`docker compose stop`). This forces Docker to create the empty named volumes.
 4. Extract your backed-up data back into the new volumes:
-   ```bash
-   docker run --rm -v openzero_pgdata:/vol -v $(pwd):/backup alpine sh -c "cd /vol && tar -xzvf /backup/pgdata.tar.gz"
-   ```
+	 ```bash
+	 docker run --rm -v openzero_pgdata:/vol -v $(pwd):/backup alpine sh -c "cd /vol && tar -xzvf /backup/pgdata.tar.gz"
+	 ```
 5. Start the system again `docker compose start`. Your AI, full memory, and Kanban board will resume precisely where you left off.
 
 ---
@@ -357,17 +357,17 @@ If you need more speed or more intelligence, change `OLLAMA_MODEL` in your `.env
 
 ```
 openzero/
-├── src/                # Core implementation
-│   ├── backend/        # FastAPI, SQLAlchemy, APScheduler
-│   └── dashboard/      # Vanilla TS Web Components dashboard
-├── docs/               # Architecture guides & prompt specs
-├── scripts/            # Deployment & backup tools
-├── personal/           # GITIGNORED — your private data
-├── docker-compose.yml  # Service orchestration
-├── .env.example        # Backend secrets template
+├── src/								# Core implementation
+│		├── backend/				# FastAPI, SQLAlchemy, APScheduler
+│		└── dashboard/			# Vanilla TS Web Components dashboard
+├── docs/								# Architecture guides & prompt specs
+├── scripts/						# Deployment & backup tools
+├── personal/						# GITIGNORED — your private data
+├── docker-compose.yml	# Service orchestration
+├── .env.example				# Backend secrets template
 ├── .env.planka.example # Planka secrets template
-├── BUILD.md            # Human-readable build guide
-└── README.md           # This file
+├── BUILD.md						# Human-readable build guide
+└── README.md						# This file
 ```
 
 ---

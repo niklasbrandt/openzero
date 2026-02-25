@@ -35,8 +35,6 @@ echo "🚀 Syncing code to $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR..."
 # Sync source code
 rsync -avz --delete "${EXCLUDES[@]}" ./ $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/
 
-echo "📦 Rebuilding and restarting containers on VPS..."
-
 # Rebuild and restart using docker compose
 ssh $REMOTE_USER@$REMOTE_HOST "cd $REMOTE_DIR && docker compose build backend && docker compose up -d"
 
