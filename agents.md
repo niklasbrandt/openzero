@@ -1,6 +1,6 @@
 # AI Agent Guidelines
 
-> This file contains instructions and rules for AI assistants (like Z, Cursor, or other coding agents) interacting with this repository.
+> This file contains instructions and rules for AI assistantsinteracting with this repository.
 
 ## 0. Mandatory Initial Step
 - **CRITICAL:** At the beginning of EVERY interaction or whenever you are prompted for a new task, you MUST read and analyze **agents.md**, **AGENT_LOG.md**, and **README.md**.
@@ -43,10 +43,10 @@
 ## 9. Data Sovereignty & Protection
 - **NEVER overwrite data on remote servers.** Your synchronization focus must strictly be on application logic (code), not data.
 - **Strict Rsync Exclusions:** When syncing to a remote server, you MUST exclude the following patterns to prevent overwriting cloud memories or private local data:
-  - `.git/`, `node_modules/`, `__pycache__/`, `.venv/`, `dist/`
-  - `.DS_Store`
-  - `personal/` (All private local files)
-  - Raw database files or Docker volume folders if mapped locally.
+	- `.git/`, `node_modules/`, `__pycache__/`, `.venv/`, `dist/`
+	- `.DS_Store`
+	- `personal/` (All private local files)
+	- Raw database files or Docker volume folders if mapped locally.
 - **Volume Safety:** NEVER use commands that delete Docker volumes (like `docker compose down -v`) unless explicitly instructed for a specific reset task.
 
 ## 11. Secret & Privacy Protection
@@ -56,3 +56,14 @@
 - **Sanitize Scripts:** Ensure utility scripts (e.g., `sync.sh`) load sensitive configuration from environment variables or `.env` files rather than hardcoding them.
 - **No Personal Data:** Avoid using the user's real name, company email, or specific location in any code comments or example data.
 - **Audit Before Sync:** Always perform a quick audit for hardcoded secrets when preparing a deployment or large code change.
+
+## 12. Accessibility & Progressive Enhancement
+- **Native Elements First**: Always prioritize native HTML elements (buttons, inputs, links) over custom `div` or `span` listeners to ensure built-in keyboard support and screen reader compatibility.
+- **Keyboard Navigability**: Ensure all interactive elements are focusable (`tabindex="0"` if not native) and have visible focus states.
+- **ARIA Standards**: Use appropriate ARIA roles and labels (e.g., `aria-label`, `aria-expanded`, `role="status"`) for purely visual or complex custom components.
+- **Semantic Hierarchy**: Maintain a logical heading structure (H1 -> H2 -> H3) to aid screen reader navigation.
+- **Contrast & Clarity**: Maintain high color contrast for text and ensure touch/click targets are sufficiently sized (min 44x44px where possible).
+
+## 13. Artifact Management & Consistency
+-	**Summarize into Artifacts**: When the user provides instructions or prompts, create/update artifacts that summarize the key requirements, design decisions, and implementation plans.
+-	**Context Adherence**: Always keep these artifacts in mind and refer to them during implementation to ensure consistency and prevent context drift.

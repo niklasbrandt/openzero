@@ -10,6 +10,7 @@ export class EmailRules extends HTMLElement {
   }
 
   private editingId: number | null = null;
+  private isAdding: boolean = false;
   private currentRules: any[] = [];
 
   async fetchRules() {
@@ -25,27 +26,30 @@ export class EmailRules extends HTMLElement {
     }
   }
 
-  async addRule(pattern: string, action: string) {
+  async addRule(pattern: string, action: string, badge: string) {
     try {
       await fetch('/api/dashboard/email-rules', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sender_pattern: pattern, action })
+        body: JSON.stringify({ sender_pattern: pattern, action, badge })
       });
+      this.isAdding = false;
+      this.render();
       this.fetchRules();
     } catch (e) {
       console.error('Failed to add rule', e);
     }
   }
 
-  async updateRule(id: number, pattern: string, action: string) {
+  async updateRule(id: number, pattern: string, action: string, badge: string) {
     try {
       await fetch(`/api/dashboard/email-rules/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sender_pattern: pattern, action })
+        body: JSON.stringify({ sender_pattern: pattern, action, badge })
       });
       this.editingId = null;
+      this.isAdding = false;
       this.render();
       this.fetchRules();
     } catch (e) {
@@ -58,17 +62,22 @@ export class EmailRules extends HTMLElement {
     const list = this.shadowRoot?.querySelector('#rules-list');
     if (list) {
       list.innerHTML = rules.map(r => `
-        <div class="rule-item">
-          <div class="info">
-            <span class="pattern">${r.sender_pattern}</span>
-            <span class="action-tag">${r.action === 'urgent' ? '⚡ Urgent Notify' : '📋 Daily Summary'}</span>
-          </div>
-          <div class="item-actions">
-            <button class="edit-btn" data-id="${r.id}">Edit</button>
-            <button class="delete-btn" data-id="${r.id}">Delete</button>
-          </div>
-        </div>
-      `).join('') || 'No rules defined.';
+				<div class="rule-item">
+					<div class="info">
+						<span class="pattern">
+							${r.sender_pattern}
+							${r.badge ? `<span class="label-badge">${r.badge}</span>` : ''}
+						</span>
+						<span class="action-tag">
+							${(r.action || '').toLowerCase() === 'urgent' ? '⚡ Urgent Notify' : (r.action || '').toLowerCase() === 'summarize' ? '📋 Daily Summary' : '🔇 Ignored'}
+						</span>
+					</div>
+					<div class="item-actions">
+						<button class="edit-btn" data-id="${r.id}" aria-label="Edit rule for ${r.sender_pattern}">Edit</button>
+						<button class="delete-btn" data-id="${r.id}" aria-label="Delete rule for ${r.sender_pattern}">Delete</button>
+					</div>
+				</div>
+			`).join('') || 'No rules defined.';
 
       list.querySelectorAll('.delete-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -83,9 +92,11 @@ export class EmailRules extends HTMLElement {
           const rule = this.currentRules.find(r => r.id === parseInt(id!));
           if (rule) {
             this.editingId = rule.id;
+            this.isAdding = true;
             this.render();
             (this.shadowRoot?.querySelector('#ruleInput') as HTMLInputElement).value = rule.sender_pattern;
             (this.shadowRoot?.querySelector('#actionInput') as HTMLSelectElement).value = rule.action;
+            (this.shadowRoot?.querySelector('#badgeInput') as HTMLInputElement).value = rule.badge || '';
           }
         });
       });
@@ -95,76 +106,111 @@ export class EmailRules extends HTMLElement {
   render() {
     if (this.shadowRoot) {
       this.shadowRoot.innerHTML = `
-        <style>
-          h2 { font-size: 1.5rem; font-weight: bold; margin: 0 0 1rem 0; color: #fff; letter-spacing: 0.02em; }
-          :host { display: block; }
-          .add-box { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.5rem; background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 1rem; }
-          .input-row { display: flex; gap: 0.5rem; }
-          input, select {
-            flex: 1;
-            background: rgba(0, 0, 0, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 0.75rem;
-            padding: 0.6rem 1rem;
-            color: #fff;
-            outline: none;
-            font-family: 'Inter', system-ui, sans-serif;
-            font-size: 0.9rem;
-          }
-          select option { background: #000; }
-          .rule-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: rgba(255, 255, 255, 0.03);
-            padding: 0.75rem 1rem;
-            border-radius: 0.75rem;
-            margin-bottom: 0.5rem;
-          }
-          .info { display: flex; flex-direction: column; gap: 4px; }
-          .pattern { color: #fff; font-weight: 500; font-size: 0.9rem; }
-          .action-tag { font-size: 0.7rem; color: #14B8A6; opacity: 0.8; }
-          .delete-btn { background: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.15); padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 0.75rem; }
-          .edit-btn { background: rgba(255, 255, 255, 0.05); color: #fff; border: 1px solid rgba(255, 255, 255, 0.1); padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 0.75rem; margin-right: 4px; }
-          button#addBtn {
-            background: rgba(20, 184, 166, 0.12);
-            color: #14B8A6;
-            border: 1px solid rgba(20, 184, 166, 0.2);
-            padding: 0.6rem 1.25rem;
-            border-radius: 0.75rem;
-            cursor: pointer;
-            font-weight: 600;
-          }
-        </style>
-        <div class="card">
-          <h2>Email Intelligence Rules</h2>
-          <div class="add-box">
-            <div class="input-row">
-              <input type="text" id="ruleInput" placeholder="Pattern (e.g. @domain.com or 'Invoice')">
-              <select id="actionInput">
-                <option value="urgent">⚡ Urgent Notification</option>
-                <option value="summarize">📋 Daily Summary</option>
-              </select>
-            </div>
-            <div style="display:flex; gap:0.5rem;">
-              <button id="addBtn">${this.editingId ? 'Update Rule' : 'Create Rule'}</button>
-              ${this.editingId ? '<button id="cancelEdit" style="background:transparent; color:#fff; border:none; cursor:pointer; font-size:0.8rem;">Cancel</button>' : ''}
-            </div>
-          </div>
-          <div id="rules-list">${this.currentRules.length > 0 ? '' : 'Loading rules...'}</div>
-        </div>
-      `;
+				<style>
+					h2 { font-size: 1.5rem; font-weight: bold; margin: 0 0 1rem 0; color: #fff; letter-spacing: 0.02em; }
+					:host { display: block; }
+					.add-box { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.5rem; background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 1rem; }
+					.input-row { display: flex; gap: 0.5rem; }
+					input, select {
+						flex: 1;
+						background: rgba(0, 0, 0, 0.2);
+						border: 1px solid rgba(255, 255, 255, 0.08);
+						border-radius: 0.75rem;
+						padding: 0.6rem 1rem;
+						color: #fff;
+						outline: none;
+						font-family: 'Inter', system-ui, sans-serif;
+						font-size: 0.9rem;
+					}
+					select option { background: #000; }
+					.rule-item {
+						display: flex;
+						justify-content: space-between;
+						align-items: center;
+						background: rgba(255, 255, 255, 0.03);
+						padding: 0.75rem 1rem;
+						border-radius: 0.75rem;
+						margin-bottom: 0.5rem;
+					}
+					.info { display: flex; flex-direction: column; gap: 4px; }
+					.pattern { color: #fff; font-weight: 500; font-size: 0.9rem; }
+					.action-tag { font-size: 0.75rem; color: #14B8A6; opacity: 0.9; font-weight: 500; }
+					.label-badge { 
+						background: rgba(20, 184, 166, 0.15); 
+						color: #14B8A6; 
+						font-size: 0.65rem; 
+						padding: 2px 6px; 
+						border-radius: 4px; 
+						margin-left: 8px; 
+						vertical-align: middle;
+						text-transform: uppercase;
+						font-weight: 700;
+					}
+					.delete-btn { background: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.15); padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 0.75rem; transition: all 0.2s; }
+					.delete-btn:hover { background: rgba(239, 68, 68, 0.2); }
+					.edit-btn { background: rgba(255, 255, 255, 0.05); color: #fff; border: 1px solid rgba(255, 255, 255, 0.1); padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 0.75rem; margin-right: 6px; transition: all 0.2s; }
+					.edit-btn:hover { background: rgba(255, 255, 255, 0.1); }
+					.item-actions { display: flex; align-items: center; }
+					button#addBtn {
+						background: rgba(20, 184, 166, 0.12);
+						color: #14B8A6;
+						border: 1px solid rgba(20, 184, 166, 0.2);
+						padding: 0.6rem 1.25rem;
+						border-radius: 0.75rem;
+						cursor: pointer;
+						font-weight: 600;
+					}
+					button#addBtn:focus-visible { outline: 2px solid #14B8A6; outline-offset: 2px; }
+					.edit-btn:focus-visible, .delete-btn:focus-visible { outline: 2px solid rgba(255,255,255,0.4); outline-offset: 2px; }
+				</style>
+				<div class="card">
+					<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+						<h2>Email Intelligence Rules</h2>
+						${!this.isAdding ? '<button id="showAddBtn" style="background: #14B8A6; color: #fff; border: none; padding: 0.4rem 1rem; border-radius: 0.6rem; cursor: pointer; font-size: 0.8rem; font-weight: 600;">+ New Rule</button>' : ''}
+					</div>
+
+					${this.isAdding ? `
+					<div class="add-box">
+						<div class="input-row">
+							<input type="text" id="ruleInput" placeholder="Pattern (e.g. @domain.com or 'Invoice')">
+							<select id="actionInput">
+								<option value="urgent">⚡ Urgent Notification</option>
+								<option value="summarize">📋 Daily Summary</option>
+								<option value="ignore">🔇 Ignore Completely</option>
+							</select>
+							<input type="text" id="badgeInput" placeholder="Badge (Optional)">
+						</div>
+						<div style="display:flex; gap:0.5rem;">
+							<button id="addBtn">${this.editingId ? 'Update Rule' : 'Create Rule'}</button>
+							<button id="cancelEdit" style="background:transparent; color:#fff; border:1px solid rgba(255,255,255,0.1); border-radius:0.6rem; padding:0.4rem 1rem; cursor:pointer; font-size:0.8rem;">Cancel</button>
+						</div>
+					</div>
+					` : ''}
+					<div id="rules-list">${this.currentRules.length > 0 ? '' : 'Loading rules...'}</div>
+				</div>
+			`;
+
+      if (!this.isAdding) {
+        this.shadowRoot.querySelector('#showAddBtn')?.addEventListener('click', () => {
+          this.isAdding = true;
+          this.render();
+        });
+      }
+
+      this.displayRules(this.currentRules);
 
       this.shadowRoot.querySelector('#addBtn')?.addEventListener('click', () => {
         const pattern = (this.shadowRoot?.querySelector('#ruleInput') as HTMLInputElement).value;
         const action = (this.shadowRoot?.querySelector('#actionInput') as HTMLSelectElement).value;
+        const badge = (this.shadowRoot?.querySelector('#badgeInput') as HTMLInputElement).value;
         if (pattern) {
           if (this.editingId) {
-            this.updateRule(this.editingId, pattern, action);
+            this.updateRule(this.editingId, pattern, action, badge);
           } else {
-            this.addRule(pattern, action);
+            this.addRule(pattern, action, badge);
           }
           (this.shadowRoot?.querySelector('#ruleInput') as HTMLInputElement).value = '';
+          (this.shadowRoot?.querySelector('#badgeInput') as HTMLInputElement).value = '';
         }
       });
 
@@ -180,8 +226,8 @@ export class EmailRules extends HTMLElement {
 
       this.shadowRoot.querySelector('#cancelEdit')?.addEventListener('click', () => {
         this.editingId = null;
+        this.isAdding = false;
         this.render();
-        this.displayRules(this.currentRules);
       });
     }
   }

@@ -36,6 +36,7 @@ class EmailRule(Base):
     sender_pattern = Column(String, nullable=False)
     subject_pattern = Column(String)
     action = Column(String, default="urgent")
+    badge = Column(String) # Custom badge name (e.g. "School", "Taxes")
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
 class EmailSummary(Base):
@@ -45,6 +46,7 @@ class EmailSummary(Base):
     subject = Column(String, nullable=False)
     summary = Column(Text)
     is_urgent = Column(Boolean, default=False)
+    badge = Column(String) # Replicated badge from rule
     processed_at = Column(DateTime, default=datetime.datetime.utcnow)
     included_in_briefing = Column(Boolean, default=False)
 
