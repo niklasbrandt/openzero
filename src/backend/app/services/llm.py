@@ -333,7 +333,35 @@ async def chat_with_context(
 	]))
 	
 	print(f"DEBUG: Context gathered in {time.time() - start_time:.2f}s")
-	return await chat(full_prompt, user_name=user_name, user_profile=user_profile)
+	
+	try:
+		# LangGraph Integration
+		from langgraph.prebuilt import create_react_agent
+		from langchain_ollama import ChatOllama
+		from langchain_openai import ChatOpenAI
+		from langchain_core.messages import SystemMessage, HumanMessage
+		from app.services.agent_actions import AVAILABLE_TOOLS
+		import uuid
+		
+		# Define LLM. For simplicity we use Ollama via LangChain integration
+		llm = ChatOllama(base_url=settings.OLLAMA_BASE_URL, model=settings.OLLAMA_MODEL_FAST)
+		
+		# Build Graph
+		agent_executor = create_react_agent(llm, AVAILABLE_TOOLS)
+		
+		messages = [SystemMessage(content=full_prompt)]
+		for h in (history or []):
+			if h.get("role") == "user": messages.append(HumanMessage(content=h.get('content')))
+			else: messages.append(SystemMessage(content=h.get('content')))
+		messages.append(HumanMessage(content=user_message))
+		
+		print("DEBUG: Executing LangGraph Agent...")
+		result = agent_executor.invoke({"messages": messages}, config={"configurable": {"thread_id": str(uuid.uuid4())}})
+		reply = result["messages"][-1].content
+		return reply
+	except Exception as e:
+		print("DEBUG: LangGraph Agent failed, falling back to legacy chat:", e)
+		return await chat(full_prompt, user_name=user_name, user_profile=user_profile)
 
 async def generate_context_proposal(query: str) -> dict:
 	"""Use Local LLM to identify relevant information for the user to approve."""

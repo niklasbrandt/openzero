@@ -97,17 +97,42 @@ services:
     ports:
       - "8000:8000"
 
-  nginx:
-    image: nginx:alpine
+  traefik:
+    image: traefik:v3.0
     restart: always
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
     ports:
       - "80:80"
-      - "1337:1337"
+      - "8080:8080"
     volumes:
-      - ./infrastructure/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-    depends_on:
-      - backend
-      - planka
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    networks:
+      - internal
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    networks:
+      - internal
+    volumes:
+      - redis_data:/data
+
+  pihole:
+    image: pihole/pihole:latest
+    restart: always
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+    environment:
+      TZ: 'Europe/Berlin'
+      WEBPASSWORD: 'changeme'
+    volumes:
+      - pihole_config:/etc/pihole
+      - pihole_dnsmasq:/etc/dnsmasq.d
     networks:
       - internal
 
@@ -124,3 +149,6 @@ volumes:
   planka_attachments:
   gmail_tokens:
   tts_models:
+  redis_data:
+  pihole_config:
+  pihole_dnsmasq:
