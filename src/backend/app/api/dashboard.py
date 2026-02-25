@@ -355,7 +355,9 @@ async def planka_redirect(request: Request, target: str = "", background: bool =
 	
 	host_name = host_header.split(':')[0]
 	
-	if current_port != 1337:
+	# 1. Origin Check: Ensure we are on the correct port if not using Traefik.
+	# If on port 80, Traefik handles the subpath routing so we stay on port 80.
+	if current_port != 1337 and current_port != 80:
 		new_url = f"http://{host_name}:1337{request.url.path}"
 		if request.query_params:
 			new_url += f"?{str(request.query_params)}"
@@ -389,7 +391,10 @@ async def planka_redirect(request: Request, target: str = "", background: bool =
 
 			# 3. Determine Redirect URL
 			scheme = request.url.scheme
-			planka_root = f"{scheme}://{host_name}:1337"
+			if current_port == 80:
+				planka_root = f"{scheme}://{host_name}"
+			else:
+				planka_root = f"{scheme}://{host_name}:1337"
 			redirect_url = f"{planka_root}/"
 			target_board_id = request.query_params.get("target_board_id") or request.query_params.get("targetboardid")
 			target_project_id = request.query_params.get("target_project_id") or request.query_params.get("targetprojectid")
