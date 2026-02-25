@@ -17,3 +17,9 @@ pytz
 pydub
 openai
 python-multipart
+# Agent Architecture Updates
+langgraph>=0.0.26
+langchain-core>=0.1.30
+langchain-ollama>=0.1.1
+redis>=5.0.1
+celery>=5.3.6

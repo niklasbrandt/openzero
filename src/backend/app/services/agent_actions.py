@@ -1,117 +1,57 @@
-import re
-import datetime
-import httpx
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.config import settings
-from app.services.planka import create_task, create_project, create_board, get_planka_auth_token
+from langchain_core.tools import tool
+from typing import Optional, List
+from app.services.planka import create_task as planka_create_task
+from app.services.planka import create_project as planka_create_project
+from app.services.planka import create_board as planka_create_board
 
-async def parse_and_execute_actions(reply: str, db: AsyncSession = None) -> (str, list):
-	"""
-	Parses semantic action tags from a string and executes them.
-	Returns (cleaned_reply, list_of_executed_action_types).
-	"""
-	actions = re.findall(r'\[ACTION: (.*?)\]', reply)
-	clean_reply = reply
-	executed_cmds = []
+@tool
+def create_task(title: str, description: str = "", board_name: str = "Operator Board", list_name: str = "Today") -> str:
+    """Create a task in a specific board and list."""
+    import asyncio
+    success = asyncio.run(planka_create_task(
+        board_name=board_name,
+        list_name=list_name,
+        title=title,
+        description=description
+    ))
+    return f"Task '{title}' created successfully." if success else f"Failed to create task '{title}'"
 
-	# 1. Clean the reply first
-	for action_str in actions:
-		clean_reply = clean_reply.replace(f"[ACTION: {action_str}]", "")
-	
-	clean_reply = clean_reply.strip()
-	# Remove dangling colon/punctuation if the action was at the end of a sentence
-	clean_reply = re.sub(r'[:\s]+$', '', clean_reply)
+@tool
+def create_project(name: str, description: str = "") -> str:
+    """Create a new project."""
+    import asyncio
+    asyncio.run(planka_create_project(name=name, description=description))
+    return f"Project '{name}' created."
 
-	# 2. Execute actions
-	for action_str in actions:
-		print(f"DEBUG: Detected semantic action: {action_str}")
-		try:
-			parts = {}
-			for p in action_str.split('|'):
-				if ':' in p:
-					key, val = p.split(':', 1)
-					parts[key.strip()] = val.strip()
-			
-			cmd = action_str.split('|')[0].strip()
-			
-			if cmd == "CREATE_TASK":
-				success = await create_task(
-					board_name=parts.get("BOARD", "Operator Board"),
-					list_name=parts.get("LIST", "Today"),
-					title=parts.get("TITLE", "New Task"),
-					description=parts.get("DESCRIPTION", "")
-				)
-				if success:
-					executed_cmds.append("task")
-			elif cmd == "CREATE_PROJECT":
-				await create_project(
-					name=parts.get("NAME", "New Project"),
-					description=parts.get("DESCRIPTION", "")
-				)
-				executed_cmds.append("project")
-			elif cmd == "CREATE_BOARD":
-				project_id = parts.get("PROJECT_ID")
-				project_name = parts.get("PROJECT", parts.get("BOARD"))
-				if not project_id and project_name:
-					token = await get_planka_auth_token()
-					async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, headers={"Authorization": f"Bearer {token}"}) as client:
-						p_resp = await client.get("/api/projects")
-						# Normalize search: 'Boards' and 'openZero' refer to the same project
-						search_name = "openZero" if project_name.lower() in ["boards", "openzero"] else project_name
-						match = next((p for p in p_resp.json().get("items", []) if p["name"].lower() == search_name.lower()), None)
-						if match: project_id = match["id"]
-				
-				if project_id:
-					await create_board(project_id=project_id, name=parts.get("NAME", "New Board"))
-					executed_cmds.append("board")
-			elif cmd == "POPULATE_BOARD":
-				query = parts.get("QUERY")
-				board = parts.get("BOARD", "Operator Board")
-				list_n = parts.get("LIST", "Backlog")
-				
-				if query:
-					from app.services.memory import semantic_search
-					results_text = await semantic_search(query, top_k=5)
-					# Parse semantic results (1. [score] content)
-					import re
-					items = re.split(r'\d+\.\s+\(score:\s+\d+\.\d+\)\s+', results_text)
-					count = 0
-					for item in items:
-						text = item.strip()
-						if text and "No memories found" not in text:
-							success = await create_task(board_name=board, list_name=list_n, title=text[:80], description=text)
-							if success: count += 1
-					if count > 0: executed_cmds.append("bulk_tasks")
-			elif cmd == "CREATE_EVENT" and db:
-				from app.models.db import LocalEvent
-				start_str = parts.get("START", datetime.datetime.utcnow().isoformat())
-				end_str = parts.get("END", (datetime.datetime.fromisoformat(start_str.replace('Z','')) + datetime.timedelta(hours=1)).isoformat())
-				db_event = LocalEvent(
-					summary=parts.get("TITLE", "New Event"), 
-					start_time=datetime.datetime.fromisoformat(start_str.replace('Z','')), 
-					end_time=datetime.datetime.fromisoformat(end_str.replace('Z',''))
-				)
-				db.add(db_event)
-				await db.commit()
-				executed_cmds.append("calendar")
-			elif cmd == "ADD_PERSON" and db:
-				from app.models.db import Person
-				db_p = Person(
-					name=parts.get("NAME", "Unknown"),
-					relationship=parts.get("RELATIONSHIP", "Contact"),
-					context=parts.get("CONTEXT", ""),
-					circle_type=parts.get("CIRCLE", "inner").lower(),
-					birthday=parts.get("BIRTHDAY")
-				)
-				db.add(db_p)
-				await db.commit()
-				executed_cmds.append("people")
-			elif cmd == "LEARN":
-				from app.services.memory import store_memory
-				await store_memory(parts.get("TEXT", "Empty memory"))
-				executed_cmds.append("memory")
+@tool
+def create_event(title: str, start_time: str, end_time: Optional[str] = None) -> str:
+    """Create a new calendar event."""
+    from app.models.db import LocalEvent, AsyncSessionLocal
+    import datetime
+    import asyncio
+    async def _add():
+        async with AsyncSessionLocal() as db:
+            event = LocalEvent(
+                summary=title,
+                start_time=datetime.datetime.fromisoformat(start_time.replace('Z','')),
+                end_time=datetime.datetime.fromisoformat(end_time.replace('Z','')) if end_time else None
+            )
+            db.add(event)
+            await db.commit()
+    asyncio.run(_add())
+    return f"Calendar event '{title}' created."
 
-		except Exception as ae:
-			print(f"ERROR: Action execution failed: {ae}")
+@tool
+def learn_memory(text: str) -> str:
+    """Learn a new memory fact."""
+    from app.services.memory import store_memory
+    import asyncio
+    asyncio.run(store_memory(text))
+    return "Memory stored."
 
-	return clean_reply, executed_cmds
+AVAILABLE_TOOLS = [create_task, create_project, create_event, learn_memory]
+
+async def parse_and_execute_actions(reply: str, db=None):
+    """Fallback stub for legacy tool parsing if LangGraph is disabled."""
+    # We now use LangGraph, so we return the reply as-is and no executed cmds string-parsed
+    return reply, []
