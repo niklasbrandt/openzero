@@ -243,7 +243,7 @@ export class ChatPrompt extends HTMLElement {
 		if (!this.shadowRoot) return;
 		this.shadowRoot.innerHTML = `
 		<style>
-          h2 { font-size: 1.5rem; font-weight: bold; margin: 0 0 1rem 0; color: #fff; letter-spacing: 0.02em; }
+					h2 { font-size: 1.5rem; font-weight: bold; margin: 0 0 1rem 0; color: #fff; letter-spacing: 0.02em; }
 			:host {
 				display: block;
 			}
@@ -507,11 +507,11 @@ export class ChatPrompt extends HTMLElement {
 
 			@keyframes msgIn {
 				from { opacity: 0; transform: translateY(8px); }
-				to   { opacity: 1; transform: translateY(0); }
+				to	 { opacity: 1; transform: translateY(0); }
 			}
 		</style>
 
-		<div id="messages">
+		<div id="messages" aria-live="polite">
 			<div class="empty-state">
 				<div class="empty-icon">${this.chatSVG()}</div>
 				<p>Start a conversation with Z</p>
