@@ -123,6 +123,13 @@ A VPS with 24GB RAM or a local Mac Mini/homelab is recommended.
 2. **Secure:** Link the server to the Tailscale network.
 3. **Configure:** Connect calendars and define the user profile.
 
+### Deployment Expectations
+
+First-time builds or updates following major architectural changes incur significant durations:
+*   **Cold Builds:** Using `--no-cache` or major dependency updates (e.g., adding LangGraph, Redis) can take 45–60 minutes for `pip` resolution.
+*   **Media Engines:** Pulling the voice engines (Whisper and Coqui TTS) requires downloading approximately 6GB of data. Depending on network speed, this may total 2–3 hours for a complete first-time setup.
+*   **Subsequent Starts:** Once images are cached, the stack starts in seconds.
+
 ## Security and Privacy
 
 The build follows a strict privacy-first model:
