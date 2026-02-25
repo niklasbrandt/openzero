@@ -1,6 +1,6 @@
 # openZero Architecture Roadmap: Zero Trust, Privacy & Scale
 
-This document captures the strategic propositions for modernizing and hardening the openZero homelab stack. It outlines the evolution from a monolithic "version 1.0" approach towards an enterprise-grade, privacy-first personal AI operating system.
+This document captures the strategic propositions for hardening and scaling the openZero homelab stack. It outlines the evolution from a monolithic "version 1.0" approach towards an enterprise-grade, privacy-first personal AI operating system.
 
 ## 🟢 Phase 1: Native LLM Tool Calling (Agent Reliability)
 **Current State:** The agent uses string parsing (regex) to detect `[ACTION: ...] ` tags in the LLM output.
