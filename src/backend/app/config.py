@@ -51,7 +51,11 @@ class Settings(BaseSettings):
     # Qdrant
     QDRANT_HOST: str = "qdrant"
     QDRANT_PORT: int = 6333
-    QDRANT_API_KEY: str = ""
+    QDRANT_API_KEY: str = os.getenv("QDRANT_API_KEY", "change-me")
+
+    # Redis & Tasks
+    REDIS_HOST: str = "redis"
+    REDIS_PORT: int = 6379
 
     # Planka
     PLANKA_BASE_URL: str = "http://planka:1337"
