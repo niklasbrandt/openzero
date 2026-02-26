@@ -99,6 +99,7 @@ export class CalendarManager extends HTMLElement {
 			summary: formData.get('summary'),
 			start_time: formData.get('start'),
 			end_time: formData.get('end') || null,
+			is_all_day: true // Default to all day
 		};
 
 		try {
@@ -131,6 +132,22 @@ export class CalendarManager extends HTMLElement {
 			}
 		} catch (err) {
 			console.error('Failed to delete event', err);
+		}
+	}
+
+	async updateEvent(id: string, summary: string) {
+		try {
+			const response = await fetch(`/api/dashboard/calendar/local/${id}`, {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ summary })
+			});
+			if (response.ok) {
+				this.fetchEvents();
+				window.dispatchEvent(new CustomEvent('refresh-data', { detail: { actions: ['calendar'] } }));
+			}
+		} catch (err) {
+			console.error('Failed to update event', err);
 		}
 	}
 
@@ -428,13 +445,21 @@ export class CalendarManager extends HTMLElement {
 								<div class="event-card ${typeClass}">
 										<div class="event-card-inner">
 												<div class="event-info">
-														<span class="event-title">${e.summary}</span>
+														<input type="text" class="event-title-edit" 
+																value="${e.summary}" 
+																data-id="${e.id}"
+																${!e.is_local || e.is_birthday ? 'disabled' : ''}
+																style="background: transparent; border: none; font-size: 0.9rem; font-weight: 600; color: #fff; width: 100%; outline: none;">
 														<div class="event-meta">
 																<span>${timeStr === '00:00' ? 'All Day' : timeStr}</span>
 																${e.person ? `<span class="badge">${e.person}</span>` : ''}
 														</div>
 												</div>
-												${e.is_local && !e.is_birthday ? `<button class="delete-event-btn" data-id="${e.id}" title="Delete event" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #f87171; cursor: pointer; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold;">Delete</button>` : ''}
+												${e.is_local && !e.is_birthday ? `
+													<div style="display: flex; gap: 4px;">
+														<button class="delete-event-btn" data-id="${e.id}" title="Delete event" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #f87171; cursor: pointer; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold;">✕</button>
+													</div>
+												` : ''}
 										</div>
 								</div>
 						`;
@@ -473,6 +498,19 @@ export class CalendarManager extends HTMLElement {
 				e.stopPropagation();
 				const id = (e.currentTarget as HTMLElement).getAttribute('data-id');
 				if (id) this.deleteEvent(id);
+			});
+		});
+
+		this.shadowRoot.querySelectorAll('.event-title-edit').forEach(input => {
+			input.addEventListener('change', (e) => {
+				const el = e.currentTarget as HTMLInputElement;
+				const id = el.getAttribute('data-id');
+				if (id) this.updateEvent(id, el.value);
+			});
+			input.addEventListener('keydown', (e: any) => {
+				if (e.key === 'Enter') {
+					e.target.blur();
+				}
 			});
 		});
 

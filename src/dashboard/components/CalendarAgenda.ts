@@ -1,90 +1,106 @@
 export class CalendarAgenda extends HTMLElement {
-  private events: any[] = [];
-  private filterPerson: string | null = null;
+	private events: any[] = [];
+	private filterPerson: string | null = null;
 
-  constructor() {
-    super();
-    this.attachShadow({ mode: 'open' });
-  }
+	constructor() {
+		super();
+		this.attachShadow({ mode: 'open' });
+	}
 
-  connectedCallback() {
-    this.render();
-    this.fetchEvents();
-    window.addEventListener('refresh-data', (e: any) => {
-      if (e.detail && e.detail.actions && e.detail.actions.includes('calendar')) {
-        this.fetchEvents();
-      }
-    });
-  }
+	connectedCallback() {
+		this.render();
+		this.fetchEvents();
+		window.addEventListener('refresh-data', (e: any) => {
+			if (e.detail && e.detail.actions && e.detail.actions.includes('calendar')) {
+				this.fetchEvents();
+			}
+		});
+	}
 
-  async deleteEvent(id: string) {
-    if (!confirm('Delete this local event?')) return;
-    try {
-      const response = await fetch(`/api/dashboard/calendar/local/${id}`, { method: 'DELETE' });
-      if (response.ok) {
-        this.fetchEvents();
-        window.dispatchEvent(new CustomEvent('refresh-data', { detail: { actions: ['calendar'] } }));
-      }
-    } catch (e) {
-      console.error('Failed to delete event', e);
-    }
-  }
+	async deleteEvent(id: string) {
+		if (!confirm('Delete this local event?')) return;
+		try {
+			const response = await fetch(`/api/dashboard/calendar/local/${id}`, { method: 'DELETE' });
+			if (response.ok) {
+				this.fetchEvents();
+				window.dispatchEvent(new CustomEvent('refresh-data', { detail: { actions: ['calendar'] } }));
+			}
+		} catch (e) {
+			console.error('Failed to delete event', e);
+		}
+	}
 
-  async fetchEvents() {
-    try {
-      const response = await fetch('/api/dashboard/calendar');
-      if (!response.ok) throw new Error('API error');
-      this.events = await response.json();
+	async updateEvent(id: string, summary: string) {
+		try {
+			const response = await fetch(`/api/dashboard/calendar/local/${id}`, {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ summary })
+			});
+			if (response.ok) {
+				this.fetchEvents();
+				window.dispatchEvent(new CustomEvent('refresh-data', { detail: { actions: ['calendar'] } }));
+			}
+		} catch (e) {
+			console.error('Failed to update event', e);
+		}
+	}
 
-      // Check if we have any non-local events (simple heuristic for Google sync)
-      const hasGoogle = this.events.some(e => !e.is_local);
-      const link = this.shadowRoot?.querySelector('.calendar-link');
-      if (link) {
-        if (hasGoogle) {
-          link.setAttribute('href', 'https://calendar.google.com');
-          link.setAttribute('target', '_blank');
-          link.setAttribute('title', 'Open Google Calendar'); // Ensure title is set for Google
-        } else {
-          link.setAttribute('href', '#');
-          link.addEventListener('click', (e) => {
-            e.preventDefault();
-            window.dispatchEvent(new CustomEvent('open-calendar'));
-          });
-          link.setAttribute('title', 'Open Local Calendar');
-        }
-      }
+	async fetchEvents() {
+		try {
+			const response = await fetch('/api/dashboard/calendar');
+			if (!response.ok) throw new Error('API error');
+			this.events = await response.json();
 
-      this.displayEvents();
-    } catch (e) {
-      console.error('Failed to fetch calendar', e);
-      const list = this.shadowRoot?.querySelector('#event-list');
-      if (list) {
-        list.innerHTML = '<div class="empty">Unable to load agenda. Check backend/integration.</div>';
-      }
-    }
-  }
+			// Check if we have any non-local events (simple heuristic for Google sync)
+			const hasGoogle = this.events.some(e => !e.is_local);
+			const link = this.shadowRoot?.querySelector('.calendar-link');
+			if (link) {
+				if (hasGoogle) {
+					link.setAttribute('href', 'https://calendar.google.com');
+					link.setAttribute('target', '_blank');
+					link.setAttribute('title', 'Open Google Calendar'); // Ensure title is set for Google
+				} else {
+					link.setAttribute('href', '#');
+					link.addEventListener('click', (e) => {
+						e.preventDefault();
+						window.dispatchEvent(new CustomEvent('open-calendar'));
+					});
+					link.setAttribute('title', 'Open Local Calendar');
+				}
+			}
 
-  setFilter(person: string | null) {
-    this.filterPerson = person;
-    this.displayEvents();
-  }
+			this.displayEvents();
+		} catch (e) {
+			console.error('Failed to fetch calendar', e);
+			const list = this.shadowRoot?.querySelector('#event-list');
+			if (list) {
+				list.innerHTML = '<div class="empty">Unable to load agenda. Check backend/integration.</div>';
+			}
+		}
+	}
 
-  displayEvents() {
-    const list = this.shadowRoot?.querySelector('#event-list');
-    const filters = this.shadowRoot?.querySelector('#filters');
+	setFilter(person: string | null) {
+		this.filterPerson = person;
+		this.displayEvents();
+	}
 
-    if (list) {
-      const filtered = this.filterPerson
-        ? this.events.filter(e => e.person === this.filterPerson)
-        : this.events;
+	displayEvents() {
+		const list = this.shadowRoot?.querySelector('#event-list');
+		const filters = this.shadowRoot?.querySelector('#filters');
 
-      list.innerHTML = filtered.map(e => {
-        const date = new Date(e.start);
-        const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const day = date.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' });
+		if (list) {
+			const filtered = this.filterPerson
+				? this.events.filter(e => e.person === this.filterPerson)
+				: this.events;
 
-        const isBirthday = e.summary.toLowerCase().includes('birthday');
-        return `
+			list.innerHTML = filtered.map(e => {
+				const date = new Date(e.start);
+				const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+				const day = date.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' });
+
+				const isBirthday = e.summary.toLowerCase().includes('birthday');
+				return `
 					<div class="event-item ${isBirthday ? 'birthday-item' : ''}" role="listitem">
 						<div class="time-box">
 							<span class="day">${day}</span>
@@ -92,50 +108,67 @@ export class CalendarAgenda extends HTMLElement {
 						</div>
 						<div class="details">
 							<div class="summary-row" style="display: flex; justify-content: space-between; align-items: flex-start;">
-								<span class="summary">
+								<span class="summary" style="flex: 1;">
 									${!e.is_local ? '<span class="local-indicator" style="color: #14B8A6; background: rgba(20, 184, 166, 0.1); border-color: rgba(20, 184, 166, 0.2);">Google</span> ' : ''}
-									${e.summary}
+									<input type="text" class="event-title-edit" 
+										value="${e.summary}" 
+										data-id="${e.id}"
+										${!e.is_local || e.is_birthday ? 'disabled' : ''}
+										style="background: transparent; border: none; font-size: 0.9rem; font-weight: 500; color: #fff; width: 100%; outline: none;">
 								</span>
-								${e.is_local && !e.is_birthday ? `<button class="delete-btn" data-id="${e.id}" title="Delete event" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #f87171; cursor: pointer; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; transition: all 0.2s;">Delete</button>` : ''}
+								${e.is_local && !e.is_birthday ? `<button class="delete-btn" data-id="${e.id}" title="Delete event" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #f87171; cursor: pointer; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; transition: all 0.2s;">✕</button>` : ''}
 							</div>
 							${e.person ? `<span class="person-badge">${e.person}</span>` : ''}
 						</div>
 					</div>
 				`;
-      }).join('') || '<div class="empty">No upcoming events.</div>';
-    }
+			}).join('') || '<div class="empty">No upcoming events.</div>';
+		}
 
-    // Refresh filter buttons
-    if (filters) {
-      const people = [...new Set(this.events.filter(e => e.person).map(e => e.person))];
-      filters.innerHTML = `
+		// Refresh filter buttons
+		if (filters) {
+			const people = [...new Set(this.events.filter(e => e.person).map(e => e.person))];
+			filters.innerHTML = `
 				<button class="filter-btn ${!this.filterPerson ? 'active' : ''}" data-person="">All</button>
 				${people.map(p => `
 					<button class="filter-btn ${this.filterPerson === p ? 'active' : ''}" data-person="${p}">${p}</button>
 				`).join('')}
 			`;
 
-      filters.querySelectorAll('.filter-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          const person = (e.target as HTMLElement).getAttribute('data-person');
-          this.setFilter(person || null);
-        });
-      });
-    }
+			filters.querySelectorAll('.filter-btn').forEach(btn => {
+				btn.addEventListener('click', (e) => {
+					const person = (e.target as HTMLElement).getAttribute('data-person');
+					this.setFilter(person || null);
+				});
+			});
+		}
 
-    if (list) {
-      list.querySelectorAll('.delete-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          const id = (e.currentTarget as HTMLElement).getAttribute('data-id');
-          if (id) this.deleteEvent(id);
-        });
-      });
-    }
-  }
+		if (list) {
+			list.querySelectorAll('.delete-btn').forEach(btn => {
+				btn.addEventListener('click', (e) => {
+					const id = (e.currentTarget as HTMLElement).getAttribute('data-id');
+					if (id) this.deleteEvent(id);
+				});
+			});
 
-  render() {
-    if (this.shadowRoot) {
-      this.shadowRoot.innerHTML = `
+			list.querySelectorAll('.event-title-edit').forEach(input => {
+				input.addEventListener('change', (e) => {
+					const el = e.currentTarget as HTMLInputElement;
+					const id = el.getAttribute('data-id');
+					if (id) this.updateEvent(id, el.value);
+				});
+				input.addEventListener('keydown', (e: any) => {
+					if (e.key === 'Enter') {
+						e.target.blur();
+					}
+				});
+			});
+		}
+	}
+
+	render() {
+		if (this.shadowRoot) {
+			this.shadowRoot.innerHTML = `
 				<style>
 					h2 { font-size: 1.5rem; font-weight: bold; margin: 0; color: #fff; letter-spacing: 0.02em; }
 					:host { display: block; }
@@ -246,8 +279,8 @@ export class CalendarAgenda extends HTMLElement {
 					<div id="event-list" role="list">Loading events...</div>
 				</div>
 			`;
-    }
-  }
+		}
+	}
 }
 
 customElements.define('calendar-agenda', CalendarAgenda);
