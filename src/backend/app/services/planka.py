@@ -258,6 +258,13 @@ async def create_board(project_id: str, name: str) -> dict:
 				"position": 65535
 			})
 		except Exception as e:
-			print(f"DEBUG: Failed to create default Inbox list: {e}")
+			print(f"DEBUG: Failed to create default Inbox list with type, retrying without: {e}")
+			try:
+				await client.post(f"/api/boards/{board['id']}/lists", json={
+					"name": "Inbox",
+					"position": 65535
+				})
+			except Exception as e2:
+				print(f"DEBUG: Failed to create default Inbox list: {e2}")
 		
 		return board
