@@ -24,7 +24,7 @@ export class ProjectTree extends HTMLElement {
 				createProject.setAttribute('data-open', isOpen ? 'false' : 'true');
 
 				const btn = this.shadowRoot?.querySelector('#new-project-btn');
-				if (btn) btn.textContent = isOpen ? '+ New Project' : '− Cancel';
+				if (btn) btn.textContent = isOpen ? '+ Add Board' : '− Cancel';
 			}
 		});
 	}
@@ -49,7 +49,7 @@ export class ProjectTree extends HTMLElement {
 	showEmpty() {
 		const pre = this.shadowRoot?.querySelector('pre');
 		if (pre) {
-			pre.textContent = 'No projects yet. Create one to get started.';
+			pre.textContent = 'No boards found.';
 			pre.style.color = 'rgba(255, 255, 255, 0.3)';
 			pre.style.fontFamily = "'Inter', system-ui, sans-serif";
 			pre.style.textAlign = 'center';
@@ -120,8 +120,8 @@ export class ProjectTree extends HTMLElement {
 				</style>
 				<div class="card">
 					<div class="header">
-						<h2>Projects</h2>
-						<button id="new-project-btn">+ New Project</button>
+						<h2>Boards</h2>
+						<button id="new-project-btn">+ Add Board</button>
 					</div>
 					<pre>Loading tree...</pre>
 				</div>

@@ -25,8 +25,13 @@ async def _get_stats_footer() -> str:
 
 	stats_text = f"🧠 Memories: {stats['points']}{model_tag}" if stats['status'] != 'error' else "🧠 Memory: Offline"
 	
-	base_url = settings.BASE_URL
-	links = f"🔗 [Dashboard]({base_url}) 🔗 [Boards]({base_url}/boards) 🔗 [Calendar]({base_url}/calendar)"
+	base_url = settings.BASE_URL.rstrip('/')
+	links = (
+		f"🔗 [Dashboard]({base_url}) "
+		f"🔗 [Operator]({base_url}/api/dashboard/planka-redirect?target=operator) "
+		f"🔗 [Boards]({base_url}/boards) "
+		f"🔗 [Calendar]({base_url}/calendar)"
+	)
 	
 	return f"\n\n{links}\n\n{stats_text}"
 
@@ -102,8 +107,12 @@ async def start_telegram_bot():
 				g_events = await asyncio.wait_for(fetch_calendar_events(max_results=3, days_ahead=1), timeout=5.0)
 				if g_events:
 					for e in g_events:
-						time_str = e['start'].split('T')[1][:5] if 'T' in e['start'] else 'All Day'
-						event_summary_parts.append(f"• {e['summary']} ({time_str})")
+						time_str = e['start'].split('T')[1][:5] if 'T' in e['start'] else None
+						if time_str == "00:00": time_str = None
+						
+						display_item = f"• {e['summary']}"
+						if time_str: display_item += f" ({time_str})"
+						event_summary_parts.append(display_item)
 			except Exception as ce:
 				# Differentiate between "not set up" and "actual error"
 				if "credentials missing" in str(ce).lower() or "not configured" in str(ce).lower():
@@ -133,7 +142,11 @@ async def start_telegram_bot():
 				tomorrow_end = today_start + timedelta(days=2)
 				res_local = await session.execute(select(LocalEvent).where(LocalEvent.start_time >= today_start, LocalEvent.start_time < tomorrow_end))
 				for le in res_local.scalars().all():
-					event_summary_parts.append(f"• {le.summary} ({le.start_time.strftime('%H:%M')})")
+					time_str = le.start_time.strftime('%H:%M')
+					if time_str == "00:00":
+						event_summary_parts.append(f"• {le.summary}")
+					else:
+						event_summary_parts.append(f"• {le.summary} ({time_str})")
 
 			event_summary = "\n".join(event_summary_parts) if event_summary_parts else "No upcoming events."
 			
