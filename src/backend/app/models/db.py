@@ -74,6 +74,9 @@ class Person(Base):
     birthday = Column(String)  # Optional birthday string (e.g. DD.MM.YYYY)
     gender = Column(String)
     residency = Column(String)
+    timezone = Column(String) # e.g. "Europe/Berlin"
+    town = Column(String) # e.g. "Berlin"
+    country = Column(String) # e.g. "Germany"
     work_times = Column(String)
     briefing_time = Column(String) # e.g. "08:00"
     last_interaction = Column(DateTime)
