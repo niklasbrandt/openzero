@@ -22,6 +22,9 @@ export class UserCard extends HTMLElement {
 				birthday: '',
 				gender: '',
 				residency: '',
+				town: '',
+				country: '',
+				timezone: '',
 				work_times: '',
 				briefing_time: '08:00',
 				context: ''
@@ -40,6 +43,9 @@ export class UserCard extends HTMLElement {
 			birthday: (shadow.querySelector('#bday-input') as HTMLInputElement).value,
 			gender: (shadow.querySelector('#gender-input') as HTMLInputElement).value,
 			residency: (shadow.querySelector('#residency-input') as HTMLInputElement).value,
+			town: (shadow.querySelector('#town-input') as HTMLInputElement).value,
+			country: (shadow.querySelector('#country-input') as HTMLInputElement).value,
+			timezone: (shadow.querySelector('#timezone-input') as HTMLInputElement).value,
 			work_times: (shadow.querySelector('#work-input') as HTMLInputElement).value,
 			briefing_time: (shadow.querySelector('#brief-input') as HTMLInputElement).value,
 			context: (shadow.querySelector('#context-input') as HTMLTextAreaElement).value,
@@ -182,6 +188,24 @@ export class UserCard extends HTMLElement {
 						${this.isEditing
 				? `<input id="residency-input" type="text" placeholder="City, Country" value="${me.residency || ''}">`
 				: `<div class="value">${me.residency || 'Not set'}</div>`}
+					</div>
+					<div class="field">
+						<div class="label">Town</div>
+						${this.isEditing
+				? `<input id="town-input" type="text" placeholder="Berlin" value="${me.town || ''}">`
+				: `<div class="value">${me.town || 'Not set'}</div>`}
+					</div>
+					<div class="field">
+						<div class="label">Country</div>
+						${this.isEditing
+				? `<input id="country-input" type="text" placeholder="Germany" value="${me.country || ''}">`
+				: `<div class="value">${me.country || 'Not set'}</div>`}
+					</div>
+					<div class="field">
+						<div class="label">Timezone</div>
+						${this.isEditing
+				? `<input id="timezone-input" type="text" placeholder="Europe/Berlin" value="${me.timezone || ''}">`
+				: `<div class="value">${me.timezone || 'Not set'}</div>`}
 					</div>
 					<div class="field">
 						<div class="label">Briefing Time</div>
