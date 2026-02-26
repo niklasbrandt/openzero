@@ -97,22 +97,61 @@ async def dashboard_chat(req: ChatRequest, db: AsyncSession = Depends(get_db)):
 		inner_circle = result.scalars().all()
 		circle_text = "\n".join([f"• {p.name} ({p.relationship})" for p in inner_circle]) if inner_circle else "No direct connections added yet."
 		
-		# 2. Upcoming Calendar
+		# 2. Upcoming Timeline (Calendar + Birthdays + Local Events)
 		from app.services.calendar import fetch_calendar_events
-		events = await fetch_calendar_events(max_results=3, days_ahead=3)
-		if not events:
-			# Check local events if google is empty
-			from app.models.db import LocalEvent
-			today = datetime.datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-			end = today + datetime.timedelta(days=3)
-			res = await db.execute(select(LocalEvent).where(LocalEvent.start_time >= today, LocalEvent.start_time <= end))
-			events = res.scalars().all()
-			if events:
-				event_list = "\n".join([f"• {e.summary} ({e.start_time.strftime('%a %H:%M')})" for e in events[:3]])
-			else:
-				event_list = "No upcoming events for the next 3 days."
-		else:
-			event_list = "\n".join([f"• {e.summary} ({datetime.datetime.fromisoformat(e['start'].replace('Z', '')).strftime('%a %H:%M')})" for e in events[:3]])
+		from app.models.db import LocalEvent
+		
+		timeline_events = []
+		now = datetime.datetime.now()
+		today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+		end_limit = today + datetime.timedelta(days=3)
+		
+		# A. Google Events
+		try:
+			g_events = await fetch_calendar_events(max_results=5, days_ahead=3)
+			for e in g_events:
+				try:
+					dt = datetime.datetime.fromisoformat(e['start'].replace('Z', ''))
+					timeline_events.append({
+						"summary": e['summary'],
+						"time": dt.strftime('%a %H:%M'),
+						"sort_key": dt
+					})
+				except: pass
+		except: pass
+		
+		# B. Local Events
+		res_local = await db.execute(select(LocalEvent).where(LocalEvent.start_time >= today, LocalEvent.start_time <= end_limit))
+		for e in res_local.scalars().all():
+			timeline_events.append({
+				"summary": e.summary,
+				"time": e.start_time.strftime('%a %H:%M'),
+				"sort_key": e.start_time
+			})
+			
+		# C. Birthdays
+		res_people = await db.execute(select(Person).where(Person.birthday.isnot(None)))
+		for p in res_people.scalars().all():
+			parsed = parse_birthday(p.birthday)
+			if parsed:
+				month, day = parsed
+				try:
+					bday_this_year = datetime.datetime(now.year, month, day)
+					if bday_this_year < today:
+						bday_this_year = datetime.datetime(now.year + 1, month, day)
+					
+					if today <= bday_this_year <= end_limit:
+						timeline_events.append({
+							"summary": f"🎂 {p.name}'s Birthday",
+							"time": bday_this_year.strftime('%a, %d %b'),
+							"sort_key": bday_this_year
+						})
+				except: pass
+
+		timeline_events.sort(key=lambda x: x["sort_key"])
+		event_list = "\n".join([f"• {e['summary']} ({e['time']})" for e in timeline_events[:5]])
+		if not event_list:
+			event_list = "No upcoming events for the next 3 days."
 
 		life_tree = (
 			"🌳 **Boards**\n\n"
@@ -601,8 +640,11 @@ class PersonCreate(BaseModel):
 	birthday: Optional[str] = None
 	gender: Optional[str] = None
 	residency: Optional[str] = None
+	timezone: Optional[str] = None
+	town: Optional[str] = None
+	country: Optional[str] = None
 	work_times: Optional[str] = None
-	briefing_time: Optional[str] = None
+	briefing_time: Optional[str] = "08:00"
 
 @router.put("/people/identity")
 async def update_identity(person: PersonCreate, db: AsyncSession = Depends(get_db)):
@@ -618,6 +660,9 @@ async def update_identity(person: PersonCreate, db: AsyncSession = Depends(get_d
 	me.context = person.context
 	me.gender = person.gender
 	me.residency = person.residency
+	me.timezone = person.timezone
+	me.town = person.town
+	me.country = person.country
 	me.work_times = person.work_times
 	me.briefing_time = person.briefing_time
 	me.relationship = "Self"
@@ -644,6 +689,9 @@ async def create_person(person: PersonCreate, db: AsyncSession = Depends(get_db)
 		birthday=person.birthday,
 		gender=person.gender,
 		residency=person.residency,
+		timezone=person.timezone,
+		town=person.town,
+		country=person.country,
 		work_times=person.work_times,
 		briefing_time=person.briefing_time
 	)
@@ -665,6 +713,9 @@ async def update_person(person_id: int, person: PersonCreate, db: AsyncSession =
 	db_p.birthday = person.birthday
 	db_p.gender = person.gender
 	db_p.residency = person.residency
+	db_p.timezone = person.timezone
+	db_p.town = person.town
+	db_p.country = person.country
 	db_p.work_times = person.work_times
 	db_p.briefing_time = person.briefing_time
 	
@@ -787,13 +838,25 @@ class LocalEventCreate(BaseModel):
 	description: Optional[str] = ""
 	start_time: datetime.datetime
 	end_time: Optional[datetime.datetime] = None
+	is_all_day: bool = True
+
+class LocalEventUpdate(BaseModel):
+	summary: Optional[str] = None
+	start_time: Optional[datetime.datetime] = None
+	end_time: Optional[datetime.datetime] = None
+	is_completed: Optional[bool] = None
 
 @router.post("/calendar/local")
 async def create_local_event(event: LocalEventCreate, db: AsyncSession = Depends(get_db)):
 	from app.models.db import LocalEvent
 	
 	start = event.start_time
-	end = event.end_time or (start + datetime.timedelta(hours=1))
+	# If all day, ensure it covers the 24h span
+	if event.is_all_day:
+		start = start.replace(hour=0, minute=0, second=0, microsecond=0)
+		end = start + datetime.timedelta(hours=23, minutes=59)
+	else:
+		end = event.end_time or (start + datetime.timedelta(hours=1))
 	
 	db_event = LocalEvent(
 		summary=event.summary,
@@ -804,6 +867,22 @@ async def create_local_event(event: LocalEventCreate, db: AsyncSession = Depends
 	db.add(db_event)
 	await db.commit()
 	await db.refresh(db_event)
+	return db_event
+
+@router.put("/calendar/local/{event_id}")
+async def update_local_event(event_id: str, event: LocalEventUpdate, db: AsyncSession = Depends(get_db)):
+	from app.models.db import LocalEvent
+	clean_id = int(event_id.replace("local_", ""))
+	res = await db.execute(select(LocalEvent).where(LocalEvent.id == clean_id))
+	db_event = res.scalar_one_or_none()
+	if not db_event: raise HTTPException(status_code=404)
+
+	if event.summary is not None: db_event.summary = event.summary
+	if event.start_time is not None: db_event.start_time = event.start_time
+	if event.end_time is not None: db_event.end_time = event.end_time
+	if event.is_completed is not None: db_event.is_completed = event.is_completed
+	
+	await db.commit()
 	return db_event
 
 @router.delete("/calendar/local/{event_id}")
