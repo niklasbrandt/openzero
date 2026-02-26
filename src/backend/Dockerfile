@@ -12,6 +12,9 @@ WORKDIR /app
 COPY src/backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copy release context if exists (from sync.sh)
+COPY LATEST_CHANGES.txt* ./
+
 COPY src/backend/app/ ./app/
 COPY --from=dashboard-build /dashboard/dist/ ./static/
 

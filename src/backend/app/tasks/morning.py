@@ -47,7 +47,16 @@ async def morning_briefing():
 		print(f"DEBUG: Calendar fetch during briefing skipped: {ce}")
 		calendar_events = []
 
-	calendar_summary = "\n".join([f"- {e['summary']}" for e in calendar_events]) if calendar_events else "No events scheduled for today."
+	calendar_summary_parts = []
+	for e in calendar_events:
+		time_str = e['start'].split('T')[1][:5] if 'T' in e['start'] else None
+		if time_str == "00:00": time_str = None
+		
+		item = f"- {e['summary']}"
+		if time_str: item += f" ({time_str})"
+		calendar_summary_parts.append(item)
+	
+	calendar_summary = "\n".join(calendar_summary_parts) if calendar_summary_parts else "No events scheduled for today."
 	
 	# Simple travel detection
 	detected_location = None

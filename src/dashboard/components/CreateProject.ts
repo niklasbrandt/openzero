@@ -36,7 +36,7 @@ export class CreateProject extends HTMLElement {
 		const tagsRaw = this.shadowRoot?.querySelector<HTMLInputElement>('#project-tags')?.value.trim();
 
 		if (!name) {
-			this.showFeedback('Please enter a project name.', 'error');
+			this.showFeedback('Please enter a name.', 'error');
 			return;
 		}
 
@@ -54,7 +54,7 @@ export class CreateProject extends HTMLElement {
 
 			if (!response.ok) throw new Error('Failed to create project');
 
-			this.showFeedback(`Project "${name}" created successfully!`, 'success');
+			this.showFeedback(`Board "${name}" created successfully!`, 'success');
 			this.resetForm();
 
 			// Notify other components (e.g. ProjectTree) to refresh
@@ -64,7 +64,7 @@ export class CreateProject extends HTMLElement {
 				detail: { name, description, tags },
 			}));
 		} catch (e) {
-			this.showFeedback('⚠ Failed to create project. Please try again.', 'error');
+			this.showFeedback('⚠ Failed to create board. Please try again.', 'error');
 		} finally {
 			this.isSubmitting = false;
 			this.updateSubmitButton(false);
@@ -95,7 +95,7 @@ export class CreateProject extends HTMLElement {
 		btn.disabled = loading;
 		btn.innerHTML = loading
 			? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spinner"><circle cx="12" cy="12" r="10" stroke-opacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"/></svg> Creating…`
-			: `${this.plusSVG()} Create Project`;
+			: `${this.plusSVG()} Add Board`;
 	}
 
 	private plusSVG(): string {
@@ -265,11 +265,11 @@ export class CreateProject extends HTMLElement {
 			@keyframes spin { to { transform: rotate(360deg); } }
 		</style>
 
-		<h2>${this.folderSVG()} Create Project</h2>
+		<h2>${this.folderSVG()} Add Board</h2>
 
 		<form id="project-form">
-			<label for="project-name">Project Name</label>
-			<input type="text" id="project-name" placeholder="my-new-project" autocomplete="off" />
+			<label for="project-name">Name</label>
+			<input type="text" id="project-name" placeholder="E.g. Daily Missions" autocomplete="off" />
 
 			<label for="project-desc">Description</label>
 			<textarea id="project-desc" rows="3" placeholder="What is this project about?"></textarea>
@@ -279,7 +279,7 @@ export class CreateProject extends HTMLElement {
 			<p class="hint">Comma-separated, optional</p>
 
 			<div class="actions">
-				<button type="submit" id="submit-btn">${this.plusSVG()} Create Project</button>
+				<button type="submit" id="submit-btn">${this.plusSVG()} Add Board</button>
 				<button type="button" id="cancel-btn">Clear</button>
 			</div>
 		</form>

@@ -82,6 +82,16 @@ class Person(Base):
     last_interaction = Column(DateTime)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
+class TrackingSession(Base):
+    __tablename__ = "tracking_sessions"
+    id = Column(Integer, primary_key=True)
+    tasks = Column(Text, nullable=False) # Original full list
+    milestones_json = Column(Text) # JSON: [{"task": "desc", "due_at": "ISO", "sent": false}]
+    end_time = Column(DateTime, nullable=False)
+    final_nudge_sent = Column(Boolean, default=False)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
 class LocalEvent(Base):
     __tablename__ = "local_events"
     id = Column(Integer, primary_key=True)

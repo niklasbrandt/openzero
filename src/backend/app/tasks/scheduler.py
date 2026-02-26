@@ -85,6 +85,23 @@ async def start_scheduler():
 		replace_existing=True,
 	)
 
+	# Proactive Mission Follow-up — Every 3 hours from 9 AM to 9 PM
+	from app.services.follow_up import run_proactive_follow_up, check_active_tracking_sessions
+	scheduler.add_job(
+		run_proactive_follow_up,
+		CronTrigger(hour="9,12,15,18,21", minute=0),
+		id="proactive_follow_up",
+		replace_existing=True,
+	)
+
+	# High Proximity Tracking Monitor — Every 5 minutes
+	scheduler.add_job(
+		check_active_tracking_sessions,
+		IntervalTrigger(minutes=5),
+		id="proximity_monitor",
+		replace_existing=True,
+	)
+
 	scheduler.start()
 
 async def stop_scheduler():

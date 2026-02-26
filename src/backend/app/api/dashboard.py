@@ -379,84 +379,81 @@ async def planka_redirect(request: Request, target: str = "", background: bool =
 	"""
 	Planka Autologin Bridge
 	-----------------------
-	Ensures the user is authenticated on the correct origin (Port 1337).
+	Ensures the user is authenticated on the correct origin and sets session tokens.
 	"""
-	# 1. Origin Check: Must be on Port 1337 to set LocalStorage for Planka.
-	# If called from the dashboard (Port 80), redirect to Port 1337.
-	host_header = request.headers.get("host", "localhost")
-	forwarded_port = request.headers.get("x-forwarded-port")
+	# 1. Origin Normalization
+	# We MUST be on the public BASE_URL origin for localStorage/cookies to work for Planka.
+	public_base = settings.BASE_URL.rstrip('/')
+	current_url = str(request.url)
 	
-	if forwarded_port:
-		current_port = int(forwarded_port)
-	else:
-		host_parts = host_header.split(':')
-		current_port = int(host_parts[1]) if len(host_parts) > 1 else (80 if request.url.scheme == "http" else 443)
-	
-	host_name = host_header.split(':')[0]
-	
-	# 1. Origin Check: Ensure we are on the correct port if not using Traefik.
-	# If on port 80, Traefik handles the subpath routing so we stay on port 80.
-	if current_port != 1337 and current_port != 80:
-		new_url = f"http://{host_name}:1337{request.url.path}"
+	# If we are not on the public base URL, redirect the browser there first.
+	if not current_url.startswith(public_base) and "localhost" not in current_url:
+		new_url = f"{public_base}/api/dashboard/planka-redirect"
 		if request.query_params:
 			new_url += f"?{str(request.query_params)}"
 		return RedirectResponse(url=new_url)
 
-	# 2. Authenticate
+	# 2. Authenticate Backend-to-Backend
 	login_url = f"{settings.PLANKA_BASE_URL}/api/access-tokens?withHttpOnlyToken=true"
 	payload = {
 		"emailOrUsername": settings.PLANKA_ADMIN_EMAIL,
 		"password": settings.PLANKA_ADMIN_PASSWORD
 	}
 	
-	async with httpx.AsyncClient() as client:
+	async with httpx.AsyncClient(timeout=10.0) as client:
 		try:
-			resp = await client.post(login_url, json=payload, timeout=5.0)
+			resp = await client.post(login_url, json=payload)
+			resp.raise_for_status()
 			token_data = resp.json()
-			cookie_val = resp.cookies.get("httpOnlyToken")
 			access_token = token_data.get("item")
+			cookie_val = resp.cookies.get("httpOnlyToken")
 			
 			if not access_token:
-				raise Exception("Auth failed - no token")
+				raise Exception("Failed to retrieve access token from Planka")
 
-			# 2.5 Fetch user ID (Planka's frontend often needs both token and userId in LocalStorage)
-			user_id = None
+			# 3. Fetch User ID for LocalStorage enrichment
+			user_id = "None"
 			try:
-				me_resp = await client.get(f"{settings.PLANKA_BASE_URL}/api/users/me", headers={"Authorization": f"Bearer {access_token}"})
+				me_resp = await client.get(
+					f"{settings.PLANKA_BASE_URL}/api/users/me", 
+					headers={"Authorization": f"Bearer {access_token}"}
+				)
 				if me_resp.status_code == 200:
-					user_id = me_resp.json().get("id")
+					user_id = me_resp.json().get("id", "None")
 			except Exception as e:
 				print(f"DEBUG: Could not fetch userId: {e}")
 
-			# 3. Determine Redirect URL
-			scheme = request.url.scheme
-			if current_port == 80:
-				planka_root = f"{scheme}://{host_name}"
-			else:
-				planka_root = f"{scheme}://{host_name}:1337"
-			redirect_url = f"{planka_root}/"
+			# 4. Determine Target Redirect URL
+			# CRITICAL: We redirect to Planka paths, NOT / (which is the dashboard).
 			target_board_id = request.query_params.get("target_board_id") or request.query_params.get("targetboardid")
 			target_project_id = request.query_params.get("target_project_id") or request.query_params.get("targetprojectid")
 			
 			if target_board_id:
-				redirect_url = f"{planka_root}/boards/{target_board_id}"
+				redirect_url = f"{public_base}/boards/{target_board_id}"
 			elif target_project_id:
-				redirect_url = f"{planka_root}/projects/{target_project_id}"
-			elif target == "operator":
+				redirect_url = f"{public_base}/projects/{target_project_id}"
+			else:
+				# Find the 'openZero' (aka Boards) project ID for the default landing
 				headers = {"Authorization": f"Bearer {access_token}"}
 				proj_resp = await client.get(f"{settings.PLANKA_BASE_URL}/api/projects", headers=headers)
-				items = proj_resp.json().get("items", [])
-				project = next((p for p in items if p["name"].lower() == "openzero"), None)
-				if project:
-					detail_resp = await client.get(f"{settings.PLANKA_BASE_URL}/api/projects/{project['id']}", headers=headers)
-					detail = detail_resp.json()
-					board = next((b for b in detail.get("included", {}).get("boards", []) if b["name"].lower() == "operator board"), None)
-					if board:
-						redirect_url = f"{planka_root}/boards/{board['id']}"
+				projects = proj_resp.json().get("items", [])
+				oz_proj = next((p for p in projects if p["name"].lower() == "openzero"), None)
+				
+				if target == "operator" and oz_proj:
+					det_resp = await client.get(f"{settings.PLANKA_BASE_URL}/api/projects/{oz_proj['id']}", headers=headers)
+					boards = det_resp.json().get("included", {}).get("boards", [])
+					op_board = next((b for b in boards if b["name"].lower() == "operator board"), None)
+					if op_board:
+						redirect_url = f"{public_base}/boards/{op_board['id']}"
+					else:
+						redirect_url = f"{public_base}/projects/{oz_proj['id']}"
+				elif oz_proj:
+					# Landing on the 'Boards' overview
+					redirect_url = f"{public_base}/projects/{oz_proj['id']}"
+				else:
+					redirect_url = f"{public_base}/projects"
 
-			# 4. Serve Bridge HTML
-			js_redirect = "" if background else f"setTimeout(() => {{ window.location.replace('{redirect_url}'); }}, 500);"
-			
+			# 5. Build Bridge HTML
 			from fastapi.responses import HTMLResponse
 			html_content = f"""
 			<!DOCTYPE html>
@@ -464,47 +461,103 @@ async def planka_redirect(request: Request, target: str = "", background: bool =
 			<head>
 				<title>openZero SSO</title>
 				<script>
-					function setupSession() {{
+					async function setupSession() {{
 						try {{
 							const token = "{access_token}";
-							console.log("SSO: Setting tokens...");
+							const userId = "{user_id}";
+							const email = "{settings.PLANKA_ADMIN_EMAIL}";
+							const password = "{settings.PLANKA_ADMIN_PASSWORD}";
+							console.log("SSO: Initiating autologin for " + email);
 							
-							// 1. LocalStorage - Primary for Planka frontend
+							// 1. Sync Storage
 							localStorage.setItem('accessToken', token);
 							localStorage.setItem('token', token);
-							const userId = "{user_id}";
 							if (userId && userId !== "None") {{
 								localStorage.setItem('userId', userId);
 							}}
 							
-							// 2. Document Cookies - Fallback for some API calls
+							// 2. The "Mask Submitter" (User Requested)
+							// Deep-Sim filling for React-based forms
+							const iframe = document.createElement('iframe');
+							iframe.src = '/login';
+							iframe.style.width = '1px';
+							iframe.style.height = '1px';
+							iframe.style.border = 'none';
+							iframe.style.position = 'absolute';
+							iframe.style.visibility = 'hidden';
+							document.body.appendChild(iframe);
+							
+							let attempt = 0;
+							const maxAttempts = 30; // Try for 6 seconds
+							
+							const checkIframe = setInterval(() => {{
+								attempt++;
+								try {{
+									const doc = iframe.contentDocument || iframe.contentWindow.document;
+									if (!doc) return;
+									
+									const emailField = doc.querySelector('input[name="emailOrUsername"]');
+									const passField = doc.querySelector('input[name="password"]');
+									const btn = doc.querySelector('button.ui.primary.button');
+									
+									if (emailField && passField && btn) {{
+										clearInterval(checkIframe);
+										console.log("SSO: Mask detected. Simulating human input...");
+										
+										// Native Setter Bypass for React
+										const setReactValue = (el, val) => {{
+											const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+											setter.call(el, val);
+											el.dispatchEvent(new Event('input', {{ bubbles: true }}));
+											el.dispatchEvent(new Event('change', {{ bubbles: true }}));
+											el.dispatchEvent(new Event('blur', {{ bubbles: true }}));
+										}};
+
+										setReactValue(emailField, email);
+										setReactValue(passField, password);
+										
+										// Short delay to let React process events
+										setTimeout(() => {{
+											console.log("SSO: Triggering submission...");
+											btn.click();
+											// Monitor for redirect
+											setTimeout(() => {{ window.location.replace('{redirect_url}'); }}, 2000);
+										}}, 600);
+										
+									}} else if (doc.location.pathname.includes('/projects') || doc.location.pathname.includes('/boards')) {{
+										clearInterval(checkIframe);
+										console.log("SSO: Session already active in bridge. Redirecting...");
+										window.location.replace('{redirect_url}');
+									}} else if (attempt > maxAttempts) {{
+										clearInterval(checkIframe);
+										console.log("SSO: Polling timeout. Proceeding to destination...");
+										window.location.replace('{redirect_url}');
+									}}
+								}} catch (err) {{
+									if (attempt > maxAttempts) {{
+										clearInterval(checkIframe);
+										window.location.replace('{redirect_url}');
+									}}
+								}}
+							}}, 200);
+							
+							// 3. Cookie Synchronization (Legacy/Redundancy)
 							const expiry = "; max-age=31536000; path=/; SameSite=Lax";
 							document.cookie = "accessToken=" + token + expiry;
 							document.cookie = "token=" + token + expiry;
 							
-							console.log("SSO: Success. Redirecting to {redirect_url}...");
-							{js_redirect}
 						}} catch (e) {{ 
 							console.error('SSO Error:', e);
-							document.getElementById('status').innerText = 'Error setting session. Please try again.';
-							document.getElementById('retry').style.display = 'block';
+							window.location.replace('{redirect_url}');
 						}}
 					}}
 					window.onload = setupSession;
 				</script>
 			</head>
-			<body style="background: #0f172a; color: white; font-family: -apple-system, system-ui, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0;">
-				<div style="text-align: center; max-width: 400px; padding: 2rem; background: #1e293b; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);">
-					<div style="margin-bottom: 1.5rem;">
-						<svg style="width: 48px; height: 48px; color: #38bdf8;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-						</svg>
-					</div>
-					<h2 style="margin: 0 0 0.5rem 0; font-size: 1.25rem;">openZero SSO</h2>
-					<p id="status" style="color: #94a3b8; font-size: 0.875rem;">{ "Syncing session..." if background else "Connecting to your task board..." }</p>
-					<div id="retry" style="display: none; margin-top: 1rem;">
-						<a href="{redirect_url}" style="display: inline-block; padding: 0.5rem 1rem; background: #38bdf8; color: #0f172a; text-decoration: none; border-radius: 6px; font-weight: 600;">Continue to Planka</a>
-					</div>
+			<body style="background: #0f172a; color: white; font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0;">
+				<div style="text-align: center; max-width: 400px; padding: 2rem; background: #1e293b; border-radius: 12px;">
+					<h2 id="status" style="margin-bottom: 0.5rem;">Connecting...</h2>
+					<p style="color: #94a3b8; font-size: 0.875rem;">Initializing your secure session for Planka.</p>
 				</div>
 			</body>
 			</html>
@@ -518,10 +571,11 @@ async def planka_redirect(request: Request, target: str = "", background: bool =
 					max_age=31536000, secure=False
 				)
 			return response
-			
+
 		except Exception as e:
 			print(f"DEBUG: Planka Auth Error: {e}")
-			return RedirectResponse(url=settings.BASE_URL)
+			return RedirectResponse(url=f"{public_base}/projects")
+
 
 @router.post("/operator/sync")
 async def sync_operator():
@@ -535,6 +589,20 @@ async def sync_operator():
 	"""
 	result = await operator_service.sync_operator_tasks()
 	return {"status": "success", "message": result}
+
+@router.post("/morning-briefing")
+async def trigger_morning_briefing():
+	"""Manually trigger the morning briefing generation."""
+	from app.tasks.morning import morning_briefing
+	content = await morning_briefing()
+	return {"status": "success", "content": content}
+
+@router.post("/follow-up")
+async def trigger_follow_up():
+	"""Manually trigger the proactive follow-up nudge."""
+	from app.services.follow_up import run_proactive_follow_up
+	await run_proactive_follow_up()
+	return {"status": "success"}
 
 # --- Create Project ---
 class ProjectCreate(BaseModel):
