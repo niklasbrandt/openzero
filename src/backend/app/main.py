@@ -50,17 +50,43 @@ async def lifespan(app: FastAPI):
         await start_telegram_bot()
         print("Background tasks & bot started.")
         
-        # 4. Warm up intelligence engine
+        # 5. Proactive Release Notes from Sync
+        notes_file = "LATEST_CHANGES.txt"
+        if os.path.exists(notes_file):
+            print("🚀 New deployment detected. Generating release notes...")
+            try:
+                with open(notes_file, "r") as f:
+                    changes = f.read().strip()
+                
+                if changes:
+                    from app.services.llm import chat
+                    from app.api.telegram import send_notification
+                    
+                    release_prompt = (
+                        f"Target Zero: New code synchronized. "
+                        f"Here is the technical diff/snapshot:\n{changes}\n\n"
+                        "Summarize these changes concisely for the user as 'Latest Changes'. "
+                        "Use a direct, technical tone. Focus on exactly what was modified or added in the logic. "
+                        "Avoid marketing language or 'Mission Update' terminology. "
+                        "Think: How would a senior engineer describe these commits to a collaborator?"
+                    )
+                    release_note = await chat(release_prompt)
+                    await send_notification(f"🚀 *Latest Changes:* \n\n{release_note}")
+                
+                os.remove(notes_file) # Clean up on VPS
+                print("✓ Release notes delivered.")
+            except Exception as e:
+                print(f"⚠ Warning: Could not process release notes: {e}")
+
+        # 6. Warm up intelligence engine
         print("⚡ Warming up intelligence engine...")
         from app.services.memory import get_embedder
         import asyncio
-        # Pre-load embedder in a thread to not block startup too much, 
-        # though lifespan is async anyway.
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(None, get_embedder)
         print("✓ AI models loaded in memory.")
         
-        # 5. Ensure Identity Record
+        # 7. Ensure Identity Record
         async with AsyncSessionLocal() as session:
             res = await session.execute(select(Person).where(Person.circle_type == "identity"))
             if not res.scalar_one_or_none():
@@ -73,7 +99,7 @@ async def lifespan(app: FastAPI):
                 await session.commit()
                 print("✓ Identity record initialized.")
 
-        # Initial Operator Board Sync
+        # 8. Initial Operator Board Sync
         from app.services.operator_board import operator_service
         sync_res = await operator_service.sync_operator_tasks()
         print(f"✓ {sync_res}")

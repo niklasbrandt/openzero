@@ -3,6 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![Self-Hosted](https://img.shields.io/badge/Deployment-Self--Hosted-blue.svg)](./BUILD.md)
 [![Privacy First](https://img.shields.io/badge/Privacy-100%25_Local-purple.svg)](#security-and-privacy)
+[![Agent Native](https://img.shields.io/badge/Agent--Native-Pure-black.svg)](https://github.com/niklasbrandt/openzero)
 
 ## Personal AI Operating System
 
@@ -27,7 +28,7 @@ The system runs 24/7 on a remote server or local homelab. It links email, calend
 
 The stack focuses on performance and privacy:
 
-* **Agentic Engineering:** Built with LangGraph. Z uses multi-step planning loops to verify context and coordinate between different tools before returning an answer.
+* **Agent-Native Engineering:** Built with LangGraph. Z acts as the core autonomous operator, using multi-step planning loops to command and evolve the environment. It is built to be interacted with primarily by agents.
 * **Memory:** Qdrant stores semantic vectors. Retrieval depends on meaning rather than keywords.
 * **Tasking:** Planka provides the visual Kanban engine and runs as a secure PWA.
 * **Network:** Traefik manages routing and Pi-hole blocks tracking. Tailscale secures the perimeter.
@@ -38,7 +39,7 @@ The stack focuses on performance and privacy:
 | Component | Technology | Management Value |
 |:---|:---|:---|
 | **Core OS** | ![Ubuntu](https://img.shields.io/badge/Ubuntu-E9433F?style=flat&logo=ubuntu&logoColor=white) ![Python](https://img.shields.io/badge/Python-3776AB?style=flat&logo=python&logoColor=white) ![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white) | Stable, containerized foundation using Python and Linux. |
-| **Intelligence** | ![Ollama](https://img.shields.io/badge/Ollama-black?style=flat) ![LangGraph](https://img.shields.io/badge/LangGraph-orange?style=flat) | Local Llama 3 models orchestrated via agentic state machines. |
+| **Agent-Native Logic** | ![Ollama](https://img.shields.io/badge/Ollama-black?style=flat) ![LangGraph](https://img.shields.io/badge/LangGraph-orange?style=flat) | Local Llama 3 models orchestrated via agent-native state machines. |
 | **Storage** | ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=flat&logo=postgresql&logoColor=white) ![Qdrant](https://img.shields.io/badge/Qdrant-red?style=flat) | Relational data paired with high-dimensional vector memory. |
 | **Execution** | ![Redis](https://img.shields.io/badge/Redis-DC382D?style=flat&logo=redis&logoColor=white) ![Celery](https://img.shields.io/badge/Celery-37814A?style=flat&logo=celery&logoColor=white) | Asynchronous task delegation and high-speed message brokering. |
 | **Networking** | ![Traefik](https://img.shields.io/badge/Traefik-2496ED?style=flat&logo=traefik&logoColor=white) ![Tailscale](https://img.shields.io/badge/Tailscale-4A23B6?style=flat&logo=tailscale&logoColor=white) | Zero Trust perimeter with automated internal routing and TLS. |

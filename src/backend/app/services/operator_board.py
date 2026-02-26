@@ -64,9 +64,15 @@ class OperatorBoardService:
 		
 		if not project:
 			logger.info(f"Creating project {self.project_name}")
-			resp = await client.post("/api/projects", json={"name": self.project_name, "type": "private"})
-			resp.raise_for_status()
-			project = resp.json()["item"]
+			try:
+				resp = await client.post("/api/projects", json={"name": self.project_name, "type": "private"})
+				resp.raise_for_status()
+				project = resp.json()["item"]
+			except Exception as e:
+				logger.warning(f"Failed to create project with 'type', retrying with 'isPublic': {e}")
+				resp = await client.post("/api/projects", json={"name": self.project_name, "isPublic": False})
+				resp.raise_for_status()
+				project = resp.json().get("item") or resp.json()
 			
 		# 2. Get/Create Board
 		detail_resp = await client.get(f"/api/projects/{project['id']}")
@@ -111,7 +117,7 @@ class OperatorBoardService:
 				target_project_id, target_board_id = await self.initialize_board(client)
 				
 				# Get target lists IDs
-				board_detail = (await client.get(f"/api/boards/{target_board_id}")).json()
+				board_detail = (await client.get(f"/api/boards/{target_board_id}", params={"included": "lists"})).json()
 				target_lists = {l["name"]: l["id"] for l in board_detail.get("included", {}).get("lists", [])}
 				
 				projects_resp = await client.get("/api/projects")
