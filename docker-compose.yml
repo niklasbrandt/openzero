@@ -168,17 +168,28 @@ services:
   pihole:
     image: pihole/pihole:latest
     restart: always
-    ports:
-      - "53:53/tcp"
-      - "53:53/udp"
+    hostname: open.zero
+    # ports:
+    #   - "53:53/tcp"
+    #   - "53:53/udp"
     environment:
-      TZ: 'Europe/Berlin'
-      WEBPASSWORD: 'changeme'
+      - TZ=${USER_TIMEZONE:-Europe/Berlin}
+      - WEBPASSWORD=${PIHOLE_PASSWORD}
+      - DNS1=1.1.1.1
+      - DNS2=9.9.9.9
+      - PIHOLE_DOMAIN=open.zero
+      - FTLCONF_LOCAL_IPV4=${SERVER_IP}
     volumes:
       - pihole_config:/etc/pihole
       - pihole_dnsmasq:/etc/dnsmasq.d
     networks:
       - internal
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.pihole.rule=PathPrefix(`/admin`)"
+      - "traefik.http.routers.pihole.entrypoints=web"
+      - "traefik.http.services.pihole.loadbalancer.server.port=80"
+      - "traefik.docker.network=openzero_internal"
 
 networks:
   internal:

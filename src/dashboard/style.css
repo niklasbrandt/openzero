@@ -152,12 +152,38 @@ h3 {
   font-weight: 800;
 }
 
-.status-online {
-  color: #4ade80;
-  padding: 0.4rem 1.2rem;
-  font-size: 0.85rem;
+.system-status-strip {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  padding: 0.6rem 2rem;
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 1rem;
+}
+
+.status-item {
+  font-size: 0.75rem;
   font-weight: 500;
-  letter-spacing: 0.03em;
+  color: rgba(255, 255, 255, 0.5);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.status-item::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-color);
+  box-shadow: 0 0 8px var(--accent-glow);
 }
 
 button {

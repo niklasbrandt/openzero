@@ -49,7 +49,52 @@ async def learn_memory(text: str) -> str:
     await store_memory(text)
     return "Memory stored."
 
-AVAILABLE_TOOLS = [create_task, create_project, create_event, learn_memory]
+@tool
+async def schedule_reminder(message: str, interval_minutes: int, duration_hours: Optional[int] = None) -> str:
+    """Schedule a periodic reminder. Interval in minutes, duration in hours."""
+    from app.tasks.scheduler import scheduler
+    from app.api.telegram import send_notification
+    from apscheduler.triggers.interval import IntervalTrigger
+    from datetime import datetime, timedelta
+    import pytz
+    from app.services.timezone import get_current_timezone
+    import uuid
+
+    tz_str = await get_current_timezone()
+    tz = pytz.timezone(tz_str)
+    
+    async def send_reminder_task():
+        await send_notification(f"🔔 *Z: Periodic Reminder*\n\n{message}")
+
+    end_date = None
+    if duration_hours:
+        end_date = datetime.now(tz) + timedelta(hours=duration_hours)
+    
+    reminder_id = f"reminder_{uuid.uuid4().hex[:8]}"
+    
+    scheduler.add_job(
+        send_reminder_task,
+        IntervalTrigger(minutes=interval_minutes, end_date=end_date, timezone=tz),
+        id=reminder_id,
+        replace_existing=True
+    )
+    
+    return f"Reminder set: '{message}' every {interval_minutes}m for {duration_hours}h. (ID: {reminder_id})"
+
+@tool
+async def schedule_persistent_custom(name: str, message: str, job_type: str, spec: str) -> str:
+    """Create a persistent scheduled task. job_type='cron' or 'interval'. spec is standard cron or 'minutes=N'."""
+    from app.models.db import AsyncSessionLocal, CustomTask
+    async with AsyncSessionLocal() as session:
+        task = CustomTask(name=name, message=message, job_type=job_type, spec=spec)
+        session.add(task)
+        await session.commit()
+    # Also hot-load it into the running scheduler
+    from app.tasks.scheduler import load_custom_tasks
+    await load_custom_tasks()
+    return f"Persistent custom task '{name}' created and scheduled."
+
+AVAILABLE_TOOLS = [create_task, create_project, create_event, learn_memory, schedule_reminder, schedule_persistent_custom]
 
 async def parse_and_execute_actions(reply: str, db=None):
     """
@@ -96,7 +141,42 @@ async def parse_and_execute_actions(reply: str, db=None):
         executed_cmds.append(f"Event '{title}' scheduled.")
         clean_reply = strip_tag(clean_reply, raw_tag)
 
-    # 4. Add Person Tag
+    # 5. Remind Tag
+    # [ACTION: REMIND | MESSAGE: text | INTERVAL: minutes | DURATION: hours]
+    remind_pattern = r"\[?ACTION: REMIND \| MESSAGE: ([^\|\]]+) \| INTERVAL: ([^\|\]]+) \| DURATION: ([^\|\]]+)\]?"
+    for match in re.finditer(remind_pattern, reply):
+        raw_tag = match.group(0)
+        message, interval, duration = match.groups()
+        try:
+            res = await schedule_reminder.ainvoke({
+                "message": message.strip(),
+                "interval_minutes": int(interval.strip()),
+                "duration_hours": int(duration.strip())
+            })
+            executed_cmds.append(res)
+        except Exception as e:
+            logger.error(f"Failed to schedule reminder: {e}")
+        clean_reply = strip_tag(clean_reply, raw_tag)
+
+    # 6. Persistent Custom Tag
+    # [ACTION: SCHEDULE_CUSTOM | NAME: text | MESSAGE: text | TYPE: cron/interval | SPEC: text]
+    custom_pattern = r"\[?ACTION: SCHEDULE_CUSTOM \| NAME: ([^\|\]]+) \| MESSAGE: ([^\|\]]+) \| TYPE: ([^\|\]]+) \| SPEC: ([^\|\]]+)\]?"
+    for match in re.finditer(custom_pattern, reply):
+        raw_tag = match.group(0)
+        name, msg, ttype, spec = match.groups()
+        try:
+            res = await schedule_persistent_custom.ainvoke({
+                "name": name.strip(),
+                "message": msg.strip(),
+                "job_type": ttype.strip().lower(),
+                "spec": spec.strip()
+            })
+            executed_cmds.append(res)
+        except Exception as e:
+            logger.error(f"Failed to schedule persistent custom task: {e}")
+        clean_reply = strip_tag(clean_reply, raw_tag)
+
+    # 7. Add Person Tag
     # [ACTION: ADD_PERSON | NAME: text | RELATIONSHIP: text | CONTEXT: text | CIRCLE: inner/close]
     person_pattern = r"\[?ACTION: ADD_PERSON \| NAME: ([^\|\]]+) \| RELATIONSHIP: ([^\|\]]+) \| CONTEXT: ([^\|\]]+) \| CIRCLE: ([^\|\]]+)\]?"
     for match in re.finditer(person_pattern, reply):
@@ -169,36 +249,38 @@ async def parse_and_execute_actions(reply: str, db=None):
     # --- FINAL AGGRESSIVE HYGIENE ---
     # This prevents 'leaking' of internal agent thoughts or malformed tags to the user.
     
-    # 1. Split into lines and filter out anything that looks like a tag or metadata
+    # 1. First Pass: Strip known bracketed action tags
+    clean_reply = re.sub(r'\[?ACTION:\s*.*?\]', '', clean_reply, flags=re.IGNORECASE | re.DOTALL)
+    
+    # 2. Second Pass: Split into lines and filter out anything that looks like internal metadata
     lines = clean_reply.split('\n')
     filtered_lines = []
     
     # Markers that indicate a line is internal metadata/action logging
-    metadata_markers = ["ACTION:", "TAGGED:", "MISSION:", "UPDATE_CONTEXT:", "LEARN:", "PROXIMITY_TRACK:", "[ACTION:"]
+    # We catch these anywhere in the line now for maximum safety
+    bad_tokens = ["ACTION:", "CONTEXT:", "MEMORY:", "UPDATE_CONTEXT", "TAGGED:", "MISSION:", "LEARN:"]
     
     for line in lines:
         trimmed = line.strip()
-        # Skip if line starts with a marker
-        if any(trimmed.upper().startswith(m) for m in metadata_markers):
+        if not trimmed:
+            filtered_lines.append(line)
             continue
-        # Skip if line contains the characteristic pipe separator of our actions
-        if "|" in trimmed and " : " not in trimmed: # rough heuristic for tags
+            
+        # If any bad token exists in the line (case-insensitive)
+        if any(token.upper() in trimmed.upper() for token in bad_tokens):
             continue
-        # Skip purely bracketed lines
-        if trimmed.startswith("[") and trimmed.endswith("]"):
+            
+        # Skip lines that are purely symbols or brackets
+        if re.match(r'^[\s\W\[\]\|]+$', trimmed):
             continue
             
         filtered_lines.append(line)
     
     clean_reply = "\n".join(filtered_lines).strip()
 
-    # 2. Last resort: Regex cleanup for anything missed
-    # Matches [ACTION: ...] even with missing brackets or multiline
-    clean_reply = re.sub(r'\[?ACTION:.*?\]?', '', clean_reply, flags=re.IGNORECASE | re.DOTALL)
-    clean_reply = re.sub(r'TAGGED:.*', '', clean_reply, flags=re.IGNORECASE)
-    
-    # Remove hanging brackets and clean up excess whitespace
+    # 3. Final Polish: Clean up hanging artifacts and excess whitespace
     clean_reply = re.sub(r'\]\s*$', '', clean_reply, flags=re.MULTILINE)
+    clean_reply = re.sub(r'^\s*\|\s*', '', clean_reply, flags=re.MULTILINE)
     clean_reply = re.sub(r'\n{3,}', '\n\n', clean_reply).strip()
     
     return clean_reply, executed_cmds

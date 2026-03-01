@@ -21,7 +21,7 @@ The system runs 24/7 on a remote server or local homelab. It links email, calend
 * **The Hub:** A central board pulls high-priority tasks from all other projects, highlighting exactly what needs attention today.
 * **Unified Scheduling:** Z coordinates routines and social milestones on a single timeline to protect deep work blocks.
 * **Local Intelligence:** Ollama runs Llama 3 models on local hardware. Cloud reasoning is only engaged via a "Disclosure Proposal" workflow for shared memories.
-* **Voice and Text:** Voice notes allow local transcription via Whisper. Boards and memory update automatically.
+* **Voice and Text:** Voice notes allow local transcription via Whisper.
 * **Multi-Modal Briefings:** Local TTS summarizes the day in a high quality voice note.
 
 ## Architecture
@@ -94,17 +94,34 @@ The stack focuses on performance and privacy:
 
 ## Commands
 
-| Command | Action |
-|:---|:---|
-| `/day` | Inbox and goal triage. |
-| `/week` | Strategic review of all projects. |
-| `/month` | High level 30 day review. |
+| Command | Description |
+| :--- | :--- |
+| `/help` | Display this overview of operator controls. |
+| `/start` | System status check and heartbeat. |
+| `/day` | Proactive morning briefing (Contextual summary). |
+| `/week` | Strategic review of all projects and roadmaps. |
+| `/month` | High-level 30-day mission review. |
+| `/quarter` | Strategic 90-day review and roadmap planning. |
+| `/custom` | Create a persistent scheduled task/turnus (e.g. every Monday at 10am). |
 | `/year` | Yearly goal setting based on project themes. |
-| `/tree` | Full life hierarchy overview. |
-| `/think` | Complex reasoning with HITL approval. |
-| `/memory` | Conceptual search of the semantic vault. |
-| `/add` | Instant note taking to semantic memory. |
-| `/start` | System status check. |
+| `/tree` | Full life hierarchy and workspace overview. |
+| `/think` | Complex reasoning with human-in-the-loop approval. |
+| `/search` | Conceptual search of the semantic knowledge vault. |
+| `/memories` | List all core knowledge currently in permanent memory. |
+| `/unlearn` | Refine Z's internal context by evolving past points in the vault. |
+| `/add` | Commit specific facts to Z's permanent knowledge vault. |
+| `/remind` | Set a periodic reminder with natural language (e.g., 2x an hour for 4h). |
+| `/protocols` | Inspect Z's agentic tools and Semantic Action Tags. |
+| `/wipe_memory` | Clear long-term LLM recall (Purge current chat context). |
+
+## Memory & Intelligence Principles
+
+Z follows a strict **"Core Knowledge, not Noise"** logic for long-term intelligence:
+
+*   **Permanent Memory:** Preferences, family members, project goals, and life milestones are committed to the **Semantic Vault** (Qdrant).
+*   **Transient Traffic:** Status updates ("I'm at the store"), transient chat history, and bot responses are **intentionally ignored** by the memory vault to prevent "hallucination loops" and context pollution.
+*   **The Guardrail:** Automatic filtering via a local reasoning pass ensures trivialities like "thanks" or "hello" never hit the vault.
+*   **Manual Control:** Use `/add` to explicitly override the filter when you have critical context Z must never forget.
 
 ## Maintenance
 

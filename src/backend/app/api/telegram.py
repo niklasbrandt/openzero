@@ -27,7 +27,7 @@ async def _get_stats_footer() -> str:
 	
 	base_url = settings.BASE_URL.rstrip('/')
 	links = (
-		f"🔗 [Dashboard]({base_url}) "
+		f"🔗 [Dashboard]({base_url}/home) "
 		f"🔗 [Operator]({base_url}/api/dashboard/planka-redirect?target=operator) "
 		f"🔗 [Boards]({base_url}/boards) "
 		f"🔗 [Calendar]({base_url}/calendar)"
@@ -57,15 +57,21 @@ async def start_telegram_bot():
 	bot_app.add_handler(CommandHandler("start", cmd_start))
 	bot_app.add_handler(CommandHandler("tree", cmd_tree))
 	bot_app.add_handler(CommandHandler("review", cmd_review))
-	bot_app.add_handler(CommandHandler("memory", cmd_memory))
+	bot_app.add_handler(CommandHandler("search", cmd_search))
+	bot_app.add_handler(CommandHandler("memories", cmd_memories))
+	bot_app.add_handler(CommandHandler("unlearn", cmd_unlearn))
 	bot_app.add_handler(CommandHandler("wipe_memory", cmd_wipe_memory))
 	bot_app.add_handler(CommandHandler("week", cmd_week))
 	bot_app.add_handler(CommandHandler("month", cmd_month))
-	bot_app.add_handler(CommandHandler("day", cmd_day))
+	bot_app.add_handler(CommandHandler("quarter", cmd_quarter))
 	bot_app.add_handler(CommandHandler("year", cmd_year))
 	bot_app.add_handler(CommandHandler("add", cmd_add_topic))
+	bot_app.add_handler(CommandHandler("protocols", cmd_protocols))
+	bot_app.add_handler(CommandHandler("remind", cmd_remind))
+	bot_app.add_handler(CommandHandler("custom", cmd_custom))
 	bot_app.add_handler(CommandHandler("think", cmd_think))
 	bot_app.add_handler(CallbackQueryHandler(handle_approval, pattern="^think_"))
+	bot_app.add_handler(CallbackQueryHandler(handle_unlearn_approval, pattern="^unlearn_"))
 	bot_app.add_handler(CallbackQueryHandler(handle_wipe_confirm, pattern="^wipe_"))
 	bot_app.add_handler(CallbackQueryHandler(handle_calendar_approval, pattern="^cal_"))
 	bot_app.add_handler(CommandHandler("help", cmd_help))
@@ -80,7 +86,7 @@ async def start_telegram_bot():
 	print("DEBUG: start_telegram_bot - step 4: Starting")
 	await bot_app.start()
 	print("DEBUG: start_telegram_bot - step 5: Start Polling")
-	await bot_app.updater.start_polling(drop_pending_updates=True)
+	await bot_app.updater.start_polling(drop_pending_updates=False)
 	print("DEBUG: start_telegram_bot - step 6: Polling started")
 
 	# Proactive greeting with Context & Stats (Run in background to avoid blocking startup)
@@ -100,6 +106,8 @@ async def start_telegram_bot():
 			now = datetime.now()
 
 			calendar_offline = False
+			print("DEBUG: Greeting Seq - Step 2: Fetching Calendar")
+			calendar_offline = False
 			# 1. Google Calendar
 			try:
 				from app.services.calendar import fetch_calendar_events
@@ -113,15 +121,17 @@ async def start_telegram_bot():
 						display_item = f"• {e['summary']}"
 						if time_str: display_item += f" ({time_str})"
 						event_summary_parts.append(display_item)
+				print(f"DEBUG: Greeting Seq - Google Calendar OK ({len(g_events) if g_events else 0} events)")
 			except Exception as ce:
 				# Differentiate between "not set up" and "actual error"
 				if "credentials missing" in str(ce).lower() or "not configured" in str(ce).lower():
 					calendar_offline = False 
 				else:
-					print(f"Google Calendar fetch failed: {ce}")
+					print(f"DEBUG: Greeting Seq - Google Calendar skipped/failed: {ce}")
 					calendar_offline = True
 
 			# 2. Local & Birthdays
+			print("DEBUG: Greeting Seq - Step 3: Local Data")
 			async with AsyncSessionLocal() as session:
 				# Birthdays
 				res_people = await session.execute(select(Person).where(Person.birthday.isnot(None)))
@@ -149,20 +159,20 @@ async def start_telegram_bot():
 						event_summary_parts.append(f"• {le.summary} ({time_str})")
 
 			event_summary = "\n".join(event_summary_parts) if event_summary_parts else "No upcoming events."
+			print(f"DEBUG: Greeting Seq - Context Ready ({len(event_summary_parts)} items)")
 			
 			greeting_prompt = (
 				f"Z system status check: Ready. {stats_text}. CONTEXT: {event_summary}\n\n"
 				"Welcome the user back with 'Welcome back.' then provide a 1-sentence status update strictly based on CONTEXT. "
-				"If Google Calendar is not configured, do not treat it as an error; simply focus on the local Calendar facts. "
-				"Mention birthdays prominently. NEVER invent data. Be extremely concise."
+				"Mention birthdays prominently. Be extremely concise. Fast mode active."
 			)
-			print("Generating greeting...")
-			greeting = await chat(greeting_prompt)
-			print("Greeting generated.")
+			print(f"DEBUG: Greeting Seq - Calling Ollama ({settings.OLLAMA_MODEL_FAST})")
+			greeting = await chat(greeting_prompt, model=settings.OLLAMA_MODEL_FAST)
+			print("DEBUG: Greeting Seq - OK")
 			
 			footer = await _get_stats_footer()
 			await send_notification(f"⚡ {greeting}{footer}")
-			print("Startup notification sent.")
+			print("DEBUG: Greeting Seq - Notification Delivered")
 		except Exception as e:
 			print(f"FAILED to send Telegram startup greeting: {e}")
 
@@ -212,38 +222,52 @@ def owner_only(func):
 		return await func(update, context)
 	return wrapper
 
+async def safe_reply(update: Update, text: str, reply_markup=None):
+	"""Tries to send a message with Markdown, falls back to plain text on error."""
+	try:
+		await update.message.reply_text(text, parse_mode="Markdown", reply_markup=reply_markup)
+	except Exception as e:
+		print(f"DEBUG: Markdown reply failed, falling back to plain: {e}")
+		# Strip potential markdown markers that might cause issues in plain text if and only if needed
+		# But usually Telegram just accepts it as literal if not in a parse_mode
+		await update.message.reply_text(text, reply_markup=reply_markup)
+
 @owner_only
 async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	"""Deep status check of all integrations."""
-	from app.services.memory import get_memory_stats
-	from app.services.planka import get_planka_auth_token
-	
-	# 1. Memory
-	m_stats = await get_memory_stats()
-	m_text = "🟢 Active" if m_stats['status'] == 'ok' else "🔴 Offline"
-	
-	# 2. Planka
-	p_text = "🔴 Offline"
 	try:
-		token = await get_planka_auth_token()
-		if token: p_text = "🟢 Connected"
-	except: pass
-	
-	# 3. LLM
-	try:
-		from app.services.llm import chat
-		await chat("hi", model="llama3.2:3b")
-		l_text = "🟢 Ready"
-	except: l_text = "🔴 Error"
+		from app.services.memory import get_memory_stats
+		from app.services.planka import get_planka_auth_token
+		
+		# 1. Memory
+		m_stats = await get_memory_stats()
+		m_text = "🟢 Active" if m_stats['status'] == 'ok' else "🔴 Offline"
+		
+		# 2. Planka
+		p_text = "🔴 Offline"
+		try:
+			token = await get_planka_auth_token()
+			if token: p_text = "🟢 Connected"
+		except: pass
+		
+		# 3. LLM
+		try:
+			from app.services.llm import chat
+			await chat("hi", model=settings.OLLAMA_MODEL_FAST)
+			l_text = "🟢 Ready"
+		except: l_text = "🔴 Error"
 
-	status_report = (
-		"🛰️ *System Status Report*\n\n"
-		f"🧠 *Memory (Qdrant):* {m_text} ({m_stats.get('points', 0)} pts)\n"
-		f"📋 *Task Board (Planka):* {p_text}\n"
-		f"🤖 *Intelligence (Ollama):* {l_text}\n"
-		f"📍 *Time:* {datetime.now().strftime('%H:%M:%S')}"
-	)
-	await update.message.reply_text(status_report, parse_mode="Markdown")
+		status_report = (
+			"🛰️ *System Status Report*\n\n"
+			f"🧠 *Memory (Qdrant):* {m_text} ({m_stats.get('points', 0)} pts)\n"
+			f"📋 *Task Board (Planka):* {p_text}\n"
+			f"🤖 *Intelligence (Ollama):* {l_text}\n"
+			f"📍 *Time:* {datetime.now().strftime('%H:%M:%S')}"
+		)
+		await safe_reply(update, status_report)
+	except Exception as e:
+		print(f"ERROR: cmd_status failed: {e}")
+		await update.message.reply_text("🛰️ System Status check failed. Check local backend logs.")
 
 # --- Command Handlers ---
 @owner_only
@@ -252,45 +276,187 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 @owner_only
 async def cmd_tree(update: Update, context: ContextTypes.DEFAULT_TYPE):
-	from app.services.planka import get_project_tree
-	tree = await get_project_tree(as_html=False)
-	await update.message.reply_text(tree, parse_mode="Markdown")
+	try:
+		from app.services.planka import get_project_tree
+		tree = await get_project_tree(as_html=False)
+		await safe_reply(update, tree)
+	except Exception as e:
+		await update.message.reply_text(f"❌ Failed to fetch mission tree: {e}")
 
 @owner_only
 async def cmd_review(update: Update, context: ContextTypes.DEFAULT_TYPE):
-	from app.tasks.weekly import weekly_review
-	report = await weekly_review()
-	await update.message.reply_text(report, parse_mode="Markdown")
+	try:
+		from app.tasks.weekly import weekly_review
+		report = await weekly_review()
+		await safe_reply(update, report)
+	except Exception as e:
+		await update.message.reply_text(f"❌ Review generation failed: {e}")
 
 @owner_only
 async def cmd_week(update: Update, context: ContextTypes.DEFAULT_TYPE):
-	from app.tasks.weekly import weekly_review
-	report = await weekly_review()
-	await update.message.reply_text(report, parse_mode="Markdown")
+	try:
+		from app.tasks.weekly import weekly_review
+		report = await weekly_review()
+		await safe_reply(update, report)
+	except Exception as e:
+		await update.message.reply_text(f"❌ Weekly review failed: {e}")
 
 @owner_only
 async def cmd_month(update: Update, context: ContextTypes.DEFAULT_TYPE):
-	from app.tasks.monthly import monthly_review
-	report = await monthly_review()
-	await update.message.reply_text(report, parse_mode="Markdown")
+	try:
+		from app.tasks.monthly import monthly_review
+		report = await monthly_review()
+		await safe_reply(update, report)
+	except Exception as e:
+		await update.message.reply_text(f"❌ Monthly review failed: {e}")
+
+@owner_only
+async def cmd_protocols(update: Update, context: ContextTypes.DEFAULT_TYPE):
+	from app.services.agent_actions import AVAILABLE_TOOLS
+	tools_info = "\n".join([f"• *{t['name']}*: {t['description']}" for t in AVAILABLE_TOOLS])
+	
+	protocols_text = (
+		"🤖 *Z Operator Protocols*\n\n"
+		"I operate via **Semantic Action Tags**. These protocols allow me to transition from passive reasoning to active intervention.\n\n"
+		f"*Available Strategic Actions:*\n{tools_info}\n\n"
+		"_Every thought is an opportunity for evolution._"
+	)
+	await safe_reply(update, protocols_text)
+
+@owner_only
+async def cmd_remind(update: Update, context: ContextTypes.DEFAULT_TYPE):
+	msg = update.message.text.replace("/remind", "").strip()
+	if not msg:
+		await update.message.reply_text("Usage: /remind 2 times an hour for 4 hours to drink water")
+		return
+		
+	from app.services.agent_actions import parse_and_execute_actions
+	from app.services.llm import chat
+	
+	# Let the LLM parse the natural language into the action tag
+	prompt = (
+		"Convert this reminder request into a [ACTION: REMIND ...] tag.\n"
+		"Format: [ACTION: REMIND | MESSAGE: <text> | INTERVAL: <minutes> | DURATION: <hours>]\n\n"
+		f"Input: {msg}"
+	)
+	
+	response = await chat(prompt)
+	clean_reply, executed = await parse_and_execute_actions(response)
+	
+	if executed:
+		await update.message.reply_text("\n".join(executed))
+	else:
+		await update.message.reply_text("Could not parse the reminder frequency. Try: '/remind 30m for 4h drink water'")
+
+@owner_only
+async def cmd_custom(update: Update, context: ContextTypes.DEFAULT_TYPE):
+	msg = update.message.text.replace("/custom", "").strip()
+	if not msg:
+		await update.message.reply_text("Usage: /custom Every Monday at 12:00 remind me to check the stats")
+		return
+		
+	from app.services.agent_actions import parse_and_execute_actions
+	from app.services.llm import chat
+	
+	prompt = (
+		"Convert this custom schedule request into a [ACTION: SCHEDULE_CUSTOM ...] tag.\n"
+		"Format: [ACTION: SCHEDULE_CUSTOM | NAME: <short_name> | MESSAGE: <text> | TYPE: <cron/interval> | SPEC: <spec>]\n"
+		"CRON SPEC: minute hour day month day_of_week\n"
+		"INTERVAL SPEC: minutes=N or hours=N\n\n"
+		f"Input: {msg}"
+	)
+	
+	response = await chat(prompt)
+	clean_reply, executed = await parse_and_execute_actions(response)
+	
+	if executed:
+		await update.message.reply_text("\n".join(executed))
+	else:
+		await update.message.reply_text("Could not parse. Try: '/custom every day at 10am remind me...'")
+
+@owner_only
+async def cmd_quarter(update: Update, context: ContextTypes.DEFAULT_TYPE):
+	try:
+		from app.tasks.quarterly import quarterly_review
+		report = await quarterly_review()
+		await safe_reply(update, report)
+	except Exception as e:
+		await update.message.reply_text(f"❌ Quarterly review failed: {e}")
 
 @owner_only
 async def cmd_day(update: Update, context: ContextTypes.DEFAULT_TYPE):
-	from app.tasks.morning import morning_briefing
-	await morning_briefing()
+	try:
+		from app.tasks.morning import morning_briefing
+		await morning_briefing()
+	except Exception as e:
+		await update.message.reply_text(f"❌ Morning briefing failed: {e}")
 
 @owner_only
 async def cmd_year(update: Update, context: ContextTypes.DEFAULT_TYPE):
-	from app.tasks.yearly import yearly_review
-	report = await yearly_review()
-	await update.message.reply_text(report, parse_mode="Markdown")
+	try:
+		from app.tasks.yearly import yearly_review
+		report = await yearly_review()
+		await safe_reply(update, report)
+	except Exception as e:
+		await update.message.reply_text(f"❌ Yearly review failed: {e}")
 
 @owner_only
-async def cmd_memory(update: Update, context: ContextTypes.DEFAULT_TYPE):
-	query = update.message.text.replace("/memory", "").strip()
+async def cmd_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
+	query = update.message.text.replace("/search", "").strip()
 	from app.services.memory import semantic_search
 	results = await semantic_search(query)
 	await update.message.reply_text(results)
+
+@owner_only
+async def cmd_unlearn(update: Update, context: ContextTypes.DEFAULT_TYPE):
+	query = update.message.text.replace("/unlearn", "").strip()
+	if not query:
+		await update.message.reply_text("What should I unlearn? Provide a part of the memory text.")
+		return
+
+	from app.services.memory import get_qdrant, COLLECTION_NAME
+	client = get_qdrant()
+	
+	# Find matching points
+	from app.services.memory import get_embedder
+	query_vector = get_embedder().encode(query).tolist()
+	
+	results = client.query_points(
+		collection_name=COLLECTION_NAME,
+		query=query_vector,
+		limit=3
+	)
+	
+	if not results.points:
+		await update.message.reply_text("No matching memories found to unlearn.")
+		return
+
+	# Show matches with buttons
+	keyboard = []
+	for p in results.points:
+		text = p.payload.get('text', '[No Text]')[:50] + "..."
+		keyboard.append([InlineKeyboardButton(f"Unlearn: {text}", callback_data=f"unlearn_confirm_{p.id}")])
+	
+	keyboard.append([InlineKeyboardButton("❌ Cancel", callback_data="unlearn_cancel")])
+	reply_markup = InlineKeyboardMarkup(keyboard)
+	await update.message.reply_text("Select the knowledge I should unlearn:", reply_markup=reply_markup)
+
+async def handle_unlearn_approval(update: Update, context: ContextTypes.DEFAULT_TYPE):
+	query = update.callback_query
+	await query.answer()
+	
+	if query.data == "unlearn_cancel":
+		await query.edit_message_text("Cancelled. Information retained.")
+		return
+		
+	point_id = query.data.replace("unlearn_confirm_", "")
+	from app.services.memory import delete_memory
+	success = await delete_memory(point_id)
+	
+	if success:
+		await query.edit_message_text("✅ Information successfully unlearned and purged from the vault.")
+	else:
+		await query.edit_message_text("❌ Failed to unlearn. Check logs.")
 
 @owner_only
 async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -298,17 +464,21 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		"🤖 *Z Operator Controls*\n\n"
 		"*Missions:*\n"
 		"• `/tree` \\- OS Mission Overview\n"
-		"• `/add <topic>` \\- Store something in memory\n\n"
+		"• `/add <topic>` \\- Store something in memory\n"
+		"• `/protocols` \\- View Z's operational protocols\n"
 		"*Intelligence:*\n"
 		"• `/think <query>` \\- Multi-step reasoning\n"
-		"• `/memory <query>` \\- Semantic search\n"
-		"• `/day`, `/week`, `/month`, `/year` \\- Strategic briefings\n\n"
+		"• `/search <query>` \\- Semantic search\n"
+		"• `/memories` \\- Show all stored facts\n"
+		"• `/unlearn <query>` \\- Evolve past a specific fact\n"
+		"• `/remind <text>` \\- Set a periodic reminder\n"
+		"• `/day`, `/week`, `/month`, `/quarter`, `/custom`, `/year` \\- Strategic briefings\n\n"
 		"*System:*\n"
 		"• `/wipe_memory` \\- Clear LLM recall\n"
-		"• `/start` \\- Check status\n\n"
+		"• `/status` \\- Check health\n\n"
 		"Type any message to chat with Z directly."
 	)
-	await update.message.reply_text(help_text, parse_mode="Markdown")
+	await safe_reply(update, help_text)
 
 @owner_only
 async def cmd_add_topic(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -316,6 +486,20 @@ async def cmd_add_topic(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	from app.services.memory import store_memory
 	await store_memory(topic)
 	await update.message.reply_text(f"✅ Stored: {topic}")
+
+@owner_only
+async def cmd_evolve(update: Update, context: ContextTypes.DEFAULT_TYPE):
+	evolve_text = (
+		"🧬 *Agent Evolution: Semantic Capabilities*\n\n"
+		"Z operates by emitting the following action tags. These allow the agent to command and evolve the environment:\n\n"
+		"• *Task Management:* `CREATE_TASK`, `CREATE_PROJECT`, `CREATE_BOARD`\n"
+		"• *Scheduling:* `CREATE_EVENT` (Calendar Sync)\n"
+		"• *Social Graph:* `ADD_PERSON` (Inner/Close Circles)\n"
+		"• *Cognition:* `LEARN` (Commit to Semantic Vault)\n"
+		"• *Precision:* `PROXIMITY_TRACK` (Task breakdown & deep-tracking)\n\n"
+		"_\"I don't just chat; I execute. Every interaction is an opportunity to evolve your OS.\"_"
+	)
+	await safe_reply(update, evolve_text)
 
 @owner_only
 async def cmd_wipe_memory(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -347,93 +531,113 @@ async def handle_wipe_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE
 	else:
 		await query.edit_message_text("Cancelled. Memories are safe.")
 
+async def safe_reply(update: Update, text: str, reply_markup=None):
+	"""Tries to send a message with Markdown, falls back to plain text on error."""
+	try:
+		await update.message.reply_text(text, parse_mode="Markdown", reply_markup=reply_markup)
+	except Exception as e:
+		print(f"DEBUG: Markdown reply failed, falling back to plain: {e}")
+		# Strip potential markdown markers that might cause issues in plain text if and only if needed
+		# But usually Telegram just accepts it as literal if not in a parse_mode
+		await update.message.reply_text(text, reply_markup=reply_markup)
+
 @owner_only
 async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	"""Process freeform text via the default LLM with Context & History."""
-	chat_id = update.effective_chat.id
-	if chat_id not in chat_histories:
-		chat_histories[chat_id] = []
-	
-	from app.services.llm import chat_with_context
-	
-	# Show typing action
-	await context.bot.send_chat_action(chat_id=chat_id, action="typing")
-	
-	response = await chat_with_context(
-		update.message.text, 
-		history=chat_histories[chat_id],
-		include_projects=True,
-		include_people=True
-	)
-	
-	from app.services.agent_actions import parse_and_execute_actions
-	from app.models.db import AsyncSessionLocal
-	
-	async with AsyncSessionLocal() as db:
-		clean_reply, _ = await parse_and_execute_actions(response, db=db)
-
-	# Update local history (use original response to keep actions in context for Z)
-	chat_histories[chat_id].append({"role": "user", "content": update.message.text})
-	chat_histories[chat_id].append({"role": "z", "content": response})
-
-	# Auto-store USER part to memory for Deep Recall
 	try:
-		from app.services.memory import store_memory
-		asyncio.create_task(store_memory(f"User Perspective (Telegram - {datetime.now().strftime('%Y-%m-%d')}): {update.message.text}", metadata={"type": "user_input", "source": "telegram"}))
-	except Exception as me:
-		print(f"DEBUG: Auto-memory (Telegram) failed: {me}")
-	
-	# Keep history manageable
-	if len(chat_histories[chat_id]) > 20:
-		chat_histories[chat_id] = chat_histories[chat_id][-20:]
+		chat_id = update.effective_chat.id
+		if chat_id not in chat_histories:
+			chat_histories[chat_id] = []
+		
+		from app.services.llm import chat_with_context
+		from app.models.db import get_global_history, save_global_message
+		
+		# Show initial acknowledgment
+		thinking_msg = await update.message.reply_text("⏳ *Thinking...*", parse_mode="Markdown")
+		
+		from app.services.agent_actions import parse_and_execute_actions
+		from app.models.db import AsyncSessionLocal
 
-	# Final formatted message
-	footer = await _get_stats_footer()
-	await update.message.reply_text(f"{clean_reply}{footer}", parse_mode="Markdown")
+		# Recover Merged History (Recover cross-channel context)
+		merged_history = await get_global_history(limit=12)
+
+		response = await chat_with_context(
+			update.message.text, 
+			history=merged_history,
+			include_projects=True,
+			include_people=True
+		)
+		
+		async with AsyncSessionLocal() as db:
+			clean_reply, _ = await parse_and_execute_actions(response, db=db)
+
+		# Sync to Global Central Memory
+		await save_global_message("telegram", "user", update.message.text)
+		await save_global_message("telegram", "z", response)
+
+		# Auto-store USER part to semantic memory (with filter)
+		try:
+			from app.services.memory import store_memory
+			asyncio.create_task(store_memory(f"User Perspective (Telegram - {datetime.now().strftime('%Y-%m-%d')}): {update.message.text}", metadata={"type": "user_input", "source": "telegram"}))
+		except Exception as me:
+			print(f"DEBUG: Auto-memory (Telegram) failed: {me}")
+
+		footer = await _get_stats_footer()
+		await thinking_msg.edit_text(f"{clean_reply}{footer}", parse_mode="Markdown")
+	except Exception as e:
+		print(f"ERROR: handle_freetext failed: {e}")
+		# If bit failed to edit, try fresh message
+		try:
+			await update.message.reply_text("⚖️ I encountered friction while processing that request. My local core is still active, but that specific thread was dropped.")
+		except: pass
 
 @owner_only
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	"""Process voice messages."""
-	await update.message.reply_text("🎙️ *Z is listening...*", parse_mode="Markdown")
-	
-	# 1. Download voice file
-	voice_file = await context.bot.get_file(update.message.voice.file_id)
-	voice_bytes = await voice_file.download_as_bytearray()
-	
-	# 2. Transcribe
-	from app.services.voice import transcribe_voice
-	transcript = await transcribe_voice(voice_bytes)
-	
-	if not transcript or transcript.startswith("["):
-		await update.message.reply_text(f"⚠️ {transcript or 'Could not transcribe voice.'}")
-		return
+	try:
+		await update.message.reply_text("🎙️ *Z is listening...*", parse_mode="Markdown")
+		
+		# 1. Download voice file
+		voice_file = await context.bot.get_file(update.message.voice.file_id)
+		voice_bytes = await voice_file.download_as_bytearray()
+		
+		# 2. Transcribe
+		from app.services.voice import transcribe_voice
+		transcript = await transcribe_voice(voice_bytes)
+		
+		if not transcript or transcript.startswith("["):
+			await update.message.reply_text(f"⚠️ {transcript or 'Could not transcribe voice.'}")
+			return
 
-	await update.message.reply_text(f"📝 *Transcript:* _{transcript}_", parse_mode="Markdown")
-	
-	# 3. Process as text
-	from app.services.llm import chat_with_context
-	chat_id = update.effective_chat.id
-	if chat_id not in chat_histories:
-		chat_histories[chat_id] = []
+		await update.message.reply_text(f"📝 *Transcript:* _{transcript}_", parse_mode="Markdown")
+		
+		# 3. Process as text
+		from app.services.llm import chat_with_context
+		chat_id = update.effective_chat.id
+		if chat_id not in chat_histories:
+			chat_histories[chat_id] = []
 
-	response = await chat_with_context(
-		transcript,
-		history=chat_histories[chat_id],
-		include_projects=True,
-		include_people=True
-	)
-	
-	from app.services.agent_actions import parse_and_execute_actions
-	from app.models.db import AsyncSessionLocal
-	
-	async with AsyncSessionLocal() as db:
-		clean_reply, _ = await parse_and_execute_actions(response, db=db)
-	
-	chat_histories[chat_id].append({"role": "user", "content": transcript})
-	chat_histories[chat_id].append({"role": "z", "content": response})
-	
-	footer = await _get_stats_footer()
-	await update.message.reply_text(f"{clean_reply}{footer}", parse_mode="Markdown")
+		response = await chat_with_context(
+			transcript,
+			history=chat_histories[chat_id],
+			include_projects=True,
+			include_people=True
+		)
+		
+		from app.services.agent_actions import parse_and_execute_actions
+		from app.models.db import AsyncSessionLocal
+		
+		async with AsyncSessionLocal() as db:
+			clean_reply, _ = await parse_and_execute_actions(response, db=db)
+		
+		chat_histories[chat_id].append({"role": "user", "content": transcript})
+		chat_histories[chat_id].append({"role": "z", "content": response})
+		
+		footer = await _get_stats_footer()
+		await safe_reply(update, f"{clean_reply}{footer}")
+	except Exception as e:
+		print(f"ERROR: handle_voice failed: {e}")
+		await update.message.reply_text("⚠️ Voice processing failed. There might be an issue with the transcription or intelligence layer.")
 
 @owner_only
 async def cmd_think(update: Update, context: ContextTypes.DEFAULT_TYPE):

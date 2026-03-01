@@ -31,6 +31,13 @@ from app.config import settings
 
 router = APIRouter(prefix="/api/dashboard")
 
+# High-speed cache for Planka IDs to avoid sequential network hops on every redirect
+PLANKA_ID_CACHE = {
+	"oz_project_id": None,
+	"operator_board_id": None,
+	"last_update": None
+}
+
 async def get_db():
 	async with AsyncSessionLocal() as session:
 		yield session
@@ -163,30 +170,141 @@ async def dashboard_chat(req: ChatRequest, db: AsyncSession = Depends(get_db)):
 			"*\"Z: Stay focused. I've got the mental tabs from here.\"*"
 		)
 		return {"reply": life_tree}
-	elif msg.startswith("/memory "):
-		query = msg.replace("/memory", "").strip()
+	elif msg == "/help":
+		help_text = (
+			"🤖 **Z Operator Controls**\n\n"
+			"**Missions:**\n"
+			"• `/tree` - OS Mission Overview\n"
+			"• `/add <topic>` - Store something in memory\n"
+			"• `/protocols` - View Z's operational protocols\n\n"
+			"**Intelligence:**\n"
+			"• `/think <query>` - Multi-step reasoning\n"
+			"• `/search <query>` - Semantic search\n"
+			"• `/memories` - Show all stored facts\n"
+			"• `/unlearn <query>` - Evolve past a specific fact\n"
+			"• `/day`, `/week`, `/month`, `/quarter`, `/custom`, `/year` - Strategic briefings\n"
+			"• `/remind <text>` - Set a periodic reminder\n\n"
+			"**System:**\n"
+			"• `/wipe_memory` - Clear LLM recall\n\n"
+			"Type any message to chat with Z directly."
+		)
+		return {"reply": help_text}
+	elif msg.startswith("/search "):
+		query = msg.replace("/search", "").strip()
 		results = await semantic_search(query)
 		return {"reply": results}
+	elif msg == "/memories":
+		from app.services.memory import get_qdrant, COLLECTION_NAME
+		client = get_qdrant()
+		results, _ = client.scroll(collection_name=COLLECTION_NAME, limit=100)
+		if not results:
+			return {"reply": "No memories stored in the vault."}
+		
+		memory_list = "\n".join([f"• {p.payload.get('text')}" for p in results])
+		return {"reply": f"🧠 **Semantic Vault: Core Knowledge Vault**\n\n{memory_list}"}
+	elif msg.startswith("/unlearn "):
+		query = msg.replace("/unlearn", "").strip()
+		from app.services.memory import get_qdrant, COLLECTION_NAME, get_embedder, delete_memory
+		client = get_qdrant()
+		query_vector = get_embedder().encode(query).tolist()
+		results = client.query_points(collection_name=COLLECTION_NAME, query=query_vector, limit=1)
+		
+		if not results.points:
+			return {"reply": "No matching knowledge found to unlearn."}
+		
+		point = results.points[0]
+		text = point.payload.get('text', '[No Text]')
+		await delete_memory(point.id)
+		return {"reply": f"✅ Unlearned: \"{text}\". Z has evolved past this specific context."}
+	elif msg == "/day":
+		from app.tasks.morning import morning_briefing
+		res = await morning_briefing()
+		return {"reply": res}
+	elif msg == "/week":
+		from app.tasks.weekly import weekly_review
+		res = await weekly_review()
+		return {"reply": res}
+	elif msg == "/month":
+		from app.tasks.monthly import monthly_review
+		res = await monthly_review()
+		return {"reply": res}
+	elif msg == "/quarter":
+		from app.tasks.quarterly import quarterly_review
+		res = await quarterly_review()
+		return {"reply": res}
+	elif msg == "/year":
+		from app.tasks.yearly import yearly_review
+		res = await yearly_review()
+		return {"reply": res}
 	elif msg.startswith("/add "):
 		topic = msg.replace("/add", "").strip()
 		from app.services.memory import store_memory
 		await store_memory(topic)
 		return {"reply": f"✅ Stored to memory: {topic}"}
+	elif msg.startswith("/remind "):
+		remind_msg = msg.replace("/remind", "").strip()
+		from app.services.llm import chat
+		from app.services.agent_actions import parse_and_execute_actions
+		prompt = (
+			"Convert this reminder request into a [ACTION: REMIND ...] tag.\n"
+			"Format: [ACTION: REMIND | MESSAGE: <text> | INTERVAL: <minutes> | DURATION: <hours>]\n\n"
+			f"Input: {remind_msg}"
+		)
+		response = await chat(prompt)
+		clean_reply, executed = await parse_and_execute_actions(response)
+		if executed:
+			return {"reply": f"✅ {' '.join(executed)}"}
+		else:
+			return {"reply": "Could not parse reminder. Try: '/remind 30m for 2h drink water'"}
+	elif msg.startswith("/custom "):
+		custom_msg = msg.replace("/custom", "").strip()
+		from app.services.llm import chat
+		from app.services.agent_actions import parse_and_execute_actions
+		prompt = (
+			"Convert this custom schedule request into a [ACTION: SCHEDULE_CUSTOM ...] tag.\n"
+			"Format: [ACTION: SCHEDULE_CUSTOM | NAME: <short_name> | MESSAGE: <text> | TYPE: <cron/interval> | SPEC: <spec>]\n"
+			"CRON SPEC: minute hour day month day_of_week\n"
+			"INTERVAL SPEC: minutes=N or hours=N\n\n"
+			f"Input: {custom_msg}"
+		)
+		response = await chat(prompt)
+		clean_reply, executed = await parse_and_execute_actions(response)
+		if executed:
+			return {"reply": f"✅ {' '.join(executed)}"}
+		else:
+			return {"reply": "Could not parse custom turnus. Try: '/custom every Monday at 10am remind me...'"}
+	elif msg == "/protocols":
+		from app.services.agent_actions import AVAILABLE_TOOLS
+		tools_info = "\n".join([f"• **{t['name']}**: {t['description']}" for t in AVAILABLE_TOOLS])
+		protocols_reply = (
+			"🤖 **Z Operator Protocols**\n\n"
+			"I command the environment using **Semantic Action Tags**. These allow me to transition from passive reasoning to active intervention.\n\n"
+			f"**Available Strategic Actions:**\n{tools_info}\n\n"
+			"*Every thought is an opportunity for evolution.*"
+		)
+		return {"reply": protocols_reply}
 	
 	# Use consolidated chat with context
 	from app.services.llm import chat_with_context
-	history = [{"role": m.role, "content": m.content} for m in req.history]
+	from app.models.db import get_global_history, save_global_message
+	
+	# Recover Cross-Channel History
+	merged_history = await get_global_history(limit=10)
 	
 	try:
 		reply = await chat_with_context(
 			msg, 
-			history=history,
+			history=merged_history,
 			include_projects=True,
 			include_people=True
 		)
 		
 		from app.services.agent_actions import parse_and_execute_actions
 		clean_reply, executed_cmds = await parse_and_execute_actions(reply, db=db)
+
+		# Sync to Global Central Memory
+		await save_global_message("dashboard", "user", msg)
+		await save_global_message("dashboard", "z", reply)
 
 		# Auto-store USER part only to memory for Deep Recall
 		try:
@@ -424,7 +542,6 @@ async def planka_redirect(request: Request, target: str = "", background: bool =
 				print(f"DEBUG: Could not fetch userId: {e}")
 
 			# 4. Determine Target Redirect URL
-			# CRITICAL: We redirect to Planka paths, NOT / (which is the dashboard).
 			target_board_id = request.query_params.get("target_board_id") or request.query_params.get("targetboardid")
 			target_project_id = request.query_params.get("target_project_id") or request.query_params.get("targetprojectid")
 			
@@ -432,26 +549,54 @@ async def planka_redirect(request: Request, target: str = "", background: bool =
 				redirect_url = f"{public_base}/boards/{target_board_id}"
 			elif target_project_id:
 				redirect_url = f"{public_base}/projects/{target_project_id}"
-			else:
-				# Find the 'openZero' (aka Boards) project ID for the default landing
-				headers = {"Authorization": f"Bearer {access_token}"}
-				proj_resp = await client.get(f"{settings.PLANKA_BASE_URL}/api/projects", headers=headers)
-				projects = proj_resp.json().get("items", [])
-				oz_proj = next((p for p in projects if p["name"].lower() == "openzero"), None)
+			elif target == "operator":
+				# Use Cache or Fetch
+				op_id = PLANKA_ID_CACHE.get("operator_board_id")
+				if not op_id:
+					headers = {"Authorization": f"Bearer {access_token}"}
+					proj_resp = await client.get(f"{settings.PLANKA_BASE_URL}/api/projects", headers=headers)
+					projects = proj_resp.json().get("items", [])
+					oz_proj = next((p for p in projects if p["name"].lower() == "openzero"), None)
+					if oz_proj:
+						PLANKA_ID_CACHE["oz_project_id"] = oz_proj["id"]
+						det_resp = await client.get(f"{settings.PLANKA_BASE_URL}/api/projects/{oz_proj['id']}", headers=headers)
+						boards = det_resp.json().get("included", {}).get("boards", [])
+						op_board = next((b for b in boards if b["name"].lower() == "operator board"), None)
+						if op_board:
+							PLANKA_ID_CACHE["operator_board_id"] = op_board["id"]
 				
-				if target == "operator" and oz_proj:
-					det_resp = await client.get(f"{settings.PLANKA_BASE_URL}/api/projects/{oz_proj['id']}", headers=headers)
-					boards = det_resp.json().get("included", {}).get("boards", [])
-					op_board = next((b for b in boards if b["name"].lower() == "operator board"), None)
-					if op_board:
-						redirect_url = f"{public_base}/boards/{op_board['id']}"
-					else:
-						redirect_url = f"{public_base}/projects/{oz_proj['id']}"
-				elif oz_proj:
-					# Landing on the 'Boards' overview
-					redirect_url = f"{public_base}/projects/{oz_proj['id']}"
+				op_id = PLANKA_ID_CACHE.get("operator_board_id")
+				if op_id:
+					redirect_url = f"{public_base}/boards/{op_id}"
 				else:
-					redirect_url = f"{public_base}/projects"
+					# Fallback to project root if operator board not found
+					proj_id = PLANKA_ID_CACHE.get("oz_project_id")
+					if proj_id:
+						redirect_url = f"{public_base}/projects/{proj_id}"
+					else:
+						redirect_url = f"{public_base}/projects" # Planka may still 404 but it's the expected path
+			else:
+				# Default 'Board Overview' -> Dynamically find first project to avoid /boards 404
+				proj_id = PLANKA_ID_CACHE.get("oz_project_id")
+				if not proj_id:
+					try:
+						headers = {"Authorization": f"Bearer {access_token}"}
+						proj_resp = await client.get(f"{settings.PLANKA_BASE_URL}/api/projects", headers=headers)
+						projects = proj_resp.json().get("items", [])
+						oz_proj = next((p for p in projects if p["name"].lower() == "openzero"), None)
+						if oz_proj:
+							proj_id = oz_proj["id"]
+							PLANKA_ID_CACHE["oz_project_id"] = proj_id
+						elif projects:
+							proj_id = projects[0]["id"]
+							PLANKA_ID_CACHE["oz_project_id"] = proj_id
+					except:
+						pass
+				
+				if proj_id:
+					redirect_url = f"{public_base}/projects/{proj_id}"
+				else:
+					redirect_url = f"{public_base}/boards" # Absolute fallback
 
 			# 5. Build Bridge HTML
 			from fastapi.responses import HTMLResponse
@@ -488,7 +633,7 @@ async def planka_redirect(request: Request, target: str = "", background: bool =
 							document.body.appendChild(iframe);
 							
 							let attempt = 0;
-							const maxAttempts = 30; // Try for 6 seconds
+							const maxAttempts = 15; // Try for 3 seconds
 							
 							const checkIframe = setInterval(() => {{
 								attempt++;
@@ -521,8 +666,8 @@ async def planka_redirect(request: Request, target: str = "", background: bool =
 											console.log("SSO: Triggering submission...");
 											btn.click();
 											// Monitor for redirect
-											setTimeout(() => {{ window.location.replace('{redirect_url}'); }}, 2000);
-										}}, 600);
+											setTimeout(() => {{ window.location.replace('{redirect_url}'); }}, 300);
+										}}, 50);
 										
 									}} else if (doc.location.pathname.includes('/projects') || doc.location.pathname.includes('/boards')) {{
 										clearInterval(checkIframe);
@@ -968,25 +1113,26 @@ async def delete_local_event(event_id: str, db: AsyncSession = Depends(get_db)):
 
 # --- System Status ---
 @router.get("/system")
-async def get_system_status():
-	"""Get system status and trigger an early LLM warmup."""
-	from app.config import settings
-	import asyncio
+async def get_system_status(db: AsyncSession = Depends(get_db)):
+	"""Deep health check of all OS subsystems."""
+	from app.services.llm import last_model_used
+	from app.services.memory import get_memory_stats
 	
-	provider = settings.LLM_PROVIDER.lower()
-	model_name = "Unknown"
+	try:
+		mem_stats = await get_memory_stats()
+	except Exception:
+		mem_stats = {"points": 0}
 	
-	if provider == "ollama":
-		model_name = settings.OLLAMA_MODEL_FAST
-		# Explicitly pull model into RAM via a silent, tiny prompt
-		asyncio.create_task(llm_chat("Warming up...", model=settings.OLLAMA_MODEL_FAST, system_override="Respond only with 'Ready'."))
-	elif provider == "groq":
-		model_name = "Cloud Engine"
-	elif provider == "openai":
-		model_name = "Cloud Engine"
-		
+	# Identity Health
+	from app.models.db import Person
+	res_people = await db.execute(select(Person).where(Person.circle_type == "identity"))
+	identity_set = res_people.scalar_one_or_none() is not None
+	
 	return {
 		"status": "online",
-		"llm_provider": provider,
-		"llm_model": model_name
+		"llm_provider": settings.LLM_PROVIDER,
+		"llm_model": last_model_used.get() or settings.OLLAMA_MODEL_FAST,
+		"memory_points": mem_stats.get("points", 0),
+		"identity_active": identity_set,
+		"timestamp": datetime.datetime.now().isoformat()
 	}
