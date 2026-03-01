@@ -1,91 +1,153 @@
-# Building and Running OpenZero
+# 🚀 Building & Deploying OpenZero
 
-This guide provides step-by-step instructions to build and deploy your Personal AI Operating System.
+This guide is designed for anyone—even if you've never used a server before. Follow these steps exactly to get your Personal AI Operating System (Z) running on your own VPS.
 
-## Prerequisites
+---
 
-- **Docker & Docker Compose**: Essential for running the containerized services.
-  - [Download Docker Desktop for Mac](https://www.docker.com/products/docker-desktop/)
-- **Tailscale**: For secure, private access without exposing ports to the internet.
-  - [Install Tailscale](https://tailscale.com/download)
-- **Telegram Bot Token**: Create a bot via [@BotFather](https://t.me/botfather) to get your token.
+## 🏗️ Phase 1: Prepare your VPS (Server)
 
-## Project Structure
+We recommend a VPS with **Ubuntu 24.04**. For best performance with Llama 8B, aim for at least **8 Cores** and **16GB-24GB RAM**.
 
-- `src/`: Core source code (e.g., FastAPI backend).
-- `docs/`: Implementation guides and character specifications.
-- `scripts/`: Entrypoint scripts and utility tools.
-- `personal/`: (Gitignored) Your private configuration and data.
-- `docker-compose.yml`: Service orchestration.
-
-## Step 1: Initializing the Project Structure
-
-If you are starting from a fresh clone, ensure the following directory structure is created:
-
+### 1. Log in for the first time
+Open the "Terminal" (Mac/Linux) or "PowerShell" (Windows) on your computer and type:
 ```bash
-mkdir -p src/backend/app/api src/backend/app/services src/backend/app/models src/backend/app/tasks scripts docs
+ssh root@YOUR_SERVER_IP
+```
+*(Replace `YOUR_SERVER_IP` with the IP address from your hosting provider.)*
+
+### 2. Create your dedicated user
+We don't want to run everything as "root" (the superuser) for security reasons.
+```bash
+adduser openzero
+```
+- Pick a password and remember it!
+- Press `Enter` through all the other questions.
+
+Now, give this user "Sudo" (Superpower) rights:
+```bash
+usermod -aG sudo openzero
 ```
 
-## Step 2: Configuration
+---
 
-1. **Backend Environment Variables**:
-   Copy the example environment file and fill in your secrets (Telegram token, DB passwords):
-   ```bash
-   cp .env.example .env
-   ```
-   Edit `.env` with your preferred settings.
+## 🐳 Phase 2: Install Docker (The Engine)
 
-2. **Planka Environment Variables**:
-   Copy the example environment file for Planka and ensure the `DATABASE_URL` matches your credentials:
+OpenZero runs inside "Containers" (mini virtual computers). Docker is the engine that runs them.
+
+### 1. Run the official installer
+Paste this entire block into your terminal:
+```bash
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+```
+
+### 2. Grant Docker permissions
+This allows you to run Docker without typing `sudo` every time:
+```bash
+sudo usermod -aG docker openzero
+```
+
+### 3. The Crucial Hand-off
+**Log out of the server now:**
+```bash
+exit
+```
+
+**Now, log back in—but as your new `openzero` user:**
+```bash
+ssh openzero@YOUR_SERVER_IP
+```
+
+---
+
+## 📡 Phase 3: The First Interaction
+
+Now that you are logged in as `openzero`, your server is ready. But it's empty! We need to move the code from your computer to the server.
+
+### 1. Create the project folder (ON THE SERVER)
+Run this command on your server to create a home for Z:
+```bash
+mkdir -p ~/openzero
+```
+
+### 2. Setup SSH Keys (Optional but HIGHLY Recommended)
+To avoid typing your password 10 times during deployment, run this **ON YOUR LAPTOP** terminal:
+
+> [!TIP]
+> **Getting "no identities found"?** This means you don't have an SSH key yet. Run this first: `ssh-keygen -t ed25519` (Press Enter through all prompts) and then try the command below again.
+
+```bash
+ssh-copy-id openzero@YOUR_SERVER_IP
+```
+
+### 3. Configure your local .env (ON YOUR LAPTOP)
+Open a **new** terminal window on your laptop (leave the server window open if you want). 
+Make sure you have your `.env` file ready with your Telegram Bot Token and other secrets.
+
+```bash
+cp .env.example .env
+# Edit .env and fill in these critical lines:
+# TELEGRAM_BOT_TOKEN=your_token_here
+# REMOTE_HOST=YOUR_SERVER_IP
+# REMOTE_USER=openzero
+```
+
+### 4. Setup Planka (ON THE SERVER)
+Planka is your task board. It needs its own configuration file to talk to the database.
+
+1. **Copy the template:**
    ```bash
+   cd ~/openzero
    cp .env.planka.example .env.planka
    ```
-   Edit `.env.planka` and set a secure `SECRET_KEY` and `DEFAULT_ADMIN_PASSWORD`.
 
-## Step 3: Building the Services
-
-Run the following command to build the Docker images:
-
-```bash
-docker compose build
-```
-
-## Step 4: Starting the System (Production)
-
-Once built, start all services in the background:
-
-```bash
-docker compose up -d
-```
-
-## Local Development Mode (Recommended for Building)
-
-If you are modifying the code or want a faster feedback loop, use the dedicated **Dev Mode** script. This starts the heavy infrastructure (Databases, AI) in Docker but runs the app logic directly on your machine.
-
-```bash
-./scripts/dev.sh
-```
-
-**What this does:**
-1. **Infrastructure**: Automatically starts Postgres, Qdrant, Ollama, and Planka in Docker.
-2. **Environment**: Sets up your local Python `.venv` and installs Node dependencies if needed.
-3. **Hot Reload**: Starts the FastAPI backend and Vite dashboard with live-reloading enabled.
-4. **Clean Exit**: Stopping the script (Ctrl+C) automatically shuts down the background Docker containers.
-
-## Step 5: Post-Deployment Setup
-
-1. **Verify Services**: Check the health of your services:
+2. **Edit the file:**
    ```bash
+   nano .env.planka
+   ```
+
+3. **Critical Changes to make:**
+   - **BASE_URL**: Change `http://your-ip-address` to `http://YOUR_SERVER_IP`.
+   - **DATABASE_URL**: Update the password part (`CHANGE_ME_STRONG_PASSWORD`) to match the `DB_PASSWORD` you set in your **main `.env`**.
+   - **SECRET_KEY**: Replace with a long random string (e.g., mash your keyboard).
+   - **Admin Password**: Change `CHANGE_ME_PLANKA_PASS` to something you'll remember to log in.
+
+*Press `Ctrl+O`, `Enter`, then `Ctrl+X` to save and exit nano.*
+
+### 5. Trigger the Sync (ON YOUR LAPTOP)
+Run the sync script from the project root on your laptop:
+```bash
+bash scripts/sync.sh
+```
+Z will now package itself, fly to your server, build its brain (Ollama), and start up.
+
+---
+
+## 🛠️ Step 4: Maintenance & Logs
+
+If Z isn't replying or you want to see what he's thinking:
+
+1. **Check if everything is running:**
+   ```bash
+   cd ~/openzero
    docker compose ps
    ```
-2. **Access Planka**: Connect to Tailscale and open `http://localhost:1337` (or your Tailscale IP).
-3. **Verify AI**: Send `/start` to your Telegram bot.
-4. **Access Dashboard**: Open `http://localhost:8000` (or your Tailscale IP on port 8000) to view your OpenZero Dashboard.
 
-## Troubleshooting
-
-- **Ollama Model Pulling**: On first start, the `ollama` container will pull the `llama3.1:8b` model. This may take a few minutes depending on your internet speed.
-- **Logs**: If something isn't working, check the logs:
+2. **Watch the live logs (The "Matrix" view):**
    ```bash
    docker compose logs -f backend
    ```
+
+3. **Check Pi-hole (Privacy DNS):**
+   Once Tailscale is connected, browse to `http://YOUR_SERVER_IP/admin` to manage your local DNS.
+
+---
+
+## ❓ FAQ for Beginners
+
+- **What is a "Port"?** It's like a door to a house. OpenZero uses port `80` (Web) and `11434` (AI).
+- **What if I get "Permission Denied"?** Always make sure you are logged in as the `openzero` user, not `root`.
+- **How do I stop everything?** Go to the folder and type `docker compose down`.
+
+---
+*OpenZero is a living system. Every time you run `sync.sh`, it updates its logic without losing your memories.*
