@@ -14,7 +14,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-scheduler = AsyncIOScheduler(timezone=settings.USER_TIMEZONE)
+scheduler = AsyncIOScheduler()
 
 async def run_backup():
 	"""Runs the daily system backup script."""
@@ -37,19 +37,71 @@ async def run_backup():
 		logger.error(f"Automated backup failed: {e}")
 
 async def start_scheduler():
-	# Morning Briefing — Mon–Fri at 07:30
+	# 1. Identify user's actual timezone and preferred briefing time
+	from app.models.db import AsyncSessionLocal, Person
+	from sqlalchemy import select
+	from app.services.timezone import get_current_timezone
+	import pytz
+	from datetime import datetime
+	
+	user_tz_str = await get_current_timezone()
+	try:
+		# Configure scheduler with correct timezone to respect DST
+		scheduler.configure(timezone=pytz.timezone(user_tz_str))
+		logger.info(f"Scheduler initialized with timezone: {user_tz_str}")
+	except Exception as te:
+		logger.error(f"Invalid timezone configuration: {user_tz_str}. Falling back to UTC.")
+		scheduler.configure(timezone=pytz.utc)
+
+	brief_hour, brief_min = 7, 30 # Default
+	try:
+		async with AsyncSessionLocal() as session:
+			res = await session.execute(select(Person).where(Person.circle_type == "identity"))
+			me = res.scalar_one_or_none()
+			if me and me.briefing_time:
+				# Format: "HH:MM"
+				parts = me.briefing_time.split(":")
+				if len(parts) == 2:
+					brief_hour, brief_min = int(parts[0]), int(parts[1])
+	except Exception as e:
+		logger.warning(f"Failed to fetch dynamic briefing time: {e}")
+
+	# Log the precise next triggers for debugging
+	tz = pytz.timezone(user_tz_str)
+	now = datetime.now(tz)
+	logger.info(f"System Time Check: {now.strftime('%Y-%m-%d %H:%M:%S %Z')} (Offset: {now.utcoffset()})")
+
+	# Morning Briefing — Mon–Fri at Configured Time
 	scheduler.add_job(
 		morning_briefing,
-		CronTrigger(day_of_week="mon-fri", hour=7, minute=30),
+		CronTrigger(day_of_week="mon-fri", hour=brief_hour, minute=brief_min),
 		id="morning_briefing",
 		replace_existing=True,
 	)
 
-	# Weekly Review — Sunday at 10:00
+	# Weekly Review — Sunday at 10:00 (or slightly after briefing)
 	scheduler.add_job(
 		weekly_review,
 		CronTrigger(day_of_week="sun", hour=10, minute=0),
 		id="weekly_review",
+		replace_existing=True,
+	)
+
+	# Monthly Review — 1st of every month at 09:00
+	from app.tasks.monthly import monthly_review
+	scheduler.add_job(
+		monthly_review,
+		CronTrigger(day=1, hour=9, minute=0),
+		id="monthly_review",
+		replace_existing=True,
+	)
+
+	# Quarterly Review — 1st of Jan, Apr, Jul, Oct at 10:30
+	from app.tasks.quarterly import quarterly_review
+	scheduler.add_job(
+		quarterly_review,
+		CronTrigger(month="1,4,7,10", day=1, hour=10, minute=30),
+		id="quarter_review",
 		replace_existing=True,
 	)
 
@@ -102,7 +154,53 @@ async def start_scheduler():
 		replace_existing=True,
 	)
 
+	# 2. Load User-Defined Persistent Custom Tasks
+	await load_custom_tasks()
+
 	scheduler.start()
+	logger.info(f"Z: Missions scheduled. Morning Briefing set to {brief_hour:02d}:{brief_min:02d} {user_tz_str}")
+
+async def load_custom_tasks():
+	"""Loads persistent custom tasks from the database into the scheduler."""
+	from app.models.db import AsyncSessionLocal, CustomTask
+	from sqlalchemy import select
+	from app.api.telegram import send_notification
+	
+	try:
+		async with AsyncSessionLocal() as session:
+			res = await session.execute(select(CustomTask).where(CustomTask.is_active == True))
+			tasks = res.scalars().all()
+			
+			for t in tasks:
+				# Use a wrapper to capture the specific message for this job
+				def make_task(msg):
+					async def notify_task():
+						await send_notification(f"🔔 *Custom Turnus Alert*\n\n{msg}")
+					return notify_task
+				
+				trigger = None
+				if t.job_type == "cron":
+					# Spec: "minute hour day month day_of_week" (standard crontab)
+					trigger = CronTrigger.from_crontab(t.spec)
+				elif t.job_type == "interval":
+					# Spec: "minutes=30" or "hours=2" or "days=1"
+					kwargs = {}
+					for part in t.spec.split(","):
+						if "=" in part:
+							k, v = part.split("=")
+							kwargs[k.strip()] = int(v.strip())
+					trigger = IntervalTrigger(**kwargs)
+				
+				if trigger:
+					scheduler.add_job(
+						make_task(t.message),
+						trigger,
+						id=f"persistent_custom_{t.id}",
+						replace_existing=True
+					)
+					logger.info(f"Loaded persistent custom task: {t.name} ({t.job_type})")
+	except Exception as e:
+		logger.error(f"Failed to load custom tasks: {e}")
 
 async def stop_scheduler():
 	scheduler.shutdown(wait=False)

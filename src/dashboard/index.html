@@ -45,10 +45,14 @@
                     </svg>
                     <span>Calendar</span>
                 </button>
-                <div id="status-badge" class="status-online"
-                    data-tooltip="System Core: Active&#10;Agent LLM: Idle&#10;Database: Connected&#10;Calendar Sync: Operational">
-                    System Online</div>
             </div>
+        </div>
+
+        <div class="system-status-strip">
+            <div id="status-model" class="status-item">Core: llama-3.2:3b</div>
+            <div id="status-memory" class="status-item">Memory: 0 points</div>
+            <div id="status-identity" class="status-item">Identity: Active</div>
+            <div id="status-latency" class="status-item">Ping: 0ms</div>
         </div>
 
         <welcome-onboarding></welcome-onboarding>
