@@ -56,6 +56,8 @@
 - **Sanitize Scripts:** Ensure utility scripts (e.g., `sync.sh`) load sensitive configuration from environment variables or `.env` files rather than hardcoding them.
 - **No Personal Data:** Avoid using the user's real name, company email, or specific location in any code comments or example data.
 - **Audit Before Sync:** Always perform a quick audit for hardcoded secrets when preparing a deployment or large code change.
+- **Environment Parity:** NEVER hardcode credentials (passwords, keys) directly in `docker-compose.yml` or service definitions. Always map them to variables in `.env` and use the `${VAR}` syntax in the YAML.
+- **Post-Implementation Verification:** After finishing a task, you MUST perform a final check of all modified files to ensure no sensitive developer environment data (local paths, test credentials) was accidentally committed.
 
 ## 12. Accessibility & Progressive Enhancement
 - **Native Elements First**: Always prioritize native HTML elements (buttons, inputs, links) over custom `div` or `span` listeners to ensure built-in keyboard support and screen reader compatibility.
@@ -65,5 +67,13 @@
 - **Contrast & Clarity**: Maintain high color contrast for text and ensure touch/click targets are sufficiently sized (min 44x44px where possible).
 
 ## 13. Artifact Management & Consistency
--	**Summarize into Artifacts**: When the user provides instructions or prompts, create/update artifacts that summarize the key requirements, design decisions, and implementation plans.
--	**Context Adherence**: Always keep these artifacts in mind and refer to them during implementation to ensure consistency and prevent context drift.
+-	**Proactive Artifact Creation**: For any significant architectural change, complex feature implementation, or strategic shift, you MUST proactively create or update a dedicated artifact (typically in `docs/artifacts/`). 
+-	**Summarize into Artifacts**: Artifacts should capture requirements, design decisions, technical constraints, and phased implementation plans.
+-	**Context Adherence**: Always refer to existing artifacts before starting a task. They represent the project's ground truth and help prevent context drift over long interactions.
+-	**Persistence of Knowledge**: Use artifacts to "save" complex states or long-term goals that might otherwise be lost in chat history. If a task spans multiple sessions, the artifact is your primary source of continuity.
+## 14. Global Intelligence & Privacy
+-	**Unified Context Persistence**: Always use the GlobalMessage mechanism to sync conversations across all channels (e.g. Telegram and Dashboard). This ensures Z maintains a consistent 'Universal Context' regardless of where the interaction occurs.
+-	**Semantic Memory Filtering**: Before storing user input to the long-term memory (Qdrant), you must perform a logic check to distinguish between factual data worth keeping (preferences, people, plans) and transient chatter (greetings, status updates).
+-	**Intelligence Scaling**: Prioritize response velocity by default (e.g. 3B models). Automatically scale to more complex reasoning models (e.g. 8B models) only when user requests involve strategic analysis, planning, or large data blocks.
+-	**Status Transparency**: The dashboard MUST always reflect the current intelligence state of the system, including the model currently in use, memory point counts, and identity health status.
+-	**Context Grounding**: Every response must be relateable to the current system time. Do not report progress on a timeframe that has already elapsed according to the internal clock.
