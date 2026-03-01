@@ -92,6 +92,14 @@ class TrackingSession(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
+class GlobalMessage(Base):
+    __tablename__ = "global_messages"
+    id = Column(Integer, primary_key=True)
+    channel = Column(String) # "telegram", "dashboard"
+    role = Column(String)    # "user", "z"
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
 class LocalEvent(Base):
     __tablename__ = "local_events"
     id = Column(Integer, primary_key=True)
@@ -101,6 +109,16 @@ class LocalEvent(Base):
     end_time = Column(DateTime, nullable=False)
     person_id = Column(Integer, ForeignKey("people.id"), nullable=True) # Optional link to a person
     is_completed = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+class CustomTask(Base):
+    __tablename__ = "custom_tasks"
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)
+    message = Column(Text, nullable=False)
+    job_type = Column(String, default="cron") # cron, interval
+    spec = Column(String, nullable=False) # e.g. "0 12 * * 1" (Cron) or "minutes=30" (Interval)
+    is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
 from sqlalchemy import select
@@ -127,3 +145,18 @@ async def get_pending_thought(thought_id: str):
         if thought:
             return {"query": thought.query, "context_data": thought.context_data}
         return None
+
+async def save_global_message(channel: str, role: str, content: str):
+    async with AsyncSessionLocal() as session:
+        msg = GlobalMessage(channel=channel, role=role, content=content)
+        session.add(msg)
+        await session.commit()
+
+async def get_global_history(limit: int = 15):
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(GlobalMessage).order_by(GlobalMessage.created_at.desc()).limit(limit)
+        )
+        messages = result.scalars().all()
+        # Return in chronological order for the LLM
+        return [{"role": m.role, "content": m.content, "channel": m.channel, "at": m.created_at.isoformat()} for m in reversed(messages)]

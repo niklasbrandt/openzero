@@ -31,6 +31,8 @@ ENV/
 __pycache__/
 *.py[cod]
 *.pyc
+.last_sync_commit
+LATEST_CHANGES.txt
 
 # ===========================
 # Backups (contain DB dumps)

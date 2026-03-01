@@ -43,4 +43,9 @@ async def weekly_review():
 		session.add(briefing)
 		await session.commit()
 	
+	# Send Telegram Notification
+	from app.api.telegram import send_notification
+	from app.config import settings
+	await send_notification(f"📊 *Weekly Review Ready*\n\n{content}\n\n🔗 [Dashboard]({settings.BASE_URL}/home)")
+	
 	return content

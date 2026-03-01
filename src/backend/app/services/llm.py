@@ -49,12 +49,8 @@ Semantic Action Tags (Exact Format Required):
 Your Persona & Behavior:
 - You are talking to {user_name}. Be direct but professional.
 - Refer to the user's goals. Connect today's actions to what they're building.
-- **TIME AWARENESS**: Check the current time in context. If user says "next 2 hours", calculate the END exactly.
-- **Never invent or assume the existence of projects or people.** Only refer to individuals and missions explicitly mentioned in provided context.
-
-Rules:
-- **Proactive Execution**: If you have enough information to fulfill a request, DO IT immediately. Do not ask "Would you like me to...?" first.
-- **No Hallucinations**: If a person/project is not in context, they don't exist.
+- **TIME AWARENESS**: Current time is {current_time}. Always relate your response to the current time. If the user mentions a timeframe (e.g., 'in 2 hours') and that time has passed according to the system clock, do not pretend it is still active. Acknowledge the delay and ask for current status.
+- **No Hallucinations**: If a person/project is not in context, they don't exist. Never report completion status of a task unless it is explicitly marked as 'Done' in the provided Planka context. Only claim progress if you have just executed a command or see it in the current data.
 
 Keep it tight. Mission first. """
 
@@ -110,36 +106,56 @@ async def chat(
 	# --- Model Selection Logic (Dynamic Scaling) ---
 	target_model = model
 	if not target_model and provider == "ollama":
-		# Categories needing 'Smart' model
+		# Categories needing 'Smart' model (8B)
 		complex_keywords = ["plan", "reason", "strategic", "complex", "code", "math", "summarize session", "briefing", "mission", "campaign"]
-		is_complex = any(kw in user_message.lower() for kw in complex_keywords) or len(user_message) > 300
-		target_model = settings.OLLAMA_MODEL_SMART if is_complex else settings.OLLAMA_MODEL_FAST
+		msg_len = len(user_message) if user_message else 0
+		is_complex = any(kw in user_message.lower() for kw in complex_keywords) if user_message else False
+		# Default to FAST (3B). Only use SMART (8B) for True strategy or very large queries.
+		target_model = settings.OLLAMA_MODEL_SMART if (is_complex or msg_len > 1000) else settings.OLLAMA_MODEL_FAST
 
 	# --- Option A: Local Ollama ---
 	if provider == "ollama":
+		import asyncio
 		target_model = target_model or settings.OLLAMA_MODEL_FAST
 		last_model_used.set(target_model)
 		print(f"DEBUG: Calling Ollama with model: {target_model} (Reasoning Scaled)")
 		
-		try:
-			response = await client.post(
-				f"{settings.OLLAMA_BASE_URL}/api/chat",
-				json={
-					"model": target_model,
-					"messages": [
-						{"role": "system", "content": system_prompt},
-						{"role": "user", "content": user_message},
-					],
-					"stream": False,
-				},
-			)
-			response.raise_for_status()
-			data = response.json()
-			return data.get("message", {}).get("content", "No response from Ollama.")
-		except httpx.ReadTimeout:
-			return "Z (Local Engine) is still starting up or running slowly on your CPU. (Tip: Use a cloud provider like Groq in .env for instant responses.)"
-		except Exception as e:
-			return f"Error connecting to Ollama: {str(e)}"
+		last_err = None
+		for attempt in range(3):
+			try:
+				response = await client.post(
+					f"{settings.OLLAMA_BASE_URL}/api/chat",
+					json={
+						"model": target_model,
+						"messages": [
+							{"role": "system", "content": system_prompt},
+							{"role": "user", "content": user_message},
+						],
+						"stream": False,
+						"options": {
+							"num_ctx": 4096 if target_model == settings.OLLAMA_MODEL_FAST else 8192,
+							"temperature": 0.2,
+							"num_predict": 512,
+							"top_k": 20,
+							"top_p": 0.9
+						},
+						"keep_alive": -1
+					},
+					timeout=600.0
+				)
+				response.raise_for_status()
+				data = response.json()
+				return data.get("message", {}).get("content", "No response from Ollama.")
+			except httpx.ReadTimeout:
+				last_err = "I'm still initializing my local core. One moment while I synchronize my reasoning parameters."
+				if attempt < 2:
+					print(f"⌛ Ollama timeout (attempt {attempt+1}/3). Retrying in 5s...")
+					await asyncio.sleep(5)
+				continue
+			except Exception as e:
+				return f"Error connecting to Ollama: {str(e)}"
+		
+		return last_err
 
 	# --- Option B: Groq (Ultra-Fast Cloud API) ---
 	elif provider == "groq":
@@ -274,8 +290,8 @@ async def chat_with_context(
 							seen_content.add(content)
 			
 			if all_results:
-				# Optimized for speed: 10 high-precision matches for standard chat
-				return f"RELEVANT MEMORIES (Precision Recall):\n" + "\n".join(all_results[:10])
+				# Ultra-aggressive truncation for Snappiness (Top 3 memories)
+				return f"RELEVANT MEMORIES (Last Recall):\n" + "\n".join(all_results[:3])
 			return ""
 		except Exception as e:
 			print(f"DEBUG: Memory fetch error: {e}")
@@ -288,55 +304,80 @@ async def chat_with_context(
 		fetch_memories()
 	)
 
-	# 4. History Formatting (Speed Optimized: Last 10 messages)
-	# Note: Previous messages are still searchable via Semantic Memory.
+	# 4. History Formatting (Ultra-Aggressive: Last 5 messages Only)
 	history_text = ""
 	if history:
 		history_history = []
-		for m in history[-10:]:
+		for m in history[-5:]:
 			role = "User" if m.get("role") == "user" else "Z"
-			history_history.append(f"{role}: {m.get('content')}")
-		history_text = "RECENT CONVERSATION (Last 10 messages):\n" + "\n".join(history_history)
+			# Aggressive content truncation (500 chars)
+			content = m.get('content', '')[:500] if m.get('content') else ""
+			history_history.append(f"{role}: {content}")
+		history_text = "RECENT CONVERSATION (Last 5 messages):\n" + "\n".join(history_history)
 
 	# 5. Assemble and Send
 	full_prompt = "\n\n".join(filter(None, [
 		people_p, 
 		project_p, 
-		memory_p,
-		history_text, 
-		f"USER'S LATEST MESSAGE: {user_message}"
+		memory_p
 	]))
 	
 	print(f"DEBUG: Context gathered in {time.time() - start_time:.2f}s")
 	
 	try:
-		# LangGraph Integration
-		from langgraph.prebuilt import create_react_agent
-		from langchain_ollama import ChatOllama
-		from langchain_openai import ChatOpenAI
-		from langchain_core.messages import SystemMessage, HumanMessage
-		from app.services.agent_actions import AVAILABLE_TOOLS
-		import uuid
+		# Categories needing 'Smart' model (8B)
+		complex_keywords = ["plan", "reason", "strategic", "complex", "code", "math", "summarize session", "briefing", "mission", "campaign"]
+		msg_len = len(user_message) if user_message else 0
+		is_complex = any(kw in user_message.lower() for kw in complex_keywords) if user_message else False
+		# Default to FAST (3B). Only use SMART (8B) for True strategy or very large queries.
+		target_model = settings.OLLAMA_MODEL_SMART if (is_complex or msg_len > 1000) else settings.OLLAMA_MODEL_FAST
+		last_model_used.set(target_model)
 		
-		# Define LLM. For simplicity we use Ollama via LangChain integration
-		llm = ChatOllama(base_url=settings.OLLAMA_BASE_URL, model=settings.OLLAMA_MODEL_FAST)
+		# Configure with snap parameters
+		llm = ChatOllama(
+			base_url=settings.OLLAMA_BASE_URL, 
+			model=target_model, 
+			timeout=120.0,
+			num_ctx=4096 if target_model == settings.OLLAMA_MODEL_FAST else 8192,
+			temperature=0.2,
+			keep_alive=-1
+		)
 		
 		# Build Graph
 		agent_executor = create_react_agent(llm, AVAILABLE_TOOLS)
 		
-		messages = [SystemMessage(content=full_prompt)]
+		# Combine original system prompt with gathered context
+		# We put the "Subject Profile" and "Goals" in the system message
+		# but keeping them concise is key.
+		rich_system_prompt = f"{formatted_system_prompt}\n\n{full_prompt}"
+		
+		messages = [SystemMessage(content=rich_system_prompt)]
 		for h in (history or []):
-			if h.get("role") == "user": messages.append(HumanMessage(content=h.get('content')))
-			else: messages.append(SystemMessage(content=h.get('content')))
+			content = h.get('content', '')
+			# TRUNCATE history messages to 1000 chars to avoid prompt bloat
+			if len(content) > 1000:
+				content = content[:1000] + "... [Log/Large Output Truncated]"
+			
+			if h.get("role") == "user": 
+				messages.append(HumanMessage(content=content))
+			else: 
+				messages.append(AIMessage(content=content))
 		messages.append(HumanMessage(content=user_message))
 		
-		print("DEBUG: Executing LangGraph Agent...")
+		print(f"DEBUG: Executing LangGraph Agent with model: {target_model}")
 		result = await agent_executor.ainvoke({"messages": messages}, config={"configurable": {"thread_id": str(uuid.uuid4())}})
 		reply = result["messages"][-1].content
 		return reply
 	except Exception as e:
 		print("DEBUG: LangGraph Agent failed, falling back to legacy chat:", e)
-		return await chat(full_prompt, user_name=user_name, user_profile=user_profile)
+		# Correct fallback: chat(user_message, system_override=rich_system_prompt, ...)
+		return await chat(
+			user_message, 
+			system_override=rich_system_prompt,
+			user_name=user_name, 
+			user_profile=user_profile, 
+			model=target_model or settings.OLLAMA_MODEL_FAST
+		)
 
 async def generate_context_proposal(query: str) -> dict:
 	"""Use Local LLM to identify relevant information for the user to approve."""
