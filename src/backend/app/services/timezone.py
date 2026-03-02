@@ -74,3 +74,35 @@ async def get_current_timezone() -> str:
 		res = await session.execute(select(Preference).where(Preference.key == "detected_timezone"))
 		pref = res.scalar_one_or_none()
 		return pref.value if pref else "UTC"
+
+def get_now() -> datetime.datetime:
+	"""Single source of truth for current time in user's timezone."""
+	tz = pytz.timezone(settings.USER_TIMEZONE)
+	return datetime.datetime.now(tz)
+
+def format_time(dt: datetime.datetime = None) -> str:
+	"""
+	Format datetime as 'HH:MM - We. 2nd' (weekday abbrev + ordinal day).
+	If no dt provided, uses current time.
+	"""
+	if dt is None:
+		dt = get_now()
+	
+	# Two-letter weekday abbreviation
+	day_abbrevs = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
+	weekday = day_abbrevs[dt.weekday()]
+	
+	# Ordinal suffix
+	day = dt.day
+	if 11 <= day <= 13:
+		suffix = 'th'
+	else:
+		suffix = {1: 'st', 2: 'nd', 3: 'rd'}.get(day % 10, 'th')
+	
+	return f"{dt.strftime('%H:%M')} - {weekday}. {day}{suffix}"
+
+def format_date_full(dt: datetime.datetime = None) -> str:
+	"""Full date string: 'Monday, 2026-03-02 16:40:00 CET'"""
+	if dt is None:
+		dt = get_now()
+	return dt.strftime('%A, %Y-%m-%d %H:%M:%S %Z')
