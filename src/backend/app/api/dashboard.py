@@ -304,7 +304,7 @@ async def dashboard_chat(req: ChatRequest, db: AsyncSession = Depends(get_db)):
 
 		# Sync to Global Central Memory
 		await save_global_message("dashboard", "user", msg)
-		await save_global_message("dashboard", "z", reply)
+		await save_global_message("dashboard", "z", clean_reply)
 
 		# Auto-store USER part only to memory for Deep Recall
 		try:
