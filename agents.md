@@ -10,11 +10,6 @@
 - **Post-Task Audit:** After completing a task or prompt execution, you MUST check if the changes you made should be reflected in the project's build instructions (typically located in `docs/build-plan.md`).
 - Ensure that the setup, deployment, or architectural instructions remain accurate and up-to-date with your latest modifications.
 
-## 1. Version Control & Pushing
-- **DO NOT automatically push to the remote repository.**
-- The user prefers to review all commits and perform the push themselves.
-- You may stage and commit changes locally if part of a task, but **always stop before pushing** and leave that step to the user.
-
 ## 2. Editor & Syntax Best Practices
 - **Indentation:** Use **TABS** for indentation (not spaces), except where rigidly required by a schema (like YAML). For all other code (HTML, CSS, JS, Markdown, etc.), use tabs.
 - **Trailing Whitespace:** Remove trailing whitespace from modified lines.
@@ -28,11 +23,6 @@
 
 ## 5. Web Component Styling
 - **Shadow DOM CSS Encapsulation:** Native Web Components in this project use `<style>` blocks populated via template literals directly inside their `.ts` definition wrappers. Do not extract this CSS into separate files. This single-file encapsulation pattern is intentional and considered the best practice for this repository to ensure isolated styling without a complex CSS bundling layer.
-## 6. Cloud Deployment
-- **DO NOT deploy to a Cloud VPS automatically.** 
-- You may only initiate a cloud deployment if the user explicitly instructs you to do so. 
-- You should proactively ask the user if a cloud deployment makes sense in the current context (e.g., if code is stable and ready for production), but you must never proceed without explicit confirmation.
-
 ## 7. Local Resource Cleanup
 - **Always terminate local development processes** (e.g., `dev.sh`, local Docker containers) before or immediately after a cloud deployment.
 - This is critical to prevent conflicts, especially with the Telegram bot, which can only have one active polling instance at a time.
