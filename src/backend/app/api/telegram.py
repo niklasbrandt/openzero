@@ -165,19 +165,25 @@ async def start_telegram_bot():
 			event_summary = "\n".join(event_summary_parts) if event_summary_parts else "No upcoming events scheduled."
 			print(f"DEBUG: Greeting Seq - Context Ready ({len(event_summary_parts)} items)")
 			
+			has_events = bool(event_summary_parts)
+			events_block = f"Events (REAL DATA):\n{event_summary}" if has_events else "Events: NONE — do NOT invent or mention any events."
+
 			greeting_prompt = (
 				f"SYSTEM_DATA:\n"
 				f"Status: {stats_text}\n"
 				f"Changes: {release_info or 'No recent changes'}\n"
-				f"Events: {event_summary}\n\n"
-				"TASK: As Z (the agent), give a short, human greeting. "
-				"If there are 'Changes', summarize them as 'Recent Logic Updates'. "
-				"If there are 'Events', mention them. Keep it direct and professional. No robotic filler."
+				f"{events_block}\n\n"
+				"TASK: As Z (the agent), write a concise but informative greeting.\n"
+				"1. Brief welcome back (1 sentence).\n"
+				"2. If 'Changes' has updates: add a 'Recent Logic Updates' section. "
+				"For each change, write 1-2 sentences explaining what it does in plain language — not just repeating the commit title.\n"
+				"3. ONLY mention events if they appear in the REAL DATA above. If events say NONE, skip entirely.\n"
+				"Be direct, professional, and human. No filler. No invented content."
 			)
-			
-			system_override = "You are Z. Return ONLY the greeting text. Keep it sharp and professional. Fast mode active."
-			print(f"DEBUG: Greeting Seq - Calling Ollama ({settings.OLLAMA_MODEL_FAST})")
-			raw_greeting = await chat(greeting_prompt, system_override=system_override, model=settings.OLLAMA_MODEL_FAST)
+
+			system_override = "You are Z. Output ONLY the greeting. NEVER invent data not present in SYSTEM_DATA."
+			print(f"DEBUG: Greeting Seq - Calling Ollama ({settings.OLLAMA_MODEL_SMART})")
+			raw_greeting = await chat(greeting_prompt, system_override=system_override, model=settings.OLLAMA_MODEL_SMART)
 			
 			# Clean output just in case
 			from app.services.agent_actions import parse_and_execute_actions
