@@ -9,6 +9,7 @@ from telegram.ext import (
 )
 from app.config import settings
 import asyncio
+import pytz
 from datetime import datetime, timedelta
 
 bot_app: Application | None = None
@@ -118,7 +119,7 @@ async def start_telegram_bot():
 
 			# Context gathering
 			event_summary_parts = []
-			now = datetime.now()
+			now = datetime.now(pytz.timezone(settings.USER_TIMEZONE))
 
 			print("DEBUG: Greeting Seq - Step 2: Fetching Calendar")
 			# 1. Google Calendar
@@ -323,7 +324,7 @@ async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
 			f"🧠 *Memory (Qdrant):* {m_text} ({m_stats.get('points', 0)} pts)\n"
 			f"📋 *Task Board (Planka):* {p_text}\n"
 			f"🤖 *Intelligence (Ollama):* {l_text}\n"
-			f"📍 *Time:* {datetime.now().strftime('%H:%M:%S')}"
+			f"📍 *Time:* {datetime.now(pytz.timezone(settings.USER_TIMEZONE)).strftime('%H:%M:%S')}"
 		)
 		await safe_reply(update, status_report)
 	except Exception as e:
@@ -681,7 +682,7 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		try:
 			from app.services.memory import store_memory
 			# Store RAW message - memory.py will clean it and handle distillation
-			asyncio.create_task(store_memory(update.message.text, metadata={"type": "user_input", "source": "telegram", "date": datetime.now().strftime('%Y-%m-%d')}))
+			asyncio.create_task(store_memory(update.message.text, metadata={"type": "user_input", "source": "telegram", "date": datetime.now(pytz.timezone(settings.USER_TIMEZONE)).strftime('%Y-%m-%d')}))
 		except Exception as me:
 			print(f"DEBUG: Auto-memory (Telegram) failed: {me}")
 
