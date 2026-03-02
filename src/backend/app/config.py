@@ -62,6 +62,11 @@ class Settings(BaseSettings):
     PLANKA_ADMIN_EMAIL: str = ""
     PLANKA_ADMIN_PASSWORD: str = ""
 
+    # CalDAV (Private Calendar)
+    CALDAV_URL: Optional[str] = None
+    CALDAV_USERNAME: Optional[str] = None
+    CALDAV_PASSWORD: Optional[str] = None
+
     # LLM Providers
     LLM_PROVIDER: str = "ollama"
     GROQ_API_KEY: Optional[str] = None

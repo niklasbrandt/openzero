@@ -968,40 +968,19 @@ async def get_calendar(year: Optional[int] = None, month: Optional[int] = None, 
 		start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
 		end_date = start_date + datetime.timedelta(days=35)
 
-	# 1. Fetch Google Events
+	# 1. Fetch Aggregated Events (Google + CalDAV + Local DB)
+	from app.services.calendar import fetch_unified_events
 	try:
-		google_events = await fetch_calendar_events(
-			calendar_id="primary", 
-			max_results=100, 
-			start_date=start_date,
-			end_date=end_date
+		all_events = await fetch_unified_events(
+			days_ahead=35, 
+			start_date=start_date
 		)
 	except Exception as ce:
-		print(f"Calendar fetch failed in get_calendar: {ce}")
-		google_events = []
+		print(f"Unified Calendar fetch failed: {ce}")
+		all_events = []
 	
-	# 2. Fetch Local Events from DB
-	from app.models.db import LocalEvent
-	result = await db.execute(
-		select(LocalEvent).where(
-			LocalEvent.start_time >= start_date - datetime.timedelta(days=7), # Buffer
-			LocalEvent.start_time <= end_date + datetime.timedelta(days=7)
-		)
-	)
-	local_events = result.scalars().all()
-	
-	# 3. Format Local Events
-	formatted_local = []
-	for e in local_events:
-		formatted_local.append({
-			"summary": e.summary,
-			"start": e.start_time.isoformat() + "Z",
-			"end": e.end_time.isoformat() + "Z",
-			"is_local": True,
-			"id": f"local_{e.id}"
-		})
-
-	# 4. Generate Virtual Birthdays
+	# 2. Add Virtual Birthdays (Not yet in unified fetcher as they are generated)
+	from app.models.db import Person
 	result = await db.execute(select(Person))
 	people = result.scalars().all()
 	birthday_events = []
@@ -1011,10 +990,8 @@ async def get_calendar(year: Optional[int] = None, month: Optional[int] = None, 
 			parsed = parse_birthday(p.birthday)
 			if parsed:
 				month, day = parsed
-				# Generate for relevant years
 				for y in range(start_date.year, end_date.year + 1):
 					try:
-						# We treat birthdays as "local" dates by not forcing UTC Z if possible
 						bday = datetime.datetime(y, month, day)
 						if start_date <= bday <= end_date:
 							birthday_events.append({
@@ -1025,10 +1002,9 @@ async def get_calendar(year: Optional[int] = None, month: Optional[int] = None, 
 								"is_birthday": True,
 								"person": p.name
 							})
-					except ValueError:
-						continue
+					except ValueError: continue
 
-	all_events = google_events + formatted_local + birthday_events
+	all_events = all_events + birthday_events
 	
 	# 5. Enrich events with person info (for Google events)
 	enriched_events = []
