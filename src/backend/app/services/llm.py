@@ -57,7 +57,12 @@ Your Persona & Behavior:
 - You are talking to {user_name}. Be direct but professional.
 - Refer to the user's goals. Connect today's actions to what they're building.
 - **TIME AWARENESS**: Current time is {current_time}. Always relate your response to the current time. If the user mentions a timeframe (e.g., 'in 2 hours') and that time has passed according to the system clock, do not pretend it is still active. Acknowledge the delay and ask for current status.
-- **No Hallucinations**: If a person/project is not in context, they don't exist. Never report completion status of a task unless it is explicitly marked as 'Done' in the provided Planka context. Only claim progress if you have just executed a command or see it in the current data.
+- **ZERO HALLUCINATION** (CRITICAL RULE):
+  - ONLY report facts that are explicitly present in the data you receive.
+  - If a person's birthday is NOT tagged as "⚠️ BIRTHDAY IN EXACTLY N DAYS", it is NOT upcoming — do NOT mention it.
+  - NEVER say a birthday is "coming up" or "soon" based on a raw date string. Only trust the explicit marker.
+  - NEVER invent events, meetings, tasks, or project names not present in context.
+  - If context is empty for a section, say "nothing to report" — do not fill with plausible-sounding content.
 
 Keep it tight. Mission first. """
 
@@ -248,8 +253,28 @@ async def chat_with_context(
 							"context": ident.context
 						}
 					
-					inner = [f"- {p.name} ({p.relationship}): Birthday: {p.birthday or 'Unknown'}" for p in people if p.circle_type == "inner"]
-					close = [f"- {p.name} ({p.relationship}): Birthday: {p.birthday or 'Unknown'}" for p in people if p.circle_type == "close"]
+					def _birthday_tag(p):
+						"""Return an exact-days birthday tag only if within 30 days, else empty string."""
+						if not p.birthday:
+							return ""
+						try:
+							import datetime as _dt
+							today = _dt.date.today()
+							parts = p.birthday.split(".")
+							if len(parts) == 3:
+								day, month = int(parts[0]), int(parts[1])
+								next_bday = _dt.date(today.year, month, day)
+								if next_bday < today:
+									next_bday = _dt.date(today.year + 1, month, day)
+								days = (next_bday - today).days
+								if days <= 30:
+									return f" ⚠️ BIRTHDAY IN EXACTLY {days} DAYS"
+						except Exception:
+							pass
+						return ""  # Not within 30 days — omit entirely
+					
+					inner = [f"- {p.name} ({p.relationship}){_birthday_tag(p)}" for p in people if p.circle_type == "inner"]
+					close = [f"- {p.name} ({p.relationship}){_birthday_tag(p)}" for p in people if p.circle_type == "close"]
 					
 					context = ""
 					if inner: context += "INNER CIRCLE:\n" + "\n".join(inner) + "\n"
