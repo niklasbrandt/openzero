@@ -206,13 +206,12 @@ async def start_telegram_bot():
 				print("DEBUG: Greeting - Both models unavailable, using static greeting")
 				
 				# Manual time formatting for static fallback
-				from datetime import datetime
 				import pytz
-				now = datetime.now(pytz.timezone(settings.USER_TIMEZONE))
+				_now = datetime.now(pytz.timezone(settings.USER_TIMEZONE))
 				def get_day_suffix(day):
 					if 11 <= day <= 13: return 'th'
 					return {1: 'st', 2: 'nd', 3: 'rd'}.get(day % 10, 'th')
-				time_str = f"{now.strftime('%H:%M')} - {now.day}{get_day_suffix(now.day)}\n"
+				time_str = f"{_now.strftime('%H:%M')} - {_now.day}{get_day_suffix(_now.day)}\n"
 				
 				changes_note = f"\n\n🔄 *Recent Logic Updates:*\n{release_info.strip()}" if release_info else ""
 				events_note = f"\n\n📅 *Events:*\n{event_summary}" if has_events else ""
