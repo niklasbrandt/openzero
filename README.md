@@ -105,7 +105,7 @@ The stack focuses on performance and privacy:
 | `/week` | Strategic review of all projects and roadmaps. |
 | `/month` | High-level 30-day mission review. |
 | `/quarter` | Strategic 90-day review and roadmap planning. |
-| `/custom` | Create a persistent scheduled task/turnus (e.g. every Monday at 10am). |
+| `/custom` | Create a persistent scheduled task that runs indefinitely (e.g. every Monday at 10am). |
 | `/year` | Yearly goal setting based on project themes. |
 | `/tree` | Full life hierarchy and workspace overview. |
 | `/think` | Complex reasoning with human-in-the-loop approval. |
@@ -113,7 +113,7 @@ The stack focuses on performance and privacy:
 | `/memories` | List all core knowledge currently in permanent memory. |
 | `/unlearn` | Refine Z's internal context by evolving past points in the vault. |
 | `/add` | Commit specific facts to Z's permanent knowledge vault. |
-| `/remind` | Set a periodic reminder with natural language (e.g., 2x an hour for 4h). |
+| `/remind` | Set a temporary recurring reminder that expires after a set duration (e.g., every 30 min for 4h). |
 | `/protocols` | Inspect Z's agentic tools and Semantic Action Tags. |
 | `/purge` | ⚠️ Permanently delete all semantic memories from the vault (Qdrant). Deletes all stored facts, learned context, and `/add` entries. Does **not** affect task boards, people, or briefing history. Requires explicit confirmation. |
 
