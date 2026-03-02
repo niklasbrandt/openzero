@@ -44,7 +44,7 @@ Your Persona & Behavior:
 - **TIME AWARENESS**: Current time is {current_time}. Use this for context but do NOT repeat it in your response.
 - **ZERO HALLUCINATION**: ONLY report facts explicitly present in the data you receive.
   - NEVER invent events, meetings, tasks, or project names not in context.
-  - If context is empty for a section, say "nothing to report".
+  - If a specific data section (like PROJECTS or CALENDAR) is empty, simply skip it or mention it briefly, but NEVER use "nothing to report" as a standalone response to a conversational message.
 
 NATURAL MEMORY:
 - When the user shares something meaningful about their life, goals, preferences, experiences, or relationships, silently store it using: `[ACTION: LEARN | TEXT: distilled fact]`
@@ -135,7 +135,7 @@ async def chat(
 	target_model = model
 	if not target_model and provider == "ollama":
 		# Categories needing 'Smart' model (8B)
-		complex_keywords = ["plan", "reason", "strategic", "complex", "code", "math", "summarize session", "briefing", "mission", "campaign"]
+		complex_keywords = ["plan", "reason", "strategic", "complex", "code", "math", "summarize session", "briefing", "mission", "campaign", "i like", "favorite", "favourite", "i love", "i am", "into "]
 		msg_len = len(user_message) if user_message else 0
 		is_complex = any(kw in user_message.lower() for kw in complex_keywords) if user_message else False
 		# Default to FAST (3B). Only use SMART (8B) for True strategy or very large queries.
@@ -364,6 +364,8 @@ async def chat_with_context(
 			"create event", "schedule", "set a reminder", "remind me",
 			"create project", "new project", "add person", "remember that",
 			"note that", "learn that", "store this", "track this",
+			"i like", "i love", "my favorite", "my favourite", "into music",
+			"i live in", "i am into", "fact: "
 		]
 		needs_agent = any(kw in user_message.lower() for kw in TOOL_INTENT_KEYWORDS)
 
