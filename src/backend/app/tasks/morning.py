@@ -11,6 +11,39 @@ from sqlalchemy import select
 import asyncio
 import datetime
 
+_CLOSING_REFLECTIONS = [
+	"Two roads diverged in a wood, and I — I took the one less traveled by, and that has made all the difference. — Robert Frost",
+	"In the depths of winter, I finally learned that within me there lay an invincible summer. — Albert Camus",
+	"Tell me, what is it you plan to do with your one wild and precious life? — Mary Oliver",
+	"You are not a drop in the ocean. You are the entire ocean in a drop. — Rumi",
+	"In the middle of difficulty lies opportunity. The obstacle is not the end — it is the door. — Albert Einstein",
+	"The earth laughs in flowers. — Ralph Waldo Emerson",
+	"We shall not cease from exploration, and the end of all our exploring will be to arrive where we started and know the place for the first time. — T.S. Eliot",
+	"You were born with wings. Why prefer to crawl through life? — Rumi",
+	"Dwell on the beauty of life. Watch the stars, and see yourself running with them. — Marcus Aurelius",
+	"Even after all this time, the sun never says to the earth, 'You owe me.' Look what happens with a love like that — it lights the whole world. — Hafiz",
+	"You do not have to be good. You do not have to walk on your knees for a hundred miles through the desert, repenting. You only have to let the soft animal of your body love what it loves. — Mary Oliver",
+	"In every walk with nature, one receives far more than he seeks. — John Muir",
+	"The most beautiful thing we can experience is the mysterious. It is the source of all true art and science. — Albert Einstein",
+	"I live my life in widening circles that reach out across the world. — Rainer Maria Rilke",
+	"And those who were seen dancing were thought to be insane by those who could not hear the music. — Friedrich Nietzsche",
+	"How we spend our days is, of course, how we spend our lives. — Annie Dillard",
+	"To see a World in a Grain of Sand and a Heaven in a Wild Flower, hold Infinity in the palm of your hand and Eternity in an hour. — William Blake",
+	"I have loved the stars too fondly to be fearful of the night. — Sarah Williams",
+	"Not all those who wander are lost. — J.R.R. Tolkien",
+	"Instructions for living a life: Pay attention. Be astonished. Tell about it. — Mary Oliver",
+	"The world is charged with the grandeur of God. It will flame out, like shining from shook foil. — Gerard Manley Hopkins",
+	"Every human language ever spoken contains words for love, for home, and for tomorrow. No matter how different the culture, these three things have always mattered.",
+	"I am not an Athenian or a Greek, but a citizen of the world. — Socrates",
+	"It may be that when we no longer know what to do, we have come to our real work, and when we no longer know which way to go, we have begun our real journey. — Wendell Berry",
+	"At the still point of the turning world, there the dance is. — T.S. Eliot",
+	"What lies behind us and what lies before us are tiny matters compared to what lies within us. — Ralph Waldo Emerson",
+	"The most wasted of all days is one without laughter. — E.E. Cummings",
+	"Live in the sunshine, swim the sea, drink the wild air. — Ralph Waldo Emerson",
+	"The invariable mark of wisdom is to see the miraculous in the common. — Ralph Waldo Emerson",
+	"Enough. These few words are enough. If not these words, this breath. If not this breath, this sitting here. This opening to the life we have refused again and again until now. — David Whyte",
+]
+
 async def morning_briefing():
 	"""Generate and store the daily morning briefing."""
 	
@@ -159,6 +192,12 @@ async def morning_briefing():
 		method_name, method_prompt = methods[day_of_year % len(methods)]
 		content += f"\n\n{method_name} *Mental Yoga:*\n_{method_prompt}_"
 	
+	# 3.5 Closing Reflection (rotating poem or scientific fact)
+	if settings.BRIEFING_CLOSING_REFLECTION:
+		day_of_year = datetime.date.today().timetuple().tm_yday
+		reflection = _CLOSING_REFLECTIONS[day_of_year % len(_CLOSING_REFLECTIONS)]
+		content += f"\n\n✨ *Reflection:*\n_{reflection}_"
+
 	# --- Multi-Modal (TTS) ---
 	audio_briefing = None
 	try:
