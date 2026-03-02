@@ -332,4 +332,9 @@ async def parse_and_execute_actions(reply: str, db=None):
     clean_reply = re.sub(r'^\s*\|\s*', '', clean_reply, flags=re.MULTILINE)
     clean_reply = re.sub(r'\n{3,}', '\n\n', clean_reply).strip()
     
+    # If the LLM response contained ONLY tags, and we successfully executed them, 
+    # we don't want to reply with an empty string which looks broken.
+    if not clean_reply and executed_cmds:
+        clean_reply = "\n".join(executed_cmds)
+    
     return clean_reply, executed_cmds
