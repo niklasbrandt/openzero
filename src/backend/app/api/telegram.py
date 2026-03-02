@@ -249,19 +249,20 @@ async def stop_telegram_bot():
 		await bot_app.shutdown()
 
 async def send_notification(text: str, reply_markup=None):
-	"""Send a message to the owner."""
+	"""Send a message to the owner wrapped in an HTML blockquote island."""
 	if not settings.TELEGRAM_BOT_TOKEN or not settings.TELEGRAM_ALLOWED_USER_ID:
 		return
 	bot = Bot(token=settings.TELEGRAM_BOT_TOKEN)
+	html_text = _md_to_html(text)
 	await bot.send_message(
-		chat_id=settings.TELEGRAM_ALLOWED_USER_ID,
-		text=text,
-		parse_mode="Markdown",
+		chat_id=int(settings.TELEGRAM_ALLOWED_USER_ID),
+		text=f"<blockquote>{html_text}</blockquote>",
+		parse_mode="HTML",
 		reply_markup=reply_markup,
 	)
 
 async def send_notification_html(text: str, reply_markup=None):
-	"""Send an HTML-formatted message to the owner (supports blockquotes)."""
+	"""Send an HTML-formatted message to the owner (already formatted)."""
 	if not settings.TELEGRAM_BOT_TOKEN or not settings.TELEGRAM_ALLOWED_USER_ID:
 		return
 	bot = Bot(token=settings.TELEGRAM_BOT_TOKEN)
@@ -296,7 +297,7 @@ async def send_voice_message(audio_bytes: bytes, caption: str = None):
 		chat_id=settings.TELEGRAM_ALLOWED_USER_ID,
 		voice=voice_file,
 		caption=caption,
-		parse_mode="Markdown"
+		parse_mode="HTML"
 	)
 
 # --- Auth decorator ---
@@ -308,20 +309,21 @@ def owner_only(func):
 	return wrapper
 
 async def safe_reply(update: Update, text: str, reply_markup=None):
-	"""Tries to send a message with Markdown, falls back to plain text on error."""
+	"""Sends a reply wrapped in an HTML blockquote island."""
 	msg = update.effective_message
 	try:
-		await msg.reply_text(text, parse_mode="Markdown", reply_markup=reply_markup)
+		html_text = _md_to_html(text)
+		await msg.reply_text(f"<blockquote>{html_text}</blockquote>", parse_mode="HTML", reply_markup=reply_markup)
 	except Exception as e:
-		print(f"DEBUG: Markdown reply failed, falling back to plain: {e}")
+		print(f"DEBUG: HTML reply failed, falling back to plain: {e}")
 		await msg.reply_text(text, reply_markup=reply_markup)
 
-async def safe_edit(message, text: str, parse_mode="Markdown", reply_markup=None):
-	"""Tries to edit a message with Markdown, falls back to plain text on error."""
+async def safe_edit(message, text: str, parse_mode="HTML", reply_markup=None):
+	"""Tries to edit a message, falls back to plain text on error."""
 	try:
 		await message.edit_text(text, parse_mode=parse_mode, reply_markup=reply_markup)
 	except Exception as e:
-		print(f"DEBUG: Markdown edit failed, falling back to plain: {e}")
+		print(f"DEBUG: HTML edit failed, falling back to plain: {e}")
 		try:
 			await message.edit_text(text)
 		except: pass
@@ -580,28 +582,28 @@ async def handle_unlearn_approval(update: Update, context: ContextTypes.DEFAULT_
 @owner_only
 async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	help_text = (
-		"🤖 *Z \u2014 Operator Controls*\n\n"
+		"\U0001f916 *Z -- Operator Controls*\n\n"
 		"*Briefings & Reviews*\n"
-		"/day \u2014 Proactive morning briefing \(contextual summary\)\n"
-		"/week \u2014 Strategic review of all projects and roadmaps\n"
-		"/month \u2014 High\-level 30\-day mission review\n"
-		"/quarter \u2014 Strategic 90\-day review and roadmap planning\n"
-		"/year \u2014 Yearly goal setting based on project themes\n\n"
+		"/day -- Proactive morning briefing (contextual summary)\n"
+		"/week -- Strategic review of all projects and roadmaps\n"
+		"/month -- High-level 30-day mission review\n"
+		"/quarter -- Strategic 90-day review and roadmap planning\n"
+		"/year -- Yearly goal setting based on project themes\n\n"
 		"*Mission Control*\n"
-		"/tree \u2014 Full life hierarchy and workspace overview\n"
-		"/think \u2014 Complex reasoning with human\-in\-the\-loop approval\n"
-		"/remind \u2014 Set a temporary recurring reminder that expires after a set duration \(e\.g\. every 30 min for 4h\)\n"
-		"/custom \u2014 Create a persistent scheduled task that runs indefinitely \(e\.g\. every Monday at 10am\)\n\n"
+		"/tree -- Full life hierarchy and workspace overview\n"
+		"/think -- Complex reasoning with human-in-the-loop approval\n"
+		"/remind -- Set a temporary recurring reminder (e.g. every 30 min for 4h)\n"
+		"/custom -- Create a persistent scheduled task (e.g. every Monday at 10am)\n\n"
 		"*Memory & Intelligence*\n"
-		"/search \u2014 Conceptual search of the semantic knowledge vault\n"
-		"/memories \u2014 List all core knowledge in permanent memory\n"
-		"/add \u2014 Commit specific facts to Z's permanent knowledge vault\n"
-		"/unlearn \u2014 Evolve past points in the vault\n"
-		"/protocols \u2014 Inspect Z's agentic tools and Semantic Action Tags\n\n"
+		"/search -- Conceptual search of the semantic knowledge vault\n"
+		"/memories -- List all core knowledge in permanent memory\n"
+		"/add -- Commit specific facts to Z's permanent knowledge vault\n"
+		"/unlearn -- Evolve past points in the vault\n"
+		"/protocols -- Inspect Z's agentic tools and Semantic Action Tags\n\n"
 		"*System*\n"
-		"/status \u2014 Deep integration health check\n"
-		"/purge \u2014 \u26a0\ufe0f Permanently delete all semantic memories \(irreversible \- requires confirmation\)\n\n"
-		"_Tap any command to execute it directly\._"
+		"/status -- Deep integration health check\n"
+		"/purge -- Permanently delete all semantic memories (irreversible)\n\n"
+		"_Tap any command to execute it directly._"
 	)
 	await safe_reply(update, help_text, reply_markup=get_nav_markup())
 
@@ -635,24 +637,26 @@ async def cmd_purge(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	"""Request semantic memory purge with detailed confirmation."""
 	keyboard = [
 		[
-			InlineKeyboardButton("🔥 Yes, purge everything", callback_data="wipe_confirm"),
-			InlineKeyboardButton("✋ Cancel", callback_data="wipe_cancel"),
+			InlineKeyboardButton("\U0001f525 Yes, purge everything", callback_data="wipe_confirm"),
+			InlineKeyboardButton("\u270b Cancel", callback_data="wipe_cancel"),
 		]
 	]
 	reply_markup = InlineKeyboardMarkup(keyboard)
 	await update.message.reply_text(
-		"⚠️ *Semantic Memory Purge*\n\n"
-		"This will permanently delete *all* facts stored in Z's long\-term memory vault \(Qdrant\)\.\n\n"
-		"*What gets deleted:*\n"
-		"• All stored facts, preferences, and personal context\n"
-		"• All learned information from past conversations\n"
-		"• All manually committed memories \(/add\)\n\n"
-		"*What is NOT affected:*\n"
-		"• Your calendar, task boards, and projects \(Planka\)\n"
-		"• Your circle of trust \(people database\)\n"
-		"• Briefing history\n\n"
-		"This action is *irreversible*\. Z will start with a blank knowledge slate\.",
-		parse_mode="MarkdownV2",
+		"<blockquote>"
+		"\u26a0\ufe0f <b>Semantic Memory Purge</b>\n\n"
+		"This will permanently delete <b>all</b> facts stored in Z's long-term memory vault (Qdrant).\n\n"
+		"<b>What gets deleted:</b>\n"
+		"- All stored facts, preferences, and personal context\n"
+		"- All learned information from past conversations\n"
+		"- All manually committed memories (/add)\n\n"
+		"<b>What is NOT affected:</b>\n"
+		"- Your calendar, task boards, and projects (Planka)\n"
+		"- Your circle of trust (people database)\n"
+		"- Briefing history\n\n"
+		"This action is <b>irreversible</b>. Z will start with a blank knowledge slate."
+		"</blockquote>",
+		parse_mode="HTML",
 		reply_markup=reply_markup
 	)
 
@@ -669,15 +673,6 @@ async def handle_wipe_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE
 			await query.edit_message_text("❌ Failed to wipe memory. Check logs.")
 	else:
 		await query.edit_message_text("Cancelled. Memories are safe.")
-
-async def safe_reply(update: Update, text: str, reply_markup=None):
-	"""Tries to send a message with Markdown, falls back to plain text on error."""
-	msg = update.effective_message
-	try:
-		await msg.reply_text(text, parse_mode="Markdown", reply_markup=reply_markup)
-	except Exception as e:
-		print(f"DEBUG: Markdown reply failed, falling back to plain: {e}")
-		await msg.reply_text(text, reply_markup=reply_markup)
 
 @owner_only
 async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -797,7 +792,7 @@ async def cmd_think(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		await update.message.reply_text("What should I think deeply about?")
 		return
 	
-	await update.message.reply_text("⏳ *Z is analyzing required context...*", parse_mode="Markdown")
+	await update.message.reply_text("<blockquote>⏳ <b>Z is analyzing required context...</b></blockquote>", parse_mode="HTML")
 	
 	from app.services.llm import generate_context_proposal
 	from app.models.db import store_pending_thought
@@ -818,12 +813,12 @@ async def cmd_think(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	reply_markup = InlineKeyboardMarkup(keyboard)
 	
 	disclosure_msg = (
-		f"⚖️ *Privacy Disclosure*\n\n"
+		f"<blockquote>\u2696\ufe0f <b>Privacy Disclosure</b>\n\n"
 		f"To answer this deeply, I need to send the following to {settings.DEEP_THINK_PROVIDER}:\n"
 		f"{proposal['summary']}\n\n"
-		f"*Question:* {query}"
+		f"<b>Question:</b> {query}</blockquote>"
 	)
-	await update.message.reply_text(disclosure_msg, parse_mode="Markdown", reply_markup=reply_markup)
+	await update.message.reply_text(disclosure_msg, parse_mode="HTML", reply_markup=reply_markup)
 
 async def handle_approval(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	"""Handle User granting access to Cloud API."""
@@ -834,7 +829,7 @@ async def handle_approval(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		await update.callback_query.edit_message_text("🚫 Deep Thinking cancelled. Context was not shared.")
 		return
 
-	await update.callback_query.edit_message_text("📡 *Access granted. Sending to Cloud API...*", parse_mode="Markdown")
+	await update.callback_query.edit_message_text("<blockquote>📡 <b>Access granted. Sending to Cloud API...</b></blockquote>", parse_mode="HTML")
 	
 	from app.models.db import get_pending_thought
 	from app.services.llm import chat
@@ -854,10 +849,11 @@ async def handle_approval(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	)
 	
 	# Deliver the heavy-weight answer
+	html_response = _md_to_html(response)
 	await context.bot.send_message(
 		chat_id=update.effective_chat.id,
-		text=response,
-		parse_mode="Markdown"
+		text=f"<blockquote>{html_response}</blockquote>",
+		parse_mode="HTML"
 	)
 
 async def handle_calendar_approval(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -895,7 +891,7 @@ async def handle_calendar_approval(update: Update, context: ContextTypes.DEFAULT
 			db.add(new_event)
 			await db.commit()
 		
-		await query.edit_message_text(f"🚀 *Added to Calendar:* {event_data['summary']}", parse_mode="Markdown")
+		await query.edit_message_text(f"<blockquote>🚀 <b>Added to Calendar:</b> {event_data['summary']}</blockquote>", parse_mode="HTML")
 	except Exception as e:
 		print(f"DEBUG: Calendar approval failed: {e}")
 		await query.edit_message_text(f"❌ Failed to add event: {str(e)}")
