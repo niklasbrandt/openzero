@@ -31,6 +31,7 @@ async def create_project(name: str, description: str = "") -> str:
 async def create_event(title: str, start_time: str, end_time: Optional[str] = None) -> str:
     """Create a new calendar event."""
     from app.models.db import LocalEvent, AsyncSessionLocal
+    from app.services.calendar import create_caldav_event
     import datetime
     
     start_dt = datetime.datetime.fromisoformat(start_time.replace('Z', ''))
@@ -39,6 +40,10 @@ async def create_event(title: str, start_time: str, end_time: Optional[str] = No
     else:
         end_dt = start_dt + datetime.timedelta(hours=1)  # default 1-hour block
     
+    # 1. Sync to Private CalDAV if available
+    await create_caldav_event(title, start_dt, end_dt)
+
+    # 2. Local fallback/audit write
     async with AsyncSessionLocal() as db:
         event = LocalEvent(
             summary=title,
