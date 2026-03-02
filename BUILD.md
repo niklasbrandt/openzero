@@ -146,6 +146,21 @@ If Z isn't replying or you want to see what he's thinking:
 
 ---
 
+## 🌐 Optional: Using a Vanity Domain (open.zero)
+If you set `BASE_URL=http://open.zero` in your `.env`, you must tell your local machine how to resolve that name. 
+
+On **macOS/Linux**:
+1. Open terminal and run: `sudo nano /etc/hosts`
+2. Add the following line at the end:
+   ```text
+   100.116.160.123  open.zero
+   ```
+3. Save (Ctrl+O, Enter) and Exit (Ctrl+X).
+
+Now you can reach your dashboard at `http://open.zero/home`.
+
+---
+
 ## ❓ FAQ for Beginners
 
 - **What is a "Port"?** It's like a door to a house. OpenZero uses port `80` (Web) and `11434` (AI).
