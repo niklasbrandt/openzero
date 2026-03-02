@@ -174,7 +174,8 @@ services:
   pihole:
     image: pihole/pihole:latest
     restart: always
-    hostname: open.zero
+    cap_add:
+      - NET_ADMIN
     ports:
       - "53:53/tcp"
       - "53:53/udp"
@@ -186,6 +187,7 @@ services:
       - PIHOLE_DOMAIN=open.zero
       - FTLCONF_LOCAL_IPV4=${SERVER_IP}
       - DNSMASQ_LISTENING=all
+      - DNSMASQ_USER=root
     extra_hosts:
       - "open.zero:${SERVER_IP}"
     volumes:
