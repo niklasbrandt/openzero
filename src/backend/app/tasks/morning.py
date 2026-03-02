@@ -106,7 +106,11 @@ async def morning_briefing():
 	)
 	
 	# 3. Generate Briefing
-	content = await chat(full_prompt)
+	raw_content = await chat(full_prompt)
+	
+	# 3.2 Post-Processing & Cleanup
+	from app.services.agent_actions import parse_and_execute_actions
+	content, _ = await parse_and_execute_actions(raw_content)
 	
 	# --- Multi-Modal (TTS) ---
 	audio_briefing = None
