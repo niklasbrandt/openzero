@@ -11,15 +11,18 @@ openZero is a self-hosted agentic platform built for absolute data sovereignty. 
 
 The platform is personified as **Z**, an autonomous operator. Z focuses on building, organizing, and executing. It maintains a persistent memory of user preferences and long-term goals, ensuring interactions remain grounded in actual history.
 
+Z directly manages your **unified schedule**. By integrating with your existing **CalDAV** servers or Google account, Z can proactively block time for deep work, identify scheduling conflicts, and remember family milestones like birthdays without having to store them in a separate database. This allows the system to remain your "Command Center" while keeping your sensitive temporal data on servers you control.
+
 Every morning, the system delivers a local briefing summarizing priority tasks and family commitments. Users control the environment via a visual dashboard or a mobile Kanban app, secured inside a Zero Trust network. Interaction occurs primarily through a mobile messenger bot or the integrated dashboard chat UI.
 
 ## What it does
 
 The system runs 24/7 on a remote server or local homelab. It links email, calendars, and memory without corporate oversight.
 
-* **Security:** Everything stays sealed behind a Tailscale VPN. Traefik handles internal TLS and Pi-hole sinkholes outbound telemetry. Public ports do not exist.
+* **Security & Zero Trust:** OpenZero avoids opening public ports. Instead, it creates a private **Tailscale** mesh network. Your phone and laptop connect as if they were in the same room as your VPS. This provides absolute encryption and eliminates the need for managing certificates for local-only names.
+* **Private DNS (Pi-hole):** To support vanity domains like `http://open.zero`, the system uses an internal **Pi-hole** instance. By configuring your Tailscale network to use the VPS as a nameserver for the `open.zero` domain, you get "Split DNS" behavior — your phone knows how to find the server without global DNS record leakage.
 * **The Hub:** A central board pulls high-priority tasks from all other projects, highlighting exactly what needs attention today.
-* **Unified Scheduling:** Z coordinates routines and social milestones on a single timeline to protect deep work blocks.
+* **Calendar & Sync:** OpenZero features a unified schedule that merges **Google Calendar**, private **CalDAV** servers (Nextcloud/Fastmail), and local database events into a single, deduplicated view for Z to act upon.
 * **Local Intelligence:** Ollama runs Llama 3 models on local hardware. Cloud reasoning is only engaged via a "Disclosure Proposal" workflow for shared memories.
 * **Voice and Text:** Voice notes allow local transcription via Whisper.
 * **Multi-Modal Briefings:** Local TTS summarizes the day in a high quality voice note.
@@ -137,12 +140,20 @@ Environment variables and raw Docker volumes require archiving to protect data i
 
 A VPS with 24GB RAM or a local Mac Mini/homelab is recommended.
 
-1. **Deploy:** Run `docker compose up -d`.
-2. **Secure:** Link the server to the Tailscale network.
-3. **Configure:** Connect calendars and define the user profile.
+1.  **Deploy:** Run `docker compose up -d`.
+2.  **Secure:** Link the server to the Tailscale network.
+3.  **Configure:** Connect calendars and define the user profile.
+
+### 📅 Private Calendar Setup (CalDAV)
+OpenZero excels at keeping your schedule private. To sync with your existing self-hosted calendar:
+1.  **Find your URL**: 
+    *   **Nextcloud**: Open Calendar -> Settings icon -> "Copy primary CalDAV address". 
+    *   **iCloud**: Use your full iCloud email and an App-Specific Password.
+    *   **Baikal / Radicale**: Copy the specific calendar collection link (ending in `.php/dav/...`).
+2.  **Edit your `.env`**: Fill in `CALDAV_URL`, `CALDAV_USERNAME`, and `CALDAV_PASSWORD`. 
+3.  **Sync**: The system will automatically fetch events every few minutes and when creating new entries through Z.
 
 ### Deployment Expectations
-
 First-time builds or updates following major architectural changes incur significant durations:
 *   **Cold Builds:** Using `--no-cache` or major dependency updates (e.g., adding LangGraph, Redis) can take 45–60 minutes for `pip` resolution.
 *   **Media Engines:** Pulling the voice engines (Whisper and Coqui TTS) requires downloading approximately 6GB of data. Depending on network speed, this may total 2–3 hours for a complete first-time setup.
