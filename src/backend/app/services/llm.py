@@ -81,7 +81,7 @@ Rules:
 """
 
 # Global client for connection pooling
-_http_client = httpx.AsyncClient(timeout=300.0)
+_http_client = httpx.AsyncClient(timeout=130.0)
 
 def build_system_prompt(user_name: str, user_profile: dict) -> tuple[str, str, str]:
 	from app.services.timezone import format_time, format_date_full, get_now
@@ -161,15 +161,15 @@ async def chat(
 						],
 						"stream": False,
 						"options": {
-							"num_ctx": 6144 if target_model == settings.OLLAMA_MODEL_FAST else 8192,
+							"num_ctx": 4096 if target_model == settings.OLLAMA_MODEL_FAST else 6144,
 							"temperature": 0.2,
-							"num_predict": 768,
+							"num_predict": 512,
 							"top_k": 20,
 							"top_p": 0.9
 						},
 						"keep_alive": -1
 					},
-					timeout=600.0
+					timeout=120.0
 				)
 				response.raise_for_status()
 				data = response.json()
@@ -374,8 +374,8 @@ async def chat_with_context(
 			llm = ChatOllama(
 				base_url=settings.OLLAMA_BASE_URL,
 				model=target_model,
-				timeout=120.0,
-				num_ctx=6144 if target_model == settings.OLLAMA_MODEL_FAST else 8192,
+				timeout=60.0,
+				num_ctx=4096 if target_model == settings.OLLAMA_MODEL_FAST else 6144,
 				temperature=0.2,
 				keep_alive=-1
 			)
