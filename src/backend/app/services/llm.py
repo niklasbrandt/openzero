@@ -377,11 +377,12 @@ async def chat_with_context(
 			messages = [SystemMessage(content=rich_system_prompt)]
 			for h in (history or []):
 				content = h.get('content', '')
-				if len(content) > 1200:
-					content = content[:1200] + "... [Truncated]"
 				if h.get("role") == "user":
 					messages.append(HumanMessage(content=content))
 				else:
+					# Only truncate Z's responses
+					if len(content) > 1200:
+						content = content[:1200] + "... [Truncated]"
 					messages.append(AIMessage(content=content))
 			messages.append(HumanMessage(content=user_message))
 
@@ -401,7 +402,9 @@ async def chat_with_context(
 			history_lines = []
 			for m in history[-8:]:
 				role = "User" if m.get("role") == "user" else "Z"
-				content = m.get('content', '')[:300] if m.get('content') else ""
+				raw = m.get('content', '') or ""
+				# Keep user messages in full (they carry intent); only truncate Z's verbose output
+				content = raw if role == "User" else raw[:300]
 				history_lines.append(f"{role}: {content}")
 			history_text = "RECENT CONVERSATION:\n" + "\n".join(history_lines)
 
