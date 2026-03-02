@@ -378,7 +378,10 @@ export class ChatPrompt extends HTMLElement {
 			}
 
 			.message.assistant {
-				align-self: flex-start;
+				align-self: center;
+				max-width: 95%;
+				width: 100%;
+				margin: 0.5rem 0;
 			}
 
 			.bubble {
@@ -397,12 +400,14 @@ export class ChatPrompt extends HTMLElement {
 			}
 
 			.message.assistant .bubble {
-				background: rgba(255, 255, 255, 0.06);
-				backdrop-filter: blur(12px);
-				-webkit-backdrop-filter: blur(12px);
-				color: rgba(255, 255, 255, 0.9);
-				border: 1px solid rgba(255, 255, 255, 0.06);
-				border-bottom-left-radius: 0.35rem;
+				background: rgba(10, 15, 28, 0.85);
+				backdrop-filter: blur(24px);
+				-webkit-backdrop-filter: blur(24px);
+				color: rgba(255, 255, 255, 0.95);
+				border: 1px solid rgba(255, 255, 255, 0.08);
+				border-radius: 1.5rem;
+				box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+				padding: 1.25rem 1.75rem;
 			}
 
 			.bubble .time {
