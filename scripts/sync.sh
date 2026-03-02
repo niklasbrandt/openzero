@@ -35,15 +35,19 @@ if [ -d .git ]; then
   LAST_SYNC_FILE=".last_sync_commit"
   if [ -f "$LAST_SYNC_FILE" ]; then
     LAST_COMMIT=$(cat "$LAST_SYNC_FILE")
-    # Capture code-level changes (diff stat and summary)
-    echo "Summary of Code Changes:" > LATEST_CHANGES.txt
-    git diff --stat "$LAST_COMMIT" >> LATEST_CHANGES.txt
-    echo -e "\nDetailed Logic Shifts:" >> LATEST_CHANGES.txt
-    # Get a compact diff (0 context lines) to keep it brief for the LLM
-    git diff -U0 "$LAST_COMMIT" | grep '^[+-]' | grep -v '^[+-][+-]' >> LATEST_CHANGES.txt || echo "Minor adjustments only." >> LATEST_CHANGES.txt
+    CURRENT_COMMIT=$(git rev-parse HEAD)
+    if [ "$LAST_COMMIT" != "$CURRENT_COMMIT" ]; then
+      # Use commit messages — readable for LLM summarization
+      echo "Changes since last deployment:" > LATEST_CHANGES.txt
+      git log --pretty=format:"- %s" "$LAST_COMMIT".."$CURRENT_COMMIT" >> LATEST_CHANGES.txt
+      # Also add a short diff stat for technical context
+      echo -e "\n\nFiles modified:" >> LATEST_CHANGES.txt
+      git diff --stat "$LAST_COMMIT" "$CURRENT_COMMIT" | head -n 20 >> LATEST_CHANGES.txt
+    fi
   else
-    # First sync: Show last commit
-    git show --stat HEAD > LATEST_CHANGES.txt
+    # First sync: Show last commit message
+    echo "Initial deployment." > LATEST_CHANGES.txt
+    git log --pretty=format:"- %s" -5 >> LATEST_CHANGES.txt
   fi
 fi
 

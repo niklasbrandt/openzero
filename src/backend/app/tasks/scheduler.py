@@ -12,7 +12,6 @@ import logging
 
 import subprocess
 import os
-import logging
 
 logger = logging.getLogger(__name__)
 

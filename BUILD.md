@@ -6,7 +6,20 @@ This guide is designed for anyone—even if you've never used a server before. F
 
 ## 🏗️ Phase 1: Prepare your VPS (Server)
 
-We recommend a VPS with **Ubuntu 24.04**. For best performance with Llama 8B, aim for at least **8 Cores** and **16GB-24GB RAM**.
+We recommend a VPS with **Ubuntu 24.04**. For best performance with Llama 8B, aim for at least **8 Cores** and **16GB RAM**.
+
+> [!IMPORTANT]
+> **Z uses two AI models simultaneously** (`llama3.2:3b` fast + `llama3.1:8b` smart). Even with 16 GB RAM, you need swap space as a safety buffer. **Skip this and Ollama will OOM-crash.**
+
+### 0. Add Swap Space (MANDATORY first step)
+```bash
+sudo fallocate -l 8G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+```
+Verify with: `free -h` — you should see 8G of swap.
 
 ### 1. Log in for the first time
 Open the "Terminal" (Mac/Linux) or "PowerShell" (Windows) on your computer and type:
@@ -26,6 +39,23 @@ adduser openzero
 Now, give this user "Sudo" (Superpower) rights:
 ```bash
 usermod -aG sudo openzero
+```
+
+### 3. Harden SSH (Recommended)
+```bash
+# Disable root login and password auth
+sudo sed -i 's/PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config
+sudo sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
+sudo systemctl restart sshd
+```
+> [!WARNING]
+> Make sure you have SSH key access for your `openzero` user BEFORE disabling password auth, or you will lock yourself out.
+
+### 4. Install Fail2Ban
+```bash
+sudo apt-get install -y fail2ban
+sudo systemctl enable fail2ban
+sudo systemctl start fail2ban
 ```
 
 ---
@@ -122,7 +152,13 @@ bash scripts/sync.sh
 Z will now package itself, fly to your server, build its brain (Ollama), and start up.
 
 > [!NOTE]
-> **First Login & Planka**: On the very first start, Planka usually requires a "Terms of Service" acceptance. Z is designed to handle this automatically for the admin account during its first connection attempt. You can then access your task board at `http://YOUR_SERVER_IP/login` using the credentials you set in `.env.planka`.
+> **AI Models are pulled automatically** on first start. The entrypoint script pulls both `llama3.2:3b` (fast) and `llama3.1:8b` (smart). This can take **10–30 minutes** on first boot. Monitor with:
+> ```bash
+> docker compose logs -f ollama
+> ```
+
+> [!NOTE]
+> **First Login & Planka**: On the very first start, Planka usually requires a "Terms of Service" acceptance. Z handles this automatically for the admin account. You can access your task board at `http://YOUR_SERVER_IP/login`.
 
 ---
 
@@ -153,7 +189,7 @@ On **macOS/Linux**:
 1. Open terminal and run: `sudo nano /etc/hosts`
 2. Add the following line at the end:
    ```text
-   100.116.160.123  open.zero
+   YOUR_SERVER_IP  open.zero
    ```
 3. Save (Ctrl+O, Enter) and Exit (Ctrl+X).
 
@@ -163,7 +199,7 @@ Now you can reach your dashboard at `http://open.zero/home`.
 
 ## ❓ FAQ for Beginners
 
-- **What is a "Port"?** It's like a door to a house. OpenZero uses port `80` (Web) and `11434` (AI).
+- **What is a "Port"?** It's like a door to a house. OpenZero uses only port `80` (HTTP via Traefik). All other ports are internal only.
 - **What if I get "Permission Denied"?** Always make sure you are logged in as the `openzero` user, not `root`.
 - **How do I stop everything?** Go to the folder and type `docker compose down`.
 

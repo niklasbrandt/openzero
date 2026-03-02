@@ -32,11 +32,17 @@ async def create_event(title: str, start_time: str, end_time: Optional[str] = No
     from app.models.db import LocalEvent, AsyncSessionLocal
     import datetime
     
+    start_dt = datetime.datetime.fromisoformat(start_time.replace('Z', ''))
+    if end_time:
+        end_dt = datetime.datetime.fromisoformat(end_time.replace('Z', ''))
+    else:
+        end_dt = start_dt + datetime.timedelta(hours=1)  # default 1-hour block
+    
     async with AsyncSessionLocal() as db:
         event = LocalEvent(
             summary=title,
-            start_time=datetime.datetime.fromisoformat(start_time.replace('Z','')),
-            end_time=datetime.datetime.fromisoformat(end_time.replace('Z','')) if end_time else None
+            start_time=start_dt,
+            end_time=end_dt
         )
         db.add(event)
         await db.commit()

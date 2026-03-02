@@ -9,16 +9,25 @@ until curl -s http://localhost:11434/api/tags > /dev/null 2>&1; do
 done
 echo "Ollama is ready."
 
-# Pull model if not already present
-if [ -n "$OLLAMA_MODEL" ]; then
-  if ! ollama list | grep -q "$OLLAMA_MODEL"; then
-    echo "Pulling $OLLAMA_MODEL model..."
-    ollama pull "$OLLAMA_MODEL"
-    echo "Model pulled successfully."
-  else
-    echo "Model $OLLAMA_MODEL already present."
+# Pull models if not already present
+pull_model() {
+  local model="$1"
+  if [ -n "$model" ]; then
+    if ollama list | grep -q "$(echo "$model" | cut -d: -f1)"; then
+      echo "Model $model already present."
+    else
+      echo "Pulling $model..."
+      ollama pull "$model"
+      echo "$model pulled successfully."
+    fi
   fi
-fi
+}
+
+# Pull fast model (primary, used by default)
+pull_model "$OLLAMA_MODEL"
+
+# Pull smart model (used for complex reasoning tasks)
+pull_model "$OLLAMA_MODEL_SMART"
 
 # Keep Ollama running in the foreground
 wait
