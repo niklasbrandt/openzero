@@ -3,8 +3,7 @@ services:
   postgres:
     image: postgres:16-alpine
     restart: always
-    ports:
-      - "5432:5432"
+    # No external port binding — accessed only by internal services
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
@@ -22,8 +21,7 @@ services:
   qdrant:
     image: qdrant/qdrant:latest
     restart: always
-    ports:
-      - "6333:6333"
+    # No external port binding — accessed only by backend
     environment:
       QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY}
     volumes:
@@ -34,15 +32,15 @@ services:
   ollama:
     image: ollama/ollama:0.5.7
     restart: always
-    ports:
-      - "11434:11434"
+    # No external port binding — accessed only by backend
     volumes:
       - ollama_data:/root/.ollama
       - ./scripts/ollama-entrypoint.sh:/entrypoint.sh
     entrypoint: [ "/bin/bash", "/entrypoint.sh" ]
     environment:
       - OLLAMA_HOST=0.0.0.0
-      - OLLAMA_MODEL=${OLLAMA_MODEL}
+      - OLLAMA_MODEL=${OLLAMA_MODEL_FAST}
+      - OLLAMA_MODEL_SMART=${OLLAMA_MODEL_SMART}
     networks:
       - internal
 
@@ -61,8 +59,7 @@ services:
   planka:
     image: ghcr.io/plankanban/planka:latest
     restart: always
-    ports:
-      - "1338:1337"
+    # No external port binding — routed through Traefik only
     depends_on:
       postgres:
         condition: service_healthy
@@ -128,8 +125,7 @@ services:
       - gmail_tokens:/app/tokens
     networks:
       - internal
-    ports:
-      - "8000:8000"
+    # No external port — Traefik handles routing
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.backend.rule=PathPrefix(`/`)"
@@ -142,14 +138,14 @@ services:
     image: traefik:v2.11
     restart: always
     command:
-      - "--api.insecure=true"
+      # api.insecure removed — Traefik dashboard is disabled
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
-      - "--log.level=INFO"
+      - "--log.level=WARN"
     ports:
       - "80:80"
-      - "8080:8080"
+      # Port 8080 (Traefik dashboard) intentionally not exposed
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
     environment:
@@ -169,9 +165,6 @@ services:
     image: pihole/pihole:latest
     restart: always
     hostname: open.zero
-    # ports:
-    #   - "53:53/tcp"
-    #   - "53:53/udp"
     environment:
       - TZ=${USER_TIMEZONE:-Europe/Berlin}
       - WEBPASSWORD=${PIHOLE_PASSWORD}

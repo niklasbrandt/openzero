@@ -140,9 +140,9 @@ async def chat(
 						],
 						"stream": False,
 						"options": {
-							"num_ctx": 4096 if target_model == settings.OLLAMA_MODEL_FAST else 8192,
+							"num_ctx": 6144 if target_model == settings.OLLAMA_MODEL_FAST else 8192,
 							"temperature": 0.2,
-							"num_predict": 512,
+							"num_predict": 768,
 							"top_k": 20,
 							"top_p": 0.9
 						},
@@ -262,8 +262,8 @@ async def chat_with_context(
 
 	async def fetch_projects():
 		if not include_projects: return ""
-		# Optimization: Only inject full project tree if message is mission-related
-		mission_keywords = ["task", "board", "status", "mission", "tree", "project", "plan", "build", "do"]
+		# Only fetch project tree for mission-related messages — avoids Planka round-trip on simple chat
+		mission_keywords = ["task", "board", "status", "mission", "tree", "project", "plan", "build", "today"]
 		if not any(kw in user_message.lower() for kw in mission_keywords):
 			return ""
 			
@@ -278,30 +278,10 @@ async def chat_with_context(
 
 	async def fetch_memories():
 		try:
-			# Extract potential entities and nouns
-			import re
-			words = re.findall(r'\b[A-Z][a-z]+\b|\b\w{6,}\b', user_message)
-			# Optimized to top 2 entities + full message = 3 queries total
-			queries = list(set([user_message] + words[:2]))
-			
-			all_results = []
-			seen_content = set()
-			
-			# Increased top_k per query to 10
-			search_tasks = [semantic_search(q, top_k=10) for q in queries]
-			results = await asyncio.gather(*search_tasks)
-			
-			for res in results:
-				if res and "No memories found" not in res and "Memory system" not in res:
-					for line in res.split('\n'):
-						content = line.split(') ', 1)[-1] if ') ' in line else line
-						if content not in seen_content:
-							all_results.append(line)
-							seen_content.add(content)
-			
-			if all_results:
-				# Ultra-aggressive truncation for Snappiness (Top 3 memories)
-				return f"RELEVANT MEMORIES (Last Recall):\n" + "\n".join(all_results[:3])
+			# Just query with the message itself — simpler and faster than multi-query
+			result = await semantic_search(user_message, top_k=3)
+			if result and "No memories found" not in result and "Memory system" not in result:
+				return f"RELEVANT MEMORIES:\n{result}"
 			return ""
 		except Exception as e:
 			print(f"DEBUG: Memory fetch error: {e}")
@@ -315,16 +295,16 @@ async def chat_with_context(
 			fetch_memories()
 		)
 
-		# 4. History Formatting (Ultra-Aggressive: Last 5 messages Only)
+		# History Formatting — last 15 messages for richer continuity
 		history_text = ""
 		if history:
 			history_history = []
-			for m in history[-5:]:
+			for m in history[-15:]:
 				role = "User" if m.get("role") == "user" else "Z"
-				# Aggressive content truncation (500 chars)
-				content = m.get('content', '')[:500] if m.get('content') else ""
+				# Truncate each message to 600 chars
+				content = m.get('content', '')[:600] if m.get('content') else ""
 				history_history.append(f"{role}: {content}")
-			history_text = "RECENT CONVERSATION (Last 5 messages):\n" + "\n".join(history_history)
+			history_text = "RECENT CONVERSATION (Last 15 messages):\n" + "\n".join(history_history)
 
 		# 5. Assemble and Send
 		full_prompt = "\n\n".join(filter(None, [
@@ -348,7 +328,7 @@ async def chat_with_context(
 			base_url=settings.OLLAMA_BASE_URL, 
 			model=target_model, 
 			timeout=120.0,
-			num_ctx=4096 if target_model == settings.OLLAMA_MODEL_FAST else 8192,
+			num_ctx=6144 if target_model == settings.OLLAMA_MODEL_FAST else 8192,
 			temperature=0.2,
 			keep_alive=-1
 		)
@@ -362,9 +342,9 @@ async def chat_with_context(
 		messages = [SystemMessage(content=rich_system_prompt)]
 		for h in (history or []):
 			content = h.get('content', '')
-			# TRUNCATE history messages to 1000 chars to avoid prompt bloat
-			if len(content) > 1000:
-				content = content[:1000] + "... [Log/Large Output Truncated]"
+			# Truncate history messages to 1200 chars
+			if len(content) > 1200:
+				content = content[:1200] + "... [Truncated]"
 			
 			if h.get("role") == "user": 
 				messages.append(HumanMessage(content=content))
