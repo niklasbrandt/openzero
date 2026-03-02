@@ -39,6 +39,9 @@ def get_nav_markup() -> InlineKeyboardMarkup:
 		[
 			InlineKeyboardButton("📁 Projects", url=f"{base_url}/api/dashboard/planka-redirect"),
 			InlineKeyboardButton("📅 Calendar", url=f"{base_url}/calendar")
+		],
+		[
+			InlineKeyboardButton("❓ Help / Commands", callback_data="call_help")
 		]
 	]
 	return InlineKeyboardMarkup(keyboard)
@@ -84,6 +87,7 @@ async def start_telegram_bot():
 	bot_app.add_handler(CallbackQueryHandler(handle_unlearn_approval, pattern="^unlearn_"))
 	bot_app.add_handler(CallbackQueryHandler(handle_wipe_confirm, pattern="^wipe_"))
 	bot_app.add_handler(CallbackQueryHandler(handle_calendar_approval, pattern="^cal_"))
+	bot_app.add_handler(CallbackQueryHandler(handle_help_callback, pattern="^call_help$"))
 	bot_app.add_handler(CommandHandler("help", cmd_help))
 	bot_app.add_handler(CommandHandler("commands", cmd_help))
 	bot_app.add_handler(CommandHandler("status", cmd_status))
@@ -226,7 +230,7 @@ async def start_telegram_bot():
 			real_time = format_time()
 			
 			await send_notification_html(
-				f"<blockquote><b>{real_time}</b>\n\n{_md_to_html(greeting_clean)}\n\n<i>{stats_line}</i></blockquote>",
+				f"<blockquote><b>{real_time}</b>\n\n{_md_to_html(greeting_clean)}\n\n<i>{stats_text}</i></blockquote>",
 				reply_markup=get_nav_markup()
 			)
 			logging.info("DEBUG: Greeting Seq - Notification Delivered")
@@ -305,11 +309,12 @@ def owner_only(func):
 
 async def safe_reply(update: Update, text: str, reply_markup=None):
 	"""Tries to send a message with Markdown, falls back to plain text on error."""
+	msg = update.effective_message
 	try:
-		await update.message.reply_text(text, parse_mode="Markdown", reply_markup=reply_markup)
+		await msg.reply_text(text, parse_mode="Markdown", reply_markup=reply_markup)
 	except Exception as e:
 		print(f"DEBUG: Markdown reply failed, falling back to plain: {e}")
-		await update.message.reply_text(text, reply_markup=reply_markup)
+		await msg.reply_text(text, reply_markup=reply_markup)
 
 async def safe_edit(message, text: str, parse_mode="Markdown", reply_markup=None):
 	"""Tries to edit a message with Markdown, falls back to plain text on error."""
@@ -600,6 +605,10 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	)
 	await safe_reply(update, help_text, reply_markup=get_nav_markup())
 
+async def handle_help_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+	await update.callback_query.answer()
+	await cmd_help(update, context)
+
 @owner_only
 async def cmd_add_topic(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	topic = update.message.text.replace("/add", "").strip()
@@ -663,13 +672,12 @@ async def handle_wipe_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 async def safe_reply(update: Update, text: str, reply_markup=None):
 	"""Tries to send a message with Markdown, falls back to plain text on error."""
+	msg = update.effective_message
 	try:
-		await update.message.reply_text(text, parse_mode="Markdown", reply_markup=reply_markup)
+		await msg.reply_text(text, parse_mode="Markdown", reply_markup=reply_markup)
 	except Exception as e:
 		print(f"DEBUG: Markdown reply failed, falling back to plain: {e}")
-		# Strip potential markdown markers that might cause issues in plain text if and only if needed
-		# But usually Telegram just accepts it as literal if not in a parse_mode
-		await update.message.reply_text(text, reply_markup=reply_markup)
+		await msg.reply_text(text, reply_markup=reply_markup)
 
 @owner_only
 async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
