@@ -288,3 +288,43 @@ async def create_board(project_id: str, name: str) -> dict:
 				print(f"DEBUG: Failed to create default Inbox list: {e2}")
 		
 		return board
+
+async def create_list(board_name: str, list_name: str, project_name: str = None) -> dict:
+	"""Create a new list (column) in a board."""
+	token = await get_planka_auth_token()
+	headers = {"Authorization": f"Bearer {token}"}
+	async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, headers=headers) as client:
+		# Find board by name
+		resp = await client.get("/api/projects", headers=headers)
+		resp.raise_for_status()
+		projects = resp.json().get("items", [])
+		
+		board_id = None
+		for proj in projects:
+			if project_name and proj["name"].lower() != project_name.lower():
+				continue
+			det = await client.get(f"/api/projects/{proj['id']}")
+			det.raise_for_status()
+			boards = det.json().get("included", {}).get("boards", [])
+			for b in boards:
+				if b["name"].lower() == board_name.lower():
+					board_id = b["id"]
+					break
+			if board_id:
+				break
+		
+		if not board_id:
+			print(f"DEBUG: create_list - board '{board_name}' not found")
+			return None
+		
+		try:
+			resp = await client.post(f"/api/boards/{board_id}/lists", json={
+				"name": list_name,
+				"position": 65535
+			})
+			resp.raise_for_status()
+			data = resp.json()
+			return data.get("item") or data
+		except Exception as e:
+			print(f"DEBUG: create_list failed: {e}")
+			return None

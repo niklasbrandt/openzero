@@ -6,6 +6,7 @@ from typing import Optional, List
 from app.services.planka import create_task as planka_create_task
 from app.services.planka import create_project as planka_create_project
 from app.services.planka import create_board as planka_create_board
+from app.services.planka import create_list as planka_create_list
 
 logger = logging.getLogger(__name__)
 
@@ -133,6 +134,43 @@ async def parse_and_execute_actions(reply: str, db=None):
         name, desc = match.groups()
         await planka_create_project(name=name.strip(), description=desc.strip())
         executed_cmds.append(f"Project '{name.strip()}' created.")
+        clean_reply = strip_tag(clean_reply, raw_tag)
+
+    # 2b. Create Board Tag
+    # [ACTION: CREATE_BOARD | PROJECT: name | NAME: text]
+    board_pattern = r"\[?ACTION: CREATE_BOARD \| PROJECT: ([^\|\]]+) \| NAME: ([^\|\]]+)\]?"
+    for match in re.finditer(board_pattern, reply):
+        raw_tag = match.group(0)
+        proj_name, board_name = match.groups()
+        # Find project ID by name
+        from app.services.planka import get_planka_auth_token
+        import httpx
+        from app.config import settings
+        token = await get_planka_auth_token()
+        async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, headers={"Authorization": f"Bearer {token}"}) as client:
+            resp = await client.get("/api/projects")
+            projects = resp.json().get("items", [])
+            proj_id = None
+            for p in projects:
+                if p["name"].lower() == proj_name.strip().lower():
+                    proj_id = p["id"]
+                    break
+            if proj_id:
+                await planka_create_board(project_id=proj_id, name=board_name.strip())
+                executed_cmds.append(f"Board '{board_name.strip()}' created in '{proj_name.strip()}'.")
+            else:
+                logger.warning(f"Project '{proj_name.strip()}' not found for CREATE_BOARD")
+        clean_reply = strip_tag(clean_reply, raw_tag)
+
+    # 2c. Create List (Column) Tag
+    # [ACTION: CREATE_LIST | BOARD: name | NAME: text]
+    list_pattern = r"\[?ACTION: CREATE_LIST \| BOARD: ([^\|\]]+) \| NAME: ([^\|\]]+)\]?"
+    for match in re.finditer(list_pattern, reply):
+        raw_tag = match.group(0)
+        board_name, list_name = match.groups()
+        result = await planka_create_list(board_name=board_name.strip(), list_name=list_name.strip())
+        if result:
+            executed_cmds.append(f"List '{list_name.strip()}' created in '{board_name.strip()}'.")
         clean_reply = strip_tag(clean_reply, raw_tag)
 
     # 3. Create Event Tag
