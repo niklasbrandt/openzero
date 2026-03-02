@@ -453,12 +453,25 @@ async def cmd_unlearn(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cmd_memories(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	from app.services.memory import get_qdrant, COLLECTION_NAME
 	client = get_qdrant()
-	results, _ = client.scroll(collection_name=COLLECTION_NAME, limit=100)
+	# Fetch 50 instead of 100 to stay safe with message limits
+	results, _ = client.scroll(collection_name=COLLECTION_NAME, limit=50)
 	if not results:
 		await update.message.reply_text("No memories stored in the vault.")
 		return
 	
-	memory_list = "\n".join([f"• {p.payload.get('text')}" for p in results])
+	lines = []
+	for p in results:
+		text = p.payload.get('text', '[No Text]')
+		# Escape basic markdown to prevent parsing errors
+		clean_text = text.replace('*', '').replace('_', '').replace('`', '')
+		lines.append(f"• {clean_text}")
+	
+	memory_list = "\n".join(lines)
+	
+	# Telegram limit is 4096. We stay safe at 3500.
+	if len(memory_list) > 3500:
+		memory_list = memory_list[:3500] + "\n... (Truncated for length)"
+		
 	await safe_reply(update, f"🧠 *Semantic Vault: Core Knowledge Vault*\n\n{memory_list}")
 
 async def handle_unlearn_approval(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -598,7 +611,8 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		# Auto-store USER part to semantic memory (with filter)
 		try:
 			from app.services.memory import store_memory
-			asyncio.create_task(store_memory(f"User Perspective (Telegram - {datetime.now().strftime('%Y-%m-%d')}): {update.message.text}", metadata={"type": "user_input", "source": "telegram"}))
+			# Store RAW message - memory.py will clean it and handle distillation
+			asyncio.create_task(store_memory(update.message.text, metadata={"type": "user_input", "source": "telegram", "date": datetime.now().strftime('%Y-%m-%d')}))
 		except Exception as me:
 			print(f"DEBUG: Auto-memory (Telegram) failed: {me}")
 
