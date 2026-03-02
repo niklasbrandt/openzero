@@ -661,8 +661,8 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		from app.services.agent_actions import parse_and_execute_actions
 		from app.models.db import AsyncSessionLocal
 
-		# Recover Merged History (cross-channel context — last 20 messages)
-		merged_history = await get_global_history(limit=20)
+		# Recover Merged History (cross-channel context — last 10 messages)
+		merged_history = await get_global_history(limit=10)
 
 		response = await chat_with_context(
 			update.message.text, 
@@ -676,7 +676,7 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 		# Sync to Global Central Memory
 		await save_global_message("telegram", "user", update.message.text)
-		await save_global_message("telegram", "z", response)
+		await save_global_message("telegram", "z", clean_reply)
 
 		# Auto-store USER part to semantic memory (with filter)
 		try:

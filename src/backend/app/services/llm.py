@@ -25,29 +25,33 @@ from langgraph.prebuilt import create_react_agent
 # Track the model used for the current request context
 last_model_used: ContextVar[str] = ContextVar("last_model_used", default="Ollama")
 
-SYSTEM_PROMPT = """You are Z — the privacy first personal AI agent.
+# Lean system prompt for conversational messages (no action tag docs)
+SYSTEM_PROMPT_CHAT = """You are Z — the privacy first personal AI agent.
 You are not a generic assistant. You are an agent operator — sharp, warm, and direct.
 
 CORE RESPONSE RULE:
-- **ALWAYS begin EVERY response with exactly the current time and day.** 
-  Format: "[Time] - [Day] \n" 
+- **ALWAYS begin EVERY response with exactly the current time and day.**
+  Format: "[Time] - [Day] \n"
   Example: "{current_time}\nHello {user_name}..."
 - **MATCH THE REQUEST TYPE**:
-  - For **task confirmations** (user asked you to do X and you did it): be brief. "Done — task added."
-  - For **creative, imaginative, or speculative requests** ("imagine a day", "what if", "describe", "tell me about"): give a real, engaged, thoughtful response. Write actual content.
+  - For **task confirmations**: be brief. "Done — task added."
+  - For **creative/speculative requests**: give a real, engaged, thoughtful response.
   - For **questions**: answer directly and specifically.
   - For **conversation**: be warm and human.
-- **ZERO FILLER**: No "Of course!", "I understand", "Sure", or "No new information has been added to your context".
+- **ZERO FILLER**: No "Of course!", "I understand", "Sure".
 - **NO TAG TALK**: Never explain what you have stored or learned unless explicitly asked.
 
-Your Priority Objective: Proactive Mission Execution
-- Use Semantic Action Tags ONLY when the user **explicitly and directly** requests an action (e.g. "create a task for X", "add this to my calendar", "remember that...").
-- **NEVER use action tags for**: hypothetical scenarios, creative exercises, suggestions, imagined plans, or when describing what *could* be done.
-- If you describe a potential task or idea, do NOT create it unless the user confirms they want it created.
-- **TAG VISIBILITY**: Action tags are COMPLETELY INVISIBLE to the user. Never mention them. Never explain them.
-- **TAG PLACEMENT**: Always place tags on a NEW LINE at the very end of your message.
-- **USE TAGS SPARINGLY**: Only use `LEARN` when the user provides a *new*, *permanent* fact about their world. Do not use it for every trivial observation or to confirm no events exist.
+Your Persona & Behavior:
+- You are talking to {user_name}. Be direct but professional.
+- **TIME AWARENESS**: Current time is {current_time}.
+- **ZERO HALLUCINATION**: ONLY report facts explicitly present in the data you receive.
+  - NEVER invent events, meetings, tasks, or project names not in context.
+  - If context is empty for a section, say "nothing to report".
 
+Keep it tight. Mission first. """
+
+# Extended prompt with action tag documentation (only for agent path)
+ACTION_TAG_DOCS = """
 Semantic Action Tags (Exact Format Required):
 - Create Task: `[ACTION: CREATE_TASK | BOARD: name | LIST: name | TITLE: text]`
   (Default board: "Boards", default list: "Today")
@@ -57,20 +61,14 @@ Semantic Action Tags (Exact Format Required):
 - Add Person: `[ACTION: ADD_PERSON | NAME: text | RELATIONSHIP: text | CONTEXT: text | CIRCLE: inner/close]`
 - Learn Information: `[ACTION: LEARN | TEXT: factual statement]`
 - High Proximity Tracking: `[ACTION: PROXIMITY_TRACK | TASKS: item1; item2 | BREAKDOWN: task1 [ends HH:MM]; task2 [ends HH:MM] | END: YYYY-MM-DD HH:MM]`
-  (Use this when user wants close track of a specific timeframe or set of tasks. Estimate durations for each item and allocate them across the overall timeframe. The END must match the final due-time.)
 
-Your Persona & Behavior:
-- You are talking to {user_name}. Be direct but professional.
-- Refer to the user's goals. Connect today's actions to what they're building.
-- **TIME AWARENESS**: Current time is {current_time}. Always relate your response to the current time. If the user mentions a timeframe (e.g., 'in 2 hours') and that time has passed according to the system clock, do not pretend it is still active. Acknowledge the delay and ask for current status.
-- **ZERO HALLUCINATION** (CRITICAL RULE):
-  - ONLY report facts that are explicitly present in the data you receive.
-  - If a person's birthday is NOT tagged as "⚠️ BIRTHDAY IN EXACTLY N DAYS", it is NOT upcoming — do NOT mention it.
-  - NEVER say a birthday is "coming up" or "soon" based on a raw date string. Only trust the explicit marker.
-  - NEVER invent events, meetings, tasks, or project names not present in context.
-  - If context is empty for a section, say "nothing to report" — do not fill with plausible-sounding content.
-
-Keep it tight. Mission first. """
+Rules:
+- Use tags ONLY when the user **explicitly** requests an action.
+- **NEVER** use tags for hypothetical scenarios or suggestions.
+- Tags are INVISIBLE to the user. Never mention them.
+- Place tags on a NEW LINE at the very end of your message.
+- Only use LEARN for new, permanent facts. Not for trivial observations.
+"""
 
 # Global client for connection pooling
 _http_client = httpx.AsyncClient(timeout=300.0)
@@ -97,7 +95,7 @@ def build_system_prompt(user_name: str, user_profile: dict) -> tuple[str, str, s
 		if fields:
 			user_id_context = "\nSUBJECT ZERO PROFILE (HIGH CONTEXT):\n" + "\n".join(fields)
 
-	formatted_system_prompt = SYSTEM_PROMPT.format(
+	formatted_system_prompt = SYSTEM_PROMPT_CHAT.format(
 		current_time=simplified_time,
 		user_name=user_name
 	) + user_id_context
@@ -117,9 +115,12 @@ async def chat(
 	user_name = kwargs.get("user_name", "User")
 	user_profile = kwargs.get("user_profile", {})
 	
-	formatted_system_prompt, context_header, simplified_time = build_system_prompt(user_name, user_profile)
-	
-	system_prompt = context_header + (system_override or formatted_system_prompt)
+	# Only build from scratch if no override provided (avoids double-building)
+	if system_override:
+		system_prompt = system_override
+	else:
+		formatted_system_prompt, context_header, simplified_time = build_system_prompt(user_name, user_profile)
+		system_prompt = context_header + formatted_system_prompt
 	
 	provider = (provider or settings.LLM_PROVIDER).lower()
 	client = _http_client
@@ -241,7 +242,7 @@ async def chat_with_context(
 	start_time = time.time()
 
 	async def fetch_people():
-		if not include_people: return "", "User", {}
+		# Always fetch identity (needed for user_name/profile), but skip circle context for trivial messages
 		try:
 			async with AsyncSessionLocal() as session:
 				result = await session.execute(select(Person))
@@ -262,10 +263,12 @@ async def chat_with_context(
 							"context": ident.context
 						}
 					
+					# Skip full circle context for trivial/short messages
+					if not include_people or len(user_message.strip()) < 20:
+						return "", identity_name, user_profile
+					
 					def _birthday_tag(p):
-						"""Return an exact-days birthday tag only if within 30 days, else empty string."""
-						if not p.birthday:
-							return ""
+						if not p.birthday: return ""
 						try:
 							import datetime as _dt
 							today = _dt.date.today()
@@ -278,9 +281,8 @@ async def chat_with_context(
 								days = (next_bday - today).days
 								if days <= 30:
 									return f" ⚠️ BIRTHDAY IN EXACTLY {days} DAYS"
-						except Exception:
-							pass
-						return ""  # Not within 30 days — omit entirely
+						except Exception: pass
+						return ""
 					
 					inner = [f"- {p.name} ({p.relationship}){_birthday_tag(p)}" for p in people if p.circle_type == "inner"]
 					close = [f"- {p.name} ({p.relationship}){_birthday_tag(p)}" for p in people if p.circle_type == "close"]
@@ -288,11 +290,10 @@ async def chat_with_context(
 					context = ""
 					if inner: context += "INNER CIRCLE:\n" + "\n".join(inner) + "\n"
 					if close: context += "CLOSE CIRCLE:\n" + "\n".join(close)
-					# Truncate people context to 2000 chars
 					return context[:2000], identity_name, user_profile
-				return "CIRCLE OF TRUST: No family/contacts configured yet.", identity_name, {}
+				return "", identity_name, {}
 		except Exception:
-			return "CIRCLE OF TRUST: (Database connection unavailable)", "User", {}
+			return "", "User", {}
 
 	async def fetch_projects():
 		if not include_projects: return ""
@@ -311,8 +312,10 @@ async def chat_with_context(
 			return "PROJECTS: (Board integration unavailable)"
 
 	async def fetch_memories():
+		# Skip memory search for trivial messages
+		if len(user_message.strip()) < 15:
+			return ""
 		try:
-			# Just query with the message itself — simpler and faster than multi-query
 			result = await semantic_search(user_message, top_k=3)
 			if result and "No memories found" not in result and "Memory system" not in result:
 				return f"RELEVANT MEMORIES:\n{result}"
@@ -329,18 +332,7 @@ async def chat_with_context(
 			fetch_memories()
 		)
 
-		# History Formatting — last 15 messages for richer continuity
-		history_text = ""
-		if history:
-			history_history = []
-			for m in history[-15:]:
-				role = "User" if m.get("role") == "user" else "Z"
-				# Truncate each message to 600 chars
-				content = m.get('content', '')[:600] if m.get('content') else ""
-				history_history.append(f"{role}: {content}")
-			history_text = "RECENT CONVERSATION (Last 15 messages):\n" + "\n".join(history_history)
-
-		# 5. Assemble and Send
+		# Assemble context (people, projects, memories)
 		full_prompt = "\n\n".join(filter(None, [
 			people_p, 
 			project_p, 
@@ -380,7 +372,8 @@ async def chat_with_context(
 				keep_alive=-1
 			)
 			agent_executor = create_react_agent(llm, AVAILABLE_TOOLS)
-			rich_system_prompt = f"{formatted_system_prompt}\n\n{full_prompt}"
+			# Include action tag docs only for agent path
+			rich_system_prompt = f"{formatted_system_prompt}\n{ACTION_TAG_DOCS}\n\n{full_prompt}"
 			messages = [SystemMessage(content=rich_system_prompt)]
 			for h in (history or []):
 				content = h.get('content', '')
@@ -406,9 +399,9 @@ async def chat_with_context(
 		history_text = ""
 		if history:
 			history_lines = []
-			for m in history[-15:]:
+			for m in history[-8:]:
 				role = "User" if m.get("role") == "user" else "Z"
-				content = m.get('content', '')[:600] if m.get('content') else ""
+				content = m.get('content', '')[:300] if m.get('content') else ""
 				history_lines.append(f"{role}: {content}")
 			history_text = "RECENT CONVERSATION:\n" + "\n".join(history_lines)
 
