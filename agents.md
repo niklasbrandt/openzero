@@ -77,3 +77,8 @@
 -	**Intelligence Scaling**: Prioritize response velocity by default (e.g. 3B models). Automatically scale to more complex reasoning models (e.g. 8B models) only when user requests involve strategic analysis, planning, or large data blocks.
 -	**Status Transparency**: The dashboard MUST always reflect the current intelligence state of the system, including the model currently in use, memory point counts, and identity health status.
 -	**Context Grounding**: Every response must be relateable to the current system time. Do not report progress on a timeframe that has already elapsed according to the internal clock.
+
+## 15. Dependency Management & Version Awareness
+- **Respect Installed Versions:** Always verify and respect the specific version of a dependency (e.g., Pi-hole v6, specific Docker images, Node modules) installed in the project before suggesting changes or configurations.
+- **Study Relevant Documentation:** Configuration keys and behaviors often change between major versions (such as the removal or modification of constants like `DNSMASQ_LISTENING` in Pi-hole v6). Do not assume old configuration patterns apply to new versions.
+- **Fail Gracefully:** If an expected configuration file or constant is missing, investigate the version-specific documentation or the actual container environment rather than repeatedly trying the same command.
