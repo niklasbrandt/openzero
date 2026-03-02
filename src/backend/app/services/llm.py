@@ -30,8 +30,8 @@ You are not a generic assistant. You are an agent operator — sharp, warm, and 
 
 CORE RESPONSE RULE:
 - **ALWAYS begin EVERY response with exactly the current time and day.** 
-  Format: "[Time] - [Day] " 
-  Example: "{current_time} Hello Agent..."
+  Format: "[Time] - [Day] \n" 
+  Example: "{current_time}\nHello {user_name}..."
 - **MATCH THE REQUEST TYPE**:
   - For **task confirmations** (user asked you to do X and you did it): be brief. "Done — task added."
   - For **creative, imaginative, or speculative requests** ("imagine a day", "what if", "describe", "tell me about"): give a real, engaged, thoughtful response. Write actual content.
@@ -75,13 +75,7 @@ Keep it tight. Mission first. """
 # Global client for connection pooling
 _http_client = httpx.AsyncClient(timeout=300.0)
 
-async def chat(
-	user_message: str, 
-	system_override: str = None, 
-	provider: str = None, 
-	model: str = None,
-	**kwargs
-) -> str:
+def build_system_prompt(user_name: str, user_profile: dict) -> tuple[str, str, str]:
 	user_tz = pytz.timezone(settings.USER_TIMEZONE)
 	def get_day_suffix(day):
 		if 11 <= day <= 13: return 'th'
@@ -91,21 +85,15 @@ async def chat(
 	day_with_suffix = f"{now.day}{get_day_suffix(now.day)}"
 	simplified_time = f"{now.strftime('%H:%M')} - {day_with_suffix}"
 	
-	# Format the root prompt with dynamic values
-	base_url = settings.BASE_URL.rstrip('/')
-	user_name = kwargs.get("user_name", "User")
-	
-	# Inject Identity Details if available
 	user_id_context = ""
-	if "user_profile" in kwargs:
-		p = kwargs["user_profile"]
+	if user_profile:
 		fields = []
-		if p.get("birthday"): fields.append(f"Birthday: {p['birthday']}")
-		if p.get("gender"): fields.append(f"Gender: {p['gender']}")
-		if p.get("residency"): fields.append(f"Residency: {p['residency']}")
-		if p.get("work_times"): fields.append(f"Work Schedule: {p['work_times']}")
-		if p.get("briefing_time"): fields.append(f"Preferred Briefing: {p['briefing_time']}")
-		if p.get("context"): fields.append(f"LIFE GOALS & VALUES: {p['context']}")
+		if user_profile.get("birthday"): fields.append(f"Birthday: {user_profile['birthday']}")
+		if user_profile.get("gender"): fields.append(f"Gender: {user_profile['gender']}")
+		if user_profile.get("residency"): fields.append(f"Residency: {user_profile['residency']}")
+		if user_profile.get("work_times"): fields.append(f"Work Schedule: {user_profile['work_times']}")
+		if user_profile.get("briefing_time"): fields.append(f"Preferred Briefing: {user_profile['briefing_time']}")
+		if user_profile.get("context"): fields.append(f"LIFE GOALS & VALUES: {user_profile['context']}")
 		if fields:
 			user_id_context = "\nSUBJECT ZERO PROFILE (HIGH CONTEXT):\n" + "\n".join(fields)
 
@@ -116,6 +104,21 @@ async def chat(
 	
 	context_header = f"Current Local Time (Raw): {now.strftime('%A, %Y-%m-%d %H:%M:%S %Z')}\n"
 	context_header += f"Current Formatted Time (Use This): {simplified_time}\n\n"
+	
+	return formatted_system_prompt, context_header, simplified_time
+
+async def chat(
+	user_message: str, 
+	system_override: str = None, 
+	provider: str = None, 
+	model: str = None,
+	**kwargs
+) -> str:
+	user_name = kwargs.get("user_name", "User")
+	user_profile = kwargs.get("user_profile", {})
+	
+	formatted_system_prompt, context_header, simplified_time = build_system_prompt(user_name, user_profile)
+	
 	system_prompt = context_header + (system_override or formatted_system_prompt)
 	
 	provider = (provider or settings.LLM_PROVIDER).lower()
@@ -343,6 +346,9 @@ async def chat_with_context(
 			project_p, 
 			memory_p
 		]))
+		
+		# Now that we have the real user_name and user_profile from DB, build the system prompt
+		formatted_system_prompt, _, _ = build_system_prompt(user_name, user_profile)
 		
 		print(f"DEBUG: Context gathered in {time.time() - start_time:.2f}s")
 
