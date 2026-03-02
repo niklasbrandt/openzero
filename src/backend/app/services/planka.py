@@ -18,7 +18,7 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 async def get_planka_auth_token() -> str:
-	"""Authenticates with Planka and returns an access token."""
+	"""Authenticates with Planka and returns an access token. Handles ToS acceptance."""
 	login_url = f"{settings.PLANKA_BASE_URL}/api/access-tokens"
 	payload = {
 		"emailOrUsername": settings.PLANKA_ADMIN_EMAIL,
@@ -28,6 +28,19 @@ async def get_planka_auth_token() -> str:
 	async with httpx.AsyncClient(timeout=10.0) as client:
 		try:
 			resp = await client.post(login_url, json=payload)
+			
+			# Handle pending ToS acceptance (common on first login)
+			if resp.status_code == 403:
+				data = resp.json()
+				pending_token = data.get("pendingToken")
+				if pending_token:
+					print(f"DEBUG: Planka requires ToS acceptance (pendingToken found). Accepting...")
+					accept_url = f"{settings.PLANKA_BASE_URL}/api/access-tokens/{pending_token}/actions/accept"
+					accept_resp = await client.post(accept_url)
+					accept_resp.raise_for_status()
+					# After accepting, retry the login to get the real token
+					resp = await client.post(login_url, json=payload)
+
 			if resp.status_code != 200:
 				print(f"DEBUG: Planka auth failed with status {resp.status_code}: {resp.text}")
 				resp.raise_for_status()
