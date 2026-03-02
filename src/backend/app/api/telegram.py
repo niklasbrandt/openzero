@@ -182,7 +182,11 @@ async def start_telegram_bot():
 				"Be direct, professional, and human. No filler. No invented content."
 			)
 
-			system_override = "You are Z. Output ONLY the greeting. NEVER invent data not present in SYSTEM_DATA."
+			system_override = (
+				"You are Z. Output ONLY the greeting. "
+				"ALWAYS begin your response with exactly the formatted current time and day on the first line (e.g. '08:00 - 2nd\\n'). "
+				"NEVER invent data not present in SYSTEM_DATA."
+			)
 			print(f"DEBUG: Greeting Seq - Calling Ollama ({settings.OLLAMA_MODEL_SMART})")
 
 			# Strings returned by llm.py on timeout/failure — must not reach the user
@@ -200,9 +204,19 @@ async def start_telegram_bot():
 			# Fallback 2: both models failed — send clean static greeting
 			if _is_error(raw_greeting):
 				print("DEBUG: Greeting - Both models unavailable, using static greeting")
+				
+				# Manual time formatting for static fallback
+				from datetime import datetime
+				import pytz
+				now = datetime.now(pytz.timezone(settings.USER_TIMEZONE))
+				def get_day_suffix(day):
+					if 11 <= day <= 13: return 'th'
+					return {1: 'st', 2: 'nd', 3: 'rd'}.get(day % 10, 'th')
+				time_str = f"{now.strftime('%H:%M')} - {now.day}{get_day_suffix(now.day)}\n"
+				
 				changes_note = f"\n\n🔄 *Recent Logic Updates:*\n{release_info.strip()}" if release_info else ""
 				events_note = f"\n\n📅 *Events:*\n{event_summary}" if has_events else ""
-				raw_greeting = f"Back online. {stats_text}.{changes_note}{events_note}"
+				raw_greeting = f"{time_str}Back online. {stats_text}.{changes_note}{events_note}"
 
 			# Clean action tags from output
 			from app.services.agent_actions import parse_and_execute_actions
@@ -211,7 +225,7 @@ async def start_telegram_bot():
 
 			footer = await _get_stats_footer()
 			separator = "---"
-			await send_notification(f"{separator}\n⚡ {greeting}{footer}")
+			await send_notification(f"{separator}\n{greeting}{footer}")
 			print("DEBUG: Greeting Seq - Notification Delivered")
 		except Exception as e:
 			print(f"FAILED to send Telegram startup greeting: {e}")
