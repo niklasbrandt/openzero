@@ -174,11 +174,9 @@ services:
   pihole:
     image: pihole/pihole:latest
     restart: always
+    network_mode: host
     cap_add:
       - NET_ADMIN
-    ports:
-      - "53:53/tcp"
-      - "53:53/udp"
     environment:
       - TZ=${USER_TIMEZONE:-Europe/Berlin}
       - WEBPASSWORD=${PIHOLE_PASSWORD}
@@ -187,20 +185,20 @@ services:
       - PIHOLE_DOMAIN=open.zero
       - FTLCONF_LOCAL_IPV4=${SERVER_IP}
       - DNSMASQ_LISTENING=all
+      - FTLCONF_dns_listeningMode=all
       - DNSMASQ_USER=root
+      - FTLCONF_webserver_port=8081
     extra_hosts:
       - "open.zero:${SERVER_IP}"
     volumes:
       - pihole_config:/etc/pihole
       - pihole_dnsmasq:/etc/dnsmasq.d
-    networks:
-      - internal
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.pihole.rule=PathPrefix(`/admin`)"
       - "traefik.http.routers.pihole.entrypoints=web"
-      - "traefik.http.services.pihole.loadbalancer.server.port=80"
-      - "traefik.docker.network=openzero_internal"
+      - "traefik.http.services.pihole.loadbalancer.server.port=8081"
+      - "traefik.http.services.pihole.loadbalancer.server.scheme=http"
 
 networks:
   internal:
