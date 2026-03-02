@@ -8,6 +8,7 @@ interface ChatMessage {
 export class ChatPrompt extends HTMLElement {
 	private messages: ChatMessage[] = [];
 	private isLoading = false;
+	private pendingRetry: string | null = null;
 
 	constructor() {
 		super();
@@ -37,7 +38,18 @@ export class ChatPrompt extends HTMLElement {
 			fetch('/api/dashboard/system').catch(() => { });
 		}, { once: true }); // Only once per session/load
 
-		// Removed auto-resize textarea to maintain alignment with send button
+		// Retry failed messages when user comes back to the tab
+		document.addEventListener('visibilitychange', () => {
+			if (document.visibilityState === 'visible' && this.pendingRetry && !this.isLoading) {
+				this.retryPending();
+			}
+		});
+
+		window.addEventListener('focus', () => {
+			if (this.pendingRetry && !this.isLoading) {
+				this.retryPending();
+			}
+		});
 	}
 
 	private async handleSend() {
@@ -87,7 +99,7 @@ export class ChatPrompt extends HTMLElement {
 
 			const data = await response.json();
 			this.hideTypingIndicator();
-
+			this.pendingRetry = null; // Success — clear any retry state
 			this.messages.push({
 				role: 'assistant',
 				content: data.reply || 'No response received.',
@@ -101,21 +113,14 @@ export class ChatPrompt extends HTMLElement {
 				}));
 			}
 		} catch (e) {
-			// Simulate a brief delay for natural feel
-			await new Promise(r => setTimeout(r, 800));
 			this.hideTypingIndicator();
 
-			const offlineReplies = [
-				`Received: "${message}"\n\nZ is currently in standby. Deploy the backend to enable live responses.`,
-				`Message queued. Z will process this once the backend is online.`,
-				`Got it. The backend API isn't connected yet — once it is, Z will handle conversations like this in real time.`,
-				`Noted. Connect the openZero backend to unlock live AI chat.`,
-			];
-			const reply = offlineReplies[this.messages.length % offlineReplies.length];
+			// Store for retry on tab re-entry
+			this.pendingRetry = message;
 
 			this.messages.push({
 				role: 'assistant',
-				content: reply,
+				content: `⚡ Backend unreachable. Will auto-retry when you return.\n\n_Tap here to retry now._`,
 				timestamp: new Date(),
 			});
 		} finally {
@@ -125,7 +130,41 @@ export class ChatPrompt extends HTMLElement {
 			this.renderMessages();
 			this.scrollToBottom();
 			input?.focus();
+
+			// Attach retry click handler if there's a pending message
+			if (this.pendingRetry) {
+				const lastBubble = this.shadowRoot?.querySelector('.message.assistant:last-child .bubble');
+				if (lastBubble) {
+					(lastBubble as HTMLElement).style.cursor = 'pointer';
+					lastBubble.addEventListener('click', () => this.retryPending(), { once: true });
+				}
+			}
 		}
+	}
+
+	private async retryPending() {
+		if (!this.pendingRetry || this.isLoading) return;
+		const msg = this.pendingRetry;
+		this.pendingRetry = null;
+
+		// Remove the error bubble
+		const lastMsg = this.messages[this.messages.length - 1];
+		if (lastMsg?.role === 'assistant' && lastMsg.content.includes('Backend unreachable')) {
+			this.messages.pop();
+		}
+
+		// Also remove the original user message since handleSend will re-add it
+		const lastUser = this.messages[this.messages.length - 1];
+		if (lastUser?.role === 'user' && lastUser.content === msg) {
+			this.messages.pop();
+		}
+
+		this.renderMessages();
+
+		// Re-inject the message into the input and send
+		const input = this.shadowRoot?.querySelector<HTMLTextAreaElement>('#chat-input');
+		if (input) input.value = msg;
+		await this.handleSend();
 	}
 
 	private scrollToBottom() {
