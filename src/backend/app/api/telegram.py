@@ -22,19 +22,19 @@ async def _get_stats_footer() -> str:
 	
 	# Determine Model Level from actual use
 	model_name = last_model_used.get()
-	model_tag = f" | 🤖 {model_name}"
+	model_tag = f" · {model_name}"
 
-	stats_text = f"🧠 Memories: {stats['points']}{model_tag}" if stats['status'] != 'error' else "🧠 Memory: Offline"
+	stats_text = f"Memories: {stats['points']}{model_tag}" if stats['status'] != 'error' else "Memory: Offline"
 	
 	base_url = settings.BASE_URL.rstrip('/')
 	links = (
-		f"🔗 [Dashboard]({base_url}/home) "
-		f"🔗 [Operator]({base_url}/api/dashboard/planka-redirect?target=operator) "
-		f"🔗 [Projects]({base_url}/api/dashboard/planka-redirect) "
-		f"🔗 [Calendar]({base_url}/calendar)"
+		f"[Dashboard]({base_url}/home) · "
+		f"[Operator]({base_url}/api/dashboard/planka-redirect?target=operator) · "
+		f"[Projects]({base_url}/api/dashboard/planka-redirect) · "
+		f"[Calendar]({base_url}/calendar)"
 	)
 	
-	return f"\n\n{links}\n\n{stats_text}"
+	return f"\n\n{links}\n{stats_text}"
 
 # --- Context Persistence ---
 chat_histories = {} # chat_id -> list of dicts {'role': 'user/z', 'content': str}
@@ -67,6 +67,7 @@ async def start_telegram_bot():
 	bot_app.add_handler(CommandHandler("month", cmd_month))
 	bot_app.add_handler(CommandHandler("quarter", cmd_quarter))
 	bot_app.add_handler(CommandHandler("year", cmd_year))
+	bot_app.add_handler(CommandHandler("day", cmd_day))
 	bot_app.add_handler(CommandHandler("add", cmd_add_topic))
 	bot_app.add_handler(CommandHandler("protocols", cmd_protocols))
 	bot_app.add_handler(CommandHandler("remind", cmd_remind))
@@ -231,7 +232,7 @@ async def start_telegram_bot():
 			from app.services.llm import last_model_used
 			stats = await get_memory_stats()
 			model_name = last_model_used.get()
-			stats_line = f"🧠 {stats['points']} memories · 🤖 {model_name}" if stats['status'] != 'error' else "🧠 offline"
+			stats_line = f"{stats['points']} memories · {model_name}" if stats['status'] != 'error' else "offline"
 
 			# Prepend real current time (don't trust LLM for timestamps)
 			from app.services.timezone import format_time
