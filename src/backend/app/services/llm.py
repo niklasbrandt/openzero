@@ -468,7 +468,7 @@ TEXT:
 {text}
 
 RULES:
-- Today's date is: {datetime.now().strftime('%Y-%m-%d')} ({datetime.now().strftime('%A')})
+- Today's date is: {datetime.now(pytz.timezone(settings.USER_TIMEZONE)).strftime('%Y-%m-%d')} ({datetime.now(pytz.timezone(settings.USER_TIMEZONE)).strftime('%A')})
 - Use YYYY-MM-DD HH:MM format.
 - If no year/time is specified, use common sense based on today's date.
 - Output MUST be valid JSON and nothing else.
