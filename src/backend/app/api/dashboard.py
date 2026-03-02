@@ -627,9 +627,70 @@ async def planka_redirect(request: Request, target: str = "", background: bool =
 								localStorage.setItem('userId', userId);
 							}}
 							
-							// 2. Fast Redirect (Bypassing IFRAME Simulation)
-							console.log("SSO: Fast redirecting to destination...");
-							window.location.replace('{redirect_url}');
+							// 2. The "Mask Submitter" (User Requested)
+							// Deep-Sim filling for React-based forms
+							const iframe = document.createElement('iframe');
+							iframe.src = '/login';
+							iframe.style.width = '1px';
+							iframe.style.height = '1px';
+							iframe.style.border = 'none';
+							iframe.style.position = 'absolute';
+							iframe.style.visibility = 'hidden';
+							document.body.appendChild(iframe);
+							
+							let attempt = 0;
+							const maxAttempts = 100; // Try for 2 seconds at 20ms intervals
+							
+							const checkIframe = setInterval(() => {{
+								attempt++;
+								try {{
+									const doc = iframe.contentDocument || iframe.contentWindow.document;
+									if (!doc) return;
+									
+									const emailField = doc.querySelector('input[name="emailOrUsername"]');
+									const passField = doc.querySelector('input[name="password"]');
+									const btn = doc.querySelector('button.ui.primary.button');
+									
+									if (emailField && passField && btn) {{
+										clearInterval(checkIframe);
+										console.log("SSO: Mask detected. Simulating human input...");
+										
+										// Native Setter Bypass for React
+										const setReactValue = (el, val) => {{
+											const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+											setter.call(el, val);
+											el.dispatchEvent(new Event('input', {{ bubbles: true }}));
+											el.dispatchEvent(new Event('change', {{ bubbles: true }}));
+											el.dispatchEvent(new Event('blur', {{ bubbles: true }}));
+										}};
+
+										setReactValue(emailField, email);
+										setReactValue(passField, password);
+										
+										// Extremely short delay to let React process events
+										setTimeout(() => {{
+											console.log("SSO: Triggering submission...");
+											btn.click();
+											// Monitor for redirect
+											setTimeout(() => {{ window.location.replace('{redirect_url}'); }}, 75);
+										}}, 10);
+										
+									}} else if (doc.location.pathname.includes('/projects') || doc.location.pathname.includes('/boards')) {{
+										clearInterval(checkIframe);
+										console.log("SSO: Session already active in bridge. Redirecting...");
+										window.location.replace('{redirect_url}');
+									}} else if (attempt > maxAttempts) {{
+										clearInterval(checkIframe);
+										console.log("SSO: Polling timeout. Proceeding to destination...");
+										window.location.replace('{redirect_url}');
+									}}
+								}} catch (err) {{
+									if (attempt > maxAttempts) {{
+										clearInterval(checkIframe);
+										window.location.replace('{redirect_url}');
+									}}
+								}}
+							}}, 20);
 							
 							// 3. Cookie Synchronization (Legacy/Redundancy)
 							const expiry = "; max-age=31536000; path=/; SameSite=Lax";
