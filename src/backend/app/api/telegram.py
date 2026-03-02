@@ -236,8 +236,8 @@ async def start_telegram_bot():
 			# Prepend real current time (don't trust LLM for timestamps)
 			from app.services.timezone import format_time
 			import re
-			# Strip any LLM-generated time header (e.g. "16:40 - Mo. 2nd\n")
-			greeting_clean = re.sub(r'^\d{1,2}:\d{2}\s*[-–]\s*\w{2}\.\s*\d{1,2}\w{0,2}\s*\n*', '', greeting).strip()
+			# Strip any LLM-generated time header (catches: "16:40 - Mo. 2nd", "16:40 - 2nd", "16:40\n", etc.)
+			greeting_clean = re.sub(r'^\d{1,2}:\d{2}\s*[-–]?\s*[^\n]*\n*', '', greeting, count=1).strip()
 			real_time = format_time()
 			
 			await send_notification_html(
@@ -721,8 +721,14 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 		# Memory is user-driven only (via /add or LEARN action tag)
 
+		# Prepend real time (strip any LLM-generated time header)
+		from app.services.timezone import format_time
+		import re
+		clean_reply = re.sub(r'^\d{1,2}:\d{2}\s*[-–]?\s*[^\n]*\n*', '', clean_reply, count=1).strip()
+		display_reply = f"*{format_time()}*\n\n{clean_reply}"
+
 		footer = await _get_stats_footer()
-		await safe_edit(thinking_msg, f"{clean_reply}{footer}")
+		await safe_edit(thinking_msg, f"{display_reply}{footer}")
 	except Exception as e:
 		print(f"ERROR: handle_freetext failed: {e}")
 		# If bit failed to edit, try fresh message
