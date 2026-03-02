@@ -241,7 +241,7 @@ async def start_telegram_bot():
 			real_time = format_time()
 			
 			await send_notification_html(
-				f"<blockquote><b>{real_time}</b>\n\n{_md_to_html(greeting_clean)}</blockquote>\n{html_footer}\n{stats_line}"
+				f"<blockquote><b>{real_time}</b>\n\n{_md_to_html(greeting_clean)}\n\n{html_footer}\n{stats_line}</blockquote>"
 			)
 			print("DEBUG: Greeting Seq - Notification Delivered")
 		except Exception as e:
