@@ -678,13 +678,7 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		await save_global_message("telegram", "user", update.message.text)
 		await save_global_message("telegram", "z", clean_reply)
 
-		# Auto-store USER part to semantic memory (with filter)
-		try:
-			from app.services.memory import store_memory
-			# Store RAW message - memory.py will clean it and handle distillation
-			asyncio.create_task(store_memory(update.message.text, metadata={"type": "user_input", "source": "telegram", "date": datetime.now(pytz.timezone(settings.USER_TIMEZONE)).strftime('%Y-%m-%d')}))
-		except Exception as me:
-			print(f"DEBUG: Auto-memory (Telegram) failed: {me}")
+		# Memory is user-driven only (via /add or LEARN action tag)
 
 		footer = await _get_stats_footer()
 		await safe_edit(thinking_msg, f"{clean_reply}{footer}")
