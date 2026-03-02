@@ -65,38 +65,8 @@ async def lifespan(app: FastAPI):
                 await loop.run_in_executor(None, get_embedder)
                 print("✓ AI models loaded in memory.")
 
-                # 2. Proactive Release Notes from Sync (With Retry for model loading)
-                notes_file = "LATEST_CHANGES.txt"
-                if os.path.exists(notes_file):
-                    print("🚀 New deployment detected. Preparing release notes...")
-                    with open(notes_file, "r") as f:
-                        changes = f.read().strip()
-                    
-                    if changes:
-                        from app.services.llm import chat
-                        from app.api.telegram import send_notification
-                        
-                        release_prompt = (
-                            f"Target Zero: New code synchronized. "
-                            f"Here is the technical diff/snapshot:\n{changes}\n\n"
-                            "Summarize these changes concisely for the user as 'Latest Changes'. "
-                            "Use a direct, technical tone. Focus on exactly what was modified or added in the logic. "
-                            "Avoid marketing language."
-                        )
-                        
-                        # Wait for Ollama to actually be ready to reason
-                        release_note = ""
-                        for attempt in range(3):
-                            release_note = await chat(release_prompt)
-                            if "initializing my local core" not in release_note:
-                                break
-                            print(f"⌛ Intelligence engine still warming up (attempt {attempt+1}/3). Waiting 15s...")
-                            await asyncio.sleep(15)
-                        
-                        await send_notification(f"🚀 *Latest Changes:* \n\n{release_note}")
-                    
-                    os.remove(notes_file)
-                    print("✓ Release notes delivered.")
+                # Identity Record and Operator Sync moved here for stability
+                # ...
                 
                 # 3. Ensure Identity Record
                 async with AsyncSessionLocal() as session:

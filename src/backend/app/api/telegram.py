@@ -96,18 +96,30 @@ async def start_telegram_bot():
 			from app.services.memory import get_memory_stats
 			from app.models.db import AsyncSessionLocal, Person, LocalEvent
 			from sqlalchemy import select
+			import os
 			
 			print("DEBUG: start_telegram_bot - step 7: Fetching stats for greeting")
 			stats = await get_memory_stats()
 			stats_text = f"Memories: {stats['points']}" if stats['status'] != 'error' else "Memory: Offline"
 			
+			# 1. Release Notes (Deployment Detection)
+			release_info = ""
+			notes_file = "LATEST_CHANGES.txt"
+			if os.path.exists(notes_file):
+				print("DEBUG: Greeting Seq - Step 1: Release Notes detected")
+				try:
+					with open(notes_file, "r") as f:
+						changes = f.read().strip()
+					if changes:
+						release_info = f"DEPLOYMENT UPDATE - TECHNICAL DIFF SUMMARY:\n{changes[:2000]}\n"
+					os.remove(notes_file)
+				except: pass
+
 			# Context gathering
 			event_summary_parts = []
 			now = datetime.now()
 
-			calendar_offline = False
 			print("DEBUG: Greeting Seq - Step 2: Fetching Calendar")
-			calendar_offline = False
 			# 1. Google Calendar
 			try:
 				from app.services.calendar import fetch_calendar_events
@@ -121,14 +133,7 @@ async def start_telegram_bot():
 						display_item = f"• {e['summary']}"
 						if time_str: display_item += f" ({time_str})"
 						event_summary_parts.append(display_item)
-				print(f"DEBUG: Greeting Seq - Google Calendar OK ({len(g_events) if g_events else 0} events)")
-			except Exception as ce:
-				# Differentiate between "not set up" and "actual error"
-				if "credentials missing" in str(ce).lower() or "not configured" in str(ce).lower():
-					calendar_offline = False 
-				else:
-					print(f"DEBUG: Greeting Seq - Google Calendar skipped/failed: {ce}")
-					calendar_offline = True
+			except: pass
 
 			# 2. Local & Birthdays
 			print("DEBUG: Greeting Seq - Step 3: Local Data")
@@ -137,7 +142,6 @@ async def start_telegram_bot():
 				res_people = await session.execute(select(Person).where(Person.birthday.isnot(None)))
 				for p in res_people.scalars().all():
 					try:
-						# Shared parsing logic for birthdays
 						pts = p.birthday.split('.')
 						if len(pts) >= 2:
 							bday = datetime(now.year, int(pts[1]), int(pts[0]))
@@ -158,16 +162,27 @@ async def start_telegram_bot():
 					else:
 						event_summary_parts.append(f"• {le.summary} ({time_str})")
 
-			event_summary = "\n".join(event_summary_parts) if event_summary_parts else "No upcoming events."
+			event_summary = "\n".join(event_summary_parts) if event_summary_parts else "No upcoming events scheduled."
 			print(f"DEBUG: Greeting Seq - Context Ready ({len(event_summary_parts)} items)")
 			
 			greeting_prompt = (
-				f"Z system status check: Ready. {stats_text}. CONTEXT: {event_summary}\n\n"
-				"Welcome the user back with 'Welcome back.' then provide a 1-sentence status update strictly based on CONTEXT. "
-				"Mention birthdays prominently. Be extremely concise. Fast mode active."
+				f"Greeting protocol initiated. System: {stats_text}.\n"
+				f"{release_info}\n"
+				f"CALENDAR CONTEXT:\n{event_summary}\n\n"
+				"INSTRUCTIONS:\n"
+				"1. Welcome the user back warmly as 'Z'.\n"
+				"2. If DEPLOYMENT UPDATE is present, summarize it as 'Latest Changes' in a professional way.\n"
+				"3. Provide a brief (1-2 sentence) update on the calendar events.\n"
+				"4. Be concise and human. No robotic filler. No action tags."
 			)
+			
+			system_override = "You are Z. Return ONLY the greeting text. Keep it sharp and professional. Fast mode active."
 			print(f"DEBUG: Greeting Seq - Calling Ollama ({settings.OLLAMA_MODEL_FAST})")
-			greeting = await chat(greeting_prompt, model=settings.OLLAMA_MODEL_FAST)
+			raw_greeting = await chat(greeting_prompt, system_override=system_override, model=settings.OLLAMA_MODEL_FAST)
+			
+			# Clean output just in case
+			from app.services.agent_actions import parse_and_execute_actions
+			greeting, _ = await parse_and_execute_actions(raw_greeting)
 			print("DEBUG: Greeting Seq - OK")
 			
 			footer = await _get_stats_footer()

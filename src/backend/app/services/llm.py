@@ -252,7 +252,8 @@ async def chat_with_context(
 					context = ""
 					if inner: context += "INNER CIRCLE:\n" + "\n".join(inner) + "\n"
 					if close: context += "CLOSE CIRCLE:\n" + "\n".join(close)
-					return context, identity_name, user_profile
+					# Truncate people context to 2000 chars
+					return context[:2000], identity_name, user_profile
 				return "CIRCLE OF TRUST: No family/contacts configured yet.", identity_name, {}
 		except Exception:
 			return "CIRCLE OF TRUST: (Database connection unavailable)", "User", {}
@@ -267,6 +268,8 @@ async def chat_with_context(
 		try:
 			from app.services.planka import get_project_tree
 			tree = await get_project_tree(as_html=False)
+			if tree and len(tree) > 3000:
+				tree = tree[:3000] + "... [Project Tree Truncated]"
 			return f"PROJECT MISSION CONTROL:\n{tree}"
 		except Exception:
 			return "PROJECTS: (Board integration unavailable)"
