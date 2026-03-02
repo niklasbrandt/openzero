@@ -59,8 +59,13 @@ export class BriefingHistory extends HTMLElement {
 
 		list.innerHTML = `
 			${itemsHtml || 'No briefings yet.'}
-			${briefings.length >= 5 ? `<button class="load-more" onclick="this.closest('briefing-history').showMore()">Show More History</button>` : ''}
+			${briefings.length >= 5 ? `<button class="load-more" id="load-more-btn">Show More History</button>` : ''}
 		`;
+
+		const loadMoreBtn = this.shadowRoot?.querySelector('#load-more-btn');
+		if (loadMoreBtn) {
+			loadMoreBtn.addEventListener('click', () => this.showMore());
+		}
 	}
 
 	render() {
