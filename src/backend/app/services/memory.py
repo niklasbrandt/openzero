@@ -2,6 +2,7 @@ from qdrant_client import QdrantClient, models
 from app.config import settings
 import uuid
 import logging
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -56,16 +57,25 @@ async def store_memory(text: str, metadata: dict = None):
 
 	# 2. Fact Distillation (Infrastructure Pass)
 	distilled_text = text
+	
+	# AGGRESSIVE HYGIENE: Strip internal protocols and conversational markers
+	# This prevents "leaking" actions or chat boilerplate into the vault.
+	distilled_text = re.sub(r'\[?ACTION:\s*.*?\]', '', distilled_text, flags=re.IGNORECASE | re.DOTALL)
+	distilled_text = re.sub(r'(User:|Z:|Conversation:).*?$', '', distilled_text, flags=re.IGNORECASE | re.MULTILINE)
+	distilled_text = distilled_text.strip()
+
+	if not distilled_text or len(distilled_text) < 5:
+		return
+
 	is_user_input = metadata and metadata.get("type") == "user_input"
 	
 	if is_user_input:
 		from app.services.llm import chat
 		distill_prompt = (
 			"Distill the following user input into a single, permanent FACT or PREFERENCE statement. "
-			"Remove all conversational noise, timestamps, and 'User said' preambles.\n\n"
-			"If the input is transient traffic (greetings, status updates, junk), reply ONLY with 'IGNORE'.\n"
-			"Otherwise, return the distilled infrastructure fact.\n\n"
-			f"Input: {text}"
+			"Rule 1: If it's a command, a greeting, or junk, reply ONLY with 'IGNORE'. "
+			"Rule 2: No 'User likes...', just 'Likes...'. No mentions of 'Z' or 'Assistant'.\n\n"
+			f"Input: {distilled_text}"
 		)
 		try:
 			decision = await chat(distill_prompt, provider="ollama", model=settings.OLLAMA_MODEL_FAST)
@@ -73,7 +83,7 @@ async def store_memory(text: str, metadata: dict = None):
 				return
 			distilled_text = decision.strip().replace('"', '').replace("Fact: ", "")
 		except Exception as e:
-			logger.warning(f"Memory distillation failed, using raw: {e}")
+			logger.warning(f"Memory distillation failed, using raw (cleaned): {e}")
 
 	# 3. Semantic Deduplication
 	client = get_qdrant()
