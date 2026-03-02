@@ -166,14 +166,14 @@ async def start_telegram_bot():
 			print(f"DEBUG: Greeting Seq - Context Ready ({len(event_summary_parts)} items)")
 			
 			greeting_prompt = (
-				f"Greeting protocol initiated. System: {stats_text}.\n"
+				f"Internal system update. System: {stats_text}.\n"
 				f"{release_info}\n"
 				f"CALENDAR CONTEXT:\n{event_summary}\n\n"
 				"INSTRUCTIONS:\n"
 				"1. Welcome the user back warmly as 'Z'.\n"
-				"2. If DEPLOYMENT UPDATE is present, summarize it as 'Latest Changes' in a professional way.\n"
-				"3. Provide a brief (1-2 sentence) update on the calendar events.\n"
-				"4. Be concise and human. No robotic filler. No action tags."
+				"2. If DEPLOYMENT UPDATE is present, briefly summarize the latest code changes.\n"
+				"3. Mention today's events or birthdays if any exist in context.\n"
+				"4. Be concise, direct, and human. Avoid any specific 'protocol' or 'system' jargon in the output."
 			)
 			
 			system_override = "You are Z. Return ONLY the greeting text. Keep it sharp and professional. Fast mode active."
