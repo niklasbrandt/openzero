@@ -11,6 +11,39 @@ from sqlalchemy import select
 import asyncio
 import datetime
 
+_CLOSING_REFLECTIONS = [
+	"The nitrogen in our DNA, the calcium in our teeth, the iron in our blood — we are made of starstuff, assembled across billions of years of cosmic time. You are the universe experiencing itself.",
+	"Two roads diverged in a wood, and I — I took the one less traveled by, and that has made all the difference. — Robert Frost",
+	"Every atom in your body has been part of a thousand different stars. The iron in your veins was forged in the death of a giant sun long before Earth existed.",
+	"Tell me, what is it you plan to do with your one wild and precious life? — Mary Oliver",
+	"The human brain contains roughly 86 billion neurons, each forming up to 10,000 connections. Every thought you have lights up a pattern never exactly repeated in all of history.",
+	"In the middle of difficulty lies opportunity. The obstacle is not the end — it is the door. — Albert Einstein",
+	"A single teaspoon of healthy forest soil contains more living organisms than there are people on Earth. Life is not rare — it is the fundamental state of this planet.",
+	"We shall not cease from exploration, and the end of all our exploring will be to arrive where we started and know the place for the first time. — T.S. Eliot",
+	"Light from the Sun takes 8 minutes to reach you. When you step outside today, you are being touched by energy that left a star before your morning began.",
+	"Dwell on the beauty of life. Watch the stars, and see yourself running with them. — Marcus Aurelius",
+	"Honeybees communicate the exact location of flowers through a dance. Every morning, across the world, millions of small creatures are mapping beauty for each other.",
+	"You do not have to be good. You do not have to walk on your knees for a hundred miles through the desert, repenting. You only have to let the soft animal of your body love what it loves. — Mary Oliver",
+	"Water has memory in a sense: it shapes every landscape it touches over millennia, carving canyons with patience no single lifetime can witness — yet you live beside its work every day.",
+	"The most beautiful thing we can experience is the mysterious. It is the source of all true art and science. — Albert Einstein",
+	"Trees in a forest share sugar and water through underground fungal networks, feeding their sick neighbors. The forest is not a collection of individuals — it is one breathing organism.",
+	"And those who were seen dancing were thought to be insane by those who could not hear the music. — Friedrich Nietzsche",
+	"Your body replaces most of its cells every few years. The you reading this is materially different from the you of a decade ago — yet the thread of your consciousness runs unbroken through all of it.",
+	"To see a World in a Grain of Sand and a Heaven in a Wild Flower, hold Infinity in the palm of your hand and Eternity in an hour. — William Blake",
+	"Whales sing in patterns that evolve over time, with new phrases spreading across ocean basins the way songs spread through human cultures. The sea has its own living music.",
+	"Not all those who wander are lost. — J.R.R. Tolkien",
+	"Octopuses have three hearts, blue blood, and neurons distributed throughout their arms. Each arm can act independently, taste what it touches, and solve problems on its own. Intelligence takes more forms than we can imagine.",
+	"The world is charged with the grandeur of God. It will flame out, like shining from shook foil. — Gerard Manley Hopkins",
+	"Every human language ever spoken contains words for love, for home, and for tomorrow. No matter how different the culture, these three things have always mattered.",
+	"I am not an Athenian or a Greek, but a citizen of the world. — Socrates",
+	"A monarch butterfly weighs less than a paperclip, yet navigates 4,000 kilometers by the angle of the Sun and the magnetic field of the Earth. Precision and grace are not opposites.",
+	"At the still point of the turning world, there the dance is. — T.S. Eliot",
+	"Starlight you see tonight left its source before humans existed. You are looking directly at the deep past, from the present, in real time. That is not a metaphor — it is physics.",
+	"The most wasted of all days is one without laughter. — E.E. Cummings",
+	"Certain species of jellyfish are biologically immortal — when stressed, they revert to an earlier life stage and begin again. The ocean keeps secrets about time that science is only beginning to read.",
+	"Enough. These few words are enough. If not these words, this breath. If not this breath, this sitting here. This opening to the life we have refused again and again until now. — David Whyte",
+]
+
 async def morning_briefing():
 	"""Generate and store the daily morning briefing."""
 	
@@ -159,6 +192,12 @@ async def morning_briefing():
 		method_name, method_prompt = methods[day_of_year % len(methods)]
 		content += f"\n\n{method_name} *Mental Yoga:*\n_{method_prompt}_"
 	
+	# 3.5 Closing Reflection (rotating poem or scientific fact)
+	if settings.BRIEFING_CLOSING_REFLECTION:
+		day_of_year = datetime.date.today().timetuple().tm_yday
+		reflection = _CLOSING_REFLECTIONS[day_of_year % len(_CLOSING_REFLECTIONS)]
+		content += f"\n\n✨ *Reflection:*\n_{reflection}_"
+
 	# --- Multi-Modal (TTS) ---
 	audio_briefing = None
 	try:
