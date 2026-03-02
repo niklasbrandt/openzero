@@ -138,6 +138,22 @@ async def morning_briefing():
 	if memory_review:
 		content += "\n\n🧠 *New Memories (Last 24h):*\n" + memory_review + "\n_Use /unlearn <topic> to remove incorrect memories._"
 	
+	# 3.4 Mental Yoga (configurable, rotates daily)
+	from app.config import settings
+	if settings.BRIEFING_MENTAL_YOGA:
+		methods = [
+			("🙏 Gratitude", "Name 3 specific things you are grateful for right now. Be concrete — not 'family' but 'the way Mom called yesterday to check in'."),
+			("🎯 Intention Setting", "Set one clear intention for today. Not a task — an intention for HOW you want to show up. Example: 'I will be patient and present in every conversation.'"),
+			("🔄 Cognitive Reframe", "Think of something that's been bothering you. Now reframe it: What's the hidden opportunity or lesson? Write the reframe in one sentence."),
+			("🫁 Box Breathing", "Pause for 60 seconds. Breathe in for 4 counts, hold for 4, out for 4, hold for 4. Repeat 3 times. Notice how your body feels after."),
+			("🌄 Visualization", "Close your eyes for 30 seconds. Picture your ideal version of today — how does it end? What does success look and feel like tonight?"),
+			("🧘 Body Scan", "Starting from the top of your head, scan down slowly to your toes. Where do you feel tension? Breathe into that spot for 3 breaths and let it soften."),
+			("💎 Affirmation", "Repeat this to yourself: 'I am exactly where I need to be. Today I take one step closer to who I'm becoming.' Now add your own sentence."),
+		]
+		day_of_year = datetime.date.today().timetuple().tm_yday
+		method_name, method_prompt = methods[day_of_year % len(methods)]
+		content += f"\n\n{method_name} *Mental Yoga:*\n_{method_prompt}_"
+	
 	# --- Multi-Modal (TTS) ---
 	audio_briefing = None
 	try:

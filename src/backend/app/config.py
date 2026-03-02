@@ -72,6 +72,9 @@ class Settings(BaseSettings):
     # Scheduling
     TASK_BOARD_SYNC_INTERVAL_MINUTES: int = 5
 
+    # Briefing
+    BRIEFING_MENTAL_YOGA: bool = True
+
 
     model_config = SettingsConfigDict(
         env_file=os.path.join(os.path.dirname(__file__), "../../../.env"),
