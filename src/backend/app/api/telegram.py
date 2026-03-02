@@ -691,7 +691,7 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		from app.models.db import get_global_history, save_global_message
 		
 		# Show initial acknowledgment
-		thinking_msg = await update.message.reply_text("<blockquote>⏳ <i>Thinking...</i></blockquote>", parse_mode="HTML")
+		thinking_msg = await update.message.reply_text("<blockquote><i>Thinking...</i></blockquote>", parse_mode="HTML")
 		
 		from app.services.agent_actions import parse_and_execute_actions
 		from app.models.db import AsyncSessionLocal
@@ -749,7 +749,7 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 			await safe_edit(status_msg, f"<blockquote>⚠️ <i>{transcript or 'Could not transcribe voice.'}</i></blockquote>", parse_mode="HTML")
 			return
 
-		await safe_edit(status_msg, f"<blockquote>📝 <b>Transcript:</b>\n<i>{transcript}</i>\n\n⏳ <i>Thinking...</i></blockquote>", parse_mode="HTML")
+		await safe_edit(status_msg, f"<blockquote>📝 <b>Transcript:</b>\n<i>{transcript}</i>\n\n<i>Thinking...</i></blockquote>", parse_mode="HTML")
 		
 		# 3. Process as text
 		from app.services.llm import chat_with_context
