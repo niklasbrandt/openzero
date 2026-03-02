@@ -8,6 +8,9 @@ from app.api.telegram import start_telegram_bot, stop_telegram_bot
 import os
 from sqlalchemy import text
 
+import logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup & shutdown logic."""

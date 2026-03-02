@@ -7,6 +7,8 @@ from app.tasks.email_poll import poll_gmail
 from app.tasks.operator_sync import run_operator_sync
 from app.services.timezone import update_detected_timezone, get_current_timezone
 from app.config import settings
+import pytz
+import logging
 
 import subprocess
 import os
@@ -14,7 +16,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-scheduler = AsyncIOScheduler()
+scheduler = AsyncIOScheduler(timezone=pytz.timezone(settings.USER_TIMEZONE))
 
 async def run_backup():
 	"""Runs the daily system backup script."""
