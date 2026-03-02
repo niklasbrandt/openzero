@@ -303,7 +303,7 @@ async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		
 		# 1. Memory
 		m_stats = await get_memory_stats()
-		m_text = "🟢 Active" if m_stats['status'] == 'ok' else "🔴 Offline"
+		m_text = "🟢 Active" if m_stats['status'] != 'error' else "🔴 Offline"
 		
 		# 2. Planka
 		p_text = "🔴 Offline"
