@@ -336,7 +336,7 @@ async def cmd_month(update: Update, context: ContextTypes.DEFAULT_TYPE):
 @owner_only
 async def cmd_protocols(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	from app.services.agent_actions import AVAILABLE_TOOLS
-	tools_info = "\n".join([f"• *{t['name']}*: {t['description']}" for t in AVAILABLE_TOOLS])
+	tools_info = "\n".join([f"• *{t.name}*: {t.description}" for t in AVAILABLE_TOOLS])
 	
 	protocols_text = (
 		"🤖 *Z Operator Protocols*\n\n"
@@ -606,8 +606,8 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		from app.services.agent_actions import parse_and_execute_actions
 		from app.models.db import AsyncSessionLocal
 
-		# Recover Merged History (Recover cross-channel context)
-		merged_history = await get_global_history(limit=12)
+		# Recover Merged History (cross-channel context — last 20 messages)
+		merged_history = await get_global_history(limit=20)
 
 		response = await chat_with_context(
 			update.message.text, 

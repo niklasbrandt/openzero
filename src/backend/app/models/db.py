@@ -106,8 +106,8 @@ class LocalEvent(Base):
     summary = Column(String, nullable=False)
     description = Column(Text)
     start_time = Column(DateTime, nullable=False)
-    end_time = Column(DateTime, nullable=False)
-    person_id = Column(Integer, ForeignKey("people.id"), nullable=True) # Optional link to a person
+    end_time = Column(DateTime, nullable=True)   # nullable: defaults to start+1h if not provided
+    person_id = Column(Integer, ForeignKey("people.id"), nullable=True)
     is_completed = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 

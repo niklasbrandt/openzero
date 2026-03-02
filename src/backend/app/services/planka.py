@@ -40,13 +40,15 @@ async def get_planka_auth_token() -> str:
 					accept_resp.raise_for_status()
 					# After accepting, retry the login to get the real token
 					resp = await client.post(login_url, json=payload)
+				else:
+					resp.raise_for_status()  # 403 without pendingToken is a real error
 
-			if resp.status_code != 200:
-				print(f"DEBUG: Planka auth failed with status {resp.status_code}: {resp.text}")
-				resp.raise_for_status()
+			resp.raise_for_status()
 			token = resp.json().get("item")
 			if token:
-				 print("DEBUG: Planka auth successful.")
+				print("DEBUG: Planka auth successful.")
+			else:
+				raise ValueError("Auth token is empty — check Planka credentials.")
 			return token
 		except Exception as e:
 			print(f"DEBUG: Planka auth exception: {e}")
