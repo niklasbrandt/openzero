@@ -15,7 +15,12 @@ import httpx
 from datetime import datetime
 import pytz
 from contextvars import ContextVar
+import uuid
 from app.config import settings
+from app.services.agent_actions import AVAILABLE_TOOLS
+from langchain_ollama import ChatOllama
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+from langgraph.prebuilt import create_react_agent
 
 # Track the model used for the current request context
 last_model_used: ContextVar[str] = ContextVar("last_model_used", default="Ollama")
@@ -297,34 +302,34 @@ async def chat_with_context(
 			print(f"DEBUG: Memory fetch error: {e}")
 			return ""
 
-	# Execute all context gatherers in parallel
-	(people_p, user_name, user_profile), project_p, memory_p = await asyncio.gather(
-		fetch_people(),
-		fetch_projects(),
-		fetch_memories()
-	)
-
-	# 4. History Formatting (Ultra-Aggressive: Last 5 messages Only)
-	history_text = ""
-	if history:
-		history_history = []
-		for m in history[-5:]:
-			role = "User" if m.get("role") == "user" else "Z"
-			# Aggressive content truncation (500 chars)
-			content = m.get('content', '')[:500] if m.get('content') else ""
-			history_history.append(f"{role}: {content}")
-		history_text = "RECENT CONVERSATION (Last 5 messages):\n" + "\n".join(history_history)
-
-	# 5. Assemble and Send
-	full_prompt = "\n\n".join(filter(None, [
-		people_p, 
-		project_p, 
-		memory_p
-	]))
-	
-	print(f"DEBUG: Context gathered in {time.time() - start_time:.2f}s")
-	
 	try:
+		# Execute all context gatherers in parallel
+		(people_p, user_name, user_profile), project_p, memory_p = await asyncio.gather(
+			fetch_people(),
+			fetch_projects(),
+			fetch_memories()
+		)
+
+		# 4. History Formatting (Ultra-Aggressive: Last 5 messages Only)
+		history_text = ""
+		if history:
+			history_history = []
+			for m in history[-5:]:
+				role = "User" if m.get("role") == "user" else "Z"
+				# Aggressive content truncation (500 chars)
+				content = m.get('content', '')[:500] if m.get('content') else ""
+				history_history.append(f"{role}: {content}")
+			history_text = "RECENT CONVERSATION (Last 5 messages):\n" + "\n".join(history_history)
+
+		# 5. Assemble and Send
+		full_prompt = "\n\n".join(filter(None, [
+			people_p, 
+			project_p, 
+			memory_p
+		]))
+		
+		print(f"DEBUG: Context gathered in {time.time() - start_time:.2f}s")
+		
 		# Categories needing 'Smart' model (8B)
 		complex_keywords = ["plan", "reason", "strategic", "complex", "code", "math", "summarize session", "briefing", "mission", "campaign"]
 		msg_len = len(user_message) if user_message else 0
@@ -347,8 +352,6 @@ async def chat_with_context(
 		agent_executor = create_react_agent(llm, AVAILABLE_TOOLS)
 		
 		# Combine original system prompt with gathered context
-		# We put the "Subject Profile" and "Goals" in the system message
-		# but keeping them concise is key.
 		rich_system_prompt = f"{formatted_system_prompt}\n\n{full_prompt}"
 		
 		messages = [SystemMessage(content=rich_system_prompt)]
@@ -369,14 +372,14 @@ async def chat_with_context(
 		reply = result["messages"][-1].content
 		return reply
 	except Exception as e:
-		print("DEBUG: LangGraph Agent failed, falling back to legacy chat:", e)
-		# Correct fallback: chat(user_message, system_override=rich_system_prompt, ...)
+		print("DEBUG: chat_with_context failed, falling back to legacy chat:", e)
+		# Correct fallback: chat(user_message, system_override=formatted_system_prompt, ...)
 		return await chat(
 			user_message, 
-			system_override=rich_system_prompt,
-			user_name=user_name, 
-			user_profile=user_profile, 
-			model=target_model or settings.OLLAMA_MODEL_FAST
+			system_override=formatted_system_prompt,
+			user_name=user_name if 'user_name' in locals() else "User", 
+			user_profile=user_profile if 'user_profile' in locals() else {}, 
+			model=target_model if 'target_model' in locals() else settings.OLLAMA_MODEL_FAST
 		)
 
 async def generate_context_proposal(query: str) -> dict:
