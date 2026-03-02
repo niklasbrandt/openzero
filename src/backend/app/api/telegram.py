@@ -296,7 +296,7 @@ async def send_voice_message(audio_bytes: bytes, caption: str = None):
 	await bot.send_voice(
 		chat_id=settings.TELEGRAM_ALLOWED_USER_ID,
 		voice=voice_file,
-		caption=caption,
+		caption=f"<blockquote>{_md_to_html(caption)}</blockquote>" if caption else None,
 		parse_mode="HTML"
 	)
 
