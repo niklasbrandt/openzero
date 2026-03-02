@@ -169,8 +169,9 @@ async def start_telegram_bot():
 				f"SYSTEM UPDATE. Stats: {stats_text}.\n"
 				f"{release_info}\n"
 				f"CALENDAR: {event_summary}\n\n"
-				"TASK: As Z, welcome the user back. Briefly summarize any 'DEPLOYMENT UPDATE' and mention events/birthdays from 'CALENDAR' if they exist. "
-				"Be human, warm, and extremely concise. No jargon."
+				"TASK: Welcome the user back as their personal AI agent 'Z'. "
+				"Briefly note the 'SYSTEM UPDATE' and 'CALENDAR' status. "
+				"Be human, concise, and direct. No filler."
 			)
 			
 			system_override = "You are Z. Return ONLY the greeting text. Keep it sharp and professional. Fast mode active."
