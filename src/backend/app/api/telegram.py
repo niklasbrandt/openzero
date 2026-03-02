@@ -186,7 +186,8 @@ async def start_telegram_bot():
 			print("DEBUG: Greeting Seq - OK")
 			
 			footer = await _get_stats_footer()
-			await send_notification(f"⚡ {greeting}{footer}")
+			separator = "──────────────────────────────\n"
+			await send_notification(f"{separator}⚡ {greeting}{footer}")
 			print("DEBUG: Greeting Seq - Notification Delivered")
 		except Exception as e:
 			print(f"FAILED to send Telegram startup greeting: {e}")
