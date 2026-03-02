@@ -184,13 +184,31 @@ async def start_telegram_bot():
 
 			system_override = "You are Z. Output ONLY the greeting. NEVER invent data not present in SYSTEM_DATA."
 			print(f"DEBUG: Greeting Seq - Calling Ollama ({settings.OLLAMA_MODEL_SMART})")
+
+			# Strings returned by llm.py on timeout/failure — must not reach the user
+			_ERROR_INDICATORS = ["initializing my local core", "synchronize my reasoning", "Error connecting", "No response from"]
+			def _is_error(text: str) -> bool:
+				return any(ind.lower() in text.lower() for ind in _ERROR_INDICATORS)
+
 			raw_greeting = await chat(greeting_prompt, system_override=system_override, model=settings.OLLAMA_MODEL_SMART)
-			
-			# Clean output just in case
+
+			# Fallback 1: smart model timed out — try fast model
+			if _is_error(raw_greeting):
+				print("DEBUG: Greeting - Smart model timeout, falling back to fast model")
+				raw_greeting = await chat(greeting_prompt, system_override=system_override, model=settings.OLLAMA_MODEL_FAST)
+
+			# Fallback 2: both models failed — send clean static greeting
+			if _is_error(raw_greeting):
+				print("DEBUG: Greeting - Both models unavailable, using static greeting")
+				changes_note = f"\n\n🔄 *Recent Logic Updates:*\n{release_info.strip()}" if release_info else ""
+				events_note = f"\n\n📅 *Events:*\n{event_summary}" if has_events else ""
+				raw_greeting = f"Back online. {stats_text}.{changes_note}{events_note}"
+
+			# Clean action tags from output
 			from app.services.agent_actions import parse_and_execute_actions
 			greeting, _ = await parse_and_execute_actions(raw_greeting)
 			print("DEBUG: Greeting Seq - OK")
-			
+
 			footer = await _get_stats_footer()
 			separator = "---"
 			await send_notification(f"{separator}\n⚡ {greeting}{footer}")
