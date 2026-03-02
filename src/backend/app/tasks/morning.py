@@ -104,12 +104,20 @@ async def morning_briefing():
 			emails = await fetch_unread_emails(max_results=5)
 			email_summary = "\n".join([f"- {e['from']}: {e['subject']}" for e in emails]) if emails else "No new emails."
 	
+	# 2.4 Gather yesterday's new memories for quality review
+	from app.services.memory import get_recent_memories
+	recent_memories = await get_recent_memories(hours=24)
+	memory_review = ""
+	if recent_memories:
+		memory_review = "\n".join([f"• {m['text']}" for m in recent_memories])
+	
 	full_prompt = (
 		"Z, morning briefing. Summarize based ONLY on the CONTEXT below.\n"
 		"STRICT RULES:\n"
 		"- NEVER invent names, tasks, projects, or events not present in CONTEXT.\n"
 		"- ONLY mention a birthday if CONTEXT explicitly contains '⚠️ BIRTHDAY IN EXACTLY'.\n"
-		"- If a section is empty, skip it or say 'nothing to report'.\n\n"
+		"- If a section is empty, skip it or say 'nothing to report'.\n"
+		"- Do NOT summarize the NEW MEMORIES section — it will be appended separately.\n\n"
 		f"AUTOMATED SYSTEM ACTIONS:\n{automation_summary}\n\n"
 		f"INNER CIRCLE (Family/Care):\n{inner_context}\n\n"
 		f"CLOSE CIRCLE (Friends/Social):\n{close_context}\n\n"
@@ -125,6 +133,10 @@ async def morning_briefing():
 	# 3.2 Post-Processing & Cleanup
 	from app.services.agent_actions import parse_and_execute_actions
 	content, _ = await parse_and_execute_actions(raw_content)
+	
+	# 3.3 Append Memory Review (raw, not via LLM — user sees exactly what was stored)
+	if memory_review:
+		content += "\n\n🧠 *New Memories (Last 24h):*\n" + memory_review + "\n_Use /unlearn <topic> to remove incorrect memories._"
 	
 	# --- Multi-Modal (TTS) ---
 	audio_briefing = None

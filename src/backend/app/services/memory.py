@@ -3,6 +3,7 @@ from app.config import settings
 import uuid
 import logging
 import re
+import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -103,13 +104,14 @@ async def store_memory(text: str, metadata: dict = None):
 		pass
 
 	# 4. Final Upsert
+	final_metadata = {**(metadata or {}), "text": distilled_text, "stored_at": datetime.datetime.utcnow().isoformat()}
 	client.upsert(
 		collection_name=COLLECTION_NAME,
 		points=[
 			models.PointStruct(
 				id=str(uuid.uuid4()),
 				vector=embedding,
-				payload={"text": distilled_text, **(metadata or {})},
+				payload=final_metadata,
 			)
 		],
 	)
@@ -183,3 +185,26 @@ async def wipe_collection(confirm: bool = False):
 		return True
 	except Exception:
 		return False
+
+async def get_recent_memories(hours: int = 24) -> list[dict]:
+	"""Fetch memories stored within the last N hours for briefing review."""
+	client = get_qdrant()
+	try:
+		cutoff = (datetime.datetime.utcnow() - datetime.timedelta(hours=hours)).isoformat()
+		# Scroll all points and filter by stored_at
+		results, _ = client.scroll(
+			collection_name=COLLECTION_NAME,
+			scroll_filter=models.Filter(
+				must=[
+					models.FieldCondition(
+						key="stored_at",
+						range=models.Range(gte=cutoff)
+					)
+				]
+			),
+			limit=20,
+		)
+		return [{"id": str(p.id), "text": p.payload.get("text", "")} for p in results]
+	except Exception as e:
+		logger.warning(f"get_recent_memories failed: {e}")
+		return []
