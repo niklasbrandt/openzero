@@ -219,8 +219,10 @@ async def start_telegram_bot():
 			print("DEBUG: Greeting Seq - OK")
 
 			footer = await _get_stats_footer()
-			separator = "---"
-			await send_notification(f"{separator}\n{greeting}{footer}")
+			# Wrap in blockquote for island-style visual
+			await send_notification_html(
+				f"<blockquote>{_md_to_html(greeting)}</blockquote>\n{_md_to_html(footer)}"
+			)
 			print("DEBUG: Greeting Seq - Notification Delivered")
 		except Exception as e:
 			print(f"FAILED to send Telegram startup greeting: {e}")
@@ -247,6 +249,30 @@ async def send_notification(text: str, reply_markup=None):
 		parse_mode="Markdown",
 		reply_markup=reply_markup,
 	)
+
+async def send_notification_html(text: str, reply_markup=None):
+	"""Send an HTML-formatted message to the owner (supports blockquotes)."""
+	if not settings.TELEGRAM_BOT_TOKEN or not settings.TELEGRAM_ALLOWED_USER_ID:
+		return
+	bot = Bot(token=settings.TELEGRAM_BOT_TOKEN)
+	await bot.send_message(
+		chat_id=settings.TELEGRAM_ALLOWED_USER_ID,
+		text=text,
+		parse_mode="HTML",
+		reply_markup=reply_markup,
+	)
+
+def _md_to_html(text: str) -> str:
+	"""Minimal Markdown-to-HTML conversion for Telegram."""
+	import re
+	# Bold: **text** or *text* -> <b>text</b>
+	html = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', text)
+	html = re.sub(r'\*(.+?)\*', r'<b>\1</b>', html)
+	# Italic: _text_ -> <i>text</i>
+	html = re.sub(r'(?<!\w)_(.+?)_(?!\w)', r'<i>\1</i>', html)
+	# Links: [text](url) -> <a href="url">text</a>
+	html = re.sub(r'\[(.+?)\]\((.+?)\)', r'<a href="\2">\1</a>', html)
+	return html
 
 async def send_voice_message(audio_bytes: bytes, caption: str = None):
 	"""Send voice message to the owner."""
