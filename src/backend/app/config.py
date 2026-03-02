@@ -34,7 +34,7 @@ class Settings(BaseSettings):
 
     # Timezone & Location
     USER_TIMEZONE: str = "America/New_York"
-    USER_LOCATION: str = "Berlin, DE" # Default location for weather
+    USER_LOCATION: str = "Berlin, DE" # Format: "City, CC" (comma-separated, CC = country code)
 
     # Ollama
     OLLAMA_BASE_URL: str = "http://ollama:11434"
