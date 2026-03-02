@@ -82,14 +82,10 @@ Rules:
 _http_client = httpx.AsyncClient(timeout=300.0)
 
 def build_system_prompt(user_name: str, user_profile: dict) -> tuple[str, str, str]:
-	user_tz = pytz.timezone(settings.USER_TIMEZONE)
-	def get_day_suffix(day):
-		if 11 <= day <= 13: return 'th'
-		return {1: 'st', 2: 'nd', 3: 'rd'}.get(day % 10, 'th')
+	from app.services.timezone import format_time, format_date_full, get_now
 	
-	now = datetime.now(user_tz)
-	day_with_suffix = f"{now.day}{get_day_suffix(now.day)}"
-	simplified_time = f"{now.strftime('%H:%M')} - {day_with_suffix}"
+	now = get_now()
+	simplified_time = format_time(now)
 	
 	user_id_context = ""
 	if user_profile:
@@ -108,7 +104,7 @@ def build_system_prompt(user_name: str, user_profile: dict) -> tuple[str, str, s
 		user_name=user_name
 	) + user_id_context
 	
-	context_header = f"Current Local Time (Raw): {now.strftime('%A, %Y-%m-%d %H:%M:%S %Z')}\n"
+	context_header = f"Current Local Time (Raw): {format_date_full(now)}\n"
 	context_header += f"Current Formatted Time (Use This): {simplified_time}\n\n"
 	
 	return formatted_system_prompt, context_header, simplified_time
