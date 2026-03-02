@@ -339,63 +339,83 @@ async def chat_with_context(
 		]))
 		
 		print(f"DEBUG: Context gathered in {time.time() - start_time:.2f}s")
-		
-		# Categories needing 'Smart' model (8B)
+
+		# Model selection
 		complex_keywords = ["plan", "reason", "strategic", "complex", "code", "math", "summarize session", "briefing", "mission", "campaign"]
 		msg_len = len(user_message) if user_message else 0
 		is_complex = any(kw in user_message.lower() for kw in complex_keywords) if user_message else False
-		# Default to FAST (3B). Only use SMART (8B) for True strategy or very large queries.
 		target_model = settings.OLLAMA_MODEL_SMART if (is_complex or msg_len > 1000) else settings.OLLAMA_MODEL_FAST
 		last_model_used.set(target_model)
-		
-		# Configure with snap parameters
-		llm = ChatOllama(
-			base_url=settings.OLLAMA_BASE_URL, 
-			model=target_model, 
-			timeout=120.0,
-			num_ctx=6144 if target_model == settings.OLLAMA_MODEL_FAST else 8192,
-			temperature=0.2,
-			keep_alive=-1
-		)
-		
-		# Build Graph
-		agent_executor = create_react_agent(llm, AVAILABLE_TOOLS)
-		
-		# Combine original system prompt with gathered context
-		rich_system_prompt = f"{formatted_system_prompt}\n\n{full_prompt}"
-		
-		messages = [SystemMessage(content=rich_system_prompt)]
-		for h in (history or []):
-			content = h.get('content', '')
-			# Truncate history messages to 1200 chars
-			if len(content) > 1200:
-				content = content[:1200] + "... [Truncated]"
-			
-			if h.get("role") == "user": 
-				messages.append(HumanMessage(content=content))
-			else: 
-				messages.append(AIMessage(content=content))
-		messages.append(HumanMessage(content=user_message))
-		
-		print(f"DEBUG: Executing LangGraph Agent with model: {target_model}")
-		result = await agent_executor.ainvoke({"messages": messages}, config={"configurable": {"thread_id": str(uuid.uuid4())}})
-		reply = result["messages"][-1].content
 
-		# Detect if the agent returned an internal error string instead of a real response
-		_AGENT_ERROR_MARKERS = ["encountered friction", "thread was dropped", "local core is still active", "initializing my local core"]
-		if any(m in reply.lower() for m in _AGENT_ERROR_MARKERS):
-			print(f"DEBUG: Agent returned error string, falling back to direct chat: {reply[:80]}")
-			raise ValueError(f"Agent returned internal error: {reply[:80]}")
+		# Only use the LangGraph ReAct agent when the user is explicitly requesting a tool action.
+		# For all conversational messages, go direct to chat() — faster and no friction errors.
+		TOOL_INTENT_KEYWORDS = [
+			"create task", "add task", "new task", "make a task",
+			"create event", "schedule", "set a reminder", "remind me",
+			"create project", "new project", "add person", "remember that",
+			"note that", "learn that", "store this", "track this",
+		]
+		needs_agent = any(kw in user_message.lower() for kw in TOOL_INTENT_KEYWORDS)
 
-		return reply
-	except Exception as e:
-		print("DEBUG: chat_with_context failed, falling back to legacy chat:", e)
-		# Correct fallback: chat(user_message, system_override=formatted_system_prompt, ...)
+		if needs_agent:
+			print(f"DEBUG: Tool intent detected — using LangGraph agent ({target_model})")
+			llm = ChatOllama(
+				base_url=settings.OLLAMA_BASE_URL,
+				model=target_model,
+				timeout=120.0,
+				num_ctx=6144 if target_model == settings.OLLAMA_MODEL_FAST else 8192,
+				temperature=0.2,
+				keep_alive=-1
+			)
+			agent_executor = create_react_agent(llm, AVAILABLE_TOOLS)
+			rich_system_prompt = f"{formatted_system_prompt}\n\n{full_prompt}"
+			messages = [SystemMessage(content=rich_system_prompt)]
+			for h in (history or []):
+				content = h.get('content', '')
+				if len(content) > 1200:
+					content = content[:1200] + "... [Truncated]"
+				if h.get("role") == "user":
+					messages.append(HumanMessage(content=content))
+				else:
+					messages.append(AIMessage(content=content))
+			messages.append(HumanMessage(content=user_message))
+
+			result = await agent_executor.ainvoke({"messages": messages}, config={"configurable": {"thread_id": str(uuid.uuid4())}})
+			reply = result["messages"][-1].content
+
+			# If agent returned an error string, fall through to direct chat
+			_AGENT_ERROR_MARKERS = ["encountered friction", "thread was dropped", "local core is still active", "initializing my local core"]
+			if not any(m in reply.lower() for m in _AGENT_ERROR_MARKERS):
+				return reply
+			print(f"DEBUG: Agent returned error string, falling back to direct chat")
+
+		# Direct chat path — conversational messages and agent fallback
+		print(f"DEBUG: Direct chat with model: {target_model}")
+		history_text = ""
+		if history:
+			history_lines = []
+			for m in history[-15:]:
+				role = "User" if m.get("role") == "user" else "Z"
+				content = m.get('content', '')[:600] if m.get('content') else ""
+				history_lines.append(f"{role}: {content}")
+			history_text = "RECENT CONVERSATION:\n" + "\n".join(history_lines)
+
+		context_injection = "\n\n".join(filter(None, [full_prompt, history_text]))
+		system_with_context = f"{formatted_system_prompt}\n\n{context_injection}" if context_injection else formatted_system_prompt
 		return await chat(
-			user_message, 
-			system_override=formatted_system_prompt,
-			user_name=user_name if 'user_name' in locals() else "User", 
-			user_profile=user_profile if 'user_profile' in locals() else {}, 
+			user_message,
+			system_override=system_with_context,
+			user_name=user_name,
+			user_profile=user_profile,
+			model=target_model
+		)
+	except Exception as e:
+		print("DEBUG: chat_with_context failed, falling back to bare chat:", e)
+		return await chat(
+			user_message,
+			system_override=formatted_system_prompt if 'formatted_system_prompt' in locals() else None,
+			user_name=user_name if 'user_name' in locals() else "User",
+			user_profile=user_profile if 'user_profile' in locals() else {},
 			model=target_model if 'target_model' in locals() else settings.OLLAMA_MODEL_FAST
 		)
 
