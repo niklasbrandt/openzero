@@ -29,7 +29,7 @@ async def _get_stats_footer() -> str:
 	links = (
 		f"🔗 [Dashboard]({base_url}/home) "
 		f"🔗 [Operator]({base_url}/api/dashboard/planka-redirect?target=operator) "
-		f"🔗 [Boards]({base_url}/boards) "
+		f"🔗 [Projects]({base_url}/) "
 		f"🔗 [Calendar]({base_url}/calendar)"
 	)
 	
