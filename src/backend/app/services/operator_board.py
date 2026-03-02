@@ -20,6 +20,7 @@ the user every morning.
 import httpx
 import logging
 from app.config import settings
+from app.services.planka import get_planka_auth_token
 
 logger = logging.getLogger(__name__)
 
@@ -31,20 +32,11 @@ class OperatorBoardService:
 		self._token = None
 
 	async def _get_auth_token(self) -> str:
-		"""Retrieves or refreshes the authentication token."""
+		"""Retrieves or refreshes the authentication token using the central Planka service."""
 		if self._token:
 			return self._token
-			
-		async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, timeout=10.0) as client:
-			login_url = "/api/access-tokens"
-			payload = {
-				"emailOrUsername": settings.PLANKA_ADMIN_EMAIL,
-				"password": settings.PLANKA_ADMIN_PASSWORD
-			}
-			resp = await client.post(login_url, json=payload)
-			resp.raise_for_status()
-			self._token = resp.json().get("item")
-			return self._token
+		self._token = await get_planka_auth_token()
+		return self._token
 
 	async def _get_client(self):
 		"""Returns a configured async client."""

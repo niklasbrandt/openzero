@@ -121,6 +121,9 @@ bash scripts/sync.sh
 ```
 Z will now package itself, fly to your server, build its brain (Ollama), and start up.
 
+> [!NOTE]
+> **First Login & Planka**: On the very first start, Planka usually requires a "Terms of Service" acceptance. Z is designed to handle this automatically for the admin account during its first connection attempt. You can then access your task board at `http://YOUR_SERVER_IP/login` using the credentials you set in `.env.planka`.
+
 ---
 
 ## 🛠️ Step 4: Maintenance & Logs
