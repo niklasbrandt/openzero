@@ -161,6 +161,11 @@ async def get_project_tree(as_html: bool = True) -> str:
 
 async def create_task(board_name: str, list_name: str, title: str, description: str = "") -> bool:
 	"""Creates a card on the specified board and list."""
+	# Clean LLM inputs (sometimes they pass literal quotes like '"Test Board"')
+	board_name = (board_name or "Operator Board").strip().strip('"\'')
+	list_name = (list_name or "Inbox").strip().strip('"\'')
+	title = (title or "New Task").strip().strip('"\'')
+
 	# Normalize 'Boards' -> 'openZero' for internal lookups
 	if board_name.lower() == "boards": board_name = "Operator Board"
 	if board_name.lower() == "openzero": board_name = "Operator Board"
