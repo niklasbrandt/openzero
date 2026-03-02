@@ -10,7 +10,8 @@ async def generate_speech(text: str) -> bytes:
 	data = {
 		"model": "tts-1",
 		"input": text,
-		"voice": "alloy"
+		"voice": "alloy",
+		"speed": 0.85
 	}
 	
 	async with httpx.AsyncClient(timeout=60.0) as client:
