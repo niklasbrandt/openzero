@@ -15,7 +15,9 @@ async def get_weather_forecast(location_name: str = None) -> str:
 
 	try:
 		# 1. Geocoding: Get lat/lon for the location name
-		geocoding_url = f"https://geocoding-api.open-meteo.com/v1/search?name={location}&count=1&language=en&format=json"
+		# Open-Meteo geocoding works best with just the city name
+		search_name = location.split(",")[0].strip()
+		geocoding_url = f"https://geocoding-api.open-meteo.com/v1/search?name={search_name}&count=1&language=en&format=json"
 		async with httpx.AsyncClient(timeout=10.0) as client:
 			geo_resp = await client.get(geocoding_url)
 			geo_resp.raise_for_status()
