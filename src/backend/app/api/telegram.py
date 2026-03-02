@@ -185,7 +185,8 @@ async def start_telegram_bot():
 
 			system_override = (
 				"You are Z. Output ONLY the greeting. "
-				"ALWAYS begin your response with exactly the formatted current time and day on the first line (e.g. '08:00 - 2nd\\n'). "
+				"ALWAYS begin your response with the formatted current time and day on the first line "
+				"(e.g. '16:40 - Mo. 2nd'), followed by a blank line, then your message. "
 				"NEVER invent data not present in SYSTEM_DATA."
 			)
 			print(f"DEBUG: Greeting Seq - Calling Ollama ({settings.OLLAMA_MODEL_SMART})")
@@ -205,18 +206,12 @@ async def start_telegram_bot():
 			# Fallback 2: both models failed — send clean static greeting
 			if _is_error(raw_greeting):
 				print("DEBUG: Greeting - Both models unavailable, using static greeting")
-				
-				# Manual time formatting for static fallback
-				import pytz
-				_now = datetime.now(pytz.timezone(settings.USER_TIMEZONE))
-				def get_day_suffix(day):
-					if 11 <= day <= 13: return 'th'
-					return {1: 'st', 2: 'nd', 3: 'rd'}.get(day % 10, 'th')
-				time_str = f"{_now.strftime('%H:%M')} - {_now.day}{get_day_suffix(_now.day)}\n"
+				from app.services.timezone import format_time
+				time_str = format_time() + "\n"
 				
 				changes_note = f"\n\n🔄 *Recent Logic Updates:*\n{release_info.strip()}" if release_info else ""
 				events_note = f"\n\n📅 *Events:*\n{event_summary}" if has_events else ""
-				raw_greeting = f"{time_str}Back online. {stats_text}.{changes_note}{events_note}"
+				raw_greeting = f"{time_str}\nBack online. {stats_text}.{changes_note}{events_note}"
 
 			# Clean action tags from output
 			from app.services.agent_actions import parse_and_execute_actions
