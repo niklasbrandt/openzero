@@ -31,7 +31,7 @@ async def get_weather_forecast(location_name: str = None) -> str:
 			# 2. Weather: Get forecast
 			weather_url = (
 				f"https://api.open-meteo.com/v1/forecast?"
-				f"latitude={lat}&longitude={lon}&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=auto"
+				f"latitude={lat}&longitude={lon}&daily=temperature_2m_max,temperature_2m_min,weather_code&timezone=auto"
 			)
 			w_resp = await client.get(weather_url)
 			w_resp.raise_for_status()
@@ -43,7 +43,7 @@ async def get_weather_forecast(location_name: str = None) -> str:
 
 			max_temp = daily["temperature_2m_max"][0]
 			min_temp = daily["temperature_2m_min"][0]
-			code = daily["weathercode"][0]
+			code = daily["weather_code"][0]
 			
 			# Simple weather code mapping (WMO codes)
 			weather_desc = {
