@@ -28,7 +28,21 @@ async def morning_briefing():
 	async def get_person_briefing_data(p: Person):
 		data = f"- {p.name} ({p.relationship}): {p.context}"
 		if p.birthday:
-			data += f" | Birthday: {p.birthday}"
+			try:
+				# Parse birthday and compute exact days until next occurrence
+				today = datetime.date.today()
+				parts = p.birthday.split(".")
+				if len(parts) == 3:
+					day, month = int(parts[0]), int(parts[1])
+					next_bday = datetime.date(today.year, month, day)
+					if next_bday < today:
+						next_bday = datetime.date(today.year + 1, month, day)
+					days_until = (next_bday - today).days
+					if days_until <= 30:
+						data += f" | ⚠️ BIRTHDAY IN EXACTLY {days_until} DAYS ({p.birthday})"
+					# If > 30 days away: do NOT mention birthday at all to prevent hallucination
+			except Exception:
+				pass  # Unparseable birthday format — skip silently
 		return data
 
 	inner_circle_tasks = [get_person_briefing_data(p) for p in people if p.circle_type == "inner"]
@@ -91,18 +105,18 @@ async def morning_briefing():
 			email_summary = "\n".join([f"- {e['from']}: {e['subject']}" for e in emails]) if emails else "No new emails."
 	
 	full_prompt = (
-		"Z, morning briefing. Summarize the mission status based on CONTEXT.\n\n"
-		f"CONTEXT:\n"
-		f"AUTOMATED SYSTEM ACTIONS (Tasks created based on Circle Calendars):\n{automation_summary}\n\n"
+		"Z, morning briefing. Summarize based ONLY on the CONTEXT below.\n"
+		"STRICT RULES:\n"
+		"- NEVER invent names, tasks, projects, or events not present in CONTEXT.\n"
+		"- ONLY mention a birthday if CONTEXT explicitly contains '⚠️ BIRTHDAY IN EXACTLY'.\n"
+		"- If a section is empty, skip it or say 'nothing to report'.\n\n"
+		f"AUTOMATED SYSTEM ACTIONS:\n{automation_summary}\n\n"
 		f"INNER CIRCLE (Family/Care):\n{inner_context}\n\n"
 		f"CLOSE CIRCLE (Friends/Social):\n{close_context}\n\n"
 		f"CALENDAR TODAY:\n{calendar_summary}\n\n"
 		f"WEATHER FORECAST:\n{weather_report}\n\n"
 		f"PROJECTS:\n{tree}\n\n"
-		f"LATEST EMAILS:\n{email_summary}\n\n"
-		"Format the output beautifully for Telegram. In the briefing, proactively suggest actions "
-		"to maintain deep connections with both circles ONLY using information present in the CONTEXT. "
-		"IF CONTEXT IS EMPTY for a section, acknowledge it or skip it. NEVER invent family names, tasks, or projects."
+		f"LATEST EMAILS:\n{email_summary}\n"
 	)
 	
 	# 3. Generate Briefing
