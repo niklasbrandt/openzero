@@ -153,8 +153,8 @@ async def start_telegram_bot():
 								event_summary_parts.append(f"🎂 Tomorrow: {p.name}'s Birthday")
 					except: pass
 				
-				# Local Events
-				today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+				# Local Events (DB stores naive datetimes, strip tz for query)
+				today_start = now.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=None)
 				tomorrow_end = today_start + timedelta(days=2)
 				res_local = await session.execute(select(LocalEvent).where(LocalEvent.start_time >= today_start, LocalEvent.start_time < tomorrow_end))
 				for le in res_local.scalars().all():
