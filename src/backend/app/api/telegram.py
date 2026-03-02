@@ -60,7 +60,8 @@ async def start_telegram_bot():
 	bot_app.add_handler(CommandHandler("search", cmd_search))
 	bot_app.add_handler(CommandHandler("memories", cmd_memories))
 	bot_app.add_handler(CommandHandler("unlearn", cmd_unlearn))
-	bot_app.add_handler(CommandHandler("wipe_memory", cmd_wipe_memory))
+	bot_app.add_handler(CommandHandler("purge", cmd_purge))
+	bot_app.add_handler(CommandHandler("wipe_memory", cmd_purge))  # legacy alias
 	bot_app.add_handler(CommandHandler("week", cmd_week))
 	bot_app.add_handler(CommandHandler("month", cmd_month))
 	bot_app.add_handler(CommandHandler("quarter", cmd_quarter))
@@ -515,28 +516,28 @@ async def handle_unlearn_approval(update: Update, context: ContextTypes.DEFAULT_
 @owner_only
 async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	help_text = (
-		"🤖 *Z — Operator Controls*\n\n"
+		"🤖 *Z \u2014 Operator Controls*\n\n"
 		"*Briefings & Reviews*\n"
-		"• `/day` — Proactive morning briefing \\(contextual summary\\)\n"
-		"• `/week` — Strategic review of all projects and roadmaps\n"
-		"• `/month` — High\\-level 30\\-day mission review\n"
-		"• `/quarter` — Strategic 90\\-day review and roadmap planning\n"
-		"• `/year` — Yearly goal setting based on project themes\n\n"
+		"/day \u2014 Proactive morning briefing \(contextual summary\)\n"
+		"/week \u2014 Strategic review of all projects and roadmaps\n"
+		"/month \u2014 High\-level 30\-day mission review\n"
+		"/quarter \u2014 Strategic 90\-day review and roadmap planning\n"
+		"/year \u2014 Yearly goal setting based on project themes\n\n"
 		"*Mission Control*\n"
-		"• `/tree` — Full life hierarchy and workspace overview\n"
-		"• `/think <query>` — Complex reasoning with human\\-in\\-the\\-loop approval\n"
-		"• `/remind <text>` — Set a periodic reminder \\(e\\.g\\. 2x an hour for 4h\\)\n"
-		"• `/custom` — Create a persistent scheduled task/turnus\n\n"
+		"/tree \u2014 Full life hierarchy and workspace overview\n"
+		"/think \u2014 Complex reasoning with human\-in\-the\-loop approval\n"
+		"/remind \u2014 Set a periodic reminder \(e\.g\. 2x an hour for 4h\)\n"
+		"/custom \u2014 Create a persistent scheduled task/turnus\n\n"
 		"*Memory & Intelligence*\n"
-		"• `/search <query>` — Conceptual search of the semantic knowledge vault\n"
-		"• `/memories` — List all core knowledge in permanent memory\n"
-		"• `/add <fact>` — Commit specific facts to Z's permanent knowledge vault\n"
-		"• `/unlearn <query>` — Evolve past points in the vault\n"
-		"• `/protocols` — Inspect Z's agentic tools and Semantic Action Tags\n\n"
+		"/search \u2014 Conceptual search of the semantic knowledge vault\n"
+		"/memories \u2014 List all core knowledge in permanent memory\n"
+		"/add \u2014 Commit specific facts to Z's permanent knowledge vault\n"
+		"/unlearn \u2014 Evolve past points in the vault\n"
+		"/protocols \u2014 Inspect Z's agentic tools and Semantic Action Tags\n\n"
 		"*System*\n"
-		"• `/status` — Deep integration health check\n"
-		"• `/wipe\\_memory` — Clear long\\-term LLM recall \\(purge vault\\)\n\n"
-		"_Type any message to chat with Z directly\\._"
+		"/status \u2014 Deep integration health check\n"
+		"/purge \u2014 \u26a0\ufe0f Permanently delete all semantic memories \(irreversible \- requires confirmation\)\n\n"
+		"_Tap any command to execute it directly\._"
 	)
 	await safe_reply(update, help_text)
 
@@ -562,18 +563,28 @@ async def cmd_evolve(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	await safe_reply(update, evolve_text)
 
 @owner_only
-async def cmd_wipe_memory(update: Update, context: ContextTypes.DEFAULT_TYPE):
-	"""Trigger memory wipe with confirmation."""
+async def cmd_purge(update: Update, context: ContextTypes.DEFAULT_TYPE):
+	"""Request semantic memory purge with detailed confirmation."""
 	keyboard = [
 		[
-			InlineKeyboardButton("🔥 Confirm Wipe", callback_data="wipe_confirm"),
-			InlineKeyboardButton("❌ Cancel", callback_data="wipe_cancel"),
+			InlineKeyboardButton("🔥 Yes, purge everything", callback_data="wipe_confirm"),
+			InlineKeyboardButton("✋ Cancel", callback_data="wipe_cancel"),
 		]
 	]
 	reply_markup = InlineKeyboardMarkup(keyboard)
 	await update.message.reply_text(
-		"⚠️ *DANGER ZONE*\n\nYou are about to wipe all semantic memories. This cannot be undone. Confirm?",
-		parse_mode="Markdown",
+		"⚠️ *Semantic Memory Purge*\n\n"
+		"This will permanently delete *all* facts stored in Z's long\-term memory vault \(Qdrant\)\.\n\n"
+		"*What gets deleted:*\n"
+		"• All stored facts, preferences, and personal context\n"
+		"• All learned information from past conversations\n"
+		"• All manually committed memories \(/add\)\n\n"
+		"*What is NOT affected:*\n"
+		"• Your calendar, task boards, and projects \(Planka\)\n"
+		"• Your circle of trust \(people database\)\n"
+		"• Briefing history\n\n"
+		"This action is *irreversible*\. Z will start with a blank knowledge slate\.",
+		parse_mode="MarkdownV2",
 		reply_markup=reply_markup
 	)
 

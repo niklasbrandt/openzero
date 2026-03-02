@@ -112,7 +112,7 @@ The stack focuses on performance and privacy:
 | `/add` | Commit specific facts to Z's permanent knowledge vault. |
 | `/remind` | Set a periodic reminder with natural language (e.g., 2x an hour for 4h). |
 | `/protocols` | Inspect Z's agentic tools and Semantic Action Tags. |
-| `/wipe_memory` | Clear long-term LLM recall (Purge current chat context). |
+| `/purge` | ⚠️ Permanently delete all semantic memories from the vault (Qdrant). Deletes all stored facts, learned context, and `/add` entries. Does **not** affect task boards, people, or briefing history. Requires explicit confirmation. |
 
 ## Memory & Intelligence Principles
 
