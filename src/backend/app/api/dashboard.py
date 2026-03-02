@@ -521,6 +521,19 @@ async def planka_redirect(request: Request, target: str = "", background: bool =
 	async with httpx.AsyncClient(timeout=10.0) as client:
 		try:
 			resp = await client.post(login_url, json=payload)
+			
+			# Handle pending ToS acceptance (common on first login)
+			if resp.status_code == 403:
+				data = resp.json()
+				pending_token = data.get("pendingToken")
+				if pending_token:
+					print(f"DEBUG: Planka SSO requires ToS acceptance (pendingToken found). Accepting...")
+					accept_url = f"{settings.PLANKA_BASE_URL}/api/access-tokens/{pending_token}/actions/accept"
+					accept_resp = await client.post(accept_url)
+					accept_resp.raise_for_status()
+					# After accepting, retry the login to get the real token and cookies
+					resp = await client.post(login_url, json=payload)
+
 			resp.raise_for_status()
 			token_data = resp.json()
 			access_token = token_data.get("item")
