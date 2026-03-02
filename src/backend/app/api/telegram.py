@@ -219,9 +219,22 @@ async def start_telegram_bot():
 			print("DEBUG: Greeting Seq - OK")
 
 			footer = await _get_stats_footer()
-			# Wrap in blockquote for island-style visual
+			# Build compact HTML footer (outside the island)
+			base_url = settings.BASE_URL.rstrip('/')
+			html_footer = (
+				f'<a href="{base_url}/home">Dashboard</a> · '
+				f'<a href="{base_url}/api/dashboard/planka-redirect?target=operator">Operator</a> · '
+				f'<a href="{base_url}/api/dashboard/planka-redirect">Projects</a> · '
+				f'<a href="{base_url}/calendar">Calendar</a>'
+			)
+			from app.services.memory import get_memory_stats
+			from app.services.llm import last_model_used
+			stats = await get_memory_stats()
+			model_name = last_model_used.get()
+			stats_line = f"🧠 {stats['points']} memories · 🤖 {model_name}" if stats['status'] != 'error' else "🧠 offline"
+
 			await send_notification_html(
-				f"<blockquote>{_md_to_html(greeting)}</blockquote>\n{_md_to_html(footer)}"
+				f"<blockquote>{_md_to_html(greeting)}</blockquote>\n{html_footer}\n{stats_line}"
 			)
 			print("DEBUG: Greeting Seq - Notification Delivered")
 		except Exception as e:
