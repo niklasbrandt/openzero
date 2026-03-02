@@ -185,7 +185,7 @@ If Z isn't replying or you want to see what he's thinking:
 ## 🌐 Optional: Using a Vanity Domain (open.zero)
 If you set `BASE_URL=http://open.zero` in your `.env`, you must tell your local machine how to resolve that name. 
 
-On **macOS/Linux**:
+On **macOS/Linux** (Laptop/Desktop):
 1. Open terminal and run: `sudo nano /etc/hosts`
 2. Add the following line at the end:
    ```text
@@ -193,13 +193,30 @@ On **macOS/Linux**:
    ```
 3. Save (Ctrl+O, Enter) and Exit (Ctrl+X).
 
+On **Mobile Phones (iOS/Android)**:
+Since you cannot safely edit `/etc/hosts` on a mobile phone, and normal Wi-Fi DNS is bypassed by VPNs/Cellular data, the most reliable way to route `open.zero` to your server is via **Tailscale Split DNS**:
+1. Go to the Tailscale Admin Console in your browser: [https://login.tailscale.com/admin/dns](https://login.tailscale.com/admin/dns)
+2. Scroll down to **Nameservers** and click **Add nameserver** -> **Custom...**
+3. Enter your server's Tailscale IP address (e.g. `100.X.Y.Z`).
+4. Check the box **"Restrict to domain"** and enter `open.zero`.
+5. Click **Save**.
+6. On your mobile phone, open the Tailscale app, make sure you are connected, and then restart the app.
+
+Tailscale will now magically route *only* queries for `open.zero` to your OpenZero server, allowing your phone to connect!
+
 Now you can reach your dashboard at `http://open.zero/home`.
 
 ---
 
-## ❓ FAQ for Beginners
+## ❓ FAQ & Troubleshooting for Beginners
 
 - **What is a "Port"?** It's like a door to a house. OpenZero uses only port `80` (HTTP via Traefik). All other ports are internal only.
+- **Port 53 "Address already in use"?** Ubuntu's default DNS resolver hogs port 53, preventing Pi-hole from starting. Connect to your server via SSH and run this to fix it:
+  ```bash
+  sudo sed -r -i.orig 's/#?DNSStubListener=yes/DNSStubListener=no/g' /etc/systemd/resolved.conf
+  sudo sh -c 'rm /etc/resolv.conf && ln -s /run/systemd/resolve/resolv.conf /etc/resolv.conf'
+  sudo systemctl restart systemd-resolved
+  ```
 - **What if I get "Permission Denied"?** Always make sure you are logged in as the `openzero` user, not `root`.
 - **How do I stop everything?** Go to the folder and type `docker compose down`.
 
