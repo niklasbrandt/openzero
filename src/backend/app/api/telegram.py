@@ -11,6 +11,7 @@ from app.config import settings
 import asyncio
 import pytz
 from datetime import datetime, timedelta
+import logging
 
 bot_app: Application | None = None
 
@@ -43,10 +44,10 @@ async def start_telegram_bot():
 	"""Start the Telegram bot in polling mode within the FastAPI event loop."""
 	global bot_app
 	if not settings.TELEGRAM_BOT_TOKEN:
-		print("TELEGRAM_BOT_TOKEN not set. Bot will not start.")
+		logging.warning("TELEGRAM_BOT_TOKEN not set. Bot will not start.")
 		return
 
-	print("DEBUG: start_telegram_bot - step 1: Building app")
+	logging.info("DEBUG: start_telegram_bot - step 1: Building app")
 	bot_app = (
 		Application.builder()
 		.token(settings.TELEGRAM_BOT_TOKEN)
@@ -88,8 +89,8 @@ async def start_telegram_bot():
 	await bot_app.initialize()
 	print("DEBUG: start_telegram_bot - step 4: Starting")
 	await bot_app.start()
-	print("DEBUG: start_telegram_bot - step 5: Start Polling")
-	await bot_app.updater.start_polling(drop_pending_updates=False)
+	print("DEBUG: start_telegram_bot - step 5: Start Polling (dropping old updates)")
+	await bot_app.updater.start_polling(drop_pending_updates=True)
 	print("DEBUG: start_telegram_bot - step 6: Polling started")
 
 	# Proactive greeting with Context & Stats (Run in background to avoid blocking startup)
@@ -97,11 +98,11 @@ async def start_telegram_bot():
 		try:
 			from app.services.llm import chat
 			from app.services.memory import get_memory_stats
-			from app.models.db import AsyncSessionLocal, Person, LocalEvent
+			from app.models.db import AsyncSessionLocal, Person
 			from sqlalchemy import select
 			import os
 			
-			print("DEBUG: start_telegram_bot - step 7: Fetching stats for greeting")
+			logging.info("DEBUG: start_telegram_bot - step 7: Fetching stats for greeting")
 			stats = await get_memory_stats()
 			stats_text = f"Memories: {stats['points']}" if stats['status'] != 'error' else "Memory: Offline"
 			
@@ -118,28 +119,31 @@ async def start_telegram_bot():
 					os.remove(notes_file)
 				except: pass
 
-			# Context gathering
+			# Unified Context gathering
 			event_summary_parts = []
 			now = datetime.now(pytz.timezone(settings.USER_TIMEZONE))
 
-			print("DEBUG: Greeting Seq - Step 2: Fetching Calendar")
-			# 1. Google Calendar
+			print("DEBUG: Greeting Seq - Step 2: Fetching Unified Calendar")
 			try:
-				from app.services.calendar import fetch_calendar_events
-				import asyncio
-				g_events = await asyncio.wait_for(fetch_calendar_events(max_results=3, days_ahead=1), timeout=5.0)
-				if g_events:
-					for e in g_events:
+				from app.services.calendar import fetch_unified_events
+				# Use a safe timeout to prevent blocking the greeting forever if CalDAV is slow
+				all_events = await asyncio.wait_for(fetch_unified_events(days_ahead=1), timeout=10.0)
+				
+				if all_events:
+					for e in all_events:
+						# All events from unified source have 'start' as ISO string YYYY-MM-DDTHH:MM:SSZ
 						time_str = e['start'].split('T')[1][:5] if 'T' in e['start'] else None
 						if time_str == "00:00": time_str = None
 						
-						display_item = f"• {e['summary']}"
+						source_tag = f" [{e.get('source', '?')}]"
+						display_item = f"• {e['summary']}{source_tag}"
 						if time_str: display_item += f" ({time_str})"
 						event_summary_parts.append(display_item)
-			except: pass
+			except Exception as cal_err:
+				print(f"DEBUG: Calendar Greeting Error: {cal_err}")
 
-			# 2. Local & Birthdays
-			print("DEBUG: Greeting Seq - Step 3: Local Data")
+			# 2. Birthdays (Still separate until integrated into unified service)
+			logging.info("DEBUG: Greeting Seq - Step 3: Local People/Birthdays")
 			async with AsyncSessionLocal() as session:
 				# Birthdays
 				res_people = await session.execute(select(Person).where(Person.birthday.isnot(None)))
@@ -153,17 +157,6 @@ async def start_telegram_bot():
 							elif (bday.date() - now.date()).days == 1:
 								event_summary_parts.append(f"🎂 Tomorrow: {p.name}'s Birthday")
 					except: pass
-				
-				# Local Events (DB stores naive datetimes, strip tz for query)
-				today_start = now.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=None)
-				tomorrow_end = today_start + timedelta(days=2)
-				res_local = await session.execute(select(LocalEvent).where(LocalEvent.start_time >= today_start, LocalEvent.start_time < tomorrow_end))
-				for le in res_local.scalars().all():
-					time_str = le.start_time.strftime('%H:%M')
-					if time_str == "00:00":
-						event_summary_parts.append(f"• {le.summary}")
-					else:
-						event_summary_parts.append(f"• {le.summary} ({time_str})")
 
 			event_summary = "\n".join(event_summary_parts) if event_summary_parts else "No upcoming events scheduled."
 			print(f"DEBUG: Greeting Seq - Context Ready ({len(event_summary_parts)} items)")
@@ -244,9 +237,9 @@ async def start_telegram_bot():
 			await send_notification_html(
 				f"<blockquote><b>{real_time}</b>\n\n{_md_to_html(greeting_clean)}\n\n{html_footer}\n{stats_line}</blockquote>"
 			)
-			print("DEBUG: Greeting Seq - Notification Delivered")
+			logging.info("DEBUG: Greeting Seq - Notification Delivered")
 		except Exception as e:
-			print(f"FAILED to send Telegram startup greeting: {e}")
+			logging.error(f"FAILED to send Telegram startup greeting: {e}")
 
 	# Launch greeting in background
 	asyncio.create_task(send_startup_greeting())
@@ -277,7 +270,7 @@ async def send_notification_html(text: str, reply_markup=None):
 		return
 	bot = Bot(token=settings.TELEGRAM_BOT_TOKEN)
 	await bot.send_message(
-		chat_id=settings.TELEGRAM_ALLOWED_USER_ID,
+		chat_id=int(settings.TELEGRAM_ALLOWED_USER_ID),
 		text=text,
 		parse_mode="HTML",
 		reply_markup=reply_markup,
