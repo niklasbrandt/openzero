@@ -306,14 +306,7 @@ async def dashboard_chat(req: ChatRequest, db: AsyncSession = Depends(get_db)):
 		await save_global_message("dashboard", "user", msg)
 		await save_global_message("dashboard", "z", clean_reply)
 
-		# Auto-store USER part only to memory for Deep Recall
-		try:
-			import asyncio
-			from app.services.memory import store_memory
-			# Store RAW message - memory.py will clean it and handle distillation
-			asyncio.create_task(store_memory(msg, metadata={"type": "user_input", "source": "dashboard", "date": datetime.datetime.now().strftime('%Y-%m-%d')}))
-		except Exception as me:
-			print(f"DEBUG: Auto-memory failed: {me}")
+		# Memory is user-driven only (via /add or LEARN action tag)
 
 		from app.services.llm import last_model_used
 		return {
