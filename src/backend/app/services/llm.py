@@ -288,7 +288,7 @@ async def chat_with_context(
 	async def fetch_projects():
 		if not include_projects: return ""
 		# Only fetch project tree for mission-related messages — avoids Planka round-trip on simple chat
-		mission_keywords = ["task", "board", "status", "mission", "tree", "project", "plan", "build", "today"]
+		mission_keywords = ["task", "board", "status", "mission", "tree", "project", "plan", "build"]
 		if not any(kw in user_message.lower() for kw in mission_keywords):
 			return ""
 			
@@ -380,6 +380,13 @@ async def chat_with_context(
 		print(f"DEBUG: Executing LangGraph Agent with model: {target_model}")
 		result = await agent_executor.ainvoke({"messages": messages}, config={"configurable": {"thread_id": str(uuid.uuid4())}})
 		reply = result["messages"][-1].content
+
+		# Detect if the agent returned an internal error string instead of a real response
+		_AGENT_ERROR_MARKERS = ["encountered friction", "thread was dropped", "local core is still active", "initializing my local core"]
+		if any(m in reply.lower() for m in _AGENT_ERROR_MARKERS):
+			print(f"DEBUG: Agent returned error string, falling back to direct chat: {reply[:80]}")
+			raise ValueError(f"Agent returned internal error: {reply[:80]}")
+
 		return reply
 	except Exception as e:
 		print("DEBUG: chat_with_context failed, falling back to legacy chat:", e)
