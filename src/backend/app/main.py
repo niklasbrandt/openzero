@@ -31,9 +31,9 @@ async def lifespan(app: FastAPI):
             if not res.fetchone():
                 await conn.execute(text("ALTER TABLE email_summaries ADD COLUMN badge VARCHAR"))
 
-        print("✓ Postgres tables initialized and migrated.")
+        logging.info("✓ Postgres tables initialized and migrated.")
     except Exception as e:
-        print(f"⚠ Warning: Could not connect to Postgres: {e}")
+        logging.warning(f"⚠ Warning: Could not connect to Postgres: {e}")
     
     # 2. Initialize Qdrant collection
     try:
@@ -42,28 +42,28 @@ async def lifespan(app: FastAPI):
         stats = await get_memory_stats()
         if stats['status'] == 'error':
             raise Exception("Stats check failed")
-        print(f"✓ Qdrant collection ready ({stats['points']} points).")
+        logging.info(f"✓ Qdrant collection ready ({stats['points']} points).")
     except Exception as e:
-        print(f"⚠ Warning: Could not connect to Qdrant: {e}")
+        logging.warning(f"⚠ Warning: Could not connect to Qdrant: {e}")
     
     # 3. Start background tasks & bot
     try:
-        print("Starting scheduler...")
+        logging.info("Starting scheduler...")
         await start_scheduler()
-        print("Starting Telegram bot...")
+        logging.info("Starting Telegram bot...")
         await start_telegram_bot()
-        print("Background tasks & bot started.")
+        logging.info("Background tasks & bot started.")
         
         # 5-8. Background Startup Sequence (Non-blocking)
         async def run_background_startup():
             try:
                 # 1. Warm up intelligence engine (Priority: Load models first)
-                print("⚡ Warming up intelligence engine...")
+                logging.info("⚡ Warming up intelligence engine...")
                 from app.services.memory import get_embedder
                 import asyncio
                 loop = asyncio.get_event_loop()
                 await loop.run_in_executor(None, get_embedder)
-                print("✓ AI models loaded in memory.")
+                logging.info("✓ AI models loaded in memory.")
 
                 # Identity Record and Operator Sync moved here for stability
                 # ...
@@ -77,14 +77,14 @@ async def lifespan(app: FastAPI):
                             context="Z is beginning to understand your core parameters."
                         ))
                         await session.commit()
-                        print("✓ Identity record initialized.")
+                        logging.info("✓ Identity record initialized.")
 
                 # 4. Initial Operator Board Sync
                 from app.services.operator_board import operator_service
                 sync_res = await operator_service.sync_operator_tasks()
-                print(f"✓ {sync_res}")
+                logging.info(f"✓ {sync_res}")
             except Exception as e:
-                print(f"⚠ Warning: Background startup tasks failed: {e}")
+                logging.warning(f"⚠ Warning: Background startup tasks failed: {e}")
 
         import asyncio
         asyncio.create_task(run_background_startup())
