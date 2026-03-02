@@ -233,8 +233,15 @@ async def start_telegram_bot():
 			model_name = last_model_used.get()
 			stats_line = f"🧠 {stats['points']} memories · 🤖 {model_name}" if stats['status'] != 'error' else "🧠 offline"
 
+			# Prepend real current time (don't trust LLM for timestamps)
+			from app.services.timezone import format_time
+			import re
+			# Strip any LLM-generated time header (e.g. "16:40 - Mo. 2nd\n")
+			greeting_clean = re.sub(r'^\d{1,2}:\d{2}\s*[-–]\s*\w{2}\.\s*\d{1,2}\w{0,2}\s*\n*', '', greeting).strip()
+			real_time = format_time()
+			
 			await send_notification_html(
-				f"<blockquote>{_md_to_html(greeting)}</blockquote>\n{html_footer}\n{stats_line}"
+				f"<blockquote><b>{real_time}</b>\n\n{_md_to_html(greeting_clean)}</blockquote>\n{html_footer}\n{stats_line}"
 			)
 			print("DEBUG: Greeting Seq - Notification Delivered")
 		except Exception as e:
