@@ -26,7 +26,7 @@ async def _get_stats_footer() -> str:
 	model_tag = f" · {model_name}"
 
 	stats_text = f"Memories: {stats['points']}{model_tag}" if stats['status'] != 'error' else "Memory: Offline"
-	return f"\n\n{stats_text}"
+	return f"\n\n<i>{stats_text}</i>"
 
 def get_nav_markup() -> InlineKeyboardMarkup:
 	"""Standard navigation buttons (Large touch targets)."""
@@ -691,7 +691,7 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		from app.models.db import get_global_history, save_global_message
 		
 		# Show initial acknowledgment
-		thinking_msg = await update.message.reply_text("⏳ *Thinking...*", parse_mode="Markdown")
+		thinking_msg = await update.message.reply_text("<blockquote>⏳ <i>Thinking...</i></blockquote>", parse_mode="HTML")
 		
 		from app.services.agent_actions import parse_and_execute_actions
 		from app.models.db import AsyncSessionLocal
@@ -719,10 +719,11 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		from app.services.timezone import format_time
 		import re
 		clean_reply = re.sub(r'^\d{1,2}:\d{2}\s*[-–]?\s*[^\n]*\n*', '', clean_reply, count=1).strip()
-		display_reply = f"*{format_time()}*\n\n{clean_reply}"
+		html_reply = _md_to_html(clean_reply)
+		display_reply = f"<b>{format_time()}</b>\n\n{html_reply}"
 
 		footer = await _get_stats_footer()
-		await safe_edit(thinking_msg, f"{display_reply}{footer}", reply_markup=get_nav_markup())
+		await safe_edit(thinking_msg, f"<blockquote>{display_reply}{footer}</blockquote>", parse_mode="HTML", reply_markup=get_nav_markup())
 	except Exception as e:
 		print(f"ERROR: handle_freetext failed: {e}")
 		# If bit failed to edit, try fresh message
@@ -734,7 +735,7 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	"""Process voice messages."""
 	try:
-		await update.message.reply_text("🎙️ *Z is listening...*", parse_mode="Markdown")
+		status_msg = await update.message.reply_text("<blockquote>🎙️ <i>Z is listening...</i></blockquote>", parse_mode="HTML")
 		
 		# 1. Download voice file
 		voice_file = await context.bot.get_file(update.message.voice.file_id)
@@ -745,10 +746,10 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		transcript = await transcribe_voice(voice_bytes)
 		
 		if not transcript or transcript.startswith("["):
-			await update.message.reply_text(f"⚠️ {transcript or 'Could not transcribe voice.'}")
+			await safe_edit(status_msg, f"<blockquote>⚠️ <i>{transcript or 'Could not transcribe voice.'}</i></blockquote>", parse_mode="HTML")
 			return
 
-		await update.message.reply_text(f"📝 *Transcript:* _{transcript}_", parse_mode="Markdown")
+		await safe_edit(status_msg, f"<blockquote>📝 <b>Transcript:</b>\n<i>{transcript}</i>\n\n⏳ <i>Thinking...</i></blockquote>", parse_mode="HTML")
 		
 		# 3. Process as text
 		from app.services.llm import chat_with_context
@@ -772,8 +773,14 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		chat_histories[chat_id].append({"role": "user", "content": transcript})
 		chat_histories[chat_id].append({"role": "z", "content": response})
 		
+		from app.services.timezone import format_time
+		import re
+		clean_reply = re.sub(r'^\d{1,2}:\d{2}\s*[-–]?\s*[^\n]*\n*', '', clean_reply, count=1).strip()
+		html_reply = _md_to_html(clean_reply)
+		display_reply = f"📝 <b>Transcript:</b>\n<i>{transcript}</i>\n\n<b>{format_time()}</b>\n\n{html_reply}"
+		
 		footer = await _get_stats_footer()
-		await safe_reply(update, f"{clean_reply}{footer}", reply_markup=get_nav_markup())
+		await safe_edit(status_msg, f"<blockquote>{display_reply}{footer}</blockquote>", parse_mode="HTML", reply_markup=get_nav_markup())
 	except Exception as e:
 		print(f"ERROR: handle_voice failed: {e}")
 		await update.message.reply_text("⚠️ Voice processing failed. There might be an issue with the transcription or intelligence layer.")
