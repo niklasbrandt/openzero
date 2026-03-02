@@ -16,26 +16,32 @@ import logging
 bot_app: Application | None = None
 
 async def _get_stats_footer() -> str:
-	"""Consolidated footer for Z's messages."""
+	"""Consolidated stats/footer for Z's messages (no links)."""
 	from app.services.memory import get_memory_stats
 	from app.services.llm import last_model_used
 	stats = await get_memory_stats()
 	
 	# Determine Model Level from actual use
-	model_name = last_model_used.get()
+	model_name = last_model_used.get() or "ollama"
 	model_tag = f" · {model_name}"
 
 	stats_text = f"Memories: {stats['points']}{model_tag}" if stats['status'] != 'error' else "Memory: Offline"
-	
+	return f"\n\n{stats_text}"
+
+def get_nav_markup() -> InlineKeyboardMarkup:
+	"""Standard navigation buttons (Large touch targets)."""
 	base_url = settings.BASE_URL.rstrip('/')
-	links = (
-		f"[Dashboard]({base_url}/home) · "
-		f"[Operator]({base_url}/api/dashboard/planka-redirect?target=operator) · "
-		f"[Projects]({base_url}/api/dashboard/planka-redirect) · "
-		f"[Calendar]({base_url}/calendar)"
-	)
-	
-	return f"\n\n{links}\n{stats_text}"
+	keyboard = [
+		[
+			InlineKeyboardButton("🏠 Dashboard", url=f"{base_url}/home"),
+			InlineKeyboardButton("📋 Operator", url=f"{base_url}/api/dashboard/planka-redirect?target=operator")
+		],
+		[
+			InlineKeyboardButton("📁 Projects", url=f"{base_url}/api/dashboard/planka-redirect"),
+			InlineKeyboardButton("📅 Calendar", url=f"{base_url}/calendar")
+		]
+	]
+	return InlineKeyboardMarkup(keyboard)
 
 # --- Context Persistence ---
 chat_histories = {} # chat_id -> list of dicts {'role': 'user/z', 'content': str}
@@ -212,30 +218,16 @@ async def start_telegram_bot():
 			greeting, _ = await parse_and_execute_actions(raw_greeting)
 			print("DEBUG: Greeting Seq - OK")
 
-			footer = await _get_stats_footer()
-			# Build compact HTML footer (outside the island)
-			base_url = settings.BASE_URL.rstrip('/')
-			html_footer = (
-				f'<a href="{base_url}/home">Dashboard</a> · '
-				f'<a href="{base_url}/api/dashboard/planka-redirect?target=operator">Operator</a> · '
-				f'<a href="{base_url}/api/dashboard/planka-redirect">Projects</a> · '
-				f'<a href="{base_url}/calendar">Calendar</a>'
-			)
-			from app.services.memory import get_memory_stats
-			from app.services.llm import last_model_used
-			stats = await get_memory_stats()
-			model_name = last_model_used.get()
-			stats_line = f"{stats['points']} memories · {model_name}" if stats['status'] != 'error' else "offline"
-
 			# Prepend real current time (don't trust LLM for timestamps)
 			from app.services.timezone import format_time
 			import re
-			# Strip any LLM-generated time header (catches: "16:40 - Mo. 2nd", "16:40 - 2nd", "16:40\n", etc.)
+			# Strip any LLM-generated time header
 			greeting_clean = re.sub(r'^\d{1,2}:\d{2}\s*[-–]?\s*[^\n]*\n*', '', greeting, count=1).strip()
 			real_time = format_time()
 			
 			await send_notification_html(
-				f"<blockquote><b>{real_time}</b>\n\n{_md_to_html(greeting_clean)}\n\n{html_footer}\n{stats_line}</blockquote>"
+				f"<blockquote><b>{real_time}</b>\n\n{_md_to_html(greeting_clean)}\n\n<i>{stats_line}</i></blockquote>",
+				reply_markup=get_nav_markup()
 			)
 			logging.info("DEBUG: Greeting Seq - Notification Delivered")
 		except Exception as e:
@@ -319,10 +311,10 @@ async def safe_reply(update: Update, text: str, reply_markup=None):
 		print(f"DEBUG: Markdown reply failed, falling back to plain: {e}")
 		await update.message.reply_text(text, reply_markup=reply_markup)
 
-async def safe_edit(message, text: str, parse_mode="Markdown"):
+async def safe_edit(message, text: str, parse_mode="Markdown", reply_markup=None):
 	"""Tries to edit a message with Markdown, falls back to plain text on error."""
 	try:
-		await message.edit_text(text, parse_mode=parse_mode)
+		await message.edit_text(text, parse_mode=parse_mode, reply_markup=reply_markup)
 	except Exception as e:
 		print(f"DEBUG: Markdown edit failed, falling back to plain: {e}")
 		try:
@@ -361,7 +353,7 @@ async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
 			f"🤖 *Intelligence (Ollama):* {l_text}\n"
 			f"📍 *Time:* {datetime.now(pytz.timezone(settings.USER_TIMEZONE)).strftime('%H:%M:%S')}"
 		)
-		await safe_reply(update, status_report)
+		await safe_reply(update, status_report, reply_markup=get_nav_markup())
 	except Exception as e:
 		print(f"ERROR: cmd_status failed: {e}")
 		await update.message.reply_text("🛰️ System Status check failed. Check local backend logs.")
@@ -376,7 +368,7 @@ async def cmd_tree(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	try:
 		from app.services.planka import get_project_tree
 		tree = await get_project_tree(as_html=False)
-		await safe_reply(update, tree)
+		await safe_reply(update, tree, reply_markup=get_nav_markup())
 	except Exception as e:
 		await update.message.reply_text(f"❌ Failed to fetch mission tree: {e}")
 
@@ -606,7 +598,7 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		"/purge \u2014 \u26a0\ufe0f Permanently delete all semantic memories \(irreversible \- requires confirmation\)\n\n"
 		"_Tap any command to execute it directly\._"
 	)
-	await safe_reply(update, help_text)
+	await safe_reply(update, help_text, reply_markup=get_nav_markup())
 
 @owner_only
 async def cmd_add_topic(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -722,7 +714,7 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		display_reply = f"*{format_time()}*\n\n{clean_reply}"
 
 		footer = await _get_stats_footer()
-		await safe_edit(thinking_msg, f"{display_reply}{footer}")
+		await safe_edit(thinking_msg, f"{display_reply}{footer}", reply_markup=get_nav_markup())
 	except Exception as e:
 		print(f"ERROR: handle_freetext failed: {e}")
 		# If bit failed to edit, try fresh message
@@ -773,7 +765,7 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		chat_histories[chat_id].append({"role": "z", "content": response})
 		
 		footer = await _get_stats_footer()
-		await safe_reply(update, f"{clean_reply}{footer}")
+		await safe_reply(update, f"{clean_reply}{footer}", reply_markup=get_nav_markup())
 	except Exception as e:
 		print(f"ERROR: handle_voice failed: {e}")
 		await update.message.reply_text("⚠️ Voice processing failed. There might be an issue with the transcription or intelligence layer.")

@@ -5,7 +5,7 @@ from app.services.gmail import fetch_unread_emails
 from app.services.calendar import fetch_calendar_events
 from app.services.weather import get_weather_forecast
 from app.services.tts import generate_speech
-from app.api.telegram import send_notification, send_voice_message
+from app.api.telegram import send_notification, send_voice_message, get_nav_markup
 from app.models.db import AsyncSessionLocal, Briefing, Project, Person
 from sqlalchemy import select
 import asyncio
@@ -177,7 +177,10 @@ async def morning_briefing():
 	# 5. Send to Telegram (Proactive delivery)
 	from app.config import settings
 	separator = "---"
-	await send_notification(f"{separator}\n☀️ *Good Morning!*\n\n{content}\n\n🔗 [Dashboard]({settings.BASE_URL}/home)")
+	await send_notification(
+		f"{separator}\n☀️ *Good Morning!*\n\n{content}",
+		reply_markup=get_nav_markup()
+	)
 	if audio_briefing:
 		await send_voice_message(audio_briefing, caption="🎙️ Audio Briefing")
 
