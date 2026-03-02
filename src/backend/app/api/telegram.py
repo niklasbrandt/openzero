@@ -166,12 +166,13 @@ async def start_telegram_bot():
 			print(f"DEBUG: Greeting Seq - Context Ready ({len(event_summary_parts)} items)")
 			
 			greeting_prompt = (
-				f"SYSTEM UPDATE. Stats: {stats_text}.\n"
-				f"{release_info}\n"
-				f"CALENDAR: {event_summary}\n\n"
-				"TASK: Welcome the user back as their personal AI agent 'Z'. "
-				"Briefly note the 'SYSTEM UPDATE' and 'CALENDAR' status. "
-				"Be human, concise, and direct. No filler."
+				f"SYSTEM_DATA:\n"
+				f"Status: {stats_text}\n"
+				f"Changes: {release_info or 'No recent changes'}\n"
+				f"Events: {event_summary}\n\n"
+				"TASK: As Z (the agent), give a short, human greeting. "
+				"If there are 'Changes', summarize them as 'Recent Logic Updates'. "
+				"If there are 'Events', mention them. Keep it direct and professional. No robotic filler."
 			)
 			
 			system_override = "You are Z. Return ONLY the greeting text. Keep it sharp and professional. Fast mode active."
@@ -184,8 +185,8 @@ async def start_telegram_bot():
 			print("DEBUG: Greeting Seq - OK")
 			
 			footer = await _get_stats_footer()
-			separator = "───\n"
-			await send_notification(f"{separator}⚡ {greeting}{footer}")
+			separator = "---"
+			await send_notification(f"{separator}\n⚡ {greeting}{footer}")
 			print("DEBUG: Greeting Seq - Notification Delivered")
 		except Exception as e:
 			print(f"FAILED to send Telegram startup greeting: {e}")
