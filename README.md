@@ -130,7 +130,7 @@ Z follows a strict **"Core Knowledge, not Noise"** logic for long-term intellige
 Environment variables and raw Docker volumes require archiving to protect data integrity.
 
 * **Archiving:** Stop services via `docker compose stop` before creating tarballs of `.env` and named volumes (pgdata, qdrant_storage, planka_data).
-* **Moving Data:** To migrate, clone the repo on the new host, transfer the `.env` files, and extract volume archives into the new Docker environment.
+* **Moving Data:** To migrate, clone the repo on the new host, transfer the `.env` and `.env.planka` files, and extract volume archives into the new Docker environment.
 * **Integrity:** Local, encrypted backups with a 30 day retention policy are recommended.
 
 ## Setting it up

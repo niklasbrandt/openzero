@@ -310,8 +310,8 @@ async def dashboard_chat(req: ChatRequest, db: AsyncSession = Depends(get_db)):
 		try:
 			import asyncio
 			from app.services.memory import store_memory
-			# Store ONLY user message to reduce noise from AI responses/formatting
-			asyncio.create_task(store_memory(f"User Perspective ({datetime.datetime.now().strftime('%Y-%m-%d')}): {msg}", metadata={"type": "user_input"}))
+			# Store RAW message - memory.py will clean it and handle distillation
+			asyncio.create_task(store_memory(msg, metadata={"type": "user_input", "source": "dashboard", "date": datetime.datetime.now().strftime('%Y-%m-%d')}))
 		except Exception as me:
 			print(f"DEBUG: Auto-memory failed: {me}")
 
