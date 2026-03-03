@@ -91,6 +91,17 @@ Rules:
 # Global client for connection pooling (used by cloud providers)
 _http_client = httpx.AsyncClient(timeout=130.0)
 
+# Language map — module-level constant to avoid per-call allocation.
+# Zero-cost for English (default): no directive is injected.
+LANGUAGE_NAMES = {
+	"en": "English", "zh": "Mandarin Chinese", "hi": "Hindi",
+	"es": "Spanish", "fr": "French", "ar": "Arabic",
+	"pt": "Portuguese", "ru": "Russian", "ja": "Japanese", "de": "German",
+	"it": "Italian", "nl": "Dutch", "pl": "Polish", "sv": "Swedish",
+	"el": "Greek", "ro": "Romanian", "tr": "Turkish", "cs": "Czech",
+	"da": "Danish", "no": "Norwegian",
+}
+
 def build_system_prompt(user_name: str, user_profile: dict) -> tuple[str, str, str]:
 	from app.services.timezone import format_time, format_date_full, get_now
 	
@@ -109,10 +120,17 @@ def build_system_prompt(user_name: str, user_profile: dict) -> tuple[str, str, s
 		if fields:
 			user_id_context = "\nSUBJECT ZERO PROFILE (HIGH CONTEXT):\n" + "\n".join(fields)
 
+	# Language preference — zero-cost path: skipped entirely for English (default)
+	user_lang = user_profile.get("language", "en") or "en"
+	lang_name = LANGUAGE_NAMES.get(user_lang, "English")
+	lang_directive = ""
+	if user_lang != "en":
+		lang_directive = f"\n\nLANGUAGE DIRECTIVE: You MUST respond in {lang_name}. All responses, briefings, and notifications must be in {lang_name}. Think in {lang_name}. Only use English for technical terms that have no natural translation."
+
 	formatted_system_prompt = SYSTEM_PROMPT_CHAT.format(
 		current_time=simplified_time,
 		user_name=user_name
-	) + user_id_context
+	) + user_id_context + lang_directive
 	
 	context_header = f"Current Local Time (Raw): {format_date_full(now)}\n"
 	context_header += f"Current Formatted Time (Use This): {simplified_time}\n\n"
@@ -364,7 +382,8 @@ async def chat_with_context(
 							"residency": ident.residency,
 							"work_times": ident.work_times,
 							"briefing_time": ident.briefing_time,
-							"context": ident.context
+							"context": ident.context,
+							"language": getattr(ident, "language", "en") or "en",
 						}
 
 					# Skip full circle context for trivial/short messages
@@ -598,7 +617,8 @@ async def chat_stream_with_context(
 							"residency": ident.residency,
 							"work_times": ident.work_times,
 							"briefing_time": ident.briefing_time,
-							"context": ident.context
+							"context": ident.context,
+							"language": getattr(ident, "language", "en") or "en",
 						}
 					if not include_people or len(user_message.strip()) < 20:
 						return "", identity_name, user_profile

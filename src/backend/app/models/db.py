@@ -79,6 +79,7 @@ class Person(Base):
     country = Column(String) # e.g. "Germany"
     work_times = Column(String)
     briefing_time = Column(String) # e.g. "08:00"
+    language = Column(String, default="en") # ISO 639-1 code: en, zh, hi, es, fr, ar, pt, ru, ja, de
     last_interaction = Column(DateTime)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
