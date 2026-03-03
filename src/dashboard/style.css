@@ -67,8 +67,6 @@ h3 {
 
 .dashboard-card {
   background: var(--bg-surface);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--border-color);
   border-radius: 0;
   padding: 1.5rem;
@@ -76,7 +74,6 @@ h3 {
     0 8px 32px rgba(0, 0, 0, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
   transition: border-color 0.4s ease, box-shadow 0.4s ease;
-  contain: layout style;
 }
 
 .dashboard-card:hover {
