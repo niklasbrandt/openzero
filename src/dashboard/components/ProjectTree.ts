@@ -9,7 +9,7 @@ export class ProjectTree extends HTMLElement {
 		this.fetchData();
 		this.setupToggle();
 		window.addEventListener('refresh-data', (e: any) => {
-			if (e.detail.actions.includes('project') || e.detail.actions.includes('board')) {
+			if (e.detail && e.detail.actions && (e.detail.actions.includes('project') || e.detail.actions.includes('board'))) {
 				this.fetchData();
 			}
 		});
