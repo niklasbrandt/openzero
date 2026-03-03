@@ -797,9 +797,11 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
 			while _pending_messages.get(chat_id):
 				buffered = _pending_messages.pop(chat_id)
 				combined = "\n".join(buffered)
-				followup_text = f"[Follow-up messages sent while you were thinking:]\n{combined}"
-				await save_global_message("telegram", "user", followup_text)
-				await _process_freetext(update, context, chat_id, followup_text, is_followup=True)
+				# Save the raw user messages (no internal framing) for dashboard display
+				await save_global_message("telegram", "user", combined)
+				# Add context hint only for the LLM so it knows these arrived mid-thought
+				llm_text = f"[Follow-up messages sent while you were thinking:]\n{combined}"
+				await _process_freetext(update, context, chat_id, llm_text, is_followup=True)
 
 	except Exception as e:
 		print(f"ERROR: handle_freetext failed: {e}")
