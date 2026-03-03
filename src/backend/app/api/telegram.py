@@ -144,7 +144,6 @@ async def start_telegram_bot():
 
 			# Unified Context gathering
 			event_summary_parts = []
-			from app.services.timezone import get_user_timezone
 			now = datetime.now(pytz.timezone(get_user_timezone()))
 
 			print("DEBUG: Greeting Seq - Step 2: Fetching Unified Calendar")
@@ -223,7 +222,6 @@ async def start_telegram_bot():
 			# Fallback 2: both models failed — send clean static greeting
 			if _is_error(raw_greeting):
 				print("DEBUG: Greeting - Both models unavailable, using static greeting")
-				from app.services.timezone import format_time
 				time_str = format_time() + "\n"
 				
 				changes_note = f"\n\n🔄 *Recent Logic Updates:*\n{release_info.strip()}" if release_info else ""
