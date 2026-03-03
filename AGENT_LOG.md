@@ -11,3 +11,5 @@ This file tracks policy violations, behavioral corrections, and manual overrides
 - **Wrong Docker image registry**: Used `ghcr.io/ggerganov/llama.cpp:server` which does not exist. The llama.cpp project moved to `ghcr.io/ggml-org/llama.cpp:server`. Always verify Docker image availability before deployment.
 
 - **Wrong binary path in container**: Assumed `llama-server` was on PATH inside `ghcr.io/ggml-org/llama.cpp:server`. The binary is at `/app/llama-server`. Always inspect container filesystem before writing entrypoints.
+
+- **Mismatched env var names for LLM threads**: docker-compose.yml referenced `LLM_THREADS_INSTANT`, `LLM_THREADS_STANDARD`, `LLM_THREADS_DEEP` but .env defined `LLM_INSTANT_THREADS`, `LLM_STANDARD_THREADS`, `LLM_DEEP_THREADS`. The reversed naming caused all containers to silently fall back to defaults (2/2/4 threads instead of 4/4/6). Always ensure docker-compose env var references match the exact names in .env and .env.example.
