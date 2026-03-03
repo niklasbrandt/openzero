@@ -150,6 +150,20 @@ export class HardwareMonitor extends HTMLElement {
 				<span class="capability-text">${capabilityText}</span>
 			</div>
 		`;
+		this.injectTooltips();
+	}
+
+	/** Convert data-tip attributes into real DOM elements so backdrop-filter works */
+	private injectTooltips() {
+		if (!this.shadowRoot) return;
+		this.shadowRoot.querySelectorAll('.has-tip[data-tip]').forEach(el => {
+			const text = el.getAttribute('data-tip');
+			if (!text || el.querySelector('.glass-tooltip')) return;
+			const tip = document.createElement('span');
+			tip.className = 'glass-tooltip';
+			tip.textContent = text;
+			el.appendChild(tip);
+		});
 	}
 
 	render() {
@@ -185,12 +199,11 @@ export class HardwareMonitor extends HTMLElement {
 					letter-spacing: 0.1em;
 				}
 
-				/* ── Custom tooltip system ── */
+				/* ── Custom tooltip system (real DOM for backdrop-filter) ── */
 				.has-tip {
 					position: relative;
 				}
-				.has-tip::after {
-					content: attr(data-tip);
+				.glass-tooltip {
 					position: absolute;
 					bottom: calc(100% + 10px);
 					left: 0;
@@ -212,13 +225,13 @@ export class HardwareMonitor extends HTMLElement {
 					z-index: 1000;
 					box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.12), inset 0 0 0 0.5px rgba(255, 255, 255, 0.08);
 				}
-				.has-tip:hover::after,
-				.has-tip:focus-visible::after {
+				.has-tip:hover > .glass-tooltip,
+				.has-tip:focus-visible > .glass-tooltip {
 					opacity: 1;
 				}
-				/* Suppress parent tooltip when a nested child tooltip is active */
-				.has-tip:has(.has-tip:hover)::after,
-				.has-tip:has(.has-tip:focus-visible)::after {
+				/* Suppress parent tooltip when a nested child is hovered */
+				.has-tip:has(.has-tip:hover) > .glass-tooltip,
+				.has-tip:has(.has-tip:focus-visible) > .glass-tooltip {
 					opacity: 0 !important;
 				}
 
