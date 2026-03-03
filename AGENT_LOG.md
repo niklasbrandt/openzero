@@ -1,3 +1,13 @@
 # Agent Behavior & Correction Log
 
 This file tracks policy violations, behavioral corrections, and manual overrides of AI agent actions in this repository. Agents MUST read this log at the beginning of every interaction to learn from past mistakes.
+
+## Violations & Corrections
+
+- **TabError in Python files**: Agent used tabs for new code in `config.py` (per agents.md tab rule) but Python enforces consistency within a file. The file already used 4-space indentation, so mixing tabs caused `TabError: inconsistent use of tabs and spaces`. Rule: For Python files, match the existing indentation style (spaces) even though agents.md says tabs. Python's strict indentation rules override.
+
+- **Wrong HuggingFace model URLs**: Used `microsoft/phi-4-mini-instruct-gguf` which is gated (returns "Invalid username or password"). Correct ungated source: `unsloth/Phi-4-mini-instruct-GGUF`. Also used non-existent filename `Meta-Llama-3.1-8B-Instruct-Q4_0.gguf` in bartowski repo -- the correct filename is `Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf`. Always verify HuggingFace GGUF filenames exist before configuring.
+
+- **Wrong Docker image registry**: Used `ghcr.io/ggerganov/llama.cpp:server` which does not exist. The llama.cpp project moved to `ghcr.io/ggml-org/llama.cpp:server`. Always verify Docker image availability before deployment.
+
+- **Wrong binary path in container**: Assumed `llama-server` was on PATH inside `ghcr.io/ggml-org/llama.cpp:server`. The binary is at `/app/llama-server`. Always inspect container filesystem before writing entrypoints.
