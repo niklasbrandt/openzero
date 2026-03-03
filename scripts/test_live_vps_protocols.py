@@ -1,12 +1,18 @@
 import asyncio
 import httpx
+import os
 import sys
 import argparse
 import time
 
 class RegressionSuite:
-    def __init__(self, base_url, planka_url=None, planka_email=None, planka_pass=None):
+    def __init__(self, base_url, token=None, planka_url=None, planka_email=None, planka_pass=None):
         self.base_url = base_url.rstrip('/')
+        # Auth token: passed directly or read from environment
+        self.token = token or os.environ.get("DASHBOARD_TOKEN", "")
+        if not self.token:
+            print("WARNING: No DASHBOARD_TOKEN provided. Requests to protected endpoints will fail with 401/500.")
+            print("         Pass --token <value> or set DASHBOARD_TOKEN env var.\n")
         self.planka_url = planka_url.rstrip('/') if planka_url else None
         self.planka_email = planka_email
         self.planka_pass = planka_pass
@@ -16,7 +22,10 @@ class RegressionSuite:
         self.created_planka_projects = []
 
     async def _request(self, method, path, json_data=None):
-        async with httpx.AsyncClient(timeout=45.0) as client:
+        headers = {}
+        if self.token:
+            headers["Authorization"] = f"Bearer {self.token}"
+        async with httpx.AsyncClient(timeout=45.0, headers=headers) as client:
             url = f"{self.base_url}{path}"
             if method == "GET":
                 resp = await client.get(url)
@@ -169,11 +178,12 @@ class RegressionSuite:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Live VPS Regression Test Suite")
     parser.add_argument("--url", type=str, default="http://localhost:8000", help="Base URL of the openZero backend")
+    parser.add_argument("--token", type=str, default="", help="Dashboard bearer token (DASHBOARD_TOKEN). Also read from env var DASHBOARD_TOKEN.")
     parser.add_argument("--planka-url", type=str, help="Planka Base URL for cleanup")
     parser.add_argument("--planka-email", type=str, help="Planka admin email")
     parser.add_argument("--planka-pass", type=str, help="Planka admin password")
     
     args = parser.parse_args()
     
-    suite = RegressionSuite(args.url, args.planka_url, args.planka_email, args.planka_pass)
+    suite = RegressionSuite(args.url, args.token, args.planka_url, args.planka_email, args.planka_pass)
     asyncio.run(suite.run())
