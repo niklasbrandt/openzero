@@ -688,7 +688,14 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		chat_id = update.effective_chat.id
 		if chat_id not in chat_histories:
 			chat_histories[chat_id] = []
-		
+
+		# If the user replied to a previous message, prepend the quoted content for context
+		user_text = update.message.text
+		if update.message.reply_to_message:
+			quoted = update.message.reply_to_message.text or update.message.reply_to_message.caption or ""
+			if quoted:
+				user_text = f"[Replying to: \"{quoted[:500]}\"]\n\n{user_text}"
+
 		from app.services.llm import chat_with_context
 		from app.models.db import get_global_history, save_global_message
 		
@@ -699,13 +706,13 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		from app.models.db import AsyncSessionLocal
 
 		# Save user message FIRST so rapid follow-up messages see the context
-		await save_global_message("telegram", "user", update.message.text)
+		await save_global_message("telegram", "user", user_text)
 
-		# Recover Merged History (cross-channel context — last 10 messages)
+		# Recover Merged History (cross-channel context -- last 10 messages)
 		merged_history = await get_global_history(limit=10)
 
 		response = await chat_with_context(
-			update.message.text, 
+			user_text, 
 			history=merged_history,
 			include_projects=True,
 			include_people=True
