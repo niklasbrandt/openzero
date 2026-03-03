@@ -4,6 +4,8 @@ This file tracks policy violations, behavioral corrections, and manual overrides
 
 ## Violations & Corrections
 
+- **Missing database migration for new ORM columns**: Added `color_primary`, `color_secondary`, `color_tertiary` columns to the `Person` SQLAlchemy model but never ran a corresponding `ALTER TABLE` migration. The live PostgreSQL database did not have these columns, causing every query to the `people` table to crash with `UndefinedColumnError`. This broke both the UserCard widget and the Life Overview widget. Fix: ran `ALTER TABLE people ADD COLUMN IF NOT EXISTS color_primary VARCHAR; ...` directly on the VPS postgres container. Rule: whenever a new column is added to an ORM model (db.py), **always** immediately write and run a matching SQL migration (`ALTER TABLE ... ADD COLUMN IF NOT EXISTS ...`) on the live database. Never leave the DB schema behind the ORM model.
+
 - **TabError in Python files**: Agent used tabs for new code in `config.py` (per agents.md tab rule) but Python enforces consistency within a file. The file already used 4-space indentation, so mixing tabs caused `TabError: inconsistent use of tabs and spaces`. Rule: For Python files, match the existing indentation style (spaces) even though agents.md says tabs. Python's strict indentation rules override.
 
 - **Wrong HuggingFace model URLs**: Used `microsoft/phi-4-mini-instruct-gguf` which is gated (returns "Invalid username or password"). Correct ungated source: `unsloth/Phi-4-mini-instruct-GGUF`. Also used non-existent filename `Meta-Llama-3.1-8B-Instruct-Q4_0.gguf` in bartowski repo -- the correct filename is `Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf`. Always verify HuggingFace GGUF filenames exist before configuring.
