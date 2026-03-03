@@ -27,7 +27,7 @@ export class UserCard extends HTMLElement {
 		try {
 			const res = await fetch('/api/dashboard/translations');
 			if (res.ok) this.t = await res.json();
-		} catch (_) {}
+		} catch (_) { }
 	}
 
 	private tr(key: string, fallback: string): string {
@@ -104,16 +104,12 @@ export class UserCard extends HTMLElement {
 			<style>
 				:host { display: block; height: 100%; }
 				.card {
-					background: rgba(10, 15, 30, 0.4);
-					border: 1px solid rgba(20, 184, 166, 0.15);
-					padding: 1.5rem;
 					height: 100%;
 					display: flex;
 					flex-direction: column;
 					gap: 1.25rem;
 					color: #fff;
 					font-family: 'Inter', sans-serif;
-					overflow-y: auto;
 				}
 
 				.header { display: flex; justify-content: space-between; align-items: center; }

@@ -30,6 +30,14 @@
   --bg-surface: rgba(20, 25, 45, 0.6);
   --border-color: rgba(255, 255, 255, 0.06);
   --glass-blur: blur(24px);
+
+  /* Tooltip Tokens */
+  --tooltip-bg: rgba(10, 15, 25, 0.7);
+  --tooltip-blur: 24px;
+  --tooltip-saturate: 180%;
+  --tooltip-border: rgba(255, 255, 255, 0.12);
+  --tooltip-text: #fff;
+  --tooltip-shadow: 0 12px 48px rgba(0, 0, 0, 0.6);
 }
 
 body {
@@ -245,28 +253,28 @@ pre {
   content: attr(data-tooltip);
   position: absolute;
   top: 100%;
-  /* Position below */
   left: 50%;
   transform: translateX(-50%) translateY(4px);
-  background: rgba(10, 15, 25, 0.95);
-  backdrop-filter: blur(8px);
-  color: #e2e8f0;
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 0.75rem;
+  background: var(--tooltip-bg);
+  backdrop-filter: blur(var(--tooltip-blur)) saturate(var(--tooltip-saturate));
+  -webkit-backdrop-filter: blur(var(--tooltip-blur)) saturate(var(--tooltip-saturate));
+  color: var(--tooltip-text);
+  padding: 0.6rem 0.85rem;
+  border-radius: 0.6rem;
+  font-size: 0.72rem;
   font-weight: 500;
   white-space: pre-wrap;
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.2s ease, visibility 0.2s ease, transform 0.2s ease;
+  transition: all 0.24s cubic-bezier(0.23, 1, 0.32, 1);
   pointer-events: none;
-  border: 1px solid rgba(20, 184, 166, 0.3);
-  z-index: 100;
+  border: 1px solid var(--tooltip-border);
+  z-index: 1000;
   width: max-content;
-  max-width: 250px;
+  max-width: 260px;
   text-align: center;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
-  line-height: 1.4;
+  box-shadow: var(--tooltip-shadow);
+  line-height: 1.5;
 }
 
 [data-tooltip]:hover::before {

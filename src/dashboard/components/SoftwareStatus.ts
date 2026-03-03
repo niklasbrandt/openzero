@@ -54,12 +54,6 @@ export class SoftwareStatus extends HTMLElement {
 		// Service health grid
 		const services = [
 			{
-				name: 'Backend',
-				status: d.status === 'online' ? 'online' : 'offline',
-				detail: `Provider: ${d.llm_provider || 'local'}`,
-				tip: 'FastAPI backend serving dashboard, Telegram bot, scheduled tasks, and LLM routing.',
-			},
-			{
 				name: 'LLM Instant',
 				status: (tiers.instant || {}).status === 'ok' || (tiers.instant || {}).status === 'online' || (tiers.instant || {}).status === 'no slot available' ? 'online' : 'offline',
 				detail: d.llm_provider === 'local' ? `${(tiers.instant || {}).threads || '?'}T` : 'cloud',
@@ -76,6 +70,12 @@ export class SoftwareStatus extends HTMLElement {
 				status: (tiers.deep || {}).status === 'ok' || (tiers.deep || {}).status === 'online' || (tiers.deep || {}).status === 'no slot available' ? 'online' : 'offline',
 				detail: d.llm_provider === 'local' ? `${(tiers.deep || {}).threads || '?'}T` : 'cloud',
 				tip: 'llama-server instance for complex reasoning (qwen2.5:14b). Used for briefings, planning, analysis.',
+			},
+			{
+				name: 'Backend',
+				status: d.status === 'online' ? 'online' : 'offline',
+				detail: `Provider: ${d.llm_provider || 'local'}`,
+				tip: 'FastAPI backend serving dashboard, Telegram bot, scheduled tasks, and LLM routing.',
 			},
 			{
 				name: 'Memory',
@@ -118,20 +118,11 @@ export class SoftwareStatus extends HTMLElement {
 		const llmCfg = d.llm_config || {};
 		const tierList = llmCfg.tiers || [];
 		const tierColors: Record<string, string> = { instant: '#14B8A6', standard: '#3b82f6', deep: '#a78bfa' };
-		const tierOrder = ['instant', 'standard', 'deep'];
-		const sortedTiers = [...tierList].sort((a: any, b: any) => {
-			const ia = tierOrder.indexOf(a.tier);
-			const ib = tierOrder.indexOf(b.tier);
-			return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
-		});
-
-		const tiersHtml = sortedTiers.length > 0 ? sortedTiers.map((t: any) => `
+		const tiersHtml = tierList.length > 0 ? tierList.map((t: any) => `
 			<div class="tier-row has-tip" data-tip="${t.use_case}">
 				<span class="tier-badge" style="background: ${tierColors[t.tier] || '#666'}">${t.tier}</span>
 				<span class="tier-model">${t.model}</span>
-				<span class="tier-threads has-tip" data-tip="CPU Threads: Parallel processing streams dedicated to this LLM tier. Higher T means faster inference.">
-					${t.threads}T
-				</span>
+				<span class="tier-threads">${t.threads}T</span>
 			</div>
 		`).join('') : '<div class="empty">No tiers configured.</div>';
 
@@ -201,26 +192,29 @@ export class SoftwareStatus extends HTMLElement {
 					position: absolute;
 					bottom: calc(100% + 10px);
 					left: 0;
-					background: rgba(255, 255, 255, 0.06);
-					backdrop-filter: blur(32px) saturate(1.6) brightness(1.1);
-					-webkit-backdrop-filter: blur(32px) saturate(1.6) brightness(1.1);
-					color: rgba(255, 255, 255, 0.92);
-					font-size: 0.68rem;
+					background: var(--tooltip-bg, rgba(255, 255, 255, 0.06));
+					backdrop-filter: blur(var(--tooltip-blur, 32px)) saturate(var(--tooltip-saturate, 1.6)) brightness(1.1);
+					-webkit-backdrop-filter: blur(var(--tooltip-blur, 32px)) saturate(var(--tooltip-saturate, 1.6)) brightness(1.1);
+					color: var(--tooltip-text, rgba(255, 255, 255, 0.92));
+					font-size: 0.72rem;
 					line-height: 1.5;
-					padding: 0.55rem 0.75rem;
-					border-radius: 0.5rem;
-					border: 1px solid rgba(255, 255, 255, 0.18);
+					padding: 0.6rem 0.85rem;
+					border-radius: 0.6rem;
+					border: 1px solid var(--tooltip-border, rgba(255, 255, 255, 0.18));
 					white-space: normal;
 					width: max-content;
 					max-width: 280px;
 					pointer-events: none;
 					opacity: 0;
-					transition: opacity 0.18s ease;
+					transition: all 0.24s cubic-bezier(0.23, 1, 0.32, 1);
 					z-index: 1000;
-					box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.12), inset 0 0 0 0.5px rgba(255, 255, 255, 0.08);
+					box-shadow: var(--tooltip-shadow, 0 8px 32px rgba(0, 0, 0, 0.35));
 				}
 				.has-tip:hover > .glass-tooltip,
-				.has-tip:focus-visible > .glass-tooltip { opacity: 1; }
+				.has-tip:focus-visible > .glass-tooltip { 
+					opacity: 1; 
+					transform: translateY(-4px);
+				}
 				.has-tip:has(.has-tip:hover) > .glass-tooltip,
 				.has-tip:has(.has-tip:focus-visible) > .glass-tooltip { opacity: 0 !important; }
 
