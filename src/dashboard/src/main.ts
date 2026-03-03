@@ -49,6 +49,41 @@ async function plankaAutoLogin() {
 
 plankaAutoLogin();
 
+// ── Sidebar Scroll Spy ──
+function initScrollSpy() {
+	const navLinks = document.querySelectorAll<HTMLAnchorElement>('.sidebar-nav a[data-section]');
+	if (!navLinks.length) return;
+
+	const sectionIds = Array.from(navLinks).map(a => a.dataset.section!);
+	const sections = sectionIds.map(id => document.getElementById(id)).filter(Boolean) as HTMLElement[];
+
+	const observer = new IntersectionObserver((entries) => {
+		entries.forEach(entry => {
+			const link = document.querySelector(`.sidebar-nav a[data-section="${entry.target.id}"]`);
+			if (entry.isIntersecting) {
+				navLinks.forEach(a => a.classList.remove('active'));
+				link?.classList.add('active');
+			}
+		});
+	}, {
+		rootMargin: '-20% 0px -60% 0px',
+		threshold: 0
+	});
+
+	sections.forEach(section => observer.observe(section));
+
+	// Smooth scroll on click
+	navLinks.forEach(link => {
+		link.addEventListener('click', (e) => {
+			e.preventDefault();
+			const id = link.dataset.section!;
+			document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+		});
+	});
+}
+
+initScrollSpy();
+
 // Check for deep-link overlays
 const urlParams = new URLSearchParams(window.location.search);
 if (urlParams.get('open') === 'calendar') {
