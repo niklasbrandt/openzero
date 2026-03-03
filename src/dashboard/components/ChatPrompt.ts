@@ -329,8 +329,10 @@ export class ChatPrompt extends HTMLElement {
 				display: flex;
 				flex-direction: column;
 				gap: 0.75rem;
-				padding: 0.25rem 0.25rem 1rem 0.25rem;
+				padding: 2rem 0.25rem 1rem 0.25rem;
 				scroll-behavior: smooth;
+				mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 100%);
+				-webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 100%);
 			}
 
 			#messages::-webkit-scrollbar { width: 4px; }
