@@ -90,7 +90,7 @@ export class ZPersonality extends HTMLElement {
 				h2 { margin: 0; font-size: 1.5rem; display: flex; align-items: center; gap: 0.5rem; color: #fff; font-weight: bold; letter-spacing: 0.02em; }
 				.icon {
 					width: 28px; height: 28px;
-					background: linear-gradient(135deg, #14B8A6 0%, #0066FF 100%);
+					background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-secondary) 100%);
 					border-radius: 0.4rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
 					font-weight: 800; font-size: 0.8rem;
 				}
@@ -98,7 +98,7 @@ export class ZPersonality extends HTMLElement {
 
 				.edit-btn {
 					background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
-					color: #14B8A6; padding: 4px 10px; font-size: 0.7rem; cursor: pointer;
+					color: var(--accent-color); padding: 4px 10px; font-size: 0.7rem; cursor: pointer;
 					text-transform: uppercase; letter-spacing: 0.05em; border-radius: 4px;
 				}
 				.edit-btn:hover { background: rgba(255,255,255,0.1); }
@@ -186,6 +186,17 @@ export class ZPersonality extends HTMLElement {
 										</div>
 									` : q.type === 'textarea' ? `
 										<textarea id="input-${q.id}" placeholder="${q.placeholder}">${per[q.id] || ''}</textarea>
+									` : q.type === 'select' ? `
+										<select id="input-${q.id}" class="theme-selector">
+											${q.options.map((opt: any) => `
+												<option value="${opt.value}" ${per[q.id] === opt.value ? 'selected' : ''} data-colors='${JSON.stringify(opt.colors)}'>${opt.label}</option>
+											`).join('')}
+										</select>
+									` : q.type === 'color' ? `
+										<div style="display: flex; align-items: center; gap: 1rem;">
+											<input type="color" id="input-${q.id}" value="${per[q.id] || '#ffffff'}" style="width: 40px; height: 32px; padding: 2px; border: none; cursor: pointer; background: transparent;">
+											<span style="font-size: 0.75rem; color: rgba(255,255,255,0.4);">${per[q.id] || ''}</span>
+										</div>
 									` : `
 										<input type="text" id="input-${q.id}" placeholder="${q.placeholder}" value="${per[q.id] || ''}">
 									`}
@@ -251,6 +262,22 @@ export class ZPersonality extends HTMLElement {
 		this.shadowRoot.querySelector('#edit-trigger')?.addEventListener('click', () => { this.isEditing = true; this.render(); });
 		this.shadowRoot.querySelector('#cancel-trigger')?.addEventListener('click', () => { this.isEditing = false; this.render(); });
 		this.shadowRoot.querySelector('#save-trigger')?.addEventListener('click', () => this.savePersonality());
+
+		// Auto-apply theme colors when selecting a preset
+		this.shadowRoot.querySelector('.theme-selector')?.addEventListener('change', (e: any) => {
+			const select = e.target;
+			const option = select.options[select.selectedIndex];
+			const colors = JSON.parse(option.dataset.colors || '[]');
+			if (colors.length >= 3) {
+				const cp = this.shadowRoot!.querySelector('#input-color_primary') as HTMLInputElement;
+				const cs = this.shadowRoot!.querySelector('#input-color_secondary') as HTMLInputElement;
+				const ct = this.shadowRoot!.querySelector('#input-color_tertiary') as HTMLInputElement;
+				if (cp) cp.value = colors[0];
+				if (cs) cs.value = colors[1];
+				if (ct) ct.value = colors[2];
+			}
+		});
+
 		this.shadowRoot.querySelector('#tab-per')?.addEventListener('click', () => {
 			this.activeTab = 'personality';
 			this.isEditing = false;

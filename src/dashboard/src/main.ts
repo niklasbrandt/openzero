@@ -49,6 +49,34 @@ async function plankaAutoLogin() {
 
 plankaAutoLogin();
 
+// ── Theme Management ──
+function hexToRgb(hex: string) {
+	const h = hex.replace('#', '');
+	const r = parseInt(h.slice(0, 2), 16);
+	const g = parseInt(h.slice(2, 4), 16);
+	const b = parseInt(h.slice(4, 6), 16);
+	return `${r}, ${g}, ${b}`;
+}
+
+async function initTheme() {
+	try {
+		const res = await fetch('/api/dashboard/personality');
+		if (res.ok) {
+			const data = await res.json();
+			const root = document.documentElement;
+			if (data.color_primary) {
+				root.style.setProperty('--accent-color', data.color_primary);
+				root.style.setProperty('--accent-color-rgb', hexToRgb(data.color_primary));
+			}
+			if (data.color_secondary) root.style.setProperty('--accent-secondary', data.color_secondary);
+			if (data.color_tertiary) root.style.setProperty('--accent-tertiary', data.color_tertiary);
+		}
+	} catch (e) {
+		console.warn('Theme initialization failed:', e);
+	}
+}
+initTheme();
+
 // ── Sidebar Scroll Spy ──
 function initScrollSpy() {
 	const navLinks = document.querySelectorAll<HTMLAnchorElement>('.sidebar-nav a[data-section]');
@@ -72,17 +100,28 @@ function initScrollSpy() {
 
 	sections.forEach(section => observer.observe(section));
 
-	// Smooth scroll on click
+	// Smooth scroll on click + Highlight
 	navLinks.forEach(link => {
 		link.addEventListener('click', (e) => {
 			e.preventDefault();
 			const id = link.dataset.section!;
-			document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+			const el = document.getElementById(id);
+			if (el) {
+				el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+				// Add highlight effect
+				el.classList.add('widget-highlight');
+				setTimeout(() => el.classList.remove('widget-highlight'), 1500);
+			}
 		});
 	});
 }
 
 initScrollSpy();
+
+// ── Header calendar button ──
+document.getElementById('open-calendar-btn')?.addEventListener('click', () => {
+	window.dispatchEvent(new CustomEvent('open-calendar'));
+});
 
 // Check for deep-link overlays
 const urlParams = new URLSearchParams(window.location.search);
