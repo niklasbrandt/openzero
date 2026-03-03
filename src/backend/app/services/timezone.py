@@ -3,20 +3,50 @@ import pytz
 import logging
 from app.services.calendar import fetch_calendar_events
 from app.services.llm import chat
-from app.models.db import AsyncSessionLocal, Preference
+from app.models.db import AsyncSessionLocal, Preference, Person
 from sqlalchemy import select
 from app.config import settings
 
 logger = logging.getLogger(__name__)
+
+# Module-level cache for user settings from DB (refreshed at startup + on identity update)
+_cached_timezone: str | None = None
+_cached_location: str | None = None
+
+async def refresh_user_settings():
+	"""Load timezone and location from the identity record in the DB into cache.
+	Falls back to .env values if no identity record exists."""
+	global _cached_timezone, _cached_location
+	try:
+		async with AsyncSessionLocal() as session:
+			res = await session.execute(select(Person).where(Person.circle_type == "identity"))
+			identity = res.scalar_one_or_none()
+			if identity:
+				if identity.timezone and identity.timezone.strip():
+					_cached_timezone = identity.timezone.strip()
+				if identity.town and identity.town.strip():
+					cc = (identity.country or "").strip()
+					_cached_location = f"{identity.town.strip()}, {cc}" if cc else identity.town.strip()
+			logger.info(f"User settings refreshed: tz={_cached_timezone or settings.USER_TIMEZONE}, loc={_cached_location or settings.USER_LOCATION}")
+	except Exception as e:
+		logger.error(f"Failed to refresh user settings from DB: {e}")
+
+def get_user_timezone() -> str:
+	"""Returns the user's timezone: DB identity > .env fallback."""
+	return _cached_timezone or settings.USER_TIMEZONE
+
+def get_user_location() -> str:
+	"""Returns the user's location (City, CC): DB identity > .env fallback."""
+	return _cached_location or settings.USER_LOCATION
 
 async def update_detected_timezone():
 	"""
 	Parses upcoming calendar events to deduce the user's current/future timezone.
 	Updates the 'detected_timezone' preference in the database.
 	"""
-	if settings.USER_TIMEZONE.lower() != "auto":
+	if get_user_timezone().lower() != "auto":
 		return
-		
+
 	try:
 		# 1. Fetch upcoming events (next 14 days)
 		events = await fetch_calendar_events(max_results=20, days_ahead=14)
@@ -67,9 +97,10 @@ async def update_detected_timezone():
 
 async def get_current_timezone() -> str:
 	"""Returns the configured or detected timezone."""
-	if settings.USER_TIMEZONE.lower() != "auto":
-		return settings.USER_TIMEZONE
-		
+	user_tz = get_user_timezone()
+	if user_tz.lower() != "auto":
+		return user_tz
+
 	async with AsyncSessionLocal() as session:
 		res = await session.execute(select(Preference).where(Preference.key == "detected_timezone"))
 		pref = res.scalar_one_or_none()
@@ -77,7 +108,7 @@ async def get_current_timezone() -> str:
 
 def get_now() -> datetime.datetime:
 	"""Single source of truth for current time in user's timezone."""
-	tz = pytz.timezone(settings.USER_TIMEZONE)
+	tz = pytz.timezone(get_user_timezone())
 	return datetime.datetime.now(tz)
 
 def format_time(dt: datetime.datetime = None) -> str:
