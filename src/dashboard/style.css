@@ -86,9 +86,15 @@ body {
   display: flex;
   min-width: 320px;
   min-height: 100vh;
-  background-color: #202c45;
+  background-color: #060810;
+  /* Dynamic background influence */
+  background-image:
+    radial-gradient(circle at 0% 0%, rgba(var(--accent-color-rgb), 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 100% 100%, rgba(var(--accent-secondary-rgb), 0.1) 0%, transparent 50%);
+  background-attachment: fixed;
   overflow-x: hidden;
   flex-wrap: wrap;
+  transition: background-color 0.8s ease;
 }
 
 /* ── Sidebar Navigation ── */
@@ -99,70 +105,72 @@ body {
   transform: translateY(-50%);
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.25rem;
-  padding: 0.75rem 0.4rem;
+  padding: 0.75rem 0.6rem;
   z-index: 100;
   background: rgba(10, 14, 30, 0.6);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-right: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 0 12px 12px 0;
+  width: 36px;
+  overflow: hidden;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s ease;
+}
+
+.sidebar-nav:hover {
+  width: 200px;
+  background: rgba(10, 14, 30, 0.95);
+  box-shadow: 10px 0 50px rgba(0, 0, 0, 0.5);
 }
 
 .sidebar-nav a {
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
+  gap: 12px;
+  width: 100%;
+  height: 40px;
+  padding: 0 10px;
   border-radius: 8px;
-  color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.35);
   text-decoration: none;
-  transition: all 0.25s ease;
-  position: relative;
+  transition: all 0.2s ease;
+  white-space: nowrap;
 }
 
-.sidebar-nav a::after {
-  content: attr(aria-label);
-  position: absolute;
-  left: calc(100% + 10px);
-  top: 50%;
-  transform: translateY(-50%);
-  background: rgba(8, 12, 28, 0.96);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  padding: 4px 10px;
-  font-size: 0.72rem;
-  white-space: nowrap;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.15s ease;
-  color: rgba(255, 255, 255, 0.85);
+.sidebar-nav a svg {
+  flex-shrink: 0;
+}
+
+.sidebar-nav a span {
+  font-size: 0.8rem;
   font-weight: 500;
-  letter-spacing: 0.02em;
-  z-index: 200;
+  opacity: 0;
+  transform: translateX(-10px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.sidebar-nav:hover a span {
+  opacity: 1;
+  transform: translateX(0);
 }
 
 .sidebar-nav a:hover {
-  color: rgba(255, 255, 255, 0.7);
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.sidebar-nav a:hover::after {
-  opacity: 1;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .sidebar-nav a.active {
-  color: #14B8A6;
-  background: rgba(20, 184, 166, 0.1);
+  color: var(--accent-color);
+  background: rgba(var(--accent-color-rgb), 0.1);
 }
 
 .sidebar-nav .nav-divider {
-  width: 20px;
+  width: 100%;
   height: 1px;
   background: rgba(255, 255, 255, 0.08);
-  margin: 0.25rem 0;
+  margin: 0.5rem 0;
 }
 
 @media (max-width: 1400px) {
@@ -173,11 +181,12 @@ body {
 
 #app {
   width: 100%;
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 2rem 2rem 6rem 2rem;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, 1fr);
+  grid-auto-rows: min-content;
   grid-gap: 2rem;
 }
 
@@ -205,12 +214,13 @@ h3 {
     0 8px 32px rgba(0, 0, 0, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
   transition: border-color 0.4s ease, box-shadow 0.4s ease;
+  height: fit-content;
 }
 
 .dashboard-card:hover {
-  border-color: rgba(20, 184, 166, 0.25);
+  border-color: rgba(var(--accent-color-rgb), 0.3);
   box-shadow:
-    0 12px 48px rgba(20, 184, 166, 0.08),
+    0 12px 48px rgba(var(--accent-color-rgb), 0.08),
     0 8px 32px rgba(0, 0, 0, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
@@ -220,7 +230,7 @@ h3 {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: 2rem;
   flex-wrap: wrap;
 }
 
@@ -273,7 +283,7 @@ h3 {
 }
 
 .dashboard-header h1 .gradient-text {
-  background: linear-gradient(135deg, #14B8A6 0%, #0066FF 100%);
+  background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-secondary) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -282,21 +292,21 @@ h3 {
 
 button {
   border-radius: 0.6rem;
-  border: 1px solid rgba(20, 184, 166, 0.2);
+  border: 1px solid rgba(var(--accent-color-rgb), 0.2);
   padding: 0.4rem 1rem;
   font-size: 0.8rem;
   font-weight: 600;
   font-family: inherit;
-  background: rgba(20, 184, 166, 0.12);
-  color: #14B8A6;
+  background: rgba(var(--accent-color-rgb), 0.12);
+  color: var(--accent-color);
   cursor: pointer;
   transition: all 0.25s ease;
   letter-spacing: 0.02em;
 }
 
 button:hover {
-  background: rgba(20, 184, 166, 0.22);
-  border-color: rgba(20, 184, 166, 0.4);
+  background: rgba(var(--accent-color-rgb), 0.22);
+  border-color: var(--accent-color);
 }
 
 input,
