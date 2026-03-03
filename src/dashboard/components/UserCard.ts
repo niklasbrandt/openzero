@@ -74,6 +74,9 @@ export class UserCard extends HTMLElement {
 			briefing_time: (shadow.querySelector('#brief-input') as HTMLInputElement).value,
 			context: (shadow.querySelector('#context-input') as HTMLTextAreaElement).value,
 			language: (shadow.querySelector('#language-input') as HTMLSelectElement).value,
+			color_primary: (shadow.querySelector('#color-primary-input') as HTMLInputElement).value,
+			color_secondary: (shadow.querySelector('#color-secondary-input') as HTMLInputElement).value,
+			color_tertiary: (shadow.querySelector('#color-tertiary-input') as HTMLInputElement).value,
 			circle_type: 'identity',
 			relationship: 'Self'
 		};
@@ -262,6 +265,44 @@ export class UserCard extends HTMLElement {
 				? `<label class="label" for="work-input">${this.tr('work_times', 'Typical Work Times')}</label><input id="work-input" type="text" placeholder="e.g. 09:00 - 18:00" value="${me.work_times || ''}">`
 				: `<div class="label" aria-hidden="true">${this.tr('work_times', 'Typical Work Times')}</div><div class="value">${me.work_times || this.tr('not_set', 'Not set')}</div>`}
 					</div>
+					
+					<div class="field" style="grid-column: span 2; margin-top: 0.5rem;">
+						<div class="label">${this.tr('favorite_colors', 'Favorite Colors / Theme')}</div>
+						<div style="display: flex; gap: 0.75rem; align-items: center; margin-top: 0.5rem; flex-wrap: wrap;">
+							${this.isEditing ? `
+								<select id="theme-preset-select" aria-label="Theme Presets" style="flex: 1; min-width: 140px;">
+									<option value="">${this.tr('select_preset', 'Select Preset...')}</option>
+									<option value="default" data-colors='["#14B8A6", "#0066FF", "#6366F1"]'>Default Fusion</option>
+									<option value="brazil" data-colors='["#009739", "#FEDD00", "#012169"]'>Brazil</option>
+									<option value="jamaica" data-colors='["#009B3A", "#FEDD00", "#000000"]'>Jamaica</option>
+									<option value="mexico" data-colors='["#006341", "#C8102E", "#FFFFFF"]'>Mexico</option>
+									<option value="usa" data-colors='["#B22234", "#3C3B6E", "#FFFFFF"]'>USA</option>
+									<option value="uk" data-colors='["#00247D", "#CF142B", "#FFFFFF"]'>UK</option>
+									<option value="japan" data-colors='["#BC002D", "#F4F4F4", "#333333"]'>Japan</option>
+									<option value="france" data-colors='["#00209F", "#F64242", "#FFFFFF"]'>France</option>
+									<option value="germany" data-colors='["#FFCE00", "#DD0000", "#000000"]'>Germany</option>
+									<option value="sunrise" data-colors='["#FF8C00", "#FF4500", "#FFD700"]'>Sunrise</option>
+									<option value="forest" data-colors='["#2D5A27", "#8B4513", "#DEB887"]'>Forest</option>
+									<option value="arctic" data-colors='["#E0FFFF", "#00CED1", "#FFFFFF"]'>Arctic</option>
+									<option value="deepsea" data-colors='["#000080", "#00008B", "#4682B4"]'>Deep Sea</option>
+									<option value="darkred" data-colors='["#8B0000", "#4B0000", "#000000"]'>Dark Red</option>
+									<option value="highcontrast" data-colors='["#00FF00", "#003300", "#FFFFFF"]'>High Contrast</option>
+									<option value="grayscale" data-colors='["#333333", "#666666", "#999999"]'>Grayscale</option>
+								</select>
+								<div style="display: flex; gap: 0.5rem;">
+									<input type="color" id="color-primary-input" value="${me.color_primary || '#14B8A6'}" style="width:32px; height:32px; padding:0; border:none; background:none;">
+									<input type="color" id="color-secondary-input" value="${me.color_secondary || '#0066FF'}" style="width:32px; height:32px; padding:0; border:none; background:none;">
+									<input type="color" id="color-tertiary-input" value="${me.color_tertiary || '#6366F1'}" style="width:32px; height:32px; padding:0; border:none; background:none;">
+								</div>
+							` : `
+								<div style="display: flex; gap: 0.5rem;">
+									<div style="width:16px; height:16px; border-radius:4px; background:${me.color_primary || '#14B8A6'}" title="Primary"></div>
+									<div style="width:16px; height:16px; border-radius:4px; background:${me.color_secondary || '#0066FF'}" title="Secondary"></div>
+									<div style="width:16px; height:16px; border-radius:4px; background:${me.color_tertiary || '#6366F1'}" title="Tertiary"></div>
+								</div>
+							`}
+						</div>
+					</div>
 				</div>
 
 				<div class="goals-section">
@@ -289,6 +330,42 @@ export class UserCard extends HTMLElement {
 			this.render();
 		});
 		this.shadowRoot.querySelector('#save-trigger')?.addEventListener('click', () => this.saveIdentity());
+
+		// Global Color Application
+		const applyColors = () => {
+			const cp = (this.shadowRoot?.querySelector('#color-primary-input') as HTMLInputElement)?.value || me.color_primary || '#14B8A6';
+			const cs = (this.shadowRoot?.querySelector('#color-secondary-input') as HTMLInputElement)?.value || me.color_secondary || '#0066FF';
+			const ct = (this.shadowRoot?.querySelector('#color-tertiary-input') as HTMLInputElement)?.value || me.color_tertiary || '#6366F1';
+
+			document.documentElement.style.setProperty('--accent-color', cp);
+			document.documentElement.style.setProperty('--accent-secondary', cs);
+			document.documentElement.style.setProperty('--accent-tertiary', ct);
+
+			// Compute RGB for some glass effects
+			const r = parseInt(cp.slice(1, 3), 16), g = parseInt(cp.slice(3, 5), 16), b = parseInt(cp.slice(5, 7), 16);
+			document.documentElement.style.setProperty('--accent-color-rgb', `${r}, ${g}, ${b}`);
+		};
+
+		if (this.isEditing) {
+			const preset = this.shadowRoot?.querySelector('#theme-preset-select');
+			preset?.addEventListener('change', (e: any) => {
+				const opt = e.target.options[e.target.selectedIndex];
+				const colors = JSON.parse(opt.dataset.colors || '[]');
+				if (colors.length >= 3) {
+					(this.shadowRoot?.querySelector('#color-primary-input') as HTMLInputElement).value = colors[0];
+					(this.shadowRoot?.querySelector('#color-secondary-input') as HTMLInputElement).value = colors[1];
+					(this.shadowRoot?.querySelector('#color-tertiary-input') as HTMLInputElement).value = colors[2];
+					applyColors();
+				}
+			});
+
+			['#color-primary-input', '#color-secondary-input', '#color-tertiary-input'].forEach(id => {
+				this.shadowRoot?.querySelector(id)?.addEventListener('input', applyColors);
+			});
+		}
+
+		// Apply immediately on load
+		applyColors();
 
 		// Accessibility: Submit on Enter
 		this.shadowRoot.querySelectorAll('input, textarea').forEach(el => {
