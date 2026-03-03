@@ -102,7 +102,7 @@ async def lifespan(app: FastAPI):
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse, FileResponse
-from app.api.dashboard import router as dashboard_router
+from app.api.dashboard import router as dashboard_router, auth_router
 from app.api.health import router as health_router
 from app.config import settings
 
@@ -117,6 +117,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth_router)
 app.include_router(dashboard_router)
 app.include_router(health_router)
 
