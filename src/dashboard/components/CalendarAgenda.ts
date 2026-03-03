@@ -1,15 +1,27 @@
 export class CalendarAgenda extends HTMLElement {
 	private events: any[] = [];
 	private filterPerson: string | null = null;
+	private t: Record<string, string> = {};
 
 	constructor() {
 		super();
 		this.attachShadow({ mode: 'open' });
 	}
 
+	private async loadTranslations() {
+		try {
+			const res = await fetch('/api/dashboard/translations');
+			if (res.ok) this.t = await res.json();
+		} catch (_) { }
+	}
+
+	private tr(key: string, fallback: string): string {
+		return this.t[key] || fallback;
+	}
+
 	connectedCallback() {
 		this.render();
-		this.fetchEvents();
+		this.loadTranslations().then(() => this.fetchEvents());
 		window.addEventListener('refresh-data', (e: any) => {
 			if (e.detail && e.detail.actions && e.detail.actions.includes('calendar')) {
 				this.fetchEvents();
@@ -170,7 +182,9 @@ export class CalendarAgenda extends HTMLElement {
 		if (this.shadowRoot) {
 			this.shadowRoot.innerHTML = `
 				<style>
-					h2 { font-size: 1.5rem; font-weight: bold; margin: 0; color: #fff; letter-spacing: 0.02em; }
+					h2 { font-size: 1.1rem; font-weight: bold; margin: 0; color: #fff; display: flex; align-items: center; gap: 0.6rem; }
+					.icon { display: flex; align-items: center; justify-content: center; opacity: 0.6; }
+					.subtitle { font-weight: 400; font-size: 0.75rem; color: rgba(255, 255, 255, 0.35); margin-left: auto; }
 					:host { display: block; }
 					.card { height: 100%; display: flex; flex-direction: column; }
 					.header-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
@@ -264,7 +278,18 @@ export class CalendarAgenda extends HTMLElement {
 				</style>
 				<div class="card">
 					<div class="header-container">
-						<h2>Calendar Agenda</h2>
+						<h2>
+						<span class="icon">
+							<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+								<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+								<line x1="16" y1="2" x2="16" y2="6"></line>
+								<line x1="8" y1="2" x2="8" y2="6"></line>
+								<line x1="3" y1="10" x2="21" y2="10"></line>
+							</svg>
+						</span>
+						${this.tr('calendar_agenda', 'Calendar Agenda')}
+						<span class="subtitle">${this.tr('calendar_subtitle', 'Upcoming Events')}</span>
+					</h2>
 						<a href="https://calendar.google.com" target="_blank" class="calendar-link" title="Open Google Calendar">
 							<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 								<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>

@@ -1,11 +1,24 @@
 export class MemorySearch extends HTMLElement {
+	private t: Record<string, string> = {};
+
 	constructor() {
 		super();
 		this.attachShadow({ mode: 'open' });
 	}
 
+	private async loadTranslations() {
+		try {
+			const res = await fetch('/api/dashboard/translations');
+			if (res.ok) this.t = await res.json();
+		} catch (_) { }
+	}
+
+	private tr(key: string, fallback: string): string {
+		return this.t[key] || fallback;
+	}
+
 	connectedCallback() {
-		this.render();
+		this.loadTranslations().then(() => this.render());
 	}
 
 	async search(query: string) {
@@ -34,7 +47,9 @@ export class MemorySearch extends HTMLElement {
 		if (this.shadowRoot) {
 			this.shadowRoot.innerHTML = `
 				<style>
-					h2 { font-size: 1.5rem; font-weight: bold; margin: 0 0 1rem 0; color: #fff; letter-spacing: 0.02em; }
+					h2 { font-size: 1.1rem; font-weight: bold; margin: 0 0 1rem 0; color: #fff; display: flex; align-items: center; gap: 0.6rem; }
+					.icon { display: flex; align-items: center; justify-content: center; opacity: 0.6; }
+					.subtitle { font-weight: 400; font-size: 0.75rem; color: rgba(255, 255, 255, 0.35); margin-left: auto; }
 					:host { display: block; }
 					.search-box { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
 					input {
@@ -84,10 +99,19 @@ export class MemorySearch extends HTMLElement {
 					}
 				</style>
 				<div class="card">
-					<h2>Memory Search</h2>
+					<h2>
+						<span class="icon">
+							<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+								<circle cx="11" cy="11" r="8"></circle>
+								<line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+							</svg>
+						</span>
+						${this.tr('memory_search', 'Memory Search')}
+						<span class="subtitle">${this.tr('memory_subtitle', 'Semantic Recall')}</span>
+					</h2>
 					<div class="search-box">
-						<input type="text" placeholder="Search your memories...">
-						<button id="searchBtn">Search</button>
+						<input type="text" placeholder="${this.tr('search_placeholder', 'Search your memories...')}">
+						<button id="searchBtn">${this.tr('search', 'Search')}</button>
 					</div>
 					<div id="results" aria-live="polite"></div>
 				</div>
