@@ -40,7 +40,7 @@ export class CircleManager extends HTMLElement {
 		this.circleType = this.getAttribute('type') || 'inner';
 		this.loadTranslations().then(() => { this.render(); this.fetchPeople(); });
 		window.addEventListener('refresh-data', (e: any) => {
-			if (e.detail.actions.includes('people')) {
+			if (e.detail && e.detail.actions && e.detail.actions.includes('people')) {
 				this.fetchPeople();
 			}
 		});
