@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     LLM_MODEL_INSTANT: str = "phi-4-mini"
     LLM_MODEL_STANDARD: str = "llama3.1:8b"
     LLM_MODEL_DEEP: str = "qwen2.5:14b"
-    DEEP_MODEL_TIMEOUT_S: int = 12
+    DEEP_MODEL_TIMEOUT_S: int = 45
     SMART_MODEL_INTERACTIVE: bool = True
 
     # Whisper
