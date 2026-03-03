@@ -146,11 +146,11 @@ def get_birthday_proximity(birthday_str: str) -> str | None:
 				next_bday = datetime.date(today.year + 1, month, day)
 			days_until = (next_bday - today).days
 			if days_until == 0:
-				return "TODAY"
+				return "today"
 			elif days_until == 1:
-				return "TOMORROW"
+				return "tomorrow"
 			elif days_until <= 30:
-				return f"IN {days_until} DAYS"
+				return f"in {days_until} days"
 	except Exception:
 		pass
 	return None
