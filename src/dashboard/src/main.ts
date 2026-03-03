@@ -41,7 +41,19 @@ const AUTH_TOKEN_KEY = 'z_auth_token';
 })();
 
 function getAuthToken(): string {
-	return localStorage.getItem(AUTH_TOKEN_KEY) || '';
+	// localStorage takes priority
+	const localToken = localStorage.getItem(AUTH_TOKEN_KEY);
+	if (localToken) return localToken;
+	// Fall back to cookie set by /api/auth redirect
+	// (iOS SFSafariViewController and Android Chrome Custom Tab share cookies
+	// with the system browser, but NOT localStorage — cookie is the reliable path)
+	const match = document.cookie.match(/(?:^|;\s*)z_auth_token=([^;]+)/);
+	if (match) {
+		const cookieToken = decodeURIComponent(match[1]);
+		localStorage.setItem(AUTH_TOKEN_KEY, cookieToken); // migrate to localStorage
+		return cookieToken;
+	}
+	return '';
 }
 
 function promptForToken(): string {
