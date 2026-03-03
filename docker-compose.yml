@@ -19,7 +19,7 @@ services:
       retries: 5
 
   qdrant:
-    image: qdrant/qdrant:latest
+    image: qdrant/qdrant:v1.13.0
     restart: always
     # No external port binding — accessed only by backend
     environment:
@@ -106,19 +106,19 @@ services:
       - internal
 
   whisper:
-    image: onerahmet/openai-whisper-asr-webservice:latest
+    image: onerahmet/openai-whisper-asr-webservice:latest-cpu
     restart: always
     networks:
       - internal
 
   tts:
-    image: ghcr.io/matatonic/openedai-speech:latest
+    image: ghcr.io/matatonic/openedai-speech:0.19.0
     restart: always
     networks:
       - internal
 
   planka:
-    image: ghcr.io/plankanban/planka:latest
+    image: ghcr.io/plankanban/planka:1.24.2
     restart: always
     # No external port binding — routed through Traefik only
     depends_on:
@@ -227,13 +227,14 @@ services:
   redis:
     image: redis:7-alpine
     restart: always
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
     networks:
       - internal
     volumes:
       - redis_data:/data
 
   pihole:
-    image: pihole/pihole:latest
+    image: pihole/pihole:2024.07.0
     restart: always
     network_mode: host
     cap_add:
