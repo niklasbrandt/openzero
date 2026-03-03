@@ -19,7 +19,7 @@ services:
       retries: 5
 
   qdrant:
-    image: qdrant/qdrant:v1.13.0
+    image: qdrant/qdrant:v1.17.0
     restart: always
     # No external port binding — accessed only by backend
     environment:
