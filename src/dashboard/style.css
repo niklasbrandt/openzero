@@ -1,14 +1,51 @@
 /*
  * openZero CSS Architecture
  * -------------------------
- * This file contains global CSS variables (design tokens), base body styles, 
+ * This file contains global CSS variables (design tokens), base body styles,
  * and generic animations that span the entire application.
- * 
- * NOTE: Individual Web Components (e.g., `<chat-prompt>`, `<project-tree>`) do NOT 
- * keep their styles here. They use inline `<style>` blocks inside their respective 
- * `.ts` template wrappers. This ensures perfect Shadow DOM encapsulation, meaning 
+ *
+ * NOTE: Individual Web Components (e.g., `<chat-prompt>`, `<project-tree>`) do NOT
+ * keep their styles here. They use inline `<style>` blocks inside their respective
+ * `.ts` template wrappers. This ensures perfect Shadow DOM encapsulation, meaning
  * component styles never leak, and eliminates the need for complex CSS build steps.
+ *
+ * Accessibility: EN 301 549 / WCAG 2.1 AA
  */
+
+/* ── Screen-reader-only utility (WCAG 1.3.1, 1.1.1) ── */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── Skip navigation link (WCAG 2.4.1 / EN 301 549 §9.2.4.1) ── */
+.skip-link {
+  position: absolute;
+  top: -3rem;
+  left: 0;
+  z-index: 9999;
+  padding: 0.6rem 1.25rem;
+  background: #14B8A6;
+  color: #000;
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-decoration: none;
+  border-radius: 0 0 8px 0;
+  transition: top 0.15s ease;
+}
+
+.skip-link:focus {
+  top: 0;
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+}
 
 :root {
   font-family: 'Inter', system-ui, sans-serif;
@@ -25,7 +62,9 @@
   -moz-osx-font-smoothing: grayscale;
 
   --accent-color: #14B8A6;
+  --accent-color-rgb: 20, 184, 166;
   --accent-secondary: #0066FF;
+  --accent-tertiary: #6366F1;
   --accent-glow: rgba(20, 184, 166, 0.4);
   --bg-surface: rgba(20, 25, 45, 0.6);
   --border-color: rgba(255, 255, 255, 0.06);
@@ -81,6 +120,7 @@ body {
   transition: all 0.25s ease;
   position: relative;
 }
+
 .sidebar-nav a::after {
   content: attr(aria-label);
   position: absolute;
@@ -106,6 +146,7 @@ body {
   color: rgba(255, 255, 255, 0.7);
   background: rgba(255, 255, 255, 0.05);
 }
+
 .sidebar-nav a:hover::after {
   opacity: 1;
 }
@@ -410,4 +451,77 @@ pre {
   background: rgba(255, 255, 255, 0.08);
   border-color: rgba(255, 255, 255, 0.15);
   transform: translateY(-2px);
+}
+
+/* ── Global focus-visible ring (WCAG 2.4.7 / EN 301 549 §9.2.4.7) ──
+   Provides a consistent, high-contrast 3:1 focus indicator for all
+   interactive elements in the light DOM. Shadow DOM components supply
+   their own :focus-visible rules inline. */
+:focus-visible {
+  outline: 2px solid #14B8A6;
+  outline-offset: 3px;
+}
+
+/* Suppress default outline for pointer/touch interactions */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Planka buttons inherit focus-visible */
+.planka-btn:focus-visible,
+.sidebar-nav a:focus-visible {
+  outline: 2px solid #14B8A6;
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+/* ── Prefers-reduced-motion (WCAG 2.3.3 / EN 301 549 §9.2.3.3) ── */
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── High-contrast / forced-colors mode (EN 301 549 §9.1.4.11) ── */
+@media (forced-colors: active) {
+
+  .skip-link,
+  .planka-btn,
+  .sidebar-nav a {
+    forced-color-adjust: none;
+  }
+
+  :focus-visible {
+    outline: 3px solid ButtonText;
+  }
+}
+
+@keyframes highlight-blink {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 rgba(20, 184, 166, 0);
+  }
+
+  35% {
+    transform: scale(1.02);
+    box-shadow: 0 0 40px var(--accent-glow);
+    border-color: var(--accent-color);
+  }
+
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 rgba(20, 184, 166, 0);
+  }
+}
+
+.widget-highlight {
+  animation: highlight-blink 1.2s cubic-bezier(0.23, 1, 0.32, 1);
+  border-color: var(--accent-color) !important;
+  z-index: 50;
 }

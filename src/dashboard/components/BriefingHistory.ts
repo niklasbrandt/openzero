@@ -49,23 +49,27 @@ export class BriefingHistory extends HTMLElement {
 		if (!list) return;
 
 		const itemsHtml = briefings.map((b) => `
-				<div class="briefing-item">
-					<button class="meta" 
+				<div class="briefing-item" role="listitem">
+					<button class="meta"
 						onclick="this.parentElement.classList.toggle('active'); this.setAttribute('aria-expanded', this.parentElement.classList.contains('active').toString())"
 						aria-expanded="false"
-						aria-label="Toggle briefing details for ${new Date(b.created_at).toLocaleDateString()}"
+						aria-controls="briefing-content-${b.id || b.created_at}"
+						aria-label="Toggle briefing from ${new Date(b.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}"
 					>
 						<div class="meta-left">
 							<span class="type">${b.type.toUpperCase()}</span>
 							<span class="date">${new Date(b.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
 						</div>
-						<div class="chevron">
-							<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<div class="chevron" aria-hidden="true">
+							<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
 								<path d="m6 9 6 6 6-6"/>
 							</svg>
 						</div>
 					</button>
-					<div class="content-wrapper">
+					<div class="content-wrapper"
+						id="briefing-content-${b.id || b.created_at}"
+						role="region"
+						aria-label="Briefing content from ${new Date(b.created_at).toLocaleDateString()}">
 						<div class="content-inner">
 							<div class="content">${b.content}</div>
 						</div>
@@ -125,9 +129,11 @@ export class BriefingHistory extends HTMLElement {
 						font-family: inherit;
 						color: inherit;
 					}
-					.meta:focus-visible { 
+					.meta:focus-visible {
+						outline: 2px solid #14B8A6;
+						outline-offset: 2px;
+						border-radius: 4px;
 						background: rgba(255, 255, 255, 0.05);
-						outline: none;
 					}
 					.type { 
 						background: rgba(20, 184, 166, 0.1); 
@@ -197,11 +203,15 @@ export class BriefingHistory extends HTMLElement {
 						border-color: rgba(20, 184, 166, 0.3);
 					}
 					.load-more:focus-visible { outline: 2px solid #14B8A6; outline-offset: 2px; }
+					@media (prefers-reduced-motion: reduce) {
+						.content-wrapper { transition: none; }
+						.chevron { transition: none; }
+					}
 				</style>
 				<div class="card">
 					<h2>
-						<span class="icon">
-							<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+			<span class="icon" aria-hidden="true">
+						<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
 								<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
 								<polyline points="14 2 14 8 20 8"></polyline>
 								<line x1="16" y1="13" x2="8" y2="13"></line>
@@ -209,8 +219,9 @@ export class BriefingHistory extends HTMLElement {
 							</svg>
 						</span>
 						${this.tr('briefing_history', 'Briefing History')}
-					</h2>
-					<div id="briefing-list">${this.tr('loading', 'Loading...')}</div>
+					<span class="subtitle" aria-hidden="true">Z Memory</span>
+				</h2>
+				<div id="briefing-list" role="list" aria-label="Briefing history entries" aria-live="polite">${this.tr('loading', 'Loading...')}</div>
 				</div>
 			`;
 		}
