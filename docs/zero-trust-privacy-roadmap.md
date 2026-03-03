@@ -4,7 +4,7 @@ This document captures the strategic propositions for hardening and scaling the 
 
 ## 🟢 Phase 1: Native LLM Tool Calling (Agent Reliability)
 **Current State:** The agent uses string parsing (regex) to detect `[ACTION: ...] ` tags in the LLM output.
-**Proposed Upgrade:** Move to native JSON-based function/tool calling (supported natively by modern models like Llama 3 via Ollama).
+**Proposed Upgrade:** Move to native JSON-based function/tool calling (supported natively by modern models like Llama 3 via llama-server).
 **Impact:** Drastically reduces model hallucinations, malformed actions, and regex parsing errors. Standardizes the communication protocol between the intelligence tier and the execution backend.
 
 ## 🟢 Phase 2: Network Zero Trust (Traefik & Pi-hole)

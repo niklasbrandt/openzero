@@ -9,7 +9,7 @@ This guide is designed for anyone—even if you've never used a server before. F
 We recommend a VPS with **Ubuntu 24.04**. For best performance with Llama 8B, aim for at least **8 Cores** and **16GB RAM**.
 
 > [!IMPORTANT]
-> **Z uses two AI models simultaneously** (`llama3.2:3b` fast + `llama3.1:8b` smart). Even with 16 GB RAM, you need swap space as a safety buffer. **Skip this and Ollama will OOM-crash.**
+> **Z uses a 3-tier LLM architecture** (phi-4-mini instant + llama3.1:8b standard + qwen2.5:14b deep). With 24GB RAM this runs comfortably. With 16GB, disable the deep tier. **Swap space is still recommended as a safety buffer.**
 
 ### 0. Add Swap Space (MANDATORY first step)
 ```bash
@@ -149,12 +149,12 @@ Run the sync script from the project root on your laptop:
 ```bash
 bash scripts/sync.sh
 ```
-Z will now package itself, fly to your server, build its brain (Ollama), and start up.
+Z will now package itself, fly to your server, build its brain (llama-server), and start up.
 
 > [!NOTE]
-> **AI Models are pulled automatically** on first start. The entrypoint script pulls both `llama3.2:3b` (fast) and `llama3.1:8b` (smart). This can take **10–30 minutes** on first boot. Monitor with:
+> **AI Models are downloaded automatically** on first start. The entrypoint script downloads GGUF models from HuggingFace for all 3 tiers. This can take **10-30 minutes** on first boot. Monitor with:
 > ```bash
-> docker compose logs -f ollama
+> docker compose logs -f llm-standard
 > ```
 
 > [!NOTE]

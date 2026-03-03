@@ -79,7 +79,7 @@ async def store_memory(text: str, metadata: dict = None):
 			f"Input: {distilled_text}"
 		)
 		try:
-			decision = await chat(distill_prompt, provider="ollama", model=settings.OLLAMA_MODEL_FAST)
+			decision = await chat(distill_prompt, tier="instant")
 			if "IGNORE" in decision.upper():
 				return
 			distilled_text = decision.strip().replace('"', '').replace("Fact: ", "")
