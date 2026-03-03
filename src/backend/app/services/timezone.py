@@ -5,7 +5,6 @@ from app.services.calendar import fetch_calendar_events
 from app.services.llm import chat
 from app.models.db import AsyncSessionLocal, Preference, Person
 from sqlalchemy import select
-from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +26,7 @@ async def refresh_user_settings():
 				if identity.town and identity.town.strip():
 					cc = (identity.country or "").strip()
 					_cached_location = f"{identity.town.strip()}, {cc}" if cc else identity.town.strip()
-			logger.info(f"User settings refreshed: tz={_cached_timezone or settings.USER_TIMEZONE}, loc={_cached_location or settings.USER_LOCATION}")
+			logger.info(f"User settings refreshed: tz={_cached_timezone or 'Europe/Berlin'}, loc={_cached_location or 'N/A'}")
 	except Exception as e:
 		logger.error(f"Failed to refresh user settings from DB: {e}")
 
@@ -130,7 +129,31 @@ def format_time(dt: datetime.datetime = None) -> str:
 	else:
 		suffix = {1: 'st', 2: 'nd', 3: 'rd'}.get(day % 10, 'th')
 	
-	return f"{dt.strftime('%H:%M')} - {weekday}. {day}{suffix}"
+	return f"{dt.strftime('%H:%M')} - {weekday} {day}{suffix}"
+
+def get_birthday_proximity(birthday_str: str) -> str | None:
+	"""Parse a DD.MM.YYYY birthday and return a proximity tag if within 30 days.
+	Returns None if birthday is >30 days away or unparseable."""
+	if not birthday_str:
+		return None
+	try:
+		today = datetime.date.today()
+		parts = birthday_str.split(".")
+		if len(parts) >= 2:
+			day, month = int(parts[0]), int(parts[1])
+			next_bday = datetime.date(today.year, month, day)
+			if next_bday < today:
+				next_bday = datetime.date(today.year + 1, month, day)
+			days_until = (next_bday - today).days
+			if days_until == 0:
+				return "TODAY"
+			elif days_until == 1:
+				return "TOMORROW"
+			elif days_until <= 30:
+				return f"IN {days_until} DAYS"
+	except Exception:
+		pass
+	return None
 
 def format_date_full(dt: datetime.datetime = None) -> str:
 	"""Full date string: 'Monday, 2026-03-02 16:40:00 CET'"""

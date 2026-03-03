@@ -181,6 +181,7 @@ export class SystemBenchmark extends HTMLElement {
 		}).join('');
 
 		el.innerHTML = html;
+		this.injectTooltips();
 	}
 
 	render() {
@@ -189,31 +190,35 @@ export class SystemBenchmark extends HTMLElement {
 			<style>
 				:host { display: block; }
 				.has-tip { position: relative; }
-				.has-tip::after {
-					content: attr(data-tip);
+				.glass-tooltip {
 					position: absolute;
-					bottom: calc(100% + 8px);
-					left: 50%;
-					transform: translateX(-50%);
-					background: rgba(10, 12, 28, 0.95);
-					color: rgba(255, 255, 255, 0.85);
+					bottom: calc(100% + 10px);
+					left: 0;
+					background: rgba(255, 255, 255, 0.06);
+					backdrop-filter: blur(32px) saturate(1.6) brightness(1.1);
+					-webkit-backdrop-filter: blur(32px) saturate(1.6) brightness(1.1);
+					color: rgba(255, 255, 255, 0.92);
 					font-size: 0.68rem;
-					line-height: 1.4;
-					padding: 0.5rem 0.65rem;
-					border-radius: 0.4rem;
-					border: 1px solid rgba(255, 255, 255, 0.1);
+					line-height: 1.5;
+					padding: 0.55rem 0.75rem;
+					border-radius: 0.5rem;
+					border: 1px solid rgba(255, 255, 255, 0.18);
 					white-space: normal;
 					width: max-content;
-					max-width: 260px;
+					max-width: 280px;
 					pointer-events: none;
 					opacity: 0;
-					transition: opacity 0.15s ease;
-					z-index: 100;
-					box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+					transition: opacity 0.18s ease;
+					z-index: 1000;
+					box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.12), inset 0 0 0 0.5px rgba(255, 255, 255, 0.08);
 				}
-				.has-tip:hover::after,
-				.has-tip:focus-visible::after {
+				.has-tip:hover > .glass-tooltip,
+				.has-tip:focus-visible > .glass-tooltip {
 					opacity: 1;
+				}
+				.has-tip:has(.has-tip:hover) > .glass-tooltip,
+				.has-tip:has(.has-tip:focus-visible) > .glass-tooltip {
+					opacity: 0 !important;
 				}
 				h2 {
 					font-size: 1.5rem;
@@ -550,6 +555,20 @@ export class SystemBenchmark extends HTMLElement {
 		this.shadowRoot?.querySelector('#bench-deep')?.addEventListener('click', () => this.runBenchmark('deep'));
 		this.shadowRoot?.querySelector('#bench-all')?.addEventListener('click', () => this.runAllBenchmarks());
 		this.updateBenchPanel();
+		this.injectTooltips();
+	}
+
+	/** Convert data-tip attributes into real DOM elements so backdrop-filter works */
+	private injectTooltips() {
+		if (!this.shadowRoot) return;
+		this.shadowRoot.querySelectorAll('.has-tip[data-tip]').forEach(el => {
+			const text = el.getAttribute('data-tip');
+			if (!text || el.querySelector('.glass-tooltip')) return;
+			const tip = document.createElement('span');
+			tip.className = 'glass-tooltip';
+			tip.textContent = text;
+			el.appendChild(tip);
+		});
 	}
 }
 
