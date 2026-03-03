@@ -101,8 +101,8 @@ async def start_telegram_bot():
 	await bot_app.initialize()
 	print("DEBUG: start_telegram_bot - step 4: Starting")
 	await bot_app.start()
-	print("DEBUG: start_telegram_bot - step 5: Start Polling (dropping old updates)")
-	await bot_app.updater.start_polling(drop_pending_updates=True)
+	print("DEBUG: start_telegram_bot - step 5: Start Polling (processing pending updates)")
+	await bot_app.updater.start_polling(drop_pending_updates=False)
 	print("DEBUG: start_telegram_bot - step 6: Polling started")
 
 	# Proactive greeting with Context & Stats (Run in background to avoid blocking startup)
