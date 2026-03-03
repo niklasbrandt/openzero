@@ -533,7 +533,7 @@ async def get_life_tree(db: AsyncSession = Depends(get_db)):
 		try:
 			dt = datetime.datetime.fromisoformat(start_str.replace('Z', ''))
 			time_fmt = dt.strftime('%a %H:%M')
-			sort_key = dt
+			sort_key = dt.replace(tzinfo=None)
 		except:
 			# Fallback for unexpected formats
 			time_fmt = start_str
@@ -545,6 +545,7 @@ async def get_life_tree(db: AsyncSession = Depends(get_db)):
 			"is_local": False,
 			"sort_key": sort_key
 		})
+
 
 	# 4. Add Local Events
 	from app.models.db import LocalEvent
