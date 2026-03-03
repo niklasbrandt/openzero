@@ -1722,25 +1722,44 @@ async def get_translations_endpoint(db: AsyncSession = Depends(get_db)):
 # --- System Status ---
 @router.get("/system")
 async def get_system_status(db: AsyncSession = Depends(get_db)):
-	"""Deep health check of all OS subsystems."""
-	from app.services.llm import last_model_used
-	from app.services.memory import get_memory_stats
-	
-	try:
-		mem_stats = await get_memory_stats()
-	except Exception:
-		mem_stats = {"points": 0}
-	
-	# Identity Health
-	from app.models.db import Person
-	res_people = await db.execute(select(Person).where(Person.circle_type == "identity"))
-	identity_set = res_people.scalar_one_or_none() is not None
-	
-	return {
-		"status": "online",
-		"llm_provider": settings.LLM_PROVIDER,
-		"llm_model": last_model_used.get() or settings.LLM_MODEL_STANDARD,
-		"memory_points": mem_stats.get("points", 0),
-		"identity_active": identity_set,
-		"timestamp": datetime.datetime.now().isoformat()
-	}
+    """Deep health check of all OS subsystems."""
+    from app.services.llm import last_model_used
+    from app.services.memory import get_memory_stats
+    import subprocess
+
+    try:
+        mem_stats = await get_memory_stats()
+    except Exception:
+        mem_stats = {"points": 0}
+
+    # Identity Health
+    from app.models.db import Person
+    res_people = await db.execute(select(Person).where(Person.circle_type == "identity"))
+    identity_set = res_people.scalar_one_or_none() is not None
+
+    # DNS Health — test Pi-hole can resolve open.zero
+    dns_ok = False
+    dns_detail = "untested"
+    try:
+        dig = subprocess.run(
+            ["dig", "@127.0.0.1", "open.zero", "+short", "+time=2", "+tries=1"],
+            capture_output=True, text=True, timeout=5
+        )
+        if dig.returncode == 0 and dig.stdout.strip():
+            dns_ok = True
+            dns_detail = dig.stdout.strip().split("\n")[0]
+        else:
+            dns_detail = "no answer"
+    except Exception as e:
+        dns_detail = str(e)[:80]
+
+    return {
+        "status": "online",
+        "llm_provider": settings.LLM_PROVIDER,
+        "llm_model": last_model_used.get() or settings.LLM_MODEL_STANDARD,
+        "memory_points": mem_stats.get("points", 0),
+        "identity_active": identity_set,
+        "dns_ok": dns_ok,
+        "dns_detail": dns_detail,
+        "timestamp": datetime.datetime.now().isoformat()
+    }

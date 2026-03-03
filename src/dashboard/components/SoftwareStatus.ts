@@ -109,6 +109,14 @@ export class SoftwareStatus extends HTMLElement {
 				tip: this.tr('tip_identity_svc', 'Subject Zero identity profile. Required for personalized responses.'),
 				isLlm: false,
 			},
+			{
+				name: 'DNS',
+				model: '',
+				status: d.dns_ok === true ? 'online' : d.dns_ok === false ? 'offline' : 'warning',
+				detail: d.dns_ok ? (d.dns_detail || 'ok') : (d.dns_detail || 'no answer'),
+				tip: this.tr('tip_dns', 'Pi-hole DNS resolver. Resolves open.zero for all Tailscale peers. Offline = mobile dashboard unreachable.'),
+				isLlm: false,
+			},
 		];
 
 		const serviceGrid = services.map(s => s.isLlm ? `
