@@ -99,7 +99,60 @@ LANGUAGE_NAMES = {
 	"da": "Danish", "no": "Norwegian",
 }
 
-def build_system_prompt(user_name: str, user_profile: dict) -> tuple[str, str, str]:
+async def get_agent_personality() -> str:
+	"""Fetch agent personality from DB preferences and format for system prompt."""
+	try:
+		from app.models.db import AsyncSessionLocal, Preference
+		from sqlalchemy import select
+		async with AsyncSessionLocal() as session:
+			res = await session.execute(select(Preference).where(Preference.key == "agent_personality"))
+			pref = res.scalar_one_or_none()
+			if not pref:
+				return ""
+			
+			traits = json.loads(pref.value)
+			prompt = "\nADAPTED AGENT PERSONALITY:\n"
+			if traits.get("role"): prompt += f"- Core Archetype: {traits['role']}\n"
+			
+			# Communication mapping
+			d = traits.get("directness", 3)
+			if d >= 4: prompt += "- Directness: Extremely sharp, concise, and to-the-point. Zero filler.\n"
+			elif d <= 2: prompt += "- Directness: Elaborate, descriptive, and nuanced. Value context over brevity.\n"
+			
+			w = traits.get("warmth", 3)
+			if w >= 4: prompt += "- Warmth: High empathy, warm, human-centric, and supportive.\n"
+			elif w <= 2: prompt += "- Warmth: Precise, clinical, objective, and detached.\n"
+			
+			a = traits.get("agency", 3)
+			if a >= 4: prompt += "- Agency: Drive mission outcomes proactively. Push for excellence and efficiency.\n"
+			elif a <= 2: prompt += "- Agency: Steady, supporting assistant. Respond to requests without forcing direction.\n"
+			
+			c = traits.get("critique", 3)
+			if c >= 4: prompt += "- Intellectual Friction: Do not be a 'yes-man'. Challenge the user's assumptions constructively when appropriate.\n"
+			elif c <= 2: prompt += "- Intellectual Friction: Be supportive and agreeable. Focus on smoothing the path.\n"
+
+			# TARS-inspired Humor/Honesty
+			h_score = traits.get("humor", 2)
+			if h_score >= 8: prompt += f"- Humor Setting: {h_score*10}%. Use frequent wit, dry humor, and playful sarcasm.\n"
+			elif h_score >= 5: prompt += f"- Humor Setting: {h_score*10}%. Occasional dry wit or subtle humor.\n"
+			else: prompt += f"- Humor Setting: {h_score*10}%. Literal and serious.\n"
+
+			honesty = traits.get("honesty", 5)
+			if honesty >= 9: prompt += "- Honesty: 100%. Never sugarcoat. Be brutally transparent.\n"
+			elif honesty <= 3: prompt += "- Honesty: Use tact and discretion. Prioritize morale over absolute raw truth.\n"
+
+			depth = traits.get("depth", 4)
+			if depth >= 5: prompt += "- Analytical Depth: Deep-dive into second-order effects and structural analysis.\n"
+			
+			if traits.get("relationship"): prompt += f"- Relationship to User: {traits['relationship']}\n"
+			if traits.get("values"): prompt += f"- Core Principles: {traits['values']}\n"
+			if traits.get("behavior"): prompt += f"- Personality & Style Nuance: {traits['behavior']}\n"
+			
+			return prompt
+	except Exception:
+		return ""
+
+async def build_system_prompt(user_name: str, user_profile: dict) -> tuple[str, str, str]:
 	from app.services.timezone import format_time, format_date_full, get_now
 	
 	now = get_now()
@@ -124,10 +177,12 @@ def build_system_prompt(user_name: str, user_profile: dict) -> tuple[str, str, s
 	if user_lang != "en":
 		lang_directive = f"\n\nLANGUAGE DIRECTIVE: You MUST respond in {lang_name}. All responses, briefings, and notifications must be in {lang_name}. Think in {lang_name}. Only use English for technical terms that have no natural translation."
 
+	personality_directive = await get_agent_personality()
+
 	formatted_system_prompt = SYSTEM_PROMPT_CHAT.format(
 		current_time=simplified_time,
 		user_name=user_name
-	) + user_id_context + lang_directive
+	) + user_id_context + lang_directive + personality_directive
 	
 	context_header = f"Current Local Time (Raw): {format_date_full(now)}\n"
 	context_header += f"Current Formatted Time (Use This): {simplified_time}\n\n"
@@ -234,7 +289,7 @@ async def chat_stream(
 	if system_override:
 		system_prompt = system_override
 	else:
-		formatted_system_prompt, context_header, simplified_time = build_system_prompt(user_name, user_profile)
+		formatted_system_prompt, context_header, simplified_time = await build_system_prompt(user_name, user_profile)
 		system_prompt = context_header + formatted_system_prompt
 
 	provider = (provider or settings.LLM_PROVIDER).lower()
@@ -402,7 +457,7 @@ async def chat_with_context(
 					from app.services.timezone import get_birthday_proximity
 					def _birthday_tag(p):
 						tag = get_birthday_proximity(p.birthday)
-						return f" -- BIRTHDAY {tag}" if tag else ""
+						return f". Note: {p.name}'s birthday is {tag}." if tag else ""
 
 					inner = [f"- {p.name} ({p.relationship}){_birthday_tag(p)}" for p in people if p.circle_type == "inner"]
 					close = [f"- {p.name} ({p.relationship}){_birthday_tag(p)}" for p in people if p.circle_type == "close"]
@@ -462,7 +517,7 @@ async def chat_with_context(
 		]))
 
 		# Build system prompt with real user identity from DB
-		formatted_system_prompt, _, _ = build_system_prompt(user_name, user_profile)
+		formatted_system_prompt, _, _ = await build_system_prompt(user_name, user_profile)
 
 		print(f"DEBUG: Context gathered in {time.time() - start_time:.2f}s")
 
@@ -560,7 +615,7 @@ async def chat_with_context(
 
 		# Add brevity hint for short messages
 		if len(user_message.strip()) < 30:
-			system_with_context += "\n\nRespond in 1-2 sentences maximum."
+			system_with_context += "\n\nRespond in 1-2 sentences. Ensure logical consistency (e.g. do not say 'Today is tomorrow')."
 
 		return await chat(
 			user_message,
@@ -624,7 +679,7 @@ async def chat_stream_with_context(
 					from app.services.timezone import get_birthday_proximity
 					def _birthday_tag(p):
 						tag = get_birthday_proximity(p.birthday)
-						return f" -- BIRTHDAY {tag}" if tag else ""
+						return f". Note: {p.name}'s birthday is {tag}." if tag else ""
 					inner = [f"- {p.name} ({p.relationship}){_birthday_tag(p)}" for p in people if p.circle_type == "inner"]
 					close = [f"- {p.name} ({p.relationship}){_birthday_tag(p)}" for p in people if p.circle_type == "close"]
 					outer = [f"- {p.name} ({p.relationship})" for p in people if p.circle_type == "outer"]
@@ -667,7 +722,7 @@ async def chat_stream_with_context(
 			fetch_people(), fetch_projects(), fetch_memories()
 		)
 		full_prompt = "\n\n".join(filter(None, [people_p, project_p, memory_p]))
-		formatted_system_prompt, _, _ = build_system_prompt(user_name, user_profile)
+		formatted_system_prompt, _, _ = await build_system_prompt(user_name, user_profile)
 		print(f"DEBUG: Stream context gathered in {time.time() - start_time:.2f}s")
 
 		tier_name, base_url, display_name = select_tier(user_message, tier_override)
@@ -678,7 +733,7 @@ async def chat_stream_with_context(
 		system_with_context = f"{formatted_system_prompt}\n\n{context_injection}" if context_injection else formatted_system_prompt
 
 		if len(user_message.strip()) < 30:
-			system_with_context += "\n\nRespond in 1-2 sentences maximum."
+			system_with_context += "\n\nRespond in 1-2 sentences. Ensure logical consistency (e.g. do not say 'Today is tomorrow')."
 
 		# Timeout racing for deep tier
 		if tier_name == "deep" and settings.SMART_MODEL_INTERACTIVE:

@@ -188,6 +188,33 @@ _DE = {
     "life_goals": "Lebensziele & Grundwerte",
     "no_goals": "Keine Ziele gesetzt.",
     "not_set": "Nicht gesetzt",
+
+    # -- Widget Headers --
+    "life_subtitle": "Projekte & Menschen",
+    "calendar_agenda": "Kalenderagenda",
+    "calendar_subtitle": "Anstehende Termine",
+    "memory_search": "Gedaechtnis-Suche",
+    "memory_subtitle": "Semantischer Abruf",
+    "briefing_history": "Briefing-Verlauf",
+    "briefing_subtitle": "Tagesberichte",
+    "agent_personality": "Agentenpersoenlichkeit",
+    "personality_subtitle": "Charakter & Verhalten",
+    "outer_circle": "Aeusserer Kreis",
+    "outer_subtitle": "Bekannte & Netzwerk",
+    "email_rules": "E-Mail-Intelligenz",
+    "email_subtitle": "Automatisierte Regeln",
+    "software": "Software",
+    "sw_subtitle": "Dienste & Stack",
+    "loading_sw": "Dienste werden geladen...",
+    "new_person": "+ Neue Person",
+    "loading": "Laden...",
+    "search": "Suche",
+    "search_placeholder": "Erinnerungen durchsuchen...",
+    "no_briefings": "Noch keine Briefings.",
+    "show_more": "Mehr anzeigen",
+    "no_rules": "Keine Regeln definiert.",
+    "new_rule": "+ Neue Regel",
+    "cancel": "Abbrechen",
 }
 
 _ES = {
