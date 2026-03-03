@@ -235,8 +235,8 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 			res.raise_for_status()
 			logger.debug("Card created successfully in %s -> %s", target_board['name'], target_list['name'])
 			return True
-		except Exception as e:
-			logger.debug("create_task failed: %s", e)
+	except Exception as e:
+		logger.debug("create_task failed: %s", e)
 
 async def create_project(name: str, description: str = "") -> dict:
 	"""Create a new project in Planka."""
