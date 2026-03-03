@@ -111,17 +111,18 @@ async def get_agent_personality() -> str:
 				return ""
 			
 			traits = json.loads(pref.value)
-			prompt = "\nADAPTED AGENT PERSONALITY:\n"
-			if traits.get("role"): prompt += f"- Core Archetype: {traits['role']}\n"
+			a_name = traits.get("agent_name", "Z")
+			prompt = f"You are {a_name}. "
+			if traits.get("role"): prompt += f"Your role is {traits['role']}. "
+			prompt += "Follow these refined behavioral directives:\n"
 			
-			# Communication mapping
 			d = traits.get("directness", 3)
-			if d >= 4: prompt += "- Directness: Extremely sharp, concise, and to-the-point. Zero filler.\n"
-			elif d <= 2: prompt += "- Directness: Elaborate, descriptive, and nuanced. Value context over brevity.\n"
+			if d >= 4: prompt += "- Communication: Be direct, concise, and mission-oriented. Minimal filler.\n"
+			elif d <= 2: prompt += "- Communication: Provide detailed, elaborate explanations. Use descriptive language.\n"
 			
 			w = traits.get("warmth", 3)
-			if w >= 4: prompt += "- Warmth: High empathy, warm, human-centric, and supportive.\n"
-			elif w <= 2: prompt += "- Warmth: Precise, clinical, objective, and detached.\n"
+			if w >= 4: prompt += "- Tone: Warm, empathetic, and supportive. Use person-centered language.\n"
+			elif w <= 2: prompt += "- Tone: Clinical, objective, and detached. Logic-first delivery.\n"
 			
 			a = traits.get("agency", 3)
 			if a >= 4: prompt += "- Agency: Drive mission outcomes proactively. Push for excellence and efficiency.\n"
@@ -131,7 +132,7 @@ async def get_agent_personality() -> str:
 			if c >= 4: prompt += "- Intellectual Friction: Do not be a 'yes-man'. Challenge the user's assumptions constructively when appropriate.\n"
 			elif c <= 2: prompt += "- Intellectual Friction: Be supportive and agreeable. Focus on smoothing the path.\n"
 
-			# TARS-inspired Humor/Honesty
+			# Humor/Honesty scores
 			h_score = traits.get("humor", 2)
 			if h_score >= 8: prompt += f"- Humor Setting: {h_score*10}%. Use frequent wit, dry humor, and playful sarcasm.\n"
 			elif h_score >= 5: prompt += f"- Humor Setting: {h_score*10}%. Occasional dry wit or subtle humor.\n"
