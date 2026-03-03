@@ -192,24 +192,25 @@ export class HardwareMonitor extends HTMLElement {
 				.has-tip::after {
 					content: attr(data-tip);
 					position: absolute;
-					bottom: calc(100% + 8px);
-					left: 50%;
-					transform: translateX(-50%);
-					background: rgba(10, 12, 28, 0.95);
-					color: rgba(255, 255, 255, 0.85);
+					bottom: calc(100% + 10px);
+					left: 0;
+					background: rgba(12, 16, 32, 0.55);
+					backdrop-filter: blur(20px) saturate(1.4);
+					-webkit-backdrop-filter: blur(20px) saturate(1.4);
+					color: rgba(255, 255, 255, 0.88);
 					font-size: 0.68rem;
-					line-height: 1.4;
-					padding: 0.5rem 0.65rem;
-					border-radius: 0.4rem;
-					border: 1px solid rgba(255, 255, 255, 0.1);
+					line-height: 1.5;
+					padding: 0.55rem 0.75rem;
+					border-radius: 0.5rem;
+					border: 1px solid rgba(255, 255, 255, 0.12);
 					white-space: normal;
 					width: max-content;
-					max-width: 260px;
+					max-width: 280px;
 					pointer-events: none;
 					opacity: 0;
-					transition: opacity 0.15s ease;
-					z-index: 100;
-					box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+					transition: opacity 0.18s ease;
+					z-index: 1000;
+					box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06);
 				}
 				.has-tip:hover::after,
 				.has-tip:focus-visible::after {
