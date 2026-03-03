@@ -50,6 +50,13 @@ def get_nav_markup() -> InlineKeyboardMarkup:
 # --- Context Persistence ---
 chat_histories = {} # chat_id -> list of dicts {'role': 'user/z', 'content': str}
 
+# --- Message Coalescing ---
+# Tracks in-flight LLM calls per chat. If Z is already thinking and more
+# messages arrive, they are buffered and processed as a follow-up batch.
+_thinking_locks: dict[int, asyncio.Lock] = {}  # chat_id -> Lock
+_pending_messages: dict[int, list[str]] = {}   # chat_id -> buffered texts
+_pending_tg_messages: dict[int, list] = {}     # chat_id -> buffered Update.message objects
+
 async def start_telegram_bot():
 	"""Start the Telegram bot in polling mode within the FastAPI event loop."""
 	global bot_app
@@ -238,11 +245,74 @@ async def start_telegram_bot():
 				reply_markup=get_nav_markup()
 			)
 			logging.info("DEBUG: Greeting Seq - Notification Delivered")
+
+			# --- Restart Recovery: respond to unanswered user messages ---
+			await _recover_unanswered_messages()
+
 		except Exception as e:
 			logging.error(f"FAILED to send Telegram startup greeting: {e}")
 
 	# Launch greeting in background
 	asyncio.create_task(send_startup_greeting())
+
+
+async def _recover_unanswered_messages():
+	"""Check if the last global message(s) are from the user with no Z reply.
+	If so, pick them up and respond now."""
+	try:
+		from app.models.db import get_global_history, save_global_message
+		history = await get_global_history(limit=5)
+		if not history:
+			return
+
+		# Collect trailing unanswered user messages
+		unanswered = []
+		for msg in reversed(history):
+			if msg["role"] == "user":
+				unanswered.append(msg["content"])
+			else:
+				break
+		
+		if not unanswered:
+			return
+
+		unanswered.reverse()  # chronological order
+		combined = "\n".join(unanswered)
+		logging.info(f"Restart recovery: {len(unanswered)} unanswered user message(s) found. Responding now.")
+
+		from app.services.llm import chat_with_context
+		from app.services.agent_actions import parse_and_execute_actions
+		from app.models.db import AsyncSessionLocal
+
+		merged_history = await get_global_history(limit=10)
+		prompt = f"[These messages were sent before a restart and never received a response. Respond naturally as if continuing the conversation.]\n\n{combined}"
+
+		response = await chat_with_context(
+			prompt,
+			history=merged_history,
+			include_projects=True,
+			include_people=True
+		)
+
+		async with AsyncSessionLocal() as db:
+			clean_reply, _ = await parse_and_execute_actions(response, db=db)
+
+		await save_global_message("telegram", "z", clean_reply)
+
+		from app.services.timezone import format_time
+		import re
+		clean_reply = re.sub(r'^\d{1,2}:\d{2}\s*[-–]?\s*[^\n]*\n*', '', clean_reply, count=1).strip()
+		html_reply = _md_to_html(clean_reply)
+		display_reply = f"<b>{format_time()}</b>\n\n{html_reply}"
+
+		footer = await _get_stats_footer()
+		await send_notification_html(
+			f"<blockquote>{display_reply}{footer}</blockquote>",
+			reply_markup=get_nav_markup()
+		)
+		logging.info("Restart recovery: response delivered.")
+	except Exception as e:
+		logging.error(f"Restart recovery failed: {e}")
 
 async def stop_telegram_bot():
 	"""Gracefully stop the bot."""
@@ -684,7 +754,9 @@ async def handle_wipe_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 @owner_only
 async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
-	"""Process freeform text via the default LLM with Context & History."""
+	"""Process freeform text via the default LLM with Context & History.
+	Implements message coalescing: if Z is already thinking for this chat,
+	new messages are buffered and folded into a follow-up response."""
 	try:
 		chat_id = update.effective_chat.id
 		if chat_id not in chat_histories:
@@ -697,51 +769,84 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
 			if quoted:
 				user_text = f"[Replying to: \"{quoted[:500]}\"]\n\n{user_text}"
 
-		from app.services.llm import chat_with_context
-		from app.models.db import get_global_history, save_global_message
-		
-		# Show initial acknowledgment
-		thinking_msg = await update.message.reply_text("<blockquote><i>Thinking...</i></blockquote>", parse_mode="HTML")
-		
-		from app.services.agent_actions import parse_and_execute_actions
-		from app.models.db import AsyncSessionLocal
-
+		from app.models.db import save_global_message
 		# Save user message FIRST so rapid follow-up messages see the context
 		await save_global_message("telegram", "user", user_text)
 
-		# Recover Merged History (cross-channel context -- last 10 messages)
-		merged_history = await get_global_history(limit=10)
+		# --- Message Coalescing ---
+		if chat_id not in _thinking_locks:
+			_thinking_locks[chat_id] = asyncio.Lock()
 
-		response = await chat_with_context(
-			user_text, 
-			history=merged_history,
-			include_projects=True,
-			include_people=True
-		)
-		
-		async with AsyncSessionLocal() as db:
-			clean_reply, _ = await parse_and_execute_actions(response, db=db)
+		lock = _thinking_locks[chat_id]
+		if lock.locked():
+			# Z is already thinking -- buffer this message for follow-up
+			if chat_id not in _pending_messages:
+				_pending_messages[chat_id] = []
+			_pending_messages[chat_id].append(user_text)
+			logging.info(f"Message coalesced (buffered {len(_pending_messages[chat_id])} msgs while Z thinks)")
+			return
 
-		# Save Z's reply to global history
-		await save_global_message("telegram", "z", clean_reply)
+		async with lock:
+			await _process_freetext(update, context, chat_id, user_text)
 
-		# Memory is user-driven only (via /add or LEARN action tag)
+			# After responding, check if messages arrived while we were thinking
+			while _pending_messages.get(chat_id):
+				buffered = _pending_messages.pop(chat_id)
+				combined = "\n".join(buffered)
+				followup_text = f"[Follow-up messages sent while you were thinking:]\n{combined}"
+				await save_global_message("telegram", "user", followup_text)
+				await _process_freetext(update, context, chat_id, followup_text, is_followup=True)
 
-		# Prepend real time (strip any LLM-generated time header)
-		from app.services.timezone import format_time
-		import re
-		clean_reply = re.sub(r'^\d{1,2}:\d{2}\s*[-–]?\s*[^\n]*\n*', '', clean_reply, count=1).strip()
-		html_reply = _md_to_html(clean_reply)
-		display_reply = f"<b>{format_time()}</b>\n\n{html_reply}"
-
-		footer = await _get_stats_footer()
-		await safe_edit(thinking_msg, f"<blockquote>{display_reply}{footer}</blockquote>", parse_mode="HTML", reply_markup=get_nav_markup())
 	except Exception as e:
 		print(f"ERROR: handle_freetext failed: {e}")
-		# If bit failed to edit, try fresh message
 		try:
 			await safe_reply(update, "I encountered friction while processing that request. My local core is still active, but that specific thread was dropped.")
 		except: pass
+
+
+async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, user_text: str, is_followup: bool = False):
+	"""Core freetext processing logic, shared between initial and coalesced messages."""
+	from app.services.llm import chat_with_context
+	from app.models.db import get_global_history, save_global_message
+
+	# Show initial acknowledgment
+	if is_followup:
+		thinking_msg = await context.bot.send_message(
+			chat_id=chat_id,
+			text="<blockquote><i>Processing your follow-up...</i></blockquote>",
+			parse_mode="HTML"
+		)
+	else:
+		thinking_msg = await update.message.reply_text("<blockquote><i>Thinking...</i></blockquote>", parse_mode="HTML")
+
+	from app.services.agent_actions import parse_and_execute_actions
+	from app.models.db import AsyncSessionLocal
+
+	# Recover Merged History (cross-channel context -- last 10 messages)
+	merged_history = await get_global_history(limit=10)
+
+	response = await chat_with_context(
+		user_text,
+		history=merged_history,
+		include_projects=True,
+		include_people=True
+	)
+
+	async with AsyncSessionLocal() as db:
+		clean_reply, _ = await parse_and_execute_actions(response, db=db)
+
+	# Save Z's reply to global history
+	await save_global_message("telegram", "z", clean_reply)
+
+	# Prepend real time (strip any LLM-generated time header)
+	from app.services.timezone import format_time
+	import re
+	clean_reply = re.sub(r'^\d{1,2}:\d{2}\s*[-–]?\s*[^\n]*\n*', '', clean_reply, count=1).strip()
+	html_reply = _md_to_html(clean_reply)
+	display_reply = f"<b>{format_time()}</b>\n\n{html_reply}"
+
+	footer = await _get_stats_footer()
+	await safe_edit(thinking_msg, f"<blockquote>{display_reply}{footer}</blockquote>", parse_mode="HTML", reply_markup=get_nav_markup())
 
 @owner_only
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
