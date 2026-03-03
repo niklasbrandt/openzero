@@ -172,7 +172,7 @@ async def start_telegram_bot():
 			print(f"DEBUG: Greeting Seq - Context Ready ({len(event_summary_parts)} items)")
 			
 			has_events = bool(event_summary_parts)
-			events_block = f"Events (REAL DATA):\n{event_summary}" if has_events else "Events: NONE — do NOT invent or mention any events."
+			events_block = f"Events:\n{event_summary}" if has_events else ""
 
 			greeting_prompt = (
 				f"SYSTEM_DATA:\n"
@@ -183,7 +183,7 @@ async def start_telegram_bot():
 				"1. Brief welcome back (1 sentence).\n"
 				"2. If 'Changes' has updates: add a 'Recent Logic Updates' section. "
 				"For each change, write 1-2 sentences explaining what it does in plain language — not just repeating the commit title.\n"
-				"3. ONLY mention events if they appear in the REAL DATA above. If events say NONE, skip entirely.\n"
+				"3. ONLY mention events if event data is listed above. If no events data is present, do not mention events at all.\n"
 				"Be direct, professional, and human. No filler. No invented content."
 			)
 
