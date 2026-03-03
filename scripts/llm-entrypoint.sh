@@ -39,7 +39,7 @@ echo "  Threads: ${THREADS}"
 echo "  Context: ${CTX_SIZE}"
 echo "  Max predict: ${N_PREDICT}"
 
-exec llama-server \
+exec /app/llama-server \
 	--model "$MODEL_PATH" \
 	--host 0.0.0.0 \
 	--port "${PORT}" \
