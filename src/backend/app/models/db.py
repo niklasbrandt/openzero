@@ -80,6 +80,9 @@ class Person(Base):
     work_times = Column(String)
     briefing_time = Column(String) # e.g. "08:00"
     language = Column(String, default="en") # ISO 639-1 code: en, zh, hi, es, fr, ar, pt, ru, ja, de
+    color_primary = Column(String)  # Favorite primary color
+    color_secondary = Column(String) # Favorite secondary color
+    color_tertiary = Column(String)  # Favorite tertiary color
     last_interaction = Column(DateTime)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 

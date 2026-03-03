@@ -9,6 +9,7 @@ export class ChatPrompt extends HTMLElement {
 	private messages: ChatMessage[] = [];
 	private isLoading = false;
 	private pendingRetry: string | null = null;
+	private t: Record<string, string> = {};
 
 	constructor() {
 		super();
@@ -17,8 +18,25 @@ export class ChatPrompt extends HTMLElement {
 
 	connectedCallback() {
 		this.render();
+		this.loadTranslations().then(() => {
+			this.render();
+			this.loadHistory();
+		});
 		this.setupListeners();
-		this.loadHistory();
+		window.addEventListener('identity-updated', () => {
+			this.loadTranslations().then(() => this.render());
+		});
+	}
+
+	private async loadTranslations() {
+		try {
+			const res = await fetch('/api/dashboard/translations');
+			if (res.ok) this.t = await res.json();
+		} catch (_) { }
+	}
+
+	private tr(key: string, fallback: string): string {
+		return this.t[key] || fallback;
 	}
 
 	private async loadHistory() {
@@ -99,7 +117,7 @@ export class ChatPrompt extends HTMLElement {
 				warning.style.color = 'rgba(255, 255, 255, 0.78)';
 				warning.style.marginTop = '0.5rem';
 				warning.style.marginLeft = '0.5rem';
-				warning.innerText = 'Warming up local engine...';
+				warning.innerText = this.tr('warming_up', 'Warming up local engine...');
 				typingBubble.parentElement?.appendChild(warning);
 			}
 		}, 6000);
@@ -122,7 +140,7 @@ export class ChatPrompt extends HTMLElement {
 			this.pendingRetry = null; // Success — clear any retry state
 			this.messages.push({
 				role: 'assistant',
-				content: data.reply || 'No response received.',
+				content: data.reply || this.tr('no_response', 'No response received.'),
 				timestamp: new Date(),
 				model: data.model,
 			});
@@ -140,7 +158,7 @@ export class ChatPrompt extends HTMLElement {
 
 			this.messages.push({
 				role: 'assistant',
-				content: `⚡ Backend unreachable. Will auto-retry when you return.\n\n_Tap here to retry now._`,
+				content: `⚡ ${this.tr('backend_unreachable', 'Backend unreachable.')} ${this.tr('retry_on_return', 'Will auto-retry when you return.')}\n\n_${this.tr('tap_to_retry', 'Tap here to retry now.')}_`,
 				timestamp: new Date(),
 			});
 		} finally {
@@ -169,7 +187,7 @@ export class ChatPrompt extends HTMLElement {
 
 		// Remove the error bubble
 		const lastMsg = this.messages[this.messages.length - 1];
-		if (lastMsg?.role === 'assistant' && lastMsg.content.includes('Backend unreachable')) {
+		if (lastMsg?.role === 'assistant' && (lastMsg.content.includes('Backend unreachable') || lastMsg.content.includes(this.tr('backend_unreachable', 'Backend unreachable')))) {
 			this.messages.pop();
 		}
 
@@ -201,7 +219,7 @@ export class ChatPrompt extends HTMLElement {
 		indicator.id = 'typing';
 		indicator.className = 'message assistant';
 		indicator.setAttribute('role', 'status');
-		indicator.setAttribute('aria-label', 'Z is composing a response');
+		indicator.setAttribute('aria-label', this.tr('thinking', 'Z is composing a response'));
 		indicator.setAttribute('aria-live', 'polite');
 		indicator.innerHTML = `
 			<div class="bubble typing-bubble" aria-hidden="true">
@@ -241,8 +259,8 @@ export class ChatPrompt extends HTMLElement {
 			container.innerHTML = `
 				<div class="empty-state">
 					<div class="empty-icon" aria-hidden="true">${this.chatSVG()}</div>
-					<p>Start a conversation with Z</p>
-					<span>Ask anything \u2014 manage tasks, query memories, or get briefed.</span>
+					<p>${this.tr('start_chat_with_z', 'Start a conversation with Z')}</p>
+					<span>${this.tr('chat_hint', 'Ask anything — manage tasks, query memories, or get briefed.')}</span>
 					<nav aria-label="Quick commands" class="command-hints">
 						<ul role="list" style="display:flex;flex-wrap:wrap;gap:0.5rem;justify-content:center;list-style:none;padding:0;margin:1rem 0 0 0;">
 							<li role="listitem"><span class="cmd-chip" tabindex="0">/day</span></li>
@@ -602,8 +620,8 @@ export class ChatPrompt extends HTMLElement {
 			aria-atomic="false">
 			<div class="empty-state">
 				<div class="empty-icon" aria-hidden="true">${this.chatSVG()}</div>
-				<p>Start a conversation with Z</p>
-				<span>Ask anything — manage tasks, query memories, or get briefed.</span>
+				<p>${this.tr('start_chat_with_z', 'Start a conversation with Z')}</p>
+				<span>${this.tr('chat_hint', 'Ask anything — manage tasks, query memories, or get briefed.')}</span>
 				<nav class="command-hints" aria-label="Quick commands">
 					<ul role="list" style="display:flex;flex-wrap:wrap;gap:0.5rem;justify-content:center;list-style:none;padding:0;margin:1rem 0 0 0;">
 						<li role="listitem"><span class="cmd-chip" tabindex="0" aria-label="Daily briefing command">/day</span></li>
@@ -620,7 +638,7 @@ export class ChatPrompt extends HTMLElement {
 
 		<div class="input-area" role="group" aria-label="Message input">
 			<label for="chat-input" class="sr-only">Message to Z</label>
-			<textarea id="chat-input" rows="1" placeholder="Ask Z something…" aria-label="Message to Z" autocomplete="off" spellcheck="true"></textarea>
+			<textarea id="chat-input" rows="1" placeholder="${this.tr('ask_z_placeholder', 'Ask Z something...')}" aria-label="Message to Z" autocomplete="off" spellcheck="true"></textarea>
 			<button id="send-btn" aria-label="Send message" type="button">${this.sendSVG()}</button>
 		</div>
 		`;

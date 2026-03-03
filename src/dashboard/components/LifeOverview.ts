@@ -61,7 +61,7 @@ export class LifeOverview extends HTMLElement {
 
 		const timelineHtml = data.timeline.length > 0
 			? data.timeline.map((e: any) => `
-					<div class="timeline-item">
+					`<div class="timeline-item" role="listitem">
 						<span class="time">${e.time}</span>
 						<span class="summary">${e.summary} ${!e.is_local ? '<small style="color: #14B8A6;">(Google)</small>' : ''}</span>
 					</div>
@@ -188,18 +188,22 @@ export class LifeOverview extends HTMLElement {
 
 
 					.error { color: #ef4444; text-align: center; padding: 2rem; }
+				.action-btn:focus-visible { outline: 2px solid #14B8A6; outline-offset: 3px; }
+				.tree-content a:focus-visible { outline: 2px solid #14B8A6; outline-offset: 2px; }
+				@media (prefers-reduced-motion: reduce) {
+					*, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+				}
 				</style>
 				<div class="card">
 					<h2>
-						<span class="h-icon">
-							<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-								<circle cx="12" cy="12" r="10"></circle>
-								<line x1="2" y1="12" x2="22" y2="12"></line>
-								<path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
-							</svg>
-						</span>
-						${this.tr('life_overview', 'Life Overview')}
-
+					<span class="h-icon" aria-hidden="true">
+						<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+							<circle cx="12" cy="12" r="10"></circle>
+							<line x1="2" y1="12" x2="22" y2="12"></line>
+							<path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+						</svg>
+					</span>
+					${this.tr('life_overview', 'Life Overview')}
 					</h2>
 					<div id="overview-container">
 						<div style="text-align: center; padding: 2rem; color: rgba(255,255,255,0.3);">${this.tr('mapping_world', 'Mapping your world...')}</div>
