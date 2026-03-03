@@ -12,6 +12,7 @@ personal/
 # Secrets & environment files
 # ===========================
 .env
+.env.remote
 .env.planka
 tokens/
 scripts/pass.txt
