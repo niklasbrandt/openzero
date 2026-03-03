@@ -199,7 +199,7 @@ export class LifeOverview extends HTMLElement {
 							</svg>
 						</span>
 						${this.tr('life_overview', 'Life Overview')}
-						<span class="h-subtitle">${this.tr('life_subtitle', 'Projects & People')}</span>
+
 					</h2>
 					<div id="overview-container">
 						<div style="text-align: center; padding: 2rem; color: rgba(255,255,255,0.3);">${this.tr('mapping_world', 'Mapping your world...')}</div>

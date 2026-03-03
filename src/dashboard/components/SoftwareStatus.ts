@@ -340,7 +340,6 @@ export class SoftwareStatus extends HTMLElement {
 					</svg>
 				</span>
 				${this.tr('software', 'Software')}
-				<span class="subtitle">${this.tr('sw_subtitle', 'Services &amp; Stack')}</span>
 			</h2>
 
 			<div id="sw-panel">
