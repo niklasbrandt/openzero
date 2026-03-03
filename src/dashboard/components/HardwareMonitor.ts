@@ -216,6 +216,11 @@ export class HardwareMonitor extends HTMLElement {
 				.has-tip:focus-visible::after {
 					opacity: 1;
 				}
+				/* Suppress parent tooltip when a nested child tooltip is active */
+				.has-tip:has(.has-tip:hover)::after,
+				.has-tip:has(.has-tip:focus-visible)::after {
+					opacity: 0 !important;
+				}
 
 				.cpu-model {
 					font-size: 1rem;
