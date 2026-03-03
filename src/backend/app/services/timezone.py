@@ -32,8 +32,8 @@ async def refresh_user_settings():
 		logger.error(f"Failed to refresh user settings from DB: {e}")
 
 def get_user_timezone() -> str:
-	"""Returns the user's timezone from DB identity, defaults to UTC."""
-	return _cached_timezone or "UTC"
+	"""Returns the user's timezone from DB identity, falls back to .env USER_TIMEZONE."""
+	return _cached_timezone or settings.USER_TIMEZONE
 
 def get_user_location() -> str:
 	"""Returns the user's location (City, CC) from DB identity, or empty."""
@@ -119,9 +119,9 @@ def format_time(dt: datetime.datetime = None) -> str:
 	if dt is None:
 		dt = get_now()
 	
-	# Two-letter weekday abbreviation
-	day_abbrevs = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
-	weekday = day_abbrevs[dt.weekday()]
+	# Full weekday name
+	day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+	weekday = day_names[dt.weekday()]
 	
 	# Ordinal suffix
 	day = dt.day

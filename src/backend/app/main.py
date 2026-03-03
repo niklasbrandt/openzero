@@ -86,7 +86,25 @@ async def lifespan(app: FastAPI):
                 from app.services.operator_board import operator_service
                 sync_res = await operator_service.sync_operator_tasks()
                 logging.info(f"✓ {sync_res}")
-            except Exception as e:
+                # 5. Startup Greeting — notify operator that Z is back online
+                from app.api.telegram import send_notification
+                from app.services.timezone import get_current_timezone
+                import pytz
+                from datetime import datetime
+                tz_str = await get_current_timezone()
+                now = datetime.now(pytz.timezone(tz_str))
+                hour = now.hour
+                if hour < 12:
+                    greeting = "Good morning"
+                elif hour < 18:
+                    greeting = "Good afternoon"
+                else:
+                    greeting = "Good evening"
+                await send_notification(
+                    f"\u26a1 *Z Online*\n\n{greeting}. All systems operational.\n"
+                    f"_{now.strftime('%H:%M %Z, %A %d %B %Y')}_"
+                )
+                logging.info("\u2713 Startup greeting sent.")            except Exception as e:
                 logging.warning(f"⚠ Warning: Background startup tasks failed: {e}")
 
         import asyncio
