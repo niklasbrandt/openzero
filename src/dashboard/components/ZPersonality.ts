@@ -1,3 +1,5 @@
+import { BUTTON_STYLES } from '../services/buttonStyles';
+
 export class ZPersonality extends HTMLElement {
 	private personality: any = null;
 	private protocols: any[] = [];
@@ -83,6 +85,7 @@ export class ZPersonality extends HTMLElement {
 
 		this.shadowRoot.innerHTML = `
 			<style>
+				${BUTTON_STYLES}
 				:host { display: block; height: 100%; font-family: 'Inter', system-ui, sans-serif; }
 				.card { height: 100%; display: flex; flex-direction: column; gap: 1.25rem; color: #fff; }
 				
@@ -97,11 +100,11 @@ export class ZPersonality extends HTMLElement {
 				.subtitle { font-size: 0.65rem; font-weight: 400; color: rgba(255, 255, 255, 0.3); margin-left: 0.5rem; text-transform: uppercase; letter-spacing: 0.1em; }
 
 				.edit-btn {
-					background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
-					color: var(--accent-color); padding: 4px 10px; font-size: 0.7rem; cursor: pointer;
-					text-transform: uppercase; letter-spacing: 0.05em; border-radius: 4px;
+					padding: 0.18rem 0.55rem;
+					font-size: 0.7rem;
+					text-transform: uppercase;
+					letter-spacing: 0.05em;
 				}
-				.edit-btn:hover { background: rgba(255,255,255,0.1); }
 
 				.tabs { display: flex; gap: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); }
 				.tab { 
@@ -144,8 +147,7 @@ export class ZPersonality extends HTMLElement {
 				input[type="range"] { flex: 1; accent-color: #14B8A6; cursor: pointer; }
 
 				.actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem; }
-				.save-btn { background: #14B8A6; border: none; color: #000; font-weight: 700; padding: 8px 16px; cursor: pointer; border-radius: 4px; }
-				.cancel-btn { background: transparent; border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 8px 16px; cursor: pointer; border-radius: 4px; }
+
 
 				.prot-list { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.5rem; }
 				.prot-item { 
