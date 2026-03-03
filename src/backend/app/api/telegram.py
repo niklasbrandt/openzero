@@ -50,11 +50,11 @@ async def _get_stats_footer() -> str:
 def get_nav_markup(t: dict, token: str = "") -> InlineKeyboardMarkup:
 	"""Standard navigation buttons (Large touch targets)."""
 	base_url = settings.BASE_URL.rstrip('/')
-	dashboard_url = f"{base_url}/home?token={token}" if token else f"{base_url}/home"
+	qs = f"?token={token}" if token else ""
 	keyboard = [
 		[
-			InlineKeyboardButton(f"🏠 {t.get('dashboard', 'Dashboard')}", url=dashboard_url),
-			InlineKeyboardButton(f"📅 {t.get('calendar', 'Calendar')}", url=f"{base_url}/calendar")
+			InlineKeyboardButton(f"🏠 {t.get('dashboard', 'Dashboard')}", url=f"{base_url}/home{qs}"),
+			InlineKeyboardButton(f"📅 {t.get('calendar', 'Calendar')}", url=f"{base_url}/calendar{qs}")
 		],
 		[
 			InlineKeyboardButton(f"📋 {t.get('operator_board', 'Operator')}", url=f"{base_url}/api/dashboard/planka-redirect?target=operator"),
@@ -268,12 +268,21 @@ async def start_telegram_bot():
 			# Prepend real current time (don't trust LLM for timestamps)
 			greeting_clean = strip_llm_time_header(greeting)
 			real_time = format_time()
-			
+
 			lang = await get_user_lang()
 			t = get_translations(lang)
-			
+
+			# Mobile auth hint: include a plain-text token URL so the user can
+			# long-press → "Open in Browser" once to save the token outside the
+			# Telegram WebView (iOS only — Android Chrome Custom Tabs share localStorage).
+			mobile_hint = ""
+			if settings.DASHBOARD_TOKEN:
+				base = settings.BASE_URL.rstrip('/')
+				auth_url = f"{base}/home?token={settings.DASHBOARD_TOKEN}"
+				mobile_hint = f"\n\n📲 <a href='{auth_url}'>Tap to open dashboard</a> (saves token in browser)"
+
 			await send_notification_html(
-				f"<blockquote><b>{real_time}</b>\n\n{_md_to_html(greeting_clean)}\n\n<i>{stats_text}</i></blockquote>",
+				f"<blockquote><b>{real_time}</b>\n\n{_md_to_html(greeting_clean)}\n\n<i>{stats_text}</i>{mobile_hint}</blockquote>",
 				reply_markup=get_nav_markup(t, token=settings.DASHBOARD_TOKEN)
 			)
 			logging.info("DEBUG: Greeting Seq - Notification Delivered")
