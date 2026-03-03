@@ -351,7 +351,7 @@ async def get_calibration():
 async def get_protocols():
 	"""Fetch Z's operational protocols (action tags)."""
 	from app.services.agent_actions import AVAILABLE_TOOLS
-	return {"tools": AVAILABLE_TOOLS}
+	return {"tools": [{"name": t.name, "description": t.description} for t in AVAILABLE_TOOLS]}
 
 @router.get("/personality")
 async def get_personality(db: AsyncSession = Depends(get_db)):

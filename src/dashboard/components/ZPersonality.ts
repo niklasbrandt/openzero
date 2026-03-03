@@ -148,10 +148,12 @@ export class ZPersonality extends HTMLElement {
 					${!this.isEditing && !this.isLoading && this.activeTab === 'personality' ? `<button class="edit-btn" id="edit-trigger">Refine</button>` : ''}
 				</div>
 
-				<div class="tabs">
-					<div class="tab ${this.activeTab === 'personality' ? 'active' : ''}" id="tab-per">Identity</div>
-					<div class="tab ${this.activeTab === 'protocols' ? 'active' : ''}" id="tab-prot">Protocols</div>
-				</div>
+				${!this.isEditing ? `
+					<div class="tabs">
+						<div class="tab ${this.activeTab === 'personality' ? 'active' : ''}" id="tab-per">Identity</div>
+						<div class="tab ${this.activeTab === 'protocols' ? 'active' : ''}" id="tab-prot">Protocols</div>
+					</div>
+				` : ''}
 
 				<div class="content">
 					${this.isLoading ? '<div class="empty">Aligning neural paths...</div>' : ''}
