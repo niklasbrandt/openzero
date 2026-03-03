@@ -24,7 +24,6 @@ from app.services.planka import get_planka_auth_token
 from app.services.translations import (
 	get_planka_entity_names,
 	get_all_values,
-	get_done_keywords,
 )
 
 logger = logging.getLogger(__name__)
@@ -115,7 +114,9 @@ class OperatorBoardService:
 		detail_resp.raise_for_status()
 		detail = detail_resp.json()
 		boards = detail.get("included", {}).get("boards", [])
-		board = next((b for b in boards if b["name"] == self.board_name), None)
+		all_board_names = get_all_values("board_name")
+		all_board_names.add("Operator Board")  # legacy
+		board = next((b for b in boards if b["name"] in all_board_names), None)
 		
 		if not board:
 			logger.info(f"Creating board {self.board_name}")
@@ -126,21 +127,38 @@ class OperatorBoardService:
 			resp.raise_for_status()
 			board = resp.json()["item"]
 			
-		# 3. Get/Create Lists
+		# 3. Get/Create Lists -- match any translated variant
 		board_detail_resp = await client.get(f"/api/boards/{board['id']}", params={"included": "lists"})
 		board_detail_resp.raise_for_status()
 		board_detail = board_detail_resp.json()
 		current_lists = board_detail.get("included", {}).get("lists", [])
 		list_names = [l["name"] for l in current_lists]
+
+		# Build sets for each logical list to match any language variant
+		list_key_all = {
+			"list_today": get_all_values("list_today"),
+			"list_this_week": get_all_values("list_this_week"),
+			"list_backlog": get_all_values("list_backlog"),
+			"list_done": get_all_values("list_done"),
+		}
 		
-		for i, lname in enumerate(self.mandatory_lists):
-			if lname not in list_names:
-				logger.info(f"Creating list {lname}")
+		for key, translated_name in self._list_key_map.items():
+			existing = next(
+				(l for l in current_lists if l["name"] in list_key_all[key]),
+				None,
+			)
+			if not existing:
+				logger.info(f"Creating list {translated_name}")
+				pos = list(self._list_key_map.keys()).index(key)
 				await client.post(f"/api/boards/{board['id']}/lists", json={
-					"name": lname,
+					"name": translated_name,
 					"type": "active",
-					"position": (i + 1) * 65535
+					"position": (pos + 1) * 65535
 				})
+
+		# Cache IDs for fast lookup
+		self._project_id = project["id"]
+		self._board_id = board["id"]
 				
 		return project["id"], board["id"]
 
@@ -152,9 +170,26 @@ class OperatorBoardService:
 			async with await self._get_client() as client:
 				target_project_id, target_board_id = await self.initialize_board(client)
 				
-				# Get target lists IDs
+				# Get target lists IDs -- build a logical-key lookup
 				board_detail = (await client.get(f"/api/boards/{target_board_id}", params={"included": "lists"})).json()
-				target_lists = {l["name"]: l["id"] for l in board_detail.get("included", {}).get("lists", [])}
+				all_lists = board_detail.get("included", {}).get("lists", [])
+
+				# Map logical key -> list id by matching any translated name
+				list_key_all = {
+					"list_today": get_all_values("list_today"),
+					"list_this_week": get_all_values("list_this_week"),
+					"list_backlog": get_all_values("list_backlog"),
+					"list_done": get_all_values("list_done"),
+				}
+				target_list_by_key: dict[str, str] = {}
+				for lst in all_lists:
+					for key, variants in list_key_all.items():
+						if lst["name"] in variants:
+							target_list_by_key[key] = lst["id"]
+							break
+
+				# Also match inbox names from any language
+				all_inbox_names = {name.lower() for name in get_all_values("list_inbox")}
 				
 				projects_resp = await client.get("/api/projects")
 				all_projects = projects_resp.json().get("items", [])
@@ -177,14 +212,13 @@ class OperatorBoardService:
 							new_list_id = None
 							
 							title = card["name"]
-							# Only sync if not already synced or if we want to update (logic: simplified for now)
-							# We check if it has the priority markers
+							# Priority markers determine target list
 							if "!!" in title:
-								new_list_id = target_lists.get("Today")
+								new_list_id = target_list_by_key.get("list_today")
 							elif "!" in title:
-								new_list_id = target_lists.get("This Week")
-							elif "Inbox" in source_board_name:
-								new_list_id = target_lists.get("Backlog")
+								new_list_id = target_list_by_key.get("list_this_week")
+							elif any(inbox in source_board_name.lower() for inbox in all_inbox_names):
+								new_list_id = target_list_by_key.get("list_backlog")
 								
 							if new_list_id:
 								# Prevent infinite loops by checking if the card is already in the target board
@@ -206,6 +240,93 @@ class OperatorBoardService:
 		except Exception as e:
 			logger.error(f"Sync failed: {e}")
 			return f"Sync failed: {str(e)}"
+
+	async def rename_planka_entities(self, old_lang: str, new_lang: str) -> str:
+		"""Rename the Operations project, Operator Board, and its lists
+		from old_lang names to new_lang names via Planka PATCH API."""
+		if old_lang == new_lang:
+			return "No language change."
+
+		old_names = get_planka_entity_names(old_lang)
+		new_names = get_planka_entity_names(new_lang)
+
+		try:
+			async with await self._get_client() as client:
+				# Ensure board exists (also caches IDs)
+				await self.initialize_board(client)
+
+				if not self._project_id or not self._board_id:
+					return "Could not find Operator project/board to rename."
+
+				renamed = []
+
+				# Rename project
+				if old_names["project_name"] != new_names["project_name"]:
+					resp = await client.patch(
+						f"/api/projects/{self._project_id}",
+						json={"name": new_names["project_name"]},
+					)
+					if resp.status_code == 200:
+						renamed.append(f"Project -> {new_names['project_name']}")
+
+				# Rename board
+				if old_names["board_name"] != new_names["board_name"]:
+					resp = await client.patch(
+						f"/api/boards/{self._board_id}",
+						json={"name": new_names["board_name"]},
+					)
+					if resp.status_code == 200:
+						renamed.append(f"Board -> {new_names['board_name']}")
+
+				# Rename lists
+				board_detail = (await client.get(
+					f"/api/boards/{self._board_id}",
+					params={"included": "lists"},
+				)).json()
+				current_lists = board_detail.get("included", {}).get("lists", [])
+
+				list_key_map = {
+					"list_today": None,
+					"list_this_week": None,
+					"list_backlog": None,
+					"list_done": None,
+				}
+
+				# Match existing lists by old-lang name OR any known variant
+				for lst in current_lists:
+					for key in list_key_map:
+						all_variants = get_all_values(key)
+						if lst["name"] in all_variants:
+							list_key_map[key] = lst["id"]
+							break
+
+				for key, list_id in list_key_map.items():
+					if not list_id:
+						continue
+					new_name = new_names[key]
+					old_name = old_names[key]
+					if old_name != new_name:
+						resp = await client.patch(
+							f"/api/lists/{list_id}",
+							json={"name": new_name},
+						)
+						if resp.status_code == 200:
+							renamed.append(f"List -> {new_name}")
+
+				# Update internal language and re-apply names
+				self._lang = new_lang
+				self._apply_lang()
+
+				# Invalidate tree cache so dashboard picks up new names
+				from app.services.planka import _tree_cache
+				_tree_cache.clear()
+
+				if renamed:
+					return f"Renamed: {', '.join(renamed)}"
+				return "No entities needed renaming."
+		except Exception as e:
+			logger.error(f"Planka rename failed: {e}")
+			return f"Rename failed: {str(e)}"
 
 # Singleton
 operator_service = OperatorBoardService()

@@ -96,8 +96,6 @@ async def get_project_tree(as_html: bool = True) -> str:
 				project_id = project['id']
 				
 				project_name = project['name']
-				if project_name.lower() == "openzero":
-					project_name = "Boards"
 
 				# Make project names clickable
 				if as_html:
@@ -128,7 +126,9 @@ async def get_project_tree(as_html: bool = True) -> str:
 				cards = b_detail.get("included", {}).get("cards", [])
 				
 				total_cards = len(cards)
-				done_list_ids = [l['id'] for l in lists if l.get('name') and any(kw in l['name'].lower() for kw in ['done', 'complete', 'finish'])]
+				from app.services.translations import get_done_keywords
+				_done_kw = get_done_keywords()
+				done_list_ids = [l['id'] for l in lists if l.get('name') and l['name'].lower() in _done_kw]
 				done_cards = len([c for c in cards if c['listId'] in done_list_ids])
 				
 				progress_pct = int((done_cards / total_cards) * 100) if total_cards > 0 else 0
@@ -166,9 +166,17 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 	list_name = (list_name or "Inbox").strip().strip('"\'')
 	title = (title or "New Task").strip().strip('"\'')
 
-	# Normalize 'Boards' -> 'openZero' for internal lookups
-	if board_name.lower() == "boards": board_name = "Operator Board"
-	if board_name.lower() == "openzero": board_name = "Operator Board"
+	# Normalize any translated project/board name variant to operator board
+	from app.services.translations import get_all_values
+	all_project_names = get_all_values("project_name")
+	all_project_names.update({"openZero", "Boards"})  # legacy names
+	all_board_names = get_all_values("board_name")
+	all_board_names.add("Operator Board")
+
+	if board_name in all_project_names or board_name.lower() in {n.lower() for n in all_project_names}:
+		board_name = "Operator Board"
+	if board_name.lower() in {n.lower() for n in all_board_names}:
+		board_name = "Operator Board"
 
 	print(f"DEBUG: create_task requested -> Board: {board_name}, List: {list_name}, Title: {title}")
 	try:

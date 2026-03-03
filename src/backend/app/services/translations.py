@@ -361,6 +361,21 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
     "es": _ES,
     "fr": _FR,
     "ja": _JA,
+    "zh": {},
+    "hi": {},
+    "ar": {},
+    "pt": {},
+    "ru": {},
+    "it": {},
+    "nl": {},
+    "pl": {},
+    "sv": {},
+    "el": {},
+    "ro": {},
+    "tr": {},
+    "cs": {},
+    "da": {},
+    "no": {},
 }
 
 
