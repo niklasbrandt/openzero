@@ -1,3 +1,5 @@
+import { BUTTON_STYLES } from '../services/buttonStyles';
+
 export class CalendarManager extends HTMLElement {
 	private t: Record<string, string> = {};
 	private events: any[] = [];
@@ -171,6 +173,7 @@ export class CalendarManager extends HTMLElement {
 		if (!this.shadowRoot.querySelector('.modal')) {
 			this.shadowRoot.innerHTML = `
 								<style>
+										${BUTTON_STYLES}
 										:host {
 												display: none;
 												position: fixed;
@@ -336,16 +339,18 @@ export class CalendarManager extends HTMLElement {
 										
 										.event-card-inner { display: flex; justify-content: space-between; align-items: flex-start; }
 										.event-info { flex: 1; }
-										.delete-event-btn { 
-												background: transparent; 
-												border: none; 
-												color: rgba(255, 255, 255, 0.2); 
-												cursor: pointer; 
-												padding: 4px;
-												border-radius: 4px;
-												transition: all 0.2s;
-										}
-										.delete-event-btn:hover { color: #f87171; background: rgba(248, 113, 113, 0.1); }
+.delete-event-btn {
+												background: rgba(239, 68, 68, 0.1);
+												border: 1px solid rgba(239, 68, 68, 0.25);
+												color: #f87171;
+												cursor: pointer;
+												padding: 0.18rem 0.5rem;
+												border-radius: 0.35rem;
+												font-size: 0.72rem;
+												transition: background 0.2s, border-color 0.2s;
+												flex-shrink: 0;
+											}
+											.delete-event-btn:hover { background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.5); }
 										
 										.event-title { font-size: 0.9rem; font-weight: 600; color: #fff; margin-bottom: 0.25rem; display: block; }
 										.event-meta { font-size: 0.75rem; color: rgba(255,255,255,0.4); display: flex; align-items: center; gap: 0.5rem; }
@@ -378,18 +383,19 @@ export class CalendarManager extends HTMLElement {
 						*, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 					}
 										
-										button.submit { 
-												background: #14B8A6; 
-												color: #000; 
-												border: none; 
-												padding: 0.75rem; 
-												border-radius: 10px; 
-												font-weight: 700; 
-												cursor: pointer; 
-												font-size: 0.85rem;
-												transition: transform 0.2s, opacity 0.2s;
-										}
-										button.submit:hover { transform: translateY(-1px); opacity: 0.9; }
+											button.submit {
+													background: #14B8A6;
+													color: #0a0f1e;
+													border: 1px solid #14B8A6;
+													padding: 0.6rem;
+													border-radius: 0.5rem;
+													font-weight: 700;
+													cursor: pointer;
+													font-size: 0.85rem;
+													width: 100%;
+													transition: background 0.2s, border-color 0.2s;
+											}
+											button.submit:hover { background: #0d9488; border-color: #0d9488; color: #0a0f1e; }
 								</style>
 								
 <div class="modal" role="dialog" aria-modal="true" aria-labelledby="cal-modal-title">
@@ -479,7 +485,7 @@ export class CalendarManager extends HTMLElement {
 												</div>
 												${e.is_local && !e.is_birthday ? `
 													<div style="display: flex; gap: 4px;">
-														<button class="delete-event-btn" data-id="${e.id}" title="Delete event" aria-label="${this.tr('aria_delete_event', 'Delete event')}: ${e.summary}" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #f87171; cursor: pointer; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold;">&times;</button>
+														<button class="delete-event-btn" data-id="${e.id}" title="Delete event" aria-label="${this.tr('aria_delete_event', 'Delete event')}: ${e.summary}">&times;</button>
 													</div>
 												` : ''}
 										</div>

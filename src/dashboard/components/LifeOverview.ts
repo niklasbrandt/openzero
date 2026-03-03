@@ -1,3 +1,5 @@
+import { BUTTON_STYLES } from '../services/buttonStyles';
+
 export class LifeOverview extends HTMLElement {
 	private t: Record<string, string> = {};
 
@@ -103,6 +105,7 @@ export class LifeOverview extends HTMLElement {
 		if (this.shadowRoot) {
 			this.shadowRoot.innerHTML = `
 				<style>
+					${BUTTON_STYLES}
 					:host { display: block; }
 					h2 { font-size: 1.5rem; font-weight: bold; margin: 0 0 1.5rem 0; color: #fff; letter-spacing: 0.02em; display: flex; align-items: center; gap: 0.5rem; }
 					.h-icon { display: inline-flex; width: 28px; height: 28px; background: linear-gradient(135deg, #14B8A6 0%, #6366f1 100%); border-radius: 0.4rem; align-items: center; justify-content: center; flex-shrink: 0; }
@@ -146,17 +149,9 @@ export class LifeOverview extends HTMLElement {
 					}
 
 					.action-btn {
-						background: rgba(20, 184, 166, 0.1);
-						color: #14B8A6;
-						border: 1px solid rgba(20, 184, 166, 0.3);
 						padding: 0.25rem 0.75rem;
-						border-radius: 0.5rem;
 						font-size: 0.75rem;
-						font-weight: 600;
-						cursor: pointer;
-						transition: all 0.2s;
 					}
-					.action-btn:hover { background: #14B8A6; color: #fff; }
 
 					.side-panel { display: flex; flex-direction: column; gap: 2rem; }
 

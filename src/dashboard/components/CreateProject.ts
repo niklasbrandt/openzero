@@ -1,3 +1,5 @@
+import { BUTTON_STYLES } from '../services/buttonStyles';
+
 export class CreateProject extends HTMLElement {
 	private isSubmitting = false;
 
@@ -110,6 +112,7 @@ export class CreateProject extends HTMLElement {
 		if (!this.shadowRoot) return;
 		this.shadowRoot.innerHTML = `
 		<style>
+					${BUTTON_STYLES}
 					h2 { font-size: 1.5rem; font-weight: bold; margin: 0 0 1rem 0; color: #fff; letter-spacing: 0.02em; }
 			:host {
 				display: block;
@@ -197,44 +200,14 @@ export class CreateProject extends HTMLElement {
 				align-items: center;
 			}
 
-			button {
-				font-family: 'Inter', system-ui, sans-serif;
-				font-weight: 600;
-				font-size: 0.8rem;
-				border: 1px solid rgba(20, 184, 166, 0.2);
-				border-radius: 0.6rem;
-				padding: 0.4rem 1rem;
-				cursor: pointer;
-				display: inline-flex;
-				align-items: center;
-				gap: 0.4rem;
-				background: rgba(20, 184, 166, 0.12);
-				color: #14B8A6;
-				letter-spacing: 0.02em;
-				transition: all 0.25s ease;
-			}
 
-			button:hover:not(:disabled) {
-				background: rgba(20, 184, 166, 0.22);
-				border-color: rgba(20, 184, 166, 0.4);
-			}
 
 			#submit-btn:disabled {
 				opacity: 0.5;
 				cursor: not-allowed;
 			}
 
-			#cancel-btn {
-				background: rgba(255, 255, 255, 0.06);
-				color: rgba(255,255,255,0.5);
-				border-color: rgba(255, 255, 255, 0.08);
-			}
 
-			#cancel-btn:hover {
-				background: rgba(255, 255, 255, 0.1);
-				color: rgba(255,255,255,0.7);
-				border-color: rgba(255, 255, 255, 0.15);
-			}
 
 			/* ── Feedback toast ── */
 			.feedback {
@@ -287,8 +260,8 @@ export class CreateProject extends HTMLElement {
 			<p class="hint">Comma-separated, optional</p>
 
 			<div class="actions">
-				<button type="submit" id="submit-btn">${this.plusSVG()} Add Board</button>
-				<button type="button" id="cancel-btn">Clear</button>
+				<button type="submit" id="submit-btn" class="btn-primary">${this.plusSVG()} Add Board</button>
+				<button type="button" id="cancel-btn" class="btn-ghost">Clear</button>
 			</div>
 		</form>
 

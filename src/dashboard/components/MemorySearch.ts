@@ -1,3 +1,5 @@
+import { BUTTON_STYLES } from '../services/buttonStyles';
+
 export class MemorySearch extends HTMLElement {
 	private t: Record<string, string> = {};
 
@@ -88,24 +90,7 @@ export class MemorySearch extends HTMLElement {
 						border-color: rgba(20, 184, 166, 0.4);
 						background: rgba(0, 0, 0, 0.28);
 					}
-					button {
-						background: rgba(20, 184, 166, 0.12);
-						color: #14B8A6;
-						border: 1px solid rgba(20, 184, 166, 0.2);
-						padding: 0.6rem 1rem;
-						border-radius: 0.6rem;
-						cursor: pointer;
-						font-weight: 600;
-						font-size: 0.8rem;
-						font-family: 'Inter', system-ui, sans-serif;
-						letter-spacing: 0.02em;
-						transition: all 0.25s ease;
-						white-space: nowrap;
-					}
-					button:hover {
-						background: rgba(20, 184, 166, 0.22);
-						border-color: rgba(20, 184, 166, 0.4);
-					}
+					${BUTTON_STYLES}
 					.result-item {
 						padding: 0.75rem;
 						background: rgba(255, 255, 255, 0.03);

@@ -1,3 +1,5 @@
+import { BUTTON_STYLES } from '../services/buttonStyles';
+
 export class EmailRules extends HTMLElement {
   private t: Record<string, string> = {};
 
@@ -152,6 +154,7 @@ export class EmailRules extends HTMLElement {
 					}
 					.info { display: flex; flex-direction: column; gap: 4px; }
 					.pattern { color: #fff; font-weight: 500; font-size: 0.9rem; }
+					${BUTTON_STYLES}
 					.action-tag { font-size: 0.75rem; color: #14B8A6; opacity: 0.9; font-weight: 500; }
 					.label-badge { 
 						background: rgba(20, 184, 166, 0.15); 
@@ -164,21 +167,10 @@ export class EmailRules extends HTMLElement {
 						text-transform: uppercase;
 						font-weight: 700;
 					}
-					.delete-btn { background: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.15); padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 0.75rem; transition: all 0.2s; }
-					.delete-btn:hover { background: rgba(239, 68, 68, 0.2); }
-					.edit-btn { background: rgba(255, 255, 255, 0.05); color: #fff; border: 1px solid rgba(255, 255, 255, 0.1); padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 0.75rem; margin-right: 6px; transition: all 0.2s; }
-					.edit-btn:hover { background: rgba(255, 255, 255, 0.1); }
+					.edit-btn { margin-right: 6px; }
+					.edit-btn:hover { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.2); }
 					.item-actions { display: flex; align-items: center; }
-					button#addBtn {
-						background: rgba(20, 184, 166, 0.12);
-						color: #14B8A6;
-						border: 1px solid rgba(20, 184, 166, 0.2);
-						padding: 0.6rem 1.25rem;
-						border-radius: 0.75rem;
-						cursor: pointer;
-						font-weight: 600;
-					}
-					button#addBtn:focus-visible { outline: 2px solid #14B8A6; outline-offset: 2px; }
+
 					.edit-btn:focus-visible, .delete-btn:focus-visible { outline: 2px solid rgba(255,255,255,0.4); outline-offset: 2px; }
 					input:focus-visible, select:focus-visible { outline: 2px solid #14B8A6; outline-offset: 2px; }
 					.form-label {
@@ -204,7 +196,7 @@ export class EmailRules extends HTMLElement {
 							</span>
 							${this.tr('email_rules', 'Email Intelligence Rules')}
 						</h2>
-						${!this.isAdding ? `<button id="showAddBtn" aria-label="Add new email rule" style="background: #14B8A6; color: #fff; border: none; padding: 0.4rem 1rem; border-radius: 0.6rem; cursor: pointer; font-size: 0.8rem; font-weight: 600;">+ ${this.tr('new_rule', 'New Rule')}</button>` : ''}
+						${!this.isAdding ? `<button id="showAddBtn" class="btn-primary" aria-label="Add new email rule">+ ${this.tr('new_rule', 'New Rule')}</button>` : ''}
 					</div>
 
 					${this.isAdding ? `
@@ -230,8 +222,8 @@ export class EmailRules extends HTMLElement {
 							</div>
 						</div>
 						<div style="display:flex; gap:0.5rem; margin-top:0.75rem;">
-							<button id="addBtn" type="submit" aria-label="${this.editingId ? 'Update rule' : 'Create rule'}">${this.editingId ? this.tr('update_rule', 'Update Rule') : this.tr('create_rule', 'Create Rule')}</button>
-							<button id="cancelEdit" type="button" aria-label="Cancel editing" style="background:transparent; color:#fff; border:1px solid rgba(255,255,255,0.1); border-radius:0.6rem; padding:0.4rem 1rem; cursor:pointer; font-size:0.8rem;">${this.tr('cancel', 'Cancel')}</button>
+							<button id="addBtn" type="submit" class="btn-primary" aria-label="${this.editingId ? 'Update rule' : 'Create rule'}">${this.editingId ? this.tr('update_rule', 'Update Rule') : this.tr('create_rule', 'Create Rule')}</button>
+							<button id="cancelEdit" type="button" class="cancel-btn" aria-label="Cancel editing">${this.tr('cancel', 'Cancel')}</button>
 						</div>
 					</fieldset>
 					` : ''}
