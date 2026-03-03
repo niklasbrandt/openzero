@@ -94,7 +94,7 @@ export class CreateProject extends HTMLElement {
 		if (!btn) return;
 		btn.disabled = loading;
 		btn.innerHTML = loading
-			? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spinner"><circle cx="12" cy="12" r="10" stroke-opacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"/></svg> Creating…`
+			? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spinner" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke-opacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"/></svg> Creating…`
 			: `${this.plusSVG()} Add Board`;
 	}
 
@@ -178,6 +178,11 @@ export class CreateProject extends HTMLElement {
 				background: rgba(0, 0, 0, 0.28);
 				box-shadow: 0 0 20px rgba(20, 184, 166, 0.08);
 			}
+			input:focus-visible, textarea:focus-visible {
+				outline: 2px solid #14B8A6;
+				outline-offset: 2px;
+			}
+			button:focus-visible { outline: 2px solid #14B8A6; outline-offset: 2px; }
 
 			.hint {
 				font-size: 0.75rem;
@@ -263,6 +268,9 @@ export class CreateProject extends HTMLElement {
 			/* ── Spinner ── */
 			.spinner { animation: spin 0.8s linear infinite; }
 			@keyframes spin { to { transform: rotate(360deg); } }
+			@media (prefers-reduced-motion: reduce) {
+				*, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+			}
 		</style>
 
 		<h2>${this.folderSVG()} Add Board</h2>
@@ -284,7 +292,7 @@ export class CreateProject extends HTMLElement {
 			</div>
 		</form>
 
-		<div id="feedback" class="feedback"></div>
+		<div id="feedback" class="feedback" role="status" aria-live="polite" aria-atomic="true"></div>
 		`;
 	}
 }

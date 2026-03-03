@@ -79,16 +79,16 @@ export class HardwareMonitor extends HTMLElement {
 					<span class="spec-label">${this.tr('ram', 'RAM')}</span>
 					<span class="ram-values">${(s.ram_total_gb - s.ram_available_gb).toFixed(1)} / ${s.ram_total_gb} GB</span>
 				</div>
-				<div class="ram-bar-track has-tip" data-tip="Total system RAM usage. LLM models are memory-mapped (mlock) so they consume significant RAM. If usage exceeds ~90%, swapping will severely degrade performance.">
-					<div class="ram-bar-fill ${ramBarClass}" style="width: ${Math.min(ramPct, 100)}%"></div>
+				<div class="ram-bar-track has-tip" data-tip="${this.tr('tip_ram_usage', 'Total system RAM usage. LLM models are memory-mapped (mlock) so they consume significant RAM. If usage exceeds ~90%, swapping will severely degrade performance.')}" role="presentation">
+					<div class="ram-bar-fill ${ramBarClass}" role="progressbar" aria-valuenow="${ramPct}" aria-valuemin="0" aria-valuemax="100" aria-label="${this.tr('ram_usage_label', 'RAM usage')}: ${ramPct}%" style="width: ${Math.min(ramPct, 100)}%"></div>
 				</div>
-				<span class="ram-pct ${ramBarClass}">${ramPct}% used</span>
+				<span class="ram-pct ${ramBarClass}" aria-hidden="true">${ramPct}% ${this.tr('used', 'used')}</span>
 			</div>
 		` : '';
 
 		// Uptime
 		const uptimeHtml = s.uptime_human ? `
-			<div class="spec-item has-tip" data-tip="How long the server has been running since last reboot.">
+			<div class="spec-item has-tip" data-tip="${this.tr('tip_uptime', 'How long the server has been running since last reboot.')}">
 				<span class="spec-label">${this.tr('uptime', 'Uptime')}</span>
 				<span class="spec-value">${s.uptime_human}</span>
 			</div>
@@ -101,7 +101,8 @@ export class HardwareMonitor extends HTMLElement {
 		const tierRows = tierNames.map(t => {
 			const tier = tiers[t] || {};
 			const statusCls = tier.status === 'ok' || tier.status === 'online' || tier.status === 'no slot available' ? 'online' : 'offline';
-			const statusLabel = statusCls === 'online' ? 'online' : 'offline';
+			const statusLabelKey = statusCls === 'online' ? 'status_online' : 'status_offline';
+			const statusLabel = this.tr(statusLabelKey, statusCls === 'online' ? 'Online' : 'Offline');
 			const warningHtml = tier.thread_warning
 				? `<span class="tier-warning has-tip" data-tip="${tier.thread_warning}">\u26A0</span>`
 				: '';
@@ -109,7 +110,7 @@ export class HardwareMonitor extends HTMLElement {
 				<div class="tier-row">
 					<span class="tier-name">${t}</span>
 					<span class="tier-status ${statusCls}" aria-label="${t} tier is ${statusLabel}">${statusLabel}</span>
-					<span class="tier-threads has-tip" data-tip="Threads assigned to this tier's llama-server instance.">${tier.threads || '?'}T</span>
+					<span class="tier-threads has-tip" data-tip="${this.tr('tip_threads_assigned', 'Threads assigned to this tier\'s llama-server instance.')}">${tier.threads || '?'}T</span>
 					${warningHtml}
 				</div>
 			`;
@@ -117,7 +118,7 @@ export class HardwareMonitor extends HTMLElement {
 
 		const tierHtml = Object.keys(tiers).length > 0 ? `
 			<div class="tier-section">
-				<span class="spec-label has-tip" data-tip="Thread allocation across the 3 LLM tiers. Total should not exceed physical cores to avoid contention.">${this.tr('llm_tiers', 'LLM Tiers')} (${totalConfiguredThreads}T / ${d.cores_physical || s.physical_cores || '?'}C)</span>
+				<span class="spec-label has-tip" data-tip="${this.tr('tip_llm_tiers', 'Thread allocation across the 3 LLM tiers. Total should not exceed physical cores to avoid contention.')}">${this.tr('llm_tiers', 'LLM Tiers')} (${totalConfiguredThreads}T / ${d.cores_physical || s.physical_cores || '?'}C)</span>
 				<div class="tier-grid">${tierRows}</div>
 			</div>
 		` : '';
@@ -145,8 +146,8 @@ export class HardwareMonitor extends HTMLElement {
 				<div class="simd-badges">${badgesHtml}</div>
 			</div>
 			${tierHtml}
-			<div class="capability-summary ${capabilityClass}">
-				<span class="capability-dot"></span>
+			<div class="capability-summary ${capabilityClass}" role="status" aria-label="Hardware capability: ${capabilityText}">
+				<span class="capability-dot" aria-hidden="true"></span>
 				<span class="capability-text">${capabilityText}</span>
 			</div>
 		`;
@@ -449,11 +450,16 @@ export class HardwareMonitor extends HTMLElement {
 					text-align: center;
 					padding: 1.5rem;
 				}
+				.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+				.simd-badge:focus-visible { outline: 2px solid #14B8A6; outline-offset: 2px; transform: scale(1.08); }
+				@media (prefers-reduced-motion: reduce) {
+					*, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+				}
 			</style>
 
 			<h2>
-				<span class="icon">
-					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+				<span class="icon" aria-hidden="true">
+					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
 						<rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
 						<rect x="9" y="9" width="6" height="6"></rect>
 						<line x1="9" y1="1" x2="9" y2="4"></line>

@@ -85,6 +85,16 @@ export class WelcomeOnboarding extends HTMLElement {
 						cursor: pointer;
 					}
 					.cta:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(20, 184, 166, 0.4); }
+					.cta:focus-visible { outline: 2px solid #14B8A6; outline-offset: 3px; }
+					.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+					@media (prefers-reduced-motion: reduce) {
+						*, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+					}
+					.cta:focus-visible { outline: 2px solid #14B8A6; outline-offset: 3px; }
+					.step-item:focus-visible { outline: 2px solid rgba(20, 184, 166, 0.5); outline-offset: 2px; border-radius: 0.75rem; }
+					@media (prefers-reduced-motion: reduce) {
+						*, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+					}
 				</style>
 				<div class="card">
 					<div>
@@ -92,32 +102,47 @@ export class WelcomeOnboarding extends HTMLElement {
 						<p>Your private agent OS is online. Let's finish the setup to unlock Z's full potential.</p>
 					</div>
 					
-					<div class="steps">
-						<div class="step-item ${steps.profile ? 'done' : ''}">
-							<div class="step-icon">${steps.profile ? '✓' : '1'}</div>
+					<ul class="steps" role="list" aria-label="Setup steps" style="list-style:none;padding:0;margin:0;">
+						<li class="step-item ${steps.profile ? 'done' : ''}" role="listitem">
+							<div class="step-icon" aria-hidden="true">${steps.profile ? '&#10003;' : '1'}</div>
 							<div class="step-text">
-								Personal Profile <span>Set your mission in about-me.md</span>
+								Personal Profile
+								<span>Set your mission in about-me.md</span>
+								${steps.profile ? '<span class="sr-only">Completed</span>' : '<span class="sr-only">Not yet completed</span>'}
 							</div>
-						</div>
-						<div class="step-item ${steps.inner_circle ? 'done' : ''}">
-							<div class="step-icon">${steps.inner_circle ? '✓' : '2'}</div>
+						</li>
+						<li class="step-item ${steps.inner_circle ? 'done' : ''}" role="listitem">
+							<div class="step-icon" aria-hidden="true">${steps.inner_circle ? '&#10003;' : '2'}</div>
 							<div class="step-text">
-								Inner Circle <span>Add family & close contacts below</span>
+								Inner Circle
+								<span>Add family &amp; close contacts below</span>
+								${steps.inner_circle ? '<span class="sr-only">Completed</span>' : '<span class="sr-only">Not yet completed</span>'}
 							</div>
-						</div>
-						<div class="step-item ${steps.calendar ? 'done' : ''}">
-							<div class="step-icon">${steps.calendar ? '✓' : '3'}</div>
+						</li>
+						<li class="step-item ${steps.calendar ? 'done' : ''}" role="listitem">
+							<div class="step-icon" aria-hidden="true">${steps.calendar ? '&#10003;' : '3'}</div>
 							<div class="step-text">
-								Calendar <span>OAuth link for external events</span>
+								Calendar
+								<span>OAuth link for external events</span>
+								${steps.calendar ? '<span class="sr-only">Completed</span>' : '<span class="sr-only">Not yet completed</span>'}
 							</div>
-						</div>
-					</div>
+						</li>
+					</ul>
 
 					<div style="display: flex; align-items: center; justify-content: space-between; margin-top: 1rem;">
-						<button class="cta" onclick="const p = this.closest('welcome-onboarding'); p.style.opacity='0'; p.style.pointerEvents='none'; fetch('/api/dashboard/onboarding-dismiss', {method: 'POST'}); setTimeout(() => p.style.display='none', 500)">Dismiss Onboarding</button>
+						<button class="cta" id="dismiss-onboarding-btn" aria-label="Dismiss setup onboarding checklist">Dismiss Onboarding</button>
 					</div>
 				</div>
 			`;
+			const dismissBtn = this.shadowRoot?.querySelector('#dismiss-onboarding-btn');
+			if (dismissBtn) {
+				dismissBtn.addEventListener('click', () => {
+					this.style.opacity = '0';
+					this.style.pointerEvents = 'none';
+					fetch('/api/dashboard/onboarding-dismiss', { method: 'POST' });
+					setTimeout(() => { this.style.display = 'none'; }, 500);
+				});
+			}
 		}
 	}
 }

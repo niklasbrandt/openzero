@@ -66,7 +66,7 @@ export class SoftwareStatus extends HTMLElement {
 				model: modelFor('instant'),
 				status: (tiers.instant || {}).status === 'ok' || (tiers.instant || {}).status === 'online' || (tiers.instant || {}).status === 'no slot available' ? 'online' : 'offline',
 				detail: d.llm_provider === 'local' ? `${(tiers.instant || {}).threads || '?'}T` : 'cloud',
-				tip: 'Fast, trivial queries. Greetings, confirmations, memory distillation.',
+				tip: this.tr('tip_instant', 'Fast, trivial queries. Greetings, confirmations, memory distillation.'),
 				isLlm: true,
 			},
 			{
@@ -74,7 +74,7 @@ export class SoftwareStatus extends HTMLElement {
 				model: modelFor('standard'),
 				status: (tiers.standard || {}).status === 'ok' || (tiers.standard || {}).status === 'online' || (tiers.standard || {}).status === 'no slot available' ? 'online' : 'offline',
 				detail: d.llm_provider === 'local' ? `${(tiers.standard || {}).threads || '?'}T` : 'cloud',
-				tip: 'Normal conversation, moderate reasoning, tool-intent. The workhorse tier.',
+				tip: this.tr('tip_standard', 'Normal conversation, moderate reasoning, tool-intent. The workhorse tier.'),
 				isLlm: true,
 			},
 			{
@@ -82,47 +82,49 @@ export class SoftwareStatus extends HTMLElement {
 				model: modelFor('deep'),
 				status: (tiers.deep || {}).status === 'ok' || (tiers.deep || {}).status === 'online' || (tiers.deep || {}).status === 'no slot available' ? 'online' : 'offline',
 				detail: d.llm_provider === 'local' ? `${(tiers.deep || {}).threads || '?'}T` : 'cloud',
-				tip: 'Complex reasoning, briefings, planning, strategic analysis.',
+				tip: this.tr('tip_deep', 'Complex reasoning, briefings, planning, strategic analysis.'),
 				isLlm: true,
 			},
 			{
-				name: 'Backend',
+				name: this.tr('backend', 'Backend'),
 				model: '',
 				status: d.status === 'online' ? 'online' : 'offline',
 				detail: `Provider: ${d.llm_provider || 'local'}`,
-				tip: 'FastAPI backend serving dashboard, Telegram bot, scheduled tasks, and LLM routing.',
+				tip: this.tr('tip_backend', 'FastAPI backend serving dashboard, Telegram bot, scheduled tasks, and LLM routing.'),
 				isLlm: false,
 			},
 			{
-				name: 'Memory',
+				name: this.tr('memory_search', 'Memory'),
 				model: '',
 				status: (d.memory_points || 0) >= 0 ? 'online' : 'offline',
 				detail: `${d.memory_points || 0} pts`,
-				tip: 'Qdrant vector database storing semantic long-term memory.',
+				tip: this.tr('tip_memory', 'Qdrant vector database storing semantic long-term memory.'),
 				isLlm: false,
 			},
 			{
-				name: 'Identity',
+				name: this.tr('tab_identity', 'Identity'),
 				model: '',
 				status: d.identity_active ? 'online' : 'warning',
-				detail: d.identity_active ? 'Active' : 'Not set',
-				tip: 'Subject Zero identity profile. Required for personalized responses.',
+				detail: d.identity_active ? this.tr('status_active', 'Active') : this.tr('not_set', 'Not set'),
+				tip: this.tr('tip_identity_svc', 'Subject Zero identity profile. Required for personalized responses.'),
 				isLlm: false,
 			},
 		];
 
 		const serviceGrid = services.map(s => s.isLlm ? `
-			<div class="svc-item svc-llm has-tip" data-tip="${s.tip}" tabindex="0">
+			<div class="svc-item svc-llm has-tip" role="listitem" data-tip="${s.tip}" tabindex="0" aria-label="${s.name}: ${s.status}">
 				<div class="svc-row">
-					<span class="svc-dot ${s.status}"></span>
+					<span class="svc-dot ${s.status}" aria-hidden="true"></span>
+					<span class="sr-only">${s.status}</span>
 					<span class="svc-name">${s.name}</span>
 					<span class="svc-detail">${s.detail}</span>
 				</div>
 				<span class="svc-model">${s.model}</span>
 			</div>
 		` : `
-			<div class="svc-item has-tip" data-tip="${s.tip}" tabindex="0">
-				<span class="svc-dot ${s.status}"></span>
+			<div class="svc-item has-tip" role="listitem" data-tip="${s.tip}" tabindex="0" aria-label="${s.name}: ${s.status}">
+				<span class="svc-dot ${s.status}" aria-hidden="true"></span>
+				<span class="sr-only">${s.status}</span>
 				<span class="svc-name">${s.name}</span>
 				<span class="svc-detail">${s.detail}</span>
 			</div>
@@ -130,10 +132,10 @@ export class SoftwareStatus extends HTMLElement {
 
 		// Stack summary
 		const stackItems = [
-			{ label: 'LLM Engine', value: 'llama.cpp', tip: 'Local inference engine running GGUF-quantized models via llama-server.' },
-			{ label: 'Model Active', value: d.llm_model || 'unknown', tip: 'The model used for the most recent LLM request.' },
-			{ label: 'Memory DB', value: 'Qdrant', tip: 'Vector similarity search for semantic long-term memory.' },
-			{ label: 'Task Board', value: 'Planka', tip: 'Kanban project management board for task tracking.' },
+			{ label: this.tr('llm_engine', 'LLM Engine'), value: 'llama.cpp', tip: this.tr('tip_llm_engine', 'Local inference engine running GGUF-quantized models via llama-server.') },
+			{ label: this.tr('model_active', 'Model Active'), value: d.llm_model || 'unknown', tip: this.tr('tip_model_active', 'The model used for the most recent LLM request.') },
+			{ label: this.tr('memory_db', 'Memory DB'), value: 'Qdrant', tip: this.tr('tip_memory_db', 'Vector similarity search for semantic long-term memory.') },
+			{ label: this.tr('task_board', 'Task Board'), value: 'Planka', tip: this.tr('tip_task_board', 'Kanban project management board for task tracking.') },
 		];
 
 		const stackHtml = stackItems.map(s => `
@@ -144,7 +146,7 @@ export class SoftwareStatus extends HTMLElement {
 		`).join('');
 
 		el.innerHTML = `
-			<div class="svc-grid">${serviceGrid}</div>
+			<div class="svc-grid" role="list" aria-label="Service status overview">${serviceGrid}</div>
 			<div class="stack-section">
 				<span class="section-label">${this.tr('stack', 'Stack')}</span>
 				<div class="stack-grid">${stackHtml}</div>
@@ -185,7 +187,7 @@ export class SoftwareStatus extends HTMLElement {
 					display: inline-flex;
 					width: 28px;
 					height: 28px;
-					background: linear-gradient(135deg, #8b5cf6 0%, #0066FF 100%);
+					background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-secondary) 100%);
 					border-radius: 0.4rem;
 					align-items: center;
 					justify-content: center;
@@ -330,11 +332,16 @@ export class SoftwareStatus extends HTMLElement {
 					text-align: center;
 					padding: 1.5rem;
 				}
+				.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+				.svc-item:focus-visible, .has-tip:focus-visible { outline: 2px solid #14B8A6; outline-offset: 2px; border-radius: 0.4rem; }
+				@media (prefers-reduced-motion: reduce) {
+					*, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+				}
 			</style>
 
 			<h2>
-				<span class="icon">
-					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+				<span class="icon" aria-hidden="true">
+					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
 						<polyline points="16 18 22 12 16 6"></polyline>
 						<polyline points="8 6 2 12 8 18"></polyline>
 					</svg>

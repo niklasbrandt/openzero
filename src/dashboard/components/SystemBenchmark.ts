@@ -39,8 +39,8 @@ export class SystemBenchmark extends HTMLElement {
 		const btn = this.shadowRoot?.querySelector(`#bench-${tier}`) as HTMLButtonElement;
 		if (btn) {
 			btn.classList.add('running');
-			btn.textContent = 'Running\u2026';
-		}
+			btn.textContent = 'Running\u2026';			btn.setAttribute('aria-busy', 'true');
+			btn.setAttribute('aria-label', `Benchmarking ${tier} tier…`);		}
 
 		try {
 			const res = await fetch(`/api/dashboard/benchmark/llm?tier=${tier}`, { method: 'POST' });
@@ -56,6 +56,8 @@ export class SystemBenchmark extends HTMLElement {
 			if (btn) {
 				btn.classList.remove('running');
 				btn.textContent = this.tr(`bench_${tier}`, `Bench ${tier}`);
+				btn.removeAttribute('aria-busy');
+				btn.setAttribute('aria-label', `Benchmark ${tier} tier`);
 			}
 		}
 	}
@@ -74,33 +76,33 @@ export class SystemBenchmark extends HTMLElement {
 			cls: 'excellent',
 			icon: '\uD83D\uDE80',
 			label: this.tr('excellent', 'Excellent'),
-			hint: `Fast real-time conversation. This ${exp.model} model is running well on your hardware.`,
+			hint: this.tr('hint_bench_excellent', `Fast real-time conversation. This ${exp.model} model is running well on your hardware.`),
 		};
 		if (tps >= exp.good) return {
 			cls: 'good',
 			icon: '\u2705',
 			label: this.tr('good', 'Good'),
-			hint: `Comfortable for interactive use. Typical for CPU-only inference with a ${exp.model} model.`,
+			hint: this.tr('hint_bench_good', `Comfortable for interactive use. Typical for CPU-only inference with a ${exp.model} model.`),
 		};
 		if (tps >= exp.ok) return {
 			cls: 'moderate',
 			icon: '\u26A0\uFE0F',
 			label: this.tr('moderate', 'Moderate'),
-			hint: `Usable but with noticeable latency. Consider fewer concurrent requests or a smaller quantization.`,
+			hint: this.tr('hint_bench_moderate', `Usable but with noticeable latency. Consider fewer concurrent requests or a smaller quantization.`),
 		};
 		return {
 			cls: 'slow',
 			icon: '\uD83D\uDC0C',
 			label: this.tr('slow', 'Slow'),
-			hint: `Below expected for a ${exp.model} model. Check: thread count, available RAM, SIMD support, or try a smaller model.`,
+			hint: this.tr('hint_bench_slow', `Below expected for a ${exp.model} model. Check: thread count, available RAM, SIMD support, or try a smaller model.`),
 		};
 	}
 
 	private getTtftHint(ttft: number): string {
-		if (ttft <= 1) return 'Model loaded and warmed up -- great first-token latency.';
-		if (ttft <= 3) return 'Normal startup time. The model may be loading from cache.';
-		if (ttft <= 8) return 'High TTFT. Model may still be loading into memory or swapping.';
-		return 'Very high TTFT -- likely cold-loading the model or the server is memory-constrained. Subsequent runs should be faster.';
+		if (ttft <= 1) return this.tr('hint_ttft_excellent', 'Model loaded and warmed up -- great first-token latency.');
+		if (ttft <= 3) return this.tr('hint_ttft_good', 'Normal startup time. The model may be loading from cache.');
+		if (ttft <= 8) return this.tr('hint_ttft_moderate', 'High TTFT. Model may still be loading into memory or swapping.');
+		return this.tr('hint_ttft_slow', 'Very high TTFT -- likely cold-loading the model or the server is memory-constrained. Subsequent runs should be faster.');
 	}
 
 	updateBenchPanel() {
@@ -128,19 +130,19 @@ export class SystemBenchmark extends HTMLElement {
 			const exp = SystemBenchmark.EXPECTATIONS[r.tier] || SystemBenchmark.EXPECTATIONS['standard'];
 
 			// Thread utilization warning
-			const threadWarningHtml = r.thread_warning
-				? `<div class="thread-warning" tabindex="0" role="alert">
-						<span class="warning-icon">\u26A0\uFE0F</span>
+const warningHtml = r.thread_warning
+					? `<div class="thread-warning" tabindex="0" role="alert">
+							<span class="warning-icon" aria-hidden="true">&#9888;&#65039;</span>
 						<span class="warning-text">${r.thread_warning}</span>
 					</div>`
 				: '';
 
 			// Thread info line
 			const threadInfoHtml = r.configured_threads
-				? `<div class="detail has-tip" data-tip="CPU threads assigned to this llama-server instance vs. total physical cores on the host.">
-						<span class="detail-label">Threads</span>
+				? `<div class="detail has-tip" data-tip="${this.tr('tip_threads_info', 'CPU threads assigned to this llama-server instance vs. total physical cores on the host.')}">
+						<span class="detail-label">${this.tr('threads', 'Threads')}</span>
 						<span class="detail-value">${r.configured_threads} / ${r.physical_cores}</span>
-						<span class="detail-hint">${r.configured_threads} of ${r.physical_cores} cores assigned</span>
+						<span class="detail-hint">${r.configured_threads} ${this.tr('of', 'of')} ${r.physical_cores} ${this.tr('cores_assigned', 'cores assigned')}</span>
 					</div>`
 				: '';
 
@@ -150,13 +152,13 @@ export class SystemBenchmark extends HTMLElement {
 						<span class="bench-tier has-tip" data-tip="The '${r.tier}' tier typically runs a ${exp.model} parameter model.">${r.tier}</span>
 						<span class="bench-model has-tip" data-tip="Exact model file loaded by llama-server for this tier.">${r.model}</span>
 					</div>
-					${threadWarningHtml}
+					${warningHtml}
 					<div class="bench-tps ${rating.cls} has-tip" data-tip="Tokens generated per second. Higher is better. ${rating.hint}">
 						<span class="tps-value">${r.tokens_per_second}</span>
 						<span class="tps-unit">tok/s</span>
 					</div>
 					<div class="rating-badge ${rating.cls} has-tip" data-tip="${rating.hint}">
-						<span class="rating-icon">${rating.icon}</span>
+						<span class="rating-icon" aria-hidden="true">${rating.icon}</span>
 						<span class="rating-label">${rating.label}</span>
 					</div>
 					<div class="rating-hint">${rating.hint}</div>
@@ -164,14 +166,13 @@ export class SystemBenchmark extends HTMLElement {
 						<div class="detail has-tip" data-tip="${ttftHint}">
 							<span class="detail-label">TTFT</span>
 							<span class="detail-value">${r.time_to_first_token}s</span>
-							<span class="detail-hint">${ttftHint}</span>
 						</div>
-						<div class="detail has-tip" data-tip="Number of tokens the model generated during the benchmark prompt. More tokens = more reliable throughput measurement.">
-							<span class="detail-label">Tokens</span>
+						<div class="detail has-tip" data-tip="${this.tr('tip_tokens_count', 'Number of tokens the model generated during the benchmark prompt. More tokens = more reliable throughput measurement.')}">
+							<span class="detail-label">${this.tr('tokens', 'Tokens')}</span>
 							<span class="detail-value">${r.tokens}</span>
 						</div>
-						<div class="detail has-tip" data-tip="Wall-clock time from request to last token. Includes TTFT + generation time.">
-							<span class="detail-label">Total</span>
+						<div class="detail has-tip" data-tip="${this.tr('tip_total_time', 'Wall-clock time from request to last token. Includes TTFT + generation time.')}">
+							<span class="detail-label">${this.tr('total', 'Total')}</span>
 							<span class="detail-value">${r.total_seconds}s</span>
 						</div>
 						${threadInfoHtml}
@@ -518,11 +519,16 @@ export class SystemBenchmark extends HTMLElement {
 					text-align: center;
 					padding: 1.5rem;
 				}
+				.legend-dot { flex-shrink: 0; }
+				.legend-item:focus-visible { outline: 2px solid #14B8A6; outline-offset: 2px; border-radius: 2px; }
+				@media (prefers-reduced-motion: reduce) {
+					*, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+				}
 			</style>
 
 			<h2>
-				<span class="icon">
-					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+				<span class="icon" aria-hidden="true">
+					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
 						<path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
 					</svg>
 				</span>
@@ -545,7 +551,7 @@ export class SystemBenchmark extends HTMLElement {
 				<span class="legend-item has-tip" data-tip="${this.tr('tip_legend_slow', 'Below expected. Check SIMD, thread count, or try a smaller model.')}" tabindex="0"><span class="legend-dot slow"></span>${this.tr('slow', 'Slow')}</span>
 			</div>
 
-			<div id="bench-results">
+			<div id="bench-results" aria-live="polite" aria-atomic="false" aria-label="Benchmark results">
 				<div class="empty">${this.tr('bench_empty', 'Click a tier button to measure tokens/second.')}</div>
 			</div>
 		`;

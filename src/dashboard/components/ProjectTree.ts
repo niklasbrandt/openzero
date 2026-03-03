@@ -24,7 +24,11 @@ export class ProjectTree extends HTMLElement {
 				createProject.setAttribute('data-open', isOpen ? 'false' : 'true');
 
 				const btn = this.shadowRoot?.querySelector('#new-project-btn');
-				if (btn) btn.textContent = isOpen ? '+ Add Board' : '− Cancel';
+				if (btn) {
+					btn.textContent = isOpen ? '+ Add Board' : '− Cancel';
+					btn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+					btn.setAttribute('aria-label', isOpen ? 'Add a new project board' : 'Cancel adding new board');
+				}
 			}
 		});
 	}
@@ -123,12 +127,12 @@ export class ProjectTree extends HTMLElement {
 				<div class="card">
 					<div class="header">
 						<h2>
-							<span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>
+							<span class="icon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>
 							Boards
 						</h2>
-						<button id="new-project-btn">+ Add Board</button>
+						<button id="new-project-btn" aria-expanded="false" aria-label="Add a new project board">+ Add Board</button>
 					</div>
-					<pre>Loading tree...</pre>
+					<pre tabindex="0" aria-label="Project board structure tree">Loading tree...</pre>
 				</div>
 			`;
 		}
