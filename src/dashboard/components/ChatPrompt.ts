@@ -18,6 +18,26 @@ export class ChatPrompt extends HTMLElement {
 	connectedCallback() {
 		this.render();
 		this.setupListeners();
+		this.loadHistory();
+	}
+
+	private async loadHistory() {
+		try {
+			const res = await fetch('/api/dashboard/chat/history?limit=30');
+			if (!res.ok) return;
+			const data = await res.json();
+			if (!data.messages?.length) return;
+			this.messages = data.messages.map((m: any) => ({
+				role: m.role === 'z' ? 'assistant' : 'user',
+				content: m.content,
+				timestamp: new Date(m.at),
+				channel: m.channel,
+			}));
+			this.renderMessages();
+			this.scrollToBottom();
+		} catch (e) {
+			// Silent fail -- chat still works without history
+		}
 	}
 
 	private setupListeners() {
@@ -240,7 +260,8 @@ export class ChatPrompt extends HTMLElement {
 					<div class="bubble-content">${this.renderContent(msg.content)}</div>
 					<div class="bubble-footer">
 						${msg.model ? `<span class="model-tag">${msg.model}</span>` : ''}
-						<span class="time">${this.formatTime(msg.timestamp)}</span>
+						${(msg as any).channel ? `<span class="channel-tag">${(msg as any).channel}</span>` : ''}
+				<span class="time">${this.formatTime(msg.timestamp)}</span>
 					</div>
 				</div>
 			</div>
@@ -431,6 +452,14 @@ export class ChatPrompt extends HTMLElement {
 				text-transform: uppercase;
 				letter-spacing: 0.05em;
 				font-weight: 600;
+			}
+
+			.channel-tag {
+				font-size: 0.6rem;
+				color: rgba(255, 255, 255, 0.25);
+				text-transform: uppercase;
+				letter-spacing: 0.05em;
+				font-weight: 500;
 			}
 
 			.message.assistant .bubble .time {
