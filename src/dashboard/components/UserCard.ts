@@ -117,10 +117,10 @@ export class UserCard extends HTMLElement {
 				.user-info { display: flex; align-items: center; gap: 1rem; }
 				.avatar {
 					width: 48px; height: 48px;
-					background: #14B8A6;
+					background: linear-gradient(135deg, #14B8A6, #0066FF);
+					border-radius: 0.4rem;
 					display: flex; align-items: center; justify-content: center;
 					font-weight: 800; font-size: 1.25rem;
-					box-shadow: 0 0 20px rgba(20, 184, 166, 0.3);
 				}
 				h2 { margin: 0; font-size: 1.1rem; }
 
@@ -132,6 +132,9 @@ export class UserCard extends HTMLElement {
 					font-size: 0.7rem;
 					cursor: pointer;
 					text-transform: uppercase;
+					letter-spacing: 0.05em;
+					border-radius: 0.4rem;
+					transition: all 0.2s;
 				}
 
 				.grid {
@@ -147,11 +150,13 @@ export class UserCard extends HTMLElement {
 				input, textarea, select {
 					background: rgba(0,0,0,0.3);
 					border: 1px solid rgba(255,255,255,0.1);
+					border-radius: 0.5rem;
 					color: #fff;
-					padding: 8px;
+					padding: 8px 12px;
 					font-size: 0.85rem;
 					width: 100%;
 					box-sizing: border-box;
+					transition: border-color 0.2s;
 				}
 
 				select {
@@ -187,8 +192,8 @@ export class UserCard extends HTMLElement {
 
 
 				.actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem; }
-				.save-btn { background: #14B8A6; border: none; color: #000; font-weight: 700; padding: 8px 16px; cursor: pointer; }
-				.cancel-btn { background: transparent; border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 8px 16px; cursor: pointer; }
+				.save-btn { background: #14B8A6; border: none; color: #000; font-weight: 700; padding: 8px 16px; cursor: pointer; border-radius: 0.4rem; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.75rem; transition: all 0.2s; }
+				.cancel-btn { background: transparent; border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 8px 16px; cursor: pointer; border-radius: 0.4rem; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.75rem; transition: all 0.2s; }
 				button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { 
 					outline: 2px solid #14B8A6; 
 					outline-offset: 2px; 
