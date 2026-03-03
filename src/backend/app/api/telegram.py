@@ -133,7 +133,8 @@ async def start_telegram_bot():
 
 			# Unified Context gathering
 			event_summary_parts = []
-			now = datetime.now(pytz.timezone(settings.USER_TIMEZONE))
+			from app.services.timezone import get_user_timezone
+			now = datetime.now(pytz.timezone(get_user_timezone()))
 
 			print("DEBUG: Greeting Seq - Step 2: Fetching Unified Calendar")
 			try:
@@ -360,7 +361,7 @@ async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
 			f"🧠 *Memory (Qdrant):* {m_text} ({m_stats.get('points', 0)} pts)\n"
 			f"📋 *Task Board (Planka):* {p_text}\n"
 			f"🤖 *Intelligence (Ollama):* {l_text}\n"
-			f"📍 *Time:* {datetime.now(pytz.timezone(settings.USER_TIMEZONE)).strftime('%H:%M:%S')}"
+			f"📍 *Time:* {datetime.now(pytz.timezone(get_user_timezone())).strftime('%H:%M:%S')}"
 		)
 		await safe_reply(update, status_report, reply_markup=get_nav_markup())
 	except Exception as e:

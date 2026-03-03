@@ -888,6 +888,11 @@ async def update_identity(person: PersonCreate, db: AsyncSession = Depends(get_d
 	
 	await db.commit()
 	await db.refresh(me)
+
+	# Refresh cached timezone/location so services pick up the new values immediately
+	from app.services.timezone import refresh_user_settings
+	await refresh_user_settings()
+
 	return me
 
 @router.get("/people")

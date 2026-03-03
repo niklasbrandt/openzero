@@ -5,7 +5,7 @@ from app.tasks.morning import morning_briefing
 from app.tasks.weekly import weekly_review
 from app.tasks.email_poll import poll_gmail
 from app.tasks.operator_sync import run_operator_sync
-from app.services.timezone import update_detected_timezone, get_current_timezone
+from app.services.timezone import update_detected_timezone, get_current_timezone, get_user_timezone
 from app.config import settings
 import pytz
 import logging

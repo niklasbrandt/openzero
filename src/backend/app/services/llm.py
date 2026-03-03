@@ -478,6 +478,7 @@ async def detect_calendar_events(text: str) -> list[dict]:
 	"""Analyze text for potential calendar events. Returns a list of structured events."""
 	import json
 	import re
+	from app.services.timezone import get_user_timezone
 	
 	prompt = f"""Analyze the following text and extract any potential calendar events (appointments, meetings, deadlines, celebrations).
 If events are found, provide them in the following JSON format:
@@ -497,7 +498,7 @@ TEXT:
 {text}
 
 RULES:
-- Today's date is: {datetime.now(pytz.timezone(settings.USER_TIMEZONE)).strftime('%Y-%m-%d')} ({datetime.now(pytz.timezone(settings.USER_TIMEZONE)).strftime('%A')})
+- Today's date is: {datetime.now(pytz.timezone(get_user_timezone())).strftime('%Y-%m-%d')} ({datetime.now(pytz.timezone(get_user_timezone())).strftime('%A')})
 - Use YYYY-MM-DD HH:MM format.
 - If no year/time is specified, use common sense based on today's date.
 - Output MUST be valid JSON and nothing else.
