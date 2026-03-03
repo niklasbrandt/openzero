@@ -112,7 +112,7 @@ services:
       - internal
 
   tts:
-    image: ghcr.io/matatonic/openedai-speech:0.19.0
+    image: ghcr.io/matatonic/openedai-speech:0.18.2
     restart: always
     networks:
       - internal
