@@ -34,13 +34,14 @@ def get_nav_markup() -> InlineKeyboardMarkup:
 	keyboard = [
 		[
 			InlineKeyboardButton("🏠 Dashboard", url=f"{base_url}/home"),
-			InlineKeyboardButton("📋 Operator", url=f"{base_url}/api/dashboard/planka-redirect?target=operator")
-		],
-		[
-			InlineKeyboardButton("📁 Projects", url=f"{base_url}/api/dashboard/planka-redirect"),
 			InlineKeyboardButton("📅 Calendar", url=f"{base_url}/calendar")
 		],
 		[
+			InlineKeyboardButton("📋 Operator", url=f"{base_url}/api/dashboard/planka-redirect?target=operator"),
+			InlineKeyboardButton("📁 Projects", url=f"{base_url}/api/dashboard/planka-redirect")
+		],
+		[
+			InlineKeyboardButton("☀️ Day", callback_data="call_day"),
 			InlineKeyboardButton("❓ Help / Commands", callback_data="call_help")
 		]
 	]
@@ -87,6 +88,7 @@ async def start_telegram_bot():
 	bot_app.add_handler(CallbackQueryHandler(handle_unlearn_approval, pattern="^unlearn_"))
 	bot_app.add_handler(CallbackQueryHandler(handle_wipe_confirm, pattern="^wipe_"))
 	bot_app.add_handler(CallbackQueryHandler(handle_calendar_approval, pattern="^cal_"))
+	bot_app.add_handler(CallbackQueryHandler(handle_day_callback, pattern="^call_day$"))
 	bot_app.add_handler(CallbackQueryHandler(handle_help_callback, pattern="^call_help$"))
 	bot_app.add_handler(CommandHandler("help", cmd_help))
 	bot_app.add_handler(CommandHandler("commands", cmd_help))
@@ -606,6 +608,10 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		"_Tap any command to execute it directly._"
 	)
 	await safe_reply(update, help_text, reply_markup=get_nav_markup())
+
+async def handle_day_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+	await update.callback_query.answer()
+	await cmd_day(update, context)
 
 async def handle_help_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	await update.callback_query.answer()
