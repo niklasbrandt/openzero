@@ -138,8 +138,18 @@ export class CircleManager extends HTMLElement {
 
 	render() {
 		if (this.shadowRoot) {
-			const title = this.circleType === 'inner' ? 'Inner Circle (Family & Care)' : 'Close Circle (Friends & Social)';
-			const accent = this.circleType === 'inner' ? '#3b82f6' : '#10b981';
+			const titles: Record<string, string> = {
+				inner: 'Inner Circle (Family & Care)',
+				close: 'Close Circle (Friends & Social)',
+				outer: 'Outer Circle (Acquaintances)',
+			};
+			const accents: Record<string, string> = {
+				inner: '#3b82f6',
+				close: '#10b981',
+				outer: '#a78bfa',
+			};
+			const title = titles[this.circleType] || titles['outer'];
+			const accent = accents[this.circleType] || accents['outer'];
 
 			this.shadowRoot.innerHTML = `
 				<style>

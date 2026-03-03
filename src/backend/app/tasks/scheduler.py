@@ -15,7 +15,7 @@ import os
 
 logger = logging.getLogger(__name__)
 
-scheduler = AsyncIOScheduler(timezone=pytz.timezone(get_user_timezone()))
+scheduler = AsyncIOScheduler(timezone=pytz.utc)
 
 async def run_backup():
 	"""Runs the daily system backup script."""
@@ -41,8 +41,6 @@ async def start_scheduler():
 	# 1. Identify user's actual timezone and preferred briefing time
 	from app.models.db import AsyncSessionLocal, Person
 	from sqlalchemy import select
-	from app.services.timezone import get_current_timezone
-	import pytz
 	from datetime import datetime
 	
 	user_tz_str = await get_current_timezone()
