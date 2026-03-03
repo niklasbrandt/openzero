@@ -79,11 +79,35 @@ body {
   color: rgba(255, 255, 255, 0.3);
   text-decoration: none;
   transition: all 0.25s ease;
+  position: relative;
+}
+.sidebar-nav a::after {
+  content: attr(aria-label);
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(8, 12, 28, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 0.72rem;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  z-index: 200;
 }
 
 .sidebar-nav a:hover {
   color: rgba(255, 255, 255, 0.7);
   background: rgba(255, 255, 255, 0.05);
+}
+.sidebar-nav a:hover::after {
+  opacity: 1;
 }
 
 .sidebar-nav a.active {

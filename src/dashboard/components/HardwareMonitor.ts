@@ -467,7 +467,6 @@ export class HardwareMonitor extends HTMLElement {
 					</svg>
 				</span>
 				${this.tr('hardware', 'Hardware')}
-				<span class="subtitle">${this.tr('hw_subtitle', 'CPU &amp; SIMD Capabilities')}</span>
 			</h2>
 
 			<div id="hw-panel">
