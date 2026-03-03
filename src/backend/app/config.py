@@ -32,10 +32,6 @@ class Settings(BaseSettings):
     TELEGRAM_BOT_TOKEN: str = ""
     TELEGRAM_ALLOWED_USER_ID: str = ""
 
-    # Timezone & Location (fallback -- dashboard User Card takes priority)
-    USER_TIMEZONE: str = "America/New_York"
-    USER_LOCATION: str = "Berlin, DE" # Format: "City, CC" (comma-separated, CC = country code)
-
     # Ollama
     OLLAMA_BASE_URL: str = "http://ollama:11434"
     OLLAMA_MODEL: str = "llama3.1:8b" # Keep for backwards compat

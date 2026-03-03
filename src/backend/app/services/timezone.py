@@ -32,12 +32,12 @@ async def refresh_user_settings():
 		logger.error(f"Failed to refresh user settings from DB: {e}")
 
 def get_user_timezone() -> str:
-	"""Returns the user's timezone: DB identity > .env fallback."""
-	return _cached_timezone or settings.USER_TIMEZONE
+	"""Returns the user's timezone from DB identity, defaults to UTC."""
+	return _cached_timezone or "UTC"
 
 def get_user_location() -> str:
-	"""Returns the user's location (City, CC): DB identity > .env fallback."""
-	return _cached_location or settings.USER_LOCATION
+	"""Returns the user's location (City, CC) from DB identity, or empty."""
+	return _cached_location or ""
 
 async def update_detected_timezone():
 	"""
