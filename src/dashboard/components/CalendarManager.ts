@@ -1,4 +1,5 @@
 export class CalendarManager extends HTMLElement {
+	private t: Record<string, string> = {};
 	private events: any[] = [];
 	private isOpen = false;
 	private selectedDate: number | null = null;
@@ -16,8 +17,20 @@ export class CalendarManager extends HTMLElement {
 		this.viewYear = now.getFullYear();
 	}
 
+	private async loadTranslations() {
+		try {
+			const res = await fetch('/api/dashboard/translations');
+			if (res.ok) this.t = await res.json();
+		} catch (_) { }
+	}
+
+	private tr(key: string, fallback: string): string {
+		return this.t[key] || fallback;
+	}
+
 	connectedCallback() {
 		this.render();
+		this.loadTranslations();
 		this.fetchEvents();
 		window.addEventListener('open-calendar', () => this.toggle(true));
 		window.addEventListener('refresh-data', (e: any) => {
@@ -382,11 +395,11 @@ export class CalendarManager extends HTMLElement {
 <div class="modal" role="dialog" aria-modal="true" aria-labelledby="cal-modal-title">
 						<div class="header">
 								<div class="nav-controls">
-										<button class="nav-btn" id="prev-month" aria-label="Previous month">&larr;</button>
+										<button class="nav-btn" id="prev-month" aria-label="${this.tr('aria_prev_month', 'Previous month')}">&larr;</button>
 										<div class="month-label" id="cal-modal-title"></div>
-										<button class="nav-btn" id="next-month" aria-label="Next month">&rarr;</button>
+										<button class="nav-btn" id="next-month" aria-label="${this.tr('aria_next_month', 'Next month')}">&rarr;</button>
 								</div>
-								<button class="close-btn" id="close-modal" aria-label="Close calendar">&times;</button>
+								<button class="close-btn" id="close-modal" aria-label="${this.tr('aria_close_calendar', 'Close calendar')}">&times;</button>
 										</div>
 										
 										<div class="content-grid">
@@ -466,7 +479,7 @@ export class CalendarManager extends HTMLElement {
 												</div>
 												${e.is_local && !e.is_birthday ? `
 													<div style="display: flex; gap: 4px;">
-														<button class="delete-event-btn" data-id="${e.id}" title="Delete event" aria-label="Delete event: ${e.summary}" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #f87171; cursor: pointer; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold;">&times;</button>
+														<button class="delete-event-btn" data-id="${e.id}" title="Delete event" aria-label="${this.tr('aria_delete_event', 'Delete event')}: ${e.summary}" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #f87171; cursor: pointer; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold;">&times;</button>
 													</div>
 												` : ''}
 										</div>
@@ -477,7 +490,10 @@ export class CalendarManager extends HTMLElement {
 		const monthGrid = this.shadowRoot.querySelector('.month-grid')!;
 		monthGrid.innerHTML = `
 									${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d, i) => {
-										const fullDays = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+										const fullDays = [
+									this.tr('sun', 'Sunday'), this.tr('mon', 'Monday'), this.tr('tue', 'Tuesday'),
+									this.tr('wed', 'Wednesday'), this.tr('thu', 'Thursday'), this.tr('fri', 'Friday'), this.tr('sat', 'Saturday')
+								];
 										return `<div class="weekday" role="columnheader" aria-label="${fullDays[i]}">${d}</div>`;
 									}).join('')}
 						${Array(firstDay).fill(null).map(() => `<div></div>`).join('')}

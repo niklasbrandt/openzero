@@ -65,11 +65,20 @@
 
 ## 12. Accessibility & Progressive Enhancement
 
+All code written for the openZero dashboard **MUST** conform to **WCAG 2.1 Level AA** and **EN 301 549** (the European accessibility standard). This is a non-negotiable baseline for every new component, feature, and bug fix.
+
 - **Native Elements First**: Always prioritize native HTML elements (buttons, inputs, links) over custom `div` or `span` listeners to ensure built-in keyboard support and screen reader compatibility.
-- **Keyboard Navigability**: Ensure all interactive elements are focusable (`tabindex="0"` if not native) and have visible focus states.
-- **ARIA Standards**: Use appropriate ARIA roles and labels (e.g., `aria-label`, `aria-expanded`, `role="status"`) for purely visual or complex custom components.
+- **Keyboard Navigability**: Ensure all interactive elements are focusable (`tabindex="0"` if not native) and have visible focus states (`:focus-visible` ring, minimum 2px solid #14B8A6).
+- **ARIA Standards**: Use appropriate ARIA roles and labels (`aria-label`, `aria-expanded`, `role="status"`, `role="dialog"`, etc.) for purely visual or complex custom components. Every interactive element and landmark region must have a meaningful accessible name.
 - **Semantic Hierarchy**: Maintain a logical heading structure (H1 -> H2 -> H3) to aid screen reader navigation.
 - **Contrast & Clarity**: Maintain high color contrast for text and ensure touch/click targets are sufficiently sized (min 44x44px where possible).
+- **Color Independence**: Never use color as the only visual means of conveying information. Always pair color indicators with text, icons, or `aria-label` alternatives.
+- **Live Regions**: Use `aria-live="polite"` for dynamic content updates. Use `aria-live="assertive"` only for urgent alerts. Add `role="status"` for status messages.
+- **Multilingual Accessible Text**: ALL user-facing strings in ARIA attributes (`aria-label`, `aria-describedby`, `placeholder`, screen-reader-only text) MUST use the component's `this.tr('key', 'English fallback')` translation helper -- never hardcode English strings directly. Add new keys to `_EN` and `_DE` in `src/backend/app/services/translations.py` under the `Accessibility / ARIA labels` section.
+- **tr() in Every Component**: Every Shadow DOM Web Component MUST include the translation boilerplate (`private t`, `loadTranslations()`, `tr()` method) so accessible text can be localized. Call `loadTranslations()` inside `connectedCallback()`.
+- **Skip Navigation**: The global layout includes a skip link (`#main-content`). Do not remove it.
+- **Reduced Motion & Forced Colors**: Include `@media (prefers-reduced-motion: reduce)` and `@media (forced-colors: active)` blocks in every Shadow DOM component stylesheet.
+- **sr-only Utility**: Each Shadow DOM component must define a local `.sr-only` CSS class for screen-reader-only text since Shadow DOM CSS is encapsulated.
 
 ## 13. Artifact Management & Consistency
 

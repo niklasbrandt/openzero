@@ -171,7 +171,7 @@ export class ZPersonality extends HTMLElement {
 				</div>
 
 				${!this.isEditing ? `
-					<div class="tabs" role="tablist" aria-label="Personality views">
+					<div class="tabs" role="tablist" aria-label="${this.tr('aria_personality_views', 'Personality views')}">
 						<div class="tab ${this.activeTab === 'personality' ? 'active' : ''}" id="tab-per" role="tab" aria-selected="${this.activeTab === 'personality'}" tabindex="${this.activeTab === 'personality' ? '0' : '-1'}">${this.tr('tab_identity', 'Identity')}</div>
 						<div class="tab ${this.activeTab === 'protocols' ? 'active' : ''}" id="tab-prot" role="tab" aria-selected="${this.activeTab === 'protocols'}" tabindex="${this.activeTab === 'protocols' ? '0' : '-1'}">${this.tr('tab_protocols', 'Protocols')}</div>
 					</div>
@@ -269,21 +269,6 @@ export class ZPersonality extends HTMLElement {
 		this.shadowRoot.querySelector('#edit-trigger')?.addEventListener('click', () => { this.isEditing = true; this.render(); });
 		this.shadowRoot.querySelector('#cancel-trigger')?.addEventListener('click', () => { this.isEditing = false; this.render(); });
 		this.shadowRoot.querySelector('#save-trigger')?.addEventListener('click', () => this.savePersonality());
-
-		// Auto-apply theme colors when selecting a preset
-		this.shadowRoot.querySelector('.theme-selector')?.addEventListener('change', (e: any) => {
-			const select = e.target;
-			const option = select.options[select.selectedIndex];
-			const colors = JSON.parse(option.dataset.colors || '[]');
-			if (colors.length >= 3) {
-				const cp = this.shadowRoot!.querySelector('#input-color_primary') as HTMLInputElement;
-				const cs = this.shadowRoot!.querySelector('#input-color_secondary') as HTMLInputElement;
-				const ct = this.shadowRoot!.querySelector('#input-color_tertiary') as HTMLInputElement;
-				if (cp) cp.value = colors[0];
-				if (cs) cs.value = colors[1];
-				if (ct) ct.value = colors[2];
-			}
-		});
 
 		this.shadowRoot.querySelector('#tab-per')?.addEventListener('click', () => {
 			this.activeTab = 'personality';

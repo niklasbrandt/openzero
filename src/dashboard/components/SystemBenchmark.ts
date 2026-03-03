@@ -40,7 +40,7 @@ export class SystemBenchmark extends HTMLElement {
 		if (btn) {
 			btn.classList.add('running');
 			btn.textContent = 'Running\u2026';			btn.setAttribute('aria-busy', 'true');
-			btn.setAttribute('aria-label', `Benchmarking ${tier} tier…`);		}
+			btn.setAttribute('aria-label', `${this.tr('aria_benchmarking_tier', 'Benchmarking')} ${tier} tier…`);		}
 
 		try {
 			const res = await fetch(`/api/dashboard/benchmark/llm?tier=${tier}`, { method: 'POST' });
@@ -57,7 +57,7 @@ export class SystemBenchmark extends HTMLElement {
 				btn.classList.remove('running');
 				btn.textContent = this.tr(`bench_${tier}`, `Bench ${tier}`);
 				btn.removeAttribute('aria-busy');
-				btn.setAttribute('aria-label', `Benchmark ${tier} tier`);
+				btn.setAttribute('aria-label', `${this.tr('aria_benchmark_tier', 'Benchmark')} ${tier} tier`);
 			}
 		}
 	}
@@ -551,7 +551,7 @@ const warningHtml = r.thread_warning
 				<span class="legend-item has-tip" data-tip="${this.tr('tip_legend_slow', 'Below expected. Check SIMD, thread count, or try a smaller model.')}" tabindex="0"><span class="legend-dot slow"></span>${this.tr('slow', 'Slow')}</span>
 			</div>
 
-			<div id="bench-results" aria-live="polite" aria-atomic="false" aria-label="Benchmark results">
+			<div id="bench-results" aria-live="polite" aria-atomic="false" aria-label="${this.tr('aria_benchmark_results', 'Benchmark results')}">
 				<div class="empty">${this.tr('bench_empty', 'Click a tier button to measure tokens/second.')}</div>
 			</div>
 		`;

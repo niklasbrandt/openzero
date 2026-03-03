@@ -145,6 +145,13 @@ export class ChatPrompt extends HTMLElement {
 				model: data.model,
 			});
 
+			// Notification sound
+			try {
+				const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3');
+				audio.volume = 0.4;
+				audio.play();
+			} catch (_) { }
+
 			if (data.actions && data.actions.length > 0) {
 				window.dispatchEvent(new CustomEvent('refresh-data', {
 					detail: { actions: data.actions }
@@ -261,7 +268,7 @@ export class ChatPrompt extends HTMLElement {
 					<div class="empty-icon" aria-hidden="true">${this.chatSVG()}</div>
 					<p>${this.tr('start_chat_with_z', 'Start a conversation with Z')}</p>
 					<span>${this.tr('chat_hint', 'Ask anything — manage tasks, query memories, or get briefed.')}</span>
-					<nav aria-label="Quick commands" class="command-hints">
+					<nav aria-label="${this.tr('aria_quick_commands', 'Quick commands')}" class="command-hints">
 						<ul role="list" style="display:flex;flex-wrap:wrap;gap:0.5rem;justify-content:center;list-style:none;padding:0;margin:1rem 0 0 0;">
 							<li role="listitem"><span class="cmd-chip" tabindex="0">/day</span></li>
 							<li role="listitem"><span class="cmd-chip" tabindex="0">/week</span></li>
@@ -607,8 +614,12 @@ export class ChatPrompt extends HTMLElement {
 			}
 
 			@keyframes msgIn {
-				from { opacity: 0; transform: translateY(8px); }
+				from { opacity: 0; transform: translateY(12px); }
 				to	 { opacity: 1; transform: translateY(0); }
+			}
+
+			.message.assistant .bubble {
+				animation: msgIn 0.5s cubic-bezier(0.23, 1, 0.32, 1) forwards;
 			}
 		</style>
 
@@ -622,24 +633,23 @@ export class ChatPrompt extends HTMLElement {
 				<div class="empty-icon" aria-hidden="true">${this.chatSVG()}</div>
 				<p>${this.tr('start_chat_with_z', 'Start a conversation with Z')}</p>
 				<span>${this.tr('chat_hint', 'Ask anything — manage tasks, query memories, or get briefed.')}</span>
-				<nav class="command-hints" aria-label="Quick commands">
+				<nav class="command-hints" aria-label="${this.tr('aria_quick_commands', 'Quick commands')}">
 					<ul role="list" style="display:flex;flex-wrap:wrap;gap:0.5rem;justify-content:center;list-style:none;padding:0;margin:1rem 0 0 0;">
-						<li role="listitem"><span class="cmd-chip" tabindex="0" aria-label="Daily briefing command">/day</span></li>
-						<li role="listitem"><span class="cmd-chip" tabindex="0" aria-label="Weekly briefing command">/week</span></li>
-						<li role="listitem"><span class="cmd-chip" tabindex="0" aria-label="Monthly briefing command">/month</span></li>
-						<li role="listitem"><span class="cmd-chip" tabindex="0" aria-label="Yearly briefing command">/year</span></li>
-						<li role="listitem"><span class="cmd-chip" tabindex="0" aria-label="Search memory command">/memory</span></li>
-						<li role="listitem"><span class="cmd-chip" tabindex="0" aria-label="Add memory command">/add</span></li>
-						<li role="listitem"><span class="cmd-chip" tabindex="0" aria-label="Deep think command">/think</span></li>
+						<li role="listitem"><span class="cmd-chip" tabindex="0" aria-label="${this.tr('aria_cmd_day', 'Daily briefing command')}">/day</span></li>
+						<li role="listitem"><span class="cmd-chip" tabindex="0" aria-label="${this.tr('aria_cmd_week', 'Weekly briefing command')}">/week</span></li>
+						<li role="listitem"><span class="cmd-chip" tabindex="0" aria-label="${this.tr('aria_cmd_month', 'Monthly briefing command')}">/month</span></li>
+						<li role="listitem"><span class="cmd-chip" tabindex="0" aria-label="${this.tr('aria_cmd_year', 'Yearly briefing command')}">/year</span></li>
+						<li role="listitem"><span class="cmd-chip" tabindex="0" aria-label="${this.tr('aria_cmd_memory', 'Search memory command')}">/memory</span></li>
+						<li role="listitem"><span class="cmd-chip" tabindex="0" aria-label="${this.tr('aria_cmd_add', 'Add memory command')}">/add</span></li>
+						<li role="listitem"><span class="cmd-chip" tabindex="0" aria-label="${this.tr('aria_cmd_think', 'Deep think command')}">/think</span></li>
 					</ul>
 				</nav>
 			</div>
 		</div>
 
-		<div class="input-area" role="group" aria-label="Message input">
-			<label for="chat-input" class="sr-only">Message to Z</label>
-			<textarea id="chat-input" rows="1" placeholder="${this.tr('ask_z_placeholder', 'Ask Z something...')}" aria-label="Message to Z" autocomplete="off" spellcheck="true"></textarea>
-			<button id="send-btn" aria-label="Send message" type="button">${this.sendSVG()}</button>
+		<div class="input-area" role="group" aria-label="${this.tr('aria_message_input', 'Message input')}">
+			<textarea id="chat-input" rows="1" placeholder="${this.tr('ask_z_placeholder', 'Ask Z something...')}" aria-label="${this.tr('aria_message', 'Message')}" autocomplete="off" spellcheck="true"></textarea>
+			<button id="send-btn" aria-label="${this.tr('aria_send_message', 'Send message')}" type="button">${this.sendSVG()}</button>
 		</div>
 		`;
 	}

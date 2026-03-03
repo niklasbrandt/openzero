@@ -114,10 +114,10 @@ export class CircleManager extends HTMLElement {
 					<div class="info">
 						<span class="name">${p.name}</span>
 						<span class="rel">${p.relationship}</span>
-						${p.birthday ? `<span class="cal-badge" aria-label="Birthday: ${p.birthday}"><span aria-hidden="true">&#127874;</span> ${p.birthday}</span>` : ''}
+						${p.birthday ? `<span class="cal-badge" aria-label="${this.tr('aria_birthday_badge', 'Birthday')}: ${p.birthday}"><span aria-hidden="true">&#127874;</span> ${p.birthday}</span>` : ''}
 						<p class="ctx">${p.context || this.tr('no_focus', 'No specific focus set.')}</p>
 					</div>
-					<div class="item-actions" role="group" aria-label="Actions for ${p.name}">
+					<div class="item-actions" role="group" aria-label="${this.tr('aria_actions_for', 'Actions for')} ${p.name}">
 						<button class="edit-btn" data-id="${p.id}" aria-label="Edit details for ${p.name}">${this.tr('edit', 'Edit')}</button>
 						<button class="delete-btn" data-id="${p.id}" aria-label="Remove ${p.name} from circle">${this.tr('remove', 'Remove')}</button>
 					</div>

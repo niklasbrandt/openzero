@@ -42,7 +42,7 @@ export class MemorySearch extends HTMLElement {
 				return;
 			}
 			resultsContainer.innerHTML = `
-				<ul role="list" aria-label="Memory results" style="list-style:none;padding:0;margin:0;">
+				<ul role="list" aria-label="${this.tr('aria_memory_results', 'Memory results')}" style="list-style:none;padding:0;margin:0;">
 					${results.map((res, i) => `
 						<li role="listitem" class="result-item">
 							<span class="sr-only">Result ${i + 1}: </span>${res}
@@ -143,7 +143,7 @@ export class MemorySearch extends HTMLElement {
 						${this.tr('memory_search', 'Memory Search')}
 						<span class="subtitle" aria-hidden="true">Semantic</span>
 					</h2>
-					<form class="search-box" role="search" aria-label="Search semantic memory" onsubmit="return false;">
+					<form class="search-box" role="search" aria-label="${this.tr('aria_search_memory', 'Search semantic memory')}" onsubmit="return false;">
 						<div class="input-group">
 							<label for="memory-search-input">${this.tr('search_label', 'Search query')}</label>
 							<input
@@ -161,7 +161,7 @@ export class MemorySearch extends HTMLElement {
 					<div id="results"
 						role="status"
 						aria-live="polite"
-						aria-label="Memory search results"
+						aria-label="${this.tr('aria_memory_search_results', 'Memory search results')}"
 						aria-atomic="false"></div>
 				</div>
 			`;
