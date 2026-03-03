@@ -54,7 +54,7 @@ export class BriefingHistory extends HTMLElement {
 						onclick="this.parentElement.classList.toggle('active'); this.setAttribute('aria-expanded', this.parentElement.classList.contains('active').toString())"
 						aria-expanded="false"
 						aria-controls="briefing-content-${b.id || b.created_at}"
-						aria-label="Toggle briefing from ${new Date(b.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}"
+						aria-label="${this.tr('aria_toggle_briefing', 'Toggle briefing from')} ${new Date(b.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}"
 					>
 						<div class="meta-left">
 							<span class="type">${b.type.toUpperCase()}</span>
@@ -69,7 +69,7 @@ export class BriefingHistory extends HTMLElement {
 					<div class="content-wrapper"
 						id="briefing-content-${b.id || b.created_at}"
 						role="region"
-						aria-label="Briefing content from ${new Date(b.created_at).toLocaleDateString()}">
+						aria-label="${this.tr('aria_briefing_content', 'Briefing content from')} ${new Date(b.created_at).toLocaleDateString()}">
 						<div class="content-inner">
 							<div class="content">${b.content}</div>
 						</div>

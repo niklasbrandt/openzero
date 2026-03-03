@@ -146,7 +146,7 @@ export class SoftwareStatus extends HTMLElement {
 		`).join('');
 
 		el.innerHTML = `
-			<div class="svc-grid" role="list" aria-label="Service status overview">${serviceGrid}</div>
+			<div class="svc-grid" role="list" aria-label="${this.tr('aria_service_status', 'Service status overview')}">${serviceGrid}</div>
 			<div class="stack-section">
 				<span class="section-label">${this.tr('stack', 'Stack')}</span>
 				<div class="stack-grid">${stackHtml}</div>

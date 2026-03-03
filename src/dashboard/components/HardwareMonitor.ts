@@ -146,7 +146,7 @@ export class HardwareMonitor extends HTMLElement {
 				<div class="simd-badges">${badgesHtml}</div>
 			</div>
 			${tierHtml}
-			<div class="capability-summary ${capabilityClass}" role="status" aria-label="Hardware capability: ${capabilityText}">
+			<div class="capability-summary ${capabilityClass}" role="status" aria-label="${this.tr('aria_hw_capability', 'Hardware capability')}: ${capabilityText}">
 				<span class="capability-dot" aria-hidden="true"></span>
 				<span class="capability-text">${capabilityText}</span>
 			</div>

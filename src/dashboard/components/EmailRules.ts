@@ -89,8 +89,8 @@ export class EmailRules extends HTMLElement {
 						</span>
 					</div>
 					<div class="item-actions">
-						<button class="edit-btn" data-id="${r.id}" aria-label="Edit rule for ${r.sender_pattern}">Edit</button>
-						<button class="delete-btn" data-id="${r.id}" aria-label="Delete rule for ${r.sender_pattern}">Delete</button>
+						<button class="edit-btn" data-id="${r.id}" aria-label="${this.tr('aria_edit_rule', 'Edit rule for')} ${r.sender_pattern}">${this.tr('edit', 'Edit')}</button>
+						<button class="delete-btn" data-id="${r.id}" aria-label="${this.tr('aria_delete_rule', 'Delete rule for')} ${r.sender_pattern}">${this.tr('delete', 'Delete')}</button>
 					</div>
 				</div>
 			`).join('') || 'No rules defined.';
@@ -218,7 +218,7 @@ export class EmailRules extends HTMLElement {
 							</div>
 							<div class="input-col">
 								<label class="form-label" for="actionInput">${this.tr('action_label', 'Action')}</label>
-								<select id="actionInput" aria-label="Email action for matching senders">
+								<select id="actionInput" aria-label="${this.tr('aria_email_action', 'Email action for matching senders')}">
 									<option value="urgent">Urgent Notification</option>
 									<option value="summarize">Daily Summary</option>
 									<option value="ignore">Ignore Completely</option>
