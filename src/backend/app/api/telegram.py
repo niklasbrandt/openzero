@@ -41,8 +41,8 @@ def get_nav_markup() -> InlineKeyboardMarkup:
 			InlineKeyboardButton("📁 Projects", url=f"{base_url}/api/dashboard/planka-redirect")
 		],
 		[
-			InlineKeyboardButton("☀️ Day", callback_data="call_day"),
-			InlineKeyboardButton("❓ Help / Commands", callback_data="call_help")
+			InlineKeyboardButton("🧠 /memories", callback_data="call_memories"),
+			InlineKeyboardButton("❓ /help", callback_data="call_help")
 		]
 	]
 	return InlineKeyboardMarkup(keyboard)
@@ -96,7 +96,7 @@ async def start_telegram_bot():
 	bot_app.add_handler(CallbackQueryHandler(handle_unlearn_approval, pattern="^unlearn_"))
 	bot_app.add_handler(CallbackQueryHandler(handle_wipe_confirm, pattern="^wipe_"))
 	bot_app.add_handler(CallbackQueryHandler(handle_calendar_approval, pattern="^cal_"))
-	bot_app.add_handler(CallbackQueryHandler(handle_day_callback, pattern="^call_day$"))
+	bot_app.add_handler(CallbackQueryHandler(handle_memories_callback, pattern="^call_memories$"))
 	bot_app.add_handler(CallbackQueryHandler(handle_help_callback, pattern="^call_help$"))
 	bot_app.add_handler(CommandHandler("help", cmd_help))
 	bot_app.add_handler(CommandHandler("commands", cmd_help))
@@ -684,6 +684,10 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_day_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	await update.callback_query.answer()
 	await cmd_day(update, context)
+
+async def handle_memories_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+	await update.callback_query.answer()
+	await cmd_memories(update, context)
 
 async def handle_help_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	await update.callback_query.answer()
