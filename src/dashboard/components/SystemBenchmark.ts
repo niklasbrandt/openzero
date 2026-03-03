@@ -26,7 +26,7 @@ export class SystemBenchmark extends HTMLElement {
 		try {
 			const res = await fetch('/api/dashboard/translations');
 			if (res.ok) this.t = await res.json();
-		} catch (_) {}
+		} catch (_) { }
 	}
 
 	private tr(key: string, fallback: string): string {
@@ -194,27 +194,28 @@ export class SystemBenchmark extends HTMLElement {
 					position: absolute;
 					bottom: calc(100% + 10px);
 					left: 0;
-					background: rgba(255, 255, 255, 0.06);
-					backdrop-filter: blur(32px) saturate(1.6) brightness(1.1);
-					-webkit-backdrop-filter: blur(32px) saturate(1.6) brightness(1.1);
-					color: rgba(255, 255, 255, 0.92);
-					font-size: 0.68rem;
+					background: var(--tooltip-bg, rgba(255, 255, 255, 0.06));
+					backdrop-filter: blur(var(--tooltip-blur, 32px)) saturate(var(--tooltip-saturate, 1.6)) brightness(1.1);
+					-webkit-backdrop-filter: blur(var(--tooltip-blur, 32px)) saturate(var(--tooltip-saturate, 1.6)) brightness(1.1);
+					color: var(--tooltip-text, rgba(255, 255, 255, 0.92));
+					font-size: 0.72rem;
 					line-height: 1.5;
-					padding: 0.55rem 0.75rem;
-					border-radius: 0.5rem;
-					border: 1px solid rgba(255, 255, 255, 0.18);
+					padding: 0.6rem 0.85rem;
+					border-radius: 0.6rem;
+					border: 1px solid var(--tooltip-border, rgba(255, 255, 255, 0.18));
 					white-space: normal;
 					width: max-content;
 					max-width: 280px;
 					pointer-events: none;
 					opacity: 0;
-					transition: opacity 0.18s ease;
+					transition: all 0.24s cubic-bezier(0.23, 1, 0.32, 1);
 					z-index: 1000;
-					box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.12), inset 0 0 0 0.5px rgba(255, 255, 255, 0.08);
+					box-shadow: var(--tooltip-shadow, 0 8px 32px rgba(0, 0, 0, 0.35));
 				}
 				.has-tip:hover > .glass-tooltip,
 				.has-tip:focus-visible > .glass-tooltip {
 					opacity: 1;
+					transform: translateY(-4px);
 				}
 				.has-tip:has(.has-tip:hover) > .glass-tooltip,
 				.has-tip:has(.has-tip:focus-visible) > .glass-tooltip {
