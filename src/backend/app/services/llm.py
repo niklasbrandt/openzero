@@ -132,14 +132,23 @@ async def chat(
 	client = _http_client
 
 	# --- Model Selection Logic (Dynamic Scaling) ---
+	# Fast (8B): conversations, quick tasks, simple Q&A
+	# Smart (14B): complex reasoning, planning, analysis, long-form
 	target_model = model
 	if not target_model and provider == "ollama":
-		# Categories needing 'Smart' model (8B)
-		complex_keywords = ["plan", "reason", "strategic", "complex", "code", "math", "summarize session", "briefing", "mission", "campaign", "i like", "favorite", "favourite", "i love", "i am", "into "]
+		SMART_KEYWORDS = [
+			"plan", "analyze", "analyse", "reason", "strategic", "complex",
+			"code", "math", "calculate", "summarize session", "briefing",
+			"mission", "campaign", "compare", "evaluate", "design",
+			"architect", "debug", "explain why", "trade-off", "tradeoff",
+			"pros and cons", "step by step", "break down", "deep dive",
+			"what should i", "how should i", "help me think",
+		]
+		msg_lower = user_message.lower() if user_message else ""
 		msg_len = len(user_message) if user_message else 0
-		is_complex = any(kw in user_message.lower() for kw in complex_keywords) if user_message else False
-		# Default to FAST (3B). Only use SMART (8B) for True strategy or very large queries.
-		target_model = settings.OLLAMA_MODEL_SMART if (is_complex or msg_len > 1000) else settings.OLLAMA_MODEL_FAST
+		is_complex = any(kw in msg_lower for kw in SMART_KEYWORDS)
+		# Escalate to smart model for complex queries or long-form input
+		target_model = settings.OLLAMA_MODEL_SMART if (is_complex or msg_len > 800) else settings.OLLAMA_MODEL_FAST
 
 	# --- Option A: Local Ollama ---
 	if provider == "ollama":
@@ -161,15 +170,15 @@ async def chat(
 						],
 						"stream": False,
 						"options": {
-							"num_ctx": 4096 if target_model == settings.OLLAMA_MODEL_FAST else 6144,
+							"num_ctx": 4096 if target_model == settings.OLLAMA_MODEL_FAST else 8192,
 							"temperature": 0.2,
-							"num_predict": 512,
+							"num_predict": 512 if target_model == settings.OLLAMA_MODEL_FAST else 768,
 							"top_k": 20,
 							"top_p": 0.9
 						},
 						"keep_alive": -1
 					},
-					timeout=120.0
+					timeout=180.0 if target_model == settings.OLLAMA_MODEL_SMART else 120.0
 				)
 				response.raise_for_status()
 				data = response.json()
@@ -350,11 +359,19 @@ async def chat_with_context(
 		
 		print(f"DEBUG: Context gathered in {time.time() - start_time:.2f}s")
 
-		# Model selection
-		complex_keywords = ["plan", "reason", "strategic", "complex", "code", "math", "summarize session", "briefing", "mission", "campaign"]
+		# Model selection — escalate to smart for complex reasoning
+		SMART_KEYWORDS = [
+			"plan", "analyze", "analyse", "reason", "strategic", "complex",
+			"code", "math", "calculate", "summarize session", "briefing",
+			"mission", "campaign", "compare", "evaluate", "design",
+			"architect", "debug", "explain why", "trade-off", "tradeoff",
+			"pros and cons", "step by step", "break down", "deep dive",
+			"what should i", "how should i", "help me think",
+		]
+		msg_lower = user_message.lower() if user_message else ""
 		msg_len = len(user_message) if user_message else 0
-		is_complex = any(kw in user_message.lower() for kw in complex_keywords) if user_message else False
-		target_model = settings.OLLAMA_MODEL_SMART if (is_complex or msg_len > 1000) else settings.OLLAMA_MODEL_FAST
+		is_complex = any(kw in msg_lower for kw in SMART_KEYWORDS)
+		target_model = settings.OLLAMA_MODEL_SMART if (is_complex or msg_len > 800) else settings.OLLAMA_MODEL_FAST
 		last_model_used.set(target_model)
 
 		# Only use the LangGraph ReAct agent when the user is explicitly requesting a tool action.
@@ -374,8 +391,8 @@ async def chat_with_context(
 			llm = ChatOllama(
 				base_url=settings.OLLAMA_BASE_URL,
 				model=target_model,
-				timeout=60.0,
-				num_ctx=4096 if target_model == settings.OLLAMA_MODEL_FAST else 6144,
+				timeout=120.0 if target_model == settings.OLLAMA_MODEL_SMART else 60.0,
+				num_ctx=8192 if target_model == settings.OLLAMA_MODEL_SMART else 4096,
 				temperature=0.2,
 				keep_alive=-1
 			)
