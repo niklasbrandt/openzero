@@ -1,3 +1,5 @@
+import { BUTTON_STYLES } from '../services/buttonStyles';
+
 export class CircleManager extends HTMLElement {
 	private circleType: string = 'inner';
 	private editingId: number | null = null;
@@ -167,6 +169,7 @@ export class CircleManager extends HTMLElement {
 
 			this.shadowRoot.innerHTML = `
 				<style>
+					${BUTTON_STYLES}
 					h2 { font-size: 1.5rem; font-weight: bold; margin: 0; color: #fff; letter-spacing: 0.02em; display: flex; align-items: center; gap: 0.5rem; }
 					.h-icon { display: inline-flex; width: 28px; height: 28px; background: ${accent}; border-radius: 0.4rem; align-items: center; justify-content: center; flex-shrink: 0; }
 					.subtitle { font-size: 0.65rem; font-weight: 400; color: rgba(255, 255, 255, 0.3); margin-left: 0.5rem; text-transform: uppercase; letter-spacing: 0.1em; }
@@ -242,34 +245,8 @@ export class CircleManager extends HTMLElement {
 					.name { font-weight: 700; color: #fff; display: block; }
 					.rel { font-size: 0.8rem; color: ${accent}; }
 					.ctx { font-size: 0.85rem; color: rgba(255, 255, 255, 0.6); margin: 0.5rem 0 0 0; }
-					.delete-btn {
-						background: rgba(239, 68, 68, 0.12);
-						color: #f87171;
-						border: 1px solid rgba(239, 68, 68, 0.2);
-						padding: 0.4rem 0.8rem;
-						border-radius: 0.6rem;
-						cursor: pointer;
-						font-size: 0.8rem;
-						font-weight: 600;
-						font-family: 'Inter', system-ui, sans-serif;
-						letter-spacing: 0.02em;
-						transition: all 0.25s ease;
-					}
-					.delete-btn:hover {
-						background: rgba(239, 68, 68, 0.22);
-						border-color: rgba(239, 68, 68, 0.4);
-					}
-					.edit-btn {
-						background: rgba(255, 255, 255, 0.05);
-						color: rgba(255, 255, 255, 0.6);
-						border: 1px solid rgba(255, 255, 255, 0.1);
-						padding: 0.4rem 0.8rem;
-						border-radius: 0.6rem;
-						cursor: pointer;
-						font-size: 0.8rem;
-						margin-right: 0.5rem;
-					}
-					.edit-btn:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
+					.edit-btn { margin-right: 0.5rem; }
+					.edit-btn:hover { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.2); }
 					.item-actions { display: flex; align-items: center; }
 					.cal-badge {
 						display: inline-block;
@@ -281,38 +258,8 @@ export class CircleManager extends HTMLElement {
 						border-radius: 0.4rem;
 						margin-left: 0.5rem;
 					}
-					button#addBtn {
-						background: rgba(20, 184, 166, 0.12);
-						color: #14B8A6;
-						border: 1px solid rgba(20, 184, 166, 0.2);
-						padding: 0.4rem 1rem;
-						border-radius: 0.6rem;
-						cursor: pointer;
-						font-weight: 600;
-						font-size: 0.8rem;
-						font-family: 'Inter', system-ui, sans-serif;
-						letter-spacing: 0.02em;
-						transition: all 0.25s ease;
-					}
-					button#addBtn:hover {
-						background: rgba(20, 184, 166, 0.22);
-						border-color: rgba(20, 184, 166, 0.4);
-					}
-					#cancelEditBtn {
-						background: transparent;
-						border: 1px solid rgba(255, 255, 255, 0.2);
-						color: #fff;
-						border-radius: 0.6rem;
-						padding: 0.4rem 1rem;
-						cursor: pointer;
-						font-size: 0.8rem;
-						font-family: 'Inter', system-ui, sans-serif;
-						transition: all 0.25s ease;
-					}
-					#cancelEditBtn:hover {
-						background: rgba(255, 255, 255, 0.08);
-						border-color: rgba(255, 255, 255, 0.35);
-					}
+
+
 					.form-feedback {
 						font-size: 0.78rem;
 						padding: 0.5rem 0.75rem;
@@ -354,7 +301,7 @@ export class CircleManager extends HTMLElement {
 							</span>
 							${title}
 						</h2>
-						${!this.isAdding ? `<button id="showAddBtn" aria-label="Add a new person to ${title}" style="background: ${accent}; color: #fff; border: none; padding: 0.4rem 1rem; border-radius: 0.6rem; cursor: pointer; font-size: 0.8rem; font-weight: 600; font-family: 'Inter', system-ui, sans-serif;">${this.tr('new_person', '+ New Person')}</button>` : ''}
+						${!this.isAdding ? `<button id="showAddBtn" class="btn-primary" aria-label="Add a new person to ${title}">${this.tr('new_person', '+ New Person')}</button>` : ''}
 					</div>
 
 					${this.isAdding ? `
@@ -375,8 +322,8 @@ export class CircleManager extends HTMLElement {
 						<textarea id="ctxInput" rows="2" placeholder="${this.tr('notes_placeholder', 'Notes, hobbies, important details...')}"></textarea>
 
 						<div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
-							<button type="submit" id="addBtn">${this.editingId ? this.tr('update_person', 'Update Person') : this.tr('add_to_circle', 'Add to Circle')}</button>
-							<button type="button" id="cancelEditBtn">${this.tr('cancel', 'Cancel')}</button>
+<button type="submit" id="addBtn" class="btn-primary">${this.editingId ? this.tr('update_person', 'Update Person') : this.tr('add_to_circle', 'Add to Circle')}</button>
+						<button type="button" id="cancelEditBtn" class="cancel-btn">${this.tr('cancel', 'Cancel')}</button>
 						</div>
 						<div class="form-feedback" id="formFeedback" role="status" aria-live="polite"></div>
 					</form>

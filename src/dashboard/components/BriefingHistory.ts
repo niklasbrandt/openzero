@@ -1,3 +1,5 @@
+import { BUTTON_STYLES } from '../services/buttonStyles';
+
 export class BriefingHistory extends HTMLElement {
 	private t: Record<string, string> = {};
 
@@ -92,6 +94,7 @@ export class BriefingHistory extends HTMLElement {
 		if (this.shadowRoot) {
 			this.shadowRoot.innerHTML = `
 				<style>
+					${BUTTON_STYLES}
 					h2 { font-size: 1.5rem; font-weight: bold; margin: 0 0 1.5rem 0; color: #fff; letter-spacing: 0.02em; display: flex; align-items: center; gap: 0.5rem; }
 					.icon { display: inline-flex; width: 28px; height: 28px; background: linear-gradient(135deg, #14B8A6 0%, #0066FF 100%); border-radius: 0.4rem; align-items: center; justify-content: center; flex-shrink: 0; }
 					.subtitle { font-size: 0.65rem; font-weight: 400; color: rgba(255, 255, 255, 0.3); margin-left: 0.5rem; text-transform: uppercase; letter-spacing: 0.1em; }

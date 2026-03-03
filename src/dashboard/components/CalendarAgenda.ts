@@ -1,3 +1,5 @@
+import { BUTTON_STYLES } from '../services/buttonStyles';
+
 export class CalendarAgenda extends HTMLElement {
 	private events: any[] = [];
 	private filterPerson: string | null = null;
@@ -128,7 +130,7 @@ export class CalendarAgenda extends HTMLElement {
 										${!e.is_local || e.is_birthday ? 'disabled' : ''}
 										style="background: transparent; border: none; font-size: 0.9rem; font-weight: 500; color: #fff; width: 100%; outline: none;">
 								</span>
-								${e.is_local && !e.is_birthday ? `<button class="delete-btn" data-id="${e.id}" title="${this.tr('delete', 'Delete')}" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #f87171; cursor: pointer; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; transition: all 0.2s;">✕</button>` : ''}
+								${e.is_local && !e.is_birthday ? `<button class="delete-btn btn-sm" data-id="${e.id}" title="${this.tr('delete', 'Delete')}" aria-label="${this.tr('delete', 'Delete')}">✕</button>` : ''}
 							</div>
 							${e.person ? `<span class="person-badge">${e.person}</span>` : ''}
 						</div>
@@ -182,6 +184,7 @@ export class CalendarAgenda extends HTMLElement {
 		if (this.shadowRoot) {
 			this.shadowRoot.innerHTML = `
 				<style>
+					${BUTTON_STYLES}
 					h2 { font-size: 1.5rem; font-weight: bold; margin: 0; color: #fff; letter-spacing: 0.02em; display: flex; align-items: center; gap: 0.5rem; }
 					.icon { display: inline-flex; width: 28px; height: 28px; background: linear-gradient(135deg, #0066FF 0%, #14B8A6 100%); border-radius: 0.4rem; align-items: center; justify-content: center; flex-shrink: 0; }
 					.subtitle { font-size: 0.65rem; font-weight: 400; color: rgba(255, 255, 255, 0.3); margin-left: 0.5rem; text-transform: uppercase; letter-spacing: 0.1em; }

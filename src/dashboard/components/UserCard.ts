@@ -1,3 +1,5 @@
+import { BUTTON_STYLES } from '../services/buttonStyles';
+
 export class UserCard extends HTMLElement {
 	private me: any = null;
 	private isEditing: boolean = false;
@@ -105,6 +107,7 @@ export class UserCard extends HTMLElement {
 
 		this.shadowRoot.innerHTML = `
 			<style>
+				${BUTTON_STYLES}
 				:host { display: block; height: 100%; }
 				.card {
 					height: 100%;
@@ -194,8 +197,8 @@ export class UserCard extends HTMLElement {
 
 
 				.actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem; }
-				.save-btn { background: var(--accent-color); border: none; color: #000; font-weight: 700; padding: 8px 16px; cursor: pointer; border-radius: 0.4rem; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.75rem; transition: all 0.2s; }
-				.cancel-btn { background: transparent; border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 8px 16px; cursor: pointer; border-radius: 0.4rem; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.75rem; transition: all 0.2s; }
+				.save-btn { text-transform: uppercase; letter-spacing: 0.05em; }
+				.cancel-btn { text-transform: uppercase; letter-spacing: 0.05em; }
 				button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { 
 					outline: 2px solid var(--accent-color); 
 					outline-offset: 2px; 

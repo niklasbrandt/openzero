@@ -183,7 +183,8 @@ body {
    never overlaps the centred #app grid (centering stays correct). */
 @media (min-width: 1100px) {
   main#main-content {
-    margin-left: 36px;
+    margin-left: 50%;
+    transform: translateX(-50%);
   }
 }
 
@@ -518,22 +519,52 @@ h3 {
 }
 
 button {
-  border-radius: 0.6rem;
-  border: 1px solid rgba(var(--accent-color-rgb), 0.2);
-  padding: 0.4rem 1rem;
-  font-size: 0.8rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(var(--accent-color-rgb), 0.25);
+  padding: 0.38rem 0.85rem;
+  font-size: 0.78rem;
   font-weight: 600;
   font-family: inherit;
-  background: rgba(var(--accent-color-rgb), 0.12);
+  background: rgba(var(--accent-color-rgb), 0.1);
   color: var(--accent-color);
   cursor: pointer;
-  transition: all 0.25s ease;
+  transition: background 0.2s, border-color 0.2s, color 0.2s, transform 0.1s;
   letter-spacing: 0.02em;
 }
 
 button:hover {
-  background: rgba(var(--accent-color-rgb), 0.22);
+  background: rgba(var(--accent-color-rgb), 0.2);
   border-color: var(--accent-color);
+}
+
+button:active { transform: scale(0.97); }
+button:disabled { opacity: 0.45; cursor: not-allowed; pointer-events: none; }
+button:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
+
+.btn-primary, .save-btn {
+  background: var(--accent-color);
+  color: #0a0f1e;
+  border-color: var(--accent-color);
+  font-weight: 700;
+}
+.btn-primary:hover, .save-btn:hover {
+  background: #0d9488;
+  border-color: #0d9488;
+  color: #0a0f1e;
+}
+
+.btn-ghost, .cancel-btn {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+.btn-ghost:hover, .cancel-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.25);
+  color: rgba(255, 255, 255, 0.9);
 }
 
 input,
@@ -590,19 +621,16 @@ pre {
   background: rgba(255, 255, 255, 0.04);
 }
 
-.delete-btn {
-  background: rgba(239, 68, 68, 0.15);
-  color: #ef4444;
-  box-shadow: none;
-  padding: 0.4rem 0.8rem;
-  font-size: 0.8rem;
+.delete-btn, .btn-danger {
+  background: rgba(239, 68, 68, 0.1);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.25);
 }
-
-.delete-btn:hover {
-  background: #ef4444;
-  color: #fff;
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+.delete-btn:hover, .btn-danger:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.5);
 }
+.delete-btn:focus-visible, .btn-danger:focus-visible { outline-color: #f87171; }
 
 /* Tooltips */
 [data-tooltip] {
