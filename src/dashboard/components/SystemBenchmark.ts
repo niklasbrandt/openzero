@@ -1,6 +1,7 @@
 export class SystemBenchmark extends HTMLElement {
 	private benchResults: any[] = [];
 	private isRunning: boolean = false;
+	private t: Record<string, string> = {};
 
 	// Expected tok/s ranges per tier on CPU-only (Q4_K_M quantized)
 	private static readonly EXPECTATIONS: Record<string, { model: string; fast: number; good: number; ok: number }> = {
@@ -15,7 +16,21 @@ export class SystemBenchmark extends HTMLElement {
 	}
 
 	connectedCallback() {
-		this.render();
+		this.loadTranslations().then(() => this.render());
+		window.addEventListener('identity-updated', () => {
+			this.loadTranslations().then(() => this.render());
+		});
+	}
+
+	private async loadTranslations() {
+		try {
+			const res = await fetch('/api/dashboard/translations');
+			if (res.ok) this.t = await res.json();
+		} catch (_) {}
+	}
+
+	private tr(key: string, fallback: string): string {
+		return this.t[key] || fallback;
 	}
 
 	async runBenchmark(tier: string) {
@@ -40,7 +55,7 @@ export class SystemBenchmark extends HTMLElement {
 			this.isRunning = false;
 			if (btn) {
 				btn.classList.remove('running');
-				btn.textContent = `Bench ${tier}`;
+				btn.textContent = this.tr(`bench_${tier}`, `Bench ${tier}`);
 			}
 		}
 	}
@@ -58,25 +73,25 @@ export class SystemBenchmark extends HTMLElement {
 		if (tps >= exp.fast) return {
 			cls: 'excellent',
 			icon: '\uD83D\uDE80',
-			label: 'Excellent',
+			label: this.tr('excellent', 'Excellent'),
 			hint: `Fast real-time conversation. This ${exp.model} model is running well on your hardware.`,
 		};
 		if (tps >= exp.good) return {
 			cls: 'good',
 			icon: '\u2705',
-			label: 'Good',
+			label: this.tr('good', 'Good'),
 			hint: `Comfortable for interactive use. Typical for CPU-only inference with a ${exp.model} model.`,
 		};
 		if (tps >= exp.ok) return {
 			cls: 'moderate',
 			icon: '\u26A0\uFE0F',
-			label: 'Moderate',
+			label: this.tr('moderate', 'Moderate'),
 			hint: `Usable but with noticeable latency. Consider fewer concurrent requests or a smaller quantization.`,
 		};
 		return {
 			cls: 'slow',
 			icon: '\uD83D\uDC0C',
-			label: 'Slow',
+			label: this.tr('slow', 'Slow'),
 			hint: `Below expected for a ${exp.model} model. Check: thread count, available RAM, SIMD support, or try a smaller model.`,
 		};
 	}
@@ -93,7 +108,7 @@ export class SystemBenchmark extends HTMLElement {
 		if (!el) return;
 
 		if (this.benchResults.length === 0) {
-			el.innerHTML = '<div class="empty">Click a tier button to measure tokens/second.</div>';
+			el.innerHTML = `<div class="empty">${this.tr('bench_empty', 'Click a tier button to measure tokens/second.')}</div>`;
 			return;
 		}
 
@@ -112,35 +127,54 @@ export class SystemBenchmark extends HTMLElement {
 			const ttftHint = this.getTtftHint(parseFloat(r.time_to_first_token));
 			const exp = SystemBenchmark.EXPECTATIONS[r.tier] || SystemBenchmark.EXPECTATIONS['standard'];
 
+			// Thread utilization warning
+			const threadWarningHtml = r.thread_warning
+				? `<div class="thread-warning" tabindex="0" role="alert">
+						<span class="warning-icon">\u26A0\uFE0F</span>
+						<span class="warning-text">${r.thread_warning}</span>
+					</div>`
+				: '';
+
+			// Thread info line
+			const threadInfoHtml = r.configured_threads
+				? `<div class="detail has-tip" data-tip="CPU threads assigned to this llama-server instance vs. total physical cores on the host.">
+						<span class="detail-label">Threads</span>
+						<span class="detail-value">${r.configured_threads} / ${r.physical_cores}</span>
+						<span class="detail-hint">${r.configured_threads} of ${r.physical_cores} cores assigned</span>
+					</div>`
+				: '';
+
 			return `
 				<div class="bench-card">
 					<div class="bench-header">
-						<span class="bench-tier" title="The '${r.tier}' tier typically runs a ${exp.model} parameter model.">${r.tier}</span>
-						<span class="bench-model" title="Exact model file loaded by llama-server for this tier.">${r.model}</span>
+						<span class="bench-tier has-tip" data-tip="The '${r.tier}' tier typically runs a ${exp.model} parameter model.">${r.tier}</span>
+						<span class="bench-model has-tip" data-tip="Exact model file loaded by llama-server for this tier.">${r.model}</span>
 					</div>
-					<div class="bench-tps ${rating.cls}" title="Tokens generated per second. Higher is better. ${rating.hint}">
+					${threadWarningHtml}
+					<div class="bench-tps ${rating.cls} has-tip" data-tip="Tokens generated per second. Higher is better. ${rating.hint}">
 						<span class="tps-value">${r.tokens_per_second}</span>
 						<span class="tps-unit">tok/s</span>
 					</div>
-					<div class="rating-badge ${rating.cls}" title="${rating.hint}">
+					<div class="rating-badge ${rating.cls} has-tip" data-tip="${rating.hint}">
 						<span class="rating-icon">${rating.icon}</span>
 						<span class="rating-label">${rating.label}</span>
 					</div>
 					<div class="rating-hint">${rating.hint}</div>
 					<div class="bench-details">
-						<div class="detail" title="${ttftHint}">
+						<div class="detail has-tip" data-tip="${ttftHint}">
 							<span class="detail-label">TTFT</span>
 							<span class="detail-value">${r.time_to_first_token}s</span>
 							<span class="detail-hint">${ttftHint}</span>
 						</div>
-						<div class="detail" title="Number of tokens the model generated during the benchmark prompt. More tokens = more reliable throughput measurement.">
+						<div class="detail has-tip" data-tip="Number of tokens the model generated during the benchmark prompt. More tokens = more reliable throughput measurement.">
 							<span class="detail-label">Tokens</span>
 							<span class="detail-value">${r.tokens}</span>
 						</div>
-						<div class="detail" title="Wall-clock time from request to last token. Includes TTFT + generation time.">
+						<div class="detail has-tip" data-tip="Wall-clock time from request to last token. Includes TTFT + generation time.">
 							<span class="detail-label">Total</span>
 							<span class="detail-value">${r.total_seconds}s</span>
 						</div>
+						${threadInfoHtml}
 					</div>
 				</div>
 			`;
@@ -154,6 +188,33 @@ export class SystemBenchmark extends HTMLElement {
 		this.shadowRoot.innerHTML = `
 			<style>
 				:host { display: block; }
+				.has-tip { position: relative; }
+				.has-tip::after {
+					content: attr(data-tip);
+					position: absolute;
+					bottom: calc(100% + 8px);
+					left: 50%;
+					transform: translateX(-50%);
+					background: rgba(10, 12, 28, 0.95);
+					color: rgba(255, 255, 255, 0.85);
+					font-size: 0.68rem;
+					line-height: 1.4;
+					padding: 0.5rem 0.65rem;
+					border-radius: 0.4rem;
+					border: 1px solid rgba(255, 255, 255, 0.1);
+					white-space: normal;
+					width: max-content;
+					max-width: 260px;
+					pointer-events: none;
+					opacity: 0;
+					transition: opacity 0.15s ease;
+					z-index: 100;
+					box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+				}
+				.has-tip:hover::after,
+				.has-tip:focus-visible::after {
+					opacity: 1;
+				}
 				h2 {
 					font-size: 1.5rem;
 					font-weight: bold;
@@ -317,6 +378,22 @@ export class SystemBenchmark extends HTMLElement {
 					cursor: help;
 				}
 
+				.thread-warning {
+					display: flex;
+					align-items: center;
+					gap: 0.4rem;
+					padding: 0.4rem 0.7rem;
+					margin-bottom: 0.6rem;
+					border-radius: 0.4rem;
+					background: rgba(239, 68, 68, 0.08);
+					border: 1px solid rgba(239, 68, 68, 0.2);
+					font-size: 0.7rem;
+					color: #ef4444;
+					font-weight: 500;
+				}
+				.thread-warning .warning-icon { font-size: 0.85rem; }
+				.thread-warning .warning-text { line-height: 1.3; }
+
 				.bench-error {
 					color: #ef4444;
 					font-size: 0.8rem;
@@ -396,7 +473,7 @@ export class SystemBenchmark extends HTMLElement {
 
 				.bench-details {
 					display: grid;
-					grid-template-columns: repeat(3, 1fr);
+					grid-template-columns: repeat(4, 1fr);
 					gap: 0.5rem;
 				}
 
@@ -443,28 +520,28 @@ export class SystemBenchmark extends HTMLElement {
 						<path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
 					</svg>
 				</span>
-				LLM Benchmark
-				<span class="subtitle">Throughput &amp; Performance Rating</span>
+				${this.tr('llm_benchmark', 'LLM Benchmark')}
+				<span class="subtitle">${this.tr('bench_subtitle', 'Throughput &amp; Performance Rating')}</span>
 			</h2>
 
 			<div class="bench-header-bar">
 				<div class="bench-actions">
-					<button class="bench-btn" id="bench-instant" title="Benchmark the instant tier (~3-4B model). Used for quick tasks like fact extraction and classification." aria-label="Benchmark instant tier">Bench instant</button>
-					<button class="bench-btn" id="bench-standard" title="Benchmark the standard tier (~8B model). Used for general conversation and reasoning." aria-label="Benchmark standard tier">Bench standard</button>
-					<button class="bench-btn" id="bench-deep" title="Benchmark the deep tier (~14B model). Used for complex analysis and strategic thinking." aria-label="Benchmark deep tier">Bench deep</button>
-					<button class="bench-btn all" id="bench-all" title="Run all three tier benchmarks sequentially to get a complete performance picture." aria-label="Run all benchmarks">Run All</button>
+					<button class="bench-btn has-tip" id="bench-instant" data-tip="${this.tr('tip_bench_instant', 'Benchmark the instant tier (~3-4B model). Used for quick tasks like fact extraction and classification.')}" aria-label="Benchmark instant tier">${this.tr('bench_instant', 'Bench instant')}</button>
+					<button class="bench-btn has-tip" id="bench-standard" data-tip="${this.tr('tip_bench_standard', 'Benchmark the standard tier (~8B model). Used for general conversation and reasoning.')}" aria-label="Benchmark standard tier">${this.tr('bench_standard', 'Bench standard')}</button>
+					<button class="bench-btn has-tip" id="bench-deep" data-tip="${this.tr('tip_bench_deep', 'Benchmark the deep tier (~14B model). Used for complex analysis and strategic thinking.')}" aria-label="Benchmark deep tier">${this.tr('bench_deep', 'Bench deep')}</button>
+					<button class="bench-btn all has-tip" id="bench-all" data-tip="${this.tr('tip_bench_all', 'Run all three tier benchmarks sequentially to get a complete performance picture.')}" aria-label="Run all benchmarks">${this.tr('bench_run_all', 'Run All')}</button>
 				</div>
 			</div>
 
-			<div class="legend" title="Performance rating scale based on expected throughput for each model size on CPU-only inference with Q4_K_M quantization.">
-				<span class="legend-item" title="Fast real-time conversation. No noticeable delay between tokens."><span class="legend-dot excellent"></span>Excellent</span>
-				<span class="legend-item" title="Comfortable interactive speed with slight streaming visible."><span class="legend-dot good"></span>Good</span>
-				<span class="legend-item" title="Usable but noticeable word-by-word generation."><span class="legend-dot moderate"></span>Moderate</span>
-				<span class="legend-item" title="Below expected. Check SIMD, thread count, or try a smaller model."><span class="legend-dot slow"></span>Slow</span>
+			<div class="legend has-tip" data-tip="${this.tr('tip_legend', 'Performance rating scale based on expected throughput for each model size on CPU-only inference with Q4_K_M quantization.')}">
+				<span class="legend-item has-tip" data-tip="${this.tr('tip_legend_excellent', 'Fast real-time conversation. No noticeable delay between tokens.')}" tabindex="0"><span class="legend-dot excellent"></span>${this.tr('excellent', 'Excellent')}</span>
+				<span class="legend-item has-tip" data-tip="${this.tr('tip_legend_good', 'Comfortable interactive speed with slight streaming visible.')}" tabindex="0"><span class="legend-dot good"></span>${this.tr('good', 'Good')}</span>
+				<span class="legend-item has-tip" data-tip="${this.tr('tip_legend_moderate', 'Usable but noticeable word-by-word generation.')}" tabindex="0"><span class="legend-dot moderate"></span>${this.tr('moderate', 'Moderate')}</span>
+				<span class="legend-item has-tip" data-tip="${this.tr('tip_legend_slow', 'Below expected. Check SIMD, thread count, or try a smaller model.')}" tabindex="0"><span class="legend-dot slow"></span>${this.tr('slow', 'Slow')}</span>
 			</div>
 
 			<div id="bench-results">
-				<div class="empty">Click a tier button to measure tokens/second.</div>
+				<div class="empty">${this.tr('bench_empty', 'Click a tier button to measure tokens/second.')}</div>
 			</div>
 		`;
 
@@ -472,6 +549,7 @@ export class SystemBenchmark extends HTMLElement {
 		this.shadowRoot?.querySelector('#bench-standard')?.addEventListener('click', () => this.runBenchmark('standard'));
 		this.shadowRoot?.querySelector('#bench-deep')?.addEventListener('click', () => this.runBenchmark('deep'));
 		this.shadowRoot?.querySelector('#bench-all')?.addEventListener('click', () => this.runAllBenchmarks());
+		this.updateBenchPanel();
 	}
 }
 

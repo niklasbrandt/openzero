@@ -1,4 +1,6 @@
 export class LifeOverview extends HTMLElement {
+	private t: Record<string, string> = {};
+
 	constructor() {
 		super();
 		this.attachShadow({ mode: 'open' });
@@ -6,10 +8,24 @@ export class LifeOverview extends HTMLElement {
 
 	connectedCallback() {
 		this.render();
-		this.fetchData();
+		this.loadTranslations().then(() => this.fetchData());
 		window.addEventListener('refresh-data', () => {
 			this.fetchData();
 		});
+		window.addEventListener('identity-updated', () => {
+			this.loadTranslations().then(() => this.fetchData());
+		});
+	}
+
+	private async loadTranslations() {
+		try {
+			const res = await fetch('/api/dashboard/translations');
+			if (res.ok) this.t = await res.json();
+		} catch (_) { /* fallback to empty -- render() uses defaults */ }
+	}
+
+	private tr(key: string, fallback: string): string {
+		return this.t[key] || fallback;
 	}
 
 	async fetchData() {
@@ -27,7 +43,7 @@ export class LifeOverview extends HTMLElement {
 	showError() {
 		const container = this.shadowRoot?.querySelector('#overview-container');
 		if (container) {
-			container.innerHTML = '<div class="error">Unable to load Life Overview. Check backend connection.</div>';
+			container.innerHTML = `<div class="error">${this.tr('api_error_life', 'Unable to load Life Overview. Check backend connection.')}</div>`;
 		}
 	}
 
@@ -37,11 +53,11 @@ export class LifeOverview extends HTMLElement {
 
 		const innerHtml = data.social_circles.inner.length > 0
 			? data.social_circles.inner.map((p: any) => `<li>${p.name} <span class="rel">(${p.relationship})</span></li>`).join('')
-			: '<li class="empty-li">No family connections.</li>';
+			: `<li class="empty-li">${this.tr('no_family', 'No family connections.')}</li>`;
 
 		const closeHtml = data.social_circles.close.length > 0
 			? data.social_circles.close.map((p: any) => `<li>${p.name} <span class="rel">(${p.relationship})</span></li>`).join('')
-			: '<li class="empty-li">No social circle added.</li>';
+			: `<li class="empty-li">${this.tr('no_social', 'No social circle added.')}</li>`;
 
 		const timelineHtml = data.timeline.length > 0
 			? data.timeline.map((e: any) => `
@@ -50,32 +66,32 @@ export class LifeOverview extends HTMLElement {
 						<span class="summary">${e.summary} ${!e.is_local ? '<small style="color: #14B8A6;">(Google)</small>' : ''}</span>
 					</div>
 				`).join('')
-			: '<div class="empty">No upcoming events for the next 3 days.</div>';
+			: `<div class="empty">${this.tr('no_events', 'No upcoming events for the next 3 days.')}</div>`;
 
 		container.innerHTML = `
 			<div class="overview-grid">
 				<section class="mission-control">
 					<div class="section-header">
-						<h3>Boards</h3>
-						<button class="action-btn" onclick="this.closest('life-overview').parentElement.querySelector('create-project').toggle()">+ New Board</button>
+						<h3>${this.tr('boards_heading', 'Boards')}</h3>
+						<button class="action-btn" onclick="this.closest('life-overview').parentElement.querySelector('create-project').toggle()">${this.tr('new_board', '+ New Board')}</button>
 					</div>
-					<div class="tree-content">${data.projects_tree || 'Initializing projects...'}</div>
+					<div class="tree-content">${data.projects_tree || this.tr('initializing_projects', 'Initializing projects...')}</div>
 				</section>
 				
 				<div class="side-panel">
 					<section class="social-section">
 						<div class="circle-group">
-								<h3>Inner Circle <small>(Family & Care)</small></h3>
+								<h3>${this.tr('inner_circle', 'Inner Circle')} <small>(${this.tr('inner_subtitle', 'Family & Care')})</small></h3>
 								<ul>${innerHtml}</ul>
 						</div>
 						<div class="circle-group" style="margin-top: 1.5rem;">
-								<h3>Close Circle <small>(Friends & Social)</small></h3>
+								<h3>${this.tr('close_circle', 'Close Circle')} <small>(${this.tr('close_subtitle', 'Friends & Social')})</small></h3>
 								<ul>${closeHtml}</ul>
 						</div>
 					</section>
 
 					<section class="timeline">
-						<h3>Timeline (Next 3 Days)</h3>
+						<h3>${this.tr('timeline_heading', 'Timeline (Next 3 Days)')}</h3>
 						<div class="timeline-list">${timelineHtml}</div>
 					</section>
 				</div>
@@ -172,9 +188,9 @@ export class LifeOverview extends HTMLElement {
 					.error { color: #ef4444; text-align: center; padding: 2rem; }
 				</style>
 				<div class="card">
-					<h2>Life Overview</h2>
+					<h2>${this.tr('life_overview', 'Life Overview')}</h2>
 					<div id="overview-container">
-						<div style="text-align: center; padding: 2rem; color: rgba(255,255,255,0.3);">Mapping your world...</div>
+						<div style="text-align: center; padding: 2rem; color: rgba(255,255,255,0.3);">${this.tr('mapping_world', 'Mapping your world...')}</div>
 					</div>
 				</div>
 			`;
