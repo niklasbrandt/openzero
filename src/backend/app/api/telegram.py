@@ -47,12 +47,13 @@ async def _get_stats_footer() -> str:
 	stats_text = f"{t.get('memories_found', 'Memories')}: {stats['points']}{model_tag}" if stats['status'] != 'error' else f"{t.get('memory_search', 'Memory')}: Offline"
 	return f"\n\n<i>{stats_text}</i>"
 
-def get_nav_markup(t: dict) -> InlineKeyboardMarkup:
+def get_nav_markup(t: dict, token: str = "") -> InlineKeyboardMarkup:
 	"""Standard navigation buttons (Large touch targets)."""
 	base_url = settings.BASE_URL.rstrip('/')
+	dashboard_url = f"{base_url}/home?token={token}" if token else f"{base_url}/home"
 	keyboard = [
 		[
-			InlineKeyboardButton(f"🏠 {t.get('dashboard', 'Dashboard')}", url=f"{base_url}/home"),
+			InlineKeyboardButton(f"🏠 {t.get('dashboard', 'Dashboard')}", url=dashboard_url),
 			InlineKeyboardButton(f"📅 {t.get('calendar', 'Calendar')}", url=f"{base_url}/calendar")
 		],
 		[
@@ -273,7 +274,7 @@ async def start_telegram_bot():
 			
 			await send_notification_html(
 				f"<blockquote><b>{real_time}</b>\n\n{_md_to_html(greeting_clean)}\n\n<i>{stats_text}</i></blockquote>",
-				reply_markup=get_nav_markup(t)
+				reply_markup=get_nav_markup(t, token=settings.DASHBOARD_TOKEN)
 			)
 			logging.info("DEBUG: Greeting Seq - Notification Delivered")
 
