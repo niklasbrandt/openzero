@@ -200,8 +200,11 @@ export class ChatPrompt extends HTMLElement {
 		const indicator = document.createElement('div');
 		indicator.id = 'typing';
 		indicator.className = 'message assistant';
+		indicator.setAttribute('role', 'status');
+		indicator.setAttribute('aria-label', 'Z is composing a response');
+		indicator.setAttribute('aria-live', 'polite');
 		indicator.innerHTML = `
-			<div class="bubble typing-bubble">
+			<div class="bubble typing-bubble" aria-hidden="true">
 				<span class="dot"></span>
 				<span class="dot"></span>
 				<span class="dot"></span>
@@ -237,28 +240,32 @@ export class ChatPrompt extends HTMLElement {
 		if (this.messages.length === 0) {
 			container.innerHTML = `
 				<div class="empty-state">
-					<div class="empty-icon">${this.chatSVG()}</div>
+					<div class="empty-icon" aria-hidden="true">${this.chatSVG()}</div>
 					<p>Start a conversation with Z</p>
-					<span>Ask anything — manage tasks, query memories, or get briefed.</span>
-					<div class="command-hints">
-						<span class="cmd-chip">/day</span>
-						<span class="cmd-chip">/week</span>
-						<span class="cmd-chip">/month</span>
-						<span class="cmd-chip">/year</span>
-						<span class="cmd-chip">/memory</span>
-						<span class="cmd-chip">/add</span>
-						<span class="cmd-chip">/think</span>
-					</div>
+					<span>Ask anything \u2014 manage tasks, query memories, or get briefed.</span>
+					<nav aria-label="Quick commands" class="command-hints">
+						<ul role="list" style="display:flex;flex-wrap:wrap;gap:0.5rem;justify-content:center;list-style:none;padding:0;margin:1rem 0 0 0;">
+							<li role="listitem"><span class="cmd-chip" tabindex="0">/day</span></li>
+							<li role="listitem"><span class="cmd-chip" tabindex="0">/week</span></li>
+							<li role="listitem"><span class="cmd-chip" tabindex="0">/month</span></li>
+							<li role="listitem"><span class="cmd-chip" tabindex="0">/year</span></li>
+							<li role="listitem"><span class="cmd-chip" tabindex="0">/memory</span></li>
+							<li role="listitem"><span class="cmd-chip" tabindex="0">/add</span></li>
+							<li role="listitem"><span class="cmd-chip" tabindex="0">/think</span></li>
+						</ul>
+					</nav>
 				</div>
 			`;
 			return;
 		}
 
 		container.innerHTML = this.messages.map(msg => `
-			<div class="message ${msg.role}">
+			<div class="message ${msg.role}"
+				role="article"
+				aria-label="${msg.role === 'user' ? 'You' : 'Z'} at ${this.formatTime(msg.timestamp)}">
 				<div class="bubble">
 					<div class="bubble-content">${this.renderContent(msg.content)}</div>
-					<div class="bubble-footer">
+					<div class="bubble-footer" aria-hidden="true">
 						${msg.model ? `<span class="model-tag">${msg.model}</span>` : ''}
 						${(msg as any).channel ? `<span class="channel-tag">${(msg as any).channel}</span>` : ''}
 				<span class="time">${this.formatTime(msg.timestamp)}</span>
@@ -315,7 +322,7 @@ export class ChatPrompt extends HTMLElement {
 				font-weight: 700;
 				text-transform: uppercase;
 				letter-spacing: 0.08em;
-				background: linear-gradient(135deg, #14B8A6, #0066FF);
+				background: linear-gradient(135deg, var(--accent-color), var(--accent-secondary));
 				color: #fff;
 				padding: 0.2rem 0.6rem;
 				border-radius: 2rem;
@@ -379,9 +386,9 @@ export class ChatPrompt extends HTMLElement {
 			}
 			
 			.cmd-chip {
-				background: rgba(20, 184, 166, 0.1);
-				border: 1px solid rgba(20, 184, 166, 0.2);
-				color: #14B8A6;
+				background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.1);
+				border: 1px solid rgba(var(--accent-color-rgb, 20, 184, 166), 0.2);
+				color: var(--accent-color);
 				padding: 0.2rem 0.5rem;
 				border-radius: 0.4rem;
 				font-size: 0.75rem;
@@ -416,7 +423,7 @@ export class ChatPrompt extends HTMLElement {
 			}
 
 			.message.user .bubble {
-				background: linear-gradient(135deg, #14B8A6, #0066FF);
+				background: linear-gradient(135deg, var(--accent-color), var(--accent-secondary));
 				color: #fff;
 				border-bottom-right-radius: 0.35rem;
 				box-shadow: 0 4px 16px rgba(20, 184, 166, 0.25);
@@ -450,7 +457,8 @@ export class ChatPrompt extends HTMLElement {
 
 			.model-tag {
 				font-size: 0.6rem;
-				color: rgba(20, 184, 166, 0.6);
+				color: var(--accent-color);
+				opacity: 0.7;
 				text-transform: uppercase;
 				letter-spacing: 0.05em;
 				font-weight: 600;
@@ -469,7 +477,7 @@ export class ChatPrompt extends HTMLElement {
 			}
 
 			.bubble-content a {
-				color: #14B8A6;
+				color: var(--accent-color);
 				text-decoration: underline;
 				text-underline-offset: 4px;
 				transition: color 0.2s;
@@ -479,7 +487,7 @@ export class ChatPrompt extends HTMLElement {
 				text-decoration-color: rgba(255, 255, 255, 0.4);
 			}
 			.bubble-content a:hover {
-				color: #0066FF;
+				color: var(--accent-secondary);
 			}
 
 			/* ── Typing indicator ── */
@@ -541,18 +549,18 @@ export class ChatPrompt extends HTMLElement {
 			}
 
 			textarea:focus {
-				border-color: rgba(20, 184, 166, 0.4);
+				border-color: var(--accent-color);
 				background: rgba(0, 0, 0, 0.28);
-				box-shadow: 0 0 20px rgba(20, 184, 166, 0.08);
+				box-shadow: 0 0 20px rgba(var(--accent-color-rgb, 20, 184, 166), 0.08);
 			}
 
 			#send-btn {
 				width: 84px;
 				height: 84px;
 				border-radius: 0.6rem;
-				border: 1px solid rgba(20, 184, 166, 0.2);
-				background: rgba(20, 184, 166, 0.12);
-				color: #14B8A6;
+				border: 1px solid rgba(var(--accent-color-rgb, 20, 184, 166), 0.2);
+				background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.12);
+				color: var(--accent-color);
 				cursor: pointer;
 				display: flex;
 				align-items: center;
@@ -562,8 +570,8 @@ export class ChatPrompt extends HTMLElement {
 			}
 
 			#send-btn:hover:not(:disabled) {
-				background: rgba(20, 184, 166, 0.22);
-				border-color: rgba(20, 184, 166, 0.4);
+				background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.22);
+				border-color: var(--accent-color);
 			}
 
 			#send-btn:disabled {
@@ -586,17 +594,34 @@ export class ChatPrompt extends HTMLElement {
 			}
 		</style>
 
-		<div id="messages" aria-live="polite">
+		<div id="messages"
+			role="log"
+			aria-live="polite"
+			aria-relevant="additions"
+			aria-label="Chat history"
+			aria-atomic="false">
 			<div class="empty-state">
-				<div class="empty-icon">${this.chatSVG()}</div>
+				<div class="empty-icon" aria-hidden="true">${this.chatSVG()}</div>
 				<p>Start a conversation with Z</p>
 				<span>Ask anything — manage tasks, query memories, or get briefed.</span>
+				<nav class="command-hints" aria-label="Quick commands">
+					<ul role="list" style="display:flex;flex-wrap:wrap;gap:0.5rem;justify-content:center;list-style:none;padding:0;margin:1rem 0 0 0;">
+						<li role="listitem"><span class="cmd-chip" tabindex="0" aria-label="Daily briefing command">/day</span></li>
+						<li role="listitem"><span class="cmd-chip" tabindex="0" aria-label="Weekly briefing command">/week</span></li>
+						<li role="listitem"><span class="cmd-chip" tabindex="0" aria-label="Monthly briefing command">/month</span></li>
+						<li role="listitem"><span class="cmd-chip" tabindex="0" aria-label="Yearly briefing command">/year</span></li>
+						<li role="listitem"><span class="cmd-chip" tabindex="0" aria-label="Search memory command">/memory</span></li>
+						<li role="listitem"><span class="cmd-chip" tabindex="0" aria-label="Add memory command">/add</span></li>
+						<li role="listitem"><span class="cmd-chip" tabindex="0" aria-label="Deep think command">/think</span></li>
+					</ul>
+				</nav>
 			</div>
 		</div>
 
-		<div class="input-area">
-			<textarea id="chat-input" rows="1" placeholder="Ask Z something…"></textarea>
-			<button id="send-btn" aria-label="Send message">${this.sendSVG()}</button>
+		<div class="input-area" role="group" aria-label="Message input">
+			<label for="chat-input" class="sr-only">Message to Z</label>
+			<textarea id="chat-input" rows="1" placeholder="Ask Z something…" aria-label="Message to Z" autocomplete="off" spellcheck="true"></textarea>
+			<button id="send-btn" aria-label="Send message" type="button">${this.sendSVG()}</button>
 		</div>
 		`;
 	}

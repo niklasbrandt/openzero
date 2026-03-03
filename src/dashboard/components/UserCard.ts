@@ -117,7 +117,7 @@ export class UserCard extends HTMLElement {
 				.user-info { display: flex; align-items: center; gap: 1rem; }
 				.avatar {
 					width: 48px; height: 48px;
-					background: linear-gradient(135deg, #14B8A6, #0066FF);
+					background: linear-gradient(135deg, var(--accent-color), var(--accent-secondary));
 					border-radius: 0.4rem;
 					display: flex; align-items: center; justify-content: center;
 					font-weight: 800; font-size: 1.25rem;
@@ -127,7 +127,7 @@ export class UserCard extends HTMLElement {
 				.edit-btn {
 					background: rgba(255,255,255,0.05);
 					border: 1px solid rgba(255,255,255,0.1);
-					color: #14B8A6;
+					color: var(--accent-color);
 					padding: 6px 12px;
 					font-size: 0.7rem;
 					cursor: pointer;
@@ -175,7 +175,7 @@ export class UserCard extends HTMLElement {
 
 				.goals-section h3 { 
 					font-size: 0.7rem; 
-					color: #14B8A6; 
+					color: var(--accent-color); 
 					text-transform: uppercase; 
 					margin: 1rem 0 0.5rem 0;
 					display: flex;
@@ -183,19 +183,19 @@ export class UserCard extends HTMLElement {
 					gap: 8px;
 				}
 				.goals-section h3::after {
-					content: ''; flex: 1; height: 1px; background: rgba(20, 184, 166, 0.2);
+					content: ''; flex: 1; height: 1px; background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.2);
 				}
 
 				ul { list-style: none; padding: 0; margin: 0; }
 				li { font-size: 0.85rem; color: rgba(255,255,255,0.7); margin-bottom: 0.5rem; position: relative; padding-left: 1.2rem; }
-				li::before { content: '◈'; position: absolute; left: 0; color: #14B8A6; font-size: 0.7rem; top: 2px; }
+				li::before { content: '◈'; position: absolute; left: 0; color: var(--accent-color); font-size: 0.7rem; top: 2px; }
 
 
 				.actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem; }
-				.save-btn { background: #14B8A6; border: none; color: #000; font-weight: 700; padding: 8px 16px; cursor: pointer; border-radius: 0.4rem; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.75rem; transition: all 0.2s; }
+				.save-btn { background: var(--accent-color); border: none; color: #000; font-weight: 700; padding: 8px 16px; cursor: pointer; border-radius: 0.4rem; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.75rem; transition: all 0.2s; }
 				.cancel-btn { background: transparent; border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 8px 16px; cursor: pointer; border-radius: 0.4rem; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.75rem; transition: all 0.2s; }
 				button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { 
-					outline: 2px solid #14B8A6; 
+					outline: 2px solid var(--accent-color); 
 					outline-offset: 2px; 
 				}
 			</style>
