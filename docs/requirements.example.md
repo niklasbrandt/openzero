@@ -77,7 +77,7 @@ Task boards organized by life domain:
 ## Privacy Requirements
 
 - **All data stays on my server.** No exceptions (unless optional Cloud LLM is enabled).
-- **LLM runs locally** (Ollama) by default. Cloud APIs (Groq, OpenAI) are optional alternatives for higher performance.
+- **LLM runs locally** (llama-server / llama.cpp) by default. Cloud APIs (Groq, OpenAI) are optional alternatives for higher performance.
 - **Email access is read-only.** The system cannot send, delete, or modify emails (write capabilities might be added later).
 - **Calendar access** can optionally be set to read-write allowing the system to create dates and change events.
 - **No public ports.** Everything behind Tailscale VPN.

@@ -32,11 +32,15 @@ class Settings(BaseSettings):
     TELEGRAM_BOT_TOKEN: str = ""
     TELEGRAM_ALLOWED_USER_ID: str = ""
 
-    # Ollama
-    OLLAMA_BASE_URL: str = "http://ollama:11434"
-    OLLAMA_MODEL: str = "llama3.1:8b" # Keep for backwards compat
-    OLLAMA_MODEL_FAST: str = "llama3.1:8b"
-    OLLAMA_MODEL_SMART: str = "qwen2.5:14b"
+	# Local LLM (llama-server / llama.cpp) — 3-Tier Intelligence
+	LLM_INSTANT_URL: str = "http://llm-instant:8081"
+	LLM_STANDARD_URL: str = "http://llm-standard:8082"
+	LLM_DEEP_URL: str = "http://llm-deep:8083"
+	LLM_MODEL_INSTANT: str = "phi-4-mini"
+	LLM_MODEL_STANDARD: str = "llama3.1:8b"
+	LLM_MODEL_DEEP: str = "qwen2.5:14b"
+	DEEP_MODEL_TIMEOUT_S: int = 12
+	SMART_MODEL_INTERACTIVE: bool = True
 
     # Whisper
     WHISPER_BASE_URL: str = "http://whisper:9000"
@@ -64,7 +68,7 @@ class Settings(BaseSettings):
     CALDAV_PASSWORD: Optional[str] = None
 
     # LLM Providers
-    LLM_PROVIDER: str = "ollama"
+    LLM_PROVIDER: str = "local"
     GROQ_API_KEY: Optional[str] = None
     OPENAI_API_KEY: Optional[str] = None
     DEEP_THINK_PROVIDER: Optional[str] = None
@@ -91,7 +95,9 @@ class Settings(BaseSettings):
         host_map = {
             "DB_HOST": "postgres",
             "QDRANT_HOST": "qdrant",
-            "OLLAMA_BASE_URL": "http://ollama:11434",
+            "LLM_INSTANT_URL": "http://llm-instant:8081",
+            "LLM_STANDARD_URL": "http://llm-standard:8082",
+            "LLM_DEEP_URL": "http://llm-deep:8083",
             "WHISPER_BASE_URL": "http://whisper:9000",
             "TTS_BASE_URL": "http://tts:8000",
             "PLANKA_BASE_URL": "http://planka:1337"

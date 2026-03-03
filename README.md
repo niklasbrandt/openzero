@@ -23,7 +23,7 @@ The system runs 24/7 on a remote server or local homelab. It links email, calend
 * **Private DNS (Pi-hole):** To support vanity domains like `http://open.zero`, the system uses an internal **Pi-hole** instance. By configuring your Tailscale network to use the VPS as a nameserver for the `open.zero` domain, you get "Split DNS" behavior — your phone knows how to find the server without global DNS record leakage.
 * **The Hub:** A central board pulls high-priority tasks from all other projects, highlighting exactly what needs attention today.
 * **Calendar & Sync:** OpenZero features a unified schedule that merges **Google Calendar**, private **CalDAV** servers (Nextcloud/Fastmail), and local database events into a single, deduplicated view for Z to act upon.
-* **Local Intelligence:** Ollama runs Llama 3 models on local hardware. Cloud reasoning is only engaged via a "Disclosure Proposal" workflow for shared memories.
+* **Local Intelligence:** A 3-tier llama.cpp architecture (instant/standard/deep) runs optimized GGUF models on local hardware. Cloud reasoning is only engaged via a "Disclosure Proposal" workflow for shared memories.
 * **Voice and Text:** Voice notes allow local transcription via Whisper.
 * **Multi-Modal Briefings:** Local TTS summarizes the day in a high quality voice note.
 
@@ -42,7 +42,7 @@ The stack focuses on performance and privacy:
 | Component | Technology | Management Value |
 |:---|:---|:---|
 | **Core OS** | ![Ubuntu](https://img.shields.io/badge/Ubuntu-E9433F?style=flat&logo=ubuntu&logoColor=white) ![Python](https://img.shields.io/badge/Python-3776AB?style=flat&logo=python&logoColor=white) ![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white) | Stable, containerized foundation using Python and Linux. |
-| **Agent-Native Logic** | ![Ollama](https://img.shields.io/badge/Ollama-black?style=flat) ![LangGraph](https://img.shields.io/badge/LangGraph-orange?style=flat) | Local Llama 3 models orchestrated via agent-native state machines. |
+| **Agent-Native Logic** | ![llama.cpp](https://img.shields.io/badge/llama.cpp-black?style=flat) ![LangGraph](https://img.shields.io/badge/LangGraph-orange?style=flat) | 3-tier local LLM (instant/standard/deep) via llama-server with streaming. |
 | **Storage** | ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=flat&logo=postgresql&logoColor=white) ![Qdrant](https://img.shields.io/badge/Qdrant-red?style=flat) | Relational data paired with high-dimensional vector memory. |
 | **Execution** | ![Redis](https://img.shields.io/badge/Redis-DC382D?style=flat&logo=redis&logoColor=white) ![Celery](https://img.shields.io/badge/Celery-37814A?style=flat&logo=celery&logoColor=white) | Asynchronous task delegation and high-speed message brokering. |
 | **Networking** | ![Traefik](https://img.shields.io/badge/Traefik-2496ED?style=flat&logo=traefik&logoColor=white) ![Tailscale](https://img.shields.io/badge/Tailscale-4A23B6?style=flat&logo=tailscale&logoColor=white) | Zero Trust perimeter with automated internal routing and TLS. |
@@ -72,11 +72,11 @@ The stack focuses on performance and privacy:
 │    │  FastAPI Backend / LangGraph Agent  │  │
 │    │    ├── Messenger Bot (polling)      │  │
 │    │    ├── Redis Task Queue             │  │
-│    │    └── LLM Client → Ollama          │  │
+│    │    └── LLM Client → llama-server    │  │
 │    └─────────────────────────────────────┘  │
 │                                             │
 │    ┌──────────┐  ┌────────┐  ┌──────────┐   │
-│    │ Postgres │  │ Qdrant │  │  Ollama  │   │
+│    │ Postgres │  │ Qdrant │  │ llama.cpp│   │
 │    │ (data)   │  │(memory)│  │   (AI)   │   │
 │    └──────────┘  └────────┘  └──────────┘   │
 │                                             │

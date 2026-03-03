@@ -27,7 +27,7 @@ async def transcribe_voice(audio_bytes: bytes) -> str:
 		except Exception as e:
 			print(f"Local transcription failed, falling back: {e}")
 
-	if settings.LLM_PROVIDER == "ollama":
+	if settings.LLM_PROVIDER == "local":
 		# If we had a local whisper container, we'd call it here
 		# For now, default to Groq if API key is present for transcribed chat
 		if settings.GROQ_API_KEY:
