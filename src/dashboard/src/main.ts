@@ -12,6 +12,7 @@ import '../components/CalendarManager'
 import '../components/LifeOverview'
 import '../components/WelcomeOnboarding'
 import '../components/UserCard'
+import '../components/HardwareMonitor'
 import '../components/SystemBenchmark'
 
 console.log('🚀 openZero Dashboard Initialized');
