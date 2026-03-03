@@ -49,6 +49,7 @@ export class UserCard extends HTMLElement {
 			work_times: (shadow.querySelector('#work-input') as HTMLInputElement).value,
 			briefing_time: (shadow.querySelector('#brief-input') as HTMLInputElement).value,
 			context: (shadow.querySelector('#context-input') as HTMLTextAreaElement).value,
+			language: (shadow.querySelector('#language-input') as HTMLSelectElement).value,
 			circle_type: 'identity',
 			relationship: 'Self'
 		};
@@ -122,7 +123,7 @@ export class UserCard extends HTMLElement {
 				.label { font-size: 0.65rem; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.05em; }
 				.value { font-size: 0.9rem; color: #fff; font-weight: 500; }
 
-				input, textarea {
+				input, textarea, select {
 					background: rgba(0,0,0,0.3);
 					border: 1px solid rgba(255,255,255,0.1);
 					color: #fff;
@@ -130,6 +131,20 @@ export class UserCard extends HTMLElement {
 					font-size: 0.85rem;
 					width: 100%;
 					box-sizing: border-box;
+				}
+
+				select {
+					cursor: pointer;
+					appearance: none;
+					background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2314B8A6' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+					background-repeat: no-repeat;
+					background-position: right 8px center;
+					padding-right: 28px;
+				}
+
+				select option {
+					background: #1a1a2e;
+					color: #fff;
 				}
 
 				.goals-section h3 { 
@@ -153,7 +168,7 @@ export class UserCard extends HTMLElement {
 				.actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem; }
 				.save-btn { background: #14B8A6; border: none; color: #000; font-weight: 700; padding: 8px 16px; cursor: pointer; }
 				.cancel-btn { background: transparent; border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 8px 16px; cursor: pointer; }
-				button:focus-visible, input:focus-visible, textarea:focus-visible { 
+				button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { 
 					outline: 2px solid #14B8A6; 
 					outline-offset: 2px; 
 				}
@@ -212,6 +227,23 @@ export class UserCard extends HTMLElement {
 						${this.isEditing
 				? `<input id="brief-input" type="text" placeholder="08:00" value="${me.briefing_time || ''}">`
 				: `<div class="value">${me.briefing_time || '08:00'}</div>`}
+					</div>
+					<div class="field">
+						<div class="label">Language</div>
+						${this.isEditing
+				? `<select id="language-input" aria-label="Select Z's response language">
+						<option value="en" ${(me.language || 'en') === 'en' ? 'selected' : ''}>English</option>
+						<option value="zh" ${me.language === 'zh' ? 'selected' : ''}>Mandarin</option>
+						<option value="hi" ${me.language === 'hi' ? 'selected' : ''}>Hindi</option>
+						<option value="es" ${me.language === 'es' ? 'selected' : ''}>Spanish</option>
+						<option value="fr" ${me.language === 'fr' ? 'selected' : ''}>French</option>
+						<option value="ar" ${me.language === 'ar' ? 'selected' : ''}>Arabic</option>
+						<option value="pt" ${me.language === 'pt' ? 'selected' : ''}>Portuguese</option>
+						<option value="ru" ${me.language === 'ru' ? 'selected' : ''}>Russian</option>
+						<option value="ja" ${me.language === 'ja' ? 'selected' : ''}>Japanese</option>
+						<option value="de" ${me.language === 'de' ? 'selected' : ''}>German</option>
+					</select>`
+				: `<div class="value">${{'en':'English','zh':'Mandarin','hi':'Hindi','es':'Spanish','fr':'French','ar':'Arabic','pt':'Portuguese','ru':'Russian','ja':'Japanese','de':'German'}[me.language as string] || 'English'}</div>`}
 					</div>
 					<div class="field" style="grid-column: span 2;">
 						<div class="label">Typical Work Times</div>
