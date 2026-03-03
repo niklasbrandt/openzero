@@ -84,6 +84,11 @@ sudo ufw allow in on tailscale0 to any port 80
 # Block port 80 on all other (public) interfaces
 sudo ufw deny 80
 
+# Allow DNS (port 53) from Tailscale peers so mobile devices can resolve open.zero via Pi-hole.
+# Source is restricted to the Tailscale CGNAT range (100.64.0.0/10) — not the whole interface.
+sudo ufw allow in on tailscale0 from 100.64.0.0/10 to any port 53 proto udp
+sudo ufw allow in on tailscale0 from 100.64.0.0/10 to any port 53 proto tcp
+
 # Activate the firewall
 sudo ufw --force enable
 
@@ -91,7 +96,7 @@ sudo ufw --force enable
 sudo ufw status verbose
 ```
 
-Expected output shows `80 on tailscale0 ALLOW IN` and `80 DENY IN`. After this, the dashboard and all services are only reachable from devices on your Tailscale network.
+Expected output shows `80 on tailscale0 ALLOW IN`, `80 DENY IN`, and `53/udp on tailscale0 ALLOW IN`. Without the port 53 rules, mobile devices on Tailscale cannot resolve `open.zero` and the dashboard will be unreachable from mobile even when Tailscale is connected.
 
 > [!IMPORTANT]
 > Run `sudo ufw allow ssh` **before** enabling the firewall or you will lock yourself out.
@@ -224,6 +229,14 @@ The dashboard is protected by a bearer token. You must set one before the backen
     ```
 
 4. The first time you open the dashboard in a browser, you will be prompted for the token. Enter it once — it is saved in `localStorage` and never re-asked on the same device/browser.
+
+   **Mobile shortcut:** Append the token directly to the URL once, open it in mobile Safari/Chrome, and bookmark it. The token is automatically saved and stripped from the URL:
+
+   ```
+   http://open.zero/home?token=your_generated_token_here
+   ```
+
+   Subsequent visits via the bookmark work without the token in the URL.
 
 > [!IMPORTANT]
 > If the backend returns HTTP 500 on every dashboard request, the `DASHBOARD_TOKEN` env var is missing or empty. Set it and restart the backend container: `docker compose up -d --no-deps backend`.
