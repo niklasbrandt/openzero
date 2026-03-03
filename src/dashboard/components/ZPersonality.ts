@@ -207,10 +207,16 @@ export class ZPersonality extends HTMLElement {
 					` : ''}
 
 					${!this.isLoading && !this.isEditing && this.activeTab === 'protocols' ? `
+						<div class="prot-explanation" style="font-size: 0.75rem; color: rgba(255,255,255,0.4); margin-bottom: 1rem; line-height: 1.4; padding: 0.5rem; background: rgba(0,102,255,0.05); border-radius: 4px; border-left: 2px solid #0066FF;">
+							Operational Protocols are the agent's internal "Action Tags". They define the specific strategic actions ${per?.agent_name || 'Z'} can perform across integrated services. These are core system capabilities.
+						</div>
 						<div class="prot-list">
 							${prot.map((p: any, i: number) => `
 								<div class="prot-item" style="animation-delay: ${i * 0.05}s">
-									<span class="prot-name">${p.name}</span>
+									<span class="prot-name" style="display: flex; align-items: center; gap: 0.5rem;">
+										<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+										${p.name.replace(/_/g, ' ')}
+									</span>
 									<span class="prot-desc">${p.description}</span>
 								</div>
 							`).join('')}

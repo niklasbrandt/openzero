@@ -1,12 +1,28 @@
 export class BriefingHistory extends HTMLElement {
+	private t: Record<string, string> = {};
+
 	constructor() {
 		super();
 		this.attachShadow({ mode: 'open' });
 	}
 
+	private async loadTranslations() {
+		try {
+			const res = await fetch('/api/dashboard/translations');
+			if (res.ok) this.t = await res.json();
+		} catch (_) { }
+	}
+
+	private tr(key: string, fallback: string): string {
+		return this.t[key] || fallback;
+	}
+
 	connectedCallback() {
 		this.render();
-		this.fetchBriefings();
+		this.loadTranslations().then(() => {
+			this.render();
+			this.fetchBriefings();
+		});
 	}
 
 	private currentLimit = 5;
@@ -73,12 +89,16 @@ export class BriefingHistory extends HTMLElement {
 			this.shadowRoot.innerHTML = `
 				<style>
 					h2 { 
-						font-size: 1.5rem; 
+						font-size: 1.1rem; 
 						font-weight: bold; 
 						margin: 0 0 1.5rem 0; 
 						color: #fff; 
-						letter-spacing: -0.01em; 
+						display: flex;
+						align-items: center;
+						gap: 0.6rem;
 					}
+					.icon { display: flex; align-items: center; justify-content: center; opacity: 0.6; }
+					.subtitle { font-weight: 400; font-size: 0.75rem; color: rgba(255, 255, 255, 0.35); margin-left: auto; }
 					:host { display: block; }
 					.card {
 						display: flex;
@@ -187,8 +207,19 @@ export class BriefingHistory extends HTMLElement {
 					.load-more:focus-visible { outline: 2px solid #14B8A6; outline-offset: 2px; }
 				</style>
 				<div class="card">
-					<h2>Briefing History</h2>
-					<div id="briefing-list">Loading briefings...</div>
+					<h2>
+						<span class="icon">
+							<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+								<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+								<polyline points="14 2 14 8 20 8"></polyline>
+								<line x1="16" y1="13" x2="8" y2="13"></line>
+								<line x1="16" y1="17" x2="8" y2="17"></line>
+							</svg>
+						</span>
+						${this.tr('briefing_history', 'Briefing History')}
+						<span class="subtitle">${this.tr('briefing_subtitle', 'Daily Reports')}</span>
+					</h2>
+					<div id="briefing-list">${this.tr('loading', 'Loading...')}</div>
 				</div>
 			`;
 		}
