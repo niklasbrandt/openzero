@@ -9,7 +9,7 @@ from app.services.timezone import update_detected_timezone, get_current_timezone
 from app.config import settings
 import pytz
 import logging
-
+import re
 import subprocess
 import os
 
@@ -153,11 +153,64 @@ async def start_scheduler():
 		replace_existing=True,
 	)
 
+	# Table Cleanup — PendingThought rows older than 24 h (every 6 hours)
+	scheduler.add_job(
+		cleanup_pending_thoughts,
+		IntervalTrigger(hours=6),
+		id="cleanup_pending_thoughts",
+		replace_existing=True,
+	)
+
+	# Table Cleanup — Keep only last 500 GlobalMessage rows (every 12 hours)
+	scheduler.add_job(
+		cleanup_global_messages,
+		IntervalTrigger(hours=12),
+		id="cleanup_global_messages",
+		replace_existing=True,
+	)
+
 	# 2. Load User-Defined Persistent Custom Tasks
 	await load_custom_tasks()
 
 	scheduler.start()
 	logger.info(f"Z: Missions scheduled. Morning Briefing set to {brief_hour:02d}:{brief_min:02d} {user_tz_str}")
+
+async def cleanup_pending_thoughts():
+	"""Delete PendingThought rows older than 24 hours."""
+	from app.models.db import AsyncSessionLocal, PendingThought
+	from sqlalchemy import delete as sa_delete
+	import datetime
+	try:
+		async with AsyncSessionLocal() as session:
+			cutoff = datetime.datetime.utcnow() - datetime.timedelta(hours=24)
+			result = await session.execute(
+				sa_delete(PendingThought).where(PendingThought.created_at < cutoff)
+			)
+			await session.commit()
+			logger.info("Cleanup: deleted %d expired PendingThought rows.", result.rowcount)
+	except Exception as e:
+		logger.error("cleanup_pending_thoughts failed: %s", e)
+
+
+async def cleanup_global_messages():
+	"""Keep only the most recent 500 GlobalMessage rows."""
+	from app.models.db import AsyncSessionLocal
+	from sqlalchemy import text
+	try:
+		async with AsyncSessionLocal() as session:
+			await session.execute(text("""
+				DELETE FROM global_messages
+				WHERE id NOT IN (
+					SELECT id FROM global_messages
+					ORDER BY created_at DESC
+					LIMIT 500
+				)
+			"""))
+			await session.commit()
+			logger.info("Cleanup: trimmed GlobalMessage table to 500 rows.")
+	except Exception as e:
+		logger.error("cleanup_global_messages failed: %s", e)
+
 
 async def load_custom_tasks():
 	"""Loads persistent custom tasks from the database into the scheduler."""
@@ -179,24 +232,29 @@ async def load_custom_tasks():
 				
 				trigger = None
 				if t.job_type == "cron":
-					# Spec: "minute hour day month day_of_week" (standard crontab)
+					# Validate before loading (defense-in-depth against stale bad rows)
+					fields = t.spec.strip().split()
+					if len(fields) != 5 or not all(re.match(r'^[\d*/,\-]+$', f) for f in fields):
+						logger.warning("Skipping custom task '%s': invalid cron spec '%s'", t.name, t.spec)
+						continue
 					trigger = CronTrigger.from_crontab(t.spec)
 				elif t.job_type == "interval":
 					# Spec: "minutes=30" or "hours=2" or "days=1"
+					allowed_keys = {"minutes", "hours", "days"}
 					kwargs = {}
 					for part in t.spec.split(","):
 						if "=" in part:
-							k, v = part.split("=")
-							kwargs[k.strip()] = int(v.strip())
-					trigger = IntervalTrigger(**kwargs)
-				
-				if trigger:
-					scheduler.add_job(
-						make_task(t.message),
-						trigger,
-						id=f"persistent_custom_{t.id}",
-						replace_existing=True
-					)
+							k, v = part.split("=", 1)
+							if k.strip() in allowed_keys:
+								try:
+									v_int = int(v.strip())
+									if v_int >= 1:
+										kwargs[k.strip()] = v_int
+								except ValueError:
+									pass
+					if not kwargs:
+						logger.warning("Skipping custom task '%s': invalid interval spec '%s'", t.name, t.spec)
+						continue
 					logger.info(f"Loaded persistent custom task: {t.name} ({t.job_type})")
 	except Exception as e:
 		logger.error(f"Failed to load custom tasks: {e}")

@@ -113,6 +113,7 @@ async def start_telegram_bot():
 	bot_app.add_handler(CallbackQueryHandler(handle_unlearn_approval, pattern="^unlearn_"))
 	bot_app.add_handler(CallbackQueryHandler(handle_wipe_confirm, pattern="^wipe_"))
 	bot_app.add_handler(CallbackQueryHandler(handle_calendar_approval, pattern="^cal_"))
+	bot_app.add_handler(CallbackQueryHandler(handle_draft_approval, pattern="^draft_"))
 	bot_app.add_handler(CallbackQueryHandler(handle_memories_callback, pattern="^call_memories$"))
 	bot_app.add_handler(CallbackQueryHandler(handle_help_callback, pattern="^call_help$"))
 	bot_app.add_handler(CommandHandler("help", cmd_help))
@@ -1073,5 +1074,41 @@ async def handle_calendar_approval(update: Update, context: ContextTypes.DEFAULT
 		
 		await query.edit_message_text(f"<blockquote>🚀 <b>Added to Calendar:</b> {event_data['summary']}</blockquote>", parse_mode="HTML")
 	except Exception as e:
-		print(f"DEBUG: Calendar approval failed: {e}")
+		logger.warning("Calendar approval failed: %s", e)
 		await query.edit_message_text(f"❌ Failed to add event: {str(e)}")
+
+
+@owner_only
+async def handle_draft_approval(update: Update, context: ContextTypes.DEFAULT_TYPE):
+	"""Handle user approving or discarding a Gmail draft prepared by Z."""
+	query = update.callback_query
+	await query.answer()
+
+	data = query.data
+	thought_id = data.split("_")[-1]
+
+	if "discard" in data:
+		await query.edit_message_text("❌ Draft discarded.")
+		return
+
+	from app.models.db import get_pending_thought
+	thought = await get_pending_thought(thought_id)
+	if not thought:
+		await query.edit_message_text("❌ Error: Draft request expired or not found.")
+		return
+
+	try:
+		import json as _json
+		draft_data = _json.loads(thought["context_data"])
+		from app.services.gmail import create_draft_reply
+		success = await create_draft_reply(draft_data["email_id"], draft_data["reply_body"])
+		if success:
+			await query.edit_message_text(
+				f"✅ <b>Draft created in Gmail</b>\nTo: {draft_data.get('to', '')}\nSubject: Re: {draft_data.get('subject', '')}",
+				parse_mode="HTML"
+			)
+		else:
+			await query.edit_message_text("❌ Failed to create draft. Check Gmail credentials.")
+	except Exception as e:
+		logger.warning("Draft approval failed: %s", e)
+		await query.edit_message_text(f"❌ Error creating draft: {str(e)}")

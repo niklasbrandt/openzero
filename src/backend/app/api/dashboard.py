@@ -14,7 +14,7 @@ No complex frontend state. The backend serves as the source of truth for all
 integrations, allowing the Web Components to stay lightweight and fast.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Header
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
@@ -28,9 +28,73 @@ from typing import List, Optional
 import datetime
 import json
 import httpx
+import time as _time
+from collections import defaultdict
 from app.config import settings
 
-router = APIRouter(prefix="/api/dashboard")
+import logging
+
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Authentication (C3 / M-A3)
+# ---------------------------------------------------------------------------
+async def require_auth(
+    request: Request,
+    authorization: Optional[str] = Header(None, alias="authorization"),
+):
+    """Bearer-token guard for all dashboard API endpoints.
+
+    In production (IS_DOCKER=True) a missing DASHBOARD_TOKEN is a
+    hard configuration error — refuse all requests with HTTP 500 so
+    the operator is forced to fix it rather than running open.
+    In local dev (IS_DOCKER=False) an empty token disables auth with a warning.
+    """
+    token = settings.DASHBOARD_TOKEN
+    if not token:
+        if settings.IS_DOCKER:
+            raise HTTPException(
+                status_code=500,
+                detail="DASHBOARD_TOKEN is not configured. Set it in .env and restart.",
+            )
+        # Local dev: allow without auth (backwards-compatible)
+        logger.warning("DASHBOARD_TOKEN not set — auth disabled (dev mode).")
+        return
+
+    # Accept token from Authorization header or ?token= query param (needed for iframes)
+    provided: Optional[str] = None
+    if authorization and authorization.lower().startswith("bearer "):
+        provided = authorization[7:]
+    if not provided:
+        provided = request.query_params.get("token")
+
+    if provided != token:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+
+# ---------------------------------------------------------------------------
+# Rate limiting (M3)
+# ---------------------------------------------------------------------------
+_rate_limit_store: dict = defaultdict(list)
+_RATE_LIMIT_MAX = 20
+_RATE_LIMIT_WINDOW = 60  # seconds
+
+def _check_rate_limit(request: Request):
+    """Sliding-window rate limiter: 20 requests per 60 s per client IP."""
+    client_ip = (
+        request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
+        or (request.client.host if request.client else "unknown")
+    )
+    now = _time.time()
+    window_start = now - _RATE_LIMIT_WINDOW
+    hits = _rate_limit_store[client_ip]
+    hits[:] = [t for t in hits if t > window_start]
+    if len(hits) >= _RATE_LIMIT_MAX:
+        raise HTTPException(status_code=429, detail="Rate limit exceeded. Try again shortly.")
+    hits.append(now)
+
+
+router = APIRouter(prefix="/api/dashboard", dependencies=[Depends(require_auth)])
 
 # High-speed cache for Planka IDs to avoid sequential network hops on every redirect
 PLANKA_ID_CACHE = {
@@ -81,7 +145,7 @@ async def chat_history(limit: int = 30):
 	return {"messages": msgs}
 
 @router.post("/chat")
-async def dashboard_chat(req: ChatRequest, db: AsyncSession = Depends(get_db)):
+async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = Depends(get_db), _rl: None = Depends(_check_rate_limit)):
 	"""Chat with Z from the dashboard."""
 	msg = req.message.strip()
 	
@@ -456,7 +520,7 @@ async def save_personality(data: dict, db: AsyncSession = Depends(get_db)):
 	return {"status": "ok", "personality": data}
 
 @router.post("/chat/stream")
-async def dashboard_chat_stream(req: ChatRequest):
+async def dashboard_chat_stream(req: ChatRequest, request: Request, _rl: None = Depends(_check_rate_limit)):
 	"""SSE streaming chat endpoint for real-time token delivery to dashboard."""
 	from starlette.responses import StreamingResponse
 	from app.services.llm import chat_stream_with_context, last_model_used
@@ -529,7 +593,7 @@ async def get_life_tree(db: AsyncSession = Depends(get_db)):
 	try:
 		events = await fetch_calendar_events(max_results=5, days_ahead=7)
 	except Exception as ce:
-		print(f"Calendar fetch failed: {ce}")
+		logger.warning("Calendar fetch failed: %s", ce)
 		events = []
 	formatted_events = []
 
@@ -557,7 +621,7 @@ async def get_life_tree(db: AsyncSession = Depends(get_db)):
 						"sort_key": bday_this_year
 					})
 			except Exception as be:
-				print(f"Error creating birthday event for {p.name}: {be}")
+				logger.debug("Error creating birthday event for %s: %s", p.name, be)
 	
 	# 3. Add Google Events
 	for e in events:
@@ -707,7 +771,7 @@ async def planka_redirect(request: Request, target: str = "", background: bool =
 				data = resp.json()
 				pending_token = data.get("pendingToken")
 				if pending_token:
-					print(f"DEBUG: Planka SSO requires ToS acceptance (pendingToken found). Accepting...")
+					logger.debug("Planka SSO requires ToS acceptance (pendingToken found). Accepting...")
 					accept_url = f"{settings.PLANKA_BASE_URL}/api/access-tokens/{pending_token}/actions/accept"
 					accept_resp = await client.post(accept_url)
 					accept_resp.raise_for_status()
@@ -726,13 +790,13 @@ async def planka_redirect(request: Request, target: str = "", background: bool =
 			user_id = "None"
 			try:
 				me_resp = await client.get(
-					f"{settings.PLANKA_BASE_URL}/api/users/me", 
+					f"{settings.PLANKA_BASE_URL}/api/users/me",
 					headers={"Authorization": f"Bearer {access_token}"}
 				)
 				if me_resp.status_code == 200:
 					user_id = me_resp.json().get("id", "None")
 			except Exception as e:
-				print(f"DEBUG: Could not fetch userId: {e}")
+				logger.debug("Could not fetch userId: %s", e)
 
 			# 4. Determine Target Redirect URL
 			target_board_id = request.query_params.get("target_board_id") or request.query_params.get("targetboardid")
@@ -916,7 +980,7 @@ async def planka_redirect(request: Request, target: str = "", background: bool =
 			return response
 
 		except Exception as e:
-			print(f"DEBUG: Planka Auth Error: {e}")
+			logger.warning("Planka Auth Error: %s", e)
 			return RedirectResponse(url=f"{public_base}/projects")
 
 
@@ -1191,7 +1255,7 @@ async def get_calendar(year: Optional[int] = None, month: Optional[int] = None, 
 			start_date=start_date
 		)
 	except Exception as ce:
-		print(f"Unified Calendar fetch failed: {ce}")
+		logger.warning("Unified Calendar fetch failed: %s", ce)
 		all_events = []
 	
 	# 2. Add Virtual Birthdays (Not yet in unified fetcher as they are generated)

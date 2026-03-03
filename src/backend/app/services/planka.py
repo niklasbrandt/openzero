@@ -24,7 +24,7 @@ async def get_planka_auth_token() -> str:
 		"emailOrUsername": settings.PLANKA_ADMIN_EMAIL,
 		"password": settings.PLANKA_ADMIN_PASSWORD
 	}
-	print(f"DEBUG: Attempting Planka auth at {login_url} for {settings.PLANKA_ADMIN_EMAIL}")
+	logger.debug("Attempting Planka auth at %s", login_url)
 	async with httpx.AsyncClient(timeout=10.0) as client:
 		try:
 			resp = await client.post(login_url, json=payload)
@@ -34,7 +34,7 @@ async def get_planka_auth_token() -> str:
 				data = resp.json()
 				pending_token = data.get("pendingToken")
 				if pending_token:
-					print(f"DEBUG: Planka requires ToS acceptance (pendingToken found). Accepting...")
+					logger.debug("Planka requires ToS acceptance (pendingToken found). Accepting...")
 					accept_url = f"{settings.PLANKA_BASE_URL}/api/access-tokens/{pending_token}/actions/accept"
 					accept_resp = await client.post(accept_url)
 					accept_resp.raise_for_status()
@@ -46,12 +46,12 @@ async def get_planka_auth_token() -> str:
 			resp.raise_for_status()
 			token = resp.json().get("item")
 			if token:
-				print("DEBUG: Planka auth successful.")
+				logger.debug("Planka auth successful.")
 			else:
 				raise ValueError("Auth token is empty — check Planka credentials.")
 			return token
 		except Exception as e:
-			print(f"DEBUG: Planka auth exception: {e}")
+			logger.debug("Planka auth exception: %s", e)
 			raise
 
 import asyncio
@@ -178,7 +178,7 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 	if board_name.lower() in {n.lower() for n in all_board_names}:
 		board_name = "Operator Board"
 
-	print(f"DEBUG: create_task requested -> Board: {board_name}, List: {list_name}, Title: {title}")
+	logger.debug("create_task requested -> Board: %s, List: %s, Title: %s", board_name, list_name, title)
 	try:
 		from app.services.operator_board import operator_service
 		token = await get_planka_auth_token()
@@ -188,7 +188,7 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 			# 1. SPECIAL CASE: Operator Board
 			target_board = None
 			if board_name.lower() == "operator board":
-				print("DEBUG: Targeting Operator Board, ensuring initialization...")
+				logger.debug("Targeting Operator Board, ensuring initialization...")
 				_, b_id = await operator_service.initialize_board(client)
 				target_board = {"id": b_id, "name": "Operator Board"}
 			else:
@@ -206,7 +206,7 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 						break
 			
 			if not target_board:
-				print(f"DEBUG: Board '{board_name}' not found. Defaulting to Operator Board.")
+				logger.debug("Board '%s' not found. Defaulting to Operator Board.", board_name)
 				_, b_id = await operator_service.initialize_board(client)
 				target_board = {"id": b_id, "name": "Operator Board"}
 
@@ -233,11 +233,10 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 				"position": 65535
 			})
 			res.raise_for_status()
-			print(f"DEBUG: Card created successfully in {target_board['name']} -> {target_list['name']}")
+			logger.debug("Card created successfully in %s -> %s", target_board['name'], target_list['name'])
 			return True
-	except Exception as e:
-		print(f"DEBUG: create_task failed: {e}")
-		return False
+		except Exception as e:
+			logger.debug("create_task failed: %s", e)
 
 async def create_project(name: str, description: str = "") -> dict:
 	"""Create a new project in Planka."""
@@ -255,7 +254,7 @@ async def create_project(name: str, description: str = "") -> dict:
 			data = resp.json()
 			return data.get("item") or data
 		except Exception as e:
-			print(f"DEBUG: create_project failed with 'type', retrying with 'isPublic': {e}")
+			logger.debug("create_project failed with 'type', retrying with 'isPublic': %s", e)
 			resp = await client.post("/api/projects", json={
 				"name": name, 
 				"description": description,
@@ -286,14 +285,14 @@ async def create_board(project_id: str, name: str) -> dict:
 				"position": 65535
 			})
 		except Exception as e:
-			print(f"DEBUG: Failed to create default Inbox list with type, retrying without: {e}")
+			logger.debug("Failed to create default Inbox list with type, retrying without: %s", e)
 			try:
 				await client.post(f"/api/boards/{board['id']}/lists", json={
 					"name": "Inbox",
 					"position": 65535
 				})
 			except Exception as e2:
-				print(f"DEBUG: Failed to create default Inbox list: {e2}")
+				logger.debug("Failed to create default Inbox list: %s", e2)
 		
 		return board
 
@@ -322,7 +321,7 @@ async def create_list(board_name: str, list_name: str, project_name: str = None)
 				break
 		
 		if not board_id:
-			print(f"DEBUG: create_list - board '{board_name}' not found")
+			logger.debug("create_list - board '%s' not found", board_name)
 			return None
 		
 		try:
@@ -334,5 +333,5 @@ async def create_list(board_name: str, list_name: str, project_name: str = None)
 			data = resp.json()
 			return data.get("item") or data
 		except Exception as e:
-			print(f"DEBUG: create_list failed: {e}")
+			logger.debug("create_list failed: %s", e)
 			return None
