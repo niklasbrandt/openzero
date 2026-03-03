@@ -356,6 +356,11 @@ async def dashboard_chat_stream(req: ChatRequest):
 		await save_global_message("dashboard", "user", msg)
 		await save_global_message("dashboard", "z", clean_reply)
 
+		# Background memory extraction — learn from user message without blocking reply
+		import asyncio
+		from app.services.memory import extract_and_store_facts
+		asyncio.create_task(extract_and_store_facts(msg))
+
 		yield f"data: {json.dumps({'done': True, 'reply': clean_reply, 'actions': executed_cmds, 'model': last_model_used.get()})}\n\n"
 
 	return StreamingResponse(
