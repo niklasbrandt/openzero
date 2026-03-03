@@ -1,12 +1,28 @@
 export class EmailRules extends HTMLElement {
+  private t: Record<string, string> = {};
+
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
   }
 
+  private async loadTranslations() {
+    try {
+      const res = await fetch('/api/dashboard/translations');
+      if (res.ok) this.t = await res.json();
+    } catch (_) { }
+  }
+
+  private tr(key: string, fallback: string): string {
+    return this.t[key] || fallback;
+  }
+
   connectedCallback() {
     this.render();
-    this.fetchRules();
+    this.loadTranslations().then(() => {
+      this.render();
+      this.fetchRules();
+    });
   }
 
   private editingId: number | null = null;
@@ -107,7 +123,9 @@ export class EmailRules extends HTMLElement {
     if (this.shadowRoot) {
       this.shadowRoot.innerHTML = `
 				<style>
-					h2 { font-size: 1.5rem; font-weight: bold; margin: 0 0 1rem 0; color: #fff; letter-spacing: 0.02em; }
+					h2 { font-size: 1.1rem; font-weight: bold; margin: 0 0 1rem 0; color: #fff; display: flex; align-items: center; gap: 0.6rem; }
+					.h-icon { display: flex; align-items: center; justify-content: center; opacity: 0.6; }
+					.subtitle { font-weight: 400; font-size: 0.75rem; color: rgba(255, 255, 255, 0.35); margin-left: auto; }
 					:host { display: block; }
 					.add-box { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.5rem; background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 1rem; }
 					.input-row { display: flex; gap: 0.5rem; }
@@ -165,8 +183,17 @@ export class EmailRules extends HTMLElement {
 				</style>
 				<div class="card">
 					<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-						<h2>Email Intelligence Rules</h2>
-						${!this.isAdding ? '<button id="showAddBtn" style="background: #14B8A6; color: #fff; border: none; padding: 0.4rem 1rem; border-radius: 0.6rem; cursor: pointer; font-size: 0.8rem; font-weight: 600;">+ New Rule</button>' : ''}
+						<h2>
+							<span class="h-icon">
+								<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+									<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+									<polyline points="22,6 12,13 2,6"></polyline>
+								</svg>
+							</span>
+							${this.tr('email_rules', 'Email Intelligence Rules')}
+							<span class="subtitle">${this.tr('email_subtitle', 'Automated Rules')}</span>
+						</h2>
+						${!this.isAdding ? `<button id="showAddBtn" style="background: #14B8A6; color: #fff; border: none; padding: 0.4rem 1rem; border-radius: 0.6rem; cursor: pointer; font-size: 0.8rem; font-weight: 600;">+ ${this.tr('new_rule', 'New Rule')}</button>` : ''}
 					</div>
 
 					${this.isAdding ? `
