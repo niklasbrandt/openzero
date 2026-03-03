@@ -22,7 +22,7 @@ async def _get_stats_footer() -> str:
 	stats = await get_memory_stats()
 	
 	# Determine Model Level from actual use
-	model_name = last_model_used.get() or "ollama"
+	model_name = last_model_used.get() or "local"
 	model_tag = f" · {model_name}"
 
 	stats_text = f"Memories: {stats['points']}{model_tag}" if stats['status'] != 'error' else "Memory: Offline"
@@ -204,19 +204,19 @@ async def start_telegram_bot():
 				"(e.g. '16:40 - Mo. 2nd'), followed by a blank line, then your message. "
 				"NEVER invent data not present in SYSTEM_DATA."
 			)
-			print(f"DEBUG: Greeting Seq - Calling Ollama ({settings.OLLAMA_MODEL_SMART})")
+			print(f"DEBUG: Greeting Seq - Calling LLM (deep tier)")
 
 			# Strings returned by llm.py on timeout/failure — must not reach the user
 			_ERROR_INDICATORS = ["initializing my local core", "synchronize my reasoning", "Error connecting", "No response from"]
 			def _is_error(text: str) -> bool:
 				return any(ind.lower() in text.lower() for ind in _ERROR_INDICATORS)
 
-			raw_greeting = await chat(greeting_prompt, system_override=system_override, model=settings.OLLAMA_MODEL_SMART)
+			raw_greeting = await chat(greeting_prompt, system_override=system_override, tier="deep")
 
-			# Fallback 1: smart model timed out — try fast model
+			# Fallback 1: deep tier timed out — try standard tier
 			if _is_error(raw_greeting):
-				print("DEBUG: Greeting - Smart model timeout, falling back to fast model")
-				raw_greeting = await chat(greeting_prompt, system_override=system_override, model=settings.OLLAMA_MODEL_FAST)
+				print("DEBUG: Greeting - Deep tier timeout, falling back to standard")
+				raw_greeting = await chat(greeting_prompt, system_override=system_override, tier="standard")
 
 			# Fallback 2: both models failed — send clean static greeting
 			if _is_error(raw_greeting):
@@ -423,7 +423,7 @@ async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		# 3. LLM
 		try:
 			from app.services.llm import chat
-			await chat("hi", model=settings.OLLAMA_MODEL_FAST)
+			await chat("hi", tier="instant")
 			l_text = "🟢 Ready"
 		except: l_text = "🔴 Error"
 
@@ -431,7 +431,7 @@ async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
 			"🛰️ *System Status Report*\n\n"
 			f"🧠 *Memory (Qdrant):* {m_text} ({m_stats.get('points', 0)} pts)\n"
 			f"📋 *Task Board (Planka):* {p_text}\n"
-			f"🤖 *Intelligence (Ollama):* {l_text}\n"
+			f"🤖 *Intelligence (Local):* {l_text}\n"
 			f"📍 *Time:* {datetime.now(pytz.timezone(get_user_timezone())).strftime('%H:%M:%S')}"
 		)
 		await safe_reply(update, status_report, reply_markup=get_nav_markup())
@@ -805,9 +805,10 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, user_text: str, is_followup: bool = False):
-	"""Core freetext processing logic, shared between initial and coalesced messages."""
-	from app.services.llm import chat_with_context
+	"""Core freetext processing logic with streaming progressive updates."""
+	from app.services.llm import chat_stream_with_context
 	from app.models.db import get_global_history, save_global_message
+	import time
 
 	# Show initial acknowledgment
 	if is_followup:
@@ -825,12 +826,32 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 	# Recover Merged History (cross-channel context -- last 10 messages)
 	merged_history = await get_global_history(limit=10)
 
-	response = await chat_with_context(
+	# Stream tokens with progressive Telegram message updates
+	chunks = []
+	last_edit_time = time.time()
+	EDIT_INTERVAL = 1.5  # seconds between progressive edits
+
+	async for chunk in chat_stream_with_context(
 		user_text,
 		history=merged_history,
 		include_projects=True,
 		include_people=True
-	)
+	):
+		chunks.append(chunk)
+		now = time.time()
+
+		# Progressively update the message at intervals
+		if now - last_edit_time >= EDIT_INTERVAL:
+			partial_text = "".join(chunks)
+			if len(partial_text.strip()) > 3:
+				try:
+					display = f"<blockquote><i>{_md_to_html(partial_text)}...</i></blockquote>"
+					await safe_edit(thinking_msg, display, parse_mode="HTML")
+				except Exception:
+					pass  # Telegram rate limits or unchanged content
+				last_edit_time = now
+
+	response = "".join(chunks)
 
 	async with AsyncSessionLocal() as db:
 		clean_reply, _ = await parse_and_execute_actions(response, db=db)

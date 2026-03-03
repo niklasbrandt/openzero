@@ -26,6 +26,7 @@ from app.services.llm import chat as llm_chat
 from pydantic import BaseModel
 from typing import List, Optional
 import datetime
+import json
 import httpx
 from app.config import settings
 
@@ -323,6 +324,49 @@ async def dashboard_chat(req: ChatRequest, db: AsyncSession = Depends(get_db)):
 		}
 	except Exception as e:
 		raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/chat/stream")
+async def dashboard_chat_stream(req: ChatRequest):
+	"""SSE streaming chat endpoint for real-time token delivery to dashboard."""
+	from starlette.responses import StreamingResponse
+	from app.services.llm import chat_stream_with_context, last_model_used
+	from app.models.db import get_global_history, save_global_message
+	from app.services.agent_actions import parse_and_execute_actions
+
+	msg = req.message.strip()
+
+	async def event_generator():
+		merged_history = await get_global_history(limit=10)
+		chunks = []
+
+		async for chunk in chat_stream_with_context(
+			msg,
+			history=merged_history,
+			include_projects=True,
+			include_people=True
+		):
+			chunks.append(chunk)
+			yield f"data: {json.dumps({'token': chunk})}\n\n"
+
+		full_response = "".join(chunks)
+
+		async with AsyncSessionLocal() as db:
+			clean_reply, executed_cmds = await parse_and_execute_actions(full_response, db=db)
+
+		await save_global_message("dashboard", "user", msg)
+		await save_global_message("dashboard", "z", clean_reply)
+
+		yield f"data: {json.dumps({'done': True, 'reply': clean_reply, 'actions': executed_cmds, 'model': last_model_used.get()})}\n\n"
+
+	return StreamingResponse(
+		event_generator(),
+		media_type="text/event-stream",
+		headers={
+			"Cache-Control": "no-cache",
+			"Connection": "keep-alive",
+			"X-Accel-Buffering": "no",
+		}
+	)
 
 # --- Life Tree & Onboarding ---
 # Handle by main.py /calendar
@@ -1125,7 +1169,7 @@ async def get_system_status(db: AsyncSession = Depends(get_db)):
 	return {
 		"status": "online",
 		"llm_provider": settings.LLM_PROVIDER,
-		"llm_model": last_model_used.get() or settings.OLLAMA_MODEL_FAST,
+		"llm_model": last_model_used.get() or settings.LLM_MODEL_STANDARD,
 		"memory_points": mem_stats.get("points", 0),
 		"identity_active": identity_set,
 		"timestamp": datetime.datetime.now().isoformat()

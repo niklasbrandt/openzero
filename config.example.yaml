@@ -54,4 +54,19 @@ preferences:
   max_emails_per_briefing: 10     # Max number of emails to explicitly summarize
   stagnation_warning_days: 14     # Warn if a project card hasn't moved in X days
 
-  # Note: AI engine selection (Ollama/Groq) and models are configured in .env
+  # Note: AI engine selection (local llama-server) and models are configured in .env
+
+# ------------------------------------------------------------------------------
+# 4. Intelligence Configuration
+# ------------------------------------------------------------------------------
+intelligence:
+  # 3-Tier architecture: instant / standard / deep
+  # Tier routing is automatic based on message complexity.
+  # Override defaults in .env (LLM_MODEL_INSTANT, LLM_MODEL_STANDARD, LLM_MODEL_DEEP)
+  
+  # Deep tier timeout (seconds) - falls back to standard if first token takes longer
+  deep_timeout_seconds: 12
+  
+  # Whether to attempt the deep tier for interactive messages at all
+  # Set to false on low-RAM systems to skip the deep tier entirely
+  smart_model_interactive: true
