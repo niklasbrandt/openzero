@@ -105,8 +105,8 @@ export class ZPersonality extends HTMLElement {
 				:host { display: block; height: 100%; font-family: 'Inter', system-ui, sans-serif; }
 				.card { height: 100%; display: flex; flex-direction: column; gap: 1.25rem; color: #fff; }
 				
-				.header { display: flex; justify-content: space-between; align-items: center; }
-				h2 { margin: 0; font-size: 1.5rem; display: flex; align-items: center; gap: 0.5rem; color: #fff; font-weight: bold; letter-spacing: 0.02em; }
+				.header { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; flex-wrap: wrap; }
+				h2 { margin: 0; font-size: 1.5rem; display: flex; align-items: center; gap: 0.5rem; color: #fff; font-weight: bold; letter-spacing: 0.02em; overflow-wrap: break-word; word-break: break-word; min-width: 0; flex: 1; }
 				.icon {
 					width: 28px; height: 28px;
 					background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-secondary) 100%);
