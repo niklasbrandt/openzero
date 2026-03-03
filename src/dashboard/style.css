@@ -173,9 +173,17 @@ body {
   margin: 0.5rem 0;
 }
 
-@media (max-width: 1400px) {
+@media (max-width: 1500px) {
   .sidebar-nav {
     display: none;
+  }
+}
+
+/* When sidebar is visible (>1500px), nudge the app container right so
+   the fixed 36px sidebar never overlaps grid content. */
+@media (min-width: 1501px) {
+  #app {
+    padding-left: calc(36px + 2rem);
   }
 }
 
