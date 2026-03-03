@@ -28,13 +28,15 @@ export class SoftwareStatus extends HTMLElement {
 
 	async fetchStatus() {
 		try {
-			const [sysRes, infoRes] = await Promise.all([
+			const [sysRes, infoRes, llmRes] = await Promise.all([
 				fetch('/api/dashboard/system'),
 				fetch('/api/dashboard/server-info'),
+				fetch('/api/dashboard/llm-config'),
 			]);
 			const sys = sysRes.ok ? await sysRes.json() : {};
 			const info = infoRes.ok ? await infoRes.json() : {};
-			this.data = { ...sys, ...info };
+			const llmConfig = llmRes.ok ? await llmRes.json() : {};
+			this.data = { ...sys, ...info, llm_config: llmConfig };
 			this.updatePanel();
 		} catch (e) {
 			console.error('Failed to fetch software status:', e);
@@ -112,8 +114,24 @@ export class SoftwareStatus extends HTMLElement {
 			</div>
 		`).join('');
 
+		// LLM tier config
+		const llmCfg = d.llm_config || {};
+		const tierList = llmCfg.tiers || [];
+		const tierColors: Record<string, string> = { instant: '#14B8A6', standard: '#3b82f6', deep: '#a78bfa' };
+		const tiersHtml = tierList.length > 0 ? tierList.map((t: any) => `
+			<div class="tier-row has-tip" data-tip="${t.use_case}">
+				<span class="tier-badge" style="background: ${tierColors[t.tier] || '#666'}">${t.tier}</span>
+				<span class="tier-model">${t.model}</span>
+				<span class="tier-threads">${t.threads}T</span>
+			</div>
+		`).join('') : '<div class="empty">No tiers configured.</div>';
+
 		el.innerHTML = `
 			<div class="svc-grid">${serviceGrid}</div>
+			<div class="stack-section">
+				<span class="section-label">${this.tr('intelligence', 'Intelligence Tiers')}</span>
+				<div class="tier-list">${tiersHtml}</div>
+			</div>
 			<div class="stack-section">
 				<span class="section-label">${this.tr('stack', 'Stack')}</span>
 				<div class="stack-grid">${stackHtml}</div>
@@ -269,6 +287,44 @@ export class SoftwareStatus extends HTMLElement {
 					font-size: 0.82rem;
 					color: rgba(255, 255, 255, 0.7);
 					font-family: 'Fira Code', monospace;
+				}
+
+				/* ── Tier List ── */
+				.tier-list {
+					display: flex;
+					flex-direction: column;
+					gap: 0.35rem;
+				}
+				.tier-row {
+					display: flex;
+					align-items: center;
+					gap: 0.6rem;
+					padding: 0.4rem 0.6rem;
+					background: rgba(255, 255, 255, 0.02);
+					border: 1px solid rgba(255, 255, 255, 0.04);
+					border-radius: 0.4rem;
+					cursor: help;
+				}
+				.tier-badge {
+					font-size: 0.6rem;
+					font-weight: 700;
+					text-transform: uppercase;
+					letter-spacing: 0.08em;
+					padding: 0.15rem 0.45rem;
+					border-radius: 0.3rem;
+					color: #fff;
+					white-space: nowrap;
+				}
+				.tier-model {
+					font-size: 0.8rem;
+					color: rgba(255, 255, 255, 0.75);
+					font-family: 'Fira Code', monospace;
+				}
+				.tier-threads {
+					font-size: 0.65rem;
+					color: rgba(255, 255, 255, 0.35);
+					font-family: 'Fira Code', monospace;
+					margin-left: auto;
 				}
 
 				.empty {

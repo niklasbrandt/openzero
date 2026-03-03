@@ -165,9 +165,16 @@ async def start_telegram_bot():
 			except Exception as cal_err:
 				print(f"DEBUG: Calendar Greeting Error: {cal_err}")
 
-			# 2. Birthdays (Still separate until integrated into unified service)
+			# 2. Birthdays & user language
 			logging.info("DEBUG: Greeting Seq - Step 3: Local People/Birthdays")
+			user_lang = "en"
 			async with AsyncSessionLocal() as session:
+				# Get user language from identity record
+				res_ident = await session.execute(select(Person).where(Person.circle_type == "identity"))
+				ident = res_ident.scalar_one_or_none()
+				if ident and ident.language:
+					user_lang = ident.language
+
 				# Birthdays
 				from app.services.timezone import get_birthday_proximity
 				res_people = await session.execute(select(Person).where(Person.birthday.isnot(None)))
@@ -199,11 +206,19 @@ async def start_telegram_bot():
 				"Be direct, professional, and human. No filler. No invented content."
 			)
 
+			# Build language directive for non-English users
+			from app.services.llm import LANGUAGE_NAMES
+			lang_name = LANGUAGE_NAMES.get(user_lang, "English")
+			lang_directive = ""
+			if user_lang != "en":
+				lang_directive = f" You MUST respond entirely in {lang_name}. Do NOT translate or include any other language."
+
 			system_override = (
 				"You are Z. Output ONLY the greeting. "
 				"ALWAYS begin your response with the formatted current time and day on the first line "
 				"(e.g. '16:40 - Tuesday 2nd'), followed by a blank line, then your message. "
 				"NEVER invent data not present in SYSTEM_DATA."
+				f"{lang_directive}"
 			)
 			print(f"DEBUG: Greeting Seq - Calling LLM (deep tier)")
 
