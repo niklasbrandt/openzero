@@ -388,7 +388,40 @@ async def get_personality(db: AsyncSession = Depends(get_db)):
 			{"id": "role", "label": "Core Identity / Archetype", "type": "text", "placeholder": "e.g. Master Architect, Stoic Mentor, Sharp Assistant"},
 			{"id": "relationship", "label": "Relational Context", "type": "text", "placeholder": "Who are you to the user? (e.g. Mentor, Tool, Equal Partner)"},
 			{"id": "values", "label": "Core Values & Principles", "type": "textarea", "placeholder": "What drives your decision making? (e.g. Efficiency above all, or Ethics first)"},
-			{"id": "behavior", "label": "Linguistic & Behavioral Style", "type": "textarea", "placeholder": "Specific quirks, metaphors, or formal/informal speech patterns."}
+			{"id": "behavior", "label": "Linguistic & Behavioral Style", "type": "textarea", "placeholder": "Specific quirks, metaphors, or formal/informal speech patterns."},
+			{"id": "theme", "label": "Dashboard Theme", "type": "select", "options": [
+				{"value": "default",      "label": "Default — Teal",         "colors": {"primary": "#14B8A6", "secondary": "#0066FF", "tertiary": "#6366F1"}},
+				{"value": "midnight",     "label": "Midnight",               "colors": {"primary": "#00D4FF", "secondary": "#7C3AED", "tertiary": "#F472B6"}},
+				{"value": "ember",        "label": "Ember",                   "colors": {"primary": "#F97316", "secondary": "#EF4444", "tertiary": "#F59E0B"}},
+				{"value": "forest",       "label": "Forest",                  "colors": {"primary": "#22C55E", "secondary": "#10B981", "tertiary": "#84CC16"}},
+				{"value": "aurora",       "label": "Aurora",                  "colors": {"primary": "#A855F7", "secondary": "#EC4899", "tertiary": "#06B6D4"}},
+				{"value": "crimson",      "label": "Crimson",                 "colors": {"primary": "#EF4444", "secondary": "#F97316", "tertiary": "#DC2626"}},
+				{"value": "ocean",        "label": "Ocean",                   "colors": {"primary": "#0EA5E9", "secondary": "#06B6D4", "tertiary": "#14B8A6"}},
+				{"value": "sunset",       "label": "Sunset",                  "colors": {"primary": "#F97316", "secondary": "#8B5CF6", "tertiary": "#EAB308"}},
+				{"value": "neon",         "label": "Neon",                    "colors": {"primary": "#00FF87", "secondary": "#00D4FF", "tertiary": "#FF00FF"}},
+				{"value": "monochrome",   "label": "Monochrome",              "colors": {"primary": "#E5E7EB", "secondary": "#9CA3AF", "tertiary": "#6B7280"}},
+				{"value": "cobalt",       "label": "Cobalt",                  "colors": {"primary": "#3B82F6", "secondary": "#6366F1", "tertiary": "#1D4ED8"}},
+				{"value": "sakura",       "label": "Sakura",                  "colors": {"primary": "#F9A8D4", "secondary": "#EC4899", "tertiary": "#DB2777"}},
+				{"value": "copper",       "label": "Copper",                  "colors": {"primary": "#FB923C", "secondary": "#D97706", "tertiary": "#92400E"}},
+				{"value": "void",         "label": "Void",                    "colors": {"primary": "#7C3AED", "secondary": "#4F46E5", "tertiary": "#2D1B69"}},
+				{"value": "arctic",       "label": "Arctic",                  "colors": {"primary": "#38BDF8", "secondary": "#BAE6FD", "tertiary": "#7DD3FC"}},
+				{"value": "jungle",       "label": "Jungle",                  "colors": {"primary": "#16A34A", "secondary": "#15803D", "tertiary": "#4ADE80"}},
+				{"value": "clay",         "label": "Clay",                    "colors": {"primary": "#D97706", "secondary": "#92400E", "tertiary": "#B45309"}},
+				{"value": "plasma",       "label": "Plasma",                  "colors": {"primary": "#A855F7", "secondary": "#EC4899", "tertiary": "#3B82F6"}},
+				{"value": "steel",        "label": "Steel",                   "colors": {"primary": "#64748B", "secondary": "#06B6D4", "tertiary": "#0EA5E9"}},
+				{"value": "lava",         "label": "Lava",                    "colors": {"primary": "#DC2626", "secondary": "#F97316", "tertiary": "#9F1239"}},
+				{"value": "frost",        "label": "Frost",                   "colors": {"primary": "#67E8F9", "secondary": "#BAE6FD", "tertiary": "#7DD3FC"}},
+				{"value": "amber",        "label": "Amber",                   "colors": {"primary": "#F59E0B", "secondary": "#EAB308", "tertiary": "#D97706"}},
+				{"value": "ultraviolet",  "label": "Ultraviolet",             "colors": {"primary": "#7C3AED", "secondary": "#C026D3", "tertiary": "#6D28D9"}},
+				{"value": "matrix",       "label": "Matrix",                  "colors": {"primary": "#22C55E", "secondary": "#4ADE80", "tertiary": "#16A34A"}},
+				{"value": "rose",         "label": "Rose",                    "colors": {"primary": "#FB7185", "secondary": "#EC4899", "tertiary": "#E11D48"}},
+				{"value": "royal",        "label": "Royal",                   "colors": {"primary": "#EAB308", "secondary": "#7C3AED", "tertiary": "#1D4ED8"}},
+				{"value": "outrun",       "label": "Outrun / Synthwave",      "colors": {"primary": "#FF2D78", "secondary": "#00BFFF", "tertiary": "#7B2FFF"}},
+				{"value": "carbon",       "label": "Carbon",                  "colors": {"primary": "#E5E7EB", "secondary": "#374151", "tertiary": "#6B7280"}},
+				{"value": "jade",         "label": "Jade",                    "colors": {"primary": "#10B981", "secondary": "#059669", "tertiary": "#6EE7B7"}},
+				{"value": "solar",        "label": "Solar",                   "colors": {"primary": "#FBBF24", "secondary": "#F97316", "tertiary": "#EF4444"}},
+				{"value": "neon80s",      "label": "80s Neon",                "colors": {"primary": "#FF2D78", "secondary": "#00FFCC", "tertiary": "#CCFF00"}}
+			]}
 		]
 	}
 

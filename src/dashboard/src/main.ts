@@ -77,6 +77,49 @@ async function initTheme() {
 }
 initTheme();
 
+// ── Header CTA Translations ──
+// Fetches translations and applies localised labels, aria-label, and
+// data-tooltip values to the three header action buttons.
+async function initHeaderTranslations() {
+	try {
+		const res = await fetch('/api/dashboard/translations');
+		if (!res.ok) return;
+		const t: Record<string, string> = await res.json();
+
+		const tr = (key: string, fallback: string) => t[key] || fallback;
+
+		// Operator Board button
+		const opBtn = document.getElementById('header-operator-btn');
+		if (opBtn) {
+			opBtn.setAttribute('aria-label', tr('aria_open_operator_board', 'Open Operator Board — centralized overview of tasks (opens in new tab)'));
+			opBtn.setAttribute('data-tooltip', tr('header_operator_board_tooltip', 'Centralized overview of tasks across all your boards'));
+			const opSpan = opBtn.querySelector('span');
+			if (opSpan) opSpan.textContent = tr('header_operator_board_label', 'Operator Board');
+		}
+
+		// Projects button
+		const projBtn = document.getElementById('header-projects-btn');
+		if (projBtn) {
+			projBtn.setAttribute('aria-label', tr('aria_open_projects', 'Open Projects board (opens in new tab)'));
+			projBtn.setAttribute('data-tooltip', tr('header_projects_tooltip', 'Access individual project boards and spaces'));
+			const projSpan = projBtn.querySelector('span');
+			if (projSpan) projSpan.textContent = tr('header_projects_label', 'Projects');
+		}
+
+		// Calendar button
+		const calBtn = document.getElementById('open-calendar-btn');
+		if (calBtn) {
+			calBtn.setAttribute('aria-label', tr('aria_open_calendar_btn', 'Open Calendar manager'));
+			calBtn.setAttribute('data-tooltip', tr('header_calendar_tooltip', 'Open your integrated Google or Local Calendar'));
+			const calSpan = calBtn.querySelector('span');
+			if (calSpan) calSpan.textContent = tr('header_calendar_label', 'Calendar');
+		}
+	} catch (e) {
+		console.warn('Header translations init failed:', e);
+	}
+}
+initHeaderTranslations();
+
 // ── Sidebar + Marquee + Drawer Scroll Spy ──
 function initScrollSpy() {
 	const allNavContainers = [
