@@ -171,9 +171,9 @@ async def morning_briefing():
 	if memory_review:
 		content += "\n\n🧠 *New Memories (Last 24h):*\n" + memory_review + "\n_Use /unlearn <topic> to remove incorrect memories._"
 	
-	# 3.4 Mental Yoga (configurable, rotates daily)
+	# 3.4 Calibration (configurable, rotates daily)
 	from app.config import settings
-	if settings.BRIEFING_MENTAL_YOGA:
+	if settings.BRIEFING_CALIBRATION:
 		methods = [
 			("🙏 Gratitude", "Name 3 specific things you are grateful for right now. Be concrete — not 'family' but 'the way Mom called yesterday to check in'."),
 			("🎯 Intention Setting", "Set one clear intention for today. Not a task — an intention for HOW you want to show up. Example: 'I will be patient and present in every conversation.'"),
@@ -190,7 +190,7 @@ async def morning_briefing():
 		]
 		day_of_year = datetime.date.today().timetuple().tm_yday
 		method_name, method_prompt = methods[day_of_year % len(methods)]
-		content += f"\n\n{method_name} *Mental Yoga:*\n_{method_prompt}_"
+		content += f"\n\n{method_name} *Calibration:*\n_{method_prompt}_"
 	
 	# 3.5 Closing Reflection (rotating poem or scientific fact)
 	if settings.BRIEFING_CLOSING_REFLECTION:

@@ -74,7 +74,7 @@ class Settings(BaseSettings):
     TASK_BOARD_SYNC_INTERVAL_MINUTES: int = 5
 
     # Briefing
-    BRIEFING_MENTAL_YOGA: bool = True
+    BRIEFING_CALIBRATION: bool = True
     BRIEFING_CLOSING_REFLECTION: bool = True
 
 
