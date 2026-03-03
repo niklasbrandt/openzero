@@ -19,37 +19,36 @@ Every morning, the system delivers a local briefing summarizing priority tasks a
 
 The system runs 24/7 on a remote server or local homelab. It links email, calendars, and memory without corporate oversight.
 
-* **Security & Zero Trust:** OpenZero avoids opening public ports. Instead, it creates a private **Tailscale** mesh network. Your phone and laptop connect as if they were in the same room as your VPS. This provides absolute encryption and eliminates the need for managing certificates for local-only names.
-* **Private DNS (Pi-hole):** To support vanity domains like `http://open.zero`, the system uses an internal **Pi-hole** instance. By configuring your Tailscale network to use the VPS as a nameserver for the `open.zero` domain, you get "Split DNS" behavior — your phone knows how to find the server without global DNS record leakage.
-* **The Hub:** A central board pulls high-priority tasks from all other projects, highlighting exactly what needs attention today.
-* **Calendar & Sync:** OpenZero features a unified schedule that merges **Google Calendar**, private **CalDAV** servers (Nextcloud/Fastmail), and local database events into a single, deduplicated view for Z to act upon.
-* **Local Intelligence:** A 3-tier llama.cpp architecture (instant/standard/deep) runs optimized GGUF models on local hardware. Cloud reasoning is only engaged via a "Disclosure Proposal" workflow for shared memories.
-* **Voice and Text:** Voice notes allow local transcription via Whisper.
-* **Multi-Modal Briefings:** Local TTS summarizes the day in a high quality voice note.
+- **Security & Zero Trust:** OpenZero avoids opening public ports. Instead, it creates a private **Tailscale** mesh network. Your phone and laptop connect as if they were in the same room as your VPS. This provides absolute encryption and eliminates the need for managing certificates for local-only names.
+- **Private DNS (Pi-hole):** To support vanity domains like `http://open.zero`, the system uses an internal **Pi-hole** instance. By configuring your Tailscale network to use the VPS as a nameserver for the `open.zero` domain, you get "Split DNS" behavior — your phone knows how to find the server without global DNS record leakage.
+- **The Hub:** A central board pulls high-priority tasks from all other projects, highlighting exactly what needs attention today.
+- **Calendar & Sync:** OpenZero features a unified schedule that merges **Google Calendar**, private **CalDAV** servers (Nextcloud/Fastmail), and local database events into a single, deduplicated view for Z to act upon.
+- **Local Intelligence:** A 3-tier llama.cpp architecture (instant/standard/deep) runs optimized GGUF models on local hardware. Cloud reasoning is only engaged via a "Disclosure Proposal" workflow for shared memories.
+- **Voice and Text:** Voice notes allow local transcription via Whisper.
+- **Multi-Modal Briefings:** Local TTS summarizes the day in a high quality voice note.
 
 ## Architecture
 
 The stack focuses on performance and privacy:
 
-* **Agent-Native Engineering:** Built with LangGraph. Z acts as the core autonomous operator, using multi-step planning loops to command and evolve the environment. It is built to be interacted with primarily by agents.
-* **Memory:** Qdrant stores semantic vectors. Retrieval depends on meaning rather than keywords.
-* **Tasking:** Planka provides the visual Kanban engine and runs as a secure PWA.
-* **Network:** Traefik manages routing and Pi-hole blocks tracking. Tailscale secures the perimeter.
-* **Async Execution:** Redis handles the task queue. Background reasoning keeps the UI responsive.
+- **Agent-Native Engineering:** Built with LangGraph. Z acts as the core autonomous operator, using multi-step planning loops to command and evolve the environment. It is built to be interacted with primarily by agents.
+- **Memory:** Qdrant stores semantic vectors. Retrieval depends on meaning rather than keywords.
+- **Tasking:** Planka provides the visual Kanban engine and runs as a secure PWA.
+- **Network:** Traefik manages routing and Pi-hole blocks tracking. Tailscale secures the perimeter.
+- **Async Execution:** Redis handles the task queue. Background reasoning keeps the UI responsive.
 
 ## Tech Stack
 
-| Component | Technology | Management Value |
-|:---|:---|:---|
-| **Core OS** | ![Ubuntu](https://img.shields.io/badge/Ubuntu-E9433F?style=flat&logo=ubuntu&logoColor=white) ![Python](https://img.shields.io/badge/Python-3776AB?style=flat&logo=python&logoColor=white) ![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white) | Stable, containerized foundation using Python and Linux. |
-| **Agent-Native Logic** | ![llama.cpp](https://img.shields.io/badge/llama.cpp-black?style=flat) ![LangGraph](https://img.shields.io/badge/LangGraph-orange?style=flat) | 3-tier local LLM (instant/standard/deep) via llama-server with streaming. |
-| **Storage** | ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=flat&logo=postgresql&logoColor=white) ![Qdrant](https://img.shields.io/badge/Qdrant-red?style=flat) | Relational data paired with high-dimensional vector memory. |
-| **Execution** | ![Redis](https://img.shields.io/badge/Redis-DC382D?style=flat&logo=redis&logoColor=white) ![Celery](https://img.shields.io/badge/Celery-37814A?style=flat&logo=celery&logoColor=white) | Asynchronous task delegation and high-speed message brokering. |
-| **Networking** | ![Traefik](https://img.shields.io/badge/Traefik-2496ED?style=flat&logo=traefik&logoColor=white) ![Tailscale](https://img.shields.io/badge/Tailscale-4A23B6?style=flat&logo=tailscale&logoColor=white) | Zero Trust perimeter with automated internal routing and TLS. |
-| **Observability** | ![Pi-hole](https://img.shields.io/badge/Pi--hole-96060C?style=flat&logo=pi-hole&logoColor=white) | Mandatory DNS sinkhole to identify and block container telemetry. |
-| **Tasking** | ![Planka](https://img.shields.io/badge/Planka-blue?style=flat) | Self-hosted Kanban engine accessible as a mobile PWA. |
-| **Voice** | ![Whisper](https://img.shields.io/badge/Whisper-black?style=flat) ![TTS](https://img.shields.io/badge/Coqui_TTS-green?style=flat) | Local speech-to-text and high-quality audio generation. |
-
+| Component              | Technology                                                                                                                                                                                                                                                                             | Management Value                                                          |
+| :--------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------ |
+| **Core OS**            | ![Ubuntu](https://img.shields.io/badge/Ubuntu-E9433F?style=flat&logo=ubuntu&logoColor=white) ![Python](https://img.shields.io/badge/Python-3776AB?style=flat&logo=python&logoColor=white) ![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white) | Stable, containerized foundation using Python and Linux.                  |
+| **Agent-Native Logic** | ![llama.cpp](https://img.shields.io/badge/llama.cpp-black?style=flat) ![LangGraph](https://img.shields.io/badge/LangGraph-orange?style=flat)                                                                                                                                           | 3-tier local LLM (instant/standard/deep) via llama-server with streaming. |
+| **Storage**            | ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=flat&logo=postgresql&logoColor=white) ![Qdrant](https://img.shields.io/badge/Qdrant-red?style=flat)                                                                                                                 | Relational data paired with high-dimensional vector memory.               |
+| **Execution**          | ![Redis](https://img.shields.io/badge/Redis-DC382D?style=flat&logo=redis&logoColor=white) ![Celery](https://img.shields.io/badge/Celery-37814A?style=flat&logo=celery&logoColor=white)                                                                                                 | Asynchronous task delegation and high-speed message brokering.            |
+| **Networking**         | ![Traefik](https://img.shields.io/badge/Traefik-2496ED?style=flat&logo=traefik&logoColor=white) ![Tailscale](https://img.shields.io/badge/Tailscale-4A23B6?style=flat&logo=tailscale&logoColor=white)                                                                                  | Zero Trust perimeter with automated internal routing and TLS.             |
+| **Observability**      | ![Pi-hole](https://img.shields.io/badge/Pi--hole-96060C?style=flat&logo=pi-hole&logoColor=white)                                                                                                                                                                                       | Mandatory DNS sinkhole to identify and block container telemetry.         |
+| **Tasking**            | ![Planka](https://img.shields.io/badge/Planka-blue?style=flat)                                                                                                                                                                                                                         | Self-hosted Kanban engine accessible as a mobile PWA.                     |
+| **Voice**              | ![Whisper](https://img.shields.io/badge/Whisper-black?style=flat) ![TTS](https://img.shields.io/badge/Coqui_TTS-green?style=flat)                                                                                                                                                      | Local speech-to-text and high-quality audio generation.                   |
 
 ```
 ┌─────────────────────────────────────────────┐
@@ -97,34 +96,34 @@ The stack focuses on performance and privacy:
 
 ## Commands
 
-| Command | Description |
-| :--- | :--- |
-| `/help` | Display this overview of operator controls. |
-| `/start` | System status check and heartbeat. |
-| `/day` | Proactive morning briefing (Contextual summary). |
-| `/week` | Strategic review of all projects and roadmaps. |
-| `/month` | High-level 30-day mission review. |
-| `/quarter` | Strategic 90-day review and roadmap planning. |
-| `/custom` | Create a persistent scheduled task that runs indefinitely (e.g. every Monday at 10am). |
-| `/year` | Yearly goal setting based on project themes. |
-| `/tree` | Full life hierarchy and workspace overview. |
-| `/think` | Complex reasoning with human-in-the-loop approval. |
-| `/search` | Conceptual search of the semantic knowledge vault. |
-| `/memories` | List all core knowledge currently in permanent memory. |
-| `/unlearn` | Refine Z's internal context by evolving past points in the vault. |
-| `/add` | Commit specific facts to Z's permanent knowledge vault. |
-| `/remind` | Set a temporary recurring reminder that expires after a set duration (e.g., every 30 min for 4h). |
-| `/protocols` | Inspect Z's agentic tools and Semantic Action Tags. |
-| `/purge` | ⚠️ Permanently delete all semantic memories from the vault (Qdrant). Deletes all stored facts, learned context, and `/add` entries. Does **not** affect task boards, people, or briefing history. Requires explicit confirmation. |
+| Command      | Description                                                                                                                                                                                                                       |
+| :----------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/help`      | Display this overview of operator controls.                                                                                                                                                                                       |
+| `/start`     | System status check and heartbeat.                                                                                                                                                                                                |
+| `/day`       | Proactive morning briefing (Contextual summary).                                                                                                                                                                                  |
+| `/week`      | Strategic review of all projects and roadmaps.                                                                                                                                                                                    |
+| `/month`     | High-level 30-day mission review.                                                                                                                                                                                                 |
+| `/quarter`   | Strategic 90-day review and roadmap planning.                                                                                                                                                                                     |
+| `/custom`    | Create a persistent scheduled task that runs indefinitely (e.g. every Monday at 10am).                                                                                                                                            |
+| `/year`      | Yearly goal setting based on project themes.                                                                                                                                                                                      |
+| `/tree`      | Full life hierarchy and workspace overview.                                                                                                                                                                                       |
+| `/think`     | Complex reasoning with human-in-the-loop approval.                                                                                                                                                                                |
+| `/search`    | Conceptual search of the semantic knowledge vault.                                                                                                                                                                                |
+| `/memories`  | List all core knowledge currently in permanent memory.                                                                                                                                                                            |
+| `/unlearn`   | Refine Z's internal context by evolving past points in the vault.                                                                                                                                                                 |
+| `/add`       | Commit specific facts to Z's permanent knowledge vault.                                                                                                                                                                           |
+| `/remind`    | Set a temporary recurring reminder that expires after a set duration (e.g., every 30 min for 4h).                                                                                                                                 |
+| `/protocols` | Inspect Z's agentic tools and Semantic Action Tags.                                                                                                                                                                               |
+| `/purge`     | ⚠️ Permanently delete all semantic memories from the vault (Qdrant). Deletes all stored facts, learned context, and `/add` entries. Does **not** affect task boards, people, or briefing history. Requires explicit confirmation. |
 
 ## Memory & Intelligence Principles
 
 Z follows a strict **"Core Knowledge, not Noise"** logic for long-term intelligence:
 
-*   **Permanent Memory:** Preferences, family members, project goals, and life milestones are committed to the **Semantic Vault** (Qdrant).
-*   **Transient Traffic:** Status updates ("I'm at the store"), transient chat history, and bot responses are **intentionally ignored** by the memory vault to prevent "hallucination loops" and context pollution.
-*   **The Guardrail:** Automatic filtering via a local reasoning pass ensures trivialities like "thanks" or "hello" never hit the vault.
-*   **Manual Control:** Use `/add` to explicitly override the filter when you have critical context Z must never forget.
+- **Permanent Memory:** Preferences, family members, project goals, and life milestones are committed to the **Semantic Vault** (Qdrant).
+- **Transient Traffic:** Status updates ("I'm at the store"), transient chat history, and bot responses are **intentionally ignored** by the memory vault to prevent "hallucination loops" and context pollution.
+- **The Guardrail:** Automatic filtering via a local reasoning pass ensures trivialities like "thanks" or "hello" never hit the vault.
+- **Manual Control:** Use `/add` to explicitly override the filter when you have critical context Z must never forget.
 
 ## Maintenance
 
@@ -132,9 +131,9 @@ Z follows a strict **"Core Knowledge, not Noise"** logic for long-term intellige
 
 Environment variables and raw Docker volumes require archiving to protect data integrity.
 
-* **Archiving:** Stop services via `docker compose stop` before creating tarballs of `.env` and named volumes (pgdata, qdrant_storage, planka_data).
-* **Moving Data:** To migrate, clone the repo on the new host, transfer the `.env` and `.env.planka` files, and extract volume archives into the new Docker environment.
-* **Integrity:** Local, encrypted backups with a 30 day retention policy are recommended.
+- **Archiving:** Stop services via `docker compose stop` before creating tarballs of `.env` and named volumes (pgdata, qdrant_storage, planka_data).
+- **Moving Data:** To migrate, clone the repo on the new host, transfer the `.env` and `.env.planka` files, and extract volume archives into the new Docker environment.
+- **Integrity:** Local, encrypted backups with a 30 day retention policy are recommended.
 
 ## Setting it up
 
@@ -145,26 +144,31 @@ A VPS with 24GB RAM or a local Mac Mini/homelab is recommended.
 3.  **Configure:** Connect calendars and define the user profile.
 
 ### 📅 Private Calendar Setup (CalDAV)
+
 OpenZero excels at keeping your schedule private. To sync with your existing self-hosted calendar:
-1.  **Find your URL**: 
-    *   **Nextcloud**: Open Calendar -> Settings icon -> "Copy primary CalDAV address". 
-    *   **iCloud**: Use your full iCloud email and an App-Specific Password.
-    *   **Baikal / Radicale**: Copy the specific calendar collection link (ending in `.php/dav/...`).
-2.  **Edit your `.env`**: Fill in `CALDAV_URL`, `CALDAV_USERNAME`, and `CALDAV_PASSWORD`. 
+
+1.  **Find your URL**:
+    - **Nextcloud**: Open Calendar -> Settings icon -> "Copy primary CalDAV address".
+    - **iCloud**: Use your full iCloud email and an App-Specific Password.
+    - **Baikal / Radicale**: Copy the specific calendar collection link (ending in `.php/dav/...`).
+2.  **Edit your `.env`**: Fill in `CALDAV_URL`, `CALDAV_USERNAME`, and `CALDAV_PASSWORD`.
 3.  **Sync**: The system will automatically fetch events every few minutes and when creating new entries through Z.
 
 ### Deployment Expectations
+
 First-time builds or updates following major architectural changes incur significant durations:
-*   **Cold Builds:** Using `--no-cache` or major dependency updates (e.g., adding LangGraph, Redis) can take 45–60 minutes for `pip` resolution.
-*   **Media Engines:** Pulling the voice engines (Whisper and Coqui TTS) requires downloading approximately 6GB of data. Depending on network speed, this may total 2–3 hours for a complete first-time setup.
-*   **Subsequent Starts:** Once images are cached, the stack starts in seconds.
+
+- **Cold Builds:** Using `--no-cache` or major dependency updates (e.g., adding LangGraph, Redis) can take 45–60 minutes for `pip` resolution.
+- **Media Engines:** Pulling the voice engines (Whisper and Coqui TTS) requires downloading approximately 6GB of data. Depending on network speed, this may total 2–3 hours for a complete first-time setup.
+- **Subsequent Starts:** Once images are cached, the stack starts in seconds.
 
 ## Security and Privacy
 
 The build follows a strict privacy-first model:
-* AI processing remains local by default.
-* Tailscale prevents opening public ports.
-* Backups remain local and under physical control.
+
+- AI processing remains local by default.
+- Tailscale prevents opening public ports.
+- Backups remain local and under physical control.
 
 ## Contributors
 
