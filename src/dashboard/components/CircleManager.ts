@@ -170,7 +170,7 @@ export class CircleManager extends HTMLElement {
 			this.shadowRoot.innerHTML = `
 				<style>
 					${BUTTON_STYLES}
-					h2 { font-size: 1.5rem; font-weight: bold; margin: 0; color: #fff; letter-spacing: 0.02em; display: flex; align-items: center; gap: 0.5rem; }
+					h2 { font-size: 1.5rem; font-weight: bold; margin: 0; color: #fff; letter-spacing: 0.02em; display: flex; align-items: center; gap: 0.5rem; overflow-wrap: break-word; word-break: break-word; min-width: 0; flex: 1; }
 					.h-icon { display: inline-flex; width: 28px; height: 28px; background: ${accent}; border-radius: 0.4rem; align-items: center; justify-content: center; flex-shrink: 0; }
 					.subtitle { font-size: 0.65rem; font-weight: 400; color: rgba(255, 255, 255, 0.3); margin-left: 0.5rem; text-transform: uppercase; letter-spacing: 0.1em; }
 					:host { display: block; }
@@ -241,13 +241,27 @@ export class CircleManager extends HTMLElement {
 						display: flex;
 						justify-content: space-between;
 						align-items: flex-start;
-					}
-					.name { font-weight: 700; color: #fff; display: block; }
-					.rel { font-size: 0.8rem; color: ${accent}; }
-					.ctx { font-size: 0.85rem; color: rgba(255, 255, 255, 0.6); margin: 0.5rem 0 0 0; }
-					.edit-btn { margin-right: 0.5rem; }
-					.edit-btn:hover { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.2); }
-					.item-actions { display: flex; align-items: center; }
+					gap: 0.75rem;
+				}
+				.info {
+					flex: 1;
+					min-width: 0;
+					word-break: break-word;
+					overflow-wrap: break-word;
+				}
+				.name { font-weight: 700; color: #fff; display: block; overflow-wrap: break-word; }
+				.rel { font-size: 0.8rem; color: ${accent}; display: block; overflow-wrap: break-word; }
+				.ctx { font-size: 0.85rem; color: rgba(255, 255, 255, 0.6); margin: 0.5rem 0 0 0; overflow-wrap: break-word; }
+				.edit-btn { margin-right: 0; }
+				.edit-btn:hover { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.2); }
+				.item-actions {
+					display: flex;
+					flex-direction: column;
+					gap: 0.4rem;
+					flex-shrink: 0;
+					align-items: stretch;
+					min-width: 72px;
+				}
 					.cal-badge {
 						display: inline-block;
 						font-size: 0.7rem;
@@ -289,7 +303,7 @@ export class CircleManager extends HTMLElement {
 					}
 				</style>
 				<div class="card">
-					<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+					<div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem;">
 						<h2>
 					<span class="h-icon" aria-hidden="true">
 							<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
