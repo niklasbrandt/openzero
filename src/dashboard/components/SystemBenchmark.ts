@@ -527,7 +527,6 @@ export class SystemBenchmark extends HTMLElement {
 					</svg>
 				</span>
 				${this.tr('llm_benchmark', 'LLM Benchmark')}
-				<span class="subtitle">${this.tr('bench_subtitle', 'Throughput &amp; Performance Rating')}</span>
 			</h2>
 
 			<div class="bench-header-bar">

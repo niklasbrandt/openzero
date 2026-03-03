@@ -2,10 +2,22 @@ export class CircleManager extends HTMLElement {
 	private circleType: string = 'inner';
 	private editingId: number | null = null;
 	private isAdding: boolean = false;
+	private t: Record<string, string> = {};
 
 	constructor() {
 		super();
 		this.attachShadow({ mode: 'open' });
+	}
+
+	private async loadTranslations() {
+		try {
+			const res = await fetch('/api/dashboard/translations');
+			if (res.ok) this.t = await res.json();
+		} catch (_) { }
+	}
+
+	private tr(key: string, fallback: string): string {
+		return this.t[key] || fallback;
 	}
 
 	static get observedAttributes() {
@@ -24,8 +36,7 @@ export class CircleManager extends HTMLElement {
 
 	connectedCallback() {
 		this.circleType = this.getAttribute('type') || 'inner';
-		this.render();
-		this.fetchPeople();
+		this.loadTranslations().then(() => { this.render(); this.fetchPeople(); });
 		window.addEventListener('refresh-data', (e: any) => {
 			if (e.detail.actions.includes('people')) {
 				this.fetchPeople();
@@ -43,7 +54,7 @@ export class CircleManager extends HTMLElement {
 			this.displayPeople(data);
 		} catch (e) {
 			const list = this.shadowRoot?.querySelector('#people-list');
-			if (list) list.textContent = 'No people added to this circle.';
+			if (list) list.textContent = this.tr('no_people', 'No people added to this circle.');
 		}
 	}
 
@@ -101,14 +112,14 @@ export class CircleManager extends HTMLElement {
 						<span class="name">${p.name}</span>
 						<span class="rel">${p.relationship}</span>
 						${p.birthday ? `<span class="cal-badge">🎂 ${p.birthday}</span>` : ''}
-						<p class="ctx">${p.context || 'No specific focus set.'}</p>
+						<p class="ctx">${p.context || this.tr('no_focus', 'No specific focus set.')}</p>
 					</div>
 					<div class="item-actions" role="group" aria-label="Actions for ${p.name}">
-						<button class="edit-btn" data-id="${p.id}" aria-label="Edit details for ${p.name}">Edit</button>
-						<button class="delete-btn" data-id="${p.id}" aria-label="Remove ${p.name} from circle">Remove</button>
+						<button class="edit-btn" data-id="${p.id}" aria-label="Edit details for ${p.name}">${this.tr('edit', 'Edit')}</button>
+						<button class="delete-btn" data-id="${p.id}" aria-label="Remove ${p.name} from circle">${this.tr('remove', 'Remove')}</button>
 					</div>
 				</div>
-			`).join('') || `No people added to this circle.`;
+			`).join('') || this.tr('no_people', 'No people added to this circle.');
 
 			list.querySelectorAll('.delete-btn').forEach(btn => {
 				btn.addEventListener('click', (e) => {
@@ -139,9 +150,9 @@ export class CircleManager extends HTMLElement {
 	render() {
 		if (this.shadowRoot) {
 			const titles: Record<string, string> = {
-				inner: 'Inner Circle (Family & Care)',
-				close: 'Close Circle (Friends & Social)',
-				outer: 'Outer Circle (Acquaintances)',
+				inner: this.tr('inner_circle_full', 'Inner Circle (Family & Care)'),
+				close: this.tr('close_circle_full', 'Close Circle (Friends & Social)'),
+				outer: this.tr('outer_circle_full', 'Outer Circle (Acquaintances)'),
 			};
 			const accents: Record<string, string> = {
 				inner: '#3b82f6',
@@ -336,34 +347,34 @@ export class CircleManager extends HTMLElement {
 							</span>
 							${title}
 						</h2>
-						${!this.isAdding ? `<button id="showAddBtn" aria-label="Add a new person to ${title}" style="background: ${accent}; color: #fff; border: none; padding: 0.4rem 1rem; border-radius: 0.6rem; cursor: pointer; font-size: 0.8rem; font-weight: 600; font-family: 'Inter', system-ui, sans-serif;">+ New Person</button>` : ''}
+						${!this.isAdding ? `<button id="showAddBtn" aria-label="Add a new person to ${title}" style="background: ${accent}; color: #fff; border: none; padding: 0.4rem 1rem; border-radius: 0.6rem; cursor: pointer; font-size: 0.8rem; font-weight: 600; font-family: 'Inter', system-ui, sans-serif;">${this.tr('new_person', '+ New Person')}</button>` : ''}
 					</div>
 
 					${this.isAdding ? `
 					<form class="add-form" id="personForm" novalidate>
-						<label for="nameInput">Name <span class="required" aria-hidden="true">*</span></label>
+						<label for="nameInput">${this.tr('name_label', 'Name')} <span class="required" aria-hidden="true">*</span></label>
 						<input type="text" id="nameInput" placeholder="e.g. Maria" required aria-required="true" autocomplete="off">
 						<div class="field-error-msg" id="nameError" role="alert"></div>
 
-						<label for="relInput">Relationship <span class="required" aria-hidden="true">*</span></label>
+						<label for="relInput">${this.tr('relationship_label', 'Relationship')} <span class="required" aria-hidden="true">*</span></label>
 						<input type="text" id="relInput" placeholder="e.g. Son, Friend, Colleague" required aria-required="true" autocomplete="off">
 						<div class="field-error-msg" id="relError" role="alert"></div>
 
-						<label for="bdayInput">Birthday</label>
+						<label for="bdayInput">${this.tr('birthday_label', 'Birthday')}</label>
 						<input type="text" id="bdayInput" placeholder="e.g. 27.02.2019" autocomplete="off">
 						<div class="field-hint">DD.MM.YYYY or DD.MM.YY — optional</div>
 
-						<label for="ctxInput">Context / Focus</label>
+						<label for="ctxInput">${this.tr('context_label', 'Context / Focus')}</label>
 						<textarea id="ctxInput" rows="2" placeholder="Notes, hobbies, important details..."></textarea>
 
 						<div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
-							<button type="submit" id="addBtn">${this.editingId ? 'Update Person' : 'Add to Circle'}</button>
-							<button type="button" id="cancelEditBtn">Cancel</button>
+							<button type="submit" id="addBtn">${this.editingId ? this.tr('update_person', 'Update Person') : this.tr('add_to_circle', 'Add to Circle')}</button>
+							<button type="button" id="cancelEditBtn">${this.tr('cancel', 'Cancel')}</button>
 						</div>
 						<div class="form-feedback" id="formFeedback" role="status" aria-live="polite"></div>
 					</form>
 					` : ''}
-					<div id="people-list">Loading...</div>
+					<div id="people-list">${this.tr('loading', 'Loading...')}</div>
 				</div>
 			`;
 

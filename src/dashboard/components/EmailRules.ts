@@ -191,7 +191,7 @@ export class EmailRules extends HTMLElement {
 								</svg>
 							</span>
 							${this.tr('email_rules', 'Email Intelligence Rules')}
-							<span class="subtitle">${this.tr('email_subtitle', 'Automated Rules')}</span>
+
 						</h2>
 						${!this.isAdding ? `<button id="showAddBtn" style="background: #14B8A6; color: #fff; border: none; padding: 0.4rem 1rem; border-radius: 0.6rem; cursor: pointer; font-size: 0.8rem; font-weight: 600;">+ ${this.tr('new_rule', 'New Rule')}</button>` : ''}
 					</div>
