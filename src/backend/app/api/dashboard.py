@@ -73,6 +73,33 @@ async def require_auth(
 
 
 # ---------------------------------------------------------------------------
+# Auth activation endpoint (no auth required)
+# Sets an HTTP cookie so the token persists into the system browser on both
+# iOS (SFSafariViewController shares cookies with Safari) and
+# Android (Chrome Custom Tab shares cookies with Chrome).
+# ---------------------------------------------------------------------------
+auth_router = APIRouter()
+
+@auth_router.get("/api/auth", include_in_schema=False)
+async def auth_activate(token: str, redirect: str = "/home"):
+	"""Validate dashboard token, set a persistent cookie, redirect to destination."""
+	if not settings.DASHBOARD_TOKEN or token != settings.DASHBOARD_TOKEN:
+		raise HTTPException(status_code=401, detail="Invalid token")
+	# Sanitise redirect — only allow relative paths
+	if not redirect.startswith("/"):
+		redirect = "/home"
+	response = RedirectResponse(url=redirect, status_code=302)
+	response.set_cookie(
+		key="z_auth_token",
+		value=token,
+		path="/",
+		samesite="lax",
+		httponly=False,	# must be JS-readable
+		max_age=365 * 24 * 3600,
+	)
+	return response
+
+# ---------------------------------------------------------------------------
 # Rate limiting (M3)
 # ---------------------------------------------------------------------------
 _rate_limit_store: dict = defaultdict(list)

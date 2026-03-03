@@ -50,11 +50,11 @@ async def _get_stats_footer() -> str:
 def get_nav_markup(t: dict, token: str = "") -> InlineKeyboardMarkup:
 	"""Standard navigation buttons (Large touch targets)."""
 	base_url = settings.BASE_URL.rstrip('/')
-	qs = f"?token={token}" if token else ""
+	auth_qs = f"/api/auth?token={token}" if token else ""
 	keyboard = [
 		[
-			InlineKeyboardButton(f"🏠 {t.get('dashboard', 'Dashboard')}", url=f"{base_url}/home{qs}"),
-			InlineKeyboardButton(f"📅 {t.get('calendar', 'Calendar')}", url=f"{base_url}/calendar{qs}")
+			InlineKeyboardButton(f"🏠 {t.get('dashboard', 'Dashboard')}", url=f"{base_url}{auth_qs + '&redirect=/home' if auth_qs else '/home'}"),
+			InlineKeyboardButton(f"📅 {t.get('calendar', 'Calendar')}", url=f"{base_url}{auth_qs + '&redirect=/calendar' if auth_qs else '/calendar'}")
 		],
 		[
 			InlineKeyboardButton(f"📋 {t.get('operator_board', 'Operator')}", url=f"{base_url}/api/dashboard/planka-redirect?target=operator"),
@@ -278,8 +278,8 @@ async def start_telegram_bot():
 			mobile_hint = ""
 			if settings.DASHBOARD_TOKEN:
 				base = settings.BASE_URL.rstrip('/')
-				auth_url = f"{base}/home?token={settings.DASHBOARD_TOKEN}"
-				mobile_hint = f"\n\n📲 <a href='{auth_url}'>Open dashboard</a> — tap (Android) or long-press → Open in Browser (iOS)"
+				auth_url = f"{base}/api/auth?token={settings.DASHBOARD_TOKEN}"
+				mobile_hint = f"\n\n📲 <a href='{auth_url}'>Open dashboard</a> — tap once to save access"
 
 			await send_notification_html(
 				f"<blockquote><b>{real_time}</b>\n\n{_md_to_html(greeting_clean)}\n\n<i>{stats_text}</i>{mobile_hint}</blockquote>",
