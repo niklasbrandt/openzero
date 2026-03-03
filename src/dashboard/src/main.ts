@@ -25,6 +25,21 @@ console.log('openZero Dashboard Initialized');
 
 const AUTH_TOKEN_KEY = 'z_auth_token';
 
+// On page load: if ?token= is in the URL, save it to localStorage and strip
+// it from the address bar so it never appears in browser history or logs.
+// This lets you bookmark http://open.zero/home?token=xxx once on any device.
+(function captureTokenFromUrl() {
+	const params = new URLSearchParams(window.location.search);
+	const urlToken = params.get('token');
+	if (urlToken) {
+		localStorage.setItem(AUTH_TOKEN_KEY, urlToken);
+		params.delete('token');
+		const newSearch = params.toString();
+		const newUrl = window.location.pathname + (newSearch ? '?' + newSearch : '');
+		window.history.replaceState({}, '', newUrl);
+	}
+})();
+
 function getAuthToken(): string {
 	return localStorage.getItem(AUTH_TOKEN_KEY) || '';
 }
