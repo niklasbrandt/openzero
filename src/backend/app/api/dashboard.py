@@ -361,20 +361,22 @@ async def get_personality(db: AsyncSession = Depends(get_db)):
 	pref = res.scalar_one_or_none()
 	
 	default_personality = {
+		"agent_name": "Z",
 		"directness": 4, 
 		"warmth": 3,     
 		"agency": 4,     
 		"critique": 3,   
-		"humor": 2,       # Humor Score (TARS style)
-		"honesty": 5,     # Honesty Score (TARS style)
+		"humor": 2,       
+		"honesty": 5,     
 		"depth": 4,      
 		"role": "Agent Operator",
 		"questions": [
+			{"id": "agent_name", "label": "Agent Name", "type": "text", "placeholder": "e.g. Z, Jarvis, Hal"},
 			{"id": "directness", "label": "Communication Style", "type": "range", "min": 1, "max": 5, "low": "Elaborate", "high": "Concise"},
 			{"id": "warmth", "label": "Emotional Tone", "type": "range", "min": 1, "max": 5, "low": "Clinical", "high": "Empathetic"},
 			{"id": "agency", "label": "Agency Level", "type": "range", "min": 1, "max": 5, "low": "Reactive", "high": "Proactive"},
 			{"id": "critique", "label": "Intellectual Friction", "type": "range", "min": 1, "max": 5, "low": "Agreeable", "high": "Challenging"},
-			{"id": "humor", "label": "Humor Score (TARS Style)", "type": "range", "min": 0, "max": 10, "low": "0%", "high": "100%"},
+			{"id": "humor", "label": "Humor Score", "type": "range", "min": 0, "max": 10, "low": "0%", "high": "100%"},
 			{"id": "honesty", "label": "Honesty Score", "type": "range", "min": 1, "max": 10, "low": "Low", "high": "Absolute"},
 			{"id": "depth", "label": "Analysis Depth", "type": "range", "min": 1, "max": 5, "low": "Surface", "high": "Deep Dive"},
 			{"id": "role", "label": "Core Identity / Archetype", "type": "text", "placeholder": "e.g. Master Architect, Stoic Mentor, Sharp Assistant"},

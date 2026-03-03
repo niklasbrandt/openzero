@@ -67,6 +67,7 @@ export class ZPersonality extends HTMLElement {
 
 		const per = this.personality;
 		const prot = this.protocols;
+		const agentInitial = (per?.agent_name || 'Z').charAt(0).toUpperCase();
 
 		this.shadowRoot.innerHTML = `
 			<style>
@@ -86,8 +87,9 @@ export class ZPersonality extends HTMLElement {
 				.edit-btn {
 					background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
 					color: #14B8A6; padding: 4px 10px; font-size: 0.7rem; cursor: pointer;
-					text-transform: uppercase; letter-spacing: 0.05em;
+					text-transform: uppercase; letter-spacing: 0.05em; border-radius: 4px;
 				}
+				.edit-btn:hover { background: rgba(255,255,255,0.1); }
 
 				.tabs { display: flex; gap: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); }
 				.tab { 
@@ -142,8 +144,8 @@ export class ZPersonality extends HTMLElement {
 
 			<div class="card">
 				<div class="header">
-					<h2><div class="icon">Z</div> ${this.isEditing ? 'Persona Config' : 'Agent Personality'}</h2>
-					${!this.isEditing && !this.isLoading ? `<button class="edit-btn" id="edit-trigger">Refine</button>` : ''}
+					<h2><div class="icon">${agentInitial}</div> ${this.isEditing ? 'Agent Config' : (this.activeTab === 'personality' ? 'Agent Personality' : 'Agent Protocols')}</h2>
+					${!this.isEditing && !this.isLoading && this.activeTab === 'personality' ? `<button class="edit-btn" id="edit-trigger">Refine</button>` : ''}
 				</div>
 
 				<div class="tabs">
@@ -180,6 +182,10 @@ export class ZPersonality extends HTMLElement {
 					` : !this.isLoading && this.activeTab === 'personality' ? `
 						<div class="trait-grid">
 							<div class="trait-item">
+								<span class="trait-label">Digital Avatar</span>
+								<div class="trait-value" style="color: #14B8A6; font-weight: 800; letter-spacing: 0.05em;">${per?.agent_name || 'Z'}</div>
+							</div>
+							<div class="trait-item">
 								<span class="trait-label">Core Identity</span>
 								<div class="trait-value">${per?.role || 'Agent Operator'}</div>
 							</div>
@@ -197,19 +203,6 @@ export class ZPersonality extends HTMLElement {
 								<span class="trait-label">Communication</span>
 								<div class="trait-value">${['', 'Elaborate', 'Nuanced', 'Balanced', 'Direct', 'Concise'][per?.directness || 3]} (${per?.directness}/5)</div>
 							</div>
-							${per?.values ? `
-								<div class="trait-item">
-									<span class="trait-label">Foundational Values</span>
-									<div class="trait-value" style="font-size: 0.8rem; color: rgba(255,255,255,0.7);">${per.values}</div>
-								</div>
-							` : ''}
-							<div class="trait-item">
-								<span class="trait-label">Behavioral Context</span>
-								<div class="trait-value" style="font-size: 0.82rem; color: rgba(255,255,255,0.5);">${per?.behavior || 'Standard protocols.'}</div>
-							</div>
-						</div>
-						<div style="margin-top: 1.5rem; font-size: 0.75rem; color: rgba(255,255,255,0.4); font-style: italic; line-height: 1.5;">
-							"Every interaction is an adaptation. My character is the bridge between your goals and my execution."
 						</div>
 					` : ''}
 
@@ -231,8 +224,16 @@ export class ZPersonality extends HTMLElement {
 		this.shadowRoot.querySelector('#edit-trigger')?.addEventListener('click', () => { this.isEditing = true; this.render(); });
 		this.shadowRoot.querySelector('#cancel-trigger')?.addEventListener('click', () => { this.isEditing = false; this.render(); });
 		this.shadowRoot.querySelector('#save-trigger')?.addEventListener('click', () => this.savePersonality());
-		this.shadowRoot.querySelector('#tab-per')?.addEventListener('click', () => { this.activeTab = 'personality'; this.render(); });
-		this.shadowRoot.querySelector('#tab-prot')?.addEventListener('click', () => { this.activeTab = 'protocols'; this.render(); });
+		this.shadowRoot.querySelector('#tab-per')?.addEventListener('click', () => {
+			this.activeTab = 'personality';
+			this.isEditing = false;
+			this.render();
+		});
+		this.shadowRoot.querySelector('#tab-prot')?.addEventListener('click', () => {
+			this.activeTab = 'protocols';
+			this.isEditing = false;
+			this.render();
+		});
 	}
 }
 
