@@ -15,6 +15,18 @@ import pytz
 import re
 from datetime import datetime, timedelta
 import logging
+from app.services.translations import get_translations
+
+async def get_user_lang() -> str:
+	"""Fetch user language from identity profile."""
+	try:
+		from app.models.db import AsyncSessionLocal, Person
+		from sqlalchemy import select
+		async with AsyncSessionLocal() as session:
+			res = await session.execute(select(Person).where(Person.circle_type == "identity"))
+			ident = res.scalar_one_or_none()
+			return ident.language if ident and ident.language else "en"
+	except: return "en"
 
 bot_app: Application | None = None
 
@@ -23,25 +35,27 @@ async def _get_stats_footer() -> str:
 	from app.services.memory import get_memory_stats
 	from app.services.llm import last_model_used
 	stats = await get_memory_stats()
+	lang = await get_user_lang()
+	t = get_translations(lang)
 	
 	# Determine Model Level from actual use
 	model_name = last_model_used.get() or "local"
 	model_tag = f" · {model_name}"
 
-	stats_text = f"Memories: {stats['points']}{model_tag}" if stats['status'] != 'error' else "Memory: Offline"
+	stats_text = f"{t.get('memories_found', 'Memories')}: {stats['points']}{model_tag}" if stats['status'] != 'error' else f"{t.get('memory_search', 'Memory')}: Offline"
 	return f"\n\n<i>{stats_text}</i>"
 
-def get_nav_markup() -> InlineKeyboardMarkup:
+def get_nav_markup(t: dict) -> InlineKeyboardMarkup:
 	"""Standard navigation buttons (Large touch targets)."""
 	base_url = settings.BASE_URL.rstrip('/')
 	keyboard = [
 		[
-			InlineKeyboardButton("🏠 Dashboard", url=f"{base_url}/home"),
-			InlineKeyboardButton("📅 Calendar", url=f"{base_url}/calendar")
+			InlineKeyboardButton(f"🏠 {t.get('dashboard', 'Dashboard')}", url=f"{base_url}/home"),
+			InlineKeyboardButton(f"📅 {t.get('calendar', 'Calendar')}", url=f"{base_url}/calendar")
 		],
 		[
-			InlineKeyboardButton("📋 Operator", url=f"{base_url}/api/dashboard/planka-redirect?target=operator"),
-			InlineKeyboardButton("📁 Projects", url=f"{base_url}/api/dashboard/planka-redirect")
+			InlineKeyboardButton(f"📋 {t.get('operator_board', 'Operator')}", url=f"{base_url}/api/dashboard/planka-redirect?target=operator"),
+			InlineKeyboardButton(f"📁 {t.get('projects', 'Projects')}", url=f"{base_url}/api/dashboard/planka-redirect")
 		],
 		[
 			InlineKeyboardButton("🧠 /memories", callback_data="call_memories"),
@@ -251,9 +265,12 @@ async def start_telegram_bot():
 			greeting_clean = strip_llm_time_header(greeting)
 			real_time = format_time()
 			
+			lang = await get_user_lang()
+			t = get_translations(lang)
+			
 			await send_notification_html(
 				f"<blockquote><b>{real_time}</b>\n\n{_md_to_html(greeting_clean)}\n\n<i>{stats_text}</i></blockquote>",
-				reply_markup=get_nav_markup()
+				reply_markup=get_nav_markup(t)
 			)
 			logging.info("DEBUG: Greeting Seq - Notification Delivered")
 
@@ -314,9 +331,11 @@ async def _recover_unanswered_messages():
 		display_reply = f"<b>{format_time()}</b>\n\n{html_reply}"
 
 		footer = await _get_stats_footer()
+		lang = await get_user_lang()
+		t = get_translations(lang)
 		await send_notification_html(
 			f"<blockquote>{display_reply}{footer}</blockquote>",
-			reply_markup=get_nav_markup()
+			reply_markup=get_nav_markup(t)
 		)
 		logging.info("Restart recovery: response delivered.")
 	except Exception as e:
@@ -438,14 +457,22 @@ async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
 			l_text = "🟢 Ready"
 		except: l_text = "🔴 Error"
 
+		lang = await get_user_lang()
+		t = get_translations(lang)
+		
+		# Weekday mapping
+		day_keys = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+		now_tz = datetime.now(pytz.timezone(get_user_timezone()))
+		weekday_name = t.get(day_keys[now_tz.weekday()], now_tz.strftime('%A'))
+
 		status_report = (
-			"🛰️ *System Status Report*\n\n"
-			f"🧠 *Memory (Qdrant):* {m_text} ({m_stats.get('points', 0)} pts)\n"
-			f"📋 *Task Board (Planka):* {p_text}\n"
-			f"🤖 *Intelligence (Local):* {l_text}\n"
-			f"📍 *Time:* {datetime.now(pytz.timezone(get_user_timezone())).strftime('%H:%M:%S')}"
+			f"🛰️ <b>{t.get('status_heading', 'System Status Report')}</b>\n\n"
+			f"🧠 <b>{t.get('memory_search', 'Memory')}:</b> {m_text} ({m_stats.get('points', 0)} pts)\n"
+			f"📋 <b>{t.get('operator_board', 'Task Board')}:</b> {p_text}\n"
+			f"🤖 <b>{t.get('intelligence', 'Intelligence')}:</b> {l_text}\n\n"
+			f"📍 <b>{weekday_name}, {now_tz.strftime('%H:%M:%S')}</b>"
 		)
-		await safe_reply(update, status_report, reply_markup=get_nav_markup())
+		await safe_reply(update, status_report, reply_markup=get_nav_markup(t))
 	except Exception as e:
 		print(f"ERROR: cmd_status failed: {e}")
 		await safe_reply(update, "System Status check failed. Check local backend logs.")
@@ -459,8 +486,10 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cmd_tree(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	try:
 		from app.services.planka import get_project_tree
+		lang = await get_user_lang()
+		t = get_translations(lang)
 		tree = await get_project_tree(as_html=False)
-		await safe_reply(update, tree, reply_markup=get_nav_markup())
+		await safe_reply(update, tree, reply_markup=get_nav_markup(t))
 	except Exception as e:
 		await safe_reply(update, f"Failed to fetch mission tree: {e}")
 
@@ -664,31 +693,36 @@ async def handle_unlearn_approval(update: Update, context: ContextTypes.DEFAULT_
 
 @owner_only
 async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
-	help_text = (
-		"\U0001f916 *Z -- Operator Controls*\n\n"
-		"*Briefings & Reviews*\n"
-		"/day -- Proactive morning briefing (contextual summary)\n"
-		"/week -- Strategic review of all projects and roadmaps\n"
-		"/month -- High-level 30-day mission review\n"
-		"/quarter -- Strategic 90-day review and roadmap planning\n"
-		"/year -- Yearly goal setting based on project themes\n\n"
-		"*Mission Control*\n"
-		"/tree -- Full life hierarchy and workspace overview\n"
-		"/think -- Complex reasoning with human-in-the-loop approval\n"
-		"/remind -- Set a temporary recurring reminder (e.g. every 30 min for 4h)\n"
-		"/custom -- Create a persistent scheduled task (e.g. every Monday at 10am)\n\n"
-		"*Memory & Intelligence*\n"
-		"/search -- Conceptual search of the semantic knowledge vault\n"
-		"/memories -- List all core knowledge in permanent memory\n"
-		"/add -- Commit specific facts to Z's permanent knowledge vault\n"
-		"/unlearn -- Evolve past points in the vault\n"
-		"/protocols -- Inspect Z's agentic tools and Semantic Action Tags\n\n"
-		"*System*\n"
-		"/status -- Deep integration health check\n"
-		"/purge -- Permanently delete all semantic memories (irreversible)\n\n"
-		"_Tap any command to execute it directly._"
-	)
-	await safe_reply(update, help_text, reply_markup=get_nav_markup())
+	lang = await get_user_lang()
+	t = get_translations(lang)
+	help_text = t.get("help_msg_full")
+	if not help_text:
+		# Fallback if full help not in translations.py yet
+		help_text = (
+			"\U0001f916 *Z -- Operator Controls*\n\n"
+			"*Briefings & Reviews*\n"
+			"/day -- Proactive morning briefing (contextual summary)\n"
+			"/week -- Strategic review of all projects and roadmaps\n"
+			"/month -- High-level 30-day mission review\n"
+			"/quarter -- Strategic 90-day review and roadmap planning\n"
+			"/year -- Yearly goal setting based on project themes\n\n"
+			"*Mission Control*\n"
+			"/tree -- Full life hierarchy and workspace overview\n"
+			"/think -- Complex reasoning with human-in-the-loop approval\n"
+			"/remind -- Set a temporary recurring reminder\n"
+			"/custom -- Create a persistent scheduled task\n\n"
+			"*Memory & Intelligence*\n"
+			"/search -- Conceptual search of the semantic knowledge vault\n"
+			"/memories -- List all core knowledge in permanent memory\n"
+			"/add -- Commit specific facts to memory\n"
+			"/unlearn -- Evolve past points in the vault\n"
+			"/protocols -- Inspect Z's agentic tools\n\n"
+			"*System*\n"
+			"/status -- Deep integration health check\n"
+			"/purge -- Permanently delete all memories\n\n"
+			"_Tap any command to execute it directly._"
+		)
+	await safe_reply(update, help_text, reply_markup=get_nav_markup(t))
 
 async def handle_memories_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	await update.callback_query.answer()
@@ -807,15 +841,18 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 	from app.models.db import get_global_history, save_global_message
 	import time
 
+	lang = await get_user_lang()
+	t = get_translations(lang)
+	
 	# Show initial acknowledgment
 	if is_followup:
 		thinking_msg = await context.bot.send_message(
 			chat_id=chat_id,
-			text="<blockquote><i>Processing your follow-up...</i></blockquote>",
+			text=f"<blockquote><i>{t.get('thinking_followup', 'Processing your follow-up...')}</i></blockquote>",
 			parse_mode="HTML"
 		)
 	else:
-		thinking_msg = await update.message.reply_text("<blockquote><i>Thinking...</i></blockquote>", parse_mode="HTML")
+		thinking_msg = await update.message.reply_text(f"<blockquote><i>{t.get('thinking', 'Thinking...')}</i></blockquote>", parse_mode="HTML")
 
 	from app.models.db import AsyncSessionLocal
 
@@ -866,7 +903,7 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 	display_reply = f"<b>{format_time()}</b>\n\n{html_reply}"
 
 	footer = await _get_stats_footer()
-	await safe_edit(thinking_msg, f"<blockquote>{display_reply}{footer}</blockquote>", parse_mode="HTML", reply_markup=get_nav_markup())
+	await safe_edit(thinking_msg, f"<blockquote>{display_reply}{footer}</blockquote>", parse_mode="HTML", reply_markup=get_nav_markup(t))
 
 @owner_only
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):

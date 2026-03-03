@@ -110,6 +110,13 @@ export class ZPersonality extends HTMLElement {
 					transition: all 0.2s;
 				}
 				.tab.active { color: #14B8A6; border-color: #14B8A6; }
+				.tab:focus-visible { outline: 2px solid #14B8A6; outline-offset: 2px; border-radius: 2px 2px 0 0; }
+				.edit-btn:focus-visible, .save-btn:focus-visible, .cancel-btn:focus-visible { outline: 2px solid #14B8A6; outline-offset: 2px; border-radius: 4px; }
+				input[type="text"]:focus-visible, textarea:focus-visible, select:focus-visible, input[type="range"]:focus-visible, input[type="color"]:focus-visible { outline: 2px solid #14B8A6; outline-offset: 2px; }
+				.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+				@media (prefers-reduced-motion: reduce) {
+					*, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+				}
 
 				.content { flex: 1; overflow-y: auto; padding-right: 4px; }
 				.content::-webkit-scrollbar { width: 4px; }
@@ -157,20 +164,20 @@ export class ZPersonality extends HTMLElement {
 			<div class="card">
 				<div class="header">
 					<h2>
-						<div class="icon">${agentInitial}</div>
+						<div class="icon" aria-hidden="true">${agentInitial}</div>
 						${this.isEditing ? this.tr('agent_config', 'Agent Config') : (this.activeTab === 'personality' ? this.tr('agent_personality', 'Agent Personality') : this.tr('agent_protocols', 'Agent Protocols'))}
 					</h2>
-					${!this.isEditing && !this.isLoading && this.activeTab === 'personality' ? `<button class="edit-btn" id="edit-trigger">${this.tr('refine', 'Refine')}</button>` : ''}
+					${!this.isEditing && !this.isLoading && this.activeTab === 'personality' ? `<button class="edit-btn" id="edit-trigger" aria-label="Edit agent personality settings">${this.tr('refine', 'Refine')}</button>` : ''}
 				</div>
 
 				${!this.isEditing ? `
-					<div class="tabs">
-						<div class="tab ${this.activeTab === 'personality' ? 'active' : ''}" id="tab-per">${this.tr('tab_identity', 'Identity')}</div>
-						<div class="tab ${this.activeTab === 'protocols' ? 'active' : ''}" id="tab-prot">${this.tr('tab_protocols', 'Protocols')}</div>
+					<div class="tabs" role="tablist" aria-label="Personality views">
+						<div class="tab ${this.activeTab === 'personality' ? 'active' : ''}" id="tab-per" role="tab" aria-selected="${this.activeTab === 'personality'}" tabindex="${this.activeTab === 'personality' ? '0' : '-1'}">${this.tr('tab_identity', 'Identity')}</div>
+						<div class="tab ${this.activeTab === 'protocols' ? 'active' : ''}" id="tab-prot" role="tab" aria-selected="${this.activeTab === 'protocols'}" tabindex="${this.activeTab === 'protocols' ? '0' : '-1'}">${this.tr('tab_protocols', 'Protocols')}</div>
 					</div>
 				` : ''}
 
-				<div class="content">
+				<div class="content" role="tabpanel" id="tabpanel-main" aria-labelledby="${this.activeTab === 'personality' ? 'tab-per' : 'tab-prot'}">
 					${this.isLoading ? `<div class="empty">${this.tr('aligning', 'Aligning neural paths...')}</div>` : ''}
 					
 					${!this.isLoading && this.isEditing ? `
@@ -180,9 +187,9 @@ export class ZPersonality extends HTMLElement {
 									<label class="form-label">${q.label}</label>
 									${q.type === 'range' ? `
 										<div class="range-container">
-											<span class="range-tag">${q.low}</span>
-											<input type="range" id="input-${q.id}" min="${q.min}" max="${q.max}" value="${per[q.id] || 3}">
-											<span class="range-tag" style="text-align: right;">${q.high}</span>
+										<span class="range-tag" aria-hidden="true">${q.low}</span>
+										<input type="range" id="input-${q.id}" min="${q.min}" max="${q.max}" value="${per[q.id] || 3}" aria-label="${q.label}" aria-valuenow="${per[q.id] || 3}" aria-valuemin="${q.min}" aria-valuemax="${q.max}" aria-valuetext="${per[q.id] || 3} of ${q.max}">
+										<span class="range-tag" style="text-align: right;" aria-hidden="true">${q.high}</span>
 										</div>
 									` : q.type === 'textarea' ? `
 										<textarea id="input-${q.id}" placeholder="${q.placeholder}">${per[q.id] || ''}</textarea>
@@ -242,11 +249,11 @@ export class ZPersonality extends HTMLElement {
 						<div class="prot-explanation" style="font-size: 0.75rem; color: rgba(255,255,255,0.4); margin-bottom: 1rem; line-height: 1.4; padding: 0.5rem; background: rgba(0,102,255,0.05); border-radius: 4px; border-left: 2px solid #0066FF;">
 							Operational Protocols are the agent's internal "Action Tags". They define the specific strategic actions ${per?.agent_name || 'Z'} can perform across integrated services. These are core system capabilities.
 						</div>
-						<div class="prot-list">
-							${prot.map((p: any, i: number) => `
-								<div class="prot-item" style="animation-delay: ${i * 0.05}s">
-									<span class="prot-name" style="display: flex; align-items: center; gap: 0.5rem;">
-										<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+					<div class="prot-list" role="list">
+						${prot.map((p: any, i: number) => `
+							<div class="prot-item" role="listitem" style="animation-delay: ${i * 0.05}s">
+								<span class="prot-name" style="display: flex; align-items: center; gap: 0.5rem;">
+									<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
 										${p.name.replace(/_/g, ' ')}
 									</span>
 									<span class="prot-desc">${p.description}</span>
@@ -287,6 +294,19 @@ export class ZPersonality extends HTMLElement {
 			this.activeTab = 'protocols';
 			this.isEditing = false;
 			this.render();
+		});
+		// Keyboard navigation for tabs (ARIA tablist pattern)
+		this.shadowRoot.querySelector('.tabs')?.addEventListener('keydown', (e: Event) => {
+			const ke = e as KeyboardEvent;
+			if (ke.key === 'ArrowRight' || ke.key === 'ArrowLeft') {
+				ke.preventDefault();
+				const newTab = this.activeTab === 'personality' ? 'protocols' : 'personality';
+				this.activeTab = newTab;
+				this.isEditing = false;
+				this.render();
+				const focusId = newTab === 'personality' ? '#tab-per' : '#tab-prot';
+				(this.shadowRoot?.querySelector(focusId) as HTMLElement)?.focus();
+			}
 		});
 	}
 }

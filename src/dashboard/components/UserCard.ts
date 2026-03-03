@@ -198,14 +198,19 @@ export class UserCard extends HTMLElement {
 					outline: 2px solid var(--accent-color); 
 					outline-offset: 2px; 
 				}
+				button:focus:not(:focus-visible), input:focus:not(:focus-visible), textarea:focus:not(:focus-visible), select:focus:not(:focus-visible) { outline: none; }
+				.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+				@media (prefers-reduced-motion: reduce) {
+					*, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+				}
 			</style>
 
 			<div class="card">
 				<div class="header">
 					<div class="user-info">
-						<div class="avatar">${(me.name || 'U')[0]}</div>
-						${this.isEditing
-				? `<input id="name-input" type="text" placeholder="Full Name" value="${me.name || ''}">`
+					<div class="avatar" aria-hidden="true">${(me.name || 'U')[0]}</div>
+					${this.isEditing
+				? `<div style="display:flex;flex-direction:column;gap:2px;"><label class="label" for="name-input" style="margin:0;">${this.tr('name_label', 'Name')}</label><input id="name-input" type="text" placeholder="Full Name" value="${me.name || ''}" aria-label="Your name" autocomplete="name"></div>`
 				: `<h2>${me.name || 'User'}</h2>`}
 					</div>
 					${!this.isEditing ? `<button class="edit-btn" id="edit-trigger" aria-label="Edit personal profile">${this.tr('edit', 'Edit')}</button>` : ''}
@@ -213,66 +218,57 @@ export class UserCard extends HTMLElement {
 
 				<div class="grid">
 					<div class="field">
-						<div class="label">${this.tr('birthday', 'Birthday')}</div>
 						${this.isEditing
-				? `<input id="bday-input" type="text" placeholder="YYYY-MM-DD" value="${me.birthday || ''}">`
-				: `<div class="value">${me.birthday || this.tr('not_set', 'Not set')}</div>`}
+				? `<label class="label" for="bday-input">${this.tr('birthday', 'Birthday')}</label><input id="bday-input" type="text" placeholder="YYYY-MM-DD" value="${me.birthday || ''}" autocomplete="bday" aria-describedby="bday-hint"><span id="bday-hint" style="font-size:0.6rem;color:rgba(255,255,255,0.25);">Format: YYYY-MM-DD (optional)</span>`
+				: `<div class="label" aria-hidden="true">${this.tr('birthday', 'Birthday')}</div><div class="value">${me.birthday || this.tr('not_set', 'Not set')}</div>`}
 					</div>
 					<div class="field">
-						<div class="label">${this.tr('gender', 'Gender')}</div>
 						${this.isEditing
-				? `<input id="gender-input" type="text" placeholder="e.g. Non-binary" value="${me.gender || ''}">`
-				: `<div class="value">${me.gender || this.tr('not_set', 'Not set')}</div>`}
+				? `<label class="label" for="gender-input">${this.tr('gender', 'Gender')}</label><input id="gender-input" type="text" placeholder="e.g. Non-binary" value="${me.gender || ''}" autocomplete="sex">`
+				: `<div class="label" aria-hidden="true">${this.tr('gender', 'Gender')}</div><div class="value">${me.gender || this.tr('not_set', 'Not set')}</div>`}
 					</div>
 					<div class="field">
-						<div class="label">${this.tr('residency', 'Residency')}</div>
 						${this.isEditing
-				? `<input id="residency-input" type="text" placeholder="City, Country" value="${me.residency || ''}">`
-				: `<div class="value">${me.residency || this.tr('not_set', 'Not set')}</div>`}
+				? `<label class="label" for="residency-input">${this.tr('residency', 'Residency')}</label><input id="residency-input" type="text" placeholder="City, Country" value="${me.residency || ''}">`
+				: `<div class="label" aria-hidden="true">${this.tr('residency', 'Residency')}</div><div class="value">${me.residency || this.tr('not_set', 'Not set')}</div>`}
 					</div>
 					<div class="field">
-						<div class="label">${this.tr('town', 'Town')}</div>
 						${this.isEditing
-				? `<input id="town-input" type="text" placeholder="Berlin" value="${me.town || ''}">`
-				: `<div class="value">${me.town || this.tr('not_set', 'Not set')}</div>`}
+				? `<label class="label" for="town-input">${this.tr('town', 'Town')}</label><input id="town-input" type="text" placeholder="Berlin" value="${me.town || ''}">`
+				: `<div class="label" aria-hidden="true">${this.tr('town', 'Town')}</div><div class="value">${me.town || this.tr('not_set', 'Not set')}</div>`}
 					</div>
 					<div class="field">
-						<div class="label">${this.tr('country', 'Country')}</div>
 						${this.isEditing
-				? `<input id="country-input" type="text" placeholder="Germany" value="${me.country || ''}">`
-				: `<div class="value">${me.country || this.tr('not_set', 'Not set')}</div>`}
+				? `<label class="label" for="country-input">${this.tr('country', 'Country')}</label><input id="country-input" type="text" placeholder="Germany" value="${me.country || ''}" autocomplete="country-name">`
+				: `<div class="label" aria-hidden="true">${this.tr('country', 'Country')}</div><div class="value">${me.country || this.tr('not_set', 'Not set')}</div>`}
 					</div>
 					<div class="field">
-						<div class="label">${this.tr('timezone_label', 'Timezone')}</div>
 						${this.isEditing
-				? `<input id="timezone-input" type="text" placeholder="Europe/Berlin" value="${me.timezone || ''}">`
-				: `<div class="value">${me.timezone || this.tr('not_set', 'Not set')}</div>`}
+				? `<label class="label" for="timezone-input">${this.tr('timezone_label', 'Timezone')}</label><input id="timezone-input" type="text" placeholder="Europe/Berlin" value="${me.timezone || ''}" aria-describedby="tz-hint"><span id="tz-hint" style="font-size:0.6rem;color:rgba(255,255,255,0.25);">IANA timezone identifier</span>`
+				: `<div class="label" aria-hidden="true">${this.tr('timezone_label', 'Timezone')}</div><div class="value">${me.timezone || this.tr('not_set', 'Not set')}</div>`}
 					</div>
 					<div class="field">
-						<div class="label">${this.tr('briefing_time', 'Briefing Time')}</div>
 						${this.isEditing
-				? `<input id="brief-input" type="text" placeholder="08:00" value="${me.briefing_time || ''}">`
-				: `<div class="value">${me.briefing_time || '08:00'}</div>`}
+				? `<label class="label" for="brief-input">${this.tr('briefing_time', 'Briefing Time')}</label><input id="brief-input" type="text" placeholder="08:00" value="${me.briefing_time || ''}" aria-describedby="brief-hint"><span id="brief-hint" style="font-size:0.6rem;color:rgba(255,255,255,0.25);">24h HH:MM format</span>`
+				: `<div class="label" aria-hidden="true">${this.tr('briefing_time', 'Briefing Time')}</div><div class="value">${me.briefing_time || '08:00'}</div>`}
 					</div>
 					<div class="field">
-						<div class="label">${this.tr('language_label', 'Language')}</div>
 						${this.isEditing
-				? `<select id="language-input" aria-label="Select Z's response language">${Object.entries(this.languageNames).map(([code, name]) => `<option value="${code}" ${(me.language || 'en') === code ? 'selected' : ''}>${name}</option>`).join('')}</select>`
-				: `<div class="value">${this.languageNames[me.language as string] || 'English'}</div>`}
+				? `<label class="label" for="language-input">${this.tr('language_label', 'Language')}</label><select id="language-input" aria-label="Select Z\'s response language">${Object.entries(this.languageNames).map(([code, name]) => `<option value="${code}" ${(me.language || 'en') === code ? 'selected' : ''}>${name}</option>`).join('')}</select>`
+				: `<div class="label" aria-hidden="true">${this.tr('language_label', 'Language')}</div><div class="value">${this.languageNames[me.language as string] || 'English'}</div>`}
 					</div>
 					<div class="field" style="grid-column: span 2;">
-						<div class="label">${this.tr('work_times', 'Typical Work Times')}</div>
 						${this.isEditing
-				? `<input id="work-input" type="text" placeholder="e.g. 09:00 - 18:00" value="${me.work_times || ''}">`
-				: `<div class="value">${me.work_times || this.tr('not_set', 'Not set')}</div>`}
+				? `<label class="label" for="work-input">${this.tr('work_times', 'Typical Work Times')}</label><input id="work-input" type="text" placeholder="e.g. 09:00 - 18:00" value="${me.work_times || ''}">`
+				: `<div class="label" aria-hidden="true">${this.tr('work_times', 'Typical Work Times')}</div><div class="value">${me.work_times || this.tr('not_set', 'Not set')}</div>`}
 					</div>
 				</div>
 
 				<div class="goals-section">
 					<h3>${this.tr('life_goals', 'Life Goals & Core Values')}</h3>
 					${this.isEditing
-				? `<textarea id="context-input" placeholder="What drives you? What are your current focus areas?">${me.context || ''}</textarea>`
-				: `<ul>${(me.context || '').split('\n').filter((l: string) => l.trim() && !l.trim().startsWith('<!--') && !l.includes('## Growth Areas')).map((l: string) => `<li>${l.replace(/^#+\s*/, '')}</li>`).join('') || `<li>${this.tr('no_goals', 'No goals set.')}</li>`}</ul>`}
+				? `<label class="label" for="context-input" style="font-size:0.65rem;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:0.5rem;">${this.tr('goals_edit_label', 'Goals and Values (one per line)')}</label><textarea id="context-input" placeholder="What drives you? What are your current focus areas?" aria-label="Life goals and core values">${me.context || ''}</textarea>`
+				: `<ul aria-label="Your life goals and values">${(me.context || '').split('\n').filter((l: string) => l.trim() && !l.trim().startsWith('<!--') && !l.includes('## Growth Areas')).map((l: string) => `<li>${l.replace(/^#+\s*/, '')}</li>`).join('') || `<li>${this.tr('no_goals', 'No goals set.')}</li>`}</ul>`}
 				</div>
 
 				${this.isEditing ? `

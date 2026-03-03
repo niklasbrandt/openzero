@@ -85,7 +85,7 @@ export class EmailRules extends HTMLElement {
 							${r.badge ? `<span class="label-badge">${r.badge}</span>` : ''}
 						</span>
 						<span class="action-tag">
-							${(r.action || '').toLowerCase() === 'urgent' ? '⚡ Urgent Notify' : (r.action || '').toLowerCase() === 'summarize' ? '📋 Daily Summary' : '🔇 Ignored'}
+							${(r.action || '').toLowerCase() === 'urgent' ? '<span aria-hidden="true">&#9889;</span> Urgent Notify' : (r.action || '').toLowerCase() === 'summarize' ? '<span aria-hidden="true">&#128203;</span> Daily Summary' : '<span aria-hidden="true">&#128263;</span> Ignored'}
 						</span>
 					</div>
 					<div class="item-actions">
@@ -180,38 +180,60 @@ export class EmailRules extends HTMLElement {
 					}
 					button#addBtn:focus-visible { outline: 2px solid #14B8A6; outline-offset: 2px; }
 					.edit-btn:focus-visible, .delete-btn:focus-visible { outline: 2px solid rgba(255,255,255,0.4); outline-offset: 2px; }
+					input:focus-visible, select:focus-visible { outline: 2px solid #14B8A6; outline-offset: 2px; }
+					.form-label {
+						display: block;
+						font-size: 0.68rem;
+						font-weight: 600;
+						color: rgba(255,255,255,0.45);
+						text-transform: uppercase;
+						letter-spacing: 0.05em;
+						margin: 0 0 0.25rem 0;
+					}
+					.input-col { display: flex; flex-direction: column; flex: 1; }
+					@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 				</style>
 				<div class="card">
 					<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
 						<h2>
-							<span class="h-icon">
-								<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<span class="h-icon" aria-hidden="true">
+								<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
 									<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
 									<polyline points="22,6 12,13 2,6"></polyline>
 								</svg>
 							</span>
 							${this.tr('email_rules', 'Email Intelligence Rules')}
-
 						</h2>
-						${!this.isAdding ? `<button id="showAddBtn" style="background: #14B8A6; color: #fff; border: none; padding: 0.4rem 1rem; border-radius: 0.6rem; cursor: pointer; font-size: 0.8rem; font-weight: 600;">+ ${this.tr('new_rule', 'New Rule')}</button>` : ''}
+						${!this.isAdding ? `<button id="showAddBtn" aria-label="Add new email rule" style="background: #14B8A6; color: #fff; border: none; padding: 0.4rem 1rem; border-radius: 0.6rem; cursor: pointer; font-size: 0.8rem; font-weight: 600;">+ ${this.tr('new_rule', 'New Rule')}</button>` : ''}
 					</div>
 
 					${this.isAdding ? `
-					<div class="add-box">
+					<fieldset class="add-box" id="add-rule-form">
+						<legend style="font-size:0.75rem;font-weight:600;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.06em;padding:0 0.25rem;">${this.editingId ? this.tr('edit_rule_legend', 'Edit Rule') : this.tr('new_rule_legend', 'New Rule')}</legend>
 						<div class="input-row">
-							<input type="text" id="ruleInput" placeholder="Pattern (e.g. @domain.com or 'Invoice')">
-							<select id="actionInput">
-								<option value="urgent">⚡ Urgent Notification</option>
-								<option value="summarize">📋 Daily Summary</option>
-								<option value="ignore">🔇 Ignore Completely</option>
-							</select>
-							<input type="text" id="badgeInput" placeholder="Badge (Optional)">
+							<div class="input-col">
+								<label class="form-label" for="ruleInput">${this.tr('pattern_label', 'Sender Pattern')} <span aria-hidden="true" style="color:#f87171">*</span></label>
+								<input type="text" id="ruleInput" required aria-required="true" placeholder="e.g. @domain.com or Invoice" autocomplete="off" aria-describedby="rule-hint">
+								<span id="rule-hint" style="font-size:0.65rem;color:rgba(255,255,255,0.25);margin-top:0.15rem;">Match against sender address or subject keywords</span>
+							</div>
+							<div class="input-col">
+								<label class="form-label" for="actionInput">${this.tr('action_label', 'Action')}</label>
+								<select id="actionInput" aria-label="Email action for matching senders">
+									<option value="urgent">Urgent Notification</option>
+									<option value="summarize">Daily Summary</option>
+									<option value="ignore">Ignore Completely</option>
+								</select>
+							</div>
+							<div class="input-col">
+								<label class="form-label" for="badgeInput">${this.tr('badge_label', 'Badge Label')} <span style="color:rgba(255,255,255,0.3);font-weight:400;">(optional)</span></label>
+								<input type="text" id="badgeInput" placeholder="e.g. CLIENT" autocomplete="off" maxlength="20">
+							</div>
 						</div>
-						<div style="display:flex; gap:0.5rem;">
-							<button id="addBtn">${this.editingId ? 'Update Rule' : 'Create Rule'}</button>
-							<button id="cancelEdit" style="background:transparent; color:#fff; border:1px solid rgba(255,255,255,0.1); border-radius:0.6rem; padding:0.4rem 1rem; cursor:pointer; font-size:0.8rem;">Cancel</button>
+						<div style="display:flex; gap:0.5rem; margin-top:0.75rem;">
+							<button id="addBtn" type="submit" aria-label="${this.editingId ? 'Update rule' : 'Create rule'}">${this.editingId ? this.tr('update_rule', 'Update Rule') : this.tr('create_rule', 'Create Rule')}</button>
+							<button id="cancelEdit" type="button" aria-label="Cancel editing" style="background:transparent; color:#fff; border:1px solid rgba(255,255,255,0.1); border-radius:0.6rem; padding:0.4rem 1rem; cursor:pointer; font-size:0.8rem;">${this.tr('cancel', 'Cancel')}</button>
 						</div>
-					</div>
+					</fieldset>
 					` : ''}
 					<div id="rules-list">${this.currentRules.length > 0 ? '' : 'Loading rules...'}</div>
 				</div>

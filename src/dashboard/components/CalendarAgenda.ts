@@ -87,7 +87,7 @@ export class CalendarAgenda extends HTMLElement {
 			console.error('Failed to fetch calendar', e);
 			const list = this.shadowRoot?.querySelector('#event-list');
 			if (list) {
-				list.innerHTML = '<div class="empty">Unable to load agenda. Check backend/integration.</div>';
+				list.innerHTML = `<div class="empty">${this.tr('api_error_calendar', 'Unable to load agenda. Check backend/integration.')}</div>`;
 			}
 		}
 	}
@@ -116,34 +116,34 @@ export class CalendarAgenda extends HTMLElement {
 					<div class="event-item ${isBirthday ? 'birthday-item' : ''}" role="listitem">
 						<div class="time-box">
 							<span class="day">${day}</span>
-							<span class="time">${time !== '00:00' ? time : 'All day'}</span>
+							<span class="time">${time !== '00:00' ? time : this.tr('all_day', 'All day')}</span>
 						</div>
 						<div class="details">
 							<div class="summary-row" style="display: flex; justify-content: space-between; align-items: flex-start;">
 								<span class="summary" style="flex: 1;">
-									${!e.is_local ? '<span class="local-indicator" style="color: #14B8A6; background: rgba(20, 184, 166, 0.1); border-color: rgba(20, 184, 166, 0.2);">Google</span> ' : ''}
+									${!e.is_local ? `<span class="local-indicator" style="color: #14B8A6; background: rgba(20, 184, 166, 0.1); border-color: rgba(20, 184, 166, 0.2);">Google</span> ` : ''}
 									<input type="text" class="event-title-edit" 
 										value="${e.summary}" 
 										data-id="${e.id}"
 										${!e.is_local || e.is_birthday ? 'disabled' : ''}
 										style="background: transparent; border: none; font-size: 0.9rem; font-weight: 500; color: #fff; width: 100%; outline: none;">
 								</span>
-								${e.is_local && !e.is_birthday ? `<button class="delete-btn" data-id="${e.id}" title="Delete event" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #f87171; cursor: pointer; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; transition: all 0.2s;">✕</button>` : ''}
+								${e.is_local && !e.is_birthday ? `<button class="delete-btn" data-id="${e.id}" title="${this.tr('delete', 'Delete')}" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #f87171; cursor: pointer; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; transition: all 0.2s;">✕</button>` : ''}
 							</div>
 							${e.person ? `<span class="person-badge">${e.person}</span>` : ''}
 						</div>
 					</div>
 				`;
-			}).join('') || '<div class="empty">No upcoming events.</div>';
+			}).join('') || `<div class="empty">${this.tr('no_events', 'No upcoming events.')}</div>`;
 		}
 
 		// Refresh filter buttons
 		if (filters) {
 			const people = [...new Set(this.events.filter(e => e.person).map(e => e.person))];
 			filters.innerHTML = `
-				<button class="filter-btn ${!this.filterPerson ? 'active' : ''}" data-person="">All</button>
+				<button class="filter-btn ${!this.filterPerson ? 'active' : ''}" data-person="" aria-pressed="${!this.filterPerson ? 'true' : 'false'}">All</button>
 				${people.map(p => `
-					<button class="filter-btn ${this.filterPerson === p ? 'active' : ''}" data-person="${p}">${p}</button>
+					<button class="filter-btn ${this.filterPerson === p ? 'active' : ''}" data-person="${p}" aria-pressed="${this.filterPerson === p ? 'true' : 'false'}">${p}</button>
 				`).join('')}
 			`;
 
@@ -275,21 +275,27 @@ export class CalendarAgenda extends HTMLElement {
 						outline: 2px solid #14B8A6; 
 						outline-offset: 2px; 
 					}
+					.event-title-edit:focus-visible { outline: 2px solid #14B8A6; outline-offset: 1px; border-radius: 2px; }
+					.delete-btn:focus-visible { outline: 2px solid #f87171; outline-offset: 2px; }
+					.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+					@media (prefers-reduced-motion: reduce) {
+						*, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+					}
 				</style>
 				<div class="card">
 					<div class="header-container">
 						<h2>
-						<span class="icon">
-							<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-								<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-								<line x1="16" y1="2" x2="16" y2="6"></line>
-								<line x1="8" y1="2" x2="8" y2="6"></line>
-								<line x1="3" y1="10" x2="21" y2="10"></line>
-							</svg>
-						</span>
-						${this.tr('calendar_agenda', 'Calendar Agenda')}
-					</h2>
-						<a href="https://calendar.google.com" target="_blank" class="calendar-link" title="Open Google Calendar">
+					<span class="icon" aria-hidden="true">
+						<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+							<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+							<line x1="16" y1="2" x2="16" y2="6"></line>
+							<line x1="8" y1="2" x2="8" y2="6"></line>
+							<line x1="3" y1="10" x2="21" y2="10"></line>
+						</svg>
+					</span>
+					${this.tr('calendar_agenda', 'Calendar Agenda')}
+				</h2>
+					<a href="https://calendar.google.com" target="_blank" class="calendar-link" title="Open Google Calendar" aria-label="Open Google Calendar (opens in new tab)" rel="noopener noreferrer">
 							<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 								<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
 								<line x1="16" y1="2" x2="16" y2="6"></line>
@@ -300,7 +306,7 @@ export class CalendarAgenda extends HTMLElement {
 						</a>
 					</div>
 					<div id="filters"></div>
-					<div id="event-list" role="list">Loading events...</div>
+					<div id="event-list" role="list">${this.tr('loading_events', 'Loading events...')}</div>
 				</div>
 			`;
 		}

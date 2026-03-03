@@ -42,6 +42,9 @@ export class CircleManager extends HTMLElement {
 				this.fetchPeople();
 			}
 		});
+		window.addEventListener('identity-updated', () => {
+			this.loadTranslations().then(() => this.render());
+		});
 	}
 
 	async fetchPeople() {
@@ -74,7 +77,7 @@ export class CircleManager extends HTMLElement {
 	}
 
 	async deletePerson(id: number) {
-		if (!confirm('Are you sure you want to remove this person from your circle?')) return;
+		if (!confirm(this.tr('confirm_remove', 'Are you sure you want to remove this person from your circle?'))) return;
 		try {
 			await fetch(`/api/dashboard/people/${id}`, { method: 'DELETE' });
 			this.fetchPeople();
@@ -111,7 +114,7 @@ export class CircleManager extends HTMLElement {
 					<div class="info">
 						<span class="name">${p.name}</span>
 						<span class="rel">${p.relationship}</span>
-						${p.birthday ? `<span class="cal-badge">🎂 ${p.birthday}</span>` : ''}
+						${p.birthday ? `<span class="cal-badge" aria-label="Birthday: ${p.birthday}"><span aria-hidden="true">&#127874;</span> ${p.birthday}</span>` : ''}
 						<p class="ctx">${p.context || this.tr('no_focus', 'No specific focus set.')}</p>
 					</div>
 					<div class="item-actions" role="group" aria-label="Actions for ${p.name}">
@@ -333,12 +336,16 @@ export class CircleManager extends HTMLElement {
 						outline: 2px solid #14B8A6;
 						outline-offset: 2px;
 					}
+					@media (prefers-reduced-motion: reduce) {
+						.add-form { animation: none; }
+						* { transition: none !important; }
+					}
 				</style>
 				<div class="card">
 					<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
 						<h2>
-							<span class="h-icon">
-								<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<span class="h-icon" aria-hidden="true">
+							<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
 									<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
 									<circle cx="9" cy="7" r="4"></circle>
 									<path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
@@ -353,19 +360,19 @@ export class CircleManager extends HTMLElement {
 					${this.isAdding ? `
 					<form class="add-form" id="personForm" novalidate>
 						<label for="nameInput">${this.tr('name_label', 'Name')} <span class="required" aria-hidden="true">*</span></label>
-						<input type="text" id="nameInput" placeholder="e.g. Maria" required aria-required="true" autocomplete="off">
+						<input type="text" id="nameInput" placeholder="${this.tr('name_placeholder', 'e.g. Maria')}" required aria-required="true" autocomplete="off">
 						<div class="field-error-msg" id="nameError" role="alert"></div>
 
 						<label for="relInput">${this.tr('relationship_label', 'Relationship')} <span class="required" aria-hidden="true">*</span></label>
-						<input type="text" id="relInput" placeholder="e.g. Son, Friend, Colleague" required aria-required="true" autocomplete="off">
+						<input type="text" id="relInput" placeholder="${this.tr('rel_placeholder', 'e.g. Son, Friend, Colleague')}" required aria-required="true" autocomplete="off">
 						<div class="field-error-msg" id="relError" role="alert"></div>
 
 						<label for="bdayInput">${this.tr('birthday_label', 'Birthday')}</label>
-						<input type="text" id="bdayInput" placeholder="e.g. 27.02.2019" autocomplete="off">
-						<div class="field-hint">DD.MM.YYYY or DD.MM.YY — optional</div>
+						<input type="text" id="bdayInput" placeholder="${this.tr('bday_placeholder', 'e.g. 27.02.2019')}" autocomplete="off">
+						<div class="field-hint">${this.tr('birthday_hint', 'DD.MM.YYYY or DD.MM.YY — optional')}</div>
 
 						<label for="ctxInput">${this.tr('context_label', 'Context / Focus')}</label>
-						<textarea id="ctxInput" rows="2" placeholder="Notes, hobbies, important details..."></textarea>
+						<textarea id="ctxInput" rows="2" placeholder="${this.tr('notes_placeholder', 'Notes, hobbies, important details...')}"></textarea>
 
 						<div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
 							<button type="submit" id="addBtn">${this.editingId ? this.tr('update_person', 'Update Person') : this.tr('add_to_circle', 'Add to Circle')}</button>
@@ -405,8 +412,8 @@ export class CircleManager extends HTMLElement {
 					const errorEl = el.id === 'nameInput'
 						? this.shadowRoot?.querySelector('#nameError')
 						: el.id === 'relInput'
-						? this.shadowRoot?.querySelector('#relError')
-						: null;
+							? this.shadowRoot?.querySelector('#relError')
+							: null;
 					if (errorEl) {
 						errorEl.textContent = '';
 						errorEl.classList.remove('visible');
@@ -456,13 +463,13 @@ export class CircleManager extends HTMLElement {
 
 		if (!name) {
 			nameEl.classList.add('field-error');
-			if (nameErr) { nameErr.textContent = 'Name is required.'; nameErr.classList.add('visible'); }
+			if (nameErr) { nameErr.textContent = this.tr('name_required', 'Name is required.'); nameErr.classList.add('visible'); }
 			nameEl.focus();
 			valid = false;
 		}
 		if (!rel) {
 			relEl.classList.add('field-error');
-			if (relErr) { relErr.textContent = 'Relationship is required.'; relErr.classList.add('visible'); }
+			if (relErr) { relErr.textContent = this.tr('rel_required', 'Relationship is required.'); relErr.classList.add('visible'); }
 			if (valid) relEl.focus(); // focus first error
 			valid = false;
 		}
