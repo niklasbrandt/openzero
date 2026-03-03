@@ -1236,7 +1236,9 @@ async def benchmark_llm(tier: str = "instant"):
 		raise HTTPException(status_code=400, detail=f"Unknown tier: {tier}")
 
 	base_url, model_name = tier_map[tier]
-	prompt = "Explain the concept of recursion in exactly three sentences."
+	# Short, deterministic prompt -- produces ~30-50 tokens for reliable measurement
+	# without wasting time on runaway generation.
+	prompt = "List the planets of our solar system in order from the Sun, one per line."
 
 	try:
 		start = time.monotonic()
@@ -1251,8 +1253,8 @@ async def benchmark_llm(tier: str = "instant"):
 					"model": "local",
 					"messages": [{"role": "user", "content": prompt}],
 					"stream": True,
-					"max_tokens": 128,
-					"temperature": 0.1,
+					"max_tokens": 60,
+					"temperature": 0.0,
 				},
 			) as resp:
 				if resp.status_code != 200:
@@ -1294,6 +1296,17 @@ async def benchmark_llm(tier: str = "instant"):
 		return {"tier": tier, "model": model_name, "error": "Timeout (120s)"}
 	except Exception as e:
 		return {"tier": tier, "model": model_name, "error": str(e)}
+
+
+# --- Translations ---
+@router.get("/translations")
+async def get_translations_endpoint(db: AsyncSession = Depends(get_db)):
+	"""Return the full i18n translation dict for the user's configured language."""
+	from app.services.translations import get_translations
+	res = await db.execute(select(Person).where(Person.circle_type == "identity"))
+	me = res.scalar_one_or_none()
+	lang = (me.language if me and me.language else "en")
+	return get_translations(lang)
 
 
 # --- System Status ---
