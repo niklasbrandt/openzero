@@ -72,10 +72,10 @@ async def start_scheduler():
 	now = datetime.now(tz)
 	logger.info(f"System Time Check: {now.strftime('%Y-%m-%d %H:%M:%S %Z')} (Offset: {now.utcoffset()})")
 
-	# Morning Briefing — Mon–Fri at Configured Time
+	# Morning Briefing — Every day at Configured Time
 	scheduler.add_job(
 		morning_briefing,
-		CronTrigger(day_of_week="mon-fri", hour=brief_hour, minute=brief_min),
+		CronTrigger(hour=brief_hour, minute=brief_min),
 		id="morning_briefing",
 		replace_existing=True,
 	)
