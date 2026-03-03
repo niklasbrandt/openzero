@@ -103,13 +103,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse, FileResponse
 from app.api.dashboard import router as dashboard_router
+from app.config import settings
 
 app = FastAPI(title="Personal AI OS", lifespan=lifespan)
 
-# Add CORS for the dashboard
+# Add CORS for the dashboard — restrict to the configured base URL (not wildcard)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[settings.BASE_URL],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

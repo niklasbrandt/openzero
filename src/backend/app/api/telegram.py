@@ -674,6 +674,7 @@ async def cmd_memories(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		
 	await safe_reply(update, f"🧠 *Semantic Vault: Core Knowledge Vault*\n\n{memory_list}")
 
+@owner_only
 async def handle_unlearn_approval(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	query = update.callback_query
 	await query.answer()
@@ -767,6 +768,7 @@ async def cmd_purge(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		reply_markup=reply_markup
 	)
 
+@owner_only
 async def handle_wipe_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	query = update.callback_query
 	await query.answer()
@@ -996,6 +998,7 @@ async def cmd_think(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	)
 	await update.message.reply_text(disclosure_msg, parse_mode="HTML", reply_markup=reply_markup)
 
+@owner_only
 async def handle_approval(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	"""Handle User granting access to Cloud API."""
 	query_data = update.callback_query.data
@@ -1032,6 +1035,7 @@ async def handle_approval(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		parse_mode="HTML"
 	)
 
+@owner_only
 async def handle_calendar_approval(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	"""Handle User approving a detected calendar event from email."""
 	query = update.callback_query

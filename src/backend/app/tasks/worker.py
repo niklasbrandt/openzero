@@ -3,10 +3,16 @@ from app.config import settings
 import asyncio
 from app.services.llm import chat_with_context
 
+def _redis_url(db: int = 0) -> str:
+    """Build a Redis URL that includes the password when configured."""
+    if settings.REDIS_PASSWORD:
+        return f"redis://:{settings.REDIS_PASSWORD}@{settings.REDIS_HOST}:{settings.REDIS_PORT}/{db}"
+    return f"redis://{settings.REDIS_HOST}:{settings.REDIS_PORT}/{db}"
+
 celery_app = Celery(
     "openzero_tasks",
-    broker=f"redis://{settings.REDIS_HOST}:{settings.REDIS_PORT}/0",
-    backend=f"redis://{settings.REDIS_HOST}:{settings.REDIS_PORT}/0"
+    broker=_redis_url(0),
+    backend=_redis_url(0)
 )
 
 celery_app.conf.update(

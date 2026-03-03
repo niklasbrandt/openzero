@@ -56,6 +56,7 @@ class Settings(BaseSettings):
     # Redis & Tasks
     REDIS_HOST: str = "redis"
     REDIS_PORT: int = 6379
+    REDIS_PASSWORD: str = ""
 
     # Planka
     PLANKA_BASE_URL: str = "http://planka:1337"
