@@ -34,10 +34,15 @@ else
 	echo "Model already present: ${MODEL_FILE}"
 fi
 
+# Batch size for prompt evaluation — larger = faster TTFT but more RAM.
+# Default 512 is a good balance. Set via BATCH_SIZE env var.
+BATCH="${BATCH_SIZE:-512}"
+
 echo "Starting llama-server on port ${PORT}..."
 echo "  Threads: ${THREADS}"
 echo "  Context: ${CTX_SIZE}"
 echo "  Max predict: ${N_PREDICT}"
+echo "  Batch size: ${BATCH}"
 
 exec /app/llama-server \
 	--model "$MODEL_PATH" \
@@ -46,6 +51,7 @@ exec /app/llama-server \
 	--threads "${THREADS}" \
 	--ctx-size "${CTX_SIZE}" \
 	--n-predict "${N_PREDICT}" \
+	--batch-size "${BATCH}" \
 	--mlock \
 	--cont-batching \
 	${EXTRA_ARGS}
