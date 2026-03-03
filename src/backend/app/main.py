@@ -78,7 +78,10 @@ async def lifespan(app: FastAPI):
                         ))
                         await session.commit()
                         logging.info("✓ Identity record initialized.")
-
+                # 3b. Load user settings (timezone, location) from DB into cache
+                from app.services.timezone import refresh_user_settings
+                await refresh_user_settings()
+                logging.info("\u2713 User settings loaded from identity record.")
                 # 4. Initial Operator Board Sync
                 from app.services.operator_board import operator_service
                 sync_res = await operator_service.sync_operator_tasks()
