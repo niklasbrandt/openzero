@@ -269,7 +269,7 @@ First-time builds and model downloads incur significant durations:
 The build follows a strict privacy-first model:
 
 - **All AI processing remains local** by default. No data leaves your server unless you explicitly use Gmail/Google Calendar APIs.
-- **Tailscale** prevents opening public ports. The VPS has zero exposed services on the public internet.
+- **Tailscale + UFW** enforce a closed perimeter. Port 80 is restricted to the Tailscale interface via `ufw allow in on tailscale0`. The public internet has no reachable entry point.
 - **Pi-hole** blocks telemetry from all containers, ensuring no Docker image phones home.
 - **Backups** remain local and under physical control. No cloud backup service is used.
 - **No analytics, no tracking, no third-party cookies.** The dashboard is a static SPA served from your own server.

@@ -70,6 +70,32 @@ sudo systemctl enable fail2ban
 sudo systemctl start fail2ban
 ```
 
+### 5. Enable UFW Firewall
+
+openZero uses Tailscale as its network perimeter. Port 80 must only be reachable through the Tailscale interface — not the public internet.
+
+```bash
+# Allow SSH first to prevent lockout
+sudo ufw allow ssh
+
+# Allow port 80 ONLY through the Tailscale interface
+sudo ufw allow in on tailscale0 to any port 80
+
+# Block port 80 on all other (public) interfaces
+sudo ufw deny 80
+
+# Activate the firewall
+sudo ufw --force enable
+
+# Verify
+sudo ufw status verbose
+```
+
+Expected output shows `80 on tailscale0 ALLOW IN` and `80 DENY IN`. After this, the dashboard and all services are only reachable from devices on your Tailscale network.
+
+> [!IMPORTANT]
+> Run `sudo ufw allow ssh` **before** enabling the firewall or you will lock yourself out.
+
 ---
 
 ## 🐳 Phase 2: Install Docker (The Engine)
@@ -143,7 +169,12 @@ cp .env.example .env
 # TELEGRAM_BOT_TOKEN=your_token_here
 # REMOTE_HOST=YOUR_SERVER_IP
 # REMOTE_USER=openzero
+# REDIS_PASSWORD=your_strong_random_password  (protects the task queue)
+# BASE_URL=http://open.zero  (or http://YOUR_SERVER_IP — must match your access URL)
 ```
+
+> [!NOTE]
+> `REDIS_PASSWORD` is required. Generate one with `openssl rand -hex 24`. `BASE_URL` is used to scope CORS — requests from any other origin will be rejected.
 
 ### 4. Setup Planka (ON THE SERVER)
 
