@@ -18,4 +18,7 @@ COPY LATEST_CHANGES.txt* ./
 COPY src/backend/app/ ./app/
 COPY --from=dashboard-build /dashboard/dist/ ./static/
 
+RUN useradd -m -s /bin/bash appuser && chown -R appuser:appuser /app
+USER appuser
+
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
