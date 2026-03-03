@@ -1,4 +1,4 @@
-# 🚀 Building & Deploying OpenZero
+# Building & Deploying openZero
 
 This guide is designed for anyone—even if you've never used a server before. Follow these steps exactly to get your Personal AI Operating System (Z) running on your own VPS.
 
@@ -201,7 +201,34 @@ Planka is your task board. It needs its own configuration file to talk to the da
 
 _Press `Ctrl+O`, `Enter`, then `Ctrl+X` to save and exit nano._
 
-### 5. Trigger the Sync (ON YOUR LAPTOP)
+### 5. Set a Dashboard Access Token (Security)
+
+The dashboard is protected by a bearer token. You must set one before the backend will serve any API requests.
+
+1. Generate a strong token on your laptop:
+
+    ```bash
+    python3 -c "import secrets; print(secrets.token_urlsafe(32))"
+    ```
+
+2. Add it to your **local** `.env`:
+
+    ```env
+    DASHBOARD_TOKEN=your_generated_token_here
+    ```
+
+3. Add the same value to the **server** `.env` (only needed if you edit the file manually rather than via a full sync):
+
+    ```bash
+    echo 'DASHBOARD_TOKEN=your_generated_token_here' >> ~/openzero/.env
+    ```
+
+4. The first time you open the dashboard in a browser, you will be prompted for the token. Enter it once — it is saved in `localStorage` and never re-asked on the same device/browser.
+
+> [!IMPORTANT]
+> If the backend returns HTTP 500 on every dashboard request, the `DASHBOARD_TOKEN` env var is missing or empty. Set it and restart the backend container: `docker compose up -d --no-deps backend`.
+
+### 6. Trigger the Sync (ON YOUR LAPTOP)
 
 Run the sync script from the project root on your laptop:
 
