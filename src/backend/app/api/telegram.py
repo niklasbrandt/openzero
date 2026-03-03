@@ -691,6 +691,9 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		from app.services.agent_actions import parse_and_execute_actions
 		from app.models.db import AsyncSessionLocal
 
+		# Save user message FIRST so rapid follow-up messages see the context
+		await save_global_message("telegram", "user", update.message.text)
+
 		# Recover Merged History (cross-channel context — last 10 messages)
 		merged_history = await get_global_history(limit=10)
 
@@ -704,8 +707,7 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		async with AsyncSessionLocal() as db:
 			clean_reply, _ = await parse_and_execute_actions(response, db=db)
 
-		# Sync to Global Central Memory
-		await save_global_message("telegram", "user", update.message.text)
+		# Save Z's reply to global history
 		await save_global_message("telegram", "z", clean_reply)
 
 		# Memory is user-driven only (via /add or LEARN action tag)
