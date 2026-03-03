@@ -19,11 +19,14 @@ Core Functions:
 
 import httpx
 import json
+import logging
 from datetime import datetime
 from typing import AsyncGenerator
 import pytz
 from contextvars import ContextVar
 import uuid
+
+logger = logging.getLogger(__name__)
 from app.config import settings
 from app.services.agent_actions import AVAILABLE_TOOLS
 from langchain_openai import ChatOpenAI
