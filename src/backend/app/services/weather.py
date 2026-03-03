@@ -92,11 +92,13 @@ async def get_weather_forecast(location_name: str = None) -> str:
 			h_precip = hourly.get("precipitation_probability", [])
 			h_wind = hourly.get("wind_speed_10m", [])
 
-			if len(h_temps) >= 21:
+			if len(h_temps) >= 23:
 				segments = [
-					("Morning (6-12)", 6, 12),
-					("Afternoon (12-18)", 12, 18),
-					("Evening (18-22)", 18, 22),
+					("Morning (6-10)", 6, 10),
+					("Midday (10-13)", 10, 13),
+					("Afternoon (13-17)", 13, 17),
+					("Evening (17-21)", 17, 21),
+					("Night (21-24)", 21, 24),
 				]
 				for label, start, end in segments:
 					seg_temps = h_temps[start:end]
