@@ -74,10 +74,6 @@ class Settings(BaseSettings):
     DEEP_THINK_PROVIDER: Optional[str] = None
     DEEP_THINK_MODEL: Optional[str] = None
     
-    # User Preferences
-    USER_TIMEZONE: str = "Europe/Berlin"
-    USER_LOCATION: str = ""
-
     # Scheduling
     TASK_BOARD_SYNC_INTERVAL_MINUTES: int = 5
 

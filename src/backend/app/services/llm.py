@@ -88,9 +88,6 @@ Rules:
 - Do NOT LEARN trivial chat (greetings, confirmations, questions). Only permanent, meaningful facts.
 """
 
-# Global client for connection pooling (used by cloud providers)
-_http_client = httpx.AsyncClient(timeout=130.0)
-
 # Language map — module-level constant to avoid per-call allocation.
 # Zero-cost for English (default): no directive is injected.
 LANGUAGE_NAMES = {
@@ -402,29 +399,19 @@ async def chat_with_context(
 					if not include_people or len(user_message.strip()) < 20:
 						return "", identity_name, user_profile
 
+					from app.services.timezone import get_birthday_proximity
 					def _birthday_tag(p):
-						if not p.birthday: return ""
-						try:
-							import datetime as _dt
-							today = _dt.date.today()
-							parts = p.birthday.split(".")
-							if len(parts) == 3:
-								day, month = int(parts[0]), int(parts[1])
-								next_bday = _dt.date(today.year, month, day)
-								if next_bday < today:
-									next_bday = _dt.date(today.year + 1, month, day)
-								days = (next_bday - today).days
-								if days <= 30:
-									return f" -- BIRTHDAY IN {days} DAYS"
-						except Exception: pass
-						return ""
+						tag = get_birthday_proximity(p.birthday)
+						return f" -- BIRTHDAY {tag}" if tag else ""
 
 					inner = [f"- {p.name} ({p.relationship}){_birthday_tag(p)}" for p in people if p.circle_type == "inner"]
 					close = [f"- {p.name} ({p.relationship}){_birthday_tag(p)}" for p in people if p.circle_type == "close"]
+					outer = [f"- {p.name} ({p.relationship})" for p in people if p.circle_type == "outer"]
 
 					context = ""
 					if inner: context += "INNER CIRCLE:\n" + "\n".join(inner) + "\n"
-					if close: context += "CLOSE CIRCLE:\n" + "\n".join(close)
+					if close: context += "CLOSE CIRCLE:\n" + "\n".join(close) + "\n"
+					if outer: context += "OUTER CIRCLE (acquaintances -- mention only when directly relevant):\n" + "\n".join(outer)
 					return context[:2000], identity_name, user_profile
 				return "", identity_name, {}
 		except Exception:
@@ -634,11 +621,17 @@ async def chat_stream_with_context(
 						}
 					if not include_people or len(user_message.strip()) < 20:
 						return "", identity_name, user_profile
-					inner = [f"- {p.name} ({p.relationship})" for p in people if p.circle_type == "inner"]
-					close = [f"- {p.name} ({p.relationship})" for p in people if p.circle_type == "close"]
+					from app.services.timezone import get_birthday_proximity
+					def _birthday_tag(p):
+						tag = get_birthday_proximity(p.birthday)
+						return f" -- BIRTHDAY {tag}" if tag else ""
+					inner = [f"- {p.name} ({p.relationship}){_birthday_tag(p)}" for p in people if p.circle_type == "inner"]
+					close = [f"- {p.name} ({p.relationship}){_birthday_tag(p)}" for p in people if p.circle_type == "close"]
+					outer = [f"- {p.name} ({p.relationship})" for p in people if p.circle_type == "outer"]
 					context = ""
 					if inner: context += "INNER CIRCLE:\n" + "\n".join(inner) + "\n"
-					if close: context += "CLOSE CIRCLE:\n" + "\n".join(close)
+					if close: context += "CLOSE CIRCLE:\n" + "\n".join(close) + "\n"
+					if outer: context += "OUTER CIRCLE (acquaintances -- mention only when directly relevant):\n" + "\n".join(outer)
 					return context[:2000], identity_name, user_profile
 				return "", identity_name, {}
 		except Exception:

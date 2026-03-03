@@ -7,6 +7,7 @@ from app.services.weather import get_weather_forecast
 from app.services.tts import generate_speech
 from app.api.telegram import send_notification, send_voice_message, get_nav_markup
 from app.models.db import AsyncSessionLocal, Briefing, Project, Person
+from app.config import settings
 from sqlalchemy import select
 import asyncio
 import datetime
@@ -61,21 +62,10 @@ async def morning_briefing():
 	async def get_person_briefing_data(p: Person):
 		data = f"- {p.name} ({p.relationship}): {p.context}"
 		if p.birthday:
-			try:
-				# Parse birthday and compute exact days until next occurrence
-				today = datetime.date.today()
-				parts = p.birthday.split(".")
-				if len(parts) == 3:
-					day, month = int(parts[0]), int(parts[1])
-					next_bday = datetime.date(today.year, month, day)
-					if next_bday < today:
-						next_bday = datetime.date(today.year + 1, month, day)
-					days_until = (next_bday - today).days
-					if days_until <= 30:
-						data += f" | ⚠️ BIRTHDAY IN EXACTLY {days_until} DAYS ({p.birthday})"
-					# If > 30 days away: do NOT mention birthday at all to prevent hallucination
-			except Exception:
-				pass  # Unparseable birthday format — skip silently
+			from app.services.timezone import get_birthday_proximity
+			tag = get_birthday_proximity(p.birthday)
+			if tag:
+				data += f" | ⚠️ BIRTHDAY {tag} ({p.birthday})"
 		return data
 
 	inner_circle_tasks = [get_person_briefing_data(p) for p in people if p.circle_type == "inner"]
@@ -172,7 +162,6 @@ async def morning_briefing():
 		content += "\n\n🧠 *New Memories (Last 24h):*\n" + memory_review + "\n_Use /unlearn <topic> to remove incorrect memories._"
 	
 	# 3.4 Calibration (configurable, rotates daily)
-	from app.config import settings
 	if settings.BRIEFING_CALIBRATION:
 		methods = [
 			("🙏 Gratitude", "Name 3 specific things you are grateful for right now. Be concrete — not 'family' but 'the way Mom called yesterday to check in'."),
@@ -214,7 +203,6 @@ async def morning_briefing():
 		await session.commit()
 	
 	# 5. Send to Telegram (Proactive delivery)
-	from app.config import settings
 	separator = "---"
 	await send_notification(
 		f"{separator}\n☀️ *Good Morning!*\n\n{content}",

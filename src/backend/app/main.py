@@ -6,6 +6,7 @@ from app.services.memory import ensure_collection
 from app.tasks.scheduler import start_scheduler, stop_scheduler
 from app.api.telegram import start_telegram_bot, stop_telegram_bot
 import os
+import asyncio
 from sqlalchemy import text
 
 import logging
@@ -60,7 +61,6 @@ async def lifespan(app: FastAPI):
                 # 1. Warm up intelligence engine (Priority: Load models first)
                 logging.info("⚡ Warming up intelligence engine...")
                 from app.services.memory import get_embedder
-                import asyncio
                 loop = asyncio.get_event_loop()
                 await loop.run_in_executor(None, get_embedder)
                 logging.info("✓ AI models loaded in memory.")
@@ -89,7 +89,6 @@ async def lifespan(app: FastAPI):
             except Exception as e:
                 logging.warning(f"⚠ Warning: Background startup tasks failed: {e}")
 
-        import asyncio
         asyncio.create_task(run_background_startup())
 
     except Exception as e:
@@ -102,8 +101,8 @@ async def lifespan(app: FastAPI):
 
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import RedirectResponse, FileResponse
 from app.api.dashboard import router as dashboard_router
-import os
 
 app = FastAPI(title="Personal AI OS", lifespan=lifespan)
 
@@ -120,30 +119,25 @@ app.include_router(dashboard_router)
 
 @app.get("/calendar", include_in_schema=False)
 async def calendar_redirect():
-    from fastapi.responses import RedirectResponse
     return RedirectResponse(url="/home?open=calendar")
 
 @app.get("/boards", include_in_schema=False)
 async def boards_redirect():
-    from fastapi.responses import RedirectResponse
     return RedirectResponse(url="/api/dashboard/planka-redirect")
 
 @app.get("/projects", include_in_schema=False)
 async def projects_redirect():
-    from fastapi.responses import RedirectResponse
     return RedirectResponse(url="/api/dashboard/planka-redirect")
 
 # Serve the Dashboard
 @app.get("/home", include_in_schema=False)
 async def serve_dashboard():
-    from fastapi.responses import FileResponse
     if os.path.exists("static/index.html"):
         return FileResponse("static/index.html")
     return {"detail": "Dashboard not found"}
 
 @app.get("/", include_in_schema=False)
 async def root_redirect():
-    from fastapi.responses import RedirectResponse
     return RedirectResponse(url="/home")
 
 if os.path.exists("static"):

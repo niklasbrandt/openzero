@@ -18,35 +18,6 @@ import '../components/SystemBenchmark'
 
 console.log('🚀 openZero Dashboard Initialized');
 
-// Fetch system status and LLM info to display in the header
-// This implicitly calls the backend to warm up the local LLM
-async function checkSystemStatus() {
-	const modelEl = document.getElementById('status-model');
-	const memEl = document.getElementById('status-memory');
-	const identEl = document.getElementById('status-identity');
-	const latEl = document.getElementById('status-latency');
-
-	const startTime = performance.now();
-
-	try {
-		const res = await fetch('/api/dashboard/system');
-		if (res.ok) {
-			const data = await res.json();
-			const latency = Math.round(performance.now() - startTime);
-
-			if (modelEl) modelEl.innerText = `Core: ${data.llm_model}`;
-			if (memEl) memEl.innerText = `Memory: ${data.memory_points} points`;
-			if (identEl) identEl.innerText = `Identity: ${data.identity_active ? 'Active' : 'Unset'}`;
-			if (latEl) latEl.innerText = `Ping: ${latency}ms`;
-		} else {
-			if (modelEl) modelEl.innerText = 'System Offline';
-		}
-	} catch (error) {
-		if (modelEl) modelEl.innerText = 'Connection Lost';
-		console.warn('Could not reach backend system endpoint.', error);
-	}
-}
-
 // Background auto-login for Planka
 // This ensures that when the user opens Planka (separately or via link), 
 // they are already authenticated via the dashboard session.
@@ -75,8 +46,6 @@ async function plankaAutoLogin() {
 	}
 }
 
-checkSystemStatus();
-setInterval(checkSystemStatus, 10000); // Pulse every 10s
 plankaAutoLogin();
 
 // Check for deep-link overlays

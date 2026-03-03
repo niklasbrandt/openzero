@@ -8,8 +8,11 @@ from telegram.ext import (
 	ContextTypes,
 )
 from app.config import settings
+from app.services.timezone import format_time, get_user_timezone
+from app.services.agent_actions import parse_and_execute_actions
 import asyncio
 import pytz
+import re
 from datetime import datetime, timedelta
 import logging
 
@@ -167,17 +170,16 @@ async def start_telegram_bot():
 			logging.info("DEBUG: Greeting Seq - Step 3: Local People/Birthdays")
 			async with AsyncSessionLocal() as session:
 				# Birthdays
+				from app.services.timezone import get_birthday_proximity
 				res_people = await session.execute(select(Person).where(Person.birthday.isnot(None)))
 				for p in res_people.scalars().all():
-					try:
-						pts = p.birthday.split('.')
-						if len(pts) >= 2:
-							bday = datetime(now.year, int(pts[1]), int(pts[0]))
-							if bday.date() == now.date():
-								event_summary_parts.append(f"🎂 Today is {p.name}'s Birthday!")
-							elif (bday.date() - now.date()).days == 1:
-								event_summary_parts.append(f"🎂 Tomorrow: {p.name}'s Birthday")
-					except: pass
+					tag = get_birthday_proximity(p.birthday)
+					if tag == "TODAY":
+						event_summary_parts.append(f"🎂 Today is {p.name}'s Birthday!")
+					elif tag == "TOMORROW":
+						event_summary_parts.append(f"🎂 Tomorrow: {p.name}'s Birthday")
+					elif tag:
+						event_summary_parts.append(f"🎂 {p.name}'s Birthday {tag}")
 
 			event_summary = "\n".join(event_summary_parts) if event_summary_parts else "No upcoming events scheduled."
 			print(f"DEBUG: Greeting Seq - Context Ready ({len(event_summary_parts)} items)")
@@ -229,15 +231,11 @@ async def start_telegram_bot():
 				raw_greeting = f"{time_str}\nBack online. {stats_text}.{changes_note}{events_note}"
 
 			# Clean action tags from output
-			from app.services.agent_actions import parse_and_execute_actions
 			greeting, _ = await parse_and_execute_actions(raw_greeting)
 			print("DEBUG: Greeting Seq - OK")
 
 			# Prepend real current time (don't trust LLM for timestamps)
-			from app.services.timezone import format_time
-			import re
-			# Strip any LLM-generated time header
-			greeting_clean = re.sub(r'^\d{1,2}:\d{2}\s*[-–]?\s*[^\n]*\n*', '', greeting, count=1).strip()
+			greeting_clean = strip_llm_time_header(greeting)
 			real_time = format_time()
 			
 			await send_notification_html(
@@ -281,7 +279,6 @@ async def _recover_unanswered_messages():
 		logging.info(f"Restart recovery: {len(unanswered)} unanswered user message(s) found. Responding now.")
 
 		from app.services.llm import chat_with_context
-		from app.services.agent_actions import parse_and_execute_actions
 		from app.models.db import AsyncSessionLocal
 
 		merged_history = await get_global_history(limit=10)
@@ -299,9 +296,7 @@ async def _recover_unanswered_messages():
 
 		await save_global_message("telegram", "z", clean_reply)
 
-		from app.services.timezone import format_time
-		import re
-		clean_reply = re.sub(r'^\d{1,2}:\d{2}\s*[-–]?\s*[^\n]*\n*', '', clean_reply, count=1).strip()
+		clean_reply = strip_llm_time_header(clean_reply)
 		html_reply = _md_to_html(clean_reply)
 		display_reply = f"<b>{format_time()}</b>\n\n{html_reply}"
 
@@ -349,7 +344,6 @@ async def send_notification_html(text: str, reply_markup=None):
 
 def _md_to_html(text: str) -> str:
 	"""Minimal Markdown-to-HTML conversion for Telegram."""
-	import re
 	# Bold: **text** or *text* -> <b>text</b>
 	html = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', text)
 	html = re.sub(r'\*(.+?)\*', r'<b>\1</b>', html)
@@ -358,6 +352,10 @@ def _md_to_html(text: str) -> str:
 	# Links: [text](url) -> <a href="url">text</a>
 	html = re.sub(r'\[(.+?)\]\((.+?)\)', r'<a href="\2">\1</a>', html)
 	return html
+
+def strip_llm_time_header(text: str) -> str:
+	"""Remove LLM-generated time headers like '16:40 - Tuesday 3rd' from the start of text."""
+	return re.sub(r'^\d{1,2}:\d{2}\s*[-\u2013]?\s*[^\n]*\n*', '', text, count=1).strip()
 
 async def send_voice_message(audio_bytes: bytes, caption: str = None):
 	"""Send voice message to the owner."""
@@ -500,7 +498,6 @@ async def cmd_remind(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		await safe_reply(update, "Usage: /remind 2 times an hour for 4 hours to drink water")
 		return
 		
-	from app.services.agent_actions import parse_and_execute_actions
 	from app.services.llm import chat
 	
 	# Let the LLM parse the natural language into the action tag
@@ -525,7 +522,6 @@ async def cmd_custom(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		await safe_reply(update, "Usage: /custom Every Monday at 12:00 remind me to check the stats")
 		return
 		
-	from app.services.agent_actions import parse_and_execute_actions
 	from app.services.llm import chat
 	
 	prompt = (
@@ -681,10 +677,6 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	)
 	await safe_reply(update, help_text, reply_markup=get_nav_markup())
 
-async def handle_day_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-	await update.callback_query.answer()
-	await cmd_day(update, context)
-
 async def handle_memories_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	await update.callback_query.answer()
 	await cmd_memories(update, context)
@@ -699,20 +691,6 @@ async def cmd_add_topic(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	from app.services.memory import store_memory
 	await store_memory(topic)
 	await safe_reply(update, f"Stored: {topic}")
-
-@owner_only
-async def cmd_evolve(update: Update, context: ContextTypes.DEFAULT_TYPE):
-	evolve_text = (
-		"🧬 *Agent Evolution: Semantic Capabilities*\n\n"
-		"Z operates by emitting the following action tags. These allow the agent to command and evolve the environment:\n\n"
-		"• *Task Management:* `CREATE_TASK`, `CREATE_PROJECT`, `CREATE_BOARD`\n"
-		"• *Scheduling:* `CREATE_EVENT` (Calendar Sync)\n"
-		"• *Social Graph:* `ADD_PERSON` (Inner/Close Circles)\n"
-		"• *Cognition:* `LEARN` (Commit to Semantic Vault)\n"
-		"• *Precision:* `PROXIMITY_TRACK` (Task breakdown & deep-tracking)\n\n"
-		"_\"I don't just chat; I execute. Every interaction is an opportunity to evolve your OS.\"_"
-	)
-	await safe_reply(update, evolve_text)
 
 @owner_only
 async def cmd_purge(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -826,7 +804,6 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 	else:
 		thinking_msg = await update.message.reply_text("<blockquote><i>Thinking...</i></blockquote>", parse_mode="HTML")
 
-	from app.services.agent_actions import parse_and_execute_actions
 	from app.models.db import AsyncSessionLocal
 
 	# Recover Merged History (cross-channel context -- last 10 messages)
@@ -871,9 +848,7 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 	asyncio.create_task(extract_and_store_facts(user_text))
 
 	# Prepend real time (strip any LLM-generated time header)
-	from app.services.timezone import format_time
-	import re
-	clean_reply = re.sub(r'^\d{1,2}:\d{2}\s*[-–]?\s*[^\n]*\n*', '', clean_reply, count=1).strip()
+	clean_reply = strip_llm_time_header(clean_reply)
 	html_reply = _md_to_html(clean_reply)
 	display_reply = f"<b>{format_time()}</b>\n\n{html_reply}"
 
@@ -913,7 +888,6 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 			include_people=True
 		)
 		
-		from app.services.agent_actions import parse_and_execute_actions
 		from app.models.db import AsyncSessionLocal
 		
 		async with AsyncSessionLocal() as db:
@@ -922,9 +896,7 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		chat_histories[chat_id].append({"role": "user", "content": transcript})
 		chat_histories[chat_id].append({"role": "z", "content": response})
 		
-		from app.services.timezone import format_time
-		import re
-		clean_reply = re.sub(r'^\d{1,2}:\d{2}\s*[-–]?\s*[^\n]*\n*', '', clean_reply, count=1).strip()
+		clean_reply = strip_llm_time_header(clean_reply)
 		html_reply = _md_to_html(clean_reply)
 		display_reply = f"📝 <b>Transcript:</b>\n<i>{transcript}</i>\n\n<b>{format_time()}</b>\n\n{html_reply}"
 		

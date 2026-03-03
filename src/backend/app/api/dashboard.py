@@ -1292,6 +1292,35 @@ async def server_info():
 
 
 # --- System Benchmark ---
+
+@router.get("/llm-config")
+async def get_llm_config():
+	"""Return the configured LLM tier setup for the dashboard."""
+	import os
+	return {
+		"tiers": [
+			{
+				"tier": "instant",
+				"model": settings.LLM_MODEL_INSTANT,
+				"use_case": "Greetings, confirmations, trivial Q&A, memory distillation",
+				"threads": int(os.environ.get("LLM_INSTANT_THREADS", "0")),
+			},
+			{
+				"tier": "standard",
+				"model": settings.LLM_MODEL_STANDARD,
+				"use_case": "Normal conversation, moderate reasoning, tool-intent",
+				"threads": int(os.environ.get("LLM_STANDARD_THREADS", "0")),
+			},
+			{
+				"tier": "deep",
+				"model": settings.LLM_MODEL_DEEP,
+				"use_case": "Complex reasoning, briefings, creative, strategic analysis",
+				"threads": int(os.environ.get("LLM_DEEP_THREADS", "0")),
+			},
+		],
+		"provider": settings.LLM_PROVIDER,
+		"deep_timeout_s": settings.DEEP_MODEL_TIMEOUT_S,
+	}
 @router.get("/benchmark/cpu")
 async def benchmark_cpu():
 	"""Fetch VPS CPU info: model, cores, architecture, SIMD flags."""
