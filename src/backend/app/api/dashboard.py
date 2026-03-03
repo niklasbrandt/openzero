@@ -915,6 +915,7 @@ class PersonCreate(BaseModel):
 	country: Optional[str] = None
 	work_times: Optional[str] = None
 	briefing_time: Optional[str] = "08:00"
+	language: Optional[str] = "en"
 
 @router.put("/people/identity")
 async def update_identity(person: PersonCreate, db: AsyncSession = Depends(get_db)):
@@ -935,6 +936,7 @@ async def update_identity(person: PersonCreate, db: AsyncSession = Depends(get_d
 	me.country = person.country
 	me.work_times = person.work_times
 	me.briefing_time = person.briefing_time
+	me.language = person.language
 	me.relationship = "Self"
 	
 	await db.commit()
@@ -1148,6 +1150,146 @@ async def delete_local_event(event_id: str, db: AsyncSession = Depends(get_db)):
 		return {"status": "deleted"}
 	except ValueError:
 		raise HTTPException(status_code=400, detail="Invalid event ID")
+
+# --- System Benchmark ---
+@router.get("/benchmark/cpu")
+async def benchmark_cpu():
+	"""Fetch VPS CPU info: model, cores, architecture, SIMD flags."""
+	import subprocess
+	import platform
+	import os
+
+	info = {
+		"cpu_model": "Unknown",
+		"architecture": platform.machine(),
+		"cores_physical": os.cpu_count() or 0,
+		"cores_logical": os.cpu_count() or 0,
+		"avx2": False,
+		"avx512": False,
+		"sse4_2": False,
+		"flags": [],
+		"platform": platform.system(),
+	}
+
+	try:
+		# Linux: parse /proc/cpuinfo
+		if platform.system() == "Linux":
+			with open("/proc/cpuinfo", "r") as f:
+				cpuinfo = f.read()
+			for line in cpuinfo.split("\n"):
+				if line.startswith("model name"):
+					info["cpu_model"] = line.split(":")[1].strip()
+					break
+			# Parse flags
+			for line in cpuinfo.split("\n"):
+				if line.startswith("flags"):
+					flags = line.split(":")[1].strip().split()
+					info["flags"] = flags
+					info["avx2"] = "avx2" in flags
+					info["avx512"] = any(f.startswith("avx512") for f in flags)
+					info["sse4_2"] = "sse4_2" in flags
+					break
+			# Physical cores via lscpu
+			try:
+				lscpu_out = subprocess.check_output(["lscpu"], text=True, timeout=5)
+				for line in lscpu_out.split("\n"):
+					if "Core(s) per socket:" in line:
+						cores_per = int(line.split(":")[1].strip())
+					if "Socket(s):" in line:
+						sockets = int(line.split(":")[1].strip())
+				info["cores_physical"] = cores_per * sockets
+			except Exception:
+				pass
+		elif platform.system() == "Darwin":
+			try:
+				brand = subprocess.check_output(["sysctl", "-n", "machdep.cpu.brand_string"], text=True, timeout=5).strip()
+				info["cpu_model"] = brand
+				info["cores_physical"] = int(subprocess.check_output(["sysctl", "-n", "hw.physicalcpu"], text=True, timeout=5).strip())
+				info["cores_logical"] = int(subprocess.check_output(["sysctl", "-n", "hw.logicalcpu"], text=True, timeout=5).strip())
+				features = subprocess.check_output(["sysctl", "-n", "machdep.cpu.features"], text=True, timeout=5).strip().lower().split()
+				info["avx2"] = "avx2" in features
+				info["sse4_2"] = "sse4_2" in features or "sse4.2" in features
+			except Exception:
+				pass
+	except Exception:
+		pass
+
+	return info
+
+
+@router.post("/benchmark/llm")
+async def benchmark_llm(tier: str = "instant"):
+	"""Run a fixed-prompt benchmark against a specific LLM tier and measure tokens/second."""
+	import time
+
+	tier_map = {
+		"instant": (settings.LLM_INSTANT_URL, settings.LLM_MODEL_INSTANT),
+		"standard": (settings.LLM_STANDARD_URL, settings.LLM_MODEL_STANDARD),
+		"deep": (settings.LLM_DEEP_URL, settings.LLM_MODEL_DEEP),
+	}
+	if tier not in tier_map:
+		raise HTTPException(status_code=400, detail=f"Unknown tier: {tier}")
+
+	base_url, model_name = tier_map[tier]
+	prompt = "Explain the concept of recursion in exactly three sentences."
+
+	try:
+		start = time.monotonic()
+		first_token_time = None
+		token_count = 0
+
+		async with httpx.AsyncClient(timeout=120) as client:
+			async with client.stream(
+				"POST",
+				f"{base_url}/v1/chat/completions",
+				json={
+					"model": "local",
+					"messages": [{"role": "user", "content": prompt}],
+					"stream": True,
+					"max_tokens": 128,
+					"temperature": 0.1,
+				},
+			) as resp:
+				if resp.status_code != 200:
+					return {"tier": tier, "model": model_name, "error": f"HTTP {resp.status_code}"}
+
+				async for line in resp.aiter_lines():
+					if not line.startswith("data: "):
+						continue
+					payload = line[6:].strip()
+					if payload == "[DONE]":
+						break
+					try:
+						chunk = json.loads(payload)
+						delta = chunk.get("choices", [{}])[0].get("delta", {})
+						content = delta.get("content", "")
+						if content:
+							token_count += 1
+							if first_token_time is None:
+								first_token_time = time.monotonic()
+					except (json.JSONDecodeError, IndexError):
+						continue
+
+		end = time.monotonic()
+		total_s = end - start
+		ttft = (first_token_time - start) if first_token_time else total_s
+		gen_time = (end - first_token_time) if first_token_time else total_s
+		tps = token_count / gen_time if gen_time > 0 else 0
+
+		return {
+			"tier": tier,
+			"model": model_name,
+			"tokens": token_count,
+			"total_seconds": round(total_s, 2),
+			"time_to_first_token": round(ttft, 2),
+			"generation_seconds": round(gen_time, 2),
+			"tokens_per_second": round(tps, 1),
+		}
+	except httpx.TimeoutException:
+		return {"tier": tier, "model": model_name, "error": "Timeout (120s)"}
+	except Exception as e:
+		return {"tier": tier, "model": model_name, "error": str(e)}
+
 
 # --- System Status ---
 @router.get("/system")

@@ -4,132 +4,230 @@
 [![Self-Hosted](https://img.shields.io/badge/Deployment-Self--Hosted-blue.svg)](./BUILD.md)
 [![Privacy First](https://img.shields.io/badge/Privacy-100%25_Local-purple.svg)](#security-and-privacy)
 [![Agent Native](https://img.shields.io/badge/Agent--Native-Pure-black.svg)](https://github.com/niklasbrandt/openzero)
+[![CPU Optimized](https://img.shields.io/badge/CPU--Only-No_GPU_Required-orange.svg)](#local-intelligence)
 
 ## Personal AI Operating System
 
-openZero is a self-hosted agentic platform built for absolute data sovereignty. It synchronizes projects, calendars, and communications within a private infrastructure. The system automates tasks, transcribes voice notes, and coordinates schedules without third party data leakage.
+openZero is a self-hosted agentic platform built for absolute data sovereignty. It runs entirely on your own hardware -- no GPU required, no cloud dependency, no third-party data leakage. The system synchronizes projects, calendars, emails, and communications within a private infrastructure, automating tasks and coordinating schedules around the clock.
 
-The platform is personified as **Z**, an autonomous operator. Z focuses on building, organizing, and executing. It maintains a persistent memory of user preferences and long-term goals, ensuring interactions remain grounded in actual history.
+The platform is personified as **Z**, an autonomous operator who builds, organizes, and executes on your behalf. Z maintains a persistent semantic memory of your preferences, relationships, and long-term goals. Every interaction is grounded in actual history, not re-prompted context windows.
 
-Z directly manages your **unified schedule**. By integrating with your existing **CalDAV** servers or Google account, Z can proactively block time for deep work, identify scheduling conflicts, and remember family milestones like birthdays without having to store them in a separate database. This allows the system to remain your "Command Center" while keeping your sensitive temporal data on servers you control.
+Z directly manages your **unified schedule** by integrating with existing **CalDAV** servers (Nextcloud, Fastmail, Baikal) or your Google account. Z proactively blocks time for deep work, identifies scheduling conflicts, detects events embedded in emails, and remembers family milestones like birthdays -- automatically creating tasks when they approach. Your sensitive temporal data never leaves servers you control.
 
-Every morning, the system delivers a local briefing summarizing priority tasks and family commitments. Users control the environment via a visual dashboard or a mobile Kanban app, secured inside a Zero Trust network. Interaction occurs primarily through a mobile messenger bot or the integrated dashboard chat UI.
+Every weekday morning, Z delivers a **multi-modal briefing** -- a structured text summary plus a high-quality voice note -- covering priority tasks, calendar events, weather, email digests, social circle updates, and a rotating mental calibration exercise. Users control the environment via a visual **dashboard** or a mobile **Kanban app** (Planka PWA), secured inside a Zero Trust mesh network. Primary interaction happens through a **Telegram bot** or the integrated dashboard chat UI.
 
 ## What it does
 
-The system runs 24/7 on a remote server or local homelab. It links email, calendars, and memory without corporate oversight.
+The system runs 24/7 on a remote VPS or local homelab. It links email, calendars, project boards, weather, and semantic memory without corporate oversight.
 
-- **Security & Zero Trust:** OpenZero avoids opening public ports. Instead, it creates a private **Tailscale** mesh network. Your phone and laptop connect as if they were in the same room as your VPS. This provides absolute encryption and eliminates the need for managing certificates for local-only names.
-- **Private DNS (Pi-hole):** To support vanity domains like `http://open.zero`, the system uses an internal **Pi-hole** instance. By configuring your Tailscale network to use the VPS as a nameserver for the `open.zero` domain, you get "Split DNS" behavior — your phone knows how to find the server without global DNS record leakage.
-- **The Hub:** A central board pulls high-priority tasks from all other projects, highlighting exactly what needs attention today.
-- **Calendar & Sync:** OpenZero features a unified schedule that merges **Google Calendar**, private **CalDAV** servers (Nextcloud/Fastmail), and local database events into a single, deduplicated view for Z to act upon.
-- **Local Intelligence:** A 3-tier llama.cpp architecture (instant/standard/deep) runs optimized GGUF models on local hardware. Cloud reasoning is only engaged via a "Disclosure Proposal" workflow for shared memories.
-- **Voice and Text:** Voice notes allow local transcription via Whisper.
-- **Multi-Modal Briefings:** Local TTS summarizes the day in a high quality voice note.
+### Zero Trust Network
+
+openZero avoids opening public ports. Instead, it creates a private **Tailscale** mesh network. Your phone and laptop connect as if they were in the same room as your server. This provides end-to-end encryption and eliminates the need for managing TLS certificates for internal names.
+
+To support vanity domains like `http://open.zero`, the system uses an internal **Pi-hole** instance. By configuring Tailscale's Split DNS to use the VPS as a nameserver for the `open.zero` domain, your devices resolve the server without any global DNS record leakage.
+
+### Local Intelligence
+
+A 3-tier **llama.cpp** architecture runs optimized GGUF models directly on your CPU:
+
+| Tier | Model | Purpose | Typical Speed |
+| :--- | :---- | :------ | :------------ |
+| **Instant** | phi-4-mini (Q4_K_M) | Fast confirmations, email summaries, nudges | 5-12 tok/s |
+| **Standard** | Llama 3.1 8B (Q4_K_M) | Conversational AI, task planning, agent actions | 2-5 tok/s |
+| **Deep** | Qwen 2.5 14B (Q4_K_M) | Strategic reviews, complex reasoning, quarterly plans | 1-3 tok/s |
+
+The system is specifically tuned for **CPU-only environments** with SIMD-aware quantization. On startup, it auto-detects AVX2/AVX-512 instruction sets and configures thread counts per tier. A built-in **hardware benchmark widget** in the dashboard measures real tokens/second on your exact hardware, with per-tier testing and SIMD capability badges.
+
+Cloud reasoning is only engaged via a "Disclosure Proposal" workflow for shared memories -- never silently.
+
+### Dashboard
+
+A **TypeScript** web application built with native Web Components (Shadow DOM) and served via Vite:
+
+- **Chat Interface** -- Direct conversation with Z, with streaming responses and full command support.
+- **Life Overview** -- Real-time project tree, social circle summary, and 3-day timeline in a unified grid.
+- **Calendar Agenda** -- Merged view of Google Calendar, CalDAV, and local events with inline event creation.
+- **Memory Search** -- Semantic search across the knowledge vault with result previewing.
+- **Briefing History** -- Archive of all daily, weekly, monthly, quarterly, and yearly briefings.
+- **Circle Manager** -- Manage Inner Circle (family) and Close Circle (friends) with birthday tracking, relationship context, and per-person notes.
+- **Email Rules** -- Pattern-based email triage engine: mark senders as Urgent (instant Telegram alert + auto-draft reply), Summarize (daily briefing digest), or Ignore.
+- **User Profile** -- Identity editor with language selector, briefing time, timezone, and personal context.
+- **Hardware Benchmark** -- CPU identification, SIMD instruction badges, and per-tier LLM throughput measurement with color-coded tok/s results.
+- **Onboarding Wizard** -- Step-by-step setup tracker for profile, inner circle, and calendar integration. Dismissable once complete.
+- **Planka SSO** -- Background auto-login bridge to the Kanban app via hidden iframe redirect, so Planka is always authenticated.
+
+### Operator Board
+
+A centralized **hub board** that pulls high-priority tasks from all project boards into a single view. The board auto-syncs on a configurable interval, so the "Today" list always reflects what needs attention right now. Z monitors this board and sends **proactive follow-up nudges** every 3 hours during work hours for any uncompleted items.
+
+### Proactive Automation
+
+Z does not wait to be asked. The system runs scheduled automation cycles that act on your data:
+
+- **Morning Briefing** (Mon-Fri, configurable time) -- Gathers projects, calendar, weather, emails, social circle birthdays, and recent memories into a structured prompt. Generates a text briefing and a TTS voice note. Includes a rotating **mental calibration exercise** (gratitude, breathing, visualization, journaling) and a **closing literary reflection** from authors like Frost, Camus, Rumi, and Aurelius.
+- **Contextual Automation** -- Scans circle calendars for upcoming birthdays, deadlines, and priority events within 3 days and auto-creates Kanban tasks.
+- **Email Polling** (every 10 minutes) -- Fetches unread emails via Gmail API, applies user-defined rules, detects embedded calendar events (with approval buttons), and auto-drafts replies for urgent senders.
+- **Proactive Follow-ups** (every 3 hours, 9AM-9PM) -- Checks the Operator Board "Today" list and sends warm, direct mission-check nudges via Telegram.
+- **Proximity Tracking** -- Time-boxed mission sessions with per-segment milestone nudges and a final wrap-up report. Each segment deadline triggers a targeted progress check.
+- **Weekly Review** (Sundays) -- Summarizes progress, identifies stagnant projects (no activity in 7+ days), and proposes micro-tasks to unblock them.
+- **Monthly / Quarterly / Yearly Reviews** -- Escalating strategic analysis at each cadence, stored as browsable briefings.
+- **Daily Backup** (4 AM) -- Automated system backup script execution.
+- **Timezone Sync** (every 4 hours) -- Re-detects user timezone to handle travel and DST transitions.
+- **Custom Persistent Tasks** -- User-defined cron or interval schedules created via `/custom` that survive restarts (stored in database, hot-loaded into the scheduler).
+
+### Semantic Action Tags
+
+Z uses a custom **Semantic Action Tag** system for agent actions. When the user requests a task, event, or project, the LLM emits structured tags in its response that the backend parses and executes:
+
+- `CREATE_TASK` -- Creates a card on any Planka board/list.
+- `CREATE_PROJECT` / `CREATE_BOARD` / `CREATE_LIST` -- Scaffolds entire project structures in bulk.
+- `CREATE_EVENT` -- Creates calendar events (synced to CalDAV and local DB).
+- `LEARN` -- Silently commits a distilled fact to the semantic vault when the user shares something meaningful.
+- `ADD_PERSON` -- Adds a new contact to the Inner or Close circle.
+- `REMIND` -- Sets a temporary recurring reminder with configurable interval and duration.
+- `SCHEDULE_CUSTOM` -- Creates a persistent cron/interval task.
+- `PROXIMITY_TRACK` -- Initiates a high-precision time-boxed mission with per-segment milestones.
+
+Tags are invisible to the user. Z never mentions them unless explicitly asked via `/protocols`.
+
+### Multi-Language Support
+
+Z speaks your language. The dashboard includes a language selector supporting **20 languages** across global and Western regions. The chosen language propagates to all AI responses, briefings, and notifications with zero performance overhead for the default English path.
+
+**Global:** English, Mandarin Chinese, Hindi, Spanish, French, Arabic, Portuguese, Russian, Japanese, German.
+**Western:** Italian, Dutch, Polish, Swedish, Greek, Romanian, Turkish, Czech, Danish, Norwegian.
+
+### Calendar and Scheduling
+
+openZero features a unified schedule that merges **Google Calendar**, private **CalDAV** servers (Nextcloud, Fastmail, Baikal, Radicale), and local database events into a single, deduplicated view. Z creates events via voice or text commands, and the system syncs bidirectionally with your CalDAV server.
+
+The calendar engine also performs **proactive event detection**: when an incoming email contains date/time references, Z extracts them and presents approval buttons via Telegram ("Add to Calendar" / "Ignore") before committing.
+
+### Weather Intelligence
+
+Hourly forecasts from **Open-Meteo** (no API key required) are segmented into morning, afternoon, and evening blocks with precipitation probability and wind data. The system auto-detects **travel context** from calendar events containing keywords like "flight to" or "trip to" and fetches weather for the destination city instead of the home location.
+
+### Voice and Text
+
+- **Speech-to-Text:** Local transcription via Whisper. Voice notes sent to the Telegram bot are transcribed and processed as regular messages.
+- **Text-to-Speech:** Coqui TTS generates high-quality audio briefings delivered as voice messages alongside the text version.
 
 ## Architecture
 
-The stack focuses on performance and privacy:
+The stack is optimized for single-server CPU-only deployment with full privacy:
 
-- **Agent-Native Engineering:** Built with LangGraph. Z acts as the core autonomous operator, using multi-step planning loops to command and evolve the environment. It is built to be interacted with primarily by agents.
-- **Memory:** Qdrant stores semantic vectors. Retrieval depends on meaning rather than keywords.
-- **Tasking:** Planka provides the visual Kanban engine and runs as a secure PWA.
-- **Network:** Traefik manages routing and Pi-hole blocks tracking. Tailscale secures the perimeter.
-- **Async Execution:** Redis handles the task queue. Background reasoning keeps the UI responsive.
+- **Semantic Action Tags:** Z acts as the core autonomous operator, using a custom tag-based tool system to create tasks, events, projects, and memories. The LLM emits structured tags that the backend parses and executes asynchronously.
+- **Memory:** Qdrant stores semantic vectors. Retrieval depends on meaning rather than keywords. A guardrail filter prevents noise (greetings, confirmations) from polluting the vault.
+- **Tasking:** Planka provides the visual Kanban engine and runs as a secure PWA. Background SSO auto-login from the dashboard keeps sessions seamless.
+- **Scheduling:** APScheduler manages all recurring jobs (briefings, email polling, follow-ups, backups, timezone sync, custom tasks) with timezone-aware triggers and DST handling.
+- **Network:** Traefik manages routing and Pi-hole blocks tracking. Tailscale secures the perimeter with a Zero Trust mesh.
+- **Async Execution:** Redis powers the Celery task queue. Background reasoning keeps the UI responsive during long-running LLM operations.
 
 ## Tech Stack
 
-| Component              | Technology                                                                                                                                                                                                                                                                             | Management Value                                                          |
-| :--------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------ |
-| **Core OS**            | ![Ubuntu](https://img.shields.io/badge/Ubuntu-E9433F?style=flat&logo=ubuntu&logoColor=white) ![Python](https://img.shields.io/badge/Python-3776AB?style=flat&logo=python&logoColor=white) ![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white) | Stable, containerized foundation using Python and Linux.                  |
-| **Agent-Native Logic** | ![llama.cpp](https://img.shields.io/badge/llama.cpp-black?style=flat) ![LangGraph](https://img.shields.io/badge/LangGraph-orange?style=flat)                                                                                                                                           | 3-tier local LLM (instant/standard/deep) via llama-server with streaming. |
-| **Storage**            | ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=flat&logo=postgresql&logoColor=white) ![Qdrant](https://img.shields.io/badge/Qdrant-red?style=flat)                                                                                                                 | Relational data paired with high-dimensional vector memory.               |
-| **Execution**          | ![Redis](https://img.shields.io/badge/Redis-DC382D?style=flat&logo=redis&logoColor=white) ![Celery](https://img.shields.io/badge/Celery-37814A?style=flat&logo=celery&logoColor=white)                                                                                                 | Asynchronous task delegation and high-speed message brokering.            |
-| **Networking**         | ![Traefik](https://img.shields.io/badge/Traefik-2496ED?style=flat&logo=traefik&logoColor=white) ![Tailscale](https://img.shields.io/badge/Tailscale-4A23B6?style=flat&logo=tailscale&logoColor=white)                                                                                  | Zero Trust perimeter with automated internal routing and TLS.             |
-| **Observability**      | ![Pi-hole](https://img.shields.io/badge/Pi--hole-96060C?style=flat&logo=pi-hole&logoColor=white)                                                                                                                                                                                       | Mandatory DNS sinkhole to identify and block container telemetry.         |
-| **Tasking**            | ![Planka](https://img.shields.io/badge/Planka-blue?style=flat)                                                                                                                                                                                                                         | Self-hosted Kanban engine accessible as a mobile PWA.                     |
-| **Voice**              | ![Whisper](https://img.shields.io/badge/Whisper-black?style=flat) ![TTS](https://img.shields.io/badge/Coqui_TTS-green?style=flat)                                                                                                                                                      | Local speech-to-text and high-quality audio generation.                   |
+| Component | Technology | Purpose |
+| :--- | :--- | :--- |
+| **Core OS** | ![Ubuntu](https://img.shields.io/badge/Ubuntu-E9433F?style=flat&logo=ubuntu&logoColor=white) ![Python](https://img.shields.io/badge/Python-3776AB?style=flat&logo=python&logoColor=white) ![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white) | Containerized foundation on Linux with Python backend. |
+| **Intelligence** | ![llama.cpp](https://img.shields.io/badge/llama.cpp-black?style=flat) | 3-tier local LLM (instant/standard/deep) via llama-server with streaming. CPU-only, SIMD-optimized. |
+| **Dashboard** | ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white) ![Vite](https://img.shields.io/badge/Vite-646CFF?style=flat&logo=vite&logoColor=white) | Native Web Components (Shadow DOM) with hot-reload development. |
+| **Mobile** | ![Telegram](https://img.shields.io/badge/Telegram-2CA5E0?style=flat&logo=telegram&logoColor=white) | Primary mobile interface via long-polling bot with inline keyboards. |
+| **Storage** | ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=flat&logo=postgresql&logoColor=white) ![Qdrant](https://img.shields.io/badge/Qdrant-red?style=flat) | Relational data paired with high-dimensional semantic vector memory. |
+| **Execution** | ![Redis](https://img.shields.io/badge/Redis-DC382D?style=flat&logo=redis&logoColor=white) ![Celery](https://img.shields.io/badge/Celery-37814A?style=flat&logo=celery&logoColor=white) | Asynchronous task delegation and high-speed message brokering. |
+| **Scheduling** | ![APScheduler](https://img.shields.io/badge/APScheduler-green?style=flat) | Timezone-aware cron/interval job scheduler with DST handling. |
+| **Networking** | ![Traefik](https://img.shields.io/badge/Traefik-2496ED?style=flat&logo=traefik&logoColor=white) ![Tailscale](https://img.shields.io/badge/Tailscale-4A23B6?style=flat&logo=tailscale&logoColor=white) | Zero Trust perimeter with automated internal routing. |
+| **DNS** | ![Pi-hole](https://img.shields.io/badge/Pi--hole-96060C?style=flat&logo=pi-hole&logoColor=white) | DNS sinkhole blocking container telemetry and enabling vanity domains. |
+| **Tasking** | ![Planka](https://img.shields.io/badge/Planka-blue?style=flat) | Self-hosted Kanban engine accessible as a mobile PWA. |
+| **Voice** | ![Whisper](https://img.shields.io/badge/Whisper-black?style=flat) ![TTS](https://img.shields.io/badge/Coqui_TTS-green?style=flat) | Local speech-to-text and high-quality audio generation. |
+| **Weather** | ![Open-Meteo](https://img.shields.io/badge/Open--Meteo-blue?style=flat) | Hourly forecasts with travel-aware location detection. No API key needed. |
 
 ```
-┌─────────────────────────────────────────────┐
-│               Your Devices                  │
-│    (Phone / Laptop / Tablet)                │
-│                                             │
-│    Messenger / Dashboard ── Chat with AI    │
-│    Planka PWA    ──── Kanban Board          │
-└──────────────┬───────────────────────────────┘
-               │  Tailscale VPN (encrypted)
-               ▼
-┌─────────────────────────────────────────────┐
-│                VPS Provider                 │
-│                                             │
-│    ┌─────────────────────────────────────┐  │
-│    │        Traefik / Pi-hole            │  │
-│    └─────────────────┬───────────────────┘  │
-│                      ▼                      │
-│    ┌─────────────────────────────────────┐  │
-│    │  FastAPI Backend / LangGraph Agent  │  │
-│    │    ├── Messenger Bot (polling)      │  │
-│    │    ├── Redis Task Queue             │  │
-│    │    └── LLM Client → llama-server    │  │
-│    └─────────────────────────────────────┘  │
-│                                             │
-│    ┌──────────┐  ┌────────┐  ┌──────────┐   │
-│    │ Postgres │  │ Qdrant │  │ llama.cpp│   │
-│    │ (data)   │  │(memory)│  │   (AI)   │   │
-│    └──────────┘  └────────┘  └──────────┘   │
-│                                             │
-│    ┌──────────┐  ┌────────┐                 │
-│    │ Whisper  │  │  TTS   │ ← Voice Engines │
-│    │ (STT)    │  │ (Audio)│                 │
-│    └──────────┘  └────────┘                 │
-│                                             │
-│    ┌──────────┐  ┌────────┐                 │
-│    │  Planka  │  │ Redis  │ ← Pub/Sub &     │
-│    │(Tasking) │  │(Queue) │    Storage      │
-│    └──────────┘  └────────┘                 │
-│                                             │
-│    External APIs:                           │
-│     → API via Background Async Worker       │
-└─────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────┐
+│                 Your Devices                     │
+│      (Phone / Laptop / Tablet)                   │
+│                                                  │
+│   Telegram Bot ──── Chat, Voice, Commands        │
+│   Dashboard    ──── Web UI, Benchmark, Config    │
+│   Planka PWA   ──── Kanban Boards                │
+└───────────────┬──────────────────────────────────┘
+                │  Tailscale VPN (encrypted mesh)
+                ▼
+┌──────────────────────────────────────────────────┐
+│               VPS / Homelab                      │
+│                                                  │
+│   ┌──────────────────────────────────────────┐   │
+│   │         Traefik / Pi-hole                │   │
+│   │    (Routing, DNS, Telemetry Blocking)    │   │
+│   └──────────────────┬───────────────────────┘   │
+│                      ▼                           │
+│   ┌──────────────────────────────────────────┐   │
+│   │   FastAPI Backend + APScheduler          │   │
+│   │     ├── Telegram Bot (long-polling)      │   │
+│   │     ├── Semantic Action Tag Engine       │   │
+│   │     ├── Email Polling + Rule Engine      │   │
+│   │     ├── Morning Briefing Generator       │   │
+│   │     ├── Proactive Follow-up System       │   │
+│   │     └── Dashboard API (REST)             │   │
+│   └──────────────────────────────────────────┘   │
+│                                                  │
+│   ┌───────────┐  ┌─────────┐  ┌──────────────┐  │
+│   │ PostgreSQL│  │  Qdrant │  │  llama.cpp   │  │
+│   │  (data)   │  │ (memory)│  │ (3-tier AI)  │  │
+│   └───────────┘  └─────────┘  └──────────────┘  │
+│                                                  │
+│   ┌───────────┐  ┌─────────┐  ┌──────────────┐  │
+│   │  Whisper  │  │  Coqui  │  │   Planka     │  │
+│   │  (STT)    │  │  (TTS)  │  │  (Kanban)    │  │
+│   └───────────┘  └─────────┘  └──────────────┘  │
+│                                                  │
+│   ┌───────────┐  ┌─────────┐                     │
+│   │   Redis   │  │ Celery  │  Background Workers │
+│   │  (Queue)  │  │ (Tasks) │                     │
+│   └───────────┘  └─────────┘                     │
+│                                                  │
+│   External APIs (outbound only):                 │
+│     Gmail API, Google Calendar, Open-Meteo       │
+└──────────────────────────────────────────────────┘
 ```
 
 ## Commands
 
-| Command      | Description                                                                                                                                                                                                                       |
-| :----------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/help`      | Display this overview of operator controls.                                                                                                                                                                                       |
-| `/start`     | System status check and heartbeat.                                                                                                                                                                                                |
-| `/day`       | Proactive morning briefing (Contextual summary).                                                                                                                                                                                  |
-| `/week`      | Strategic review of all projects and roadmaps.                                                                                                                                                                                    |
-| `/month`     | High-level 30-day mission review.                                                                                                                                                                                                 |
-| `/quarter`   | Strategic 90-day review and roadmap planning.                                                                                                                                                                                     |
-| `/custom`    | Create a persistent scheduled task that runs indefinitely (e.g. every Monday at 10am).                                                                                                                                            |
-| `/year`      | Yearly goal setting based on project themes.                                                                                                                                                                                      |
-| `/tree`      | Full life hierarchy and workspace overview.                                                                                                                                                                                       |
-| `/think`     | Complex reasoning with human-in-the-loop approval.                                                                                                                                                                                |
-| `/search`    | Conceptual search of the semantic knowledge vault.                                                                                                                                                                                |
-| `/memories`  | List all core knowledge currently in permanent memory.                                                                                                                                                                            |
-| `/unlearn`   | Refine Z's internal context by evolving past points in the vault.                                                                                                                                                                 |
-| `/add`       | Commit specific facts to Z's permanent knowledge vault.                                                                                                                                                                           |
-| `/remind`    | Set a temporary recurring reminder that expires after a set duration (e.g., every 30 min for 4h).                                                                                                                                 |
-| `/protocols` | Inspect Z's agentic tools and Semantic Action Tags.                                                                                                                                                                               |
-| `/purge`     | ⚠️ Permanently delete all semantic memories from the vault (Qdrant). Deletes all stored facts, learned context, and `/add` entries. Does **not** affect task boards, people, or briefing history. Requires explicit confirmation. |
+All commands are available via the Telegram bot and the dashboard chat interface.
 
-## Memory & Intelligence Principles
+| Command | Description |
+| :--- | :--- |
+| `/help` | Display the full overview of operator controls. |
+| `/start` | System status check and heartbeat. |
+| `/day` | Trigger the morning briefing (calendar, weather, emails, projects, calibration, voice note). |
+| `/week` | Weekly strategic review with stagnation detection for dormant projects. |
+| `/month` | 30-day mission review with initiative tracking. |
+| `/quarter` | 90-day strategic review and roadmap planning. |
+| `/year` | Yearly goal setting based on project themes and trajectory analysis. |
+| `/custom` | Create a persistent scheduled task with cron or interval syntax (e.g., every Monday at 10am). Survives restarts. |
+| `/tree` | Full life hierarchy: projects, boards, lists, and social circles. |
+| `/think` | Deep reasoning using the 14B model with human-in-the-loop approval. |
+| `/search` | Semantic search of the knowledge vault -- finds by meaning, not keywords. |
+| `/memories` | List all core knowledge currently in permanent memory. |
+| `/unlearn` | Refine Z's memory by evolving or removing specific points in the vault. |
+| `/add` | Commit specific facts to Z's permanent knowledge vault (bypasses the noise filter). |
+| `/remind` | Set a temporary recurring reminder with interval and expiry (e.g., every 30 min for 4h). |
+| `/protocols` | Inspect Z's Semantic Action Tags and available agentic tools. |
+| `/purge` | Permanently delete all semantic memories from the vault (Qdrant). Does **not** affect task boards, people, or briefing history. Requires explicit confirmation. |
+
+## Memory and Intelligence Principles
 
 Z follows a strict **"Core Knowledge, not Noise"** logic for long-term intelligence:
 
-- **Permanent Memory:** Preferences, family members, project goals, and life milestones are committed to the **Semantic Vault** (Qdrant).
-- **Transient Traffic:** Status updates ("I'm at the store"), transient chat history, and bot responses are **intentionally ignored** by the memory vault to prevent "hallucination loops" and context pollution.
-- **The Guardrail:** Automatic filtering via a local reasoning pass ensures trivialities like "thanks" or "hello" never hit the vault.
+- **Permanent Memory:** Preferences, family members, project goals, health facts, and life milestones are committed to the **Semantic Vault** (Qdrant). Z learns proactively -- when you mention "I am dust allergic" in conversation, it is silently distilled and stored.
+- **Transient Traffic:** Status updates ("I'm at the store"), transient chat history, and bot responses are **intentionally ignored** by the memory vault to prevent hallucination loops and context pollution.
+- **The Guardrail:** Automatic filtering via a local reasoning pass ensures trivialities like "thanks" or "hello" never hit the vault. The system distinguishes between factual data worth keeping (preferences, people, plans) and ephemeral chatter.
 - **Manual Control:** Use `/add` to explicitly override the filter when you have critical context Z must never forget.
+- **Memory Review:** Each morning briefing includes a "New Memories (Last 24h)" section, showing exactly what was stored. Use `/unlearn` to correct any mistakes.
 
 ## Maintenance
 
 ### Backups and Migration
 
-Environment variables and raw Docker volumes require archiving to protect data integrity.
+The system runs an **automated backup** every night at 4 AM. Environment variables and raw Docker volumes require archiving to protect data integrity.
 
 - **Archiving:** Stop services via `docker compose stop` before creating tarballs of `.env` and named volumes (pgdata, qdrant_storage, planka_data).
 - **Moving Data:** To migrate, clone the repo on the new host, transfer the `.env` and `.env.planka` files, and extract volume archives into the new Docker environment.
@@ -137,41 +235,48 @@ Environment variables and raw Docker volumes require archiving to protect data i
 
 ## Setting it up
 
-A VPS with 24GB RAM or a local Mac Mini/homelab is recommended.
+A VPS with **24GB RAM** or a local Mac Mini/homelab is recommended. The entire stack is optimized for **CPU-only inference** using quantized GGUF models with llama.cpp. No GPU required -- the system auto-detects AVX2/AVX-512 SIMD capabilities and configures thread counts per tier. Use the built-in benchmark widget to measure actual throughput on your hardware.
 
-1.  **Deploy:** Run `docker compose up -d`.
-2.  **Secure:** Link the server to the Tailscale network.
-3.  **Configure:** Connect calendars and define the user profile.
+Typical throughput on a 4-core EPYC VPS: 5-12 tok/s (instant tier), 2-5 tok/s (standard tier), 1-3 tok/s (deep tier).
 
-### 📅 Private Calendar Setup (CalDAV)
+1. **Deploy:** Run `docker compose up -d`. First-time model downloads happen automatically per tier.
+2. **Secure:** Link the server to the Tailscale network. Configure Pi-hole Split DNS for your vanity domain.
+3. **Configure:** Open the dashboard, complete the onboarding wizard, connect calendars, and set your language and briefing time.
 
-OpenZero excels at keeping your schedule private. To sync with your existing self-hosted calendar:
+### Private Calendar Setup (CalDAV)
 
-1.  **Find your URL**:
-    - **Nextcloud**: Open Calendar -> Settings icon -> "Copy primary CalDAV address".
-    - **iCloud**: Use your full iCloud email and an App-Specific Password.
-    - **Baikal / Radicale**: Copy the specific calendar collection link (ending in `.php/dav/...`).
-2.  **Edit your `.env`**: Fill in `CALDAV_URL`, `CALDAV_USERNAME`, and `CALDAV_PASSWORD`.
-3.  **Sync**: The system will automatically fetch events every few minutes and when creating new entries through Z.
+openZero keeps your schedule private. To sync with your existing self-hosted calendar:
+
+1. **Find your URL:**
+	- **Nextcloud:** Open Calendar, Settings icon, "Copy primary CalDAV address".
+	- **iCloud:** Use your full iCloud email and an App-Specific Password.
+	- **Baikal / Radicale:** Copy the specific calendar collection link (ending in `.php/dav/...`).
+	- **Fastmail:** Use Settings, Calendars, CalDAV connection details.
+2. **Edit your `.env`:** Fill in `CALDAV_URL`, `CALDAV_USERNAME`, and `CALDAV_PASSWORD`.
+3. **Sync:** The system automatically fetches events every few minutes and syncs new entries created through Z.
 
 ### Deployment Expectations
 
-First-time builds or updates following major architectural changes incur significant durations:
+First-time builds and model downloads incur significant durations:
 
-- **Cold Builds:** Using `--no-cache` or major dependency updates (e.g., adding LangGraph, Redis) can take 45–60 minutes for `pip` resolution.
-- **Media Engines:** Pulling the voice engines (Whisper and Coqui TTS) requires downloading approximately 6GB of data. Depending on network speed, this may total 2–3 hours for a complete first-time setup.
-- **Subsequent Starts:** Once images are cached, the stack starts in seconds.
+- **Cold Builds:** Using `--no-cache` or major dependency updates can take 45-60 minutes for pip resolution.
+- **Model Downloads:** The 3-tier LLM models total approximately 12GB (phi-4-mini ~2.5GB, Llama 8B ~4.5GB, Qwen 14B ~8.5GB). Download time depends on your server's bandwidth.
+- **Media Engines:** Pulling the voice engines (Whisper and Coqui TTS) requires approximately 6GB of model data. Depending on network speed, this may total 2-3 hours for a complete first-time setup.
+- **Subsequent Starts:** Once images and models are cached, the stack starts in seconds.
 
 ## Security and Privacy
 
 The build follows a strict privacy-first model:
 
-- AI processing remains local by default.
-- Tailscale prevents opening public ports.
-- Backups remain local and under physical control.
+- **All AI processing remains local** by default. No data leaves your server unless you explicitly use Gmail/Google Calendar APIs.
+- **Tailscale** prevents opening public ports. The VPS has zero exposed services on the public internet.
+- **Pi-hole** blocks telemetry from all containers, ensuring no Docker image phones home.
+- **Backups** remain local and under physical control. No cloud backup service is used.
+- **No analytics, no tracking, no third-party cookies.** The dashboard is a static SPA served from your own server.
+- **Disclosure Proposal workflow** ensures cloud reasoning is never engaged silently for shared memories.
 
 ## Contributors
 
-[![Niklas Brandt](https://github.com/niklasbrandt.png?size=40)](https://n1991.com) **[Niklas Brandt](https://n1991.com)** — Creator
+[![Niklas Brandt](https://github.com/niklasbrandt.png?size=40)](https://n1991.com) **[Niklas Brandt](https://n1991.com)** -- Creator
 
 Engineering, design, and privacy advocacy contributions are welcome. Report issues or star the repository to support the project.
