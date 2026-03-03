@@ -51,47 +51,76 @@ export class SoftwareStatus extends HTMLElement {
 		const d = this.data;
 		const tiers = d.tiers || {};
 
+		// LLM tier config (fetch model names)
+		const llmCfg = d.llm_config || {};
+		const tierList: any[] = llmCfg.tiers || [];
+		const modelFor = (tier: string) => {
+			const t = tierList.find((x: any) => x.tier === tier);
+			return t ? t.model : '?';
+		};
+
 		// Service health grid
 		const services = [
 			{
-				name: 'LLM Instant',
+				name: 'Instant',
+				model: modelFor('instant'),
 				status: (tiers.instant || {}).status === 'ok' || (tiers.instant || {}).status === 'online' || (tiers.instant || {}).status === 'no slot available' ? 'online' : 'offline',
 				detail: d.llm_provider === 'local' ? `${(tiers.instant || {}).threads || '?'}T` : 'cloud',
-				tip: 'llama-server instance for fast, trivial queries (phi-4-mini). Used for greetings, confirmations, memory distillation.',
+				tip: 'Fast, trivial queries. Greetings, confirmations, memory distillation.',
+				isLlm: true,
 			},
 			{
-				name: 'LLM Standard',
+				name: 'Standard',
+				model: modelFor('standard'),
 				status: (tiers.standard || {}).status === 'ok' || (tiers.standard || {}).status === 'online' || (tiers.standard || {}).status === 'no slot available' ? 'online' : 'offline',
 				detail: d.llm_provider === 'local' ? `${(tiers.standard || {}).threads || '?'}T` : 'cloud',
-				tip: 'llama-server instance for normal conversation and tool-intent (llama3.1:8b). The workhorse tier.',
+				tip: 'Normal conversation, moderate reasoning, tool-intent. The workhorse tier.',
+				isLlm: true,
 			},
 			{
-				name: 'LLM Deep',
+				name: 'Deep',
+				model: modelFor('deep'),
 				status: (tiers.deep || {}).status === 'ok' || (tiers.deep || {}).status === 'online' || (tiers.deep || {}).status === 'no slot available' ? 'online' : 'offline',
 				detail: d.llm_provider === 'local' ? `${(tiers.deep || {}).threads || '?'}T` : 'cloud',
-				tip: 'llama-server instance for complex reasoning (qwen2.5:14b). Used for briefings, planning, analysis.',
+				tip: 'Complex reasoning, briefings, planning, strategic analysis.',
+				isLlm: true,
 			},
 			{
 				name: 'Backend',
+				model: '',
 				status: d.status === 'online' ? 'online' : 'offline',
 				detail: `Provider: ${d.llm_provider || 'local'}`,
 				tip: 'FastAPI backend serving dashboard, Telegram bot, scheduled tasks, and LLM routing.',
+				isLlm: false,
 			},
 			{
 				name: 'Memory',
+				model: '',
 				status: (d.memory_points || 0) >= 0 ? 'online' : 'offline',
 				detail: `${d.memory_points || 0} pts`,
-				tip: 'Qdrant vector database storing semantic long-term memory. Each "point" is an embedded memory fragment.',
+				tip: 'Qdrant vector database storing semantic long-term memory.',
+				isLlm: false,
 			},
 			{
 				name: 'Identity',
+				model: '',
 				status: d.identity_active ? 'online' : 'warning',
 				detail: d.identity_active ? 'Active' : 'Not set',
-				tip: 'Whether a Subject Zero identity profile has been configured. Required for personalized responses.',
+				tip: 'Subject Zero identity profile. Required for personalized responses.',
+				isLlm: false,
 			},
 		];
 
-		const serviceGrid = services.map(s => `
+		const serviceGrid = services.map(s => s.isLlm ? `
+			<div class="svc-item svc-llm has-tip" data-tip="${s.tip}" tabindex="0">
+				<div class="svc-row">
+					<span class="svc-dot ${s.status}"></span>
+					<span class="svc-name">${s.name}</span>
+					<span class="svc-detail">${s.detail}</span>
+				</div>
+				<span class="svc-model">${s.model}</span>
+			</div>
+		` : `
 			<div class="svc-item has-tip" data-tip="${s.tip}" tabindex="0">
 				<span class="svc-dot ${s.status}"></span>
 				<span class="svc-name">${s.name}</span>
@@ -114,24 +143,8 @@ export class SoftwareStatus extends HTMLElement {
 			</div>
 		`).join('');
 
-		// LLM tier config
-		const llmCfg = d.llm_config || {};
-		const tierList = llmCfg.tiers || [];
-		const tierColors: Record<string, string> = { instant: '#14B8A6', standard: '#3b82f6', deep: '#a78bfa' };
-		const tiersHtml = tierList.length > 0 ? tierList.map((t: any) => `
-			<div class="tier-row has-tip" data-tip="${t.use_case}">
-				<span class="tier-badge" style="background: ${tierColors[t.tier] || '#666'}">${t.tier}</span>
-				<span class="tier-model">${t.model}</span>
-				<span class="tier-threads">${t.threads}T</span>
-			</div>
-		`).join('') : '<div class="empty">No tiers configured.</div>';
-
 		el.innerHTML = `
 			<div class="svc-grid">${serviceGrid}</div>
-			<div class="stack-section">
-				<span class="section-label">${this.tr('intelligence', 'Intelligence Tiers')}</span>
-				<div class="tier-list">${tiersHtml}</div>
-			</div>
 			<div class="stack-section">
 				<span class="section-label">${this.tr('stack', 'Stack')}</span>
 				<div class="stack-grid">${stackHtml}</div>
@@ -235,6 +248,24 @@ export class SoftwareStatus extends HTMLElement {
 					border-radius: 0.4rem;
 					cursor: help;
 				}
+				.svc-llm {
+					flex-direction: column;
+					align-items: stretch;
+					gap: 0.2rem;
+					padding: 0.55rem 0.65rem;
+				}
+				.svc-llm .svc-row {
+					display: flex;
+					align-items: center;
+					gap: 0.4rem;
+				}
+				.svc-model {
+					font-size: 0.82rem;
+					font-weight: 600;
+					color: rgba(255, 255, 255, 0.85);
+					font-family: 'Fira Code', monospace;
+					letter-spacing: -0.01em;
+				}
 				.svc-dot {
 					width: 7px;
 					height: 7px;
@@ -290,44 +321,6 @@ export class SoftwareStatus extends HTMLElement {
 					font-size: 0.82rem;
 					color: rgba(255, 255, 255, 0.7);
 					font-family: 'Fira Code', monospace;
-				}
-
-				/* ── Tier List ── */
-				.tier-list {
-					display: flex;
-					flex-direction: column;
-					gap: 0.35rem;
-				}
-				.tier-row {
-					display: flex;
-					align-items: center;
-					gap: 0.6rem;
-					padding: 0.4rem 0.6rem;
-					background: rgba(255, 255, 255, 0.02);
-					border: 1px solid rgba(255, 255, 255, 0.04);
-					border-radius: 0.4rem;
-					cursor: help;
-				}
-				.tier-badge {
-					font-size: 0.6rem;
-					font-weight: 700;
-					text-transform: uppercase;
-					letter-spacing: 0.08em;
-					padding: 0.15rem 0.45rem;
-					border-radius: 0.3rem;
-					color: #fff;
-					white-space: nowrap;
-				}
-				.tier-model {
-					font-size: 0.8rem;
-					color: rgba(255, 255, 255, 0.75);
-					font-family: 'Fira Code', monospace;
-				}
-				.tier-threads {
-					font-size: 0.65rem;
-					color: rgba(255, 255, 255, 0.35);
-					font-family: 'Fira Code', monospace;
-					margin-left: auto;
 				}
 
 				.empty {
