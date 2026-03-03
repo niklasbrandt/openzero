@@ -61,6 +61,7 @@ async def start_telegram_bot():
 	bot_app = (
 		Application.builder()
 		.token(settings.TELEGRAM_BOT_TOKEN)
+		.concurrent_updates(True)
 		.build()
 	)
 
