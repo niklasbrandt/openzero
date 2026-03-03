@@ -615,15 +615,18 @@ async def planka_redirect(request: Request, target: str = "", background: bool =
 				# Use Cache or Fetch
 				op_id = PLANKA_ID_CACHE.get("operator_board_id")
 				if not op_id:
+					from app.services.translations import get_all_values
+					all_proj_names = {n.lower() for n in get_all_values("project_name")} | {"openzero", "boards"}
+					all_brd_names = {n.lower() for n in get_all_values("board_name")} | {"operator board"}
 					headers = {"Authorization": f"Bearer {access_token}"}
 					proj_resp = await client.get(f"{settings.PLANKA_BASE_URL}/api/projects", headers=headers)
 					projects = proj_resp.json().get("items", [])
-					oz_proj = next((p for p in projects if p["name"].lower() == "openzero"), None)
+					oz_proj = next((p for p in projects if p["name"].lower() in all_proj_names), None)
 					if oz_proj:
 						PLANKA_ID_CACHE["oz_project_id"] = oz_proj["id"]
 						det_resp = await client.get(f"{settings.PLANKA_BASE_URL}/api/projects/{oz_proj['id']}", headers=headers)
 						boards = det_resp.json().get("included", {}).get("boards", [])
-						op_board = next((b for b in boards if b["name"].lower() == "operator board"), None)
+						op_board = next((b for b in boards if b["name"].lower() in all_brd_names), None)
 						if op_board:
 							PLANKA_ID_CACHE["operator_board_id"] = op_board["id"]
 				
@@ -642,10 +645,12 @@ async def planka_redirect(request: Request, target: str = "", background: bool =
 				proj_id = PLANKA_ID_CACHE.get("oz_project_id")
 				if not proj_id:
 					try:
+						from app.services.translations import get_all_values as _gav
+						_all_pn = {n.lower() for n in _gav("project_name")} | {"openzero", "boards"}
 						headers = {"Authorization": f"Bearer {access_token}"}
 						proj_resp = await client.get(f"{settings.PLANKA_BASE_URL}/api/projects", headers=headers)
 						projects = proj_resp.json().get("items", [])
-						oz_proj = next((p for p in projects if p["name"].lower() == "openzero"), None)
+						oz_proj = next((p for p in projects if p["name"].lower() in _all_pn), None)
 						if oz_proj:
 							proj_id = oz_proj["id"]
 							PLANKA_ID_CACHE["oz_project_id"] = proj_id
@@ -927,6 +932,11 @@ async def update_identity(person: PersonCreate, db: AsyncSession = Depends(get_d
 	"""Update the 'Self' identity record."""
 	res = await db.execute(select(Person).where(Person.circle_type == "identity"))
 	me = res.scalar_one_or_none()
+
+	# Track language change BEFORE updating
+	old_lang = (me.language if me and me.language else "en") if me else "en"
+	new_lang = person.language or "en"
+
 	if not me:
 		me = Person(circle_type="identity", relationship="Self")
 		db.add(me)
@@ -950,6 +960,11 @@ async def update_identity(person: PersonCreate, db: AsyncSession = Depends(get_d
 	# Refresh cached timezone/location so services pick up the new values immediately
 	from app.services.timezone import refresh_user_settings
 	await refresh_user_settings()
+
+	# If language changed, rename Planka entities in background
+	if old_lang != new_lang:
+		import asyncio
+		asyncio.create_task(operator_service.rename_planka_entities(old_lang, new_lang))
 
 	return me
 
@@ -1156,6 +1171,126 @@ async def delete_local_event(event_id: str, db: AsyncSession = Depends(get_db)):
 	except ValueError:
 		raise HTTPException(status_code=400, detail="Invalid event ID")
 
+# --- Server Info (RAM, uptime, LLM tier health) ---
+@router.get("/server-info")
+async def server_info():
+	"""Return host RAM, uptime, and per-tier LLM configuration from llama-server /props."""
+	import platform
+	import os
+
+	info: dict = {
+		"ram_total_gb": 0,
+		"ram_available_gb": 0,
+		"ram_used_pct": 0,
+		"uptime_seconds": 0,
+		"uptime_human": "",
+		"tiers": {},
+	}
+
+	# --- RAM ---
+	try:
+		if platform.system() == "Linux":
+			with open("/proc/meminfo", "r") as f:
+				meminfo = f.read()
+			mem = {}
+			for line in meminfo.split("\n"):
+				parts = line.split(":")
+				if len(parts) == 2:
+					key = parts[0].strip()
+					val = parts[1].strip().split()[0]  # kB
+					mem[key] = int(val)
+			total_kb = mem.get("MemTotal", 0)
+			avail_kb = mem.get("MemAvailable", mem.get("MemFree", 0))
+			info["ram_total_gb"] = round(total_kb / 1048576, 1)
+			info["ram_available_gb"] = round(avail_kb / 1048576, 1)
+			info["ram_used_pct"] = round((1 - avail_kb / max(total_kb, 1)) * 100, 1)
+		elif platform.system() == "Darwin":
+			import subprocess
+			total = int(subprocess.check_output(["sysctl", "-n", "hw.memsize"], text=True, timeout=5).strip())
+			info["ram_total_gb"] = round(total / (1024**3), 1)
+	except Exception:
+		pass
+
+	# --- Uptime ---
+	try:
+		if platform.system() == "Linux":
+			with open("/proc/uptime", "r") as f:
+				uptime_s = float(f.read().split()[0])
+			info["uptime_seconds"] = int(uptime_s)
+			days = int(uptime_s // 86400)
+			hours = int((uptime_s % 86400) // 3600)
+			info["uptime_human"] = f"{days}d {hours}h" if days else f"{hours}h {int((uptime_s % 3600) // 60)}m"
+	except Exception:
+		pass
+
+	# --- Per-tier LLM props (threads, ctx, etc.) ---
+	tier_urls = {
+		"instant": settings.LLM_INSTANT_URL,
+		"standard": settings.LLM_STANDARD_URL,
+		"deep": settings.LLM_DEEP_URL,
+	}
+	physical_cores = os.cpu_count() or 0
+
+	async with httpx.AsyncClient(timeout=5.0) as client:
+		for tier_name, base_url in tier_urls.items():
+			tier_info: dict = {
+				"status": "offline",
+				"threads": 0,
+				"ctx_size": 0,
+				"n_predict": 0,
+				"model_file": "",
+				"using_all_cores": True,
+				"thread_warning": "",
+			}
+			try:
+				resp = await client.get(f"{base_url}/props")
+				if resp.status_code == 200:
+					props = resp.json()
+					tier_info["status"] = "online"
+					n_threads = props.get("total_slots", 0)  # fallback
+					# Try /health for slot data
+					try:
+						health_resp = await client.get(f"{base_url}/health")
+						if health_resp.status_code == 200:
+							health = health_resp.json()
+							tier_info["status"] = health.get("status", "online")
+					except Exception:
+						pass
+				# Also try /slots for thread info
+				try:
+					slots_resp = await client.get(f"{base_url}/slots")
+					if slots_resp.status_code == 200:
+						slots = slots_resp.json()
+						if isinstance(slots, list) and len(slots) > 0:
+							tier_info["n_predict"] = slots[0].get("n_predict", 0)
+							tier_info["ctx_size"] = slots[0].get("n_ctx", 0)
+				except Exception:
+					pass
+			except Exception:
+				tier_info["status"] = "offline"
+
+			# Thread detection from env (the actual configured value)
+			env_thread_map = {
+				"instant": os.environ.get("LLM_INSTANT_THREADS", "4"),
+				"standard": os.environ.get("LLM_STANDARD_THREADS", "4"),
+				"deep": os.environ.get("LLM_DEEP_THREADS", "6"),
+			}
+			configured_threads = int(env_thread_map.get(tier_name, "4"))
+			tier_info["threads"] = configured_threads
+
+			if configured_threads < 2:
+				tier_info["thread_warning"] = f"Only {configured_threads} thread(s) configured -- likely a misconfigured env var."
+				tier_info["using_all_cores"] = False
+			elif configured_threads <= physical_cores // 3:
+				tier_info["thread_warning"] = f"Using {configured_threads}/{physical_cores} cores -- may be underutilizing CPU."
+				tier_info["using_all_cores"] = False
+
+			info["tiers"][tier_name] = tier_info
+
+	info["physical_cores"] = physical_cores
+	return info
+
+
 # --- System Benchmark ---
 @router.get("/benchmark/cpu")
 async def benchmark_cpu():
@@ -1283,6 +1418,21 @@ async def benchmark_llm(tier: str = "instant"):
 		gen_time = (end - first_token_time) if first_token_time else total_s
 		tps = token_count / gen_time if gen_time > 0 else 0
 
+		# Fetch thread config for this tier
+		import os
+		thread_env_map = {
+			"instant": "LLM_INSTANT_THREADS",
+			"standard": "LLM_STANDARD_THREADS",
+			"deep": "LLM_DEEP_THREADS",
+		}
+		configured_threads = int(os.environ.get(thread_env_map.get(tier, ""), "0"))
+		physical_cores = os.cpu_count() or 0
+		thread_warning = ""
+		if configured_threads and configured_threads < 2:
+			thread_warning = f"Only {configured_threads} thread -- likely misconfigured env var"
+		elif configured_threads and configured_threads <= physical_cores // 3:
+			thread_warning = f"Using {configured_threads}/{physical_cores} cores -- CPU underutilized"
+
 		return {
 			"tier": tier,
 			"model": model_name,
@@ -1291,6 +1441,9 @@ async def benchmark_llm(tier: str = "instant"):
 			"time_to_first_token": round(ttft, 2),
 			"generation_seconds": round(gen_time, 2),
 			"tokens_per_second": round(tps, 1),
+			"configured_threads": configured_threads,
+			"physical_cores": physical_cores,
+			"thread_warning": thread_warning,
 		}
 	except httpx.TimeoutException:
 		return {"tier": tier, "model": model_name, "error": "Timeout (120s)"}
