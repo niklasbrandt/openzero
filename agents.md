@@ -2,6 +2,8 @@
 
 > This file contains instructions and rules for AI assistantsinteracting with this repository.
 
+> [strict!] always reference agents.md and AGENT_LOG.md and README.MD!
+
 ## 0. Mandatory Initial Step
 
 - **CRITICAL:** At the beginning of EVERY interaction or whenever you are prompted for a new task, you MUST read and analyze **agents.md**, **AGENT_LOG.md**, and **README.md**.
