@@ -261,6 +261,9 @@ services:
       - "traefik.http.routers.pihole.entrypoints=web"
       - "traefik.http.services.pihole.loadbalancer.server.port=8081"
       - "traefik.http.services.pihole.loadbalancer.server.scheme=http"
+      # L2: Restrict Pi-hole admin to Tailscale CGNAT range only
+      - "traefik.http.middlewares.pihole-restrict.ipallowlist.sourcerange=100.64.0.0/10"
+      - "traefik.http.routers.pihole.middlewares=pihole-restrict"
 
 networks:
   internal:

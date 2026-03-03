@@ -34,11 +34,15 @@ async def create_event(title: str, start_time: str, end_time: Optional[str] = No
     from app.services.calendar import create_caldav_event
     import datetime
     
-    start_dt = datetime.datetime.fromisoformat(start_time.replace('Z', ''))
-    if end_time:
-        end_dt = datetime.datetime.fromisoformat(end_time.replace('Z', ''))
-    else:
-        end_dt = start_dt + datetime.timedelta(hours=1)  # default 1-hour block
+    # Validate and parse start datetime (M-A1)
+    try:
+        start_dt = datetime.datetime.fromisoformat(start_time.replace('Z', ''))
+    except ValueError:
+        return f"Error: invalid start date '{start_time}'. Use YYYY-MM-DDThh:mm or YYYY-MM-DD HH:MM format."
+    try:
+        end_dt = datetime.datetime.fromisoformat(end_time.replace('Z', '')) if end_time else start_dt + datetime.timedelta(hours=1)
+    except ValueError:
+        return f"Error: invalid end date '{end_time}'. Use YYYY-MM-DDThh:mm or YYYY-MM-DD HH:MM format."
     
     # 1. Sync to Private CalDAV if available
     await create_caldav_event(title, start_dt, end_dt)
@@ -64,6 +68,13 @@ async def learn_memory(text: str) -> str:
 @tool
 async def schedule_reminder(message: str, interval_minutes: int, duration_hours: Optional[int] = None) -> str:
     """Schedule a periodic reminder. Interval in minutes, duration in hours."""
+    # --- Input validation (H-A1) ---
+    if not (1 <= interval_minutes <= 1440):
+        return "Error: interval_minutes must be between 1 and 1440 (max 1 day)."
+    if duration_hours is not None and not (1 <= duration_hours <= 168):
+        return "Error: duration_hours must be between 1 and 168 (max 1 week)."
+    message = message[:500]
+
     from app.tasks.scheduler import scheduler
     from app.api.telegram import send_notification
     from apscheduler.triggers.interval import IntervalTrigger
@@ -96,12 +107,40 @@ async def schedule_reminder(message: str, interval_minutes: int, duration_hours:
 @tool
 async def schedule_persistent_custom(name: str, message: str, job_type: str, spec: str) -> str:
     """Create a persistent scheduled task. job_type='cron' or 'interval'. spec is standard cron or 'minutes=N'."""
+    # --- Input validation (H3) ---
+    job_type = job_type.strip().lower()
+    if job_type not in {"cron", "interval"}:
+        return f"Error: job_type must be 'cron' or 'interval', got '{job_type}'."
+
+    if job_type == "cron":
+        fields = spec.strip().split()
+        if len(fields) != 5 or not all(re.match(r'^[\d*/,\-]+$', f) for f in fields):
+            return "Error: cron spec must be exactly 5 fields (e.g. '0 12 * * 1') using only digits, *, /, ,, -."
+    elif job_type == "interval":
+        allowed_keys = {"minutes", "hours", "days"}
+        for part in spec.split(","):
+            if "=" not in part:
+                return f"Error: interval spec must be 'key=N' pairs (e.g. 'minutes=30'), got '{part.strip()}'."
+            k, v = part.split("=", 1)
+            if k.strip() not in allowed_keys:
+                return f"Error: interval key must be one of {sorted(allowed_keys)}, got '{k.strip()}'."
+            try:
+                if int(v.strip()) < 1:
+                    raise ValueError
+            except ValueError:
+                return f"Error: interval value must be a positive integer, got '{v.strip()}'."
+
     from app.models.db import AsyncSessionLocal, CustomTask
+    from sqlalchemy import select, func as sa_func
     async with AsyncSessionLocal() as session:
-        task = CustomTask(name=name, message=message, job_type=job_type, spec=spec)
+        count_result = await session.execute(
+            select(sa_func.count()).select_from(CustomTask).where(CustomTask.is_active == True)
+        )
+        if count_result.scalar() >= 20:
+            return "Error: maximum of 20 active custom tasks reached. Deactivate an existing task first."
+        task = CustomTask(name=name[:100], message=message[:500], job_type=job_type, spec=spec)
         session.add(task)
         await session.commit()
-    # Also hot-load it into the running scheduler
     from app.tasks.scheduler import load_custom_tasks
     await load_custom_tasks()
     return f"Persistent custom task '{name}' created and scheduled."
@@ -232,11 +271,18 @@ async def parse_and_execute_actions(reply: str, db=None):
         raw_tag = match.group(0)
         name, rel, ctx, circle = match.groups()
         from app.models.db import Person, AsyncSessionLocal
+        # --- Input validation (M-A2) ---
+        circle_clean = circle.strip().lower()
+        if circle_clean not in {"inner", "close"}:
+            circle_clean = "close"
+        name_clean = name.strip()[:100]
+        rel_clean = rel.strip()[:100]
+        ctx_clean = ctx.strip()[:1000]
         async with AsyncSessionLocal() as session:
-            p = Person(name=name.strip(), relationship=rel.strip(), context=ctx.strip(), circle_type=circle.strip().lower())
+            p = Person(name=name_clean, relationship=rel_clean, context=ctx_clean, circle_type=circle_clean)
             session.add(p)
             await session.commit()
-        executed_cmds.append(f"Added {name.strip()} to your circle.")
+        executed_cmds.append(f"Added {name_clean} to your circle.")
         clean_reply = strip_tag(clean_reply, raw_tag)
 
     # 5. Learn Memory Tag

@@ -51,7 +51,10 @@ class Settings(BaseSettings):
     # Qdrant
     QDRANT_HOST: str = "qdrant"
     QDRANT_PORT: int = 6333
-    QDRANT_API_KEY: str = os.getenv("QDRANT_API_KEY", "change-me")
+    QDRANT_API_KEY: str = os.getenv("QDRANT_API_KEY", "")
+
+    # Dashboard Authentication
+    DASHBOARD_TOKEN: str = ""
 
     # Redis & Tasks
     REDIS_HOST: str = "redis"

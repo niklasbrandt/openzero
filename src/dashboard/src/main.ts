@@ -17,7 +17,58 @@ import '../components/SoftwareStatus'
 import '../components/SystemBenchmark'
 import '../components/ZPersonality'
 
-console.log('🚀 openZero Dashboard Initialized');
+console.log('openZero Dashboard Initialized');
+
+// ── Dashboard Auth Token Injection (C3) ──
+// All /api/ requests automatically carry the bearer token stored in localStorage.
+// On first load (or after token is cleared) a 401 from any API call prompts the user.
+
+const AUTH_TOKEN_KEY = 'z_auth_token';
+
+function getAuthToken(): string {
+	return localStorage.getItem(AUTH_TOKEN_KEY) || '';
+}
+
+function promptForToken(): string {
+	const token = window.prompt(
+		'openZero: Enter your dashboard access token (set via DASHBOARD_TOKEN in .env):'
+	) || '';
+	if (token) {
+		localStorage.setItem(AUTH_TOKEN_KEY, token);
+	}
+	return token;
+}
+
+// Patch window.fetch to inject Authorization header for all /api/ requests.
+const _originalFetch = window.fetch.bind(window);
+window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+	const url = typeof input === 'string' ? input : input instanceof Request ? input.url : input.toString();
+
+	if (url.startsWith('/api/')) {
+		const token = getAuthToken();
+		if (token) {
+			init = init ?? {};
+			init.headers = {
+				...(init.headers instanceof Headers
+					? Object.fromEntries((init.headers as Headers).entries())
+					: (init.headers as Record<string, string> ?? {})),
+				'Authorization': `Bearer ${token}`,
+			};
+		}
+	}
+
+	const response = await _originalFetch(input, init);
+
+	// On 401, prompt once for the token and offer to reload
+	if (response.status === 401 && url.startsWith('/api/')) {
+		const newToken = promptForToken();
+		if (newToken) {
+			window.location.reload();
+		}
+	}
+
+	return response;
+};
 
 // Background auto-login for Planka
 // This ensures that when the user opens Planka (separately or via link), 
@@ -27,8 +78,10 @@ async function plankaAutoLogin() {
 	try {
 		// Trigger the redirect bridge in a hidden iframe.
 		// The bridge sets the httpOnlyToken and accessToken cookies.
+		// Iframes cannot send custom headers, so the token is appended as a query param.
 		const iframe = document.createElement('iframe');
-		const plankaUrl = `/api/dashboard/planka-redirect?background=true`;
+		const token = getAuthToken();
+		const plankaUrl = `/api/dashboard/planka-redirect?background=true${token ? `&token=${encodeURIComponent(token)}` : ''}`;
 		iframe.src = plankaUrl;
 		iframe.setAttribute('style', 'display:none; width:0; height:0; border:0; position:absolute; visibility:hidden;');
 		iframe.setAttribute('aria-hidden', 'true');
