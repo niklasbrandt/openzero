@@ -270,6 +270,17 @@ _EN = {
     "aria_setup_steps": "Setup steps",
     "aria_dismiss_onboarding": "Dismiss setup onboarding checklist",
     "aria_personality_views": "Personality views",
+
+    # ── Header CTAs & Tooltips ──
+    "header_operator_board_label": "Operator Board",
+    "header_operator_board_tooltip": "Centralized overview of tasks across all your boards",
+    "header_projects_label": "Projects",
+    "header_projects_tooltip": "Access individual project boards and spaces",
+    "header_calendar_label": "Calendar",
+    "header_calendar_tooltip": "Open your integrated Google or Local Calendar",
+    "aria_open_operator_board": "Open Operator Board \u2014 centralized overview of tasks (opens in new tab)",
+    "aria_open_projects": "Open Projects board (opens in new tab)",
+    "aria_open_calendar_btn": "Open Calendar manager",
 }
 
 _DE = {
@@ -519,6 +530,17 @@ _DE = {
     "aria_setup_steps": "Einrichtungsschritte",
     "aria_dismiss_onboarding": "Einrichtungs-Checkliste ausblenden",
     "aria_personality_views": "Persoenlichkeitsansichten",
+
+    # ── Header CTAs & Tooltips ──
+    "header_operator_board_label": "Operator-Board",
+    "header_operator_board_tooltip": "Zentralisierte Uebersicht aller Aufgaben in deinen Boards",
+    "header_projects_label": "Projekte",
+    "header_projects_tooltip": "Zugriff auf individuelle Projektboards und Bereiche",
+    "header_calendar_label": "Kalender",
+    "header_calendar_tooltip": "Google- oder lokalen Kalender oeffnen",
+    "aria_open_operator_board": "Operator-Board oeffnen \u2014 Gesamtuebersicht aller Aufgaben (oeffnet in neuem Tab)",
+    "aria_open_projects": "Projektboard oeffnen (oeffnet in neuem Tab)",
+    "aria_open_calendar_btn": "Kalenderverwaltung oeffnen",
 }
 
 _ES = {
