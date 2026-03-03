@@ -377,22 +377,6 @@ async def get_personality(db: AsyncSession = Depends(get_db)):
 		"role": "Agent Operator",
 		"questions": [
 			{"id": "agent_name", "label": "Agent Name", "type": "text", "placeholder": "e.g. Z, Jarvis, Hal"},
-			{
-				"id": "theme", 
-				"label": "Theme Preset", 
-				"type": "select", 
-				"options": [
-					{"label": "Default Fusion", "value": "default", "colors": ["#14B8A6", "#0066FF", "#6366F1"]},
-					{"label": "Brazil (Verde-Amarelo)", "value": "brazil", "colors": ["#009739", "#FEDD00", "#012169"]},
-					{"label": "Jamaica (Gold & Green)", "value": "jamaica", "colors": ["#009B3A", "#FEDD00", "#000000"]},
-					{"label": "Mexico (Tricolor)", "value": "mexico", "colors": ["#006341", "#C8102E", "#FFFFFF"]},
-					{"label": "Midnight Neon", "value": "midnight", "colors": ["#FF00FF", "#00FFFF", "#6600FF"]},
-					{"label": "Forest Strategy", "value": "forest", "colors": ["#2D5A27", "#8B4513", "#DEB887"]}
-				]
-			},
-			{"id": "color_primary", "label": "Primary Accent", "type": "color"},
-			{"id": "color_secondary", "label": "Secondary Accent", "type": "color"},
-			{"id": "color_tertiary", "label": "Tertiary Accent", "type": "color"},
 			{"id": "directness", "label": "Communication Style", "type": "range", "min": 1, "max": 5, "low": "Elaborate", "high": "Concise"},
 			{"id": "warmth", "label": "Emotional Tone", "type": "range", "min": 1, "max": 5, "low": "Clinical", "high": "Empathetic"},
 			{"id": "agency", "label": "Agency Level", "type": "range", "min": 1, "max": 5, "low": "Reactive", "high": "Proactive"},
@@ -1039,6 +1023,9 @@ class PersonCreate(BaseModel):
 	work_times: Optional[str] = None
 	briefing_time: Optional[str] = "08:00"
 	language: Optional[str] = "en"
+	color_primary: Optional[str] = None
+	color_secondary: Optional[str] = None
+	color_tertiary: Optional[str] = None
 
 @router.put("/people/identity")
 async def update_identity(person: PersonCreate, db: AsyncSession = Depends(get_db)):
@@ -1065,6 +1052,9 @@ async def update_identity(person: PersonCreate, db: AsyncSession = Depends(get_d
 	me.work_times = person.work_times
 	me.briefing_time = person.briefing_time
 	me.language = person.language
+	me.color_primary = person.color_primary
+	me.color_secondary = person.color_secondary
+	me.color_tertiary = person.color_tertiary
 	me.relationship = "Self"
 	
 	await db.commit()

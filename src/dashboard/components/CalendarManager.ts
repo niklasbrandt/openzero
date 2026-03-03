@@ -356,6 +356,14 @@ export class CalendarManager extends HTMLElement {
 												outline: none;
 										}
 										input:focus { border-color: #14B8A6; background: rgba(255, 255, 255, 0.08); }
+					input:focus-visible { outline: 2px solid #14B8A6; outline-offset: 2px; }
+					button.submit:focus-visible { outline: 2px solid #14B8A6; outline-offset: 2px; }
+					.nav-btn:focus-visible, .close-btn:focus-visible { outline: 2px solid #14B8A6; outline-offset: 2px; border-radius: 8px; }
+					.day-cell:focus-visible { outline: 2px solid #14B8A6; outline-offset: 2px; }
+					.delete-event-btn:focus-visible { outline: 2px solid #f87171; outline-offset: 2px; }
+					@media (prefers-reduced-motion: reduce) {
+						*, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+					}
 										
 										button.submit { 
 												background: #14B8A6; 
@@ -371,14 +379,14 @@ export class CalendarManager extends HTMLElement {
 										button.submit:hover { transform: translateY(-1px); opacity: 0.9; }
 								</style>
 								
-								<div class="modal">
-										<div class="header">
-												<div class="nav-controls">
-														<button class="nav-btn" id="prev-month">&larr;</button>
-														<div class="month-label"></div>
-														<button class="nav-btn" id="next-month">&rarr;</button>
-												</div>
-												<button class="close-btn" id="close-modal">&times;</button>
+<div class="modal" role="dialog" aria-modal="true" aria-labelledby="cal-modal-title">
+						<div class="header">
+								<div class="nav-controls">
+										<button class="nav-btn" id="prev-month" aria-label="Previous month">&larr;</button>
+										<div class="month-label" id="cal-modal-title"></div>
+										<button class="nav-btn" id="next-month" aria-label="Next month">&rarr;</button>
+								</div>
+								<button class="close-btn" id="close-modal" aria-label="Close calendar">&times;</button>
 										</div>
 										
 										<div class="content-grid">
@@ -388,7 +396,7 @@ export class CalendarManager extends HTMLElement {
 												
 												<div class="agenda-panel">
 														<div class="agenda-header"></div>
-														<div class="events-list"></div>
+														<div class="events-list" role="list"></div>
 														
 														<div class="quick-add">
 																<form class="event-form" id="add-event-form">
@@ -442,13 +450,14 @@ export class CalendarManager extends HTMLElement {
 			const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 			const typeClass = e.is_birthday ? 'birthday' : (e.is_local ? 'local' : '');
 			return `
-								<div class="event-card ${typeClass}">
+								<div class="event-card ${typeClass}" role="listitem">
 										<div class="event-card-inner">
 												<div class="event-info">
 														<input type="text" class="event-title-edit" 
 																value="${e.summary}" 
 																data-id="${e.id}"
 																${!e.is_local || e.is_birthday ? 'disabled' : ''}
+																aria-label="${!e.is_local || e.is_birthday ? 'Event: ' : 'Edit event title: '}${e.summary}"
 																style="background: transparent; border: none; font-size: 0.9rem; font-weight: 600; color: #fff; width: 100%; outline: none;">
 														<div class="event-meta">
 																<span>${timeStr === '00:00' ? 'All Day' : timeStr}</span>
@@ -457,7 +466,7 @@ export class CalendarManager extends HTMLElement {
 												</div>
 												${e.is_local && !e.is_birthday ? `
 													<div style="display: flex; gap: 4px;">
-														<button class="delete-event-btn" data-id="${e.id}" title="Delete event" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #f87171; cursor: pointer; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold;">✕</button>
+														<button class="delete-event-btn" data-id="${e.id}" title="Delete event" aria-label="Delete event: ${e.summary}" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #f87171; cursor: pointer; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold;">&times;</button>
 													</div>
 												` : ''}
 										</div>
@@ -467,16 +476,19 @@ export class CalendarManager extends HTMLElement {
 
 		const monthGrid = this.shadowRoot.querySelector('.month-grid')!;
 		monthGrid.innerHTML = `
-						${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => `<div class="weekday">${d}</div>`).join('')}
+									${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d, i) => {
+										const fullDays = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+										return `<div class="weekday" role="columnheader" aria-label="${fullDays[i]}">${d}</div>`;
+									}).join('')}
 						${Array(firstDay).fill(null).map(() => `<div></div>`).join('')}
 						${Array(daysInMonth).fill(null).map((_, i) => {
 			const day = i + 1;
 			const isToday = day === now.getDate() && this.viewMonth === now.getMonth() && this.viewYear === now.getFullYear();
 			const isSelected = day === this.selectedDate;
 			return `
-										<div class="day-cell ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}" data-day="${day}">
+										<div class="day-cell ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}" data-day="${day}" role="button" tabindex="0" aria-label="${monthName} ${day}, ${this.viewYear}" ${isToday ? 'aria-current="date"' : ''} aria-pressed="${isSelected ? 'true' : 'false'}">
 												${day}
-												${eventDays.has(day) ? '<div class="event-dot"></div>' : ''}
+												${eventDays.has(day) ? '<div class="event-dot" aria-hidden="true"></div>' : ''}
 										</div>`;
 		}).join('')}
 				`;

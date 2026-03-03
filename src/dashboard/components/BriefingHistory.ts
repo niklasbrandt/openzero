@@ -78,8 +78,8 @@ export class BriefingHistory extends HTMLElement {
 			`).join('');
 
 		list.innerHTML = `
-			${itemsHtml || 'No briefings yet.'}
-			${briefings.length >= 5 ? `<button class="load-more" id="load-more-btn">Show More History</button>` : ''}
+			${itemsHtml || this.tr('no_briefings', 'No briefings yet.')}
+			${briefings.length >= 5 ? `<button class="load-more" id="load-more-btn">${this.tr('show_more', 'Show More History')}</button>` : ''}
 		`;
 
 		const loadMoreBtn = this.shadowRoot?.querySelector('#load-more-btn');
@@ -219,7 +219,7 @@ export class BriefingHistory extends HTMLElement {
 							</svg>
 						</span>
 						${this.tr('briefing_history', 'Briefing History')}
-					<span class="subtitle" aria-hidden="true">Z Memory</span>
+					<span class="subtitle" aria-hidden="true">${this.tr('briefing_subtitle', 'Daily Reports')}</span>
 				</h2>
 				<div id="briefing-list" role="list" aria-label="Briefing history entries" aria-live="polite">${this.tr('loading', 'Loading...')}</div>
 				</div>
