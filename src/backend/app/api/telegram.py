@@ -201,7 +201,7 @@ async def start_telegram_bot():
 			system_override = (
 				"You are Z. Output ONLY the greeting. "
 				"ALWAYS begin your response with the formatted current time and day on the first line "
-				"(e.g. '16:40 - Mo. 2nd'), followed by a blank line, then your message. "
+				"(e.g. '16:40 - Tuesday 2nd'), followed by a blank line, then your message. "
 				"NEVER invent data not present in SYSTEM_DATA."
 			)
 			print(f"DEBUG: Greeting Seq - Calling LLM (deep tier)")
