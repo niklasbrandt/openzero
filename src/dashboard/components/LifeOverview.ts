@@ -61,7 +61,7 @@ export class LifeOverview extends HTMLElement {
 
 		const timelineHtml = data.timeline.length > 0
 			? data.timeline.map((e: any) => `
-					`<div class="timeline-item" role="listitem">
+					<div class="timeline-item" role="listitem">
 						<span class="time">${e.time}</span>
 						<span class="summary">${e.summary} ${!e.is_local ? '<small style="color: #14B8A6;">(Google)</small>' : ''}</span>
 					</div>
