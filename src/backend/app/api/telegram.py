@@ -272,14 +272,14 @@ async def start_telegram_bot():
 			lang = await get_user_lang()
 			t = get_translations(lang)
 
-			# Mobile auth hint: include a plain-text token URL so the user can
-			# long-press → "Open in Browser" once to save the token outside the
-			# Telegram WebView (iOS only — Android Chrome Custom Tabs share localStorage).
+			# Mobile auth hint: tapping on Android (Chrome Custom Tab) saves the token
+			# directly. On iOS tap opens Telegram WebView — long-press → Open in Browser
+			# to save it to Safari's localStorage instead.
 			mobile_hint = ""
 			if settings.DASHBOARD_TOKEN:
 				base = settings.BASE_URL.rstrip('/')
 				auth_url = f"{base}/home?token={settings.DASHBOARD_TOKEN}"
-				mobile_hint = f"\n\n📲 <a href='{auth_url}'>Tap to open dashboard</a> (saves token in browser)"
+				mobile_hint = f"\n\n📲 <a href='{auth_url}'>Open dashboard</a> — tap (Android) or long-press → Open in Browser (iOS)"
 
 			await send_notification_html(
 				f"<blockquote><b>{real_time}</b>\n\n{_md_to_html(greeting_clean)}\n\n<i>{stats_text}</i>{mobile_hint}</blockquote>",
@@ -379,12 +379,14 @@ async def send_notification_html(text: str, reply_markup=None):
 	"""Send an HTML-formatted message to the owner (already formatted)."""
 	if not settings.TELEGRAM_BOT_TOKEN or not settings.TELEGRAM_ALLOWED_USER_ID:
 		return
+	from telegram import LinkPreviewOptions
 	bot = Bot(token=settings.TELEGRAM_BOT_TOKEN)
 	await bot.send_message(
 		chat_id=int(settings.TELEGRAM_ALLOWED_USER_ID),
 		text=text,
 		parse_mode="HTML",
 		reply_markup=reply_markup,
+		link_preview_options=LinkPreviewOptions(is_disabled=True),
 	)
 
 def _md_to_html(text: str) -> str:
