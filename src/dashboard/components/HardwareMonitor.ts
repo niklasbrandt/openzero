@@ -194,15 +194,15 @@ export class HardwareMonitor extends HTMLElement {
 					position: absolute;
 					bottom: calc(100% + 10px);
 					left: 0;
-					background: rgba(12, 16, 32, 0.55);
-					backdrop-filter: blur(20px) saturate(1.4);
-					-webkit-backdrop-filter: blur(20px) saturate(1.4);
-					color: rgba(255, 255, 255, 0.88);
+					background: rgba(255, 255, 255, 0.06);
+					backdrop-filter: blur(32px) saturate(1.6) brightness(1.1);
+					-webkit-backdrop-filter: blur(32px) saturate(1.6) brightness(1.1);
+					color: rgba(255, 255, 255, 0.92);
 					font-size: 0.68rem;
 					line-height: 1.5;
 					padding: 0.55rem 0.75rem;
 					border-radius: 0.5rem;
-					border: 1px solid rgba(255, 255, 255, 0.12);
+					border: 1px solid rgba(255, 255, 255, 0.18);
 					white-space: normal;
 					width: max-content;
 					max-width: 280px;
@@ -210,7 +210,7 @@ export class HardwareMonitor extends HTMLElement {
 					opacity: 0;
 					transition: opacity 0.18s ease;
 					z-index: 1000;
-					box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+					box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.12), inset 0 0 0 0.5px rgba(255, 255, 255, 0.08);
 				}
 				.has-tip:hover::after,
 				.has-tip:focus-visible::after {
