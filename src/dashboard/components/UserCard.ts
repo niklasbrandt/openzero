@@ -1,6 +1,15 @@
 export class UserCard extends HTMLElement {
 	private me: any = null;
 	private isEditing: boolean = false;
+	private t: Record<string, string> = {};
+	private languageNames: Record<string, string> = {
+		en: 'English', zh: 'Mandarin Chinese', hi: 'Hindi',
+		es: 'Spanish', fr: 'French', ar: 'Arabic',
+		pt: 'Portuguese', ru: 'Russian', ja: 'Japanese', de: 'German',
+		it: 'Italian', nl: 'Dutch', pl: 'Polish', sv: 'Swedish',
+		el: 'Greek', ro: 'Romanian', tr: 'Turkish', cs: 'Czech',
+		da: 'Danish', no: 'Norwegian',
+	};
 
 	constructor() {
 		super();
@@ -8,7 +17,21 @@ export class UserCard extends HTMLElement {
 	}
 
 	connectedCallback() {
-		this.fetchIdentity();
+		this.loadTranslations().then(() => this.fetchIdentity());
+		window.addEventListener('identity-updated', () => {
+			this.loadTranslations().then(() => this.render());
+		});
+	}
+
+	private async loadTranslations() {
+		try {
+			const res = await fetch('/api/dashboard/translations');
+			if (res.ok) this.t = await res.json();
+		} catch (_) {}
+	}
+
+	private tr(key: string, fallback: string): string {
+		return this.t[key] || fallback;
 	}
 
 	async fetchIdentity() {
@@ -65,6 +88,7 @@ export class UserCard extends HTMLElement {
 				this.isEditing = false;
 				this.render();
 				window.dispatchEvent(new CustomEvent('identity-updated'));
+				window.dispatchEvent(new CustomEvent('refresh-data'));
 			}
 		} catch (e) {
 			alert('Save failed');
@@ -182,88 +206,77 @@ export class UserCard extends HTMLElement {
 				? `<input id="name-input" type="text" placeholder="Full Name" value="${me.name || ''}">`
 				: `<h2>${me.name || 'User'}</h2>`}
 					</div>
-					${!this.isEditing ? `<button class="edit-btn" id="edit-trigger" aria-label="Edit personal profile">Edit</button>` : ''}
+					${!this.isEditing ? `<button class="edit-btn" id="edit-trigger" aria-label="Edit personal profile">${this.tr('edit', 'Edit')}</button>` : ''}
 				</div>
 
 				<div class="grid">
 					<div class="field">
-						<div class="label">Birthday</div>
+						<div class="label">${this.tr('birthday', 'Birthday')}</div>
 						${this.isEditing
 				? `<input id="bday-input" type="text" placeholder="YYYY-MM-DD" value="${me.birthday || ''}">`
-				: `<div class="value">${me.birthday || 'Not set'}</div>`}
+				: `<div class="value">${me.birthday || this.tr('not_set', 'Not set')}</div>`}
 					</div>
 					<div class="field">
-						<div class="label">Gender</div>
+						<div class="label">${this.tr('gender', 'Gender')}</div>
 						${this.isEditing
 				? `<input id="gender-input" type="text" placeholder="e.g. Non-binary" value="${me.gender || ''}">`
-				: `<div class="value">${me.gender || 'Not set'}</div>`}
+				: `<div class="value">${me.gender || this.tr('not_set', 'Not set')}</div>`}
 					</div>
 					<div class="field">
-						<div class="label">Residency</div>
+						<div class="label">${this.tr('residency', 'Residency')}</div>
 						${this.isEditing
 				? `<input id="residency-input" type="text" placeholder="City, Country" value="${me.residency || ''}">`
-				: `<div class="value">${me.residency || 'Not set'}</div>`}
+				: `<div class="value">${me.residency || this.tr('not_set', 'Not set')}</div>`}
 					</div>
 					<div class="field">
-						<div class="label">Town</div>
+						<div class="label">${this.tr('town', 'Town')}</div>
 						${this.isEditing
 				? `<input id="town-input" type="text" placeholder="Berlin" value="${me.town || ''}">`
-				: `<div class="value">${me.town || 'Not set'}</div>`}
+				: `<div class="value">${me.town || this.tr('not_set', 'Not set')}</div>`}
 					</div>
 					<div class="field">
-						<div class="label">Country</div>
+						<div class="label">${this.tr('country', 'Country')}</div>
 						${this.isEditing
 				? `<input id="country-input" type="text" placeholder="Germany" value="${me.country || ''}">`
-				: `<div class="value">${me.country || 'Not set'}</div>`}
+				: `<div class="value">${me.country || this.tr('not_set', 'Not set')}</div>`}
 					</div>
 					<div class="field">
-						<div class="label">Timezone</div>
+						<div class="label">${this.tr('timezone_label', 'Timezone')}</div>
 						${this.isEditing
 				? `<input id="timezone-input" type="text" placeholder="Europe/Berlin" value="${me.timezone || ''}">`
-				: `<div class="value">${me.timezone || 'Not set'}</div>`}
+				: `<div class="value">${me.timezone || this.tr('not_set', 'Not set')}</div>`}
 					</div>
 					<div class="field">
-						<div class="label">Briefing Time</div>
+						<div class="label">${this.tr('briefing_time', 'Briefing Time')}</div>
 						${this.isEditing
 				? `<input id="brief-input" type="text" placeholder="08:00" value="${me.briefing_time || ''}">`
 				: `<div class="value">${me.briefing_time || '08:00'}</div>`}
 					</div>
 					<div class="field">
-						<div class="label">Language</div>
+						<div class="label">${this.tr('language_label', 'Language')}</div>
 						${this.isEditing
-				? `<select id="language-input" aria-label="Select Z's response language">
-						<option value="en" ${(me.language || 'en') === 'en' ? 'selected' : ''}>English</option>
-						<option value="zh" ${me.language === 'zh' ? 'selected' : ''}>Mandarin</option>
-						<option value="hi" ${me.language === 'hi' ? 'selected' : ''}>Hindi</option>
-						<option value="es" ${me.language === 'es' ? 'selected' : ''}>Spanish</option>
-						<option value="fr" ${me.language === 'fr' ? 'selected' : ''}>French</option>
-						<option value="ar" ${me.language === 'ar' ? 'selected' : ''}>Arabic</option>
-						<option value="pt" ${me.language === 'pt' ? 'selected' : ''}>Portuguese</option>
-						<option value="ru" ${me.language === 'ru' ? 'selected' : ''}>Russian</option>
-						<option value="ja" ${me.language === 'ja' ? 'selected' : ''}>Japanese</option>
-						<option value="de" ${me.language === 'de' ? 'selected' : ''}>German</option>
-					</select>`
-				: `<div class="value">${{'en':'English','zh':'Mandarin','hi':'Hindi','es':'Spanish','fr':'French','ar':'Arabic','pt':'Portuguese','ru':'Russian','ja':'Japanese','de':'German'}[me.language as string] || 'English'}</div>`}
+				? `<select id="language-input" aria-label="Select Z's response language">${Object.entries(this.languageNames).map(([code, name]) => `<option value="${code}" ${(me.language || 'en') === code ? 'selected' : ''}>${name}</option>`).join('')}</select>`
+				: `<div class="value">${this.languageNames[me.language as string] || 'English'}</div>`}
 					</div>
 					<div class="field" style="grid-column: span 2;">
-						<div class="label">Typical Work Times</div>
+						<div class="label">${this.tr('work_times', 'Typical Work Times')}</div>
 						${this.isEditing
 				? `<input id="work-input" type="text" placeholder="e.g. 09:00 - 18:00" value="${me.work_times || ''}">`
-				: `<div class="value">${me.work_times || 'Not set'}</div>`}
+				: `<div class="value">${me.work_times || this.tr('not_set', 'Not set')}</div>`}
 					</div>
 				</div>
 
 				<div class="goals-section">
-					<h3>Life Goals & Core Values</h3>
+					<h3>${this.tr('life_goals', 'Life Goals & Core Values')}</h3>
 					${this.isEditing
 				? `<textarea id="context-input" placeholder="What drives you? What are your current focus areas?">${me.context || ''}</textarea>`
-				: `<ul>${(me.context || '').split('\n').filter((l: string) => l.trim() && !l.trim().startsWith('<!--') && !l.includes('## Growth Areas')).map((l: string) => `<li>${l.replace(/^#+\s*/, '')}</li>`).join('') || '<li>No goals set.</li>'}</ul>`}
+				: `<ul>${(me.context || '').split('\n').filter((l: string) => l.trim() && !l.trim().startsWith('<!--') && !l.includes('## Growth Areas')).map((l: string) => `<li>${l.replace(/^#+\s*/, '')}</li>`).join('') || `<li>${this.tr('no_goals', 'No goals set.')}</li>`}</ul>`}
 				</div>
 
 				${this.isEditing ? `
 					<div class="actions">
-						<button class="cancel-btn" id="cancel-trigger">Discard</button>
-						<button class="save-btn" id="save-trigger">Save Profile</button>
+						<button class="cancel-btn" id="cancel-trigger">${this.tr('discard', 'Discard')}</button>
+						<button class="save-btn" id="save-trigger">${this.tr('save_profile', 'Save Profile')}</button>
 					</div>
 				` : ''}
 			</div>
