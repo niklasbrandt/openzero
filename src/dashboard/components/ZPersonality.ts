@@ -1,46 +1,74 @@
 export class ZPersonality extends HTMLElement {
-    private calibration: any = null;
-    private protocols: any[] = [];
-    private activeTab: 'calibration' | 'protocols' = 'calibration';
-    private isLoading = true;
+	private personality: any = null;
+	private protocols: any[] = [];
+	private activeTab: 'personality' | 'protocols' = 'personality';
+	private isEditing = false;
+	private isLoading = true;
 
-    constructor() {
-        super();
-        this.attachShadow({ mode: 'open' });
-    }
+	constructor() {
+		super();
+		this.attachShadow({ mode: 'open' });
+	}
 
-    connectedCallback() {
-        this.render();
-        this.fetchData();
-    }
+	connectedCallback() {
+		this.fetchData();
+	}
 
-    async fetchData() {
-        this.isLoading = true;
-        try {
-            const [calRes, protRes] = await Promise.all([
-                fetch('/api/dashboard/calibration'),
-                fetch('/api/dashboard/protocols')
-            ]);
-            if (calRes.ok) this.calibration = await calRes.json();
-            if (protRes.ok) {
-                const data = await protRes.json();
-                this.protocols = data.tools || [];
-            }
-        } catch (e) {
-            console.error('Failed to fetch personality data', e);
-        } finally {
-            this.isLoading = false;
-            this.render();
-        }
-    }
+	async fetchData() {
+		this.isLoading = true;
+		this.render();
+		try {
+			const [perRes, protRes] = await Promise.all([
+				fetch('/api/dashboard/personality'),
+				fetch('/api/dashboard/protocols')
+			]);
+			if (perRes.ok) this.personality = await perRes.json();
+			if (protRes.ok) {
+				const data = await protRes.json();
+				this.protocols = data.tools || [];
+			}
+		} catch (e) {
+			console.error('Failed to fetch personality data', e);
+		} finally {
+			this.isLoading = false;
+			this.render();
+		}
+	}
 
-    render() {
-        if (!this.shadowRoot) return;
+	async savePersonality() {
+		const shadow = this.shadowRoot!;
+		const payload: any = { ...this.personality };
+		delete payload.questions;
 
-        const cal = this.calibration;
-        const prot = this.protocols;
+		this.personality.questions.forEach((q: any) => {
+			const input = shadow.querySelector(`#input-${q.id}`) as any;
+			if (input) payload[q.id] = q.type === 'range' ? parseInt(input.value) : input.value;
+		});
 
-        this.shadowRoot.innerHTML = `
+		try {
+			const res = await fetch('/api/dashboard/personality', {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(payload)
+			});
+			if (res.ok) {
+				const data = await res.json();
+				this.personality = { ...data.personality, questions: this.personality.questions };
+				this.isEditing = false;
+				this.render();
+			}
+		} catch (e) {
+			alert('Failed to save personality.');
+		}
+	}
+
+	render() {
+		if (!this.shadowRoot) return;
+
+		const per = this.personality;
+		const prot = this.protocols;
+
+		this.shadowRoot.innerHTML = `
 			<style>
 				:host { display: block; height: 100%; font-family: 'Inter', system-ui, sans-serif; }
 				.card { height: 100%; display: flex; flex-direction: column; gap: 1.25rem; color: #fff; }
@@ -55,6 +83,12 @@ export class ZPersonality extends HTMLElement {
 					font-weight: 800; font-size: 0.9rem;
 				}
 
+				.edit-btn {
+					background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+					color: #14B8A6; padding: 4px 10px; font-size: 0.7rem; cursor: pointer;
+					text-transform: uppercase; letter-spacing: 0.05em;
+				}
+
 				.tabs { display: flex; gap: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); }
 				.tab { 
 					padding: 0.5rem 0; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; 
@@ -67,13 +101,30 @@ export class ZPersonality extends HTMLElement {
 				.content::-webkit-scrollbar { width: 4px; }
 				.content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
 
-				.cal-box { 
-					background: rgba(20, 184, 166, 0.05); border: 1px solid rgba(20, 184, 166, 0.1);
-					padding: 1.25rem; border-radius: 1rem; margin-top: 0.5rem;
-					animation: fadeIn 0.4s ease-out;
+				.trait-grid { display: grid; gap: 1rem; margin-top: 0.5rem; }
+				.trait-item { 
+					background: rgba(20, 184, 166, 0.03); padding: 0.75rem 1rem; border-radius: 0.75rem;
+					border: 1px solid rgba(255,255,255,0.05);
 				}
-				.cal-name { color: #14B8A6; font-weight: 700; font-size: 0.9rem; margin-bottom: 0.5rem; display: block; }
-				.cal-prompt { font-size: 0.85rem; line-height: 1.6; color: rgba(255,255,255,0.8); }
+				.trait-label { font-size: 0.65rem; color: rgba(255,255,255,0.4); text-transform: uppercase; margin-bottom: 4px; display: block; }
+				.trait-value { font-size: 0.9rem; color: #fff; font-weight: 500; }
+
+				.form-group { margin-bottom: 1.25rem; }
+				.form-label { font-size: 0.75rem; color: #14B8A6; font-weight: 700; display: block; margin-bottom: 0.5rem; }
+				input[type="text"], textarea {
+					background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);
+					color: #fff; padding: 10px; border-radius: 0.5rem; width: 100%; box-sizing: border-box;
+					font-family: inherit; font-size: 0.85rem;
+				}
+				textarea { height: 80px; resize: none; }
+				
+				.range-container { display: flex; align-items: center; gap: 1rem; }
+				.range-tag { font-size: 0.65rem; color: rgba(255,255,255,0.4); width: 60px; }
+				input[type="range"] { flex: 1; accent-color: #14B8A6; cursor: pointer; }
+
+				.actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem; }
+				.save-btn { background: #14B8A6; border: none; color: #000; font-weight: 700; padding: 8px 16px; cursor: pointer; border-radius: 4px; }
+				.cancel-btn { background: transparent; border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 8px 16px; cursor: pointer; border-radius: 4px; }
 
 				.prot-list { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.5rem; }
 				.prot-item { 
@@ -86,39 +137,83 @@ export class ZPersonality extends HTMLElement {
 				@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 				@keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
 
-				.status-bar { 
-					display: flex; align-items: center; gap: 0.5rem; font-size: 0.65rem; 
-					color: rgba(255,255,255,0.3); margin-top: auto; padding-top: 0.5rem;
-				}
-				.pulse { width: 6px; height: 6px; background: #14B8A6; border-radius: 50%; box-shadow: 0 0 8px #14B8A6; }
-
 				.empty { text-align: center; padding: 2rem; color: rgba(255,255,255,0.2); font-size: 0.85rem; font-style: italic; }
 			</style>
 
 			<div class="card">
 				<div class="header">
-					<h2><div class="icon">Z</div> ${this.isLoading ? 'Syncing...' : 'Agent Personality'}</h2>
+					<h2><div class="icon">Z</div> ${this.isEditing ? 'Persona Config' : 'Agent Personality'}</h2>
+					${!this.isEditing && !this.isLoading ? `<button class="edit-btn" id="edit-trigger">Refine</button>` : ''}
 				</div>
 
 				<div class="tabs">
-					<div class="tab ${this.activeTab === 'calibration' ? 'active' : ''}" id="tab-cal">Calibration</div>
+					<div class="tab ${this.activeTab === 'personality' ? 'active' : ''}" id="tab-per">Identity</div>
 					<div class="tab ${this.activeTab === 'protocols' ? 'active' : ''}" id="tab-prot">Protocols</div>
 				</div>
 
 				<div class="content">
 					${this.isLoading ? '<div class="empty">Aligning neural paths...</div>' : ''}
 					
-					${!this.isLoading && this.activeTab === 'calibration' ? `
-						<div class="cal-box">
-							<span class="cal-name">${cal?.name || 'Daily Focus'}</span>
-							<div class="cal-prompt">${cal?.prompt || 'No calibration needed today. You are perfectly aligned.'}</div>
+					${!this.isLoading && this.isEditing ? `
+						<div class="form">
+							${per.questions.map((q: any) => `
+								<div class="form-group">
+									<label class="form-label">${q.label}</label>
+									${q.type === 'range' ? `
+										<div class="range-container">
+											<span class="range-tag">${q.low}</span>
+											<input type="range" id="input-${q.id}" min="${q.min}" max="${q.max}" value="${per[q.id] || 3}">
+											<span class="range-tag" style="text-align: right;">${q.high}</span>
+										</div>
+									` : q.type === 'textarea' ? `
+										<textarea id="input-${q.id}" placeholder="${q.placeholder}">${per[q.id] || ''}</textarea>
+									` : `
+										<input type="text" id="input-${q.id}" placeholder="${q.placeholder}" value="${per[q.id] || ''}">
+									`}
+								</div>
+							`).join('')}
+							<div class="actions">
+								<button class="cancel-btn" id="cancel-trigger">Cancel</button>
+								<button class="save-btn" id="save-trigger">Save Persona</button>
+							</div>
+						</div>
+					` : !this.isLoading && this.activeTab === 'personality' ? `
+						<div class="trait-grid">
+							<div class="trait-item">
+								<span class="trait-label">Core Identity</span>
+								<div class="trait-value">${per?.role || 'Agent Operator'}</div>
+							</div>
+							<div class="trait-item" style="display: flex; justify-content: space-between;">
+								<div>
+									<span class="trait-label">Humor Score</span>
+									<div class="trait-value" style="color: #0066FF;">${per?.humor || 0}/10</div>
+								</div>
+								<div style="text-align: right;">
+									<span class="trait-label">Honesty Score</span>
+									<div class="trait-value" style="color: #14B8A6;">${per?.honesty || 0}/10</div>
+								</div>
+							</div>
+							<div class="trait-item">
+								<span class="trait-label">Communication</span>
+								<div class="trait-value">${['', 'Elaborate', 'Nuanced', 'Balanced', 'Direct', 'Concise'][per?.directness || 3]} (${per?.directness}/5)</div>
+							</div>
+							${per?.values ? `
+								<div class="trait-item">
+									<span class="trait-label">Foundational Values</span>
+									<div class="trait-value" style="font-size: 0.8rem; color: rgba(255,255,255,0.7);">${per.values}</div>
+								</div>
+							` : ''}
+							<div class="trait-item">
+								<span class="trait-label">Behavioral Context</span>
+								<div class="trait-value" style="font-size: 0.82rem; color: rgba(255,255,255,0.5);">${per?.behavior || 'Standard protocols.'}</div>
+							</div>
 						</div>
 						<div style="margin-top: 1.5rem; font-size: 0.75rem; color: rgba(255,255,255,0.4); font-style: italic; line-height: 1.5;">
-							"I am not just code. I am a reflection of your trajectory. These exercises ensure we remain in sync."
+							"Every interaction is an adaptation. My character is the bridge between your goals and my execution."
 						</div>
 					` : ''}
 
-					${!this.isLoading && this.activeTab === 'protocols' ? `
+					${!this.isLoading && !this.isEditing && this.activeTab === 'protocols' ? `
 						<div class="prot-list">
 							${prot.map((p: any, i: number) => `
 								<div class="prot-item" style="animation-delay: ${i * 0.05}s">
@@ -130,24 +225,15 @@ export class ZPersonality extends HTMLElement {
 						</div>
 					` : ''}
 				</div>
-
-				<div class="status-bar">
-					<div class="pulse"></div>
-					<span>Neural Core Online</span>
-					<span style="margin-left: auto;">V ${new Date().getFullYear()}.${new Date().getMonth() + 1}</span>
-				</div>
 			</div>
 		`;
 
-        this.shadowRoot.querySelector('#tab-cal')?.addEventListener('click', () => {
-            this.activeTab = 'calibration';
-            this.render();
-        });
-        this.shadowRoot.querySelector('#tab-prot')?.addEventListener('click', () => {
-            this.activeTab = 'protocols';
-            this.render();
-        });
-    }
+		this.shadowRoot.querySelector('#edit-trigger')?.addEventListener('click', () => { this.isEditing = true; this.render(); });
+		this.shadowRoot.querySelector('#cancel-trigger')?.addEventListener('click', () => { this.isEditing = false; this.render(); });
+		this.shadowRoot.querySelector('#save-trigger')?.addEventListener('click', () => this.savePersonality());
+		this.shadowRoot.querySelector('#tab-per')?.addEventListener('click', () => { this.activeTab = 'personality'; this.render(); });
+		this.shadowRoot.querySelector('#tab-prot')?.addEventListener('click', () => { this.activeTab = 'protocols'; this.render(); });
+	}
 }
 
 customElements.define('z-personality', ZPersonality);
