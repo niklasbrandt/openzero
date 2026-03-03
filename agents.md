@@ -11,8 +11,10 @@
 
 ## 10. Build Documentation Maintenance
 
-- **Post-Task Audit:** After completing a task or prompt execution, you MUST check if the changes you made should be reflected in the project's build instructions (typically located in `docs/build-plan.md`).
-- Ensure that the setup, deployment, or architectural instructions remain accurate and up-to-date with your latest modifications.
+- **Post-Task Audit:** After completing a task or prompt execution, you MUST check if the changes you made should be reflected in the project's build and setup instructions in `BUILD.md` (root of the repository). This is the canonical manual setup guide for operators.
+- **What belongs in BUILD.md:** Any step a human must perform manually to set up or configure the system — new required `.env` variables, new secrets to generate, new manual server-side steps, service configuration changes, or first-run procedures.
+- **Keep it current:** If you introduce a new required env var (like `DASHBOARD_TOKEN`), add a numbered step in the appropriate Phase section of `BUILD.md` explaining how to generate, set, and verify it. Do not leave operators to discover missing config through 500 errors.
+- Ensure that the setup, deployment, and architectural instructions in `BUILD.md` remain accurate and up-to-date with your latest modifications.
 
 ## 2. Editor & Syntax Best Practices
 

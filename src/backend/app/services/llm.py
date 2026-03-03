@@ -36,6 +36,26 @@ from langgraph.prebuilt import create_react_agent
 # Track the model used for the current request context
 last_model_used: ContextVar[str] = ContextVar("last_model_used", default="local")
 
+# Lightweight cache for the user's preferred language.
+# Avoids a DB round-trip on every LLM call while ensuring language is
+# always respected even in paths that don't pass a full user_profile.
+_cached_user_lang: str = "en"
+
+async def _get_user_lang() -> str:
+	"""Return the user's language from the identity record, cached in memory."""
+	global _cached_user_lang
+	try:
+		from app.models.db import AsyncSessionLocal, Person
+		from sqlalchemy import select as sa_select
+		async with AsyncSessionLocal() as s:
+			res = await s.execute(sa_select(Person).where(Person.circle_type == "identity"))
+			ident = res.scalar_one_or_none()
+			if ident:
+				_cached_user_lang = getattr(ident, "language", "en") or "en"
+	except Exception:
+		pass
+	return _cached_user_lang
+
 # Lean system prompt for conversational messages (no action tag docs)
 SYSTEM_PROMPT_CHAT = """You are Z — the privacy first personal AI agent.
 You are not a generic assistant. You are an agent operator — sharp, warm, and direct.
@@ -298,7 +318,24 @@ async def chat_stream(
 
 	# Build system prompt
 	if system_override:
-		system_prompt = system_override
+		# Even when a caller supplies a full system_override, the user's language
+		# preference must still be honoured.  Append the directive so briefings,
+		# greetings, and email summaries all respect the configured language.
+		user_lang = (user_profile.get("language") or "en") if user_profile else "en"
+		if user_lang == "en":
+			# user_profile may be absent (e.g. greeting/task callers) — fall back
+			# to the lightweight cached identity lookup so language is never lost.
+			user_lang = await _get_user_lang()
+		if user_lang != "en":
+			lang_name = LANGUAGE_NAMES.get(user_lang, "English")
+			system_prompt = (
+				system_override
+				+ f"\n\nLANGUAGE DIRECTIVE: You MUST respond in {lang_name}. "
+				f"All responses, briefings, and notifications must be in {lang_name}. "
+				f"Think in {lang_name}. Only use English for technical terms that have no natural translation."
+			)
+		else:
+			system_prompt = system_override
 	else:
 		formatted_system_prompt, context_header, simplified_time = await build_system_prompt(user_name, user_profile)
 		system_prompt = context_header + formatted_system_prompt
