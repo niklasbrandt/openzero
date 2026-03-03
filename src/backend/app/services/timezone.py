@@ -32,8 +32,8 @@ async def refresh_user_settings():
 		logger.error(f"Failed to refresh user settings from DB: {e}")
 
 def get_user_timezone() -> str:
-	"""Returns the user's timezone from DB identity, falls back to .env USER_TIMEZONE."""
-	return _cached_timezone or settings.USER_TIMEZONE
+	"""Returns the user's timezone from DB identity record, defaults to Europe/Berlin."""
+	return _cached_timezone or "Europe/Berlin"
 
 def get_user_location() -> str:
 	"""Returns the user's location (City, CC) from DB identity, or empty."""
