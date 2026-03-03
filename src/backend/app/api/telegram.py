@@ -17,6 +17,8 @@ from datetime import datetime, timedelta
 import logging
 from app.services.translations import get_translations
 
+logger = logging.getLogger(__name__)
+
 async def get_user_lang() -> str:
 	"""Fetch user language from identity profile."""
 	try:
