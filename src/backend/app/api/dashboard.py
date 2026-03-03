@@ -325,6 +325,34 @@ async def dashboard_chat(req: ChatRequest, db: AsyncSession = Depends(get_db)):
 	except Exception as e:
 		raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/calibration")
+async def get_calibration():
+	"""Fetch the daily calibration exercise for the dashboard."""
+	import datetime
+	methods = [
+		("🙏 Gratitude", "Name 3 specific things you are grateful for right now. Be concrete — not 'family' but 'the way Mom called yesterday to check in'."),
+		("🎯 Intention Setting", "Set one clear intention for today. Not a task — an intention for HOW you want to show up."),
+		("🔄 Cognitive Reframe", "Think of something that's been bothering you. Now reframe it: What's the hidden opportunity or lesson?"),
+		("🫁 Box Breathing", "Pause for 60 seconds. Breathe in for 4 counts, hold for 4, out for 4, hold for 4. Repeat 3 times."),
+		("🌄 Visualization", "Close your eyes for 30 seconds. Picture your ideal version of today — how does it end?"),
+		("🧘 Body Scan", "Scan down slowly from head to toes. Where do you feel tension? Breathe into that spot."),
+		("💎 Affirmation", "Repeat: 'I am exactly where I need to be. Today I take one step closer to who I'm becoming.'"),
+		("🖐️ 5-4-3-2-1 Grounding", "Notice 5 things you see, 4 you touch, 3 you hear, 2 you smell, 1 you taste."),
+		("🌬️ 4-7-8 Breathing", "Inhale 4. Hold 7. Exhale 8. Repeat 3 times. Reduces anxiety by up to 15% cortisol."),
+		("☕ Mindful First Sip", "With your first drink, pause. Feel the warmth, smell it, take one slow sip."),
+		("📝 Micro-Journal", "1) How do I feel? 2) What am I avoiding? 3) What would make today a win?"),
+		("⚓ Anchor Breath", "Feet flat on the ground. Take 3 deep breaths focusing only on the contact. You are here."),
+	]
+	day_of_year = datetime.date.today().timetuple().tm_yday
+	method_name, method_prompt = methods[day_of_year % len(methods)]
+	return {"name": method_name, "prompt": method_prompt}
+
+@router.get("/protocols")
+async def get_protocols():
+	"""Fetch Z's operational protocols (action tags)."""
+	from app.services.agent_actions import AVAILABLE_TOOLS
+	return {"tools": AVAILABLE_TOOLS}
+
 @router.post("/chat/stream")
 async def dashboard_chat_stream(req: ChatRequest):
 	"""SSE streaming chat endpoint for real-time token delivery to dashboard."""

@@ -15,6 +15,7 @@ import '../components/UserCard'
 import '../components/HardwareMonitor'
 import '../components/SoftwareStatus'
 import '../components/SystemBenchmark'
+import '../components/ZPersonality'
 
 console.log('🚀 openZero Dashboard Initialized');
 
