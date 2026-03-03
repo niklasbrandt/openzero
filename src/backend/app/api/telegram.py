@@ -365,12 +365,12 @@ async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		await safe_reply(update, status_report, reply_markup=get_nav_markup())
 	except Exception as e:
 		print(f"ERROR: cmd_status failed: {e}")
-		await update.message.reply_text("🛰️ System Status check failed. Check local backend logs.")
+		await safe_reply(update, "System Status check failed. Check local backend logs.")
 
 # --- Command Handlers ---
 @owner_only
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-	await update.message.reply_text("🚀 Personal AI OS is online.")
+	await safe_reply(update, "Personal AI OS is online.")
 
 @owner_only
 async def cmd_tree(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -379,7 +379,7 @@ async def cmd_tree(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		tree = await get_project_tree(as_html=False)
 		await safe_reply(update, tree, reply_markup=get_nav_markup())
 	except Exception as e:
-		await update.message.reply_text(f"❌ Failed to fetch mission tree: {e}")
+		await safe_reply(update, f"Failed to fetch mission tree: {e}")
 
 @owner_only
 async def cmd_review(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -388,7 +388,7 @@ async def cmd_review(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		report = await weekly_review()
 		await safe_reply(update, report)
 	except Exception as e:
-		await update.message.reply_text(f"❌ Review generation failed: {e}")
+		await safe_reply(update, f"Review generation failed: {e}")
 
 @owner_only
 async def cmd_week(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -397,7 +397,7 @@ async def cmd_week(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		report = await weekly_review()
 		await safe_reply(update, report)
 	except Exception as e:
-		await update.message.reply_text(f"❌ Weekly review failed: {e}")
+		await safe_reply(update, f"Weekly review failed: {e}")
 
 @owner_only
 async def cmd_month(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -406,7 +406,7 @@ async def cmd_month(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		report = await monthly_review()
 		await safe_reply(update, report)
 	except Exception as e:
-		await update.message.reply_text(f"❌ Monthly review failed: {e}")
+		await safe_reply(update, f"Monthly review failed: {e}")
 
 @owner_only
 async def cmd_protocols(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -425,7 +425,7 @@ async def cmd_protocols(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cmd_remind(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	msg = update.message.text.replace("/remind", "").strip()
 	if not msg:
-		await update.message.reply_text("Usage: /remind 2 times an hour for 4 hours to drink water")
+		await safe_reply(update, "Usage: /remind 2 times an hour for 4 hours to drink water")
 		return
 		
 	from app.services.agent_actions import parse_and_execute_actions
@@ -442,15 +442,15 @@ async def cmd_remind(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	clean_reply, executed = await parse_and_execute_actions(response)
 	
 	if executed:
-		await update.message.reply_text("\n".join(executed))
+		await safe_reply(update, "\n".join(executed))
 	else:
-		await update.message.reply_text("Could not parse the reminder frequency. Try: '/remind 30m for 4h drink water'")
+		await safe_reply(update, "Could not parse the reminder frequency. Try: /remind 30m for 4h drink water")
 
 @owner_only
 async def cmd_custom(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	msg = update.message.text.replace("/custom", "").strip()
 	if not msg:
-		await update.message.reply_text("Usage: /custom Every Monday at 12:00 remind me to check the stats")
+		await safe_reply(update, "Usage: /custom Every Monday at 12:00 remind me to check the stats")
 		return
 		
 	from app.services.agent_actions import parse_and_execute_actions
@@ -468,9 +468,9 @@ async def cmd_custom(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	clean_reply, executed = await parse_and_execute_actions(response)
 	
 	if executed:
-		await update.message.reply_text("\n".join(executed))
+		await safe_reply(update, "\n".join(executed))
 	else:
-		await update.message.reply_text("Could not parse. Try: '/custom every day at 10am remind me...'")
+		await safe_reply(update, "Could not parse. Try: /custom every day at 10am remind me...")
 
 @owner_only
 async def cmd_quarter(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -479,7 +479,7 @@ async def cmd_quarter(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		report = await quarterly_review()
 		await safe_reply(update, report)
 	except Exception as e:
-		await update.message.reply_text(f"❌ Quarterly review failed: {e}")
+		await safe_reply(update, f"Quarterly review failed: {e}")
 
 @owner_only
 async def cmd_day(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -487,7 +487,7 @@ async def cmd_day(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		from app.tasks.morning import morning_briefing
 		await morning_briefing()
 	except Exception as e:
-		await update.message.reply_text(f"❌ Morning briefing failed: {e}")
+		await safe_reply(update, f"Morning briefing failed: {e}")
 
 @owner_only
 async def cmd_year(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -496,20 +496,20 @@ async def cmd_year(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		report = await yearly_review()
 		await safe_reply(update, report)
 	except Exception as e:
-		await update.message.reply_text(f"❌ Yearly review failed: {e}")
+		await safe_reply(update, f"Yearly review failed: {e}")
 
 @owner_only
 async def cmd_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	query = update.message.text.replace("/search", "").strip()
 	from app.services.memory import semantic_search
 	results = await semantic_search(query)
-	await update.message.reply_text(results)
+	await safe_reply(update, results)
 
 @owner_only
 async def cmd_unlearn(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	query = update.message.text.replace("/unlearn", "").strip()
 	if not query:
-		await update.message.reply_text("What should I unlearn? Provide a part of the memory text.")
+		await safe_reply(update, "What should I unlearn? Provide a part of the memory text.")
 		return
 
 	from app.services.memory import get_qdrant, COLLECTION_NAME
@@ -526,7 +526,7 @@ async def cmd_unlearn(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	)
 	
 	if not results.points:
-		await update.message.reply_text("No matching memories found to unlearn.")
+		await safe_reply(update, "No matching memories found to unlearn.")
 		return
 
 	# Show matches with buttons
@@ -537,7 +537,7 @@ async def cmd_unlearn(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	
 	keyboard.append([InlineKeyboardButton("❌ Cancel", callback_data="unlearn_cancel")])
 	reply_markup = InlineKeyboardMarkup(keyboard)
-	await update.message.reply_text("Select the knowledge I should unlearn:", reply_markup=reply_markup)
+	await safe_reply(update, "Select the knowledge I should unlearn:", reply_markup=reply_markup)
 
 @owner_only
 async def cmd_memories(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -546,7 +546,7 @@ async def cmd_memories(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	# Fetch 50 instead of 100 to stay safe with message limits
 	results, _ = client.scroll(collection_name=COLLECTION_NAME, limit=50)
 	if not results:
-		await update.message.reply_text("No memories stored in the vault.")
+		await safe_reply(update, "No memories stored in the vault.")
 		return
 	
 	lines = []
@@ -622,7 +622,7 @@ async def cmd_add_topic(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	topic = update.message.text.replace("/add", "").strip()
 	from app.services.memory import store_memory
 	await store_memory(topic)
-	await update.message.reply_text(f"✅ Stored: {topic}")
+	await safe_reply(update, f"Stored: {topic}")
 
 @owner_only
 async def cmd_evolve(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -731,7 +731,7 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		print(f"ERROR: handle_freetext failed: {e}")
 		# If bit failed to edit, try fresh message
 		try:
-			await update.message.reply_text("⚖️ I encountered friction while processing that request. My local core is still active, but that specific thread was dropped.")
+			await safe_reply(update, "I encountered friction while processing that request. My local core is still active, but that specific thread was dropped.")
 		except: pass
 
 @owner_only
@@ -786,18 +786,18 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		await safe_edit(status_msg, f"<blockquote>{display_reply}{footer}</blockquote>", parse_mode="HTML", reply_markup=get_nav_markup())
 	except Exception as e:
 		print(f"ERROR: handle_voice failed: {e}")
-		await update.message.reply_text("⚠️ Voice processing failed. There might be an issue with the transcription or intelligence layer.")
+		await safe_reply(update, "Voice processing failed. There might be an issue with the transcription or intelligence layer.")
 
 @owner_only
 async def cmd_think(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	"""Initiate Deep Thinking with Context Approval."""
 	if not settings.DEEP_THINK_PROVIDER:
-		await update.message.reply_text("🚫 Deep Thinking is disabled. Please configure a provider in `.env` to use this feature.")
+		await safe_reply(update, "Deep Thinking is disabled. Configure a provider in .env to use this feature.")
 		return
 
 	query = update.message.text.replace("/think", "").strip()
 	if not query:
-		await update.message.reply_text("What should I think deeply about?")
+		await safe_reply(update, "What should I think deeply about?")
 		return
 	
 	await update.message.reply_text("<blockquote>⏳ <b>Z is analyzing required context...</b></blockquote>", parse_mode="HTML")
