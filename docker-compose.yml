@@ -42,7 +42,7 @@ services:
     entrypoint: [ "/bin/bash", "/entrypoint.sh" ]
     environment:
       - MODEL_URL=${LLM_INSTANT_MODEL_URL}
-      - MODEL_FILE=${LLM_INSTANT_MODEL_FILE:-phi-4-mini-q4_0.gguf}
+      - MODEL_FILE=${LLM_INSTANT_MODEL_FILE:-Phi-4-mini-instruct-Q4_K_M.gguf}
       - PORT=8081
       - THREADS=${LLM_THREADS_INSTANT:-2}
       - CTX_SIZE=1024
@@ -59,7 +59,7 @@ services:
     entrypoint: [ "/bin/bash", "/entrypoint.sh" ]
     environment:
       - MODEL_URL=${LLM_STANDARD_MODEL_URL}
-      - MODEL_FILE=${LLM_STANDARD_MODEL_FILE:-llama-3.1-8b-instruct-q4_0.gguf}
+      - MODEL_FILE=${LLM_STANDARD_MODEL_FILE:-Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf}
       - PORT=8082
       - THREADS=${LLM_THREADS_STANDARD:-2}
       - CTX_SIZE=2048
