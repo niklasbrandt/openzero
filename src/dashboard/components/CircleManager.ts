@@ -153,9 +153,9 @@ export class CircleManager extends HTMLElement {
 
 			this.shadowRoot.innerHTML = `
 				<style>
-					h2 { font-size: 1.1rem; font-weight: bold; margin: 0 0 1rem 0; color: #fff; display: flex; align-items: center; gap: 0.6rem; }
-					.h-icon { display: flex; align-items: center; justify-content: center; opacity: 0.6; }
-					.subtitle { font-weight: 400; font-size: 0.75rem; color: rgba(255, 255, 255, 0.35); margin-left: auto; }
+					h2 { font-size: 1.5rem; font-weight: bold; margin: 0; color: #fff; letter-spacing: 0.02em; display: flex; align-items: center; gap: 0.5rem; }
+					.h-icon { display: inline-flex; width: 28px; height: 28px; background: ${accent}; border-radius: 0.4rem; align-items: center; justify-content: center; flex-shrink: 0; }
+					.subtitle { font-size: 0.65rem; font-weight: 400; color: rgba(255, 255, 255, 0.3); margin-left: 0.5rem; text-transform: uppercase; letter-spacing: 0.1em; }
 					:host { display: block; }
 					.add-form {
 						display: grid;

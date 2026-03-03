@@ -87,15 +87,14 @@ export class ZPersonality extends HTMLElement {
 				.card { height: 100%; display: flex; flex-direction: column; gap: 1.25rem; color: #fff; }
 				
 				.header { display: flex; justify-content: space-between; align-items: center; }
-				h2 { margin: 0; font-size: 1.1rem; display: flex; align-items: center; gap: 0.6rem; color: #fff; font-weight: bold; }
-				.icon { 
-					width: 32px; height: 32px; 
-					background: linear-gradient(135deg, #14B8A6, #0066FF); 
-					border-radius: 50%; display: flex; align-items: center; justify-content: center;
-					box-shadow: 0 0 20px rgba(20, 184, 166, 0.3);
-					font-weight: 800; font-size: 0.9rem;
+				h2 { margin: 0; font-size: 1.5rem; display: flex; align-items: center; gap: 0.5rem; color: #fff; font-weight: bold; letter-spacing: 0.02em; }
+				.icon {
+					width: 28px; height: 28px;
+					background: linear-gradient(135deg, #14B8A6 0%, #0066FF 100%);
+					border-radius: 0.4rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+					font-weight: 800; font-size: 0.8rem;
 				}
-				.subtitle { font-weight: 400; font-size: 0.75rem; color: rgba(255, 255, 255, 0.35); margin-left: auto; }
+				.subtitle { font-size: 0.65rem; font-weight: 400; color: rgba(255, 255, 255, 0.3); margin-left: 0.5rem; text-transform: uppercase; letter-spacing: 0.1em; }
 
 				.edit-btn {
 					background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);

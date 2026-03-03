@@ -68,7 +68,9 @@ export class ProjectTree extends HTMLElement {
 		if (this.shadowRoot) {
 			this.shadowRoot.innerHTML = `
 				<style>
-					h2 { font-size: 1.5rem; font-weight: bold; margin: 0 0 1rem 0; color: #fff; letter-spacing: 0.02em; }
+					h2 { font-size: 1.5rem; font-weight: bold; margin: 0; color: #fff; letter-spacing: 0.02em; display: flex; align-items: center; gap: 0.5rem; }
+					h2 .icon { display: inline-flex; width: 28px; height: 28px; background: linear-gradient(135deg, #14B8A6 0%, #0066FF 100%); border-radius: 0.4rem; align-items: center; justify-content: center; flex-shrink: 0; }
+					h2 .subtitle { font-size: 0.65rem; font-weight: 400; color: rgba(255, 255, 255, 0.3); margin-left: 0.5rem; text-transform: uppercase; letter-spacing: 0.1em; }
 					:host { display: block; }
 					.header {
 						display: flex;
@@ -120,7 +122,11 @@ export class ProjectTree extends HTMLElement {
 				</style>
 				<div class="card">
 					<div class="header">
-						<h2>Boards</h2>
+						<h2>
+							<span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>
+							Boards
+							<span class="subtitle">Project Boards</span>
+						</h2>
 						<button id="new-project-btn">+ Add Board</button>
 					</div>
 					<pre>Loading tree...</pre>
