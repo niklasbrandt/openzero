@@ -72,6 +72,13 @@ class ChatRequest(BaseModel):
 	message: str
 	history: List[ChatMessage] = []
 
+@router.get("/chat/history")
+async def chat_history(limit: int = 30):
+	"""Return the last N cross-channel messages for persistent chat UI."""
+	from app.models.db import get_global_history
+	msgs = await get_global_history(limit=limit)
+	return {"messages": msgs}
+
 @router.post("/chat")
 async def dashboard_chat(req: ChatRequest, db: AsyncSession = Depends(get_db)):
 	"""Chat with Z from the dashboard."""
