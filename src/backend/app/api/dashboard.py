@@ -353,6 +353,67 @@ async def get_protocols():
 	from app.services.agent_actions import AVAILABLE_TOOLS
 	return {"tools": AVAILABLE_TOOLS}
 
+@router.get("/personality")
+async def get_personality(db: AsyncSession = Depends(get_db)):
+	"""Fetch the agent's personality traits/configuration."""
+	from app.models.db import Preference
+	res = await db.execute(select(Preference).where(Preference.key == "agent_personality"))
+	pref = res.scalar_one_or_none()
+	
+	default_personality = {
+		"directness": 4, 
+		"warmth": 3,     
+		"agency": 4,     
+		"critique": 3,   
+		"humor": 2,       # Humor Score (TARS style)
+		"honesty": 5,     # Honesty Score (TARS style)
+		"depth": 4,      
+		"role": "Agent Operator",
+		"questions": [
+			{"id": "directness", "label": "Communication Style", "type": "range", "min": 1, "max": 5, "low": "Elaborate", "high": "Concise"},
+			{"id": "warmth", "label": "Emotional Tone", "type": "range", "min": 1, "max": 5, "low": "Clinical", "high": "Empathetic"},
+			{"id": "agency", "label": "Agency Level", "type": "range", "min": 1, "max": 5, "low": "Reactive", "high": "Proactive"},
+			{"id": "critique", "label": "Intellectual Friction", "type": "range", "min": 1, "max": 5, "low": "Agreeable", "high": "Challenging"},
+			{"id": "humor", "label": "Humor Score (TARS Style)", "type": "range", "min": 0, "max": 10, "low": "0%", "high": "100%"},
+			{"id": "honesty", "label": "Honesty Score", "type": "range", "min": 1, "max": 10, "low": "Low", "high": "Absolute"},
+			{"id": "depth", "label": "Analysis Depth", "type": "range", "min": 1, "max": 5, "low": "Surface", "high": "Deep Dive"},
+			{"id": "role", "label": "Core Identity / Archetype", "type": "text", "placeholder": "e.g. Master Architect, Stoic Mentor, Sharp Assistant"},
+			{"id": "relationship", "label": "Relational Context", "type": "text", "placeholder": "Who are you to the user? (e.g. Mentor, Tool, Equal Partner)"},
+			{"id": "values", "label": "Core Values & Principles", "type": "textarea", "placeholder": "What drives your decision making? (e.g. Efficiency above all, or Ethics first)"},
+			{"id": "behavior", "label": "Linguistic & Behavioral Style", "type": "textarea", "placeholder": "Specific quirks, metaphors, or formal/informal speech patterns."}
+		]
+	}
+
+	if pref:
+		saved = json.loads(pref.value)
+		# Ensure all fields exist and merge questions
+		for k, v in default_personality.items():
+			if k not in saved: saved[k] = v
+		saved["questions"] = default_personality["questions"]
+		return saved
+	
+	return default_personality
+
+@router.put("/personality")
+async def save_personality(data: dict, db: AsyncSession = Depends(get_db)):
+	"""Save updated agent personality traits."""
+	from app.models.db import Preference
+	# Remove metadata before saving
+	data.pop("questions", None)
+	
+	res = await db.execute(select(Preference).where(Preference.key == "agent_personality"))
+	pref = res.scalar_one_or_none()
+	
+	val_str = json.dumps(data)
+	if pref:
+		pref.value = val_str
+	else:
+		pref = Preference(key="agent_personality", value=val_str)
+		db.add(pref)
+	
+	await db.commit()
+	return {"status": "ok", "personality": data}
+
 @router.post("/chat/stream")
 async def dashboard_chat_stream(req: ChatRequest):
 	"""SSE streaming chat endpoint for real-time token delivery to dashboard."""
