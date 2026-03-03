@@ -1,6 +1,12 @@
 #!/bin/bash
 set -e
 
+# Usage: bash scripts/sync.sh [--skip-tests]
+SKIP_TESTS=false
+for arg in "$@"; do
+  [[ "$arg" == "--skip-tests" ]] && SKIP_TESTS=true
+done
+
 # Configuration (Load from .env if available)
 if [ -f .env ]; then
   # Load env vars while ignoring comments and empty lines
@@ -18,6 +24,7 @@ REMOTE_DIR="${REMOTE_DIR:-/home/openzero/openzero}"
 # Strict exclusions per agents.md rule 9
 EXCLUDES=(
     --exclude '.git/'
+    --exclude '.github/'
     --exclude 'node_modules/'
     --exclude '__pycache__/'
     --exclude '.venv/'
@@ -68,3 +75,36 @@ ssh $REMOTE_USER@$REMOTE_HOST "cd $REMOTE_DIR && docker compose build backend &&
 rm -f LATEST_CHANGES.txt
 
 echo "✅ Deployment complete."
+
+# ── Post-deploy regression tests ─────────────────────────────────────────────
+if [ "$SKIP_TESTS" = true ]; then
+  echo "⏭  Tests skipped (--skip-tests flag set)."
+  exit 0
+fi
+
+# Derive backend URL from BASE_URL or fallback to Tailscale/IP direct
+TEST_URL="${BASE_URL:-http://${REMOTE_HOST}:8000}"
+
+# Strip trailing slash
+TEST_URL="${TEST_URL%/}"
+
+echo ""
+echo "🧪 Running post-deploy regression suite against $TEST_URL ..."
+echo "   (waiting 8s for backend to be ready)"
+sleep 8
+
+# Check Python + httpx available
+if ! python3 -c "import httpx, asyncio" 2>/dev/null; then
+  echo "⚠️  httpx not installed locally — installing..."
+  pip3 install httpx --quiet
+fi
+
+# Run the suite; non-zero exit means regressions detected
+if python3 scripts/test_live_vps_protocols.py --url "$TEST_URL"; then
+  echo ""
+  echo "✅ All regression tests passed."
+else
+  echo ""
+  echo "❌ REGRESSION DETECTED — review output above before proceeding."
+  exit 1
+fi
