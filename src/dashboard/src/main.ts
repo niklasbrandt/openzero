@@ -77,20 +77,47 @@ async function initTheme() {
 }
 initTheme();
 
-// ── Sidebar Scroll Spy ──
+// ── Sidebar + Marquee + Drawer Scroll Spy ──
 function initScrollSpy() {
-	const navLinks = document.querySelectorAll<HTMLAnchorElement>('.sidebar-nav a[data-section]');
-	if (!navLinks.length) return;
+	const allNavContainers = [
+		'.sidebar-nav',
+		'.top-marquee-nav',
+		'.mobile-nav-drawer',
+	];
 
-	const sectionIds = Array.from(navLinks).map(a => a.dataset.section!);
-	const sections = sectionIds.map(id => document.getElementById(id)).filter(Boolean) as HTMLElement[];
+	const allNavLinks = document.querySelectorAll<HTMLAnchorElement>(
+		'[data-section]'
+	);
+	if (!allNavLinks.length) return;
+
+	const sectionIds = Array.from(
+		new Set(Array.from(allNavLinks).map(a => a.dataset.section!))
+	);
+	const sections = sectionIds
+		.map(id => document.getElementById(id))
+		.filter(Boolean) as HTMLElement[];
+
+	// Mark the active link in ALL nav containers simultaneously
+	function setActive(sectionId: string) {
+		allNavContainers.forEach(sel => {
+			const container = document.querySelector(sel);
+			if (!container) return;
+			container.querySelectorAll<HTMLAnchorElement>('a[data-section]').forEach(a => {
+				a.classList.toggle('active', a.dataset.section === sectionId);
+			});
+		});
+
+		// Auto-scroll the marquee nav pill into view so the active item is visible
+		const marqueeLink = document.querySelector<HTMLAnchorElement>(
+			`.top-marquee-nav a[data-section="${sectionId}"]`
+		);
+		marqueeLink?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+	}
 
 	const observer = new IntersectionObserver((entries) => {
 		entries.forEach(entry => {
-			const link = document.querySelector(`.sidebar-nav a[data-section="${entry.target.id}"]`);
 			if (entry.isIntersecting) {
-				navLinks.forEach(a => a.classList.remove('active'));
-				link?.classList.add('active');
+				setActive(entry.target.id);
 			}
 		});
 	}, {
@@ -100,23 +127,61 @@ function initScrollSpy() {
 
 	sections.forEach(section => observer.observe(section));
 
-	// Smooth scroll on click + Highlight
-	navLinks.forEach(link => {
+	// Smooth scroll + highlight on any nav link click
+	allNavLinks.forEach(link => {
 		link.addEventListener('click', (e) => {
 			e.preventDefault();
 			const id = link.dataset.section!;
 			const el = document.getElementById(id);
 			if (el) {
 				el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-				// Add highlight effect
 				el.classList.add('widget-highlight');
 				setTimeout(() => el.classList.remove('widget-highlight'), 1500);
 			}
+			// Close drawer if a drawer link was clicked
+			closeMobileDrawer();
 		});
 	});
 }
 
+// ── Mobile drawer open / close ──
+let drawerOpen = false;
+
+function openMobileDrawer() {
+	const drawer = document.getElementById('mobile-nav-drawer');
+	const toggle = document.getElementById('mobile-nav-open');
+	if (!drawer) return;
+	drawerOpen = true;
+	drawer.classList.add('open');
+	toggle?.setAttribute('aria-expanded', 'true');
+	document.body.style.overflow = 'hidden';
+	// Focus the close button for keyboard accessibility
+	(drawer.querySelector('.mobile-nav-drawer-close') as HTMLButtonElement | null)?.focus();
+}
+
+function closeMobileDrawer() {
+	const drawer = document.getElementById('mobile-nav-drawer');
+	const toggle = document.getElementById('mobile-nav-open');
+	if (!drawer || !drawerOpen) return;
+	drawerOpen = false;
+	drawer.classList.remove('open');
+	toggle?.setAttribute('aria-expanded', 'false');
+	document.body.style.overflow = '';
+	toggle?.focus();
+}
+
+function initMobileNav() {
+	document.getElementById('mobile-nav-open')?.addEventListener('click', openMobileDrawer);
+	document.getElementById('mobile-nav-close')?.addEventListener('click', closeMobileDrawer);
+
+	// Close on Escape key
+	document.addEventListener('keydown', (e) => {
+		if (e.key === 'Escape' && drawerOpen) closeMobileDrawer();
+	});
+}
+
 initScrollSpy();
+initMobileNav();
 
 // ── Header calendar button ──
 document.getElementById('open-calendar-btn')?.addEventListener('click', () => {
