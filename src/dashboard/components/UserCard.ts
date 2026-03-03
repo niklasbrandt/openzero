@@ -6,7 +6,8 @@ export class UserCard extends HTMLElement {
 		en: 'English', zh: 'Mandarin Chinese', hi: 'Hindi',
 		es: 'Spanish', fr: 'French', ar: 'Arabic',
 		pt: 'Portuguese', ru: 'Russian', ja: 'Japanese', de: 'German',
-		it: 'Italian', nl: 'Dutch', pl: 'Polish', sv: 'Swedish',
+		it: 'Italian', ko: 'Korean', vi: 'Vietnamese', bn: 'Bengali',
+		id: 'Indonesian', nl: 'Dutch', pl: 'Polish', sv: 'Swedish',
 		el: 'Greek', ro: 'Romanian', tr: 'Turkish', cs: 'Czech',
 		da: 'Danish', no: 'Norwegian',
 	};

@@ -104,7 +104,9 @@ export class LifeOverview extends HTMLElement {
 			this.shadowRoot.innerHTML = `
 				<style>
 					:host { display: block; }
-					h2 { font-size: 1.5rem; font-weight: bold; margin: 0 0 1.5rem 0; color: #fff; letter-spacing: 0.02em; }
+					h2 { font-size: 1.1rem; font-weight: bold; margin: 0 0 1.5rem 0; color: #fff; display: flex; align-items: center; gap: 0.6rem; }
+					.h-icon { display: flex; align-items: center; justify-content: center; opacity: 0.6; }
+					.h-subtitle { font-weight: 400; font-size: 0.75rem; color: rgba(255, 255, 255, 0.35); margin-left: auto; }
 					h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255, 255, 255, 0.4); margin-bottom: 1rem; }
 					h3 small { font-size: 0.65rem; text-transform: none; letter-spacing: 0.02em; opacity: 0.8; margin-left: 0.4rem; font-weight: 400; }
 					
@@ -188,7 +190,17 @@ export class LifeOverview extends HTMLElement {
 					.error { color: #ef4444; text-align: center; padding: 2rem; }
 				</style>
 				<div class="card">
-					<h2>${this.tr('life_overview', 'Life Overview')}</h2>
+					<h2>
+						<span class="h-icon">
+							<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+								<circle cx="12" cy="12" r="10"></circle>
+								<line x1="2" y1="12" x2="22" y2="12"></line>
+								<path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+							</svg>
+						</span>
+						${this.tr('life_overview', 'Life Overview')}
+						<span class="h-subtitle">${this.tr('life_subtitle', 'Projects & People')}</span>
+					</h2>
 					<div id="overview-container">
 						<div style="text-align: center; padding: 2rem; color: rgba(255,255,255,0.3);">${this.tr('mapping_world', 'Mapping your world...')}</div>
 					</div>

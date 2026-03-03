@@ -153,7 +153,9 @@ export class CircleManager extends HTMLElement {
 
 			this.shadowRoot.innerHTML = `
 				<style>
-					h2 { font-size: 1.5rem; font-weight: bold; margin: 0 0 1rem 0; color: #fff; letter-spacing: 0.02em; }
+					h2 { font-size: 1.1rem; font-weight: bold; margin: 0 0 1rem 0; color: #fff; display: flex; align-items: center; gap: 0.6rem; }
+					.h-icon { display: flex; align-items: center; justify-content: center; opacity: 0.6; }
+					.subtitle { font-weight: 400; font-size: 0.75rem; color: rgba(255, 255, 255, 0.35); margin-left: auto; }
 					:host { display: block; }
 					.add-form {
 						display: grid;
@@ -323,7 +325,17 @@ export class CircleManager extends HTMLElement {
 				</style>
 				<div class="card">
 					<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-						<h2>${title}</h2>
+						<h2>
+							<span class="h-icon">
+								<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+									<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+									<circle cx="9" cy="7" r="4"></circle>
+									<path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+									<path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+								</svg>
+							</span>
+							${title}
+						</h2>
 						${!this.isAdding ? `<button id="showAddBtn" aria-label="Add a new person to ${title}" style="background: ${accent}; color: #fff; border: none; padding: 0.4rem 1rem; border-radius: 0.6rem; cursor: pointer; font-size: 0.8rem; font-weight: 600; font-family: 'Inter', system-ui, sans-serif;">+ New Person</button>` : ''}
 					</div>
 
