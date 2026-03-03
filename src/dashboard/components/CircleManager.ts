@@ -155,10 +155,10 @@ export class CircleManager extends HTMLElement {
 				<style>
 					h2 { font-size: 1.5rem; font-weight: bold; margin: 0 0 1rem 0; color: #fff; letter-spacing: 0.02em; }
 					:host { display: block; }
-					.add-form { 
-						display: grid; 
-						gap: 0.5rem; 
-						margin-bottom: 1.5rem; 
+					.add-form {
+						display: grid;
+						gap: 0.25rem;
+						margin-bottom: 1.5rem;
 						animation: fadeIn 0.3s ease-in-out;
 						background: rgba(255, 255, 255, 0.02);
 						padding: 1rem;
@@ -168,6 +168,17 @@ export class CircleManager extends HTMLElement {
 						from { opacity: 0; transform: translateY(-10px); }
 						to { opacity: 1; transform: translateY(0); }
 					}
+					label {
+						display: block;
+						font-size: 0.7rem;
+						font-weight: 600;
+						color: rgba(255, 255, 255, 0.4);
+						text-transform: uppercase;
+						letter-spacing: 0.06em;
+						margin-bottom: 0.2rem;
+						margin-top: 0.5rem;
+					}
+					label .required { color: #f87171; margin-left: 0.15rem; }
 					input, textarea {
 						background: rgba(0, 0, 0, 0.2);
 						border: 1px solid rgba(255, 255, 255, 0.08);
@@ -178,11 +189,31 @@ export class CircleManager extends HTMLElement {
 						font-family: 'Inter', system-ui, sans-serif;
 						font-size: 0.9rem;
 						transition: all 0.3s ease;
+						width: 100%;
+						box-sizing: border-box;
 					}
 					input:focus, textarea:focus {
 						border-color: rgba(20, 184, 166, 0.4);
 						background: rgba(0, 0, 0, 0.28);
 					}
+					input.field-error, textarea.field-error {
+						border-color: rgba(239, 68, 68, 0.5);
+						background: rgba(239, 68, 68, 0.05);
+					}
+					.field-hint {
+						font-size: 0.68rem;
+						color: rgba(255, 255, 255, 0.2);
+						margin-top: 0.15rem;
+					}
+					.field-error-msg {
+						font-size: 0.72rem;
+						color: #f87171;
+						margin-top: 0.15rem;
+						min-height: 0;
+						opacity: 0;
+						transition: opacity 0.2s ease;
+					}
+					.field-error-msg.visible { opacity: 1; }
 					.person-item {
 						background: rgba(255, 255, 255, 0.03);
 						border-radius: 1rem;
@@ -234,24 +265,6 @@ export class CircleManager extends HTMLElement {
 						border-radius: 0.4rem;
 						margin-left: 0.5rem;
 					}
-					.checkbox-row {
-						display: none; /* Removed */
-					}
-					.checkbox-row input[type="checkbox"] {
-						width: 16px;
-						height: 16px;
-						accent-color: #14B8A6;
-						cursor: pointer;
-					}
-					.checkbox-row label {
-						font-size: 0.85rem;
-						color: rgba(255, 255, 255, 0.7);
-						cursor: pointer;
-						user-select: none;
-					}
-					#bdayInput.hidden {
-						display: none;
-					}
 					button#addBtn {
 						background: rgba(20, 184, 166, 0.12);
 						color: #14B8A6;
@@ -269,28 +282,74 @@ export class CircleManager extends HTMLElement {
 						background: rgba(20, 184, 166, 0.22);
 						border-color: rgba(20, 184, 166, 0.4);
 					}
-					button:focus-visible, input:focus-visible, textarea:focus-visible { 
-						outline: 2px solid #14B8A6; 
-						outline-offset: 2px; 
+					#cancelEditBtn {
+						background: transparent;
+						border: 1px solid rgba(255, 255, 255, 0.2);
+						color: #fff;
+						border-radius: 0.6rem;
+						padding: 0.4rem 1rem;
+						cursor: pointer;
+						font-size: 0.8rem;
+						font-family: 'Inter', system-ui, sans-serif;
+						transition: all 0.25s ease;
+					}
+					#cancelEditBtn:hover {
+						background: rgba(255, 255, 255, 0.08);
+						border-color: rgba(255, 255, 255, 0.35);
+					}
+					.form-feedback {
+						font-size: 0.78rem;
+						padding: 0.5rem 0.75rem;
+						border-radius: 0.5rem;
+						margin-top: 0.5rem;
+						opacity: 0;
+						transition: opacity 0.25s ease;
+					}
+					.form-feedback.visible { opacity: 1; }
+					.form-feedback.error {
+						background: rgba(239, 68, 68, 0.1);
+						border: 1px solid rgba(239, 68, 68, 0.2);
+						color: #f87171;
+					}
+					.form-feedback.success {
+						background: rgba(34, 197, 94, 0.1);
+						border: 1px solid rgba(34, 197, 94, 0.2);
+						color: #4ade80;
+					}
+					button:focus-visible, input:focus-visible, textarea:focus-visible {
+						outline: 2px solid #14B8A6;
+						outline-offset: 2px;
 					}
 				</style>
 				<div class="card">
 					<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
 						<h2>${title}</h2>
-						${!this.isAdding ? `<button id="showAddBtn" style="background: ${accent}; color: #fff; border: none; padding: 0.4rem 1rem; border-radius: 0.6rem; cursor: pointer; font-size: 0.8rem; font-weight: 600;">+ New Person</button>` : ''}
+						${!this.isAdding ? `<button id="showAddBtn" aria-label="Add a new person to ${title}" style="background: ${accent}; color: #fff; border: none; padding: 0.4rem 1rem; border-radius: 0.6rem; cursor: pointer; font-size: 0.8rem; font-weight: 600; font-family: 'Inter', system-ui, sans-serif;">+ New Person</button>` : ''}
 					</div>
-					
+
 					${this.isAdding ? `
-					<div class="add-form">
-						<input type="text" id="nameInput" placeholder="Name">
-						<input type="text" id="relInput" placeholder="Relationship (e.g. Son, Friend)">
-						<input type="text" id="bdayInput" placeholder="Birthday (e.g. 27.02.19)">
-						<textarea id="ctxInput" placeholder="Focus..."></textarea>
-						<div style="display: flex; gap: 0.5rem;">
-							<button id="addBtn">${this.editingId ? 'Update Person' : 'Add to Circle'}</button>
-							<button id="cancelEditBtn" style="background:transparent; border:1px solid rgba(255,255,255,0.2); color:#fff; border-radius:0.6rem; padding:0.4rem 1rem; cursor:pointer; font-size:0.8rem;">Cancel</button>
+					<form class="add-form" id="personForm" novalidate>
+						<label for="nameInput">Name <span class="required" aria-hidden="true">*</span></label>
+						<input type="text" id="nameInput" placeholder="e.g. Maria" required aria-required="true" autocomplete="off">
+						<div class="field-error-msg" id="nameError" role="alert"></div>
+
+						<label for="relInput">Relationship <span class="required" aria-hidden="true">*</span></label>
+						<input type="text" id="relInput" placeholder="e.g. Son, Friend, Colleague" required aria-required="true" autocomplete="off">
+						<div class="field-error-msg" id="relError" role="alert"></div>
+
+						<label for="bdayInput">Birthday</label>
+						<input type="text" id="bdayInput" placeholder="e.g. 27.02.2019" autocomplete="off">
+						<div class="field-hint">DD.MM.YYYY or DD.MM.YY — optional</div>
+
+						<label for="ctxInput">Context / Focus</label>
+						<textarea id="ctxInput" rows="2" placeholder="Notes, hobbies, important details..."></textarea>
+
+						<div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+							<button type="submit" id="addBtn">${this.editingId ? 'Update Person' : 'Add to Circle'}</button>
+							<button type="button" id="cancelEditBtn">Cancel</button>
 						</div>
-					</div>
+						<div class="form-feedback" id="formFeedback" role="status" aria-live="polite"></div>
+					</form>
 					` : ''}
 					<div id="people-list">Loading...</div>
 				</div>
@@ -300,29 +359,36 @@ export class CircleManager extends HTMLElement {
 				this.shadowRoot.querySelector('#showAddBtn')?.addEventListener('click', () => {
 					this.isAdding = true;
 					this.render();
+					// Focus the first field for keyboard users
+					setTimeout(() => {
+						this.shadowRoot?.querySelector<HTMLInputElement>('#nameInput')?.focus();
+					}, 50);
 				});
 			}
 
 			this.displayPeople(this.currentPeople);
 
-			this.shadowRoot.querySelector('#addBtn')?.addEventListener('click', () => {
-				const name = (this.shadowRoot?.querySelector('#nameInput') as HTMLInputElement).value;
-				const rel = (this.shadowRoot?.querySelector('#relInput') as HTMLInputElement).value;
-				const ctx = (this.shadowRoot?.querySelector('#ctxInput') as HTMLTextAreaElement).value;
-				const bday = (this.shadowRoot?.querySelector('#bdayInput') as HTMLInputElement).value;
+			// Form submission with validation
+			const form = this.shadowRoot.querySelector('#personForm');
+			form?.addEventListener('submit', (e) => {
+				e.preventDefault();
+				this.validateAndSubmit();
+			});
 
-				if (name && rel) {
-					if (this.editingId) {
-						this.updatePerson(this.editingId, name, rel, ctx, bday);
-					} else {
-						this.addPerson(name, rel, ctx, bday);
+			// Clear error styling on input
+			this.shadowRoot.querySelectorAll('input, textarea').forEach(el => {
+				el.addEventListener('input', () => {
+					el.classList.remove('field-error');
+					const errorEl = el.id === 'nameInput'
+						? this.shadowRoot?.querySelector('#nameError')
+						: el.id === 'relInput'
+						? this.shadowRoot?.querySelector('#relError')
+						: null;
+					if (errorEl) {
+						errorEl.textContent = '';
+						errorEl.classList.remove('visible');
 					}
-
-					(this.shadowRoot?.querySelector('#nameInput') as HTMLInputElement).value = '';
-					(this.shadowRoot?.querySelector('#relInput') as HTMLInputElement).value = '';
-					(this.shadowRoot?.querySelector('#ctxInput') as HTMLTextAreaElement).value = '';
-					(this.shadowRoot?.querySelector('#bdayInput') as HTMLInputElement).value = '';
-				}
+				});
 			});
 
 			this.shadowRoot.querySelector('#cancelEditBtn')?.addEventListener('click', () => {
@@ -331,15 +397,59 @@ export class CircleManager extends HTMLElement {
 				this.render();
 			});
 
-			// Accessibility: Submit on Enter
-			this.shadowRoot.querySelectorAll('input, textarea').forEach(el => {
+			// Accessibility: Submit on Enter from inputs (not textarea)
+			this.shadowRoot.querySelectorAll('input').forEach(el => {
 				el.addEventListener('keydown', (e: any) => {
-					if (e.key === 'Enter' && !e.shiftKey) {
+					if (e.key === 'Enter') {
 						e.preventDefault();
-						this.shadowRoot?.querySelector<HTMLButtonElement>('#addBtn')?.click();
+						this.validateAndSubmit();
 					}
 				});
 			});
+		}
+	}
+
+	private validateAndSubmit() {
+		const nameEl = this.shadowRoot?.querySelector<HTMLInputElement>('#nameInput');
+		const relEl = this.shadowRoot?.querySelector<HTMLInputElement>('#relInput');
+		const ctxEl = this.shadowRoot?.querySelector<HTMLTextAreaElement>('#ctxInput');
+		const bdayEl = this.shadowRoot?.querySelector<HTMLInputElement>('#bdayInput');
+		const nameErr = this.shadowRoot?.querySelector('#nameError');
+		const relErr = this.shadowRoot?.querySelector('#relError');
+
+		if (!nameEl || !relEl) return;
+
+		let valid = true;
+		const name = nameEl.value.trim();
+		const rel = relEl.value.trim();
+		const ctx = ctxEl?.value.trim() || '';
+		const bday = bdayEl?.value.trim() || '';
+
+		// Reset errors
+		nameEl.classList.remove('field-error');
+		relEl.classList.remove('field-error');
+		if (nameErr) { nameErr.textContent = ''; nameErr.classList.remove('visible'); }
+		if (relErr) { relErr.textContent = ''; relErr.classList.remove('visible'); }
+
+		if (!name) {
+			nameEl.classList.add('field-error');
+			if (nameErr) { nameErr.textContent = 'Name is required.'; nameErr.classList.add('visible'); }
+			nameEl.focus();
+			valid = false;
+		}
+		if (!rel) {
+			relEl.classList.add('field-error');
+			if (relErr) { relErr.textContent = 'Relationship is required.'; relErr.classList.add('visible'); }
+			if (valid) relEl.focus(); // focus first error
+			valid = false;
+		}
+
+		if (!valid) return;
+
+		if (this.editingId) {
+			this.updatePerson(this.editingId, name, rel, ctx, bday);
+		} else {
+			this.addPerson(name, rel, ctx, bday);
 		}
 	}
 }

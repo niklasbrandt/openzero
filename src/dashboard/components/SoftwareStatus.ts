@@ -19,7 +19,7 @@ export class SoftwareStatus extends HTMLElement {
 		try {
 			const res = await fetch('/api/dashboard/translations');
 			if (res.ok) this.t = await res.json();
-		} catch (_) {}
+		} catch (_) { }
 	}
 
 	private tr(key: string, fallback: string): string {
@@ -118,11 +118,20 @@ export class SoftwareStatus extends HTMLElement {
 		const llmCfg = d.llm_config || {};
 		const tierList = llmCfg.tiers || [];
 		const tierColors: Record<string, string> = { instant: '#14B8A6', standard: '#3b82f6', deep: '#a78bfa' };
-		const tiersHtml = tierList.length > 0 ? tierList.map((t: any) => `
+		const tierOrder = ['instant', 'standard', 'deep'];
+		const sortedTiers = [...tierList].sort((a: any, b: any) => {
+			const ia = tierOrder.indexOf(a.tier);
+			const ib = tierOrder.indexOf(b.tier);
+			return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+		});
+
+		const tiersHtml = sortedTiers.length > 0 ? sortedTiers.map((t: any) => `
 			<div class="tier-row has-tip" data-tip="${t.use_case}">
 				<span class="tier-badge" style="background: ${tierColors[t.tier] || '#666'}">${t.tier}</span>
 				<span class="tier-model">${t.model}</span>
-				<span class="tier-threads">${t.threads}T</span>
+				<span class="tier-threads has-tip" data-tip="CPU Threads: Parallel processing streams dedicated to this LLM tier. Higher T means faster inference.">
+					${t.threads}T
+				</span>
 			</div>
 		`).join('') : '<div class="empty">No tiers configured.</div>';
 
