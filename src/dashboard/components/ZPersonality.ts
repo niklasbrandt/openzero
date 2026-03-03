@@ -159,20 +159,19 @@ export class ZPersonality extends HTMLElement {
 					<h2>
 						<div class="icon">${agentInitial}</div>
 						${this.isEditing ? this.tr('agent_config', 'Agent Config') : (this.activeTab === 'personality' ? this.tr('agent_personality', 'Agent Personality') : this.tr('agent_protocols', 'Agent Protocols'))}
-						<span class="subtitle">${this.tr('personality_subtitle', 'Character & Behavior')}</span>
 					</h2>
 					${!this.isEditing && !this.isLoading && this.activeTab === 'personality' ? `<button class="edit-btn" id="edit-trigger">${this.tr('refine', 'Refine')}</button>` : ''}
 				</div>
 
 				${!this.isEditing ? `
 					<div class="tabs">
-						<div class="tab ${this.activeTab === 'personality' ? 'active' : ''}" id="tab-per">Identity</div>
-						<div class="tab ${this.activeTab === 'protocols' ? 'active' : ''}" id="tab-prot">Protocols</div>
+						<div class="tab ${this.activeTab === 'personality' ? 'active' : ''}" id="tab-per">${this.tr('tab_identity', 'Identity')}</div>
+						<div class="tab ${this.activeTab === 'protocols' ? 'active' : ''}" id="tab-prot">${this.tr('tab_protocols', 'Protocols')}</div>
 					</div>
 				` : ''}
 
 				<div class="content">
-					${this.isLoading ? '<div class="empty">Aligning neural paths...</div>' : ''}
+					${this.isLoading ? `<div class="empty">${this.tr('aligning', 'Aligning neural paths...')}</div>` : ''}
 					
 					${!this.isLoading && this.isEditing ? `
 						<div class="form">
@@ -193,36 +192,36 @@ export class ZPersonality extends HTMLElement {
 								</div>
 							`).join('')}
 							<div class="actions">
-								<button class="cancel-btn" id="cancel-trigger">Cancel</button>
-								<button class="save-btn" id="save-trigger">Save Persona</button>
+								<button class="cancel-btn" id="cancel-trigger">${this.tr('cancel', 'Cancel')}</button>
+								<button class="save-btn" id="save-trigger">${this.tr('save_persona', 'Save Persona')}</button>
 							</div>
 						</div>
 					` : !this.isLoading && this.activeTab === 'personality' ? `
 						<div class="trait-grid">
 							<div class="trait-item">
-								<span class="trait-label">Digital Avatar</span>
+								<span class="trait-label">${this.tr('digital_avatar', 'Digital Avatar')}</span>
 								<div class="trait-value" style="color: #14B8A6; font-weight: 800; letter-spacing: 0.05em;">${per?.agent_name || 'Z'}</div>
 							</div>
 							<div class="trait-item">
-								<span class="trait-label">Core Identity</span>
+								<span class="trait-label">${this.tr('core_identity', 'Core Identity')}</span>
 								<div class="trait-value">${per?.role || 'Agent Operator'}</div>
 							</div>
 							<div class="trait-item" style="display: flex; justify-content: space-between;">
 								<div>
-									<span class="trait-label">Humor Score</span>
+									<span class="trait-label">${this.tr('humor_score', 'Humor Score')}</span>
 									<div class="trait-value" style="color: #0066FF;">${per?.humor || 0}/10</div>
 								</div>
 								<div style="text-align: center;">
-									<span class="trait-label">Roast Level</span>
+									<span class="trait-label">${this.tr('roast_level', 'Roast Level')}</span>
 									<div class="trait-value" style="color: #EF4444;">${per?.roast || 0}/5</div>
 								</div>
 								<div style="text-align: right;">
-									<span class="trait-label">Honesty Score</span>
+									<span class="trait-label">${this.tr('honesty_score', 'Honesty Score')}</span>
 									<div class="trait-value" style="color: #14B8A6;">${per?.honesty || 0}/10</div>
 								</div>
 							</div>
 							<div class="trait-item">
-								<span class="trait-label">Communication</span>
+								<span class="trait-label">${this.tr('communication', 'Communication')}</span>
 								<div class="trait-value">${['', 'Elaborate', 'Nuanced', 'Balanced', 'Direct', 'Concise'][per?.directness || 3]} (${per?.directness}/5)</div>
 							</div>
 						</div>

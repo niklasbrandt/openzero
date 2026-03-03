@@ -209,7 +209,6 @@ export class BriefingHistory extends HTMLElement {
 							</svg>
 						</span>
 						${this.tr('briefing_history', 'Briefing History')}
-						<span class="subtitle">${this.tr('briefing_subtitle', 'Daily Reports')}</span>
 					</h2>
 					<div id="briefing-list">${this.tr('loading', 'Loading...')}</div>
 				</div>

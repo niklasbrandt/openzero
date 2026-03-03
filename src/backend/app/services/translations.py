@@ -130,6 +130,35 @@ _EN = {
     "no_rules": "No rules defined.",
     "new_rule": "+ New Rule",
     "cancel": "Cancel",
+
+    # ── ZPersonality ──
+    "agent_config": "Agent Config",
+    "agent_protocols": "Agent Protocols",
+    "refine": "Refine",
+    "save_persona": "Save Persona",
+    "tab_identity": "Identity",
+    "tab_protocols": "Protocols",
+    "aligning": "Aligning neural paths...",
+    "digital_avatar": "Digital Avatar",
+    "core_identity": "Core Identity",
+    "humor_score": "Humor Score",
+    "roast_level": "Roast Level",
+    "honesty_score": "Honesty Score",
+    "communication": "Communication",
+
+    # ── CircleManager ──
+    "inner_circle_full": "Inner Circle (Family & Care)",
+    "close_circle_full": "Close Circle (Friends & Social)",
+    "outer_circle_full": "Outer Circle (Acquaintances)",
+    "add_to_circle": "Add to Circle",
+    "update_person": "Update Person",
+    "no_people": "No people added to this circle.",
+    "no_focus": "No specific focus set.",
+    "remove": "Remove",
+    "name_label": "Name",
+    "relationship_label": "Relationship",
+    "birthday_label": "Birthday",
+    "context_label": "Context / Focus",
 }
 
 _DE = {
@@ -222,7 +251,7 @@ _DE = {
     "life_subtitle": "Projekte & Menschen",
     "calendar_agenda": "Kalenderagenda",
     "calendar_subtitle": "Anstehende Termine",
-    "memory_search": "Gedaechtnis-Suche",
+    "memory_search": "Gedächtnis-Suche",
     "memory_subtitle": "Semantischer Abruf",
     "briefing_history": "Briefing-Verlauf",
     "briefing_subtitle": "Tagesberichte",
@@ -244,6 +273,35 @@ _DE = {
     "no_rules": "Keine Regeln definiert.",
     "new_rule": "+ Neue Regel",
     "cancel": "Abbrechen",
+
+    # ── ZPersonality ──
+    "agent_config": "Agent-Konfiguration",
+    "agent_protocols": "Agent-Protokolle",
+    "refine": "Verfeinern",
+    "save_persona": "Persona speichern",
+    "tab_identity": "Identität",
+    "tab_protocols": "Protokolle",
+    "aligning": "Neuronale Pfade werden synchronisiert...",
+    "digital_avatar": "Digitaler Avatar",
+    "core_identity": "Kernidentität",
+    "humor_score": "Humor-Score",
+    "roast_level": "Roast-Level",
+    "honesty_score": "Ehrlichkeits-Score",
+    "communication": "Kommunikation",
+
+    # ── CircleManager ──
+    "inner_circle_full": "Innerer Kreis (Familie & Fürsorge)",
+    "close_circle_full": "Enger Kreis (Freunde & Soziales)",
+    "outer_circle_full": "Äußerer Kreis (Bekannte)",
+    "add_to_circle": "Zum Kreis hinzufügen",
+    "update_person": "Person aktualisieren",
+    "no_people": "Keine Personen in diesem Kreis.",
+    "no_focus": "Kein spezifischer Fokus gesetzt.",
+    "remove": "Entfernen",
+    "name_label": "Name",
+    "relationship_label": "Beziehung",
+    "birthday_label": "Geburtstag",
+    "context_label": "Kontext / Fokus",
 }
 
 _ES = {

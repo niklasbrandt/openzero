@@ -107,7 +107,6 @@ export class MemorySearch extends HTMLElement {
 							</svg>
 						</span>
 						${this.tr('memory_search', 'Memory Search')}
-						<span class="subtitle">${this.tr('memory_subtitle', 'Semantic Recall')}</span>
 					</h2>
 					<div class="search-box">
 						<input type="text" placeholder="${this.tr('search_placeholder', 'Search your memories...')}">
