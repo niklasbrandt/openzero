@@ -59,6 +59,22 @@ export class ZPersonality extends HTMLElement {
 			if (input) payload[q.id] = q.type === 'range' ? parseInt(input.value) : input.value;
 		});
 
+		// If a theme preset was selected, sync the individual color fields so
+		// initTheme() on next page load picks up the correct palette.
+		const themeSelect = shadow.querySelector<HTMLSelectElement>('.theme-selector');
+		if (themeSelect) {
+			const selectedOpt = themeSelect.options[themeSelect.selectedIndex];
+			const colorsRaw = selectedOpt?.getAttribute('data-colors');
+			if (colorsRaw) {
+				try {
+					const colors = JSON.parse(colorsRaw);
+					payload.color_primary = colors.primary;
+					payload.color_secondary = colors.secondary;
+					payload.color_tertiary = colors.tertiary;
+				} catch { /* not a theme select, ignore */ }
+			}
+		}
+
 		try {
 			const res = await fetch('/api/dashboard/personality', {
 				method: 'PUT',
@@ -146,6 +162,40 @@ export class ZPersonality extends HTMLElement {
 				.range-tag { font-size: 0.65rem; color: rgba(255,255,255,0.4); width: 60px; }
 				input[type="range"] { flex: 1; accent-color: #14B8A6; cursor: pointer; }
 
+				select.theme-selector {
+					background: rgba(0,0,0,0.3);
+					border: 1px solid rgba(255,255,255,0.1);
+					color: #fff;
+					padding: 8px 10px;
+					border-radius: 0.5rem;
+					width: 100%;
+					box-sizing: border-box;
+					font-family: inherit;
+					font-size: 0.85rem;
+					cursor: pointer;
+					appearance: auto;
+				}
+				select.theme-selector:focus-visible { outline: 2px solid #14B8A6; outline-offset: 2px; }
+				.theme-swatch {
+					display: flex;
+					gap: 6px;
+					margin-top: 8px;
+					align-items: center;
+				}
+				.swatch-dot {
+					width: 18px;
+					height: 18px;
+					border-radius: 50%;
+					border: 1px solid rgba(255,255,255,0.15);
+					flex-shrink: 0;
+					transition: background-color 0.3s ease;
+				}
+				.swatch-label {
+					font-size: 0.65rem;
+					color: rgba(255,255,255,0.35);
+					margin-left: 4px;
+				}
+
 				.actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem; }
 
 
@@ -195,13 +245,23 @@ export class ZPersonality extends HTMLElement {
 										</div>
 									` : q.type === 'textarea' ? `
 										<textarea id="input-${q.id}" placeholder="${q.placeholder}">${per[q.id] || ''}</textarea>
-									` : q.type === 'select' ? `
-										<select id="input-${q.id}" class="theme-selector">
-											${q.options.map((opt: any) => `
-												<option value="${opt.value}" ${per[q.id] === opt.value ? 'selected' : ''} data-colors='${JSON.stringify(opt.colors)}'>${opt.label}</option>
-											`).join('')}
-										</select>
-									` : q.type === 'color' ? `
+							` : q.type === 'select' ? (() => {
+								const currentOpt = q.options.find((o: any) => o.value === per[q.id]) || q.options[0];
+								const c = currentOpt?.colors || {};
+								return `
+									<select id="input-${q.id}" class="theme-selector" aria-label="${q.label}">
+										${q.options.map((opt: any) => `
+											<option value="${opt.value}" ${per[q.id] === opt.value ? 'selected' : ''} data-colors='${JSON.stringify(opt.colors)}'>${opt.label}</option>
+										`).join('')}
+									</select>
+									<div class="theme-swatch" id="swatch-${q.id}" aria-hidden="true">
+										<div class="swatch-dot" style="background: ${c.primary || '#14B8A6'}"></div>
+										<div class="swatch-dot" style="background: ${c.secondary || '#0066FF'}"></div>
+										<div class="swatch-dot" style="background: ${c.tertiary || '#6366F1'}"></div>
+										<span class="swatch-label">${currentOpt?.label || ''}</span>
+									</div>
+								`;
+							})() : q.type === 'color' ? `
 										<div style="display: flex; align-items: center; gap: 1rem;">
 											<input type="color" id="input-${q.id}" value="${per[q.id] || '#ffffff'}" style="width: 40px; height: 32px; padding: 2px; border: none; cursor: pointer; background: transparent;">
 											<span style="font-size: 0.75rem; color: rgba(255,255,255,0.4);">${per[q.id] || ''}</span>
@@ -295,6 +355,41 @@ export class ZPersonality extends HTMLElement {
 				(this.shadowRoot?.querySelector(focusId) as HTMLElement)?.focus();
 			}
 		});
+
+		// ── Live theme preview ──
+		// When the user picks a theme from the select, immediately apply the
+		// palette to the document root so they can see the preview before saving.
+		const themeSelector = this.shadowRoot.querySelector<HTMLSelectElement>('.theme-selector');
+		if (themeSelector) {
+			themeSelector.addEventListener('change', () => {
+				const selectedOpt = themeSelector.options[themeSelector.selectedIndex];
+				const colorsRaw = selectedOpt.getAttribute('data-colors');
+				if (!colorsRaw) return;
+				try {
+					const colors = JSON.parse(colorsRaw);
+					const hexToRgb = (hex: string) => {
+						const h = hex.replace('#', '');
+						return `${parseInt(h.slice(0,2),16)}, ${parseInt(h.slice(2,4),16)}, ${parseInt(h.slice(4,6),16)}`;
+					};
+					const root = document.documentElement;
+					root.style.setProperty('--accent-color', colors.primary);
+					root.style.setProperty('--accent-color-rgb', hexToRgb(colors.primary));
+					root.style.setProperty('--accent-secondary', colors.secondary);
+					root.style.setProperty('--accent-tertiary', colors.tertiary);
+					// Update the swatch dots in real time
+					const swatchId = 'swatch-' + themeSelector.id.replace('input-', '');
+					const swatchEl = this.shadowRoot!.getElementById(swatchId);
+					if (swatchEl) {
+						const dots = swatchEl.querySelectorAll<HTMLElement>('.swatch-dot');
+						if (dots[0]) dots[0].style.background = colors.primary;
+						if (dots[1]) dots[1].style.background = colors.secondary;
+						if (dots[2]) dots[2].style.background = colors.tertiary;
+						const label = swatchEl.querySelector<HTMLElement>('.swatch-label');
+						if (label) label.textContent = selectedOpt.textContent || '';
+					}
+				} catch { /* ignore JSON parse errors */ }
+			});
+		}
 	}
 }
 
