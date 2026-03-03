@@ -34,7 +34,7 @@ services:
   # See .env.example for hardware sizing guide and model recommendations.
 
   llm-instant:
-    image: ghcr.io/ggerganov/llama.cpp:server
+    image: ghcr.io/ggml-org/llama.cpp:server
     restart: always
     volumes:
       - llm_models:/models
@@ -51,7 +51,7 @@ services:
       - internal
 
   llm-standard:
-    image: ghcr.io/ggerganov/llama.cpp:server
+    image: ghcr.io/ggml-org/llama.cpp:server
     restart: always
     volumes:
       - llm_models:/models
@@ -68,7 +68,7 @@ services:
       - internal
 
   llm-deep:
-    image: ghcr.io/ggerganov/llama.cpp:server
+    image: ghcr.io/ggml-org/llama.cpp:server
     restart: always
     volumes:
       - llm_models:/models

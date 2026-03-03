@@ -7,16 +7,16 @@
 # ------------------------------------------------------------------------------
 features:
   # Core Interfaces
-  messenger_bot: true             # Enable the Messenger Bot interface (e.g., Telegram)
-  task_board_integration: false   # Enable Planka Kanban board syncing and task creation
+  messenger_bot: true # Enable the Messenger Bot interface (e.g., Telegram)
+  task_board_integration: false # Enable Planka Kanban board syncing and task creation
 
   # External Integrations
-  email_monitoring: false         # Enable reading and summarizing unread emails
-  calendar_monitoring: false      # Enable checking your calendar for upcoming events
-  
+  email_monitoring: false # Enable reading and summarizing unread emails
+  calendar_monitoring: false # Enable checking your calendar for upcoming events
+
   # Experimental / Future Integrations
-  weather_briefing: false         # Include daily weather forecast in morning briefing
-  financial_monitoring: false     # Include budget/expense tracking in weekly review
+  weather_briefing: false # Include daily weather forecast in morning briefing
+  financial_monitoring: false # Include budget/expense tracking in weekly review
 
 # ------------------------------------------------------------------------------
 # 2. Schedules & Time Turnus
@@ -25,18 +25,18 @@ schedules:
   # Recurring Briefings & Reviews
   morning_briefing:
     enabled: true
-    time: "07:30"                 # 24-hour format
-    days: "mon-fri"               # "mon-fri", "all", "mon,wed,fri", etc.
-    
+    time: "07:30" # 24-hour format
+    days: "mon-fri" # "mon-fri", "all", "mon,wed,fri", etc.
+
   weekly_review:
     enabled: true
     time: "10:00"
-    day: "sun"                    # Day of the week to send the weekly review
+    day: "sun" # Day of the week to send the weekly review
 
   monthly_review:
     enabled: true
     time: "10:00"
-    date: "1"                     # Day of the month to send the big-picture review
+    date: "1" # Day of the month to send the big-picture review
 
   # Background Polling Intervals (in minutes)
   email_polling_interval_minutes: 10
@@ -47,12 +47,12 @@ schedules:
 # 3. System Preferences
 # ------------------------------------------------------------------------------
 preferences:
-  timezone: "auto"                # Dynamically determined based on where you are or will be (via calendar)
-  language: "en"                  # Agent language for responses and reports
-  
+  timezone: "auto" # Dynamically determined based on where you are or will be (via calendar)
+  language: "en" # Agent language for responses and reports
+
   # Behavior & Thresholds
-  max_emails_per_briefing: 10     # Max number of emails to explicitly summarize
-  stagnation_warning_days: 14     # Warn if a project card hasn't moved in X days
+  max_emails_per_briefing: 10 # Max number of emails to explicitly summarize
+  stagnation_warning_days: 14 # Warn if a project card hasn't moved in X days
 
   # Note: AI engine selection (local llama-server) and models are configured in .env
 
@@ -63,10 +63,10 @@ intelligence:
   # 3-Tier architecture: instant / standard / deep
   # Tier routing is automatic based on message complexity.
   # Override defaults in .env (LLM_MODEL_INSTANT, LLM_MODEL_STANDARD, LLM_MODEL_DEEP)
-  
+
   # Deep tier timeout (seconds) - falls back to standard if first token takes longer
   deep_timeout_seconds: 12
-  
+
   # Whether to attempt the deep tier for interactive messages at all
   # Set to false on low-RAM systems to skip the deep tier entirely
   smart_model_interactive: true

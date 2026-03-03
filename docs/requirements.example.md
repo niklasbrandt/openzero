@@ -13,13 +13,13 @@
 
 Organize your projects and goals across these domains:
 
-| Domain       | Focus                                        |
-|:-------------|:---------------------------------------------|
-| **Career**   | <!-- e.g., Job search -->          |
-| **Health**   | <!-- e.g., Exercise, habits -->               |
-| **Family**   | <!-- e.g., Kids, household -->                |
-| **Finance**  | <!-- e.g., Bills, savings -->                 |
-| **Creative** | <!-- e.g., Side projects, learning -->        |
+| Domain       | Focus                                  |
+| :----------- | :------------------------------------- |
+| **Career**   | <!-- e.g., Job search -->              |
+| **Health**   | <!-- e.g., Exercise, habits -->        |
+| **Family**   | <!-- e.g., Kids, household -->         |
+| **Finance**  | <!-- e.g., Bills, savings -->          |
+| **Creative** | <!-- e.g., Side projects, learning --> |
 
 ---
 
@@ -27,11 +27,11 @@ Organize your projects and goals across these domains:
 
 Emails matching these patterns trigger an **immediate Telegram notification**:
 
-| Sender Pattern    | Action   | Reason                        |
-|:------------------|:---------|:------------------------------|
-| `school-example`  | urgent   | Example: kid's school          |
-| `boss@company`    | urgent   | Example: work contact          |
-| `bank-alerts`     | urgent   | Example: financial alerts      |
+| Sender Pattern   | Action | Reason                    |
+| :--------------- | :----- | :------------------------ |
+| `school-example` | urgent | Example: kid's school     |
+| `boss@company`   | urgent | Example: work contact     |
+| `bank-alerts`    | urgent | Example: financial alerts |
 
 All other emails are summarized and included in the **morning briefing**.
 
@@ -42,12 +42,12 @@ All other emails are summarized and included in the **morning briefing**.
 
 ## Preferences
 
-| Key                    | Value                                    |
-|:-----------------------|:-----------------------------------------|
-| `career_tone`          | <!-- e.g., confident, impact-driven -->  |
-| `morning_briefing_time`| <!-- e.g., 07:30 -->                     |
-| `timezone`             | <!-- e.g., America/New_York -->          |
-| `weekly_review_day`    | <!-- e.g., sunday -->                    |
+| Key                     | Value                                   |
+| :---------------------- | :-------------------------------------- |
+| `career_tone`           | <!-- e.g., confident, impact-driven --> |
+| `morning_briefing_time` | <!-- e.g., 07:30 -->                    |
+| `timezone`              | <!-- e.g., America/New_York -->         |
+| `weekly_review_day`     | <!-- e.g., sunday -->                   |
 
 ---
 
@@ -55,13 +55,13 @@ All other emails are summarized and included in the **morning briefing**.
 
 Task boards organized by life domain:
 
-| Board         | Lists                                 |
-|:--------------|:--------------------------------------|
-| **Career**    | Inbox → In Progress → Blocked → Done |
-| **Health**    | Inbox → Habits → Completed           |
-| **Family**    | Inbox → This Week → Done             |
-| **Finance**   | Inbox → Pending → Resolved           |
-| **Creative**  | Ideas → Active → Shipped             |
+| Board        | Lists                                |
+| :----------- | :----------------------------------- |
+| **Career**   | Inbox → In Progress → Blocked → Done |
+| **Health**   | Inbox → Habits → Completed           |
+| **Family**   | Inbox → This Week → Done             |
+| **Finance**  | Inbox → Pending → Resolved           |
+| **Creative** | Ideas → Active → Shipped             |
 
 ---
 
