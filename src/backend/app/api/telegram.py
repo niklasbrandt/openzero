@@ -865,6 +865,11 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 	# Save Z's reply to global history
 	await save_global_message("telegram", "z", clean_reply)
 
+	# Background memory extraction -- learn from user message without blocking reply
+	import asyncio
+	from app.services.memory import extract_and_store_facts
+	asyncio.create_task(extract_and_store_facts(user_text))
+
 	# Prepend real time (strip any LLM-generated time header)
 	from app.services.timezone import format_time
 	import re
