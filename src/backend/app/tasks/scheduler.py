@@ -15,7 +15,7 @@ import os
 
 logger = logging.getLogger(__name__)
 
-scheduler = AsyncIOScheduler(timezone=pytz.timezone(settings.USER_TIMEZONE))
+scheduler = AsyncIOScheduler(timezone=pytz.timezone(get_user_timezone()))
 
 async def run_backup():
 	"""Runs the daily system backup script."""
