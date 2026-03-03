@@ -185,6 +185,14 @@ SMART_KEYWORDS = [
 	"write me", "draft", "compose", "review my", "feedback",
 ]
 
+# Per-tier max_tokens caps — prevents runaway generation on CPU.
+# These are request-level caps; server-side N_PREDICT acts as a hard ceiling.
+TIER_MAX_TOKENS = {
+	"instant": 200,
+	"standard": 400,
+	"deep": 800,
+}
+
 def select_tier(user_message: str, tier_override: str = None) -> tuple[str, str, str]:
 	"""Select the appropriate LLM tier. Returns (tier_name, base_url, display_name)."""
 	if tier_override:
@@ -246,6 +254,9 @@ async def chat_stream(
 			{"role": "user", "content": user_message},
 		]
 
+		# Request-level token cap prevents runaway generation
+		max_tok = kwargs.get("max_tokens") or TIER_MAX_TOKENS.get(tier_name, 400)
+
 		last_err = None
 		for attempt in range(3):
 			try:
@@ -258,6 +269,7 @@ async def chat_stream(
 							"stream": True,
 							"temperature": 0.2,
 							"top_p": 0.9,
+							"max_tokens": max_tok,
 						},
 					) as response:
 						response.raise_for_status()

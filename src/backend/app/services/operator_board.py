@@ -21,15 +21,42 @@ import httpx
 import logging
 from app.config import settings
 from app.services.planka import get_planka_auth_token
+from app.services.translations import (
+	get_planka_entity_names,
+	get_all_values,
+	get_done_keywords,
+)
 
 logger = logging.getLogger(__name__)
 
 class OperatorBoardService:
 	def __init__(self):
-		self.project_name = "openZero"
-		self.board_name = "Operator Board"
-		self.mandatory_lists = ["Today", "This Week", "Backlog", "Done"]
+		self._lang = "en"
+		self._apply_lang()
 		self._token = None
+		# Cached IDs so we can rename without searching by name
+		self._project_id: str | None = None
+		self._board_id: str | None = None
+		self._list_ids: dict[str, str] = {}  # logical key -> planka id
+
+	def _apply_lang(self):
+		"""Refresh entity names from the translations module."""
+		names = get_planka_entity_names(self._lang)
+		self.project_name = names["project_name"]
+		self.board_name = names["board_name"]
+		self.mandatory_lists = [
+			names["list_today"],
+			names["list_this_week"],
+			names["list_backlog"],
+			names["list_done"],
+		]
+		# Map from logical key to current translated name (for sync)
+		self._list_key_map = {
+			"list_today": names["list_today"],
+			"list_this_week": names["list_this_week"],
+			"list_backlog": names["list_backlog"],
+			"list_done": names["list_done"],
+		}
 
 	async def _get_auth_token(self) -> str:
 		"""Retrieves or refreshes the authentication token using the central Planka service."""
@@ -49,10 +76,27 @@ class OperatorBoardService:
 
 	async def initialize_board(self, client: httpx.AsyncClient):
 		"""Ensures the Operator Board and its lists exist. Returns (project_id, board_id)."""
-		# 1. Get/Create Project
+		# If we already have cached IDs, verify they still exist
+		if self._project_id and self._board_id:
+			try:
+				resp = await client.get(f"/api/projects/{self._project_id}")
+				if resp.status_code == 200:
+					return self._project_id, self._board_id
+			except Exception:
+				pass
+			# Cache stale -- fall through to search
+
+		# 1. Get/Create Project -- match against ALL translated project names
+		all_project_names = get_all_values("project_name")
+		# Also match legacy names that may still exist
+		all_project_names.update({"openZero", "Boards"})
+
 		projects_resp = await client.get("/api/projects")
 		projects = projects_resp.json().get("items", [])
-		project = next((p for p in projects if p["name"] == self.project_name), None)
+		project = next(
+			(p for p in projects if p["name"] in all_project_names),
+			None,
+		)
 		
 		if not project:
 			logger.info(f"Creating project {self.project_name}")
