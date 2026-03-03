@@ -4,14 +4,26 @@ export class ZPersonality extends HTMLElement {
 	private activeTab: 'personality' | 'protocols' = 'personality';
 	private isEditing = false;
 	private isLoading = true;
+	private t: Record<string, string> = {};
 
 	constructor() {
 		super();
 		this.attachShadow({ mode: 'open' });
 	}
 
+	private async loadTranslations() {
+		try {
+			const res = await fetch('/api/dashboard/translations');
+			if (res.ok) this.t = await res.json();
+		} catch (_) { }
+	}
+
+	private tr(key: string, fallback: string): string {
+		return this.t[key] || fallback;
+	}
+
 	connectedCallback() {
-		this.fetchData();
+		this.loadTranslations().then(() => this.fetchData());
 	}
 
 	async fetchData() {
@@ -75,7 +87,7 @@ export class ZPersonality extends HTMLElement {
 				.card { height: 100%; display: flex; flex-direction: column; gap: 1.25rem; color: #fff; }
 				
 				.header { display: flex; justify-content: space-between; align-items: center; }
-				h2 { margin: 0; font-size: 1.1rem; display: flex; align-items: center; gap: 0.75rem; color: #fff; font-weight: bold; }
+				h2 { margin: 0; font-size: 1.1rem; display: flex; align-items: center; gap: 0.6rem; color: #fff; font-weight: bold; }
 				.icon { 
 					width: 32px; height: 32px; 
 					background: linear-gradient(135deg, #14B8A6, #0066FF); 
@@ -83,6 +95,7 @@ export class ZPersonality extends HTMLElement {
 					box-shadow: 0 0 20px rgba(20, 184, 166, 0.3);
 					font-weight: 800; font-size: 0.9rem;
 				}
+				.subtitle { font-weight: 400; font-size: 0.75rem; color: rgba(255, 255, 255, 0.35); margin-left: auto; }
 
 				.edit-btn {
 					background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
@@ -144,8 +157,12 @@ export class ZPersonality extends HTMLElement {
 
 			<div class="card">
 				<div class="header">
-					<h2><div class="icon">${agentInitial}</div> ${this.isEditing ? 'Agent Config' : (this.activeTab === 'personality' ? 'Agent Personality' : 'Agent Protocols')}</h2>
-					${!this.isEditing && !this.isLoading && this.activeTab === 'personality' ? `<button class="edit-btn" id="edit-trigger">Refine</button>` : ''}
+					<h2>
+						<div class="icon">${agentInitial}</div>
+						${this.isEditing ? this.tr('agent_config', 'Agent Config') : (this.activeTab === 'personality' ? this.tr('agent_personality', 'Agent Personality') : this.tr('agent_protocols', 'Agent Protocols'))}
+						<span class="subtitle">${this.tr('personality_subtitle', 'Character & Behavior')}</span>
+					</h2>
+					${!this.isEditing && !this.isLoading && this.activeTab === 'personality' ? `<button class="edit-btn" id="edit-trigger">${this.tr('refine', 'Refine')}</button>` : ''}
 				</div>
 
 				${!this.isEditing ? `
@@ -195,6 +212,10 @@ export class ZPersonality extends HTMLElement {
 								<div>
 									<span class="trait-label">Humor Score</span>
 									<div class="trait-value" style="color: #0066FF;">${per?.humor || 0}/10</div>
+								</div>
+								<div style="text-align: center;">
+									<span class="trait-label">Roast Level</span>
+									<div class="trait-value" style="color: #EF4444;">${per?.roast || 0}/5</div>
 								</div>
 								<div style="text-align: right;">
 									<span class="trait-label">Honesty Score</span>

@@ -369,6 +369,7 @@ async def get_personality(db: AsyncSession = Depends(get_db)):
 		"humor": 2,       
 		"honesty": 5,     
 		"depth": 4,      
+		"roast": 0,       # 0: None, 5: Brutal
 		"role": "Agent Operator",
 		"questions": [
 			{"id": "agent_name", "label": "Agent Name", "type": "text", "placeholder": "e.g. Z, Jarvis, Hal"},
@@ -378,6 +379,7 @@ async def get_personality(db: AsyncSession = Depends(get_db)):
 			{"id": "critique", "label": "Intellectual Friction", "type": "range", "min": 1, "max": 5, "low": "Agreeable", "high": "Challenging"},
 			{"id": "humor", "label": "Humor Score", "type": "range", "min": 0, "max": 10, "low": "0%", "high": "100%"},
 			{"id": "honesty", "label": "Honesty Score", "type": "range", "min": 1, "max": 10, "low": "Low", "high": "Absolute"},
+			{"id": "roast", "label": "Roast Level", "type": "range", "min": 0, "max": 5, "low": "None", "high": "Brutal"},
 			{"id": "depth", "label": "Analysis Depth", "type": "range", "min": 1, "max": 5, "low": "Surface", "high": "Deep Dive"},
 			{"id": "role", "label": "Core Identity / Archetype", "type": "text", "placeholder": "e.g. Master Architect, Stoic Mentor, Sharp Assistant"},
 			{"id": "relationship", "label": "Relational Context", "type": "text", "placeholder": "Who are you to the user? (e.g. Mentor, Tool, Equal Partner)"},

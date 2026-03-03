@@ -142,6 +142,10 @@ async def get_agent_personality() -> str:
 			if honesty >= 9: prompt += "- Honesty: 100%. Never sugarcoat. Be brutally transparent.\n"
 			elif honesty <= 3: prompt += "- Honesty: Use tact and discretion. Prioritize morale over absolute raw truth.\n"
 
+			roast = traits.get("roast", 0)
+			if roast >= 4: prompt += f"- Roast Level: {roast}/5 (Brutal). Feel free to sharply mock the user's mistakes or logic with biting sarcasm.\n"
+			elif roast >= 2: prompt += f"- Roast Level: {roast}/5 (Playful). Use light, witty jabs and occasional sarcasm.\n"
+
 			depth = traits.get("depth", 4)
 			if depth >= 5: prompt += "- Analytical Depth: Deep-dive into second-order effects and structural analysis.\n"
 			
