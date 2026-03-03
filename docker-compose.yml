@@ -48,6 +48,12 @@ services:
       - CTX_SIZE=${LLM_INSTANT_CTX:-2048}
       - N_PREDICT=${LLM_INSTANT_PREDICT:-256}
       - BATCH_SIZE=${LLM_INSTANT_BATCH:-512}
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8081/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
     networks:
       - internal
 
@@ -66,6 +72,12 @@ services:
       - CTX_SIZE=${LLM_STANDARD_CTX:-4096}
       - N_PREDICT=${LLM_STANDARD_PREDICT:-1024}
       - BATCH_SIZE=${LLM_STANDARD_BATCH:-512}
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8082/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 180s
     networks:
       - internal
 
@@ -84,6 +96,12 @@ services:
       - CTX_SIZE=${LLM_DEEP_CTX:-4096}
       - N_PREDICT=${LLM_DEEP_PREDICT:-2048}
       - BATCH_SIZE=${LLM_DEEP_BATCH:-256}
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8083/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 240s
     networks:
       - internal
 
