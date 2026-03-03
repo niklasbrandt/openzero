@@ -103,6 +103,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse, FileResponse
 from app.api.dashboard import router as dashboard_router
+from app.api.health import router as health_router
 from app.config import settings
 
 app = FastAPI(title="Personal AI OS", lifespan=lifespan)
@@ -117,6 +118,7 @@ app.add_middleware(
 )
 
 app.include_router(dashboard_router)
+app.include_router(health_router)
 
 @app.get("/calendar", include_in_schema=False)
 async def calendar_redirect():
@@ -145,7 +147,3 @@ if os.path.exists("static"):
     app.mount("/dashboard-assets", StaticFiles(directory="static/dashboard-assets"), name="dashboard-assets")
     # Also mount the rest of static without html=True fallback
     app.mount("/static", StaticFiles(directory="static"), name="static")
-
-@app.get("/health")
-async def health():
-    return {"status": "ok"}

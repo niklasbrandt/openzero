@@ -1,12 +1,43 @@
+import asyncio
+import logging
 from fastapi import APIRouter
 import httpx
+from sqlalchemy import text
 from app.config import settings
+from app.models.db import AsyncSessionLocal
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
+
+async def _probe_postgres() -> str:
+	"""Execute a real SELECT 1 against Postgres."""
+	try:
+		async with AsyncSessionLocal() as session:
+			await session.execute(text("SELECT 1"))
+		return "reachable"
+	except Exception as exc:
+		logger.warning("Postgres health probe failed: %s", exc)
+		return "unreachable"
+
+async def _probe_qdrant() -> str:
+	"""Call get_collections() on Qdrant to verify connectivity."""
+	try:
+		from app.services.memory import get_qdrant
+		loop = asyncio.get_running_loop()
+		await loop.run_in_executor(None, lambda: get_qdrant().get_collections())
+		return "reachable"
+	except Exception as exc:
+		logger.warning("Qdrant health probe failed: %s", exc)
+		return "unreachable"
 
 @router.get("/health")
 async def health_check():
-	"""Health check with real LLM tier probing."""
+	"""Health check with real service probing."""
+	postgres_status, qdrant_status = await asyncio.gather(
+		_probe_postgres(),
+		_probe_qdrant(),
+	)
+
 	llm_status = {}
 	for name, url in [
 		("llm_instant", settings.LLM_INSTANT_URL),
@@ -20,12 +51,18 @@ async def health_check():
 		except Exception:
 			llm_status[name] = "unreachable"
 
+	services = {
+		"postgres": postgres_status,
+		"qdrant": qdrant_status,
+		**llm_status,
+	}
+
+	# Overall status degrades if any critical service is unreachable
+	critical_ok = postgres_status == "reachable" and qdrant_status == "reachable"
+	overall = "online" if critical_ok else "degraded"
+
 	return {
-		"status": "online",
+		"status": overall,
 		"version": "1.0.0",
-		"services": {
-			"postgres": "reachable",
-			"qdrant": "reachable",
-			**llm_status
-		}
+		"services": services,
 	}

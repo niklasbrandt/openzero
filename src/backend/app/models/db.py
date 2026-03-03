@@ -7,7 +7,7 @@ import uuid
 from app.config import settings
 
 Base = declarative_base()
-engine = create_async_engine(settings.DATABASE_URL, echo=True)
+engine = create_async_engine(settings.DATABASE_URL, echo=False)
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 class Project(Base):
