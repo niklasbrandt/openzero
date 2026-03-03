@@ -135,10 +135,134 @@
 	</nav>
 
 	<main id="main-content">
+		<!-- ── Top sticky carousel-style anchor nav (visible 700–1099 px) ──
+		     Replaces sidebar at mid-viewports. WCAG 2.4.1 / EN 301 549 §9.2.4.1 -->
+		<nav class="top-marquee-nav" id="top-marquee-nav" aria-label="Dashboard section navigation">
+			<a href="#section-chat" data-section="section-chat" aria-label="Chat with Z">
+				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+				Chat
+			</a>
+			<a href="#section-life" data-section="section-life" aria-label="Life Overview">
+				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+				Life
+			</a>
+			<a href="#section-calendar" data-section="section-calendar" aria-label="Calendar Agenda">
+				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+				Calendar
+			</a>
+			<a href="#section-identity" data-section="section-identity" aria-label="Identity Profile">
+				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+				Identity
+			</a>
+			<a href="#section-memory" data-section="section-memory" aria-label="Memory Search">
+				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+				Memory
+			</a>
+			<a href="#section-briefing" data-section="section-briefing" aria-label="Briefing History">
+				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+				Briefing
+			</a>
+			<a href="#section-personality" data-section="section-personality" aria-label="Z Personality">
+				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 5a3 3 0 1 1-3 3 3 3 0 0 1 3-3zm0 13a8 8 0 0 1-6-2.68 3 3 0 0 1 2.84-2.32h6.32A3 3 0 0 1 18 17.32 8 8 0 0 1 12 20z"></path></svg>
+				Personality
+			</a>
+			<span class="nav-sep" role="separator" aria-hidden="true"></span>
+			<a href="#section-inner" data-section="section-inner" aria-label="Inner Circle">
+				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+				Circles
+			</a>
+			<a href="#section-email" data-section="section-email" aria-label="Email Rules">
+				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+				Email
+			</a>
+			<span class="nav-sep" role="separator" aria-hidden="true"></span>
+			<a href="#section-hardware" data-section="section-hardware" aria-label="Hardware Monitor">
+				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect></svg>
+				Hardware
+			</a>
+			<a href="#section-software" data-section="section-software" aria-label="Software Status">
+				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+				Software
+			</a>
+			<a href="#section-benchmark" data-section="section-benchmark" aria-label="System Benchmark">
+				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+				Benchmark
+			</a>
+		</nav>
+
+		<!-- ── Mobile full-screen nav drawer (hamburger, <700 px) ──
+		     WCAG 2.4.3 traversal order / EN 301 549 §9.2.4.3 -->
+		<div class="mobile-nav-drawer" id="mobile-nav-drawer" role="dialog" aria-modal="true" aria-label="Navigation menu">
+			<div class="mobile-nav-drawer-header">
+				<h2>Navigate</h2>
+				<button class="mobile-nav-drawer-close" id="mobile-nav-close" aria-label="Close navigation menu">
+					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+				</button>
+			</div>
+			<a href="#section-chat" data-section="section-chat" aria-label="Chat with Z">
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+				Chat with Z
+			</a>
+			<a href="#section-life" data-section="section-life" aria-label="Life Overview">
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+				Life Overview
+			</a>
+			<a href="#section-calendar" data-section="section-calendar" aria-label="Calendar Agenda">
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+				Calendar Agenda
+			</a>
+			<a href="#section-identity" data-section="section-identity" aria-label="Identity Profile">
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+				Identity Profile
+			</a>
+			<a href="#section-memory" data-section="section-memory" aria-label="Memory Search">
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+				Memory Search
+			</a>
+			<a href="#section-briefing" data-section="section-briefing" aria-label="Briefing History">
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+				Briefing History
+			</a>
+			<a href="#section-personality" data-section="section-personality" aria-label="Z Personality">
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 5a3 3 0 1 1-3 3 3 3 0 0 1 3-3zm0 13a8 8 0 0 1-6-2.68 3 3 0 0 1 2.84-2.32h6.32A3 3 0 0 1 18 17.32 8 8 0 0 1 12 20z"></path></svg>
+				Z Personality
+			</a>
+			<div class="drawer-divider" role="separator" aria-hidden="true"></div>
+			<a href="#section-inner" data-section="section-inner" aria-label="Social Circles">
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+				Social Circles
+			</a>
+			<a href="#section-email" data-section="section-email" aria-label="Email Intelligence Rules">
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+				Email Rules
+			</a>
+			<div class="drawer-divider" role="separator" aria-hidden="true"></div>
+			<a href="#section-hardware" data-section="section-hardware" aria-label="Hardware Monitor">
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect></svg>
+				Hardware Monitor
+			</a>
+			<a href="#section-software" data-section="section-software" aria-label="Software Status">
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+				Software Status
+			</a>
+			<a href="#section-benchmark" data-section="section-benchmark" aria-label="System Benchmark">
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+				System Benchmark
+			</a>
+		</div>
+
 		<div id="app">
 			<header class="dashboard-header">
 				<h1>openZero <span class="gradient-text">Dashboard</span></h1>
 				<div class="header-actions" role="toolbar" aria-label="Quick actions">
+				<!-- Hamburger — opens mobile nav drawer at <700 px -->
+				<button class="mobile-nav-toggle" id="mobile-nav-open" aria-label="Open navigation menu" aria-expanded="false" aria-controls="mobile-nav-drawer">
+					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+						<line x1="3" y1="6" x2="21" y2="6"></line>
+						<line x1="3" y1="12" x2="21" y2="12"></line>
+						<line x1="3" y1="18" x2="21" y2="18"></line>
+					</svg>
+				</button>
 					<a href="/api/dashboard/planka-redirect?target=operator" target="_blank" rel="noopener noreferrer"
 						class="planka-btn operator-btn"
 						aria-label="Open Operator Board — centralized overview of tasks (opens in new tab)"

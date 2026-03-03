@@ -173,23 +173,242 @@ body {
   margin: 0.5rem 0;
 }
 
-@media (max-width: 1500px) {
+@media (max-width: 1099px) {
   .sidebar-nav {
     display: none;
   }
 }
 
-/* When sidebar is visible (>1500px), nudge the app container right so
-   the fixed 36px sidebar never overlaps grid content. */
-@media (min-width: 1501px) {
-  #app {
-    padding-left: calc(36px + 2rem);
+/* When sidebar is visible (≥1100px), offset main so the fixed sidebar
+   never overlaps the centred #app grid (centering stays correct). */
+@media (min-width: 1100px) {
+  main#main-content {
+    margin-left: 36px;
+  }
+}
+
+/* ── Top marquee / carousel anchor nav (700px – 1099px) ──
+   Sticky horizontal scrollable pill row replacing the sidebar at mid viewports.
+   WCAG 2.4.1 / EN 301 549 §9.2.4.1 */
+.top-marquee-nav {
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  display: none; /* shown only via media query below */
+  gap: 0.4rem;
+  padding: 0.6rem 1rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  background: rgba(6, 8, 16, 0.88);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.top-marquee-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.top-marquee-nav a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  padding: 0.3rem 0.7rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.6);
+  text-decoration: none;
+  font-size: 0.76rem;
+  font-weight: 500;
+  border: 1px solid transparent;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+  min-height: 30px;
+}
+
+.top-marquee-nav a:hover,
+.top-marquee-nav a.active {
+  background: rgba(var(--accent-color-rgb), 0.15);
+  color: var(--accent-color);
+  border-color: rgba(var(--accent-color-rgb), 0.35);
+}
+
+.top-marquee-nav a:focus-visible {
+  outline: 2px solid #14B8A6;
+  outline-offset: 2px;
+}
+
+.top-marquee-nav .nav-sep {
+  flex-shrink: 0;
+  width: 1px;
+  height: 16px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 0 0.2rem;
+}
+
+@media (max-width: 1099px) {
+  .top-marquee-nav {
+    display: flex;
+  }
+}
+
+/* ── Mobile hamburger button (< 700px) ── */
+.mobile-nav-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.mobile-nav-toggle:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.mobile-nav-toggle:focus-visible {
+  outline: 2px solid #14B8A6;
+  outline-offset: 3px;
+}
+
+@media (max-width: 699px) {
+  .mobile-nav-toggle {
+    display: flex;
+  }
+}
+
+/* ── Mobile nav drawer (full screen overlay, any viewport size) ── */
+.mobile-nav-drawer {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 600;
+  flex-direction: column;
+  padding: 1.25rem 1.25rem 2rem;
+  background: rgba(6, 8, 16, 0.97);
+  backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+  overflow-y: auto;
+}
+
+.mobile-nav-drawer.open {
+  display: flex;
+}
+
+.mobile-nav-drawer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.mobile-nav-drawer-header h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.5);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.mobile-nav-drawer-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.15s, color 0.15s;
+}
+
+.mobile-nav-drawer-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.mobile-nav-drawer-close:focus-visible {
+  outline: 2px solid #14B8A6;
+  outline-offset: 3px;
+}
+
+.mobile-nav-drawer a {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0.8rem 1rem;
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.75);
+  text-decoration: none;
+  font-size: 0.95rem;
+  font-weight: 500;
+  min-height: 44px;
+  border: 1px solid transparent;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+.mobile-nav-drawer a:hover,
+.mobile-nav-drawer a.active {
+  background: rgba(var(--accent-color-rgb), 0.12);
+  color: var(--accent-color);
+  border-color: rgba(var(--accent-color-rgb), 0.2);
+}
+
+.mobile-nav-drawer a:focus-visible {
+  outline: 2px solid #14B8A6;
+  outline-offset: 2px;
+}
+
+.mobile-nav-drawer .drawer-divider {
+  width: 100%;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.06);
+  margin: 0.5rem 0;
+}
+
+.mobile-nav-drawer .drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+}
+
+@media (forced-colors: active) {
+  .top-marquee-nav a,
+  .mobile-nav-drawer a,
+  .mobile-nav-toggle {
+    forced-color-adjust: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .top-marquee-nav a,
+  .mobile-nav-drawer a,
+  .mobile-nav-toggle {
+    transition: none !important;
   }
 }
 
 #app {
   width: 100%;
-  max-width: 1400px;
+  max-width: 1060px;
   margin: 0 auto;
   padding: 2rem 2rem 6rem 2rem;
   display: grid;
@@ -424,7 +643,7 @@ pre {
   transform: translateX(-50%) translateY(10px);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 700px) {
   #app {
     grid-template-columns: 1fr;
     padding: 1rem;
@@ -432,6 +651,10 @@ pre {
 
   .dashboard-header h1 {
     font-size: 1.8rem;
+  }
+
+  .header-actions .planka-btn span {
+    display: none;
   }
 }
 
