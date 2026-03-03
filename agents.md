@@ -72,3 +72,8 @@
 - **Respect Installed Versions:** Always verify and respect the specific version of a dependency (e.g., Pi-hole v6, specific Docker images, Node modules) installed in the project before suggesting changes or configurations.
 - **Study Relevant Documentation:** Configuration keys and behaviors often change between major versions (such as the removal or modification of constants like `DNSMASQ_LISTENING` in Pi-hole v6). Do not assume old configuration patterns apply to new versions.
 - **Fail Gracefully:** If an expected configuration file or constant is missing, investigate the version-specific documentation or the actual container environment rather than repeatedly trying the same command.
+
+## 16. Commit & Deploy Workflow
+- **Always Push:** After committing changes to git, you MUST push to the remote repository. Never leave commits local-only.
+- **Always Sync VPS:** After pushing, you MUST run `scripts/sync.sh` to deploy the changes to the VPS. Code changes are not complete until they are live on the server.
+- **Single Step:** Treat commit, push, and VPS sync as one atomic workflow. Do not stop after committing without pushing and syncing.
