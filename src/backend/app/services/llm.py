@@ -133,7 +133,7 @@ async def chat(
 
 	# --- Model Selection Logic (Dynamic Scaling) ---
 	# Fast (8B): conversations, quick tasks, simple Q&A
-	# Smart (14B): complex reasoning, planning, analysis, long-form
+	# Smart (14B): complex reasoning, planning, analysis, recommendations
 	target_model = model
 	if not target_model and provider == "ollama":
 		SMART_KEYWORDS = [
@@ -143,6 +143,10 @@ async def chat(
 			"architect", "debug", "explain why", "trade-off", "tradeoff",
 			"pros and cons", "step by step", "break down", "deep dive",
 			"what should i", "how should i", "help me think",
+			"what would", "what could", "suggest", "recommend", "advise",
+			"would i enjoy", "would i like", "ideas for", "options for",
+			"best way to", "how do i", "how can i", "teach me",
+			"write me", "draft", "compose", "review my", "feedback",
 		]
 		msg_lower = user_message.lower() if user_message else ""
 		msg_len = len(user_message) if user_message else 0
@@ -367,6 +371,10 @@ async def chat_with_context(
 			"architect", "debug", "explain why", "trade-off", "tradeoff",
 			"pros and cons", "step by step", "break down", "deep dive",
 			"what should i", "how should i", "help me think",
+			"what would", "what could", "suggest", "recommend", "advise",
+			"would i enjoy", "would i like", "ideas for", "options for",
+			"best way to", "how do i", "how can i", "teach me",
+			"write me", "draft", "compose", "review my", "feedback",
 		]
 		msg_lower = user_message.lower() if user_message else ""
 		msg_len = len(user_message) if user_message else 0
