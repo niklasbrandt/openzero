@@ -230,13 +230,13 @@ The dashboard is protected by a bearer token. You must set one before the backen
 
 4. The first time you open the dashboard in a browser, you will be prompted for the token. Enter it once — it is saved in `localStorage` and never re-asked on the same device/browser.
 
-   **Mobile shortcut:** Append the token directly to the URL once, open it in mobile Safari/Chrome, and bookmark it. The token is automatically saved and stripped from the URL:
+    **Mobile shortcut:** Append the token directly to the URL once, open it in mobile Safari/Chrome, and bookmark it. The token is automatically saved and stripped from the URL:
 
-   ```
-   http://open.zero/home?token=your_generated_token_here
-   ```
+    ```
+    http://open.zero/home?token=your_generated_token_here
+    ```
 
-   Subsequent visits via the bookmark work without the token in the URL.
+    Subsequent visits via the bookmark work without the token in the URL.
 
 > [!IMPORTANT]
 > If the backend returns HTTP 500 on every dashboard request, the `DASHBOARD_TOKEN` env var is missing or empty. Set it and restart the backend container: `docker compose up -d --no-deps backend`.
