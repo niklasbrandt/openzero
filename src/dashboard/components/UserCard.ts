@@ -479,8 +479,8 @@ export class UserCard extends HTMLElement {
 		// Apply immediately on load
 		applyColors();
 
-		// Accessibility: Submit on Enter
-		this.shadowRoot.querySelectorAll('input, textarea').forEach(el => {
+		// Accessibility: Submit on Enter from single-line inputs only (not textarea)
+		this.shadowRoot.querySelectorAll('input').forEach(el => {
 			el.addEventListener('keydown', (e: any) => {
 				if (e.key === 'Enter' && !e.shiftKey) {
 					e.preventDefault();

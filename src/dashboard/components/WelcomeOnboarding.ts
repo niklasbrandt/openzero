@@ -1,13 +1,29 @@
 import { ACCESSIBILITY_STYLES } from '../services/accessibilityStyles';
 
 export class WelcomeOnboarding extends HTMLElement {
+	private t: Record<string, string> = {};
+
 	constructor() {
 		super();
 		this.attachShadow({ mode: 'open' });
 	}
 
+	private async loadTranslations() {
+		if (window.__z_translations) { this.t = window.__z_translations; return; }
+		try {
+			await window.__z_translations_ready;
+			if (window.__z_translations) { this.t = window.__z_translations; return; }
+			const res = await fetch('/api/dashboard/translations');
+			if (res.ok) this.t = await res.json();
+		} catch (_) { }
+	}
+
+	private tr(key: string, fallback: string): string {
+		return this.t[key] || fallback;
+	}
+
 	connectedCallback() {
-		this.checkStatus();
+		this.loadTranslations().then(() => this.checkStatus());
 	}
 
 	async checkStatus() {
@@ -93,39 +109,39 @@ export class WelcomeOnboarding extends HTMLElement {
 				</style>
 				<div class="card">
 					<div>
-						<h2>Welcome to openZero</h2>
-						<p>Your private agent OS is online. Let's finish the setup to unlock Z's full potential.</p>
+						<h2>${this.tr('welcome_heading', 'Welcome to openZero')}</h2>
+						<p>${this.tr('welcome_subtitle', "Your private agent OS is online. Let's finish the setup to unlock Z's full potential.")}</p>
 					</div>
 					
-					<ul class="steps" role="list" aria-label="Setup steps" style="list-style:none;padding:0;margin:0;">
+					<ul class="steps" role="list" aria-label="${this.tr('aria_setup_steps', 'Setup steps')}" style="list-style:none;padding:0;margin:0;">
 						<li class="step-item ${steps.profile ? 'done' : ''}" role="listitem">
 							<div class="step-icon" aria-hidden="true">${steps.profile ? '&#10003;' : '1'}</div>
 							<div class="step-text">
-								Personal Profile
-								<span>Set your mission in about-me.md</span>
-								${steps.profile ? '<span class="sr-only">Completed</span>' : '<span class="sr-only">Not yet completed</span>'}
+								${this.tr('step_profile', 'Personal Profile')}
+								<span>${this.tr('step_profile_hint', 'Set your mission in about-me.md')}</span>
+								${steps.profile ? '<span class="sr-only">' + this.tr('completed', 'Completed') + '</span>' : '<span class="sr-only">' + this.tr('not_completed', 'Not yet completed') + '</span>'}
 							</div>
 						</li>
 						<li class="step-item ${steps.inner_circle ? 'done' : ''}" role="listitem">
 							<div class="step-icon" aria-hidden="true">${steps.inner_circle ? '&#10003;' : '2'}</div>
 							<div class="step-text">
-								Inner Circle
-								<span>Add family &amp; close contacts below</span>
-								${steps.inner_circle ? '<span class="sr-only">Completed</span>' : '<span class="sr-only">Not yet completed</span>'}
+								${this.tr('step_inner_circle', 'Inner Circle')}
+								<span>${this.tr('step_inner_hint', 'Add family & close contacts below')}</span>
+								${steps.inner_circle ? '<span class="sr-only">' + this.tr('completed', 'Completed') + '</span>' : '<span class="sr-only">' + this.tr('not_completed', 'Not yet completed') + '</span>'}
 							</div>
 						</li>
 						<li class="step-item ${steps.calendar ? 'done' : ''}" role="listitem">
 							<div class="step-icon" aria-hidden="true">${steps.calendar ? '&#10003;' : '3'}</div>
 							<div class="step-text">
-								Calendar
-								<span>OAuth link for external events</span>
-								${steps.calendar ? '<span class="sr-only">Completed</span>' : '<span class="sr-only">Not yet completed</span>'}
+								${this.tr('step_calendar', 'Calendar')}
+								<span>${this.tr('step_calendar_hint', 'OAuth link for external events')}</span>
+								${steps.calendar ? '<span class="sr-only">' + this.tr('completed', 'Completed') + '</span>' : '<span class="sr-only">' + this.tr('not_completed', 'Not yet completed') + '</span>'}
 							</div>
 						</li>
 					</ul>
 
 					<div style="display: flex; align-items: center; justify-content: space-between; margin-top: 1rem;">
-						<button class="cta" id="dismiss-onboarding-btn" aria-label="Dismiss setup onboarding checklist">Dismiss Onboarding</button>
+						<button class="cta" id="dismiss-onboarding-btn" aria-label="${this.tr('aria_dismiss_onboarding', 'Dismiss setup onboarding checklist')}">${this.tr('dismiss_onboarding', 'Dismiss Onboarding')}</button>
 					</div>
 				</div>
 			`;
