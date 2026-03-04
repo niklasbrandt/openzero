@@ -204,7 +204,7 @@ export class CircleManager extends HTMLElement {
 						margin-bottom: 0.2rem;
 						margin-top: 0.5rem;
 					}
-					label .required { color: #f87171; margin-left: 0.15rem; }
+					label .required { color: var(--color-danger, #f87171); margin-left: 0.15rem; }
 					input, textarea {
 						background: rgba(0, 0, 0, 0.2);
 						border: 1px solid rgba(255, 255, 255, 0.08);
@@ -233,7 +233,7 @@ export class CircleManager extends HTMLElement {
 					}
 					.field-error-msg {
 						font-size: 0.72rem;
-						color: #f87171;
+						color: var(--color-danger, #f87171);
 						margin-top: 0.15rem;
 						min-height: 0;
 						opacity: 0;
