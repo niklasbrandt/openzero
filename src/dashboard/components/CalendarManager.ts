@@ -280,7 +280,7 @@ export class CalendarManager extends HTMLElement {
 										.month-label { 
 												font-size: 1.25rem; 
 												font-weight: 700; 
-												color: #fff; 
+												color: var(--text-primary, hsla(0, 0%, 100%, 1)); 
 												min-width: 180px; 
 												text-align: center;
 												letter-spacing: -0.01em;
@@ -288,7 +288,7 @@ export class CalendarManager extends HTMLElement {
 										.nav-btn {
 												background: rgba(255, 255, 255, 0.06);
 												border: 1px solid rgba(255, 255, 255, 0.1);
-												color: #fff;
+												color: var(--text-primary, hsla(0, 0%, 100%, 1));
 												width: 32px; height: 32px;
 												border-radius: 8px;
 												display: flex; align-items: center; justify-content: center;
@@ -305,7 +305,7 @@ export class CalendarManager extends HTMLElement {
 												cursor: pointer;
 												transition: color 0.2s;
 										}
-										.close-btn:hover { color: #fff; }
+										.close-btn:hover { color: var(--text-primary, hsla(0, 0%, 100%, 1)); }
 
 										.content-grid {
 												flex: 1;
@@ -341,9 +341,9 @@ export class CalendarManager extends HTMLElement {
 												cursor: pointer;
 												transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 										}
-										.day-cell:hover { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.2); color: #fff; transform: translateY(-2px); }
+										.day-cell:hover { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.2); color: var(--text-primary, hsla(0, 0%, 100%, 1)); transform: translateY(-2px); }
 										.day-cell.today { border-color: var(--accent-color, hsla(173, 80%, 40%, 1)); color: var(--accent-color, hsla(173, 80%, 40%, 1)); background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.08); font-weight: 700; }
-										.day-cell.selected { background: var(--accent-color, hsla(173, 80%, 40%, 1)); color: #000; border-color: var(--accent-color, hsla(173, 80%, 40%, 1)); transform: translateY(-2px); box-shadow: 0 10px 20px -5px rgba(var(--accent-color-rgb, 20, 184, 166), 0.4); font-weight: 700; }
+										.day-cell.selected { background: var(--accent-color, hsla(173, 80%, 40%, 1)); color: hsla(0, 0%, 0%, 1); border-color: var(--accent-color, hsla(173, 80%, 40%, 1)); transform: translateY(-2px); box-shadow: 0 10px 20px -5px rgba(var(--accent-color-rgb, 20, 184, 166), 0.4); font-weight: 700; }
 										
 										.event-dot {
 												position: absolute;
@@ -353,7 +353,7 @@ export class CalendarManager extends HTMLElement {
 												border-radius: 50%;
 												opacity: 0.8;
 										}
-										.day-cell.selected .event-dot { background: #000; }
+										.day-cell.selected .event-dot { background: hsla(0, 0%, 0%, 1); }
 
 										.agenda-panel {
 												background: rgba(255, 255, 255, 0.015);
@@ -412,7 +412,7 @@ export class CalendarManager extends HTMLElement {
 											}
 											.delete-event-btn:hover { background: rgba(var(--color-danger-rgb, 239, 68, 68), 0.2); border-color: rgba(var(--color-danger-rgb, 239, 68, 68), 0.5); }
 										
-										.event-title { font-size: 0.9rem; font-weight: 600; color: #fff; margin-bottom: 0.25rem; display: block; }
+										.event-title { font-size: 0.9rem; font-weight: 600; color: var(--text-primary, hsla(0, 0%, 100%, 1)); margin-bottom: 0.25rem; display: block; }
 										.event-meta { font-size: 0.75rem; color: rgba(255,255,255,0.4); display: flex; align-items: center; gap: 0.5rem; }
 										.badge { font-size: 0.6rem; padding: 1px 4px; border-radius: 4px; background: rgba(255,255,255,0.1); }
 
@@ -429,7 +429,7 @@ export class CalendarManager extends HTMLElement {
 												border: 1px solid rgba(255, 255, 255, 0.1); 
 												padding: 0.6rem 0.8rem; 
 												border-radius: 10px; 
-												color: #fff; 
+												color: var(--text-primary, hsla(0, 0%, 100%, 1)); 
 												font-size: 0.85rem;
 												outline: none;
 										}
@@ -457,6 +457,15 @@ export class CalendarManager extends HTMLElement {
 													transition: background var(--duration-fast, 0.2s), border-color var(--duration-fast, 0.2s);
 											}
 											button.submit:hover { background: color-mix(in srgb, var(--accent-color, hsla(173, 80%, 40%, 1)) 85%, black); border-color: color-mix(in srgb, var(--accent-color, hsla(173, 80%, 40%, 1)) 85%, black); color: hsla(225, 50%, 8%, 1); }
+											@media (forced-colors: active) {
+												.day-cell.today { border-color: Highlight; }
+												.day-cell.selected { background: Highlight; color: HighlightText; border-color: Highlight; }
+												.event-dot { background: ButtonText; }
+												.event-card { border-left-color: Highlight; }
+												.event-card.birthday { border-left-color: LinkText; }
+												.delete-event-btn { border: 1px solid LinkText; color: LinkText; }
+												.badge { border: 1px solid ButtonText; }
+											}
 								</style>
 								
 <div class="modal" role="dialog" aria-modal="true" aria-labelledby="cal-modal-title">
@@ -540,10 +549,10 @@ export class CalendarManager extends HTMLElement {
 																value="${e.summary}" 
 																data-id="${e.id}"
 																${!e.is_local || e.is_birthday ? 'disabled' : ''}
-																aria-label="${!e.is_local || e.is_birthday ? 'Event: ' : 'Edit event title: '}${e.summary}"
-																style="background: transparent; border: none; font-size: 0.9rem; font-weight: 600; color: #fff; width: 100%; outline: none;">
+																aria-label="${!e.is_local || e.is_birthday ? this.tr('aria_event', 'Event') + ': ' : this.tr('aria_edit_event_title', 'Edit event title') + ': '}${e.summary}"
+																style="background: transparent; border: none; font-size: 0.9rem; font-weight: 600; color: var(--text-primary, hsla(0, 0%, 100%, 1)); width: 100%; outline: none;">
 														<div class="event-meta">
-																<span>${timeStr === '00:00' ? 'All Day' : timeStr}</span>
+																<span>${timeStr === '00:00' ? this.tr('all_day', 'All Day') : timeStr}</span>
 																${e.person ? `<span class="badge">${e.person}</span>` : ''}
 														</div>
 												</div>
@@ -555,7 +564,7 @@ export class CalendarManager extends HTMLElement {
 										</div>
 								</div>
 						`;
-		}).join('') || '<div style="padding: 2rem; text-align: center; opacity: 0.3;">Clear schedule.</div>';
+		}).join('') || `<div style="padding: 2rem; text-align: center; opacity: 0.3;">${this.tr('clear_schedule', 'Clear schedule.')}</div>`;
 
 		const monthGrid = this.shadowRoot.querySelector('.month-grid')!;
 		monthGrid.innerHTML = `
@@ -580,7 +589,7 @@ export class CalendarManager extends HTMLElement {
 				`;
 
 		this.shadowRoot.querySelector('.events-list')!.innerHTML = eventsListHtml;
-		this.shadowRoot.querySelector('.agenda-header')!.textContent = this.selectedDate ? `Schedule for ${monthName} ${this.selectedDate}` : 'Coming Up';
+		this.shadowRoot.querySelector('.agenda-header')!.textContent = this.selectedDate ? `${this.tr('schedule_for', 'Schedule for')} ${monthName} ${this.selectedDate}` : this.tr('coming_up', 'Coming Up');
 
 		// Only attach persistent listeners once if they aren't already attached
 		if (!this.listenersBound) {

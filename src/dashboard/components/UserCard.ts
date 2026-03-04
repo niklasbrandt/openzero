@@ -191,7 +191,7 @@ export class UserCard extends HTMLElement {
 					display: flex;
 					flex-direction: column;
 					gap: 1.25rem;
-					color: #fff;
+					color: var(--text-primary, hsla(0, 0%, 100%, 1));
 					font-family: 'Inter', sans-serif;
 				}
 
@@ -227,13 +227,13 @@ export class UserCard extends HTMLElement {
 
 				.field { display: flex; flex-direction: column; gap: 4px; }
 				.label { font-size: 0.65rem; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.05em; }
-				.value { font-size: 0.9rem; color: #fff; font-weight: 500; }
+				.value { font-size: 0.9rem; color: var(--text-primary, hsla(0, 0%, 100%, 1)); font-weight: 500; }
 
 				input, textarea, select {
 					background: rgba(0,0,0,0.3);
 					border: 1px solid rgba(255,255,255,0.1);
 					border-radius: 0.5rem;
-					color: #fff;
+					color: var(--text-primary, hsla(0, 0%, 100%, 1));
 					padding: 8px 12px;
 					font-size: 0.85rem;
 					width: 100%;
@@ -252,7 +252,7 @@ export class UserCard extends HTMLElement {
 
 				select option {
 					background: hsla(240, 28%, 14%, 1);
-					color: #fff;
+					color: var(--text-primary, hsla(0, 0%, 100%, 1));
 				}
 
 				.theme-cycle-btn {
@@ -310,6 +310,12 @@ export class UserCard extends HTMLElement {
 				@media (prefers-reduced-motion: reduce) {
 					*, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 				}
+				@media (forced-colors: active) {
+					.avatar { background: ButtonFace; border: 2px solid ButtonText; }
+					.edit-btn { color: LinkText; }
+					.theme-cycle-btn { border: 1px solid ButtonText; }
+					li::before { color: Highlight; }
+				}
 			</style>
 
 			<div class="card">
@@ -361,7 +367,7 @@ export class UserCard extends HTMLElement {
 					</div>
 					<div class="field">
 						${this.isEditing
-				? `<label class="label" for="language-input">${this.tr('language_label', 'Language')}</label><select id="language-input" aria-label="Select Z\'s response language">${Object.entries(this.languages).map(([code, lang]) => `<option value="${code}" ${(me.language || 'en') === code ? 'selected' : ''}>${lang.native} · ${this.tr('lang_' + code, lang.eng)}</option>`).join('')}</select>`
+				? `<label class="label" for="language-input">${this.tr('language_label', 'Language')}</label><select id="language-input" aria-label="${this.tr('aria_select_language', 'Select Z\'s response language')}">${Object.entries(this.languages).map(([code, lang]) => `<option value="${code}" ${(me.language || 'en') === code ? 'selected' : ''}>${lang.native} · ${this.tr('lang_' + code, lang.eng)}</option>`).join('')}</select>`
 				: `<div class="label">${this.tr('language_label', 'Language')}</div><div class="value">${this.languages[me.language as string]?.native || 'English'} · ${this.tr('lang_' + (me.language || 'en'), this.languages[me.language as string]?.eng || 'English')}</div>`}
 					</div>
 					<div class="field" style="grid-column: span 2;">
@@ -375,14 +381,14 @@ export class UserCard extends HTMLElement {
 						<div style="display: flex; gap: 0.75rem; align-items: center; margin-top: 0.5rem; flex-wrap: wrap;">
 							${this.isEditing ? `
 								<div style="display: flex; gap: 0.5rem; align-items: center; flex: 1;">
-									<button id="theme-prev" class="theme-cycle-btn" title="Previous Theme" aria-label="Previous theme">‹</button>
+									<button id="theme-prev" class="theme-cycle-btn" title="${this.tr('previous_theme', 'Previous Theme')}" aria-label="${this.tr('aria_previous_theme', 'Previous theme')}">‹</button>
 									<select id="theme-preset-select" aria-label="${this.tr('aria_theme_presets', 'Theme Presets')}" style="flex: 1; min-width: 140px;">
 										<option value="">${this.tr('select_preset', 'Select Preset...')}</option>
 										${Object.entries(this.themeOptions).map(([val, opt]) => `
 											<option value="${val}" data-colors='${JSON.stringify(opt.colors)}'>${this.tr('theme_' + val, opt.label)}</option>
 										`).join('')}
 									</select>
-									<button id="theme-next" class="theme-cycle-btn" title="Next Theme" aria-label="Next theme">›</button>
+									<button id="theme-next" class="theme-cycle-btn" title="${this.tr('next_theme', 'Next Theme')}" aria-label="${this.tr('aria_next_theme', 'Next theme')}">›</button>
 								</div>
 								<div style="display: flex; gap: 0.5rem;">
 									<input type="color" id="color-primary-input" value="${me.color_primary || 'hsla(173, 80%, 40%, 1)'}" style="width:32px; height:32px; padding:0; border:none; background:none;">
@@ -391,9 +397,9 @@ export class UserCard extends HTMLElement {
 								</div>
 							` : `
 								<div style="display: flex; gap: 0.5rem;">
-									<div style="width:16px; height:16px; border-radius:4px; background:${me.color_primary || 'hsla(173, 80%, 40%, 1)'}" title="Primary"></div>
-									<div style="width:16px; height:16px; border-radius:4px; background:${me.color_secondary || 'hsla(216, 100%, 50%, 1)'}" title="Secondary"></div>
-									<div style="width:16px; height:16px; border-radius:4px; background:${me.color_tertiary || 'hsla(239, 84%, 67%, 1)'}" title="Tertiary"></div>
+									<div style="width:16px; height:16px; border-radius:4px; background:${me.color_primary || 'hsla(173, 80%, 40%, 1)'}" title="${this.tr('color_primary', 'Primary')}"></div>
+									<div style="width:16px; height:16px; border-radius:4px; background:${me.color_secondary || 'hsla(216, 100%, 50%, 1)'}" title="${this.tr('color_secondary', 'Secondary')}"></div>
+									<div style="width:16px; height:16px; border-radius:4px; background:${me.color_tertiary || 'hsla(239, 84%, 67%, 1)'}" title="${this.tr('color_tertiary', 'Tertiary')}"></div>
 								</div>
 							`}
 						</div>
@@ -403,8 +409,8 @@ export class UserCard extends HTMLElement {
 				<div class="goals-section">
 					<h3>${this.tr('life_goals', 'Life Goals & Core Values')}</h3>
 					${this.isEditing
-				? `<label class="label" for="context-input" style="font-size:0.65rem;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:0.5rem;">${this.tr('goals_edit_label', 'Goals and Values (one per line)')}</label><textarea id="context-input" placeholder="What drives you? What are your current focus areas?" aria-label="Life goals and core values">${me.context || ''}</textarea>`
-				: `<ul aria-label="Your life goals and values">${(me.context || '').split('\n').filter((l: string) => l.trim() && !l.trim().startsWith('<!--') && !l.includes('## Growth Areas')).map((l: string) => `<li>${l.replace(/^#+\s*/, '')}</li>`).join('') || `<li>${this.tr('no_goals', 'No goals set.')}</li>`}</ul>`}
+				? `<label class="label" for="context-input" style="font-size:0.65rem;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:0.5rem;">${this.tr('goals_edit_label', 'Goals and Values (one per line)')}</label><textarea id="context-input" placeholder="What drives you? What are your current focus areas?" aria-label="${this.tr('aria_life_goals', 'Life goals and core values')}">${me.context || ''}</textarea>`
+				: `<ul aria-label="${this.tr('aria_goals_list', 'Your life goals and values')}">${(me.context || '').split('\n').filter((l: string) => l.trim() && !l.trim().startsWith('<!--') && !l.includes('## Growth Areas')).map((l: string) => `<li>${l.replace(/^#+\s*/, '')}</li>`).join('') || `<li>${this.tr('no_goals', 'No goals set.')}</li>`}</ul>`}
 				</div>
 
 				${this.isEditing ? `

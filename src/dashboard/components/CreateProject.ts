@@ -124,7 +124,7 @@ export class CreateProject extends HTMLElement {
 	}
 
 	private folderSVG(): string {
-		return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`;
+		return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`;
 	}
 
 	render() {
@@ -134,7 +134,7 @@ export class CreateProject extends HTMLElement {
 					${BUTTON_STYLES}
 					${ACCESSIBILITY_STYLES}
 					${FEEDBACK_STYLES}
-					h2 { font-size: 1.5rem; font-weight: bold; margin: 0 0 1rem 0; color: #fff; letter-spacing: 0.02em; }
+					h2 { font-size: 1.5rem; font-weight: bold; margin: 0 0 1rem 0; color: var(--text-primary, hsla(0, 0%, 100%, 1)); letter-spacing: 0.02em; }
 			:host {
 				display: block;
 				max-height: 0;
@@ -179,7 +179,7 @@ export class CreateProject extends HTMLElement {
 				border: 1px solid rgba(255, 255, 255, 0.08);
 				border-radius: 0.75rem;
 				padding: 0.6rem 1rem;
-				color: #fff;
+			color: var(--text-primary, hsla(0, 0%, 100%, 1));
 				font-family: 'Inter', system-ui, sans-serif;
 				font-size: 0.9rem;
 				outline: none;
@@ -265,6 +265,11 @@ export class CreateProject extends HTMLElement {
 			/* Additional reduced-motion overrides beyond shared module */
 			@media (prefers-reduced-motion: reduce) {
 				*, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+			}
+			@media (forced-colors: active) {
+				input:focus, textarea:focus { border-color: Highlight; }
+				.feedback.success { border: 1px solid ButtonText; }
+				.feedback.error { border: 1px solid LinkText; }
 			}
 		</style>
 

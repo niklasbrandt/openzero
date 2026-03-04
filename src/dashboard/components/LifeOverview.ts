@@ -292,7 +292,7 @@ export class LifeOverview extends HTMLElement {
 					li { 
 						font-size: 0.95rem; 
 						line-height: 1.4;
-						color: #fff; 
+						color: var(--text-primary, hsla(0, 0%, 100%, 1)); 
 						margin-bottom: 0.5rem; 
 						display: flex;
 						align-items: center;
@@ -325,6 +325,12 @@ export class LifeOverview extends HTMLElement {
 					.error { color: var(--color-danger, hsla(0, 84%, 60%, 1)); text-align: center; padding: 2rem; }
 				.action-btn:focus-visible { outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); outline-offset: 3px; }
 				.tree-content a:focus-visible { outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); outline-offset: 2px; }
+				@media (forced-colors: active) {
+					.h-icon { background: ButtonFace; border: 1px solid ButtonText; }
+					.time { color: LinkText; }
+					.google-tag { color: LinkText; }
+					.birthday-tag { border: 1px solid ButtonText; }
+				}
 				</style>
 				<div class="card">
 					<h2>

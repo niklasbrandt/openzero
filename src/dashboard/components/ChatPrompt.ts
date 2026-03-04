@@ -341,7 +341,7 @@ export class ChatPrompt extends HTMLElement {
 		container.innerHTML = [...this.messages].reverse().map((msg) => `
 			<div class="message ${msg.role} ${skipAnimation ? '' : 'animate'}"
 				role="article"
-				aria-label="${msg.role === 'user' ? 'You' : 'Z'} at ${this.formatDateTime(msg.timestamp)}">
+				aria-label="${msg.role === 'user' ? this.tr('aria_you', 'You') : 'Z'} ${this.tr('aria_at', 'at')} ${this.formatDateTime(msg.timestamp)}">
 				<div class="bubble">
 					<div class="bubble-content">${this.renderContent(msg.content)}</div>
 					<div class="bubble-footer" aria-hidden="true">
@@ -485,7 +485,7 @@ export class ChatPrompt extends HTMLElement {
 		<style>
 					${ACCESSIBILITY_STYLES}
 					${SCROLLBAR_STYLES}
-					h2 { font-size: 1.5rem; font-weight: bold; margin: 0 0 1rem 0; color: #fff; letter-spacing: 0.02em; }
+					h2 { font-size: 1.5rem; font-weight: bold; margin: 0 0 1rem 0; color: var(--text-primary, hsla(0, 0%, 100%, 1)); letter-spacing: 0.02em; }
 			:host {
 				display: block;
 			}
@@ -498,7 +498,7 @@ export class ChatPrompt extends HTMLElement {
 				text-transform: uppercase;
 				letter-spacing: 0.08em;
 				background: linear-gradient(135deg, var(--accent-color), var(--accent-secondary));
-				color: #fff;
+				color: var(--text-primary, hsla(0, 0%, 100%, 1));
 				padding: 0.2rem 0.6rem;
 				border-radius: 2rem;
 			}
@@ -612,7 +612,7 @@ export class ChatPrompt extends HTMLElement {
 				background: linear-gradient(135deg, rgba(var(--accent-color-rgb, 20, 184, 166), 0.2), rgba(var(--accent-secondary-rgb, 0, 102, 255), 0.15));
 				backdrop-filter: blur(12px);
 				-webkit-backdrop-filter: blur(12px);
-				color: #fff;
+				color: var(--text-primary, hsla(0, 0%, 100%, 1));
 				border: 1px solid rgba(255, 255, 255, 0.12);
 				border-bottom-right-radius: 0.35rem;
 				box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1);
@@ -622,7 +622,7 @@ export class ChatPrompt extends HTMLElement {
 				background: linear-gradient(135deg, var(--accent-color), var(--accent-secondary));
 				backdrop-filter: blur(24px) saturate(1.8) brightness(1.2);
 				-webkit-backdrop-filter: blur(24px) saturate(1.8) brightness(1.2);
-				color: #fff;
+				color: var(--text-primary, hsla(0, 0%, 100%, 1));
 				border: 1px solid rgba(255, 255, 255, 0.2);
 				border-radius: 1.5rem;
 				border-bottom-left-radius: 0.35rem; /* Sharp corner for agent */
@@ -689,7 +689,7 @@ export class ChatPrompt extends HTMLElement {
 				transition: color 0.2s;
 			}
 			.message.user .bubble-content a {
-				color: #fff;
+				color: var(--text-primary, hsla(0, 0%, 100%, 1));
 				text-decoration-color: rgba(255, 255, 255, 0.4);
 			}
 			.bubble-content a:hover {
@@ -739,7 +739,7 @@ export class ChatPrompt extends HTMLElement {
 				border: 1px solid rgba(255, 255, 255, 0.08);
 				border-radius: 0.75rem;
 				padding: 0.6rem 1rem;
-				color: #fff;
+				color: var(--text-primary, hsla(0, 0%, 100%, 1));
 				font-family: 'Inter', system-ui, sans-serif;
 				font-size: 1.1rem;
 				line-height: 1.2;
@@ -809,13 +809,20 @@ export class ChatPrompt extends HTMLElement {
 				.message { opacity: 1; transform: none; }
 				textarea, #send-btn { transition: none; }
 			}
+			@media (forced-colors: active) {
+				h2 .badge { background: ButtonFace; border: 1px solid ButtonText; color: ButtonText; }
+				.cmd-chip { border: 1px solid Highlight; color: Highlight; }
+				.message .bubble { border: 1px solid ButtonText; }
+				.model-tag { color: LinkText; }
+				#send-btn { border: 1px solid Highlight; }
+			}
 		</style>
 
 		<div id="messages"
 			role="log"
 			aria-live="polite"
 			aria-relevant="additions"
-			aria-label="Chat history"
+			aria-label="${this.tr('aria_chat_history', 'Chat history')}"
 			aria-atomic="false">
 			<div class="empty-state">
 				<div class="empty-icon" aria-hidden="true">${this.chatSVG()}</div>

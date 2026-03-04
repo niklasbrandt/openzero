@@ -166,8 +166,8 @@ export class CircleManager extends HTMLElement {
 			};
 			const accents: Record<string, string> = {
 				inner: 'hsla(217, 91%, 60%, 1)',
-				close: '#10b981',
-				outer: '#a78bfa',
+				close: 'hsla(160, 84%, 39%, 1)',
+				outer: 'hsla(263, 90%, 76%, 1)',
 			};
 			const title = titles[this.circleType] || titles['outer'];
 			const accent = accents[this.circleType] || accents['outer'];
@@ -177,7 +177,7 @@ export class CircleManager extends HTMLElement {
 					${BUTTON_STYLES}
 					${ACCESSIBILITY_STYLES}
 					${FEEDBACK_STYLES}
-					h2 { font-size: 1.5rem; font-weight: bold; margin: 0; color: #fff; letter-spacing: 0.02em; display: flex; align-items: center; gap: 0.5rem; overflow-wrap: break-word; word-break: break-word; min-width: 0; flex: 1; }
+					h2 { font-size: 1.5rem; font-weight: bold; margin: 0; color: var(--text-primary, hsla(0, 0%, 100%, 1)); letter-spacing: 0.02em; display: flex; align-items: center; gap: 0.5rem; overflow-wrap: break-word; word-break: break-word; min-width: 0; flex: 1; }
 					.h-icon { display: inline-flex; width: 32px; height: 32px; background: ${accent}; border-radius: var(--radius-sm, 0.4rem); align-items: center; justify-content: center; flex-shrink: 0; }
 					.subtitle { font-size: 0.65rem; font-weight: 400; color: var(--text-faint, rgba(255, 255, 255, 0.3)); margin-left: 0.5rem; text-transform: uppercase; letter-spacing: 0.1em; }
 					:host { display: block; }
@@ -210,7 +210,7 @@ export class CircleManager extends HTMLElement {
 						border: 1px solid rgba(255, 255, 255, 0.08);
 						border-radius: 0.75rem;
 						padding: 0.6rem 1rem;
-						color: #fff;
+						color: var(--text-primary, hsla(0, 0%, 100%, 1));
 						outline: none;
 						font-family: 'Inter', system-ui, sans-serif;
 						font-size: 0.9rem;
@@ -256,7 +256,7 @@ export class CircleManager extends HTMLElement {
 					word-break: break-word;
 					overflow-wrap: break-word;
 				}
-				.name { font-weight: 700; color: #fff; display: block; overflow-wrap: break-word; }
+				.name { font-weight: 700; color: var(--text-primary, hsla(0, 0%, 100%, 1)); display: block; overflow-wrap: break-word; }
 				.rel { font-size: 0.8rem; color: ${accent}; display: block; overflow-wrap: break-word; }
 				.ctx { font-size: 0.85rem; color: rgba(255, 255, 255, 0.6); margin: 0.5rem 0 0 0; overflow-wrap: break-word; }
 				.edit-btn { margin-right: 0; }
@@ -304,6 +304,13 @@ export class CircleManager extends HTMLElement {
 						outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1));
 						outline-offset: 2px;
 					}
+					@media (forced-colors: active) {
+						.h-icon { background: ButtonFace; border: 1px solid ButtonText; }
+						.rel { color: LinkText; }
+						.cal-badge { border: 1px solid ButtonText; }
+						.delete-btn { border-color: LinkText; color: LinkText; }
+						.person-card.deleting { border-color: LinkText; }
+					}
 				</style>
 				<div class="card">
 					<div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem;">
@@ -318,7 +325,7 @@ export class CircleManager extends HTMLElement {
 							</span>
 							${title}
 						</h2>
-						${!this.isAdding ? `<button id="showAddBtn" class="btn-primary" aria-label="Add a new person to ${title}">${this.tr('new_person', '+ New Person')}</button>` : ''}
+						${!this.isAdding ? `<button id="showAddBtn" class="btn-primary" aria-label="${this.tr('aria_add_person', 'Add a new person to')} ${title}">${this.tr('new_person', '+ New Person')}</button>` : ''}
 					</div>
 
 					${this.isAdding ? `
