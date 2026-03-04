@@ -296,7 +296,7 @@ export class CalendarAgenda extends HTMLElement {
 							<line x1="3" y1="10" x2="21" y2="10"></line>
 						</svg>
 					</span>
-					${this.tr('calendar_agenda', 'Calendar Agenda')}
+					${this.tr('calendar_agenda', 'Calendar')}
 				</h2>
 					<a href="https://calendar.google.com" target="_blank" class="calendar-link" title="Open Google Calendar" aria-label="${this.tr('aria_open_google_calendar', 'Open Google Calendar (opens in new tab)')}" rel="noopener noreferrer">
 							<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

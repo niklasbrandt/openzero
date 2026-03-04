@@ -194,7 +194,7 @@ export class EmailRules extends HTMLElement {
 									<polyline points="22,6 12,13 2,6"></polyline>
 								</svg>
 							</span>
-							${this.tr('email_rules', 'Email Intelligence Rules')}
+							${this.tr('email_rules', 'Email')}
 						</h2>
 						${!this.isAdding ? `<button id="showAddBtn" class="btn-primary" aria-label="Add new email rule">+ ${this.tr('new_rule', 'New Rule')}</button>` : ''}
 					</div>

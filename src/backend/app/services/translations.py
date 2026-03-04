@@ -27,7 +27,7 @@ _EN = {
     "list_inbox": "Inbox",
 
     # ── LifeOverview ──
-    "life_overview": "Life Overview",
+    "life_overview": "Life",
     "mapping_world": "Mapping your world...",
     "boards_heading": "Boards",
     "new_board": "+ New Board",
@@ -64,7 +64,7 @@ _EN = {
     "tip_avx512": "Widest SIMD. Up to 2x faster than AVX2 for large quantized models. Rare on consumer CPUs, common on EPYC/Xeon.",
 
     # ── SystemBenchmark ──
-    "llm_benchmark": "LLM Benchmark",
+    "llm_benchmark": "Benchmark",
     "bench_subtitle": "Throughput & Performance Rating",
     "bench_empty": "Click a tier button to measure tokens/second.",
     "bench_instant": "Bench instant",
@@ -108,18 +108,18 @@ _EN = {
 
     # -- Widget Headers (consistency) --
     "life_subtitle": "Projects & People",
-    "calendar_agenda": "Calendar Agenda",
+    "calendar_agenda": "Calendar",
     "calendar_subtitle": "Upcoming Events",
     "memory_search": "Memory Search",
-    "memory_vault": "Memory Vault",
+    "memory_vault": "Memory",
     "memory_subtitle": "Semantic Recall",
-    "briefing_history": "Briefing History",
+    "briefing_history": "Briefing",
     "briefing_subtitle": "Daily Reports",
-    "agent_personality": "Agent Personality",
+    "agent_personality": "Personality",
     "personality_subtitle": "Character & Behavior",
     "outer_circle": "Outer Circle",
     "outer_subtitle": "Acquaintances & Network",
-    "email_rules": "Email Intelligence",
+    "email_rules": "Email",
     "email_subtitle": "Automated Rules",
     "software": "Software",
     "sw_subtitle": "Services & Stack",
@@ -148,8 +148,8 @@ _EN = {
     "cancel": "Cancel",
 
     # ── ZPersonality ──
-    "agent_config": "Agent Config",
-    "agent_protocols": "Agent Protocols",
+    "agent_config": "Config",
+    "agent_protocols": "Protocols",
     "refine": "Refine",
     "save_persona": "Save Persona",
     "tab_identity": "Identity",
@@ -163,9 +163,9 @@ _EN = {
     "communication": "Communication",
 
     # ── CircleManager ──
-    "inner_circle_full": "Inner Circle (Family & Care)",
-    "close_circle_full": "Close Circle (Friends & Social)",
-    "outer_circle_full": "Outer Circle (Acquaintances)",
+    "inner_circle_full": "Inner Circle",
+    "close_circle_full": "Close Circle",
+    "outer_circle_full": "Outer Circle",
     "add_to_circle": "Add to Circle",
     "update_person": "Update Person",
     "no_people": "No people added to this circle.",
@@ -301,6 +301,22 @@ _EN = {
     "aria_open_projects": "Open Projects board (opens in new tab)",
     "aria_open_calendar_btn": "Open Calendar manager",
 
+    # ── Navigation Labels (sidebar / marquee / drawer) ──
+    "nav_chat": "Chat",
+    "nav_life": "Life",
+    "nav_calendar": "Calendar",
+    "nav_profile": "Profile",
+    "nav_memory": "Memory",
+    "nav_briefing": "Briefing",
+    "nav_personality": "Personality",
+    "nav_inner_circle": "Inner Circle",
+    "nav_close_circle": "Close Circle",
+    "nav_outer_circle": "Outer Circle",
+    "nav_email": "Email",
+    "nav_hardware": "Hardware",
+    "nav_software": "Software",
+    "nav_benchmark": "Benchmark",
+
     # -- Languages --
     "lang_en": "English",
     "lang_de": "German",
@@ -391,7 +407,7 @@ _DE = {
     "list_inbox": "Eingang",
 
     # ── LifeOverview ──
-    "life_overview": "Lebensuebersicht",
+    "life_overview": "Leben",
     "mapping_world": "Deine Welt wird geladen...",
     "boards_heading": "Boards",
     "new_board": "+ Neues Board",
@@ -428,7 +444,7 @@ _DE = {
     "tip_avx512": "Breitestes SIMD. Bis zu 2x schneller als AVX2 fuer grosse quantisierte Modelle. Selten bei Consumer-CPUs, haeufig bei EPYC/Xeon.",
 
     # ── SystemBenchmark ──
-    "llm_benchmark": "LLM-Benchmark",
+    "llm_benchmark": "Benchmark",
     "bench_subtitle": "Durchsatz & Leistungsbewertung",
     "bench_empty": "Klicke auf eine Tier-Schaltflaeche, um Tokens/Sekunde zu messen.",
     "bench_instant": "Bench Instant",
@@ -472,18 +488,18 @@ _DE = {
 
     # -- Widget Headers --
     "life_subtitle": "Projekte & Menschen",
-    "calendar_agenda": "Kalenderagenda",
+    "calendar_agenda": "Kalender",
     "calendar_subtitle": "Anstehende Termine",
     "memory_search": "Ged\u00e4chtnis-Suche",
-    "memory_vault": "Ged\u00e4chtnis-Tresor",
+    "memory_vault": "Erinnerung",
     "memory_subtitle": "Semantischer Abruf",
-    "briefing_history": "Briefing-Verlauf",
+    "briefing_history": "Briefing",
     "briefing_subtitle": "Tagesberichte",
-    "agent_personality": "Agentenpersoenlichkeit",
+    "agent_personality": "Charakter",
     "personality_subtitle": "Charakter & Verhalten",
     "outer_circle": "Aeusserer Kreis",
     "outer_subtitle": "Bekannte & Netzwerk",
-    "email_rules": "E-Mail-Intelligenz",
+    "email_rules": "E-Mail",
     "email_subtitle": "Automatisierte Regeln",
     "software": "Software",
     "sw_subtitle": "Dienste & Stack",
@@ -510,8 +526,8 @@ _DE = {
     "cancel": "Abbrechen",
 
     # ── ZPersonality ──
-    "agent_config": "Agent-Konfiguration",
-    "agent_protocols": "Agent-Protokolle",
+    "agent_config": "Konfiguration",
+    "agent_protocols": "Protokolle",
     "refine": "Verfeinern",
     "save_persona": "Persona speichern",
     "tab_identity": "Identität",
@@ -525,9 +541,9 @@ _DE = {
     "communication": "Kommunikation",
 
     # ── CircleManager ──
-    "inner_circle_full": "Innerer Kreis (Familie & Fürsorge)",
-    "close_circle_full": "Enger Kreis (Freunde & Soziales)",
-    "outer_circle_full": "Äußerer Kreis (Bekannte)",
+    "inner_circle_full": "Innerer Kreis",
+    "close_circle_full": "Enger Kreis",
+    "outer_circle_full": "Äußerer Kreis",
     "add_to_circle": "Zum Kreis hinzufügen",
     "update_person": "Person aktualisieren",
     "no_people": "Keine Personen in diesem Kreis.",
@@ -657,6 +673,22 @@ _DE = {
     "aria_open_operator_board": "Operator-Board oeffnen \u2014 Gesamtuebersicht aller Aufgaben (oeffnet in neuem Tab)",
     "aria_open_projects": "Projektboard oeffnen (oeffnet in neuem Tab)",
     "aria_open_calendar_btn": "Kalenderverwaltung oeffnen",
+
+    # ── Navigation Labels (sidebar / marquee / drawer) ──
+    "nav_chat": "Chat",
+    "nav_life": "Leben",
+    "nav_calendar": "Kalender",
+    "nav_profile": "Profil",
+    "nav_memory": "Erinnerung",
+    "nav_briefing": "Briefing",
+    "nav_personality": "Charakter",
+    "nav_inner_circle": "Innerer Kreis",
+    "nav_close_circle": "Enger Kreis",
+    "nav_outer_circle": "Weiterer Kreis",
+    "nav_email": "E-Mail",
+    "nav_hardware": "Hardware",
+    "nav_software": "Software",
+    "nav_benchmark": "Benchmark",
 
     # -- Sprachen --
     "lang_en": "Englisch",
