@@ -212,8 +212,21 @@ export class LifeOverview extends HTMLElement {
 						background: linear-gradient(135deg, var(--accent-color, hsla(173, 80%, 40%, 1)) 0%, var(--accent-tertiary, hsla(239, 84%, 67%, 1)) 100%);
 					}
 					:host { display: block; }
-					h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted, rgba(255, 255, 255, 0.4)); margin-bottom: 1rem; }
-					h3 small { font-size: 0.65rem; text-transform: none; letter-spacing: 0.02em; opacity: 0.8; margin-left: 0.4rem; font-weight: 400; }
+					h3 { 
+						font-size: 0.85rem; 
+						text-transform: uppercase; 
+						letter-spacing: 0.1em; 
+						color: var(--text-muted, hsla(0, 0%, 100%, 0.4)); 
+						margin-bottom: 1rem; 
+					}
+					h3 small { 
+						font-size: 0.65rem; 
+						text-transform: none; 
+						letter-spacing: 0.02em; 
+						opacity: 0.8; 
+						margin-left: 0.4rem; 
+						font-weight: 400; 
+					}
 					
 					.overview-grid {
 						display: grid;
@@ -226,22 +239,30 @@ export class LifeOverview extends HTMLElement {
 					}
 
 					pre, .tree-content {
-						background: rgba(0, 0, 0, 0.2);
+						background: var(--surface-card-subtle, hsla(0, 0%, 0%, 0.2));
 						padding: 1.25rem;
 						border-radius: var(--radius-md, 0.75rem);
 						font-family: var(--font-mono, 'Fira Code', monospace);
 						font-size: 0.9rem;
 						line-height: 1.6;
-						color: var(--text-secondary, rgba(255, 255, 255, 0.85));
+						color: var(--text-secondary, hsla(0, 0%, 100%, 0.85));
 						margin: 0;
 						overflow-x: auto;
-						border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.03));
+						border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.03));
 						white-space: pre-wrap;
 					}
 
-					.tree-content b { color: var(--accent-color, hsla(173, 80%, 40%, 1)); font-weight: 600; }
-					.tree-content a { color: inherit; text-decoration: none; border-bottom: 1px solid rgba(255,255,255,0.1); transition: all var(--duration-fast, 0.2s); }
-					.tree-content a:hover { color: hsla(216, 100%, 50%, 1); border-bottom-color: hsla(216, 100%, 50%, 1); }
+					.tree-content b { color: var(--accent-primary, hsla(173, 80%, 40%, 1)); font-weight: 600; }
+					.tree-content a { 
+						color: inherit; 
+						text-decoration: none; 
+						border-bottom: 1px solid var(--border-subtle, hsla(0,0%,100%,0.1)); 
+						transition: all var(--duration-fast, 0.2s); 
+					}
+					.tree-content a:hover { 
+						color: var(--accent-secondary, hsla(216, 100%, 50%, 1)); 
+						border-bottom-color: var(--accent-secondary, hsla(216, 100%, 50%, 1)); 
+					}
 
 					.section-header {
 						display: flex;
@@ -259,20 +280,31 @@ export class LifeOverview extends HTMLElement {
 					.action-btn {
 						padding: 0.25rem 0.75rem;
 						font-size: 0.75rem;
+						min-height: 32px;
+						display: flex;
+						align-items: center;
+						background: var(--surface-card, hsla(0, 0%, 100%, 0.05));
+						border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.1));
+						color: var(--text-secondary, hsla(0, 0%, 100%, 0.8));
+						border-radius: 0.3rem;
+						cursor: pointer;
+						transition: background var(--duration-fast), transform var(--duration-fast);
 					}
+					.action-btn:hover { background: var(--surface-card-hover, hsla(0, 0%, 100%, 0.1)); }
+					.action-btn:active { transform: scale(0.98); }
 
 					.project-form-wrap {
 						max-height: 0;
 						overflow: hidden;
 						opacity: 0;
-						transition: max-height 0.35s ease, opacity 0.25s ease, margin-bottom 0.25s ease;
+						transition: max-height 0.35s var(--ease-out), opacity 0.25s var(--ease-out), margin-bottom 0.25s var(--ease-out);
 						margin-bottom: 0;
 					}
 
 					.project-form-wrap.open {
 						max-height: 120px;
 						opacity: 1;
-						margin-bottom: 1rem;
+						margin-bottom: 1.25rem;
 					}
 
 					.form-row {
@@ -293,38 +325,41 @@ export class LifeOverview extends HTMLElement {
 						font-size: 0.95rem; 
 						line-height: 1.4;
 						color: var(--text-primary, hsla(0, 0%, 100%, 1)); 
-						margin-bottom: 0.5rem; 
+						margin-bottom: 0.6rem; 
 						display: flex;
 						align-items: center;
 						gap: 0.5rem;
+						min-height: 24px;
 					}
-					.rel { color: rgba(255, 255, 255, 0.4); font-size: 0.8rem; }
-					.empty-li { font-size: 0.85rem; color: rgba(255, 255, 255, 0.25); font-style: italic; }
+					.rel { color: var(--text-muted, hsla(0, 0%, 100%, 0.4)); font-size: 0.8rem; }
+					.empty-li { font-size: 0.85rem; color: var(--text-muted, hsla(0, 0%, 100%, 0.25)); font-style: italic; }
 
 					.timeline-list { display: flex; flex-direction: column; gap: 0.75rem; }
 					.timeline-item {
 						display: flex;
 						gap: 1rem;
-						background: rgba(255, 255, 255, 0.02);
-						padding: 0.75rem;
+						background: var(--surface-card, hsla(0, 0%, 100%, 0.02));
+						padding: 0.75rem 1rem;
 						border-radius: 0.6rem;
 						font-size: 0.85rem;
+						min-height: 48px;
+						border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.03));
 					}
-					.time { color: var(--accent-color, hsla(173, 80%, 40%, 1)); font-weight: 600; min-width: 70px; }
-					.summary { color: var(--text-secondary, rgba(255, 255, 255, 0.8)); }
-					.summary small { color: var(--color-info, hsla(217, 91%, 60%, 1)); opacity: 0.7; font-size: 0.7rem; margin-left: 0.3rem; }
-					.google-tag { color: var(--accent-color, hsla(173, 80%, 40%, 1)); opacity: 0.85; }
+					.time { color: var(--accent-primary, hsla(173, 80%, 40%, 1)); font-weight: 600; min-width: 75px; }
+					.summary { color: var(--text-secondary, hsla(0, 0%, 100%, 0.8)); line-height: 1.4; }
+					.summary small { color: var(--status-info, hsla(217, 91%, 60%, 1)); opacity: 0.7; font-size: 0.7rem; margin-left: 0.3rem; }
+					.google-tag { color: var(--accent-primary, hsla(173, 80%, 40%, 1)); opacity: 0.85; }
 
 					.birthday-item {
-						background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.06);
-						border: 1px solid rgba(var(--accent-color-rgb, 20, 184, 166), 0.12);
+						background: var(--surface-accent-subtle, hsla(173, 80%, 40%, 0.06));
+						border: 1px solid var(--border-accent-subtle, hsla(173, 80%, 40%, 0.12));
 					}
 					.birthday-tag { font-size: 1rem; }
 
 
-					.error { color: var(--color-danger, hsla(0, 84%, 60%, 1)); text-align: center; padding: 2rem; }
-				.action-btn:focus-visible { outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); outline-offset: 3px; }
-				.tree-content a:focus-visible { outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); outline-offset: 2px; }
+					.error { color: var(--status-danger, hsla(0, 84%, 60%, 1)); text-align: center; padding: 2rem; }
+				.action-btn:focus-visible { outline: 2px solid var(--accent-primary, hsla(173, 80%, 40%, 1)); outline-offset: 3px; }
+				.tree-content a:focus-visible { outline: 2px solid var(--accent-primary, hsla(173, 80%, 40%, 1)); outline-offset: 2px; }
 				@media (forced-colors: active) {
 					.h-icon { background: ButtonFace; border: 1px solid ButtonText; }
 					.time { color: LinkText; }
@@ -335,7 +370,7 @@ export class LifeOverview extends HTMLElement {
 				<div class="card">
 					<h2>
 					<span class="h-icon" aria-hidden="true">
-						<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+						<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
 							<circle cx="12" cy="12" r="10"></circle>
 							<line x1="2" y1="12" x2="22" y2="12"></line>
 							<path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
@@ -344,7 +379,7 @@ export class LifeOverview extends HTMLElement {
 					${this.tr('life_overview', 'Life')}
 					</h2>
 					<div id="overview-container" aria-live="polite" aria-label="${this.tr('aria_life_overview', 'Life overview')}">
-						<div style="text-align: center; padding: 2rem; color: rgba(255,255,255,0.3);">${this.tr('mapping_world', 'Mapping your world...')}</div>
+						<div style="text-align: center; padding: 2rem; color: var(--text-muted, hsla(0,0%,100%,0.3));">${this.tr('mapping_world', 'Mapping your world...')}</div>
 					</div>
 				</div>
 			`;
