@@ -388,7 +388,7 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 			return {"reply": "Could not parse custom turnus. Try: '/custom every Monday at 10am remind me...'"}
 	elif msg == "/protocols":
 		from app.services.agent_actions import AVAILABLE_TOOLS
-		tools_info = "\n".join([f"• **{t['name']}**: {t['description']}" for t in AVAILABLE_TOOLS])
+		tools_info = "\n".join([f"• **{t.name}**: {t.description}" for t in AVAILABLE_TOOLS])
 		protocols_reply = (
 			"🤖 **Z Operator Protocols**\n\n"
 			"I command the environment using **Semantic Action Tags**. These allow me to transition from passive reasoning to active intervention.\n\n"
