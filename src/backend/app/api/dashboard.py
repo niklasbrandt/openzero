@@ -19,7 +19,7 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from app.models.db import AsyncSessionLocal, Project, EmailRule, Briefing, Person
-from app.services.memory import semantic_search
+from app.services.memory import semantic_search, semantic_search_raw, list_memories as list_memories_svc, delete_memory
 from app.services.planka import get_project_tree
 from app.services.operator_board import operator_service
 from app.services.llm import chat as llm_chat
@@ -80,7 +80,7 @@ async def require_auth(
 # ---------------------------------------------------------------------------
 auth_router = APIRouter()
 
-@auth_router.get("/api/auth", include_in_schema=False)
+@auth_router.get("/api/dashboard/auth", include_in_schema=False)
 async def auth_activate(token: str, redirect: str = "/home"):
     """Validate dashboard token, set a persistent cookie, redirect to destination."""
     if not settings.DASHBOARD_TOKEN or token != settings.DASHBOARD_TOKEN:
@@ -288,8 +288,8 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 			"Type any message to chat with Z directly."
 		)
 		return {"reply": help_text}
-	elif msg.startswith("/search "):
-		query = msg.replace("/search", "").strip()
+	elif msg.startswith("/search ") or msg.startswith("/memory "):
+		query = msg.replace("/search", "").replace("/memory", "").strip()
 		results = await semantic_search(query)
 		return {"reply": results}
 	elif msg == "/memories":
@@ -475,43 +475,63 @@ async def get_personality(db: AsyncSession = Depends(get_db)):
 			{"id": "humor", "label": "Humor Score", "type": "range", "min": 0, "max": 10, "low": "0%", "high": "100%"},
 			{"id": "honesty", "label": "Honesty Score", "type": "range", "min": 1, "max": 10, "low": "Low", "high": "Absolute"},
 			{"id": "roast", "label": "Roast Level", "type": "range", "min": 0, "max": 5, "low": "None", "high": "Brutal"},
+			{"id": "cringe", "label": "Cringeness", "type": "range", "min": 0, "max": 10, "low": "Normal", "high": "Super Cringe"},
 			{"id": "depth", "label": "Analysis Depth", "type": "range", "min": 1, "max": 5, "low": "Surface", "high": "Deep Dive"},
 			{"id": "role", "label": "Core Identity / Archetype", "type": "text", "placeholder": "e.g. Master Architect, Stoic Mentor, Sharp Assistant"},
 			{"id": "relationship", "label": "Relational Context", "type": "text", "placeholder": "Who are you to the user? (e.g. Mentor, Tool, Equal Partner)"},
 			{"id": "values", "label": "Core Values & Principles", "type": "textarea", "placeholder": "What drives your decision making? (e.g. Efficiency above all, or Ethics first)"},
 			{"id": "behavior", "label": "Linguistic & Behavioral Style", "type": "textarea", "placeholder": "Specific quirks, metaphors, or formal/informal speech patterns."},
 			{"id": "theme", "label": "Dashboard Theme", "type": "select", "options": [
-				{"value": "default",      "label": "Default — Teal",         "colors": {"primary": "#14B8A6", "secondary": "#0066FF", "tertiary": "#6366F1"}},
-				{"value": "midnight",     "label": "Midnight",               "colors": {"primary": "#00D4FF", "secondary": "#7C3AED", "tertiary": "#F472B6"}},
-				{"value": "ember",        "label": "Ember",                   "colors": {"primary": "#F97316", "secondary": "#EF4444", "tertiary": "#F59E0B"}},
-				{"value": "forest",       "label": "Forest",                  "colors": {"primary": "#22C55E", "secondary": "#10B981", "tertiary": "#84CC16"}},
-				{"value": "aurora",       "label": "Aurora",                  "colors": {"primary": "#A855F7", "secondary": "#EC4899", "tertiary": "#06B6D4"}},
-				{"value": "crimson",      "label": "Crimson",                 "colors": {"primary": "#EF4444", "secondary": "#F97316", "tertiary": "#DC2626"}},
-				{"value": "ocean",        "label": "Ocean",                   "colors": {"primary": "#0EA5E9", "secondary": "#06B6D4", "tertiary": "#14B8A6"}},
-				{"value": "sunset",       "label": "Sunset",                  "colors": {"primary": "#F97316", "secondary": "#8B5CF6", "tertiary": "#EAB308"}},
-				{"value": "neon",         "label": "Neon",                    "colors": {"primary": "#00FF87", "secondary": "#00D4FF", "tertiary": "#FF00FF"}},
-				{"value": "monochrome",   "label": "Monochrome",              "colors": {"primary": "#E5E7EB", "secondary": "#9CA3AF", "tertiary": "#6B7280"}},
-				{"value": "cobalt",       "label": "Cobalt",                  "colors": {"primary": "#3B82F6", "secondary": "#6366F1", "tertiary": "#1D4ED8"}},
-				{"value": "sakura",       "label": "Sakura",                  "colors": {"primary": "#F9A8D4", "secondary": "#EC4899", "tertiary": "#DB2777"}},
-				{"value": "copper",       "label": "Copper",                  "colors": {"primary": "#FB923C", "secondary": "#D97706", "tertiary": "#92400E"}},
-				{"value": "void",         "label": "Void",                    "colors": {"primary": "#7C3AED", "secondary": "#4F46E5", "tertiary": "#2D1B69"}},
-				{"value": "arctic",       "label": "Arctic",                  "colors": {"primary": "#38BDF8", "secondary": "#BAE6FD", "tertiary": "#7DD3FC"}},
-				{"value": "jungle",       "label": "Jungle",                  "colors": {"primary": "#16A34A", "secondary": "#15803D", "tertiary": "#4ADE80"}},
-				{"value": "clay",         "label": "Clay",                    "colors": {"primary": "#D97706", "secondary": "#92400E", "tertiary": "#B45309"}},
-				{"value": "plasma",       "label": "Plasma",                  "colors": {"primary": "#A855F7", "secondary": "#EC4899", "tertiary": "#3B82F6"}},
-				{"value": "steel",        "label": "Steel",                   "colors": {"primary": "#64748B", "secondary": "#06B6D4", "tertiary": "#0EA5E9"}},
-				{"value": "lava",         "label": "Lava",                    "colors": {"primary": "#DC2626", "secondary": "#F97316", "tertiary": "#9F1239"}},
-				{"value": "frost",        "label": "Frost",                   "colors": {"primary": "#67E8F9", "secondary": "#BAE6FD", "tertiary": "#7DD3FC"}},
-				{"value": "amber",        "label": "Amber",                   "colors": {"primary": "#F59E0B", "secondary": "#EAB308", "tertiary": "#D97706"}},
-				{"value": "ultraviolet",  "label": "Ultraviolet",             "colors": {"primary": "#7C3AED", "secondary": "#C026D3", "tertiary": "#6D28D9"}},
-				{"value": "matrix",       "label": "Matrix",                  "colors": {"primary": "#22C55E", "secondary": "#4ADE80", "tertiary": "#16A34A"}},
-				{"value": "rose",         "label": "Rose",                    "colors": {"primary": "#FB7185", "secondary": "#EC4899", "tertiary": "#E11D48"}},
-				{"value": "royal",        "label": "Royal",                   "colors": {"primary": "#EAB308", "secondary": "#7C3AED", "tertiary": "#1D4ED8"}},
-				{"value": "outrun",       "label": "Outrun / Synthwave",      "colors": {"primary": "#FF2D78", "secondary": "#00BFFF", "tertiary": "#7B2FFF"}},
-				{"value": "carbon",       "label": "Carbon",                  "colors": {"primary": "#E5E7EB", "secondary": "#374151", "tertiary": "#6B7280"}},
-				{"value": "jade",         "label": "Jade",                    "colors": {"primary": "#10B981", "secondary": "#059669", "tertiary": "#6EE7B7"}},
-				{"value": "solar",        "label": "Solar",                   "colors": {"primary": "#FBBF24", "secondary": "#F97316", "tertiary": "#EF4444"}},
-				{"value": "neon80s",      "label": "80s Neon",                "colors": {"primary": "#FF2D78", "secondary": "#00FFCC", "tertiary": "#CCFF00"}}
+				{"value": "fusion", "label": "Default Fusion", "colors": {"primary": "#14B8A6", "secondary": "#0066FF", "tertiary": "#6366F1"}},
+				{"value": "cyberpunk", "label": "Cyberpunk Neon", "colors": {"primary": "#FF00FF", "secondary": "#00FFFF", "tertiary": "#FFFF00"}},
+				{"value": "night_city", "label": "Night City", "colors": {"primary": "#F700FF", "secondary": "#2100A3", "tertiary": "#FED900"}},
+				{"value": "forest", "label": "Deep Forest", "colors": {"primary": "#22C55E", "secondary": "#15803D", "tertiary": "#84CC16"}},
+				{"value": "deep_sea", "label": "Deep Sea", "colors": {"primary": "#0066FF", "secondary": "#000080", "tertiary": "#00CED1"}},
+				{"value": "ember", "label": "Ember Glass", "colors": {"primary": "#F97316", "secondary": "#EF4444", "tertiary": "#F59E0B"}},
+				{"value": "aurora", "label": "Aurora Borealis", "colors": {"primary": "#A855F7", "secondary": "#EC4899", "tertiary": "#06B6D4"}},
+				{"value": "midnight", "label": "Midnight Blue", "colors": {"primary": "#3B82F6", "secondary": "#1D4ED8", "tertiary": "#60A5FA"}},
+				{"value": "void", "label": "The Void", "colors": {"primary": "#7C3AED", "secondary": "#4F46E5", "tertiary": "#2D1B69"}},
+				{"value": "matrix", "label": "Digital Matrix", "colors": {"primary": "#00FF41", "secondary": "#008F11", "tertiary": "#003B00"}},
+				{"value": "outrun", "label": "Outrun 84", "colors": {"primary": "#FF2E63", "secondary": "#08D9D6", "tertiary": "#EAEAEA"}},
+				{"value": "synthwave", "label": "Synthwave Glow", "colors": {"primary": "#FF71CE", "secondary": "#01CDFE", "tertiary": "#05FFA1"}},
+				{"value": "plasma", "label": "Plasma Strike", "colors": {"primary": "#9D50BB", "secondary": "#6E48AA", "tertiary": "#FF4B2B"}},
+				{"value": "volcanic", "label": "Volcanic Flow", "colors": {"primary": "#FF416C", "secondary": "#FF4B2B", "tertiary": "#42275A"}},
+				{"value": "frost", "label": "Glacier Frost", "colors": {"primary": "#00B4DB", "secondary": "#0083B0", "tertiary": "#FFFFFF"}},
+				{"value": "sakura", "label": "Sakura Petals", "colors": {"primary": "#F9A8D4", "secondary": "#EC4899", "tertiary": "#DB2777"}},
+				{"value": "copper", "label": "Antique Copper", "colors": {"primary": "#FB923C", "secondary": "#D97706", "tertiary": "#92400E"}},
+				{"value": "carbon", "label": "Carbon Fiber", "colors": {"primary": "#E5E7EB", "secondary": "#374151", "tertiary": "#6B7280"}},
+				{"value": "jade", "label": "Imperial Jade", "colors": {"primary": "#10B981", "secondary": "#059669", "tertiary": "#6EE7B7"}},
+				{"value": "sunset", "label": "Venice Sunset", "colors": {"primary": "#FF512F", "secondary": "#DD2476", "tertiary": "#F09819"}},
+				{"value": "oceanic", "label": "Oceanic Depth", "colors": {"primary": "#2193b0", "secondary": "#6dd5ed", "tertiary": "#2C3E50"}},
+				{"value": "nebula", "label": "Deep Nebula", "colors": {"primary": "#4e54c8", "secondary": "#8f94fb", "tertiary": "#243B55"}},
+				{"value": "royal", "label": "Royal Gold", "colors": {"primary": "#f9ca24", "secondary": "#f0932b", "tertiary": "#4834d4"}},
+				{"value": "lava", "label": "Molten Lava", "colors": {"primary": "#eb4d4b", "secondary": "#ff7979", "tertiary": "#130f40"}},
+				{"value": "emerald", "label": "Emerald City", "colors": {"primary": "#2ecc71", "secondary": "#27ae60", "tertiary": "#f1c40f"}},
+				{"value": "amethyst", "label": "Amethyst Spark", "colors": {"primary": "#9b59b6", "secondary": "#8e44ad", "tertiary": "#34495e"}},
+				{"value": "sunflower", "label": "Sunflower Field", "colors": {"primary": "#f1c40f", "secondary": "#f39c12", "tertiary": "#27ae60"}},
+				{"value": "asphalt", "label": "Wet Asphalt", "colors": {"primary": "#34495e", "secondary": "#2c3e50", "tertiary": "#7f8c8d"}},
+				{"value": "clouds", "label": "Silver Clouds", "colors": {"primary": "#ecf0f1", "secondary": "#bdc3c7", "tertiary": "#95a5a6"}},
+				{"value": "concrete", "label": "Polished Concrete", "colors": {"primary": "#95a5a6", "secondary": "#7f8c8d", "tertiary": "#2c3e50"}},
+				{"value": "pumpkin", "label": "Pumpkin Spice", "colors": {"primary": "#e67e22", "secondary": "#d35400", "tertiary": "#2c3e50"}},
+				{"value": "alizarin", "label": "Alizarin Crimson", "colors": {"primary": "#e74c3c", "secondary": "#c0392b", "tertiary": "#8e44ad"}},
+				{"value": "turquoise", "label": "Turquoise Dream", "colors": {"primary": "#1abc9c", "secondary": "#16a085", "tertiary": "#2980b9"}},
+				{"value": "belize", "label": "Belize Hole", "colors": {"primary": "#2980b9", "secondary": "#3498db", "tertiary": "#8e44ad"}},
+				{"value": "wisteria", "label": "Blooming Wisteria", "colors": {"primary": "#8e44ad", "secondary": "#9b59b6", "tertiary": "#2c3e50"}},
+				{"value": "orange", "label": "Zesty Orange", "colors": {"primary": "#f39c12", "secondary": "#e67e22", "tertiary": "#d35400"}},
+				{"value": "grenadier", "label": "Grenadier Fire", "colors": {"primary": "#d35400", "secondary": "#e67e22", "tertiary": "#c0392b"}},
+				{"value": "midnight_bloom", "label": "Midnight Bloom", "colors": {"primary": "#a29bfe", "secondary": "#6c5ce7", "tertiary": "#fd79a8"}},
+				{"value": "mint", "label": "Fresh Mint", "colors": {"primary": "#55efc4", "secondary": "#00b894", "tertiary": "#81ecec"}},
+				{"value": "robins_egg", "label": "Robins Egg", "colors": {"primary": "#81ecec", "secondary": "#00cec9", "tertiary": "#74b9ff"}},
+				{"value": "sour_lemon", "label": "Sour Lemon", "colors": {"primary": "#ffeaa7", "secondary": "#fdcb6e", "tertiary": "#fab1a0"}},
+				{"value": "peach", "label": "First Peach", "colors": {"primary": "#fab1a0", "secondary": "#ff7675", "tertiary": "#d63031"}},
+				{"value": "chi_gong", "label": "Chi-Gong", "colors": {"primary": "#d63031", "secondary": "#ff7675", "tertiary": "#6c5ce7"}},
+				{"value": "pristine", "label": "Pristine White", "colors": {"primary": "#dfe6e9", "secondary": "#b2bec3", "tertiary": "#636e72"}},
+				{"value": "shale", "label": "Shale Gray", "colors": {"primary": "#636e72", "secondary": "#2d3436", "tertiary": "#00b894"}},
+				{"value": "dracula", "label": "Dracula Castle", "colors": {"primary": "#bd93f9", "secondary": "#ff79c6", "tertiary": "#8be9fd"}},
+				{"value": "gruvbox", "label": "Retro Gruvbox", "colors": {"primary": "#fabd2f", "secondary": "#fe8019", "tertiary": "#b8bb26"}},
+				{"value": "nord", "label": "Arctic Nord", "colors": {"primary": "#88c0d0", "secondary": "#81a1c1", "tertiary": "#5e81ac"}},
+				{"value": "monokai_pro", "label": "Monokai Pro", "colors": {"primary": "#ffd866", "secondary": "#fc9867", "tertiary": "#ff6188"}},
+				{"value": "solarized", "label": "Solarized Fire", "colors": {"primary": "#cb4b16", "secondary": "#dc322f", "tertiary": "#268bd2"}}
 			]}
 		]
 	}
@@ -1053,41 +1073,70 @@ async def create_project(project: ProjectCreate):
 # --- Memory ---
 @router.get("/memory/search")
 async def search_memory(query: str, db: AsyncSession = Depends(get_db)):
+	"""
+	Semantic + DB memory search.
+	Returns structured objects: {id, text, type, score?}
+	so the frontend can show delete buttons.
+	"""
 	if not query:
 		return {"results": []}
-	
-	# 1. Semantic Search (Qdrant)
-	try:
-		semantic_results = await semantic_search(query)
-		semantic_lines = semantic_results.split("\n")
-	except:
-		semantic_lines = []
 
 	final_hits = []
 
-	# 2. People DB Search
+	# 1. Qdrant semantic search (returns structured objects with IDs)
+	try:
+		semantic_results = await semantic_search_raw(query, top_k=10)
+		for hit in semantic_results:
+			final_hits.append({
+				"id": hit["id"],
+				"text": hit["text"],
+				"score": hit["score"],
+				"type": "memory",
+				"stored_at": hit.get("stored_at"),
+			})
+	except Exception as e:
+		logger.warning(f"Semantic search failed: {e}")
+
+	# 2. People DB Search (no Qdrant ID — not deletable from here)
 	res_people = await db.execute(select(Person).where(Person.name.ilike(f"%{query}%")))
 	people = res_people.scalars().all()
 	for p in people:
-		final_hits.append(f"👤 PERSONAL PROFILE: {p.name} ({p.relationship}) - {p.context[:150]}...")
+		final_hits.append({
+			"id": None,
+			"text": f"\U0001f464 PERSONAL PROFILE: {p.name} ({p.relationship}) — {p.context[:150]}",
+			"type": "profile",
+			"score": None,
+			"stored_at": None,
+		})
 
-	# 3. Project Search (Placeholder or direct DB)
-	# If Planka is used, this might be partial, but let's check local if any
-	from app.models.db import Project
+	# 3. Project Search
 	res_proj = await db.execute(select(Project).where(Project.name.ilike(f"%{query}%")))
 	projs = res_proj.scalars().all()
 	for prj in projs:
-		final_hits.append(f"🌳 MISSION: {prj.name} (Status: {prj.status})")
+		final_hits.append({
+			"id": None,
+			"text": f"\U0001f333 MISSION: {prj.name} (Status: {prj.status})",
+			"type": "project",
+			"score": None,
+			"stored_at": None,
+		})
 
-	# Merge semantic lines (cleaning out scores/formatting if possible)
-	for line in semantic_lines:
-		if line.strip() and "No memories found" not in line and "Memory system not" not in line:
-			# Strip the index "1. (score: 0.90)"
-			clean_line = line.split(")", 1)[-1].strip() if ")" in line else line
-			final_hits.append(f"🧠 RECALL: {clean_line}")
+	return {"results": final_hits[:20]}
 
-	# Return top 15 results
-	return {"results": final_hits[:15]}
+
+@router.get("/memory/list")
+async def memory_list(offset: int = 0, limit: int = 50, _auth=Depends(require_auth)):
+	"""Paginated scroll of all Qdrant memories."""
+	return await list_memories_svc(offset=offset, limit=min(limit, 200))
+
+
+@router.delete("/memory/{point_id}")
+async def memory_delete(point_id: str, _auth=Depends(require_auth)):
+	"""Hard-delete a single memory point from Qdrant by UUID."""
+	success = await delete_memory(point_id)
+	if not success:
+		raise HTTPException(status_code=404, detail="Memory point not found or delete failed")
+	return {"deleted": point_id}
 
 # --- Briefings ---
 @router.get("/briefings")
@@ -1732,6 +1781,12 @@ async def get_system_status(db: AsyncSession = Depends(get_db)):
     except Exception:
         mem_stats = {"points": 0}
 
+    # System RAM for health metrics
+    import psutil
+    ram = psutil.virtual_memory()
+    ram_total_gb = round(ram.total / (1024**3), 1)
+    ram_used_pct = ram.percent
+
     # Identity Health
     from app.models.db import Person
     res_people = await db.execute(select(Person).where(Person.circle_type == "identity"))
@@ -1742,7 +1797,7 @@ async def get_system_status(db: AsyncSession = Depends(get_db)):
     dns_detail = "untested"
     try:
         dig = subprocess.run(
-            ["dig", "@127.0.0.1", "open.zero", "+short", "+time=2", "+tries=1"],
+            ["dig", f"@{settings.SERVER_IP}", "open.zero", "+short", "+time=2", "+tries=1"],
             capture_output=True, text=True, timeout=5
         )
         if dig.returncode == 0 and dig.stdout.strip():
@@ -1761,5 +1816,7 @@ async def get_system_status(db: AsyncSession = Depends(get_db)):
         "identity_active": identity_set,
         "dns_ok": dns_ok,
         "dns_detail": dns_detail,
+        "ram_total_gb": ram_total_gb,
+        "ram_used_pct": ram_used_pct,
         "timestamp": datetime.datetime.now().isoformat()
     }
