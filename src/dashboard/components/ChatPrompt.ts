@@ -1,3 +1,6 @@
+import { ACCESSIBILITY_STYLES } from '../services/accessibilityStyles';
+import { SCROLLBAR_STYLES } from '../services/scrollbarStyles';
+
 interface ChatMessage {
 	role: 'user' | 'assistant';
 	content: string;
@@ -461,6 +464,8 @@ export class ChatPrompt extends HTMLElement {
 		if (!this.shadowRoot) return;
 		this.shadowRoot.innerHTML = `
 		<style>
+					${ACCESSIBILITY_STYLES}
+					${SCROLLBAR_STYLES}
 					h2 { font-size: 1.5rem; font-weight: bold; margin: 0 0 1rem 0; color: #fff; letter-spacing: 0.02em; }
 			:host {
 				display: block;
@@ -493,13 +498,6 @@ export class ChatPrompt extends HTMLElement {
 				-webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 100%);
 				overflow-anchor: auto;
 				scroll-padding: 1rem 0;
-			}
-
-			#messages::-webkit-scrollbar { width: 4px; }
-			#messages::-webkit-scrollbar-track { background: transparent; }
-			#messages::-webkit-scrollbar-thumb {
-				background: rgba(255,255,255,0.1);
-				border-radius: 4px;
 			}
 
 			/* ── Empty state ── */
@@ -777,6 +775,13 @@ export class ChatPrompt extends HTMLElement {
 
 			.message.assistant .bubble {
 				animation: msgIn 0.5s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+			}
+			/* Reduced-motion overrides beyond shared module */
+			@media (prefers-reduced-motion: reduce) {
+				.message, .message.assistant .bubble,
+				.spinner, .dot { animation: none !important; }
+				.message { opacity: 1; transform: none; }
+				textarea, #send-btn { transition: none; }
 			}
 		</style>
 

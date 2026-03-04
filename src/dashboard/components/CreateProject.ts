@@ -1,4 +1,6 @@
 import { BUTTON_STYLES } from '../services/buttonStyles';
+import { ACCESSIBILITY_STYLES } from '../services/accessibilityStyles';
+import { FEEDBACK_STYLES } from '../services/feedbackStyles';
 
 export class CreateProject extends HTMLElement {
 	private isSubmitting = false;
@@ -113,6 +115,8 @@ export class CreateProject extends HTMLElement {
 		this.shadowRoot.innerHTML = `
 		<style>
 					${BUTTON_STYLES}
+					${ACCESSIBILITY_STYLES}
+					${FEEDBACK_STYLES}
 					h2 { font-size: 1.5rem; font-weight: bold; margin: 0 0 1rem 0; color: #fff; letter-spacing: 0.02em; }
 			:host {
 				display: block;
@@ -177,15 +181,15 @@ export class CreateProject extends HTMLElement {
 			}
 
 			input:focus, textarea:focus {
-				border-color: rgba(20, 184, 166, 0.4);
+				border-color: var(--border-accent-focus, rgba(20, 184, 166, 0.4));
 				background: rgba(0, 0, 0, 0.28);
-				box-shadow: 0 0 20px rgba(20, 184, 166, 0.08);
+				box-shadow: 0 0 20px rgba(var(--accent-color-rgb, 20, 184, 166), 0.08);
 			}
 			input:focus-visible, textarea:focus-visible {
-				outline: 2px solid #14B8A6;
+				outline: 2px solid var(--accent-color, #14B8A6);
 				outline-offset: 2px;
 			}
-			button:focus-visible { outline: 2px solid #14B8A6; outline-offset: 2px; }
+			button:focus-visible { outline: 2px solid var(--accent-color, #14B8A6); outline-offset: 2px; }
 
 			.hint {
 				font-size: 0.75rem;
@@ -227,20 +231,21 @@ export class CreateProject extends HTMLElement {
 			}
 
 			.feedback.success {
-				background: rgba(34, 197, 94, 0.1);
-				border: 1px solid rgba(34, 197, 94, 0.2);
-				color: #4ade80;
+				background: rgba(var(--color-success-rgb, 34, 197, 94), 0.1);
+				border: 1px solid rgba(var(--color-success-rgb, 34, 197, 94), 0.2);
+				color: var(--color-success, #4ade80);
 			}
 
 			.feedback.error {
-				background: rgba(239, 68, 68, 0.1);
-				border: 1px solid rgba(239, 68, 68, 0.2);
-				color: #f87171;
+				background: rgba(var(--color-danger-rgb, 239, 68, 68), 0.1);
+				border: 1px solid rgba(var(--color-danger-rgb, 239, 68, 68), 0.2);
+				color: var(--color-danger, #f87171);
 			}
 
 			/* ── Spinner ── */
 			.spinner { animation: spin 0.8s linear infinite; }
 			@keyframes spin { to { transform: rotate(360deg); } }
+			/* Additional reduced-motion overrides beyond shared module */
 			@media (prefers-reduced-motion: reduce) {
 				*, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 			}
