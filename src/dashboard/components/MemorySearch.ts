@@ -131,7 +131,7 @@ stored_at: i.stored_at ?? null,
 	}
 
 	private renderItem(item: MemoryItem, idx: number): string {
-		const canDelete =  git add src/dashboard/components/ChatPrompt.ts && git commit -m "chat: contrast-aware text color for agent bubbles (WCAG luminance)" && git push origin main && bash scripts/sync.sh 2>&1 | tail -20item.id && item.type === 'memory';
+		const canDelete = !!item.id && item.type === 'memory';
 		const isPending = canDelete && this.pendingDelete.has(item.id!);
 		const typeIcon = item.type === 'profile' ? '👤' : item.type === 'project' ? '🌳' : '🧠';
 		const scoreLabel = item.score != null
