@@ -9,11 +9,16 @@ export class SoftwareStatus extends HTMLElement {
 	}
 
 	connectedCallback() {
-		this.render();
-		this.loadTranslations().then(() => this.fetchStatus());
+		this.loadTranslations().then(() => {
+			this.render();
+			this.fetchStatus();
+		});
 		this._refreshTimer = setInterval(() => this.fetchStatus(), 10_000);
 		window.addEventListener('identity-updated', () => {
-			this.loadTranslations().then(() => this.updatePanel());
+			this.loadTranslations().then(() => {
+				this.render();
+				this.fetchStatus();
+			});
 		});
 	}
 

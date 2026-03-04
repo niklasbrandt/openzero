@@ -25,8 +25,10 @@ export class CalendarAgenda extends HTMLElement {
 	}
 
 	connectedCallback() {
-		this.render();
-		this.loadTranslations().then(() => this.fetchEvents());
+		this.loadTranslations().then(() => {
+			this.render();
+			this.fetchEvents();
+		});
 		window.addEventListener('refresh-data', (e: any) => {
 			if (e.detail && e.detail.actions && e.detail.actions.includes('calendar')) {
 				this.fetchEvents();

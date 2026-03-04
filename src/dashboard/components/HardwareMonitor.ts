@@ -10,11 +10,16 @@ export class HardwareMonitor extends HTMLElement {
 	}
 
 	connectedCallback() {
-		this.render();
-		this.loadTranslations().then(() => this.fetchAll());
+		this.loadTranslations().then(() => {
+			this.render();
+			this.fetchAll();
+		});
 		this._refreshTimer = setInterval(() => this.fetchAll(), 10_000);
 		window.addEventListener('identity-updated', () => {
-			this.loadTranslations().then(() => this.updatePanel());
+			this.loadTranslations().then(() => {
+				this.render();
+				this.fetchAll();
+			});
 		});
 	}
 
