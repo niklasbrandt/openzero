@@ -194,6 +194,14 @@ async function initHeaderTranslations() {
 			const calSpan = calBtn.querySelector('span');
 			if (calSpan) calSpan.textContent = tr('header_calendar_label', 'Calendar');
 		}
+
+		// Nav labels — apply translations to all [data-tr] spans across
+		// sidebar-nav, top-marquee-nav, and mobile-nav-drawer.
+		document.querySelectorAll<HTMLElement>('[data-tr]').forEach(el => {
+			const key = el.getAttribute('data-tr')!;
+			const localised = t[key];
+			if (localised) el.textContent = localised;
+		});
 	} catch (e) {
 		console.warn('Header translations init failed:', e);
 	}

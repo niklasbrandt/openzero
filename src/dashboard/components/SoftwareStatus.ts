@@ -1,6 +1,7 @@
 export class SoftwareStatus extends HTMLElement {
 	private data: any = null;
 	private t: Record<string, string> = {};
+	private _refreshTimer: ReturnType<typeof setInterval> | null = null;
 
 	constructor() {
 		super();
@@ -10,9 +11,17 @@ export class SoftwareStatus extends HTMLElement {
 	connectedCallback() {
 		this.render();
 		this.loadTranslations().then(() => this.fetchStatus());
+		this._refreshTimer = setInterval(() => this.fetchStatus(), 10_000);
 		window.addEventListener('identity-updated', () => {
 			this.loadTranslations().then(() => this.updatePanel());
 		});
+	}
+
+	disconnectedCallback() {
+		if (this._refreshTimer) {
+			clearInterval(this._refreshTimer);
+			this._refreshTimer = null;
+		}
 	}
 
 	private async loadTranslations() {
