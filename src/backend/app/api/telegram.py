@@ -107,7 +107,6 @@ async def start_telegram_bot():
 	bot_app.add_handler(CommandHandler("memories", cmd_memories))
 	bot_app.add_handler(CommandHandler("unlearn", cmd_unlearn))
 	bot_app.add_handler(CommandHandler("purge", cmd_purge))
-	bot_app.add_handler(CommandHandler("wipe_memory", cmd_purge))  # legacy alias
 	bot_app.add_handler(CommandHandler("week", cmd_week))
 	bot_app.add_handler(CommandHandler("month", cmd_month))
 	bot_app.add_handler(CommandHandler("quarter", cmd_quarter))
