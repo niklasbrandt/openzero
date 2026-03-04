@@ -324,11 +324,11 @@ export class CircleManager extends HTMLElement {
 					${this.isAdding ? `
 					<form class="add-form" id="personForm" novalidate>
 						<label for="nameInput">${this.tr('name_label', 'Name')} <span class="required" aria-hidden="true">*</span></label>
-						<input type="text" id="nameInput" placeholder="${this.tr('name_placeholder', 'e.g. Maria')}" required aria-required="true" autocomplete="off">
+						<input type="text" id="nameInput" placeholder="${this.tr('name_placeholder', 'e.g. Maria')}" required aria-required="true" autocomplete="off" aria-describedby="nameError">
 						<div class="field-error-msg" id="nameError" role="alert"></div>
 
 						<label for="relInput">${this.tr('relationship_label', 'Relationship')} <span class="required" aria-hidden="true">*</span></label>
-						<input type="text" id="relInput" placeholder="${this.tr('rel_placeholder', 'e.g. Son, Friend, Colleague')}" required aria-required="true" autocomplete="off">
+						<input type="text" id="relInput" placeholder="${this.tr('rel_placeholder', 'e.g. Son, Friend, Colleague')}" required aria-required="true" autocomplete="off" aria-describedby="relError">
 						<div class="field-error-msg" id="relError" role="alert"></div>
 
 						<label for="bdayInput">${this.tr('birthday_label', 'Birthday')}</label>

@@ -4,15 +4,32 @@ import { FEEDBACK_STYLES } from '../services/feedbackStyles';
 
 export class CreateProject extends HTMLElement {
 	private isSubmitting = false;
+	private t: Record<string, string> = {};
 
 	constructor() {
 		super();
 		this.attachShadow({ mode: 'open' });
 	}
 
+	private async loadTranslations() {
+		if (window.__z_translations) { this.t = window.__z_translations; return; }
+		try {
+			await window.__z_translations_ready;
+			if (window.__z_translations) { this.t = window.__z_translations; return; }
+			const res = await fetch('/api/dashboard/translations');
+			if (res.ok) this.t = await res.json();
+		} catch (_) { }
+	}
+
+	private tr(key: string, fallback: string): string {
+		return this.t[key] || fallback;
+	}
+
 	connectedCallback() {
-		this.render();
-		this.setupListeners();
+		this.loadTranslations().then(() => {
+			this.render();
+			this.setupListeners();
+		});
 	}
 
 	public toggle() {
@@ -40,7 +57,7 @@ export class CreateProject extends HTMLElement {
 		const tagsRaw = this.shadowRoot?.querySelector<HTMLInputElement>('#project-tags')?.value.trim();
 
 		if (!name) {
-			this.showFeedback('Please enter a name.', 'error');
+			this.showFeedback(this.tr('project_name_required', 'Please enter a name.'), 'error');
 			return;
 		}
 
@@ -58,7 +75,7 @@ export class CreateProject extends HTMLElement {
 
 			if (!response.ok) throw new Error('Failed to create project');
 
-			this.showFeedback(`Board "${name}" created successfully!`, 'success');
+			this.showFeedback(this.tr('board_created', `Board "${name}" created successfully!`), 'success');
 			this.resetForm();
 
 			// Notify other components (e.g. ProjectTree) to refresh
@@ -68,7 +85,7 @@ export class CreateProject extends HTMLElement {
 				detail: { name, description, tags },
 			}));
 		} catch (e) {
-			this.showFeedback('⚠ Failed to create board. Please try again.', 'error');
+			this.showFeedback(this.tr('board_create_failed', 'Failed to create board. Please try again.'), 'error');
 		} finally {
 			this.isSubmitting = false;
 			this.updateSubmitButton(false);
@@ -98,8 +115,8 @@ export class CreateProject extends HTMLElement {
 		if (!btn) return;
 		btn.disabled = loading;
 		btn.innerHTML = loading
-			? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spinner" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke-opacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"/></svg> Creating…`
-			: `${this.plusSVG()} Add Board`;
+			? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spinner" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke-opacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"/></svg> ${this.tr('creating', 'Creating...')}`
+			: `${this.plusSVG()} ${this.tr('add_board', 'Add Board')}`;
 	}
 
 	private plusSVG(): string {
@@ -251,22 +268,22 @@ export class CreateProject extends HTMLElement {
 			}
 		</style>
 
-		<h2>${this.folderSVG()} Add Board</h2>
+		<h2>${this.folderSVG()} ${this.tr('add_board_heading', 'Add Board')}</h2>
 
 		<form id="project-form">
-			<label for="project-name">Name</label>
-			<input type="text" id="project-name" placeholder="E.g. Daily Missions" autocomplete="off" />
+			<label for="project-name">${this.tr('name_label', 'Name')}</label>
+			<input type="text" id="project-name" placeholder="${this.tr('project_placeholder', 'E.g. Daily Missions')}" autocomplete="off" required aria-required="true" />
 
-			<label for="project-desc">Description</label>
-			<textarea id="project-desc" rows="3" placeholder="What is this project about?"></textarea>
+			<label for="project-desc">${this.tr('description_label', 'Description')}</label>
+			<textarea id="project-desc" rows="3" placeholder="${this.tr('project_desc_placeholder', 'What is this project about?')}"></textarea>
 
-			<label for="project-tags">Tags</label>
-			<input type="text" id="project-tags" placeholder="ai, automation, backend" />
-			<p class="hint">Comma-separated, optional</p>
+			<label for="project-tags">${this.tr('tags_label', 'Tags')}</label>
+			<input type="text" id="project-tags" placeholder="${this.tr('tags_placeholder', 'ai, automation, backend')}" />
+			<p class="hint">${this.tr('tags_hint', 'Comma-separated, optional')}</p>
 
 			<div class="actions">
-				<button type="submit" id="submit-btn" class="btn-primary">${this.plusSVG()} Add Board</button>
-				<button type="button" id="cancel-btn" class="btn-ghost">Clear</button>
+				<button type="submit" id="submit-btn" class="btn-primary">${this.plusSVG()} ${this.tr('add_board', 'Add Board')}</button>
+				<button type="button" id="cancel-btn" class="btn-ghost">${this.tr('clear', 'Clear')}</button>
 			</div>
 		</form>
 

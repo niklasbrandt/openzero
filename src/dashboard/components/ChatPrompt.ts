@@ -108,6 +108,25 @@ export class ChatPrompt extends HTMLElement {
 			if (document.visibilityState === 'visible') syncOnReturn();
 		});
 		window.addEventListener('focus', syncOnReturn);
+
+		// Cmd-chip activation: click or Enter/Space inserts command and sends
+		this.shadowRoot?.querySelectorAll('.cmd-chip').forEach(chip => {
+			const activate = () => {
+				const cmd = chip.textContent?.trim();
+				if (!cmd || !input) return;
+				input.value = cmd;
+				this.draft = cmd;
+				this.handleSend();
+			};
+			chip.addEventListener('click', activate);
+			chip.addEventListener('keydown', (e: Event) => {
+				const ke = e as KeyboardEvent;
+				if (ke.key === 'Enter' || ke.key === ' ') {
+					ke.preventDefault();
+					activate();
+				}
+			});
+		});
 	}
 
 	private async handleSend() {
@@ -304,13 +323,13 @@ export class ChatPrompt extends HTMLElement {
 					<span>${this.tr('chat_hint', 'Ask anything — manage tasks, query memories, or get briefed.')}</span>
 					<nav aria-label="${this.tr('aria_quick_commands', 'Quick commands')}" class="command-hints">
 						<ul role="list" style="display:flex;flex-wrap:wrap;gap:0.5rem;justify-content:center;list-style:none;padding:0;margin:1rem 0 0 0;">
-							<li role="listitem"><span class="cmd-chip" tabindex="0">/day</span></li>
-							<li role="listitem"><span class="cmd-chip" tabindex="0">/week</span></li>
-							<li role="listitem"><span class="cmd-chip" tabindex="0">/month</span></li>
-							<li role="listitem"><span class="cmd-chip" tabindex="0">/year</span></li>
-							<li role="listitem"><span class="cmd-chip" tabindex="0">/memory</span></li>
-							<li role="listitem"><span class="cmd-chip" tabindex="0">/add</span></li>
-							<li role="listitem"><span class="cmd-chip" tabindex="0">/think</span></li>
+							<li role="listitem"><span class="cmd-chip" tabindex="0" role="button" aria-label="${this.tr('aria_cmd_day', 'Daily briefing command')}">/day</span></li>
+							<li role="listitem"><span class="cmd-chip" tabindex="0" role="button" aria-label="${this.tr('aria_cmd_week', 'Weekly briefing command')}">/week</span></li>
+							<li role="listitem"><span class="cmd-chip" tabindex="0" role="button" aria-label="${this.tr('aria_cmd_month', 'Monthly briefing command')}">/month</span></li>
+							<li role="listitem"><span class="cmd-chip" tabindex="0" role="button" aria-label="${this.tr('aria_cmd_year', 'Yearly briefing command')}">/year</span></li>
+							<li role="listitem"><span class="cmd-chip" tabindex="0" role="button" aria-label="${this.tr('aria_cmd_memory', 'Search memory command')}">/memory</span></li>
+							<li role="listitem"><span class="cmd-chip" tabindex="0" role="button" aria-label="${this.tr('aria_cmd_add', 'Add memory command')}">/add</span></li>
+							<li role="listitem"><span class="cmd-chip" tabindex="0" role="button" aria-label="${this.tr('aria_cmd_think', 'Deep think command')}">/think</span></li>
 						</ul>
 					</nav>
 				</div>
@@ -545,7 +564,14 @@ export class ChatPrompt extends HTMLElement {
 				border-radius: 0.4rem;
 				font-size: 0.75rem;
 				font-family: inherit;
-				cursor: default;
+				cursor: pointer;
+				transition: background 0.15s ease, border-color 0.15s ease;
+			}
+			.cmd-chip:hover, .cmd-chip:focus-visible {
+				background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.2);
+				border-color: rgba(var(--accent-color-rgb, 20, 184, 166), 0.4);
+				outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1));
+				outline-offset: 2px;
 			}
 
 			/* ── Message bubbles ── */
@@ -797,13 +823,13 @@ export class ChatPrompt extends HTMLElement {
 				<span>${this.tr('chat_hint', 'Ask anything — manage tasks, query memories, or get briefed.')}</span>
 				<nav class="command-hints" aria-label="${this.tr('aria_quick_commands', 'Quick commands')}">
 					<ul role="list" style="display:flex;flex-wrap:wrap;gap:0.5rem;justify-content:center;list-style:none;padding:0;margin:1rem 0 0 0;">
-						<li role="listitem"><span class="cmd-chip" tabindex="0" aria-label="${this.tr('aria_cmd_day', 'Daily briefing command')}">/day</span></li>
-						<li role="listitem"><span class="cmd-chip" tabindex="0" aria-label="${this.tr('aria_cmd_week', 'Weekly briefing command')}">/week</span></li>
-						<li role="listitem"><span class="cmd-chip" tabindex="0" aria-label="${this.tr('aria_cmd_month', 'Monthly briefing command')}">/month</span></li>
-						<li role="listitem"><span class="cmd-chip" tabindex="0" aria-label="${this.tr('aria_cmd_year', 'Yearly briefing command')}">/year</span></li>
-						<li role="listitem"><span class="cmd-chip" tabindex="0" aria-label="${this.tr('aria_cmd_memory', 'Search memory command')}">/memory</span></li>
-						<li role="listitem"><span class="cmd-chip" tabindex="0" aria-label="${this.tr('aria_cmd_add', 'Add memory command')}">/add</span></li>
-						<li role="listitem"><span class="cmd-chip" tabindex="0" aria-label="${this.tr('aria_cmd_think', 'Deep think command')}">/think</span></li>
+						<li role="listitem"><span class="cmd-chip" tabindex="0" role="button" aria-label="${this.tr('aria_cmd_day', 'Daily briefing command')}">/day</span></li>
+						<li role="listitem"><span class="cmd-chip" tabindex="0" role="button" aria-label="${this.tr('aria_cmd_week', 'Weekly briefing command')}">/week</span></li>
+						<li role="listitem"><span class="cmd-chip" tabindex="0" role="button" aria-label="${this.tr('aria_cmd_month', 'Monthly briefing command')}">/month</span></li>
+						<li role="listitem"><span class="cmd-chip" tabindex="0" role="button" aria-label="${this.tr('aria_cmd_year', 'Yearly briefing command')}">/year</span></li>
+						<li role="listitem"><span class="cmd-chip" tabindex="0" role="button" aria-label="${this.tr('aria_cmd_memory', 'Search memory command')}">/memory</span></li>
+						<li role="listitem"><span class="cmd-chip" tabindex="0" role="button" aria-label="${this.tr('aria_cmd_add', 'Add memory command')}">/add</span></li>
+						<li role="listitem"><span class="cmd-chip" tabindex="0" role="button" aria-label="${this.tr('aria_cmd_think', 'Deep think command')}">/think</span></li>
 					</ul>
 				</nav>
 			</div>
