@@ -141,12 +141,12 @@ export class EmailRules extends HTMLElement {
 						border: 1px solid rgba(255, 255, 255, 0.08);
 						border-radius: 0.75rem;
 						padding: 0.6rem 1rem;
-						color: #fff;
+						color: var(--text-primary, hsla(0, 0%, 100%, 1));
 						outline: none;
 						font-family: 'Inter', system-ui, sans-serif;
 						font-size: 0.9rem;
 					}
-					select option { background: #000; }
+					select option { background: hsla(0, 0%, 0%, 1); }
 					.rule-item {
 						display: flex;
 						justify-content: space-between;
@@ -157,7 +157,7 @@ export class EmailRules extends HTMLElement {
 						margin-bottom: 0.5rem;
 					}
 					.info { display: flex; flex-direction: column; gap: 4px; }
-					.pattern { color: #fff; font-weight: 500; font-size: 0.9rem; }
+					.pattern { color: var(--text-primary, hsla(0, 0%, 100%, 1)); font-weight: 500; font-size: 0.9rem; }
 					${BUTTON_STYLES}
 					.action-tag { font-size: 0.75rem; color: var(--accent-color, hsla(173, 80%, 40%, 1)); opacity: 0.9; font-weight: 500; }
 					.label-badge { 
@@ -190,6 +190,10 @@ export class EmailRules extends HTMLElement {
 						margin: 0 0 0.25rem 0;
 					}
 					.input-col { display: flex; flex-direction: column; flex: 1; }
+					@media (forced-colors: active) {
+						.action-tag { color: LinkText; }
+						.label-badge { border: 1px solid ButtonText; }
+					}
 				</style>
 				<div class="card">
 					<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
@@ -202,7 +206,7 @@ export class EmailRules extends HTMLElement {
 							</span>
 							${this.tr('email_rules', 'Email')}
 						</h2>
-						${!this.isAdding ? `<button id="showAddBtn" class="btn-primary" aria-label="Add new email rule">+ ${this.tr('new_rule', 'New Rule')}</button>` : ''}
+						${!this.isAdding ? `<button id="showAddBtn" class="btn-primary" aria-label="${this.tr('aria_add_email_rule', 'Add new email rule')}">+ ${this.tr('new_rule', 'New Rule')}</button>` : ''}
 					</div>
 
 					${this.isAdding ? `
@@ -217,9 +221,9 @@ export class EmailRules extends HTMLElement {
 							<div class="input-col">
 								<label class="form-label" for="actionInput">${this.tr('action_label', 'Action')}</label>
 								<select id="actionInput" aria-label="${this.tr('aria_email_action', 'Email action for matching senders')}">
-									<option value="urgent">Urgent Notification</option>
-									<option value="summarize">Daily Summary</option>
-									<option value="ignore">Ignore Completely</option>
+									<option value="urgent">${this.tr('action_urgent', 'Urgent Notification')}</option>
+									<option value="summarize">${this.tr('action_summarize', 'Daily Summary')}</option>
+									<option value="ignore">${this.tr('action_ignore', 'Ignore Completely')}</option>
 								</select>
 							</div>
 							<div class="input-col">
@@ -228,12 +232,12 @@ export class EmailRules extends HTMLElement {
 							</div>
 						</div>
 						<div style="display:flex; gap:0.5rem; margin-top:0.75rem;">
-							<button id="addBtn" type="submit" class="btn-primary" aria-label="${this.editingId ? 'Update rule' : 'Create rule'}">${this.editingId ? this.tr('update_rule', 'Update Rule') : this.tr('create_rule', 'Create Rule')}</button>
-							<button id="cancelEdit" type="button" class="cancel-btn" aria-label="Cancel editing">${this.tr('cancel', 'Cancel')}</button>
+							<button id="addBtn" type="submit" class="btn-primary" aria-label="${this.editingId ? this.tr('aria_update_rule', 'Update rule') : this.tr('aria_create_rule', 'Create rule')}">${this.editingId ? this.tr('update_rule', 'Update Rule') : this.tr('create_rule', 'Create Rule')}</button>
+							<button id="cancelEdit" type="button" class="cancel-btn" aria-label="${this.tr('aria_cancel_editing', 'Cancel editing')}">${this.tr('cancel', 'Cancel')}</button>
 						</div>
 					</fieldset>
 					` : ''}
-					<div id="rules-list">${this.currentRules.length > 0 ? '' : 'Loading rules...'}</div>
+					<div id="rules-list">${this.currentRules.length > 0 ? '' : this.tr('loading_rules', 'Loading rules...')}</div>
 				</div>
 			`;
 
@@ -280,7 +284,7 @@ export class EmailRules extends HTMLElement {
   }
 
   async deleteRule(id: number) {
-    if (!confirm('Are you sure you want to delete this intelligence rule?')) return;
+    if (!confirm(this.tr('confirm_delete_rule', 'Are you sure you want to delete this intelligence rule?'))) return;
     try {
       await fetch(`/api/dashboard/email-rules/${id}`, { method: 'DELETE' });
       this.fetchRules();

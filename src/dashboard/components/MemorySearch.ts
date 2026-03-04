@@ -288,7 +288,7 @@ stored_at: i.stored_at ?? null,
 				}
 				.tab-btn.active, .tab-btn[aria-selected="true"] {
 					background: rgba(255,255,255,0.1);
-					color: #fff;
+					color: var(--text-primary, hsla(0, 0%, 100%, 1));
 				}
 				.tab-btn:focus-visible {
 					outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1));
@@ -320,7 +320,7 @@ stored_at: i.stored_at ?? null,
 					border: 1px solid rgba(255,255,255,0.08);
 					border-radius: 0.75rem;
 					padding: 0.6rem 1rem;
-					color: #fff;
+					color: var(--text-primary, hsla(0, 0%, 100%, 1));
 					font-family: inherit;
 					font-size: 0.9rem;
 					box-sizing: border-box;
@@ -465,7 +465,7 @@ stored_at: i.stored_at ?? null,
 				}
 				.load-more-btn:hover {
 					background: rgba(255,255,255,0.09);
-					color: #fff;
+					color: var(--text-primary, hsla(0, 0%, 100%, 1));
 				}
 				.load-more-btn:focus-visible {
 					outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1));

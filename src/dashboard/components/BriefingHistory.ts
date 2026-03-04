@@ -214,6 +214,11 @@ export class BriefingHistory extends HTMLElement {
 						border-color: rgba(var(--accent-color-rgb, 20, 184, 166), 0.3);
 					}
 					.load-more:focus-visible { outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); outline-offset: 2px; }
+					@media (forced-colors: active) {
+						.h-icon { background: ButtonFace; border: 1px solid ButtonText; }
+						.briefing-item.active { border-color: Highlight; }
+						.type-tag { border: 1px solid ButtonText; }
+					}
 				</style>
 				<div class="card">
 					<h2>
@@ -228,7 +233,7 @@ export class BriefingHistory extends HTMLElement {
 						${this.tr('briefing_history', 'Briefing')}
 					<span class="subtitle" aria-hidden="true">${this.tr('briefing_subtitle', 'Daily Reports')}</span>
 				</h2>
-				<div id="briefing-list" role="list" aria-label="Briefing history entries" aria-live="polite">${this.tr('loading', 'Loading...')}</div>
+				<div id="briefing-list" role="list" aria-label="${this.tr('aria_briefing_list', 'Briefing history entries')}" aria-live="polite">${this.tr('loading', 'Loading...')}</div>
 				</div>
 			`;
 		}

@@ -86,14 +86,14 @@ export class WelcomeOnboarding extends HTMLElement {
 						display: flex; align-items: center; justify-content: center;
 						background: rgba(255, 255, 255, 0.1); font-size: 0.8rem;
 					}
-					.done .step-icon { background: var(--accent-color, hsla(173, 80%, 40%, 1)); color: #fff; }
+								.done .step-icon { background: var(--accent-color, hsla(173, 80%, 40%, 1)); color: var(--text-primary, hsla(0, 0%, 100%, 1)); }
 					.step-text { font-weight: 500; font-size: 0.9rem; }
 					.step-text span { display: block; font-size: 0.75rem; color: rgba(255, 255, 255, 0.4); font-weight: 400; }
 
 					.cta {
 						align-self: flex-start;
 						background: var(--accent-color, hsla(173, 80%, 40%, 1));
-						color: #fff;
+						color: var(--text-primary, hsla(0, 0%, 100%, 1));
 						padding: 0.75rem 1.5rem;
 						border-radius: var(--radius-md, 0.75rem);
 						text-decoration: none;
@@ -106,6 +106,13 @@ export class WelcomeOnboarding extends HTMLElement {
 					.cta:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(var(--accent-color-rgb, 20, 184, 166), 0.4); }
 					.cta:focus-visible { outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); outline-offset: 3px; }
 					.step-item:focus-visible { outline: 2px solid rgba(var(--accent-color-rgb, 20, 184, 166), 0.5); outline-offset: 2px; border-radius: 0.75rem; }
+					@media (forced-colors: active) {
+						.welcome-card { background: Canvas; border: 2px solid ButtonText; }
+						h2 { background: none; color: ButtonText; -webkit-text-fill-color: ButtonText; }
+						.step-item.done { border-color: Highlight; }
+						.done .step-icon { background: Highlight; color: HighlightText; }
+						.cta { background: Highlight; color: HighlightText; border: 1px solid Highlight; }
+					}
 				</style>
 				<div class="card">
 					<div>
