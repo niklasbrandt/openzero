@@ -2,9 +2,12 @@ import { BUTTON_STYLES } from '../services/buttonStyles';
 import { ACCESSIBILITY_STYLES } from '../services/accessibilityStyles';
 import { SECTION_HEADER_STYLES } from '../services/sectionHeaderStyles';
 import { EMPTY_STATE_STYLES } from '../services/emptyStateStyles';
+import { FORM_INPUT_STYLES } from '../services/formInputStyles';
+import { FEEDBACK_STYLES } from '../services/feedbackStyles';
 
 export class LifeOverview extends HTMLElement {
 	private t: Record<string, string> = {};
+	private projectFormOpen = false;
 
 	constructor() {
 		super();
@@ -15,6 +18,7 @@ export class LifeOverview extends HTMLElement {
 		this.loadTranslations().then(() => {
 			this.render();
 			this.fetchData();
+			this.setupListeners();
 		});
 		window.addEventListener('refresh-data', () => {
 			this.fetchData();
@@ -23,6 +27,7 @@ export class LifeOverview extends HTMLElement {
 			this.loadTranslations().then(() => {
 				this.render();
 				this.fetchData();
+				this.setupListeners();
 			});
 		});
 	}
@@ -41,12 +46,76 @@ export class LifeOverview extends HTMLElement {
 		return this.t[key] || fallback;
 	}
 
+	private setupListeners() {
+		const newProjectBtn = this.shadowRoot?.querySelector('#new-project-btn');
+		newProjectBtn?.addEventListener('click', () => this.toggleProjectForm());
+
+		const projectForm = this.shadowRoot?.querySelector('#inline-project-form');
+		projectForm?.addEventListener('submit', (e) => {
+			e.preventDefault();
+			this.handleCreateProject();
+		});
+
+		const cancelBtn = this.shadowRoot?.querySelector('#cancel-project-btn');
+		cancelBtn?.addEventListener('click', () => this.toggleProjectForm(false));
+	}
+
+	private toggleProjectForm(forceState?: boolean) {
+		this.projectFormOpen = forceState !== undefined ? forceState : !this.projectFormOpen;
+		const formWrap = this.shadowRoot?.querySelector('.project-form-wrap') as HTMLElement;
+		if (formWrap) {
+			formWrap.classList.toggle('open', this.projectFormOpen);
+		}
+		if (!this.projectFormOpen) {
+			const nameInput = this.shadowRoot?.querySelector<HTMLInputElement>('#new-project-name');
+			if (nameInput) nameInput.value = '';
+		}
+	}
+
+	private async handleCreateProject() {
+		const nameInput = this.shadowRoot?.querySelector<HTMLInputElement>('#new-project-name');
+		const name = nameInput?.value.trim();
+		if (!name) return;
+
+		const submitBtn = this.shadowRoot?.querySelector<HTMLButtonElement>('#submit-project-btn');
+		if (submitBtn) {
+			submitBtn.disabled = true;
+			submitBtn.textContent = this.tr('creating', 'Creating...');
+		}
+
+		try {
+			const resp = await fetch('/api/dashboard/projects', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ name }),
+			});
+			if (!resp.ok) throw new Error('Failed');
+
+			this.toggleProjectForm(false);
+			this.fetchData();
+			window.dispatchEvent(new CustomEvent('refresh-data'));
+		} catch (e) {
+			const feedback = this.shadowRoot?.querySelector('#project-feedback');
+			if (feedback) {
+				feedback.textContent = this.tr('project_create_error', 'Failed to create project.');
+				feedback.className = 'feedback error visible';
+				setTimeout(() => feedback.className = 'feedback error', 4000);
+			}
+		} finally {
+			if (submitBtn) {
+				submitBtn.disabled = false;
+				submitBtn.textContent = this.tr('create', 'Create');
+			}
+		}
+	}
+
 	async fetchData() {
 		try {
 			const response = await fetch('/api/dashboard/life-tree');
 			if (!response.ok) throw new Error('API error');
 			const data = await response.json();
 			this.updateUI(data);
+			this.setupListeners();
 		} catch (e) {
 			console.error('Failed to fetch life tree', e);
 			this.showError();
@@ -73,26 +142,42 @@ export class LifeOverview extends HTMLElement {
 			: `<li class="empty-li">${this.tr('no_social', 'No social circle added.')}</li>`;
 
 		const timelineHtml = data.timeline.length > 0
-			? data.timeline.map((e: any) => `
-					<div class="timeline-item" role="listitem">
+			? data.timeline.map((e: any) => {
+				const isBirthday = e.summary && (e.summary.includes('Birthday') || e.summary.includes('Geburtstag'));
+				return `
+					<div class="timeline-item${isBirthday ? ' birthday-item' : ''}" role="listitem">
 						<span class="time">${e.time}</span>
-						<span class="summary">${e.summary} ${!e.is_local ? '<small class="google-tag">(Google)</small>' : ''}</span>
+						<span class="summary">${isBirthday ? '<span class="birthday-tag" aria-label="' + this.tr('aria_birthday_badge', 'Birthday') + '">&#127874;</span> ' : ''}${e.summary} ${!e.is_local ? '<small class="google-tag">(Google)</small>' : ''}</span>
 					</div>
-				`).join('')
+				`;
+			}).join('')
 			: `<div class="empty-state">${this.tr('no_events', 'No upcoming events for the next 3 days.')}</div>`;
 
 		container.innerHTML = `
 			<div class="overview-grid">
-				<section class="mission-control">
+				<section class="mission-control" aria-label="${this.tr('aria_boards_section', 'Project boards')}">
 					<div class="section-header">
 						<h3>${this.tr('boards_heading', 'Boards')}</h3>
-						<button class="action-btn" onclick="this.closest('life-overview').parentElement.querySelector('create-project').toggle()">${this.tr('new_board', '+ New Board')}</button>
+						<div class="header-actions">
+							<button class="action-btn" id="new-project-btn" aria-label="${this.tr('aria_new_project', 'Create new project')}">${this.tr('new_project', '+ New Project')}</button>
+							<button class="action-btn" onclick="this.closest('life-overview').parentElement.querySelector('create-project').toggle()">${this.tr('new_board', '+ New Board')}</button>
+						</div>
+					</div>
+					<div class="project-form-wrap${this.projectFormOpen ? ' open' : ''}">
+						<form id="inline-project-form">
+							<div class="form-row">
+								<input type="text" id="new-project-name" placeholder="${this.tr('project_name_placeholder', 'Project name...')}" autocomplete="off" />
+								<button type="submit" id="submit-project-btn" class="btn-primary btn-sm">${this.tr('create', 'Create')}</button>
+								<button type="button" id="cancel-project-btn" class="btn-ghost btn-sm">${this.tr('cancel', 'Cancel')}</button>
+							</div>
+							<div id="project-feedback" class="feedback" role="status" aria-live="polite"></div>
+						</form>
 					</div>
 					<div class="tree-content">${data.projects_tree || this.tr('initializing_projects', 'Initializing projects...')}</div>
 				</section>
 				
 				<div class="side-panel">
-					<section class="social-section">
+					<section class="social-section" aria-label="${this.tr('aria_social_circles', 'Social circles')}">
 						<div class="circle-group">
 								<h3>${this.tr('inner_circle', 'Inner Circle')} <small>(${this.tr('inner_subtitle', 'Family & Care')})</small></h3>
 								<ul>${innerHtml}</ul>
@@ -103,9 +188,9 @@ export class LifeOverview extends HTMLElement {
 						</div>
 					</section>
 
-					<section class="timeline">
+					<section class="timeline" aria-label="${this.tr('aria_upcoming_timeline', 'Upcoming timeline')}">
 						<h3>${this.tr('timeline_heading', 'Timeline (Next 3 Days)')}</h3>
-						<div class="timeline-list">${timelineHtml}</div>
+						<div class="timeline-list" role="list">${timelineHtml}</div>
 					</section>
 				</div>
 			</div>
@@ -120,6 +205,8 @@ export class LifeOverview extends HTMLElement {
 					${ACCESSIBILITY_STYLES}
 					${SECTION_HEADER_STYLES}
 					${EMPTY_STATE_STYLES}
+					${FORM_INPUT_STYLES}
+					${FEEDBACK_STYLES}
 					/* Override icon gradient */
 					h2 .h-icon {
 						background: linear-gradient(135deg, var(--accent-color, hsla(173, 80%, 40%, 1)) 0%, var(--accent-tertiary, hsla(239, 84%, 67%, 1)) 100%);
@@ -163,9 +250,40 @@ export class LifeOverview extends HTMLElement {
 						margin-bottom: 1rem;
 					}
 
+					.header-actions {
+						display: flex;
+						gap: 0.5rem;
+						align-items: center;
+					}
+
 					.action-btn {
 						padding: 0.25rem 0.75rem;
 						font-size: 0.75rem;
+					}
+
+					.project-form-wrap {
+						max-height: 0;
+						overflow: hidden;
+						opacity: 0;
+						transition: max-height 0.35s ease, opacity 0.25s ease, margin-bottom 0.25s ease;
+						margin-bottom: 0;
+					}
+
+					.project-form-wrap.open {
+						max-height: 120px;
+						opacity: 1;
+						margin-bottom: 1rem;
+					}
+
+					.form-row {
+						display: flex;
+						gap: 0.5rem;
+						align-items: center;
+					}
+
+					.form-row input {
+						flex: 1;
+						margin-bottom: 0;
 					}
 
 					.side-panel { display: flex; flex-direction: column; gap: 2rem; }
@@ -197,6 +315,12 @@ export class LifeOverview extends HTMLElement {
 					.summary small { color: var(--color-info, hsla(217, 91%, 60%, 1)); opacity: 0.7; font-size: 0.7rem; margin-left: 0.3rem; }
 					.google-tag { color: var(--accent-color, hsla(173, 80%, 40%, 1)); opacity: 0.85; }
 
+					.birthday-item {
+						background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.06);
+						border: 1px solid rgba(var(--accent-color-rgb, 20, 184, 166), 0.12);
+					}
+					.birthday-tag { font-size: 1rem; }
+
 
 					.error { color: var(--color-danger, hsla(0, 84%, 60%, 1)); text-align: center; padding: 2rem; }
 				.action-btn:focus-visible { outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); outline-offset: 3px; }
@@ -213,7 +337,7 @@ export class LifeOverview extends HTMLElement {
 					</span>
 					${this.tr('life_overview', 'Life')}
 					</h2>
-					<div id="overview-container">
+					<div id="overview-container" aria-live="polite" aria-label="${this.tr('aria_life_overview', 'Life overview')}">
 						<div style="text-align: center; padding: 2rem; color: rgba(255,255,255,0.3);">${this.tr('mapping_world', 'Mapping your world...')}</div>
 					</div>
 				</div>

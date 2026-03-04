@@ -40,7 +40,7 @@ export class CalendarAgenda extends HTMLElement {
 	}
 
 	async deleteEvent(id: string) {
-		if (!confirm('Delete this local event?')) return;
+		if (!confirm(this.tr('confirm_delete_event', 'Delete this local event?'))) return;
 		try {
 			const response = await fetch(`/api/dashboard/calendar/local/${id}`, { method: 'DELETE' });
 			if (response.ok) {
@@ -136,6 +136,7 @@ export class CalendarAgenda extends HTMLElement {
 										value="${e.summary}" 
 										data-id="${e.id}"
 										${!e.is_local || e.is_birthday ? 'disabled' : ''}
+										aria-label="${!e.is_local || e.is_birthday ? this.tr('aria_event_name', 'Event') + ': ' : this.tr('aria_edit_event', 'Edit event title') + ': '}${e.summary}"
 										style="background: transparent; border: none; font-size: 0.9rem; font-weight: 500; color: #fff; width: 100%; outline: none;">
 								</span>
 								${e.is_local && !e.is_birthday ? `<button class="delete-btn btn-sm" data-id="${e.id}" title="${this.tr('delete', 'Delete')}" aria-label="${this.tr('delete', 'Delete')}">✕</button>` : ''}
@@ -151,7 +152,7 @@ export class CalendarAgenda extends HTMLElement {
 		if (filters) {
 			const people = [...new Set(this.events.filter(e => e.person).map(e => e.person))];
 			filters.innerHTML = `
-				<button class="filter-btn ${!this.filterPerson ? 'active' : ''}" data-person="" aria-pressed="${!this.filterPerson ? 'true' : 'false'}">All</button>
+				<button class="filter-btn ${!this.filterPerson ? 'active' : ''}" data-person="" aria-pressed="${!this.filterPerson ? 'true' : 'false'}">${this.tr('filter_all', 'All')}</button>
 				${people.map(p => `
 					<button class="filter-btn ${this.filterPerson === p ? 'active' : ''}" data-person="${p}" aria-pressed="${this.filterPerson === p ? 'true' : 'false'}">${p}</button>
 				`).join('')}
@@ -292,6 +293,7 @@ export class CalendarAgenda extends HTMLElement {
 					}
 					.event-title-edit:focus-visible { outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); outline-offset: 1px; border-radius: 2px; }
 					.delete-btn:focus-visible { outline: 2px solid var(--color-danger, hsla(0, 91%, 71%, 1)); outline-offset: 2px; }
+					.delete-btn { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
 				</style>
 				<div class="card">
 					<div class="header-container">
@@ -317,7 +319,7 @@ export class CalendarAgenda extends HTMLElement {
 						</a>
 					</div>
 					<div id="filters"></div>
-					<div id="event-list" role="list">${this.tr('loading_events', 'Loading events...')}</div>
+					<div id="event-list" role="list" aria-live="polite">${this.tr('loading_events', 'Loading events...')}</div>
 				</div>
 			`;
 		}

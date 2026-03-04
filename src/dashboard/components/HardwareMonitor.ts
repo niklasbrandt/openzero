@@ -424,7 +424,7 @@ export class HardwareMonitor extends HTMLElement {
 				${this.tr('hardware', 'Hardware')}
 			</h2>
 
-			<div id="hw-panel">
+			<div id="hw-panel" aria-live="polite" aria-label="${this.tr('aria_hw_status', 'Hardware status')}">
 				<div class="empty-state">${this.tr('detecting_hw', 'Detecting hardware...')}</div>
 			</div>
 		`;
