@@ -235,7 +235,7 @@ The system runs an **automated backup** every night at 4 AM. Environment variabl
 
 ### Continuous Testing
 
-The platform includes a live protocol regression suite (`scripts/test_live_vps_protocols.py`) that executes automatically at the end of every `sync.sh` deployment.
+The platform includes a live regression suite (`tests/test_live_regression.py`) that executes automatically at the end of every `sync.sh` deployment.
 
 Because openZero relies heavily on AI behavior, traditional unit tests are insufficient. The integrated suite tests the end-to-end capabilities of the live environment by:
 
@@ -245,11 +245,11 @@ Because openZero relies heavily on AI behavior, traditional unit tests are insuf
 - Validating the 3-tier routing logic.
 - Cleaning up test data seamlessly.
 
-Run it manually at any time via: `python3 scripts/test_live_vps_protocols.py --url http://YOUR_SERVER_IP --token your_token_here`
+Run it manually at any time via: `python3 tests/test_live_regression.py --url http://YOUR_SERVER_IP --token your_token_here`
 
 ### Prompt Injection Test Suite
 
-A dedicated offline test suite (`tests/test_prompt_injection.py`) validates the structural integrity of the prompt construction pipeline against **239 tests across 23 categories** (208 attack vector tests + 31 production integration tests). The suite runs without any infrastructure -- no LLM, no database, no network required.
+A dedicated offline test suite (`tests/test_security_prompt_injection.py`) validates the structural integrity of the prompt construction pipeline against **239 tests across 23 categories** (208 attack vector tests + 31 production integration tests). The suite runs without any infrastructure -- no LLM, no database, no network required.
 
 Categories include: direct prompt injection, indirect injection via memory/calendar/documents, jailbreak attempts (DAN, developer mode, grandma exploit), context manipulation (ChatML/LLaMA/Phi/Qwen token injection), memory poisoning, identity hijacking, data exfiltration, privilege escalation, encoding-based evasion (base64, ROT13, homoglyphs, Zalgo, leetspeak), multi-turn manipulation, structured data injection (JSON, YAML, SQL, SSTI), Telegram-specific attacks, dashboard XSS/CSS injection, API endpoint attacks (CRLF, path traversal), combined advanced attacks, and production integration tests that import and validate the actual `sanitise_input()` and `_ADVERSARIAL_PATTERNS` implementations.
 
@@ -258,7 +258,7 @@ The production code implements 5 hardening measures identified by the test findi
 Run it with:
 
 ```bash
-python -m pytest tests/test_prompt_injection.py -v --tb=short
+python -m pytest tests/test_security_prompt_injection.py -v --tb=short
 ```
 
 ## Setting it up

@@ -288,7 +288,7 @@ If Z isn't replying or you want to see what he's thinking:
 To verify the health and AI capabilities of your live openZero deployment at any time, run the integrated regression suite from your laptop:
 
 ```bash
-python3 scripts/test_live_vps_protocols.py --url http://YOUR_SERVER_IP --token your_dashboard_token
+python3 tests/test_live_regression.py --url http://YOUR_SERVER_IP --token your_dashboard_token
 ```
 
 This live validation suite tests:
@@ -343,12 +343,12 @@ Validates the prompt construction pipeline against 208 adversarial attack vector
 pip install pytest
 
 # Run all 208 tests
-python -m pytest tests/test_prompt_injection.py -v --tb=short
+python -m pytest tests/test_security_prompt_injection.py -v --tb=short
 
 # Run a specific category
-python -m pytest tests/test_prompt_injection.py -v -k "MemoryPoisoning"
-python -m pytest tests/test_prompt_injection.py -v -k "TelegramSpecific"
-python -m pytest tests/test_prompt_injection.py -v -k "SecurityInvariants"
+python -m pytest tests/test_security_prompt_injection.py -v -k "MemoryPoisoning"
+python -m pytest tests/test_security_prompt_injection.py -v -k "TelegramSpecific"
+python -m pytest tests/test_security_prompt_injection.py -v -k "SecurityInvariants"
 ```
 
 All tests should pass with 0 failures. See [`docs/artifacts/prompt_injection_tests.md`](docs/artifacts/prompt_injection_tests.md) for full category breakdown and findings.
@@ -358,7 +358,7 @@ All tests should pass with 0 failures. See [`docs/artifacts/prompt_injection_tes
 Tests the end-to-end capabilities of the live environment including LLM responses, memory persistence, and action tag execution.
 
 ```bash
-python3 scripts/test_live_vps_protocols.py --url http://YOUR_SERVER_IP --token your_token_here
+python3 tests/test_live_regression.py --url http://YOUR_SERVER_IP --token your_token_here
 ```
 
 This suite runs automatically at the end of every `scripts/sync.sh` deployment.
