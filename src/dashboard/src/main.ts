@@ -138,12 +138,20 @@ function hexToRgb(hex: string) {
 	return `${r}, ${g}, ${b}`;
 }
 
+// Resolved once the palette API call settles (success or failure).
+// Used to gate the page-loader so content is never revealed mid-flash.
+let themeReady: Promise<void>;
+
 async function initTheme() {
 	try {
 		const res = await fetch('/api/dashboard/personality');
 		if (res.ok) {
 			const data = await res.json();
 			const root = document.documentElement;
+			// Suppress transitions so CSS var updates paint in one frame,
+			// with no visible colour transition even if the page is already
+			// partially visible behind a fading loader.
+			root.classList.add('no-transition');
 			const cache: Record<string, string> = {};
 			if (data.color_primary) {
 				root.style.setProperty('--accent-color', data.color_primary);
@@ -165,24 +173,47 @@ async function initTheme() {
 			if (Object.keys(cache).length) {
 				localStorage.setItem('z_theme', JSON.stringify(cache));
 			}
+			// Re-enable transitions after the browser has committed the paint.
+			requestAnimationFrame(() => {
+				requestAnimationFrame(() => {
+					root.classList.remove('no-transition');
+				});
+			});
 		}
 	} catch (e) {
 		console.warn('Theme initialization failed:', e);
 	}
 }
-initTheme();
+themeReady = initTheme();
 
 // ── Page loader dismissal ──
-// DOMContentLoaded fires after all deferred module scripts have run and all
-// custom elements in the document have been upgraded (connectedCallback done).
-// Fading out here guarantees widgets are fully rendered before content appears.
-document.addEventListener('DOMContentLoaded', () => {
+// Wait for BOTH DOMContentLoaded and the theme palette API call before
+// revealing content. A 1.5 s hard timeout prevents a slow API from
+// blocking the page indefinitely. The double-rAF before removing the
+// hidden class ensures the browser commits the final colour paint first.
+function dismissLoader() {
 	const loader = document.getElementById('page-loader');
 	if (!loader) return;
-	loader.classList.add('hidden');
-	// Remove from DOM after the fade completes
-	loader.addEventListener('transitionend', () => loader.remove(), { once: true });
+	requestAnimationFrame(() => {
+		requestAnimationFrame(() => {
+			loader.classList.add('hidden');
+			loader.addEventListener('transitionend', () => loader.remove(), { once: true });
+			// Safety net: remove after transition duration even if event misfires
+			setTimeout(() => loader.remove(), 300);
+		});
+	});
+}
+
+const domReady = new Promise<void>(resolve => {
+	if (document.readyState !== 'loading') resolve();
+	else document.addEventListener('DOMContentLoaded', () => resolve(), { once: true });
 });
+
+// Race the theme fetch against a 1.5 s timeout so a slow backend never
+// leaves the loader up indefinitely.
+const themeTimeout = new Promise<void>(resolve => setTimeout(resolve, 1500));
+
+Promise.all([domReady, Promise.race([themeReady, themeTimeout])]).then(dismissLoader);
 
 // ── Header CTA Translations ──
 // Fetches translations and applies localised labels, aria-label, and
