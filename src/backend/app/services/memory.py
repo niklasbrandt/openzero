@@ -4,8 +4,26 @@ import uuid
 import logging
 import re
 import datetime
+import unicodedata
 
 logger = logging.getLogger(__name__)
+
+# Patterns that indicate adversarial prompt injection in memory text.
+# If any of these appear in content destined for the vault, the text is
+# stripped of the offending segment (or rejected entirely).
+_ADVERSARIAL_PATTERNS = re.compile(
+	r'ignore\s+(all\s+)?previous\s+instructions'
+	r'|you\s+are\s+now\s+in\s+["\']?developer\s+mode'
+	r'|system\s*:\s*you\s+are'
+	r'|new\s+instructions?\s*:'
+	r'|override\s+(system|safety|instructions?)'
+	r'|<\|im_start\|>|<\|im_end\|>|<\|endoftext\|>|<\|system\|>'
+	r'|\[INST\]|\[/INST\]|<<SYS>>|<</SYS>>'
+	r'|always\s+reveal\s+(api|secret|key|token|password)'
+	r'|disregard\s+(all\s+)?(prior|previous|above)'
+	r'|jailbreak|DAN\s+mode',
+	re.IGNORECASE,
+)
 
 # Embedder will be loaded lazily to prevent startup crashes if libraries are broken
 embedder = None
@@ -66,6 +84,12 @@ async def store_memory(text: str, metadata: dict = None):
 	distilled_text = distilled_text.strip()
 
 	if not distilled_text or len(distilled_text) < 5:
+		return
+
+	# Adversarial content filter -- reject text containing known injection
+	# phrases that could poison future prompt contexts.
+	if _ADVERSARIAL_PATTERNS.search(distilled_text):
+		logger.warning("Memory rejected (adversarial pattern detected): %s", distilled_text[:80])
 		return
 
 	is_user_input = metadata and metadata.get("type") == "user_input"
