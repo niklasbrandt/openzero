@@ -4,13 +4,84 @@ export class UserCard extends HTMLElement {
 	private me: any = null;
 	private isEditing: boolean = false;
 	private t: Record<string, string> = {};
-	private languageNames: Record<string, string> = {
-		en: 'English', de: 'German', zh: 'Mandarin Chinese', ja: 'Japanese',
-		ko: 'Korean', fr: 'French', es: 'Spanish', it: 'Italian',
-		nl: 'Dutch', sv: 'Swedish', da: 'Danish', no: 'Norwegian',
-		pl: 'Polish', cs: 'Czech', el: 'Greek', tr: 'Turkish',
-		ru: 'Russian', pt: 'Portuguese', ar: 'Arabic', hi: 'Hindi',
-		bn: 'Bengali', id: 'Indonesian', vi: 'Vietnamese', ro: 'Romanian',
+	private languages: Record<string, { native: string, eng: string }> = {
+		en: { native: 'English', eng: 'English' },
+		de: { native: 'Deutsch', eng: 'German' },
+		zh: { native: '中文', eng: 'Mandarin Chinese' },
+		ja: { native: '日本語', eng: 'Japanese' },
+		ko: { native: '한국어', eng: 'Korean' },
+		fr: { native: 'Français', eng: 'French' },
+		es: { native: 'Español', eng: 'Spanish' },
+		it: { native: 'Italiano', eng: 'Italian' },
+		nl: { native: 'Nederlands', eng: 'Dutch' },
+		sv: { native: 'Svenska', eng: 'Swedish' },
+		da: { native: 'Dansk', eng: 'Danish' },
+		no: { native: 'Norsk', eng: 'Norwegian' },
+		pl: { native: 'Polski', eng: 'Polish' },
+		cs: { native: 'Čeština', eng: 'Czech' },
+		el: { native: 'Ελληνικά', eng: 'Greek' },
+		tr: { native: 'Türkçe', eng: 'Turkish' },
+		ru: { native: 'Русский', eng: 'Russian' },
+		pt: { native: 'Português', eng: 'Portuguese' },
+		ar: { native: 'العربية', eng: 'Arabic' },
+		hi: { native: 'हिन्दी', eng: 'Hindi' },
+		bn: { native: 'বাংলা', eng: 'Bengali' },
+		id: { native: 'Bahasa Indonesia', eng: 'Indonesian' },
+		vi: { native: 'Tiếng Việt', eng: 'Vietnamese' },
+		ro: { native: 'Română', eng: 'Romanian' },
+	};
+
+	private themeOptions: Record<string, { label: string, colors: string[] }> = {
+		fusion: { label: 'Default Fusion', colors: ["#14B8A6", "#0066FF", "#6366F1"] },
+		cyberpunk: { label: 'Cyberpunk Neon', colors: ["#FF00FF", "#00FFFF", "#FFFF00"] },
+		night_city: { label: 'Night City', colors: ["#F700FF", "#2100A3", "#FEDD00"] },
+		forest: { label: 'Deep Forest', colors: ["#22C55E", "#15803D", "#84CC16"] },
+		deep_sea: { label: 'Deep Sea', colors: ["#0066FF", "#000080", "#00CED1"] },
+		ember: { label: 'Ember Glass', colors: ["#F97316", "#EF4444", "#F59E0B"] },
+		aurora: { label: 'Aurora Borealis', colors: ["#A855F7", "#EC4899", "#06B6D4"] },
+		midnight: { label: 'Midnight Blue', colors: ["#3B82F6", "#1D4ED8", "#60A5FA"] },
+		void: { label: 'The Void', colors: ["#7C3AED", "#4F46E5", "#2D1B69"] },
+		matrix: { label: 'Digital Matrix', colors: ["#00FF41", "#008F11", "#003B00"] },
+		outrun: { label: 'Outrun 84', colors: ["#FF2E63", "#08D9D6", "#EAEAEA"] },
+		synthwave: { label: 'Synthwave Glow', colors: ["#FF71CE", "#01CDFE", "#05FFA1"] },
+		plasma: { label: 'Plasma Strike', colors: ["#9D50BB", "#6E48AA", "#FF4B2B"] },
+		volcanic: { label: 'Volcanic Flow', colors: ["#FF416C", "#FF4B2B", "#42275A"] },
+		frost: { label: 'Glacier Frost', colors: ["#00B4DB", "#0083B0", "#FFFFFF"] },
+		sakura: { label: 'Sakura Petals', colors: ["#F9A8D4", "#EC4899", "#DB2777"] },
+		copper: { label: 'Antique Copper', colors: ["#FB923C", "#D97706", "#92400E"] },
+		carbon: { label: 'Carbon Fiber', colors: ["#E5E7EB", "#374151", "#6B7280"] },
+		jade: { label: 'Imperial Jade', colors: ["#10B981", "#059669", "#6EE7B7"] },
+		sunset: { label: 'Venice Sunset', colors: ["#FF512F", "#DD2476", "#F09819"] },
+		oceanic: { label: 'Oceanic Depth', colors: ["#2193b0", "#6dd5ed", "#2C3E50"] },
+		nebula: { label: 'Deep Nebula', colors: ["#4e54c8", "#8f94fb", "#243B55"] },
+		royal: { label: 'Royal Gold', colors: ["#f9ca24", "#f0932b", "#4834d4"] },
+		lava: { label: 'Molten Lava', colors: ["#eb4d4b", "#ff7979", "#130f40"] },
+		emerald: { label: 'Emerald City', colors: ["#2ecc71", "#27ae60", "#f1c40f"] },
+		amethyst: { label: 'Amethyst Spark', colors: ["#9b59b6", "#8e44ad", "#34495e"] },
+		sunflower: { label: 'Sunflower Field', colors: ["#f1c40f", "#f39c12", "#27ae60"] },
+		asphalt: { label: 'Wet Asphalt', colors: ["#34495e", "#2c3e50", "#7f8c8d"] },
+		clouds: { label: 'Silver Clouds', colors: ["#ecf0f1", "#bdc3c7", "#95a5a6"] },
+		concrete: { label: 'Polished Concrete', colors: ["#95a5a6", "#7f8c8d", "#2c3e50"] },
+		pumpkin: { label: 'Pumpkin Spice', colors: ["#e67e22", "#d35400", "#2c3e50"] },
+		alizarin: { label: 'Alizarin Crimson', colors: ["#e74c3c", "#c0392b", "#8e44ad"] },
+		turquoise: { label: 'Turquoise Dream', colors: ["#1abc9c", "#16a085", "#2980b9"] },
+		belize: { label: 'Belize Hole', colors: ["#2980b9", "#3498db", "#8e44ad"] },
+		wisteria: { label: 'Blooming Wisteria', colors: ["#8e44ad", "#9b59b6", "#2c3e50"] },
+		orange: { label: 'Zesty Orange', colors: ["#f39c12", "#e67e22", "#d35400"] },
+		grenadier: { label: 'Grenadier Fire', colors: ["#d35400", "#e67e22", "#c0392b"] },
+		midnight_bloom: { label: 'Midnight Bloom', colors: ["#a29bfe", "#6c5ce7", "#fd79a8"] },
+		mint: { label: 'Fresh Mint', colors: ["#55efc4", "#00b894", "#81ecec"] },
+		robins_egg: { label: 'Robins Egg', colors: ["#81ecec", "#00cec9", "#74b9ff"] },
+		sour_lemon: { label: 'Sour Lemon', colors: ["#ffeaa7", "#fdcb6e", "#fab1a0"] },
+		peach: { label: 'First Peach', colors: ["#fab1a0", "#ff7675", "#d63031"] },
+		chi_gong: { label: 'Chi-Gong', colors: ["#d63031", "#ff7675", "#6c5ce7"] },
+		pristine: { label: 'Pristine White', colors: ["#dfe6e9", "#b2bec3", "#636e72"] },
+		shale: { label: 'Shale Gray', colors: ["#636e72", "#2d3436", "#00b894"] },
+		dracula: { label: 'Dracula Castle', colors: ["#bd93f9", "#ff79c6", "#8be9fd"] },
+		gruvbox: { label: 'Retro Gruvbox', colors: ["#fabd2f", "#fe8019", "#b8bb26"] },
+		nord: { label: 'Arctic Nord', colors: ["#88c0d0", "#81a1c1", "#5e81ac"] },
+		monokai_pro: { label: 'Monokai Pro', colors: ["#ffd866", "#fc9867", "#ff6188"] },
+		solarized: { label: 'Solarized Fire', colors: ["#cb4b16", "#dc322f", "#268bd2"] },
 	};
 
 	constructor() {
@@ -94,6 +165,7 @@ export class UserCard extends HTMLElement {
 				this.render();
 				window.dispatchEvent(new CustomEvent('identity-updated'));
 				window.dispatchEvent(new CustomEvent('refresh-data'));
+				window.location.reload();
 			}
 		} catch (e) {
 			alert('Save failed');
@@ -178,6 +250,31 @@ export class UserCard extends HTMLElement {
 					color: #fff;
 				}
 
+				.theme-cycle-btn {
+					background: rgba(255, 255, 255, 0.05);
+					border: 1px solid rgba(255, 255, 255, 0.1);
+					color: var(--accent-color);
+					width: 34px;
+					height: 34px;
+					display: flex;
+					align-items: center;
+					justify-content: center;
+					border-radius: 0.5rem;
+					cursor: pointer;
+					transition: all 0.2s;
+					font-size: 1.1rem;
+					flex-shrink: 0;
+					user-select: none;
+				}
+				.theme-cycle-btn:hover {
+					background: rgba(255, 255, 255, 0.1);
+					border-color: var(--accent-color);
+					transform: scale(1.05);
+				}
+				.theme-cycle-btn:active {
+					transform: scale(0.95);
+				}
+
 				.goals-section h3 { 
 					font-size: 0.7rem; 
 					color: var(--accent-color); 
@@ -259,8 +356,8 @@ export class UserCard extends HTMLElement {
 					</div>
 					<div class="field">
 						${this.isEditing
-				? `<label class="label" for="language-input">${this.tr('language_label', 'Language')}</label><select id="language-input" aria-label="Select Z\'s response language">${Object.entries(this.languageNames).map(([code, name]) => `<option value="${code}" ${(me.language || 'en') === code ? 'selected' : ''}>${name}</option>`).join('')}</select>`
-				: `<div class="label" aria-hidden="true">${this.tr('language_label', 'Language')}</div><div class="value">${this.languageNames[me.language as string] || 'English'}</div>`}
+				? `<label class="label" for="language-input">${this.tr('language_label', 'Language')}</label><select id="language-input" aria-label="Select Z\'s response language">${Object.entries(this.languages).map(([code, lang]) => `<option value="${code}" ${(me.language || 'en') === code ? 'selected' : ''}>${lang.native} · ${this.tr('lang_' + code, lang.eng)}</option>`).join('')}</select>`
+				: `<div class="label" aria-hidden="true">${this.tr('language_label', 'Language')}</div><div class="value">${this.languages[me.language as string]?.native || 'English'} · ${this.tr('lang_' + (me.language || 'en'), this.languages[me.language as string]?.eng || 'English')}</div>`}
 					</div>
 					<div class="field" style="grid-column: span 2;">
 						${this.isEditing
@@ -272,25 +369,16 @@ export class UserCard extends HTMLElement {
 						<div class="label">${this.tr('favorite_colors', 'Favorite Colors / Theme')}</div>
 						<div style="display: flex; gap: 0.75rem; align-items: center; margin-top: 0.5rem; flex-wrap: wrap;">
 							${this.isEditing ? `
-								<select id="theme-preset-select" aria-label="${this.tr('aria_theme_presets', 'Theme Presets')}" style="flex: 1; min-width: 140px;">
-									<option value="">${this.tr('select_preset', 'Select Preset...')}</option>
-									<option value="default" data-colors='["#14B8A6", "#0066FF", "#6366F1"]'>Default Fusion</option>
-									<option value="brazil" data-colors='["#009739", "#FEDD00", "#012169"]'>Brazil</option>
-									<option value="jamaica" data-colors='["#009B3A", "#FEDD00", "#000000"]'>Jamaica</option>
-									<option value="mexico" data-colors='["#006341", "#C8102E", "#FFFFFF"]'>Mexico</option>
-									<option value="usa" data-colors='["#B22234", "#3C3B6E", "#FFFFFF"]'>USA</option>
-									<option value="uk" data-colors='["#00247D", "#CF142B", "#FFFFFF"]'>UK</option>
-									<option value="japan" data-colors='["#BC002D", "#F4F4F4", "#333333"]'>Japan</option>
-									<option value="france" data-colors='["#00209F", "#F64242", "#FFFFFF"]'>France</option>
-									<option value="germany" data-colors='["#FFCE00", "#DD0000", "#000000"]'>Germany</option>
-									<option value="sunrise" data-colors='["#FF8C00", "#FF4500", "#FFD700"]'>Sunrise</option>
-									<option value="forest" data-colors='["#2D5A27", "#8B4513", "#DEB887"]'>Forest</option>
-									<option value="arctic" data-colors='["#E0FFFF", "#00CED1", "#FFFFFF"]'>Arctic</option>
-									<option value="deepsea" data-colors='["#000080", "#00008B", "#4682B4"]'>Deep Sea</option>
-									<option value="darkred" data-colors='["#8B0000", "#4B0000", "#000000"]'>Dark Red</option>
-									<option value="highcontrast" data-colors='["#00FF00", "#003300", "#FFFFFF"]'>High Contrast</option>
-									<option value="grayscale" data-colors='["#333333", "#666666", "#999999"]'>Grayscale</option>
-								</select>
+								<div style="display: flex; gap: 0.5rem; align-items: center; flex: 1;">
+									<button id="theme-prev" class="theme-cycle-btn" title="Previous Theme" aria-label="Previous theme">‹</button>
+									<select id="theme-preset-select" aria-label="${this.tr('aria_theme_presets', 'Theme Presets')}" style="flex: 1; min-width: 140px;">
+										<option value="">${this.tr('select_preset', 'Select Preset...')}</option>
+										${Object.entries(this.themeOptions).map(([val, opt]) => `
+											<option value="${val}" data-colors='${JSON.stringify(opt.colors)}'>${this.tr('theme_' + val, opt.label)}</option>
+										`).join('')}
+									</select>
+									<button id="theme-next" class="theme-cycle-btn" title="Next Theme" aria-label="Next theme">›</button>
+								</div>
 								<div style="display: flex; gap: 0.5rem;">
 									<input type="color" id="color-primary-input" value="${me.color_primary || '#14B8A6'}" style="width:32px; height:32px; padding:0; border:none; background:none;">
 									<input type="color" id="color-secondary-input" value="${me.color_secondary || '#0066FF'}" style="width:32px; height:32px; padding:0; border:none; background:none;">
@@ -368,6 +456,19 @@ export class UserCard extends HTMLElement {
 			['#color-primary-input', '#color-secondary-input', '#color-tertiary-input'].forEach(id => {
 				this.shadowRoot?.querySelector(id)?.addEventListener('input', applyColors);
 			});
+
+			const cycle = (dir: number) => {
+				const select = this.shadowRoot?.querySelector('#theme-preset-select') as HTMLSelectElement;
+				if (!select) return;
+				let idx = select.selectedIndex + dir;
+				if (idx < 1) idx = select.options.length - 1;
+				if (idx >= select.options.length) idx = 1;
+				select.selectedIndex = idx;
+				select.dispatchEvent(new Event('change'));
+			};
+
+			this.shadowRoot?.querySelector('#theme-prev')?.addEventListener('click', () => cycle(-1));
+			this.shadowRoot?.querySelector('#theme-next')?.addEventListener('click', () => cycle(1));
 		}
 
 		// Apply immediately on load
