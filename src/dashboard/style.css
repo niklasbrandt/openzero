@@ -98,6 +98,7 @@ body {
      overflow: hidden would trap touch-scroll and break the marquee nav. */
   overflow-x: clip;
   flex-wrap: wrap;
+  scroll-padding: 2rem;
   /* No background-color transition — avoids visible color shift when
      CSS custom properties are updated by the theme script on load. */
 }
@@ -291,7 +292,7 @@ project-tree:defined {
 @media (min-width: 1600px) {
   #app {
     padding: 2.5rem 3rem 6rem 3rem;
-    column-gap: 2.5rem;
+    gap: 2.5rem;
   }
 }
 
@@ -529,9 +530,13 @@ project-tree:defined {
      (sidebar width) so margin:0 auto centers within the remaining viewport. */
   margin: 0 auto;
   padding: 2rem 2rem 6rem 2rem;
-  /* Masonry-style two-column flow: cards pack tightly without row-height gaps */
-  column-count: 2;
-  column-gap: 2rem;
+  /* Two-column grid: items flow left-to-right so visual order matches the
+     sidebar / DOM order (CSS column-count filled top-to-bottom per column,
+     which broke the correspondence). */
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2rem;
+  align-items: start;
   min-width: 0;
   overflow-x: hidden;
   box-sizing: border-box;
@@ -561,13 +566,9 @@ h3 {
     0 8px 32px rgba(0, 0, 0, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
   transition: border-color 0.4s ease, box-shadow 0.4s ease;
-  /* Keep card in one column — no splitting across column breaks */
+  /* break-inside kept for older column-count fallback (no-op in grid) */
   break-inside: avoid;
-  /* Push cards apart vertically; replaces grid-gap between rows */
-  margin-bottom: 2rem;
-  /* Skip rendering for off-screen cards — reduces initial paint work
-     and masonry reflow cascades. The intrinsic size hint prevents the
-     column algorithm from collapsing cards before they are painted. */
+  /* Skip rendering for off-screen cards — reduces initial paint work. */
   content-visibility: auto;
   contain-intrinsic-size: auto 300px;
   /* Prevent column blowout */
@@ -585,12 +586,11 @@ h3 {
 }
 
 .dashboard-header {
-  /* Span both columns */
-  column-span: all;
+  /* Span both grid columns */
+  grid-column: 1 / -1;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 2rem;
   flex-wrap: wrap;
 }
 
@@ -634,11 +634,8 @@ h3 {
 .chat-card,
 .life-overview-card,
 welcome-onboarding {
-  /* Span both columns */
-  column-span: all;
-  /* Restore bottom gap after column-span resets margin context */
-  display: block;
-  margin-bottom: 2rem;
+  /* Span both grid columns */
+  grid-column: 1 / -1;
 }
 
 .dashboard-header h1 {
@@ -808,40 +805,21 @@ pre {
   transform: translateX(-50%) translateY(10px);
 }
 
-/* ── Tablet (700px – 1099px): two-column masonry below the marquee nav ── */
+/* ── Tablet (700px – 1099px): two-column grid below the marquee nav ── */
 @media (min-width: 700px) and (max-width: 1099px) {
   #app {
-    column-count: 2;
-    column-gap: 1.5rem;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
     padding: 1.5rem 1.5rem 5rem 1.5rem;
-  }
-
-  .dashboard-card {
-    margin-bottom: 1.5rem;
-  }
-
-  .chat-card,
-  .life-overview-card,
-  welcome-onboarding {
-    margin-bottom: 1.5rem;
   }
 }
 
 /* ── Mobile (≤699px): single column ── */
 @media (max-width: 699px) {
   #app {
-    column-count: 1;
+    grid-template-columns: 1fr;
+    gap: 1rem;
     padding: 0.75rem;
-  }
-
-  .dashboard-card {
-    margin-bottom: 1rem;
-  }
-
-  .chat-card,
-  .life-overview-card,
-  welcome-onboarding {
-    margin-bottom: 1rem;
   }
 
   .dashboard-header {
@@ -887,8 +865,8 @@ pre {
 
 /* Footer Section */
 .dashboard-footer {
-  /* Span both masonry columns (column-count layout) */
-  column-span: all;
+  /* Span both grid columns */
+  grid-column: 1 / -1;
   display: flex;
   justify-content: space-between;
   align-items: center;
