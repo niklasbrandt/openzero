@@ -165,7 +165,7 @@ export class CircleManager extends HTMLElement {
 				outer: this.tr('outer_circle_full', 'Outer Circle'),
 			};
 			const accents: Record<string, string> = {
-				inner: '#3b82f6',
+				inner: 'hsla(217, 91%, 60%, 1)',
 				close: '#10b981',
 				outer: '#a78bfa',
 			};
@@ -178,7 +178,7 @@ export class CircleManager extends HTMLElement {
 					${ACCESSIBILITY_STYLES}
 					${FEEDBACK_STYLES}
 					h2 { font-size: 1.5rem; font-weight: bold; margin: 0; color: #fff; letter-spacing: 0.02em; display: flex; align-items: center; gap: 0.5rem; overflow-wrap: break-word; word-break: break-word; min-width: 0; flex: 1; }
-					.h-icon { display: inline-flex; width: 28px; height: 28px; background: ${accent}; border-radius: var(--radius-sm, 0.4rem); align-items: center; justify-content: center; flex-shrink: 0; }
+					.h-icon { display: inline-flex; width: 32px; height: 32px; background: ${accent}; border-radius: var(--radius-sm, 0.4rem); align-items: center; justify-content: center; flex-shrink: 0; }
 					.subtitle { font-size: 0.65rem; font-weight: 400; color: var(--text-faint, rgba(255, 255, 255, 0.3)); margin-left: 0.5rem; text-transform: uppercase; letter-spacing: 0.1em; }
 					:host { display: block; }
 					.add-form {
@@ -204,7 +204,7 @@ export class CircleManager extends HTMLElement {
 						margin-bottom: 0.2rem;
 						margin-top: 0.5rem;
 					}
-					label .required { color: var(--color-danger, #f87171); margin-left: 0.15rem; }
+					label .required { color: var(--color-danger, hsla(0, 91%, 71%, 1)); margin-left: 0.15rem; }
 					input, textarea {
 						background: rgba(0, 0, 0, 0.2);
 						border: 1px solid rgba(255, 255, 255, 0.08);
@@ -233,7 +233,7 @@ export class CircleManager extends HTMLElement {
 					}
 					.field-error-msg {
 						font-size: 0.72rem;
-						color: var(--color-danger, #f87171);
+						color: var(--color-danger, hsla(0, 91%, 71%, 1));
 						margin-top: 0.15rem;
 						min-height: 0;
 						opacity: 0;
@@ -272,7 +272,7 @@ export class CircleManager extends HTMLElement {
 					.cal-badge {
 						display: inline-block;
 						font-size: 0.7rem;
-						color: var(--accent-color, #14B8A6);
+						color: var(--accent-color, hsla(173, 80%, 40%, 1));
 						background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.1);
 						border: 1px solid rgba(var(--accent-color-rgb, 20, 184, 166), 0.2);
 						padding: 0.15rem 0.5rem;
@@ -293,15 +293,15 @@ export class CircleManager extends HTMLElement {
 					.form-feedback.error {
 						background: rgba(var(--color-danger-rgb, 239, 68, 68), 0.1);
 						border: 1px solid rgba(var(--color-danger-rgb, 239, 68, 68), 0.2);
-						color: var(--color-danger, #f87171);
+						color: var(--color-danger, hsla(0, 91%, 71%, 1));
 					}
 					.form-feedback.success {
 						background: rgba(var(--color-success-rgb, 34, 197, 94), 0.1);
 						border: 1px solid rgba(var(--color-success-rgb, 34, 197, 94), 0.2);
-						color: var(--color-success, #4ade80);
+						color: var(--color-success, hsla(142, 69%, 58%, 1));
 					}
 					button:focus-visible, input:focus-visible, textarea:focus-visible {
-						outline: 2px solid var(--accent-color, #14B8A6);
+						outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1));
 						outline-offset: 2px;
 					}
 				</style>
@@ -309,7 +309,7 @@ export class CircleManager extends HTMLElement {
 					<div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem;">
 						<h2>
 					<span class="h-icon" aria-hidden="true">
-							<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+							<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
 									<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
 									<circle cx="9" cy="7" r="4"></circle>
 									<path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>

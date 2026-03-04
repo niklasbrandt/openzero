@@ -249,9 +249,9 @@ export class SoftwareStatus extends HTMLElement {
 					border-radius: 50%;
 					flex-shrink: 0;
 				}
-				.svc-dot.online { background: var(--accent-color, #14B8A6); box-shadow: 0 0 6px rgba(var(--accent-color-rgb, 20, 184, 166), 0.4); }
-				.svc-dot.offline { background: var(--color-danger, #ef4444); box-shadow: 0 0 6px rgba(var(--color-danger-rgb, 239, 68, 68), 0.4); }
-				.svc-dot.warning { background: var(--color-warning, #eab308); box-shadow: 0 0 6px rgba(var(--color-warning-rgb, 234, 179, 8), 0.4); }
+				.svc-dot.online { background: var(--accent-color, hsla(173, 80%, 40%, 1)); box-shadow: 0 0 6px rgba(var(--accent-color-rgb, 20, 184, 166), 0.4); }
+				.svc-dot.offline { background: var(--color-danger, hsla(0, 84%, 60%, 1)); box-shadow: 0 0 6px rgba(var(--color-danger-rgb, 239, 68, 68), 0.4); }
+				.svc-dot.warning { background: var(--color-warning, hsla(45, 93%, 47%, 1)); box-shadow: 0 0 6px rgba(var(--color-warning-rgb, 234, 179, 8), 0.4); }
 				.svc-name {
 					font-size: 0.7rem;
 					font-weight: 600;
@@ -300,12 +300,12 @@ export class SoftwareStatus extends HTMLElement {
 					font-family: var(--font-mono, 'Fira Code', monospace);
 				}
 
-				.svc-item:focus-visible, .has-tip:focus-visible { outline: 2px solid var(--accent-color, #14B8A6); outline-offset: 2px; border-radius: 0.4rem; }
+				.svc-item:focus-visible, .has-tip:focus-visible { outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); outline-offset: 2px; border-radius: 0.4rem; }
 			</style>
 
 			<h2>
 				<span class="h-icon" aria-hidden="true">
-					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
 						<polyline points="16 18 22 12 16 6"></polyline>
 						<polyline points="8 6 2 12 8 18"></polyline>
 					</svg>

@@ -35,31 +35,31 @@ export const BADGE_STYLES = `
 
 	.badge-accent {
 		background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.12);
-		color: var(--accent-color, #14B8A6);
+		color: var(--accent-color, hsla(173, 80%, 40%, 1));
 		border-color: rgba(var(--accent-color-rgb, 20, 184, 166), 0.2);
 	}
 
 	.badge-info {
 		background: rgba(var(--color-info-rgb, 59, 130, 246), 0.12);
-		color: var(--color-info, #3b82f6);
+		color: var(--color-info, hsla(217, 91%, 60%, 1));
 		border-color: rgba(var(--color-info-rgb, 59, 130, 246), 0.2);
 	}
 
 	.badge-success {
 		background: rgba(var(--color-success-rgb, 34, 197, 94), 0.12);
-		color: var(--color-success-light, #4ade80);
+		color: var(--color-success-light, hsla(142, 69%, 58%, 1));
 		border-color: rgba(var(--color-success-rgb, 34, 197, 94), 0.2);
 	}
 
 	.badge-warning {
 		background: rgba(var(--color-warning-rgb, 234, 179, 8), 0.12);
-		color: var(--color-warning, #eab308);
+		color: var(--color-warning, hsla(45, 93%, 47%, 1));
 		border-color: rgba(var(--color-warning-rgb, 234, 179, 8), 0.2);
 	}
 
 	.badge-danger {
 		background: rgba(var(--color-danger-rgb, 239, 68, 68), 0.12);
-		color: var(--color-danger-light, #f87171);
+		color: var(--color-danger-light, hsla(0, 91%, 71%, 1));
 		border-color: rgba(var(--color-danger-rgb, 239, 68, 68), 0.2);
 	}
 `;

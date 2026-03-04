@@ -293,14 +293,14 @@ export class CalendarManager extends HTMLElement {
 												transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 										}
 										.day-cell:hover { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.2); color: #fff; transform: translateY(-2px); }
-										.day-cell.today { border-color: var(--accent-color, #14B8A6); color: var(--accent-color, #14B8A6); background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.08); font-weight: 700; }
-										.day-cell.selected { background: var(--accent-color, #14B8A6); color: #000; border-color: var(--accent-color, #14B8A6); transform: translateY(-2px); box-shadow: 0 10px 20px -5px rgba(var(--accent-color-rgb, 20, 184, 166), 0.4); font-weight: 700; }
+										.day-cell.today { border-color: var(--accent-color, hsla(173, 80%, 40%, 1)); color: var(--accent-color, hsla(173, 80%, 40%, 1)); background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.08); font-weight: 700; }
+										.day-cell.selected { background: var(--accent-color, hsla(173, 80%, 40%, 1)); color: #000; border-color: var(--accent-color, hsla(173, 80%, 40%, 1)); transform: translateY(-2px); box-shadow: 0 10px 20px -5px rgba(var(--accent-color-rgb, 20, 184, 166), 0.4); font-weight: 700; }
 										
 										.event-dot {
 												position: absolute;
 												bottom: 6px;
 												width: 4px; height: 4px;
-												background: var(--accent-color, #14B8A6);
+												background: var(--accent-color, hsla(173, 80%, 40%, 1));
 												border-radius: 50%;
 												opacity: 0.8;
 										}
@@ -335,7 +335,7 @@ export class CalendarManager extends HTMLElement {
 												padding: 1rem;
 												background: var(--surface-card, rgba(255, 255, 255, 0.04));
 												border-radius: 14px;
-												border-left: 3px solid var(--accent-color, #14B8A6);
+												border-left: 3px solid var(--accent-color, hsla(173, 80%, 40%, 1));
 												transition: transform var(--duration-fast, 0.2s);
 										}
 										.event-card.birthday { border-left-color: var(--color-birthday, #F472B6); background: rgba(var(--color-birthday-rgb, 244, 114, 182), 0.05); }
@@ -348,7 +348,7 @@ export class CalendarManager extends HTMLElement {
 .delete-event-btn {
 												background: rgba(var(--color-danger-rgb, 239, 68, 68), 0.1);
 												border: 1px solid rgba(var(--color-danger-rgb, 239, 68, 68), 0.25);
-												color: var(--color-danger, #f87171);
+												color: var(--color-danger, hsla(0, 91%, 71%, 1));
 												cursor: pointer;
 												padding: 0.18rem 0.5rem;
 												border-radius: var(--radius-xs, 0.35rem);
@@ -379,21 +379,21 @@ export class CalendarManager extends HTMLElement {
 												font-size: 0.85rem;
 												outline: none;
 										}
-											input:focus { border-color: var(--accent-color, #14B8A6); background: rgba(255, 255, 255, 0.08); }
-					input:focus-visible { outline: 2px solid var(--accent-color, #14B8A6); outline-offset: 2px; }
-					button.submit:focus-visible { outline: 2px solid var(--accent-color, #14B8A6); outline-offset: 2px; }
-					.nav-btn:focus-visible, .close-btn:focus-visible { outline: 2px solid var(--accent-color, #14B8A6); outline-offset: 2px; border-radius: 8px; }
-					.day-cell:focus-visible { outline: 2px solid var(--accent-color, #14B8A6); outline-offset: 2px; }
-					.delete-event-btn:focus-visible { outline: 2px solid var(--color-danger, #f87171); outline-offset: 2px; }
+											input:focus { border-color: var(--accent-color, hsla(173, 80%, 40%, 1)); background: rgba(255, 255, 255, 0.08); }
+					input:focus-visible { outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); outline-offset: 2px; }
+					button.submit:focus-visible { outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); outline-offset: 2px; }
+					.nav-btn:focus-visible, .close-btn:focus-visible { outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); outline-offset: 2px; border-radius: 8px; }
+					.day-cell:focus-visible { outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); outline-offset: 2px; }
+					.delete-event-btn:focus-visible { outline: 2px solid var(--color-danger, hsla(0, 91%, 71%, 1)); outline-offset: 2px; }
 					/* Additional reduced-motion overrides beyond shared module */
 					@media (prefers-reduced-motion: reduce) {
 						*, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 					}
 										
 											button.submit {
-													background: var(--accent-color, #14B8A6);
-													color: #0a0f1e;
-													border: 1px solid var(--accent-color, #14B8A6);
+													background: var(--accent-color, hsla(173, 80%, 40%, 1));
+													color: hsla(225, 50%, 8%, 1);
+													border: 1px solid var(--accent-color, hsla(173, 80%, 40%, 1));
 													padding: 0.6rem;
 													border-radius: var(--radius-sm, 0.5rem);
 													font-weight: 700;
@@ -402,7 +402,7 @@ export class CalendarManager extends HTMLElement {
 													width: 100%;
 													transition: background var(--duration-fast, 0.2s), border-color var(--duration-fast, 0.2s);
 											}
-											button.submit:hover { background: color-mix(in srgb, var(--accent-color, #14B8A6) 85%, black); border-color: color-mix(in srgb, var(--accent-color, #14B8A6) 85%, black); color: #0a0f1e; }
+											button.submit:hover { background: color-mix(in srgb, var(--accent-color, hsla(173, 80%, 40%, 1)) 85%, black); border-color: color-mix(in srgb, var(--accent-color, hsla(173, 80%, 40%, 1)) 85%, black); color: hsla(225, 50%, 8%, 1); }
 								</style>
 								
 <div class="modal" role="dialog" aria-modal="true" aria-labelledby="cal-modal-title">

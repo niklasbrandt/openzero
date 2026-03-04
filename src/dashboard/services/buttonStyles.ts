@@ -26,7 +26,7 @@ export const BUTTON_STYLES = `
 		font-weight: 600;
 		font-family: inherit;
 		background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.1);
-		color: var(--accent-color, #14B8A6);
+		color: var(--accent-color, hsla(173, 80%, 40%, 1));
 		cursor: pointer;
 		transition: background var(--duration-base, 0.3s), border-color var(--duration-base, 0.3s), color var(--duration-base, 0.3s), transform var(--duration-instant, 0.1s);
 		letter-spacing: 0.02em;
@@ -37,19 +37,19 @@ export const BUTTON_STYLES = `
 	}
 	button:active { transform: scale(0.97); }
 	button:disabled { opacity: 0.45; cursor: not-allowed; pointer-events: none; }
-	button:focus-visible { outline: 2px solid var(--accent-color, #14B8A6); outline-offset: 2px; }
+	button:focus-visible { outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); outline-offset: 2px; }
 
 	/* Primary / filled — save, submit, add-confirm */
 	.btn-primary, .save-btn {
-		background: var(--accent-color, #14B8A6);
-		color: var(--bg-body, #0a0f1e);
-		border-color: var(--accent-color, #14B8A6);
+		background: var(--accent-color, hsla(173, 80%, 40%, 1));
+		color: var(--bg-body, hsla(225, 50%, 8%, 1));
+		border-color: var(--accent-color, hsla(173, 80%, 40%, 1));
 		font-weight: 700;
 	}
 	.btn-primary:hover, .save-btn:hover {
-		background: color-mix(in srgb, var(--accent-color, #14B8A6) 85%, #000);
-		border-color: color-mix(in srgb, var(--accent-color, #14B8A6) 85%, #000);
-		color: var(--bg-body, #0a0f1e);
+		background: color-mix(in srgb, var(--accent-color, hsla(173, 80%, 40%, 1)) 85%, #000);
+		border-color: color-mix(in srgb, var(--accent-color, hsla(173, 80%, 40%, 1)) 85%, #000);
+		color: var(--bg-body, hsla(225, 50%, 8%, 1));
 	}
 
 	/* Ghost / cancel — transparent, muted white */
@@ -67,14 +67,14 @@ export const BUTTON_STYLES = `
 	/* Danger / destructive */
 	.delete-btn, .btn-danger {
 		background: rgba(var(--color-danger-rgb, 239, 68, 68), 0.1);
-		color: var(--color-danger-light, #f87171);
+		color: var(--color-danger-light, hsla(0, 91%, 71%, 1));
 		border-color: rgba(var(--color-danger-rgb, 239, 68, 68), 0.25);
 	}
 	.delete-btn:hover, .btn-danger:hover {
 		background: rgba(var(--color-danger-rgb, 239, 68, 68), 0.2);
 		border-color: rgba(var(--color-danger-rgb, 239, 68, 68), 0.5);
 	}
-	.delete-btn:focus-visible, .btn-danger:focus-visible { outline-color: var(--color-danger-light, #f87171); }
+	.delete-btn:focus-visible, .btn-danger:focus-visible { outline-color: var(--color-danger-light, hsla(0, 91%, 71%, 1)); }
 
 	/* Compact size modifier */
 	.btn-sm {

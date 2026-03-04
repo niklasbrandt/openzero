@@ -103,7 +103,7 @@ export class ProjectTree extends HTMLElement {
 					${SECTION_HEADER_STYLES}
 					/* Override icon gradient for boards */
 					h2 .h-icon {
-						background: linear-gradient(135deg, var(--accent-color, #14B8A6) 0%, #0066FF 100%);
+						background: linear-gradient(135deg, var(--accent-color, hsla(173, 80%, 40%, 1)) 0%, hsla(216, 100%, 50%, 1) 100%);
 					}
 					:host { display: block; }
 					.header {
@@ -115,7 +115,7 @@ export class ProjectTree extends HTMLElement {
 					
 					#new-project-btn {
 						background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.12);
-						color: var(--accent-color, #14B8A6);
+						color: var(--accent-color, hsla(173, 80%, 40%, 1));
 						border: 1px solid rgba(var(--accent-color-rgb, 20, 184, 166), 0.2);
 						padding: 0.4rem 1rem;
 						border-radius: var(--radius-md, 0.6rem);
@@ -137,7 +137,7 @@ export class ProjectTree extends HTMLElement {
 						font-family: var(--font-mono, 'Fira Code', monospace);
 						font-size: 0.95rem;
 						line-height: 1.6;
-						color: var(--accent-color, #14B8A6);
+						color: var(--accent-color, hsla(173, 80%, 40%, 1));
 						border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.05));
 						overflow-x: auto;
 						margin: 0;
@@ -146,18 +146,18 @@ export class ProjectTree extends HTMLElement {
 						transition: color var(--duration-fast, 0.2s) ease, text-shadow var(--duration-fast, 0.2s) ease;
 					}
 					pre a:hover {
-						color: #0066FF !important;
+						color: hsla(216, 100%, 50%, 1) !important;
 						text-shadow: 0 0 8px rgba(0, 102, 255, 0.4);
 					}
 					#new-project-btn:focus-visible, pre a:focus-visible { 
-						outline: 2px solid var(--accent-color, #14B8A6); 
+						outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); 
 						outline-offset: 2px; 
 					}
 				</style>
 				<div class="card">
 					<div class="header">
 						<h2>
-							<span class="h-icon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>
+							<span class="h-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>
 							${this.tr('boards_heading', 'Boards')}
 						</h2>
 						<button id="new-project-btn" aria-expanded="false" aria-label="${this.tr('aria_add_project', 'Add a new project board')}">${this.tr('new_board', '+ New Board')}</button>

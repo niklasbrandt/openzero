@@ -261,7 +261,7 @@ stored_at: i.stored_at ?? null,
 				${SCROLLBAR_STYLES}
 				:host { display: block; }
 				h2 .h-icon {
-					background: linear-gradient(135deg, #8b5cf6 0%, var(--accent-color, #14B8A6) 100%);
+					background: linear-gradient(135deg, hsla(258, 90%, 66%, 1) 0%, var(--accent-color, hsla(173, 80%, 40%, 1)) 100%);
 				}
 				.tabs {
 					display: flex;
@@ -291,7 +291,7 @@ stored_at: i.stored_at ?? null,
 					color: #fff;
 				}
 				.tab-btn:focus-visible {
-					outline: 2px solid var(--accent-color, #14B8A6);
+					outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1));
 					outline-offset: 2px;
 				}
 				.tab-btn:hover:not(.active) {
@@ -332,7 +332,7 @@ stored_at: i.stored_at ?? null,
 					background: rgba(0,0,0,0.28);
 				}
 				input[type="search"]:focus-visible {
-					outline: 2px solid var(--accent-color, #14B8A6);
+					outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1));
 					outline-offset: 2px;
 				}
 				.results-list {
@@ -388,7 +388,7 @@ stored_at: i.stored_at ?? null,
 					font-size: 0.65rem;
 					font-weight: 700;
 					background: rgba(var(--accent-color-rgb, 20,184,166), 0.15);
-					color: var(--accent-color, #5eead4);
+					color: var(--accent-color, hsla(171, 77%, 64%, 1));
 					padding: 0.1rem 0.4rem;
 					border-radius: var(--radius-xs, 0.3rem);
 					letter-spacing: 0.03em;
@@ -421,7 +421,7 @@ stored_at: i.stored_at ?? null,
 					background: rgba(var(--color-danger-rgb, 239,68,68), 0.08);
 				}
 				.delete-btn.pending {
-					color: var(--color-danger, #f87171);
+					color: var(--color-danger, hsla(0, 91%, 71%, 1));
 					border-color: rgba(var(--color-danger-rgb, 239,68,68), 0.6);
 					background: rgba(var(--color-danger-rgb, 239,68,68), 0.12);
 					padding: 0.3rem 0.65rem;
@@ -429,7 +429,7 @@ stored_at: i.stored_at ?? null,
 					animation: pulse-warn 0.6s ease infinite alternate;
 				}
 				.delete-btn:focus-visible {
-					outline: 2px solid var(--accent-color, #14B8A6);
+					outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1));
 					outline-offset: 2px;
 				}
 				@keyframes pulse-warn {
@@ -468,7 +468,7 @@ stored_at: i.stored_at ?? null,
 					color: #fff;
 				}
 				.load-more-btn:focus-visible {
-					outline: 2px solid var(--accent-color, #14B8A6);
+					outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1));
 					outline-offset: 2px;
 				}
 				.hint {
@@ -492,7 +492,7 @@ stored_at: i.stored_at ?? null,
 			<div class="card">
 				<h2>
 					<span class="h-icon" aria-hidden="true">
-						<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"
+						<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"
 							stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
 							<ellipse cx="12" cy="5" rx="9" ry="3"/>
 							<path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>

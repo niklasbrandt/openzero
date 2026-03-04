@@ -104,7 +104,7 @@ export class BriefingHistory extends HTMLElement {
 					${SECTION_HEADER_STYLES}
 					/* Override icon gradient */
 					h2 .h-icon {
-						background: linear-gradient(135deg, var(--accent-color, #14B8A6) 0%, #0066FF 100%);
+						background: linear-gradient(135deg, var(--accent-color, hsla(173, 80%, 40%, 1)) 0%, hsla(216, 100%, 50%, 1) 100%);
 					}
 					:host { display: block; }
 					.card {
@@ -141,14 +141,14 @@ export class BriefingHistory extends HTMLElement {
 						color: inherit;
 					}
 					.meta:focus-visible {
-						outline: 2px solid var(--accent-color, #14B8A6);
+						outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1));
 						outline-offset: 2px;
 						border-radius: 4px;
 						background: rgba(255, 255, 255, 0.05);
 					}
 					.type { 
 						background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.1); 
-						color: var(--accent-color, #14B8A6); 
+						color: var(--accent-color, hsla(173, 80%, 40%, 1)); 
 						font-size: 0.65rem; 
 						padding: 0.2rem 0.6rem; 
 						border-radius: var(--radius-pill, 20px); 
@@ -169,7 +169,7 @@ export class BriefingHistory extends HTMLElement {
 					}
 					.briefing-item.active .chevron { 
 						transform: rotate(180deg); 
-						color: var(--accent-color, #14B8A6);
+						color: var(--accent-color, hsla(173, 80%, 40%, 1));
 					}
 					
 					.content-wrapper {
@@ -210,15 +210,15 @@ export class BriefingHistory extends HTMLElement {
 					}
 					.load-more:hover {
 						background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.05);
-						color: var(--accent-color, #14B8A6);
+						color: var(--accent-color, hsla(173, 80%, 40%, 1));
 						border-color: rgba(var(--accent-color-rgb, 20, 184, 166), 0.3);
 					}
-					.load-more:focus-visible { outline: 2px solid var(--accent-color, #14B8A6); outline-offset: 2px; }
+					.load-more:focus-visible { outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); outline-offset: 2px; }
 				</style>
 				<div class="card">
 					<h2>
 			<span class="h-icon" aria-hidden="true">
-						<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+						<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
 								<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
 								<polyline points="14 2 14 8 20 8"></polyline>
 								<line x1="16" y1="13" x2="8" y2="13"></line>

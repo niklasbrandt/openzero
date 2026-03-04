@@ -159,10 +159,10 @@ export class EmailRules extends HTMLElement {
 					.info { display: flex; flex-direction: column; gap: 4px; }
 					.pattern { color: #fff; font-weight: 500; font-size: 0.9rem; }
 					${BUTTON_STYLES}
-					.action-tag { font-size: 0.75rem; color: var(--accent-color, #14B8A6); opacity: 0.9; font-weight: 500; }
+					.action-tag { font-size: 0.75rem; color: var(--accent-color, hsla(173, 80%, 40%, 1)); opacity: 0.9; font-weight: 500; }
 					.label-badge { 
 						background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.15); 
-						color: var(--accent-color, #14B8A6); 
+						color: var(--accent-color, hsla(173, 80%, 40%, 1)); 
 						font-size: 0.65rem; 
 						padding: 2px 6px; 
 						border-radius: 4px; 
@@ -176,9 +176,9 @@ export class EmailRules extends HTMLElement {
 					.item-actions { display: flex; align-items: center; }
 
 					.edit-btn:focus-visible, .delete-btn:focus-visible { outline: 2px solid rgba(255,255,255,0.4); outline-offset: 2px; }
-					input:focus-visible, select:focus-visible { outline: 2px solid var(--accent-color, #14B8A6); outline-offset: 2px; }
+					input:focus-visible, select:focus-visible { outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); outline-offset: 2px; }
 					.required {
-						color: var(--color-danger, #f87171);
+						color: var(--color-danger, hsla(0, 91%, 71%, 1));
 					}
 					.form-label {
 						display: block;
@@ -195,7 +195,7 @@ export class EmailRules extends HTMLElement {
 					<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
 						<h2>
 							<span class="h-icon" aria-hidden="true">
-								<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+								<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
 									<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
 									<polyline points="22,6 12,13 2,6"></polyline>
 								</svg>
