@@ -29,7 +29,7 @@ Categories covered:
 	20. Security Invariants
 
 Run with:
-	cd /path/to/openzero && python -m pytest tests/test_prompt_injection.py -v --tb=short
+	cd /path/to/openzero && python -m pytest tests/test_security_prompt_injection.py -v --tb=short
 """
 
 import pytest

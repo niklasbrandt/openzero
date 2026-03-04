@@ -1,6 +1,6 @@
 # Prompt Injection Test Suite -- Results & Design
 
-This document captures the design, categories, and results of the openZero prompt injection risk test suite (`tests/test_prompt_injection.py`).
+This document captures the design, categories, and results of the openZero prompt injection risk test suite (`tests/test_security_prompt_injection.py`).
 
 ## Purpose
 
@@ -114,18 +114,18 @@ No infrastructure required -- the suite runs entirely offline against the prompt
 
 ```bash
 cd /path/to/openzero
-python -m pytest tests/test_prompt_injection.py -v --tb=short
+python -m pytest tests/test_security_prompt_injection.py -v --tb=short
 ```
 
 Add `-k <pattern>` to run a specific category:
 
 ```bash
 # Run only memory poisoning tests
-python -m pytest tests/test_prompt_injection.py -v -k "MemoryPoisoning"
+python -m pytest tests/test_security_prompt_injection.py -v -k "MemoryPoisoning"
 
 # Run only Telegram-specific tests
-python -m pytest tests/test_prompt_injection.py -v -k "TelegramSpecific"
+python -m pytest tests/test_security_prompt_injection.py -v -k "TelegramSpecific"
 
 # Run only security invariants
-python -m pytest tests/test_prompt_injection.py -v -k "SecurityInvariants"
+python -m pytest tests/test_security_prompt_injection.py -v -k "SecurityInvariants"
 ```
