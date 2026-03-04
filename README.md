@@ -30,11 +30,11 @@ To support vanity domains like `http://open.zero`, the system uses an internal *
 
 A 3-tier **llama.cpp** architecture runs optimized GGUF models directly on your CPU:
 
-| Tier | Model | Purpose | Typical Speed |
-| :--- | :---- | :------ | :------------ |
-| **Instant** | phi-4-mini (Q4_K_M) | Fast confirmations, email summaries, nudges | 5-12 tok/s |
-| **Standard** | Llama 3.1 8B (Q4_K_M) | Conversational AI, task planning, agent actions | 2-5 tok/s |
-| **Deep** | Qwen 2.5 14B (Q4_K_M) | Strategic reviews, complex reasoning, quarterly plans | 1-3 tok/s |
+| Tier         | Model                 | Purpose                                               | Typical Speed |
+| :----------- | :-------------------- | :---------------------------------------------------- | :------------ |
+| **Instant**  | phi-4-mini (Q4_K_M)   | Fast confirmations, email summaries, nudges           | 5-12 tok/s    |
+| **Standard** | Llama 3.1 8B (Q4_K_M) | Conversational AI, task planning, agent actions       | 2-5 tok/s     |
+| **Deep**     | Qwen 2.5 14B (Q4_K_M) | Strategic reviews, complex reasoning, quarterly plans | 1-3 tok/s     |
 
 The system is specifically tuned for **CPU-only environments** with SIMD-aware quantization. On startup, it auto-detects AVX2/AVX-512 instruction sets and configures thread counts per tier. A built-in **hardware benchmark widget** in the dashboard measures real tokens/second on your exact hardware, with per-tier testing and SIMD capability badges.
 
@@ -125,20 +125,20 @@ The stack is optimized for single-server CPU-only deployment with full privacy:
 
 ## Tech Stack
 
-| Component | Technology | Purpose |
-| :--- | :--- | :--- |
-| **Core OS** | ![Ubuntu](https://img.shields.io/badge/Ubuntu-E9433F?style=flat&logo=ubuntu&logoColor=white) ![Python](https://img.shields.io/badge/Python-3776AB?style=flat&logo=python&logoColor=white) ![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white) | Containerized foundation on Linux with Python backend. |
-| **Intelligence** | ![llama.cpp](https://img.shields.io/badge/llama.cpp-black?style=flat) | 3-tier local LLM (instant/standard/deep) via llama-server with streaming. CPU-only, SIMD-optimized. |
-| **Dashboard** | ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white) ![Vite](https://img.shields.io/badge/Vite-646CFF?style=flat&logo=vite&logoColor=white) | Native Web Components (Shadow DOM) with hot-reload development. |
-| **Mobile** | ![Telegram](https://img.shields.io/badge/Telegram-2CA5E0?style=flat&logo=telegram&logoColor=white) | Primary mobile interface via long-polling bot with inline keyboards. |
-| **Storage** | ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=flat&logo=postgresql&logoColor=white) ![Qdrant](https://img.shields.io/badge/Qdrant-red?style=flat) | Relational data paired with high-dimensional semantic vector memory. |
-| **Execution** | ![Redis](https://img.shields.io/badge/Redis-DC382D?style=flat&logo=redis&logoColor=white) ![Celery](https://img.shields.io/badge/Celery-37814A?style=flat&logo=celery&logoColor=white) | Asynchronous task delegation and high-speed message brokering. |
-| **Scheduling** | ![APScheduler](https://img.shields.io/badge/APScheduler-green?style=flat) | Timezone-aware cron/interval job scheduler with DST handling. |
-| **Networking** | ![Traefik](https://img.shields.io/badge/Traefik-2496ED?style=flat&logo=traefik&logoColor=white) ![Tailscale](https://img.shields.io/badge/Tailscale-4A23B6?style=flat&logo=tailscale&logoColor=white) | Zero Trust perimeter with automated internal routing. |
-| **DNS** | ![Pi-hole](https://img.shields.io/badge/Pi--hole-96060C?style=flat&logo=pi-hole&logoColor=white) | DNS sinkhole blocking container telemetry and enabling vanity domains. |
-| **Tasking** | ![Planka](https://img.shields.io/badge/Planka-blue?style=flat) | Self-hosted Kanban engine accessible as a mobile PWA. |
-| **Voice** | ![Whisper](https://img.shields.io/badge/Whisper-black?style=flat) ![TTS](https://img.shields.io/badge/Coqui_TTS-green?style=flat) | Local speech-to-text and high-quality audio generation. |
-| **Weather** | ![Open-Meteo](https://img.shields.io/badge/Open--Meteo-blue?style=flat) | Hourly forecasts with travel-aware location detection. No API key needed. |
+| Component        | Technology                                                                                                                                                                                                                                                                             | Purpose                                                                                             |
+| :--------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------- |
+| **Core OS**      | ![Ubuntu](https://img.shields.io/badge/Ubuntu-E9433F?style=flat&logo=ubuntu&logoColor=white) ![Python](https://img.shields.io/badge/Python-3776AB?style=flat&logo=python&logoColor=white) ![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white) | Containerized foundation on Linux with Python backend.                                              |
+| **Intelligence** | ![llama.cpp](https://img.shields.io/badge/llama.cpp-black?style=flat)                                                                                                                                                                                                                  | 3-tier local LLM (instant/standard/deep) via llama-server with streaming. CPU-only, SIMD-optimized. |
+| **Dashboard**    | ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white) ![Vite](https://img.shields.io/badge/Vite-646CFF?style=flat&logo=vite&logoColor=white)                                                                                        | Native Web Components (Shadow DOM) with hot-reload development.                                     |
+| **Mobile**       | ![Telegram](https://img.shields.io/badge/Telegram-2CA5E0?style=flat&logo=telegram&logoColor=white)                                                                                                                                                                                     | Primary mobile interface via long-polling bot with inline keyboards.                                |
+| **Storage**      | ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=flat&logo=postgresql&logoColor=white) ![Qdrant](https://img.shields.io/badge/Qdrant-red?style=flat)                                                                                                                 | Relational data paired with high-dimensional semantic vector memory.                                |
+| **Execution**    | ![Redis](https://img.shields.io/badge/Redis-DC382D?style=flat&logo=redis&logoColor=white) ![Celery](https://img.shields.io/badge/Celery-37814A?style=flat&logo=celery&logoColor=white)                                                                                                 | Asynchronous task delegation and high-speed message brokering.                                      |
+| **Scheduling**   | ![APScheduler](https://img.shields.io/badge/APScheduler-green?style=flat)                                                                                                                                                                                                              | Timezone-aware cron/interval job scheduler with DST handling.                                       |
+| **Networking**   | ![Traefik](https://img.shields.io/badge/Traefik-2496ED?style=flat&logo=traefik&logoColor=white) ![Tailscale](https://img.shields.io/badge/Tailscale-4A23B6?style=flat&logo=tailscale&logoColor=white)                                                                                  | Zero Trust perimeter with automated internal routing.                                               |
+| **DNS**          | ![Pi-hole](https://img.shields.io/badge/Pi--hole-96060C?style=flat&logo=pi-hole&logoColor=white)                                                                                                                                                                                       | DNS sinkhole blocking container telemetry and enabling vanity domains.                              |
+| **Tasking**      | ![Planka](https://img.shields.io/badge/Planka-blue?style=flat)                                                                                                                                                                                                                         | Self-hosted Kanban engine accessible as a mobile PWA.                                               |
+| **Voice**        | ![Whisper](https://img.shields.io/badge/Whisper-black?style=flat) ![TTS](https://img.shields.io/badge/Coqui_TTS-green?style=flat)                                                                                                                                                      | Local speech-to-text and high-quality audio generation.                                             |
+| **Weather**      | ![Open-Meteo](https://img.shields.io/badge/Open--Meteo-blue?style=flat)                                                                                                                                                                                                                | Hourly forecasts with travel-aware location detection. No API key needed.                           |
 
 ```
 ┌──────────────────────────────────────────────────┐
@@ -193,25 +193,25 @@ The stack is optimized for single-server CPU-only deployment with full privacy:
 
 All commands are available via the Telegram bot and the dashboard chat interface.
 
-| Command | Description |
-| :--- | :--- |
-| `/help` | Display the full overview of operator controls. |
-| `/start` | System status check and heartbeat. |
-| `/day` | Trigger the morning briefing (calendar, weather, emails, projects, calibration, voice note). |
-| `/week` | Weekly strategic review with stagnation detection for dormant projects. |
-| `/month` | 30-day mission review with initiative tracking. |
-| `/quarter` | 90-day strategic review and roadmap planning. |
-| `/year` | Yearly goal setting based on project themes and trajectory analysis. |
-| `/custom` | Create a persistent scheduled task with cron or interval syntax (e.g., every Monday at 10am). Survives restarts. |
-| `/tree` | Full life hierarchy: projects, boards, lists, and social circles. |
-| `/think` | Deep reasoning using the 14B model with human-in-the-loop approval. |
-| `/search` | Semantic search of the knowledge vault -- finds by meaning, not keywords. |
-| `/memories` | List all core knowledge currently in permanent memory. |
-| `/unlearn` | Refine Z's memory by evolving or removing specific points in the vault. |
-| `/add` | Commit specific facts to Z's permanent knowledge vault (bypasses the noise filter). |
-| `/remind` | Set a temporary recurring reminder with interval and expiry (e.g., every 30 min for 4h). |
-| `/protocols` | Inspect Z's Semantic Action Tags and available agentic tools. |
-| `/purge` | Permanently delete all semantic memories from the vault (Qdrant). Does **not** affect task boards, people, or briefing history. Requires explicit confirmation. |
+| Command      | Description                                                                                                                                                     |
+| :----------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/help`      | Display the full overview of operator controls.                                                                                                                 |
+| `/start`     | System status check and heartbeat.                                                                                                                              |
+| `/day`       | Trigger the morning briefing (calendar, weather, emails, projects, calibration, voice note).                                                                    |
+| `/week`      | Weekly strategic review with stagnation detection for dormant projects.                                                                                         |
+| `/month`     | 30-day mission review with initiative tracking.                                                                                                                 |
+| `/quarter`   | 90-day strategic review and roadmap planning.                                                                                                                   |
+| `/year`      | Yearly goal setting based on project themes and trajectory analysis.                                                                                            |
+| `/custom`    | Create a persistent scheduled task with cron or interval syntax (e.g., every Monday at 10am). Survives restarts.                                                |
+| `/tree`      | Full life hierarchy: projects, boards, lists, and social circles.                                                                                               |
+| `/think`     | Deep reasoning using the 14B model with human-in-the-loop approval.                                                                                             |
+| `/search`    | Semantic search of the knowledge vault -- finds by meaning, not keywords.                                                                                       |
+| `/memories`  | List all core knowledge currently in permanent memory.                                                                                                          |
+| `/unlearn`   | Refine Z's memory by evolving or removing specific points in the vault.                                                                                         |
+| `/add`       | Commit specific facts to Z's permanent knowledge vault (bypasses the noise filter).                                                                             |
+| `/remind`    | Set a temporary recurring reminder with interval and expiry (e.g., every 30 min for 4h).                                                                        |
+| `/protocols` | Inspect Z's Semantic Action Tags and available agentic tools.                                                                                                   |
+| `/purge`     | Permanently delete all semantic memories from the vault (Qdrant). Does **not** affect task boards, people, or briefing history. Requires explicit confirmation. |
 
 ## Memory and Intelligence Principles
 
@@ -235,9 +235,10 @@ The system runs an **automated backup** every night at 4 AM. Environment variabl
 
 ### Continuous Testing
 
-The platform includes a live protocol regression suite (`scripts/test_live_vps_protocols.py`) that executes automatically at the end of every `sync.sh` deployment. 
+The platform includes a live protocol regression suite (`scripts/test_live_vps_protocols.py`) that executes automatically at the end of every `sync.sh` deployment.
 
 Because openZero relies heavily on AI behavior, traditional unit tests are insufficient. The integrated suite tests the end-to-end capabilities of the live environment by:
+
 - Verifying the `System Health API` (including OS RAM and CPU metrics).
 - Testing Qdrant memory persistence through semantic extraction and retrieval.
 - Injecting full Semantic Action Tags to ensure the LLM parser correctly interacts with Planka (projects, boards, lists, tasks) and the OS database (calendar events, people).
@@ -275,10 +276,10 @@ Typical throughput on a 4-core EPYC VPS: 5-12 tok/s (instant tier), 2-5 tok/s (s
 openZero keeps your schedule private. To sync with your existing self-hosted calendar:
 
 1. **Find your URL:**
-	- **Nextcloud:** Open Calendar, Settings icon, "Copy primary CalDAV address".
-	- **iCloud:** Use your full iCloud email and an App-Specific Password.
-	- **Baikal / Radicale:** Copy the specific calendar collection link (ending in `.php/dav/...`).
-	- **Fastmail:** Use Settings, Calendars, CalDAV connection details.
+    - **Nextcloud:** Open Calendar, Settings icon, "Copy primary CalDAV address".
+    - **iCloud:** Use your full iCloud email and an App-Specific Password.
+    - **Baikal / Radicale:** Copy the specific calendar collection link (ending in `.php/dav/...`).
+    - **Fastmail:** Use Settings, Calendars, CalDAV connection details.
 2. **Edit your `.env`:** Fill in `CALDAV_URL`, `CALDAV_USERNAME`, and `CALDAV_PASSWORD`.
 3. **Sync:** The system automatically fetches events every few minutes and syncs new entries created through Z.
 
