@@ -36,11 +36,14 @@ export class SystemBenchmark extends HTMLElement {
 	async runBenchmark(tier: string) {
 		if (this.isRunning) return;
 		this.isRunning = true;
+		this.toggleButtons(true);
 		const btn = this.shadowRoot?.querySelector(`#bench-${tier}`) as HTMLButtonElement;
 		if (btn) {
 			btn.classList.add('running');
-			btn.textContent = 'Running\u2026';			btn.setAttribute('aria-busy', 'true');
-			btn.setAttribute('aria-label', `${this.tr('aria_benchmarking_tier', 'Benchmarking')} ${tier} tier…`);		}
+			btn.textContent = 'Running\u2026';
+			btn.setAttribute('aria-busy', 'true');
+			btn.setAttribute('aria-label', `${this.tr('aria_benchmarking_tier', 'Benchmarking')} ${tier} tier…`);
+		}
 
 		try {
 			const res = await fetch(`/api/dashboard/benchmark/llm?tier=${tier}`, { method: 'POST' });
@@ -53,6 +56,7 @@ export class SystemBenchmark extends HTMLElement {
 			console.error('Benchmark failed:', e);
 		} finally {
 			this.isRunning = false;
+			this.toggleButtons(false);
 			if (btn) {
 				btn.classList.remove('running');
 				btn.textContent = this.tr(`bench_${tier}`, `Bench ${tier}`);
@@ -68,6 +72,11 @@ export class SystemBenchmark extends HTMLElement {
 		for (const tier of tiers) {
 			await this.runBenchmark(tier);
 		}
+	}
+
+	private toggleButtons(disabled: boolean) {
+		const btns = this.shadowRoot?.querySelectorAll('.bench-btn');
+		btns?.forEach(b => (b as HTMLButtonElement).disabled = disabled);
 	}
 
 	private getRating(tps: number, tier: string): { cls: string; icon: string; label: string; hint: string } {
@@ -130,8 +139,8 @@ export class SystemBenchmark extends HTMLElement {
 			const exp = SystemBenchmark.EXPECTATIONS[r.tier] || SystemBenchmark.EXPECTATIONS['standard'];
 
 			// Thread utilization warning
-const warningHtml = r.thread_warning
-					? `<div class="thread-warning" tabindex="0" role="alert">
+			const warningHtml = r.thread_warning
+				? `<div class="thread-warning" tabindex="0" role="alert">
 							<span class="warning-icon" aria-hidden="true">&#9888;&#65039;</span>
 						<span class="warning-text">${r.thread_warning}</span>
 					</div>`
