@@ -102,6 +102,7 @@ class GlobalMessage(Base):
     channel = Column(String) # "telegram", "dashboard"
     role = Column(String)    # "user", "z"
     content = Column(Text, nullable=False)
+    model = Column(String, nullable=True)  # LLM tier + model used for Z responses
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
 class LocalEvent(Base):
@@ -150,9 +151,9 @@ async def get_pending_thought(thought_id: str):
             return {"query": thought.query, "context_data": thought.context_data}
         return None
 
-async def save_global_message(channel: str, role: str, content: str):
+async def save_global_message(channel: str, role: str, content: str, model: str = None):
     async with AsyncSessionLocal() as session:
-        msg = GlobalMessage(channel=channel, role=role, content=content)
+        msg = GlobalMessage(channel=channel, role=role, content=content, model=model)
         session.add(msg)
         await session.commit()
 
@@ -163,4 +164,4 @@ async def get_global_history(limit: int = 15):
         )
         messages = result.scalars().all()
         # Return in chronological order for the LLM
-        return [{"role": m.role, "content": m.content, "channel": m.channel, "at": m.created_at.isoformat()} for m in reversed(messages)]
+        return [{"role": m.role, "content": m.content, "channel": m.channel, "model": m.model, "at": m.created_at.isoformat()} for m in reversed(messages)]

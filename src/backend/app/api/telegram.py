@@ -331,7 +331,8 @@ async def _recover_unanswered_messages():
 		async with AsyncSessionLocal() as db:
 			clean_reply, _ = await parse_and_execute_actions(response, db=db)
 
-		await save_global_message("telegram", "z", clean_reply)
+		from app.services.llm import last_model_used
+		await save_global_message("telegram", "z", clean_reply, model=last_model_used.get())
 
 		clean_reply = strip_llm_time_header(clean_reply)
 		html_reply = _md_to_html(clean_reply)
@@ -900,7 +901,8 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 		clean_reply, _ = await parse_and_execute_actions(response, db=db)
 
 	# Save Z's reply to global history
-	await save_global_message("telegram", "z", clean_reply)
+	from app.services.llm import last_model_used
+	await save_global_message("telegram", "z", clean_reply, model=last_model_used.get())
 
 	# Background memory extraction -- learn from user message without blocking reply
 	import asyncio
