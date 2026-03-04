@@ -7,9 +7,10 @@ interface ChatMessage {
 
 export class ChatPrompt extends HTMLElement {
 	private messages: ChatMessage[] = [];
-	private isLoading = false;
+	private pendingRequests = 0;
 	private pendingRetry: string | null = null;
 	private t: Record<string, string> = {};
+	private draft = '';
 
 	constructor() {
 		super();
@@ -17,12 +18,12 @@ export class ChatPrompt extends HTMLElement {
 	}
 
 	connectedCallback() {
+		this.draft = localStorage.getItem('z_chat_draft') || '';
 		this.render();
 		this.loadTranslations().then(() => {
 			this.render();
 			this.loadHistory();
 		});
-		this.setupListeners();
 		window.addEventListener('identity-updated', () => {
 			this.loadTranslations().then(() => this.render());
 		});
@@ -41,18 +42,22 @@ export class ChatPrompt extends HTMLElement {
 
 	private async loadHistory() {
 		try {
-			const res = await fetch('/api/dashboard/chat/history?limit=30');
+			const res = await fetch('/api/dashboard/chat/history?limit=20');
 			if (!res.ok) return;
 			const data = await res.json();
 			if (!data.messages?.length) return;
+
+			// Map messages (oldest at index 0)
 			this.messages = data.messages.map((m: any) => ({
 				role: m.role === 'z' ? 'assistant' : 'user',
 				content: m.content,
 				timestamp: new Date(m.at),
 				channel: m.channel,
 			}));
-			this.renderMessages();
-			this.scrollToBottom();
+
+			// Render immediately. With flex-direction: column-reverse, 
+			// it will show at the bottom without any scrolling movement.
+			this.renderMessages(true); // pass true to skip animations for history
 		} catch (e) {
 			// Silent fail -- chat still works without history
 		}
@@ -71,6 +76,12 @@ export class ChatPrompt extends HTMLElement {
 			}
 		});
 
+		// Save draft on every keystroke
+		input?.addEventListener('input', (e) => {
+			this.draft = (e.target as HTMLTextAreaElement).value;
+			localStorage.setItem('z_chat_draft', this.draft);
+		});
+
 		// LLM Pre-Warming: Load model into RAM when user prepares to type
 		input?.addEventListener('focus', () => {
 			fetch('/api/dashboard/system').catch(() => { });
@@ -78,13 +89,13 @@ export class ChatPrompt extends HTMLElement {
 
 		// Retry failed messages when user comes back to the tab
 		document.addEventListener('visibilitychange', () => {
-			if (document.visibilityState === 'visible' && this.pendingRetry && !this.isLoading) {
+			if (document.visibilityState === 'visible' && this.pendingRetry && this.pendingRequests === 0) {
 				this.retryPending();
 			}
 		});
 
 		window.addEventListener('focus', () => {
-			if (this.pendingRetry && !this.isLoading) {
+			if (this.pendingRetry && this.pendingRequests === 0) {
 				this.retryPending();
 			}
 		});
@@ -93,10 +104,14 @@ export class ChatPrompt extends HTMLElement {
 	private async handleSend() {
 		const input = this.shadowRoot?.querySelector<HTMLTextAreaElement>('#chat-input');
 		const message = input?.value.trim();
-		if (!message || this.isLoading) return;
+		if (!message) return; // Removed isLoading check to allow concurrent messages
 
 		// Add user message
 		this.messages.push({ role: 'user', content: message, timestamp: new Date() });
+
+		// Clear local state
+		this.draft = '';
+		localStorage.removeItem('z_chat_draft');
 		if (input) {
 			input.value = '';
 		}
@@ -104,7 +119,7 @@ export class ChatPrompt extends HTMLElement {
 		this.scrollToBottom();
 
 		// Send to API
-		this.isLoading = true;
+		this.pendingRequests++;
 		this.updateSendButton();
 		this.showTypingIndicator();
 
@@ -158,7 +173,8 @@ export class ChatPrompt extends HTMLElement {
 				}));
 			}
 		} catch (e) {
-			this.hideTypingIndicator();
+			this.pendingRequests--;
+			if (this.pendingRequests <= 0) this.hideTypingIndicator();
 
 			// Store for retry on tab re-entry
 			this.pendingRetry = message;
@@ -170,8 +186,9 @@ export class ChatPrompt extends HTMLElement {
 			});
 		} finally {
 			clearTimeout(slowWarningTimer);
-			this.isLoading = false;
+			this.pendingRequests = Math.max(0, this.pendingRequests - 1);
 			this.updateSendButton();
+			if (this.pendingRequests <= 0) this.hideTypingIndicator();
 			this.renderMessages();
 			this.scrollToBottom();
 			input?.focus();
@@ -188,7 +205,7 @@ export class ChatPrompt extends HTMLElement {
 	}
 
 	private async retryPending() {
-		if (!this.pendingRetry || this.isLoading) return;
+		if (!this.pendingRetry) return;
 		const msg = this.pendingRetry;
 		this.pendingRetry = null;
 
@@ -215,13 +232,19 @@ export class ChatPrompt extends HTMLElement {
 	private scrollToBottom() {
 		requestAnimationFrame(() => {
 			const container = this.shadowRoot?.querySelector('#messages');
-			if (container) container.scrollTop = container.scrollHeight;
+			if (container) {
+				container.scrollTop = 0; // In column-reverse, 0 is bottom
+			}
 		});
 	}
 
 	private showTypingIndicator() {
 		const container = this.shadowRoot?.querySelector('#messages');
 		if (!container) return;
+
+		// Remove existing typing if somehow present
+		this.shadowRoot?.querySelector('#typing')?.remove();
+
 		const indicator = document.createElement('div');
 		indicator.id = 'typing';
 		indicator.className = 'message assistant';
@@ -235,32 +258,49 @@ export class ChatPrompt extends HTMLElement {
 				<span class="dot"></span>
 			</div>
 		`;
-		container.appendChild(indicator);
+
+		// Prepend so it's at the bottom in column-reverse
+		container.prepend(indicator);
 		this.scrollToBottom();
 	}
 
 	private hideTypingIndicator() {
-		this.shadowRoot?.querySelector('#typing')?.remove();
+		if (this.pendingRequests <= 0) {
+			this.shadowRoot?.querySelector('#typing')?.remove();
+		}
 	}
 
 	private updateSendButton() {
 		const btn = this.shadowRoot?.querySelector<HTMLButtonElement>('#send-btn');
 		if (btn) {
-			btn.disabled = this.isLoading;
-			btn.innerHTML = this.isLoading ? this.spinnerSVG() : this.sendSVG();
+			// Button remains enabled but shows spinner if any requests are pending
+			btn.innerHTML = this.pendingRequests > 0 ? this.spinnerSVG() : this.sendSVG();
 		}
 	}
 
-	private formatTime(date: Date): string {
-		return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+	private formatDateTime(date: Date): string {
+		const now = new Date();
+		const isToday = date.toDateString() === now.toDateString();
+		const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+		if (isToday) return time;
+
+		const isThisYear = date.getFullYear() === now.getFullYear();
+		const dateStr = date.toLocaleDateString([], {
+			month: 'short',
+			day: 'numeric',
+			...(isThisYear ? {} : { year: '2-digit' })
+		});
+
+		return `${dateStr}, ${time}`;
 	}
 
-	private renderMessages() {
+	private renderMessages(skipAnimation = false) {
 		const container = this.shadowRoot?.querySelector('#messages');
 		if (!container) return;
 
 		// Remove typing indicator if present
-		this.shadowRoot?.querySelector('#typing')?.remove();
+		const typing = this.shadowRoot?.querySelector('#typing');
 
 		if (this.messages.length === 0) {
 			container.innerHTML = `
@@ -284,20 +324,115 @@ export class ChatPrompt extends HTMLElement {
 			return;
 		}
 
-		container.innerHTML = this.messages.map(msg => `
-			<div class="message ${msg.role}"
+		// Reverse rendering for column-reverse. Newest (last in array) is first child (bottom).
+		container.innerHTML = [...this.messages].reverse().map((msg) => `
+			<div class="message ${msg.role} ${skipAnimation ? '' : 'animate'}"
 				role="article"
-				aria-label="${msg.role === 'user' ? 'You' : 'Z'} at ${this.formatTime(msg.timestamp)}">
+				aria-label="${msg.role === 'user' ? 'You' : 'Z'} at ${this.formatDateTime(msg.timestamp)}">
 				<div class="bubble">
 					<div class="bubble-content">${this.renderContent(msg.content)}</div>
 					<div class="bubble-footer" aria-hidden="true">
 						${msg.model ? `<span class="model-tag">${msg.model}</span>` : ''}
 						${(msg as any).channel ? `<span class="channel-tag">${(msg as any).channel}</span>` : ''}
-				<span class="time">${this.formatTime(msg.timestamp)}</span>
+				<span class="time">${this.formatDateTime(msg.timestamp)}</span>
 					</div>
 				</div>
 			</div>
 		`).join('');
+
+		// Restore typing indicator if it was there
+		if (typing) container.prepend(typing);
+
+		// Apply contrast-aware text color to every agent bubble
+		this.applyBubbleTextColor();
+	}
+
+	/**
+	 * Parse a CSS hex colour string (#rgb or #rrggbb) into {r,g,b} components.
+	 * Returns null when the input cannot be parsed.
+	 */
+	private parseHex(hex: string): { r: number; g: number; b: number } | null {
+		const clean = hex.replace(/^#/, '');
+		if (clean.length === 3) {
+			return {
+				r: parseInt(clean[0] + clean[0], 16),
+				g: parseInt(clean[1] + clean[1], 16),
+				b: parseInt(clean[2] + clean[2], 16),
+			};
+		}
+		if (clean.length === 6) {
+			return {
+				r: parseInt(clean.slice(0, 2), 16),
+				g: parseInt(clean.slice(2, 4), 16),
+				b: parseInt(clean.slice(4, 6), 16),
+			};
+		}
+		return null;
+	}
+
+	/**
+	 * WCAG 2.1 relative luminance for a sRGB colour.
+	 * https://www.w3.org/TR/WCAG21/#dfn-relative-luminance
+	 */
+	private relativeLuminance({ r, g, b }: { r: number; g: number; b: number }): number {
+		const toLinear = (c: number): number => {
+			const s = c / 255;
+			return s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+		};
+		return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
+	}
+
+	/**
+	 * WCAG contrast ratio between two relative luminance values.
+	 * Returns a value in the range [1, 21].
+	 */
+	private contrastRatio(l1: number, l2: number): number {
+		const lighter = Math.max(l1, l2);
+		const darker  = Math.min(l1, l2);
+		return (lighter + 0.05) / (darker + 0.05);
+	}
+
+	/**
+	 * Determine whether black or white text provides better contrast against
+	 * the agent bubble gradient background.
+	 *
+	 * The gradient runs from --accent-color to --accent-secondary.  We
+	 * approximate the perceptual midpoint by linearly blending the two
+	 * endpoint colours at 50 % and then comparing contrast ratios.
+	 */
+	private pickBubbleTextColor(): '#000000' | '#ffffff' {
+		const style = getComputedStyle(document.documentElement);
+		const hex1  = style.getPropertyValue('--accent-color').trim()    || '#14B8A6';
+		const hex2  = style.getPropertyValue('--accent-secondary').trim() || '#0066FF';
+
+		const c1 = this.parseHex(hex1);
+		const c2 = this.parseHex(hex2);
+
+		if (!c1 || !c2) return '#ffffff';
+
+		// Blend at gradient midpoint (t = 0.5)
+		const mid = {
+			r: Math.round((c1.r + c2.r) / 2),
+			g: Math.round((c1.g + c2.g) / 2),
+			b: Math.round((c1.b + c2.b) / 2),
+		};
+
+		const L = this.relativeLuminance(mid);
+		const contrastWhite = this.contrastRatio(1.0, L);
+		const contrastBlack = this.contrastRatio(L, 0.0);
+
+		return contrastBlack > contrastWhite ? '#000000' : '#ffffff';
+	}
+
+	/**
+	 * Apply the contrast-chosen text colour to every rendered assistant bubble.
+	 * Called automatically at the end of renderMessages().
+	 */
+	private applyBubbleTextColor(): void {
+		const color = this.pickBubbleTextColor();
+		this.shadowRoot
+			?.querySelectorAll<HTMLElement>('.message.assistant .bubble')
+			.forEach(bubble => { bubble.style.color = color; });
 	}
 
 	private renderContent(str: string): string {
@@ -359,12 +494,14 @@ export class ChatPrompt extends HTMLElement {
 				max-height: 420px;
 				overflow-y: auto;
 				display: flex;
-				flex-direction: column;
+				flex-direction: column-reverse;
 				gap: 0.75rem;
-				padding: 2rem 0.25rem 1rem 0.25rem;
-				scroll-behavior: smooth;
+				padding: 1.5rem 0.25rem;
+				scroll-behavior: auto; /* Changed to auto to prevent initial scroll movement */
 				mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 100%);
 				-webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 100%);
+				overflow-anchor: auto;
+				scroll-padding: 1rem 0;
 			}
 
 			#messages::-webkit-scrollbar { width: 4px; }
@@ -383,6 +520,7 @@ export class ChatPrompt extends HTMLElement {
 				min-height: 180px;
 				gap: 0.5rem;
 				text-align: center;
+				margin: auto; /* Ensures centering in column-reverse */
 			}
 
 			.empty-icon {
@@ -425,7 +563,15 @@ export class ChatPrompt extends HTMLElement {
 			.message {
 				display: flex;
 				max-width: 85%;
+				opacity: 0; transform: translateY(12px); /* Initial state for animation */
+			}
+
+			.message.animate {
 				animation: msgIn 0.3s ease forwards;
+			}
+
+			.message:not(.animate) {
+				opacity: 1; transform: translateY(0); /* Immediate state for history */
 			}
 
 			.message.user {
@@ -448,20 +594,24 @@ export class ChatPrompt extends HTMLElement {
 			}
 
 			.message.user .bubble {
-				background: linear-gradient(135deg, var(--accent-color), var(--accent-secondary));
+				background: linear-gradient(135deg, rgba(var(--accent-color-rgb, 20, 184, 166), 0.2), rgba(var(--accent-secondary-rgb, 0, 102, 255), 0.15));
+				backdrop-filter: blur(12px);
+				-webkit-backdrop-filter: blur(12px);
 				color: #fff;
+				border: 1px solid rgba(255, 255, 255, 0.12);
 				border-bottom-right-radius: 0.35rem;
-				box-shadow: 0 4px 16px rgba(20, 184, 166, 0.25);
+				box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 			}
 
 			.message.assistant .bubble {
-				background: rgba(10, 15, 28, 0.85);
-				backdrop-filter: blur(24px);
-				-webkit-backdrop-filter: blur(24px);
-				color: rgba(255, 255, 255, 0.95);
-				border: 1px solid rgba(255, 255, 255, 0.08);
+				background: linear-gradient(135deg, var(--accent-color), var(--accent-secondary));
+				backdrop-filter: blur(24px) saturate(1.8) brightness(1.2);
+				-webkit-backdrop-filter: blur(24px) saturate(1.8) brightness(1.2);
+				color: #fff;
+				border: 1px solid rgba(255, 255, 255, 0.2);
 				border-radius: 1.5rem;
-				box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+				border-bottom-left-radius: 0.35rem; /* Sharp corner for agent */
+				box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
 				padding: 1.25rem 1.75rem;
 			}
 
@@ -470,6 +620,13 @@ export class ChatPrompt extends HTMLElement {
 				font-size: 0.65rem;
 				color: rgba(255,255,255,0.35);
 				text-align: right;
+			}
+
+			/* Assistant bubble sub-elements inherit the contrast-chosen text colour */
+			.message.assistant .bubble .time,
+			.message.assistant .bubble .model-tag,
+			.message.assistant .bubble .channel-tag {
+				color: inherit;
 			}
 
 			.bubble-footer {
@@ -499,6 +656,15 @@ export class ChatPrompt extends HTMLElement {
 
 			.message.assistant .bubble .time {
 				text-align: left;
+				opacity: 0.45;
+			}
+
+			.message.assistant .bubble .model-tag {
+				opacity: 0.6;
+			}
+
+			.message.assistant .bubble .channel-tag {
+				opacity: 0.35;
 			}
 
 			.bubble-content a {
@@ -648,10 +814,13 @@ export class ChatPrompt extends HTMLElement {
 		</div>
 
 		<div class="input-area" role="group" aria-label="${this.tr('aria_message_input', 'Message input')}">
-			<textarea id="chat-input" rows="1" placeholder="${this.tr('ask_z_placeholder', 'Ask Z something...')}" aria-label="${this.tr('aria_message', 'Message')}" autocomplete="off" spellcheck="true"></textarea>
+			<textarea id="chat-input" rows="1" placeholder="${this.tr('ask_z_placeholder', 'Ask Z something...')}" aria-label="${this.tr('aria_message', 'Message')}" autocomplete="off" spellcheck="true">${this.draft}</textarea>
 			<button id="send-btn" aria-label="${this.tr('aria_send_message', 'Send message')}" type="button">${this.sendSVG()}</button>
 		</div>
 		`;
+
+		// Re-attach listeners to the new elements every time we render
+		this.setupListeners();
 	}
 }
 
