@@ -192,31 +192,39 @@ export class UserCard extends HTMLElement {
 					flex-direction: column;
 					gap: 1.25rem;
 					color: var(--text-primary, hsla(0, 0%, 100%, 1));
-					font-family: 'Inter', sans-serif;
+					font-family: var(--font-sans, 'Inter', sans-serif);
 				}
 
 				.header { display: flex; justify-content: space-between; align-items: center; }
 				.user-info { display: flex; align-items: center; gap: 1rem; }
 				.avatar {
 					width: 48px; height: 48px;
-					background: linear-gradient(135deg, var(--accent-color), var(--accent-secondary));
+					background: linear-gradient(135deg, var(--accent-primary, hsla(173, 80%, 40%, 1)), var(--accent-secondary, hsla(216, 100%, 50%, 1)));
 					border-radius: 0.4rem;
 					display: flex; align-items: center; justify-content: center;
 					font-weight: 800; font-size: 1.25rem;
+					box-shadow: 0 4px 12px var(--surface-accent-subtle, hsla(173, 80%, 40%, 0.2));
 				}
 				h2 { margin: 0; font-size: 1.1rem; }
 
 				.edit-btn {
-					background: rgba(255,255,255,0.05);
-					border: 1px solid rgba(255,255,255,0.1);
-					color: var(--accent-color);
+					background: var(--surface-card, hsla(0,0%,100%,0.05));
+					border: 1px solid var(--border-subtle, hsla(0,0%,100%,0.1));
+					color: var(--accent-primary, hsla(173, 80%, 40%, 1));
 					padding: 6px 12px;
 					font-size: 0.7rem;
 					cursor: pointer;
 					text-transform: uppercase;
 					letter-spacing: 0.05em;
 					border-radius: 0.4rem;
-					transition: all 0.2s;
+					transition: all var(--duration-fast, 0.2s);
+					min-height: 32px;
+					display: flex;
+					align-items: center;
+				}
+				.edit-btn:hover {
+					background: var(--surface-card-hover, hsla(0,0%,100%,0.1));
+					border-color: var(--accent-primary, hsla(173, 80%, 40%, 1));
 				}
 
 				.grid {
@@ -226,28 +234,46 @@ export class UserCard extends HTMLElement {
 				}
 
 				.field { display: flex; flex-direction: column; gap: 4px; }
-				.label { font-size: 0.65rem; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.05em; }
-				.value { font-size: 0.9rem; color: var(--text-primary, hsla(0, 0%, 100%, 1)); font-weight: 500; }
+				.label { 
+					font-size: 0.65rem; 
+					color: var(--text-muted, hsla(0,0%,100%,0.4)); 
+					text-transform: uppercase; 
+					letter-spacing: 0.05em; 
+					font-weight: 600;
+				}
+				.value { 
+					font-size: 0.9rem; 
+					color: var(--text-primary, hsla(0, 0%, 100%, 1)); 
+					font-weight: 500; 
+					min-height: 1.2rem;
+				}
 
 				input, textarea, select {
-					background: rgba(0,0,0,0.3);
-					border: 1px solid rgba(255,255,255,0.1);
+					background: var(--surface-card-subtle, hsla(0,0%,0%,0.3));
+					border: 1px solid var(--border-subtle, hsla(0,0%,100%,0.1));
 					border-radius: 0.5rem;
 					color: var(--text-primary, hsla(0, 0%, 100%, 1));
-					padding: 8px 12px;
+					padding: 10px 12px;
 					font-size: 0.85rem;
 					width: 100%;
 					box-sizing: border-box;
-					transition: border-color 0.2s;
+					transition: border-color var(--duration-fast, 0.2s);
+					min-height: 44px;
 				}
+				input:focus, textarea:focus, select:focus {
+					border-color: var(--accent-primary, hsla(173, 80%, 40%, 1));
+					outline: none;
+				}
+
+				textarea { min-height: 100px; resize: vertical; line-height: 1.5; }
 
 				select {
 					cursor: pointer;
 					appearance: none;
 					background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2314B8A6' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
 					background-repeat: no-repeat;
-					background-position: right 8px center;
-					padding-right: 28px;
+					background-position: right 12px center;
+					padding-right: 32px;
 				}
 
 				select option {
@@ -256,9 +282,9 @@ export class UserCard extends HTMLElement {
 				}
 
 				.theme-cycle-btn {
-					background: rgba(255, 255, 255, 0.05);
-					border: 1px solid rgba(255, 255, 255, 0.1);
-					color: var(--accent-color);
+					background: var(--surface-card, hsla(0, 0%, 100%, 0.05));
+					border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.1));
+					color: var(--accent-primary, hsla(173, 80%, 40%, 1));
 					width: 44px;
 					height: 44px;
 					display: flex;
@@ -266,14 +292,14 @@ export class UserCard extends HTMLElement {
 					justify-content: center;
 					border-radius: 0.5rem;
 					cursor: pointer;
-					transition: all 0.2s;
+					transition: all var(--duration-fast, 0.2s);
 					font-size: 1.1rem;
 					flex-shrink: 0;
 					user-select: none;
 				}
 				.theme-cycle-btn:hover {
-					background: rgba(255, 255, 255, 0.1);
-					border-color: var(--accent-color);
+					background: var(--surface-card-hover, hsla(0, 0%, 100%, 0.1));
+					border-color: var(--accent-primary, hsla(173, 80%, 40%, 1));
 					transform: scale(1.05);
 				}
 				.theme-cycle-btn:active {
@@ -282,28 +308,226 @@ export class UserCard extends HTMLElement {
 
 				.goals-section h3 { 
 					font-size: 0.7rem; 
-					color: var(--accent-color); 
+					color: var(--accent-primary, hsla(173, 80%, 40%, 1)); 
 					text-transform: uppercase; 
 					margin: 1rem 0 0.5rem 0;
 					display: flex;
 					align-items: center;
 					gap: 8px;
+					font-weight: 700;
+					letter-spacing: 0.08em;
 				}
 				.goals-section h3::after {
-					content: ''; flex: 1; height: 1px; background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.2);
+					content: ''; flex: 1; height: 1px; background: var(--surface-accent-subtle, hsla(173, 80%, 40%, 0.2));
 				}
 
 				ul { list-style: none; padding: 0; margin: 0; }
-				li { font-size: 0.85rem; color: rgba(255,255,255,0.7); margin-bottom: 0.5rem; position: relative; padding-left: 1.2rem; }
-				li::before { content: '◈'; position: absolute; left: 0; color: var(--accent-color); font-size: 0.7rem; top: 2px; }
+				li { 
+					font-size: 0.85rem; 
+					color: var(--text-secondary, hsla(0,0%,100%,0.8)); 
+					margin-bottom: 0.6rem; 
+					position: relative; 
+					padding-left: 1.35rem; 
+					line-height: 1.5;
+				}
+				li::before { 
+					content: '◈'; 
+					position: absolute; 
+					left: 0; 
+					color: var(--accent-primary, hsla(173, 80%, 40%, 1)); 
+					font-size: 0.75rem; 
+					top: 0.1rem; 
+				}
 
 
-				.actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem; }
-				.save-btn { text-transform: uppercase; letter-spacing: 0.05em; }
-				.cancel-btn { text-transform: uppercase; letter-spacing: 0.05em; }
+				.actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.25rem; }
+				.save-btn { text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; }
+				.cancel-btn { text-transform: uppercase; letter-spacing: 0.08em; }
+				
 				button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { 
-					outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); 
-					outline-offset: 2px; 
+					outline: 2px solid var(--accent-primary, hsla(173, 80%, 40%, 1)); 
+					outline-offset: 3px; 
+				}
+				button:focus:not(:focus-visible), input:focus:not(:focus-visible), textarea:focus:not(:focus-visible), select:focus:not(:focus-visible) { outline: none; }
+				/* Additional reduced-motion overrides beyond shared module */
+				@media (prefers-reduced-motion: reduce) {
+					*, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+				}
+				@media (forced-colors: active) {
+					.avatar { background: ButtonFace; border: 2px solid ButtonText; }
+					.edit-btn { color: LinkText; }
+					.theme-cycle-btn { border: 1px solid ButtonText; }
+					li::before { color: Highlight; }
+				}
+			</style>
+
+			<div class="card">
+				<div class="header">
+					<div class="user-info">
+						<div class="avatar" aria-hidden="true">${(me.name || 'U')[0]}</div>
+						${this.isEditing
+				? `<div style="display:flex;flex-direction:column;gap:2px;"><label class="label" for="name-input" style="margin:0;">${this.tr('name_label', 'Name')}</label><input id="name-input" type="text" placeholder="Full Name" value="${me.name || ''}" aria-label="Your name" autocomplete="name"></div>`
+				: `<div>
+								<h2>${me.name || 'User'}</h2>
+								<div class="label" style="text-transform: none; margin-top: 2px;">${me.residency || this.tr('resident', 'Resident')}</div>
+							</div>`}
+					</div>
+					<div style="display: flex; gap: 0.5rem;">
+						<button class="theme-cycle-btn" title="${this.tr('cycle_theme', 'Cycle Theme')}" id="theme-cycle">🎨</button>
+						<button class="edit-btn" id="edit-trigger" aria-label="Edit personal profile">${this.tr('edit', 'Edit')}</button>
+					</div>
+				</div>
+
+				${!this.isEditing ? `
+					<div class="grid">
+						<div class="field">
+							<div class="label">${this.tr('location', 'Location')}</div>
+							<div class="value">${me.town || '—'}, ${me.country || '—'}</div>
+						</div>
+						<div class="field">
+							<div class="label">${this.tr('timezone_label', 'Timezone')}</div>
+							<div class="value">${me.timezone || 'UTC'}</div>
+						</div>
+						<div class="field">
+							<div class="label">${this.tr('work_times', 'Work Times')}</div>
+							<div class="value">${me.work_times || '—'}</div>
+						</div>
+						<div class="field">
+							<div class="label">${this.tr('briefing', 'Briefing')}</div>
+							<div class="value">${me.briefing_time || '08:00'}</div>
+						</div>
+						<div class="goals-section" style="grid-column: span 2;">
+							<h3>${this.tr('bio', 'Bio / Context')}</h3>
+							<div class="value" style="font-size: 0.85rem; line-height: 1.5; color: var(--text-secondary, hsla(0,0%,100%,0.8));">
+								${me.context || this.tr('no_context', 'No context provided.')}
+							</div>
+						</div>
+					</div>
+				` : `
+					<div class="grid">
+						<div class="field">
+							<label class="label" for="language-input">${this.tr('fav_lang', 'Language')}</label>
+							<select id="language-input">
+								${Object.entries(this.languages).map(([code, meta]) => `
+									<option value="${code}" ${me.language === code ? 'selected' : ''}>${meta.native}</option>
+								`).join('')}
+							</select>
+						</div>
+						<div class="field">
+							<label class="label" for="bday-input">${this.tr('birthday', 'Birthday')}</label>
+							<input id="bday-input" type="text" placeholder="YYYY-MM-DD" value="${me.birthday || ''}" autocomplete="bday">
+						</div>
+						<div class="field">
+							<label class="label" for="gender-input">${this.tr('gender', 'Gender')}</label>
+							<input id="gender-input" type="text" placeholder="e.g. Non-binary" value="${me.gender || ''}" autocomplete="sex">
+						</div>
+						<div class="field">
+							<label class="label" for="residency-input">${this.tr('residency', 'Residency')}</label>
+							<input id="residency-input" type="text" placeholder="City, Country" value="${me.residency || ''}">
+						</div>
+						<div class="field">
+							<label class="label" for="town-input">${this.tr('town', 'Town')}</label>
+							<input id="town-input" type="text" placeholder="Berlin" value="${me.town || ''}">
+						</div>
+						<div class="field">
+							<label class="label" for="country-input">${this.tr('country', 'Country')}</label>
+							<input id="country-input" type="text" placeholder="Germany" value="${me.country || ''}" autocomplete="country-name">
+						</div>
+						<div class="field">
+							<label class="label" for="timezone-input">${this.tr('timezone_label', 'Timezone')}</label>
+							<input id="timezone-input" type="text" placeholder="Europe/Berlin" value="${me.timezone || ''}">
+						</div>
+						<div class="field">
+							<label class="label" for="work-input">${this.tr('work_times', 'Work Times')}</label>
+							<input id="work-input" type="text" placeholder="e.g. 09:00 - 17:00" value="${me.work_times || ''}">
+						</div>
+						<div class="field">
+							<label class="label" for="brief-input">${this.tr('briefing', 'Briefing')}</label>
+							<input id="brief-input" type="time" value="${me.briefing_time || '08:00'}">
+						</div>
+						
+						<div class="field" style="grid-column: span 2;">
+							<label class="label" for="theme-preset-select">${this.tr('theme_preset', 'Theme Preset')}</label>
+							<select id="theme-preset-select">
+								<option value="">${this.tr('select_preset', 'Select Preset...')}</option>
+								${Object.entries(this.themeOptions).map(([key, opt]) => `
+									<option value="${key}">${opt.label}</option>
+								`).join('')}
+							</select>
+						</div>
+
+						<div class="field" style="grid-column: span 2;">
+							<label class="label">${this.tr('accent_colors', 'Accent Colors')}</label>
+							<div style="display: flex; gap: 0.5rem;">
+								<input type="text" id="color-primary-input" value="${me.color_primary || 'hsla(173, 80%, 40%, 1)'}" title="Primary Accent" style="flex: 1;">
+								<input type="text" id="color-secondary-input" value="${me.color_secondary || 'hsla(216, 100%, 50%, 1)'}" title="Secondary Accent" style="flex: 1;">
+								<input type="text" id="color-tertiary-input" value="${me.color_tertiary || 'hsla(239, 84%, 67%, 1)'}" title="Tertiary Accent" style="flex: 1;">
+							</div>
+						</div>
+
+						<div class="field" style="grid-column: span 2;">
+							<label class="label" for="context-input">${this.tr('bio', 'Bio / Context')}</label>
+							<textarea id="context-input" rows="4">${me.context || ''}</textarea>
+						</div>
+					</div>
+
+					<div class="actions">
+						<button class="oz-btn oz-btn-secondary" id="cancel-trigger">${this.tr('discard', 'Discard')}</button>
+						<button class="oz-btn oz-btn-primary" id="save-trigger">${this.tr('save_profile', 'Save Profile')}</button>
+					</div>
+				` : ''}
+			</div>
+		`;
+
+					background: var(--surface-card-hover, hsla(0, 0%, 100%, 0.1));
+					border-color: var(--accent-primary, hsla(173, 80%, 40%, 1));
+					transform: scale(1.05);
+				}
+				.theme-cycle-btn:active {
+					transform: scale(0.95);
+				}
+
+				.goals-section h3 { 
+					font-size: 0.7rem; 
+					color: var(--accent-primary, hsla(173, 80%, 40%, 1)); 
+					text-transform: uppercase; 
+					margin: 1rem 0 0.5rem 0;
+					display: flex;
+					align-items: center;
+					gap: 8px;
+					font-weight: 700;
+					letter-spacing: 0.08em;
+				}
+				.goals-section h3::after {
+					content: ''; flex: 1; height: 1px; background: var(--surface-accent-subtle, hsla(173, 80%, 40%, 0.2));
+				}
+
+				ul { list-style: none; padding: 0; margin: 0; }
+				li { 
+					font-size: 0.85rem; 
+					color: var(--text-secondary, hsla(0,0%,100%,0.8)); 
+					margin-bottom: 0.6rem; 
+					position: relative; 
+					padding-left: 1.35rem; 
+					line-height: 1.5;
+				}
+				li::before { 
+					content: '◈'; 
+					position: absolute; 
+					left: 0; 
+					color: var(--accent-primary, hsla(173, 80%, 40%, 1)); 
+					font-size: 0.75rem; 
+					top: 0.1rem; 
+				}
+
+
+				.actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.25rem; }
+				.save-btn { text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; }
+				.cancel-btn { text-transform: uppercase; letter-spacing: 0.08em; }
+				
+				button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { 
+					outline: 2px solid var(--accent-primary, hsla(173, 80%, 40%, 1)); 
+					outline-offset: 3px; 
 				}
 				button:focus:not(:focus-visible), input:focus:not(:focus-visible), textarea:focus:not(:focus-visible), select:focus:not(:focus-visible) { outline: none; }
 				/* Additional reduced-motion overrides beyond shared module */
@@ -432,34 +656,44 @@ export class UserCard extends HTMLElement {
 		});
 		this.shadowRoot.querySelector('#save-trigger')?.addEventListener('click', () => this.saveIdentity());
 
-		// Global Color Application
+		const themeCycleIcon = this.shadowRoot.querySelector('#theme-cycle');
+		themeCycleIcon?.addEventListener('click', () => {
+			const keys = Object.keys(this.themeOptions);
+			const currentIdx = keys.indexOf(localStorage.getItem('theme-preset') || 'fusion');
+			const nextIdx = (currentIdx + 1) % keys.length;
+			const nextKey = keys[nextIdx];
+			const theme = this.themeOptions[nextKey];
+			
+			localStorage.setItem('theme-preset', nextKey);
+			
+			document.documentElement.style.setProperty('--accent-primary', theme.colors[0]);
+			document.documentElement.style.setProperty('--accent-secondary', theme.colors[1]);
+			document.documentElement.style.setProperty('--accent-tertiary', theme.colors[2]);
+			
+			// Dispatch event for other components to react if needed
+			window.dispatchEvent(new CustomEvent('theme-changed', { detail: theme }));
+		});
+
+		// Global Color Application (Manual overrides)
 		const applyColors = () => {
 			const cp = (this.shadowRoot?.querySelector('#color-primary-input') as HTMLInputElement)?.value || me.color_primary || 'hsla(173, 80%, 40%, 1)';
 			const cs = (this.shadowRoot?.querySelector('#color-secondary-input') as HTMLInputElement)?.value || me.color_secondary || 'hsla(216, 100%, 50%, 1)';
 			const ct = (this.shadowRoot?.querySelector('#color-tertiary-input') as HTMLInputElement)?.value || me.color_tertiary || 'hsla(239, 84%, 67%, 1)';
 
-			document.documentElement.style.setProperty('--accent-color', cp);
+			document.documentElement.style.setProperty('--accent-primary', cp);
 			document.documentElement.style.setProperty('--accent-secondary', cs);
 			document.documentElement.style.setProperty('--accent-tertiary', ct);
-
-			const toRgb = (hex: string) => {
-				const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
-				return `${r}, ${g}, ${b}`;
-			};
-			document.documentElement.style.setProperty('--accent-color-rgb', toRgb(cp));
-			document.documentElement.style.setProperty('--accent-secondary-rgb', toRgb(cs));
-			document.documentElement.style.setProperty('--accent-tertiary-rgb', toRgb(ct));
 		};
 
 		if (this.isEditing) {
 			const preset = this.shadowRoot?.querySelector('#theme-preset-select');
 			preset?.addEventListener('change', (e: any) => {
-				const opt = e.target.options[e.target.selectedIndex];
-				const colors = JSON.parse(opt.dataset.colors || '[]');
-				if (colors.length >= 3) {
-					(this.shadowRoot?.querySelector('#color-primary-input') as HTMLInputElement).value = colors[0];
-					(this.shadowRoot?.querySelector('#color-secondary-input') as HTMLInputElement).value = colors[1];
-					(this.shadowRoot?.querySelector('#color-tertiary-input') as HTMLInputElement).value = colors[2];
+				const opt = (this.shadowRoot?.querySelector('#theme-preset-select') as HTMLSelectElement).value;
+				const theme = this.themeOptions[opt];
+				if (theme) {
+					(this.shadowRoot?.querySelector('#color-primary-input') as HTMLInputElement).value = theme.colors[0];
+					(this.shadowRoot?.querySelector('#color-secondary-input') as HTMLInputElement).value = theme.colors[1];
+					(this.shadowRoot?.querySelector('#color-tertiary-input') as HTMLInputElement).value = theme.colors[2];
 					applyColors();
 				}
 			});
@@ -467,19 +701,6 @@ export class UserCard extends HTMLElement {
 			['#color-primary-input', '#color-secondary-input', '#color-tertiary-input'].forEach(id => {
 				this.shadowRoot?.querySelector(id)?.addEventListener('input', applyColors);
 			});
-
-			const cycle = (dir: number) => {
-				const select = this.shadowRoot?.querySelector('#theme-preset-select') as HTMLSelectElement;
-				if (!select) return;
-				let idx = select.selectedIndex + dir;
-				if (idx < 1) idx = select.options.length - 1;
-				if (idx >= select.options.length) idx = 1;
-				select.selectedIndex = idx;
-				select.dispatchEvent(new Event('change'));
-			};
-
-			this.shadowRoot?.querySelector('#theme-prev')?.addEventListener('click', () => cycle(-1));
-			this.shadowRoot?.querySelector('#theme-next')?.addEventListener('click', () => cycle(1));
 		}
 
 		// Apply immediately on load

@@ -136,85 +136,93 @@ export class ZPersonality extends HTMLElement {
 					color: rgba(255,255,255,0.4); cursor: pointer; border-bottom: 2px solid transparent;
 					transition: all 0.2s;
 				}
-				.tab.active { color: var(--accent-color, hsla(173, 80%, 40%, 1)); border-color: var(--accent-color, hsla(173, 80%, 40%, 1)); }
-				.tab:focus-visible { outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); outline-offset: 2px; border-radius: 2px 2px 0 0; }
-				.edit-btn:focus-visible, .save-btn:focus-visible, .cancel-btn:focus-visible { outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); outline-offset: 2px; border-radius: 4px; }
-				input[type="text"]:focus-visible, textarea:focus-visible, select:focus-visible, input[type="range"]:focus-visible, input[type="color"]:focus-visible { outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); outline-offset: 2px; }
+				.tab.active { color: var(--accent-primary, hsla(173, 80%, 40%, 1)); border-color: var(--accent-primary, hsla(173, 80%, 40%, 1)); }
+				.tab:focus-visible { outline: 2px solid var(--accent-primary, hsla(173, 80%, 40%, 1)); outline-offset: 2px; border-radius: 2px 2px 0 0; }
+				.edit-btn:focus-visible, .save-btn:focus-visible, .cancel-btn:focus-visible { outline: 2px solid var(--accent-primary, hsla(173, 80%, 40%, 1)); outline-offset: 2px; border-radius: 4px; }
+				input[type="text"]:focus-visible, textarea:focus-visible, select:focus-visible, input[type="range"]:focus-visible, input[type="color"]:focus-visible { outline: 2px solid var(--accent-primary, hsla(173, 80%, 40%, 1)); outline-offset: 2px; }
 
 				.content { flex: 1; overflow-y: auto; padding-right: 4px; }
 
 				.trait-grid { display: grid; gap: 1rem; margin-top: 0.5rem; }
 				.trait-item { 
-					background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.03); padding: 0.75rem 1rem; border-radius: 0.75rem;
-					border: 1px solid var(--border-subtle, rgba(255,255,255,0.05));
+					background: var(--surface-card, hsla(0,0%,100%,0.05)); padding: 0.75rem 1rem; border-radius: 0.75rem;
+					border: 1px solid var(--border-subtle, hsla(0,0%,100%,0.1));
 				}
-				.trait-label { font-size: 0.65rem; color: var(--text-muted, rgba(255,255,255,0.4)); text-transform: uppercase; margin-bottom: 4px; display: block; }
+				.trait-label { font-size: 0.65rem; color: var(--text-muted, hsla(0,0%,100%,0.4)); text-transform: uppercase; margin-bottom: 4px; display: block; }
 				.trait-value { font-size: 0.9rem; color: var(--text-primary, hsla(0, 0%, 100%, 1)); font-weight: 500; }
 
 				.form-group { margin-bottom: 1.25rem; }
-				.form-label { font-size: 0.75rem; color: var(--accent-color, hsla(173, 80%, 40%, 1)); font-weight: 700; display: block; margin-bottom: 0.5rem; }
+				.form-label { font-size: 0.75rem; color: var(--accent-primary, hsla(173, 80%, 40%, 1)); font-weight: 700; display: block; margin-bottom: 0.5rem; }
 				input[type="text"], textarea {
-					background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);
-					color: var(--text-primary, hsla(0, 0%, 100%, 1)); padding: 10px; border-radius: 0.5rem; width: 100%; box-sizing: border-box;
-					font-family: inherit; font-size: 0.85rem;
+					background: var(--surface-card-subtle, hsla(0,0%,0%,0.3)); border: 1px solid var(--border-subtle, hsla(0,0%,100%,0.1));
+					color: var(--text-primary, hsla(0, 0%, 100%, 1)); padding: 12px; border-radius: 0.5rem; width: 100%; box-sizing: border-box;
+					font-family: inherit; font-size: 0.9rem; min-height: 44px;
 				}
-				textarea { height: 80px; resize: none; }
+				textarea { height: 120px; resize: vertical; }
 				
-				.range-container { display: flex; align-items: center; gap: 1rem; }
-				.range-tag { font-size: 0.65rem; color: rgba(255,255,255,0.4); width: 60px; }
-				input[type="range"] { flex: 1; accent-color: var(--accent-color, hsla(173, 80%, 40%, 1)); cursor: pointer; }
+				.range-container { display: flex; align-items: center; gap: 1rem; min-height: 44px; }
+				.range-tag { font-size: 0.65rem; color: var(--text-muted, hsla(0,0%,100%,0.4)); width: 60px; }
+				input[type="range"] { flex: 1; accent-color: var(--accent-primary, hsla(173, 80%, 40%, 1)); cursor: pointer; min-height: 44px; }
 
 				select.theme-selector {
-					background: rgba(0,0,0,0.3);
-					border: 1px solid rgba(255,255,255,0.1);
+					background: var(--surface-card-subtle, hsla(0,0%,0%,0.3));
+					border: 1px solid var(--border-subtle, hsla(0,0%,100%,0.1));
 					color: var(--text-primary, hsla(0, 0%, 100%, 1));
-					padding: 8px 10px;
+					padding: 10px 12px;
 					border-radius: 0.5rem;
 					width: 100%;
 					box-sizing: border-box;
 					font-family: inherit;
-					font-size: 0.85rem;
+					font-size: 0.9rem;
 					cursor: pointer;
 					appearance: auto;
+					min-height: 44px;
 				}
-				select.theme-selector:focus-visible { outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); outline-offset: 2px; }
+				select.theme-selector:focus-visible { outline: 2px solid var(--accent-primary, hsla(173, 80%, 40%, 1)); outline-offset: 2px; }
 				.theme-swatch {
 					display: flex;
 					gap: 6px;
-					margin-top: 8px;
+					margin-top: 12px;
 					align-items: center;
+					padding-bottom: 8px;
 				}
 				.swatch-dot {
-					width: 18px;
-					height: 18px;
+					width: 24px;
+					height: 24px;
 					border-radius: 50%;
-					border: 1px solid rgba(255,255,255,0.15);
+					border: 1px solid var(--border-subtle, hsla(0,0%,100%,0.15));
 					flex-shrink: 0;
-					transition: background-color 0.3s ease;
+					transition: transform 0.2s ease;
 				}
+				.swatch-dot:hover { transform: scale(1.1); }
 				.swatch-label {
-					font-size: 0.65rem;
-					color: rgba(255,255,255,0.35);
+					font-size: 0.7rem;
+					color: var(--text-muted, hsla(0,0%,100%,0.4));
 					margin-left: 4px;
 				}
 
-				.actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem; }
+				.actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.25rem; }
 
 
 				.prot-list { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.5rem; }
 				.prot-item { 
-					background: rgba(255, 255, 255, 0.03); padding: 0.75rem 1rem; border-radius: 0.75rem;
-					border-left: 3px solid hsla(216, 100%, 50%, 1); animation: slideIn 0.3s ease-out backwards;
+					background: var(--surface-card, hsla(0,0%,100%,0.03)); padding: 0.75rem 1rem; border-radius: 0.75rem;
+					border-left: 3px solid var(--accent-secondary, hsla(216, 100%, 50%, 1)); animation: slideIn 0.3s ease-out backwards;
 				}
-				.prot-name { font-size: 0.8rem; font-weight: 700; letter-spacing: 0.02em; display: block; margin-bottom: 0.25rem; }
-				.prot-desc { font-size: 0.75rem; color: var(--text-muted, rgba(255,255,255,0.5)); line-height: 1.4; }
+				.prot-name { font-size: 0.85rem; font-weight: 700; letter-spacing: 0.02em; display: block; margin-bottom: 0.25rem; }
+				.prot-desc { font-size: 0.8rem; color: var(--text-muted, hsla(0,0%,100%,0.5)); line-height: 1.5; }
 
 				@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 				@keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+				
+				@media (prefers-reduced-motion: reduce) {
+					.tab, .edit-btn, .prot-item, .swatch-dot { transition: none !important; animation: none !important; }
+				}
 				@media (forced-colors: active) {
 					.tab.active { border-color: Highlight; color: Highlight; }
-					.prot-item { border-left-color: Highlight; }
+					.prot-item { border-left-color: Highlight; border: 1px solid CanvasText; }
 					input[type="range"] { accent-color: Highlight; }
+					.swatch-dot { border-color: CanvasText; }
 				}
 			</style>
 
@@ -277,8 +285,8 @@ export class ZPersonality extends HTMLElement {
 								</div>
 							`).join('')}
 							<div class="actions">
-								<button class="cancel-btn" id="cancel-trigger">${this.tr('cancel', 'Cancel')}</button>
-								<button class="save-btn" id="save-trigger">${this.tr('save_persona', 'Save Persona')}</button>
+								<button class="oz-btn oz-btn-secondary" id="cancel-trigger">${this.tr('cancel', 'Cancel')}</button>
+								<button class="oz-btn oz-btn-primary" id="save-trigger">${this.tr('save_persona', 'Save Persona')}</button>
 							</div>
 						</div>
 					` : !this.isLoading && this.activeTab === 'personality' ? `

@@ -179,16 +179,16 @@ export class CircleManager extends HTMLElement {
 					${FEEDBACK_STYLES}
 					h2 { font-size: 1.5rem; font-weight: bold; margin: 0; color: var(--text-primary, hsla(0, 0%, 100%, 1)); letter-spacing: 0.02em; display: flex; align-items: center; gap: 0.5rem; overflow-wrap: break-word; word-break: break-word; min-width: 0; flex: 1; }
 					.h-icon { display: inline-flex; width: 32px; height: 32px; background: ${accent}; border-radius: var(--radius-sm, 0.4rem); align-items: center; justify-content: center; flex-shrink: 0; }
-					.subtitle { font-size: 0.65rem; font-weight: 400; color: var(--text-faint, rgba(255, 255, 255, 0.3)); margin-left: 0.5rem; text-transform: uppercase; letter-spacing: 0.1em; }
+					.subtitle { font-size: 0.65rem; font-weight: 400; color: var(--text-muted, hsla(0, 0%, 100%, 0.4)); margin-left: 0.5rem; text-transform: uppercase; letter-spacing: 0.1em; }
 					:host { display: block; }
 					.add-form {
 						display: grid;
 						gap: 0.25rem;
 						margin-bottom: 1.5rem;
-						animation: fadeIn 0.3s ease-in-out;
-						background: rgba(255, 255, 255, 0.02);
+						animation: fadeIn var(--duration-base, 0.25s) ease-in-out;
+						background: var(--surface-card, hsla(0, 0%, 100%, 0.03));
 						padding: 1rem;
-						border-radius: 1rem;
+						border-radius: var(--radius-lg, 1rem);
 					}
 					@keyframes fadeIn {
 						from { opacity: 0; transform: translateY(-10px); }
@@ -198,51 +198,52 @@ export class CircleManager extends HTMLElement {
 						display: block;
 						font-size: 0.7rem;
 						font-weight: 600;
-						color: rgba(255, 255, 255, 0.4);
+						color: var(--text-muted, hsla(0, 0%, 100%, 0.4));
 						text-transform: uppercase;
 						letter-spacing: 0.06em;
 						margin-bottom: 0.2rem;
 						margin-top: 0.5rem;
 					}
-					label .required { color: var(--color-danger, hsla(0, 91%, 71%, 1)); margin-left: 0.15rem; }
+					label .required { color: var(--color-danger, hsla(0, 84%, 60%, 1)); margin-left: 0.15rem; }
 					input, textarea {
-						background: rgba(0, 0, 0, 0.2);
-						border: 1px solid rgba(255, 255, 255, 0.08);
-						border-radius: 0.75rem;
+						background: var(--surface-input, hsla(0, 0%, 0%, 0.2));
+						border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.1));
+						border-radius: var(--radius-md, 0.75rem);
 						padding: 0.6rem 1rem;
 						color: var(--text-primary, hsla(0, 0%, 100%, 1));
 						outline: none;
-						font-family: 'Inter', system-ui, sans-serif;
+						font-family: var(--font-sans, 'Inter', system-ui, sans-serif);
 						font-size: 0.9rem;
-						transition: all 0.3s ease;
+						transition: all var(--duration-base, 0.25s) ease;
 						width: 100%;
 						box-sizing: border-box;
 					}
 					input:focus, textarea:focus {
-						border-color: rgba(var(--accent-color-rgb, 20, 184, 166), 0.4);
-						background: rgba(0, 0, 0, 0.28);
+						border-color: var(--border-accent-focus, hsla(173, 80%, 40%, 0.4));
+						background: var(--surface-input-focus, hsla(0, 0%, 0%, 0.3));
 					}
 					input.field-error, textarea.field-error {
-						border-color: rgba(var(--color-danger-rgb, 239, 68, 68), 0.5);
-						background: rgba(var(--color-danger-rgb, 239, 68, 68), 0.05);
+						border-color: var(--color-danger, hsla(0, 84%, 60%, 0.5));
+						background: var(--surface-danger-subtle, hsla(0, 84%, 60%, 0.05));
 					}
 					.field-hint {
 						font-size: 0.68rem;
-						color: rgba(255, 255, 255, 0.2);
+						color: var(--text-muted, hsla(0, 0%, 100%, 0.4));
+						opacity: 0.5;
 						margin-top: 0.15rem;
 					}
 					.field-error-msg {
 						font-size: 0.72rem;
-						color: var(--color-danger, hsla(0, 91%, 71%, 1));
+						color: var(--color-danger, hsla(0, 84%, 60%, 1));
 						margin-top: 0.15rem;
 						min-height: 0;
 						opacity: 0;
-						transition: opacity 0.2s ease;
+						transition: opacity var(--duration-fast, 0.15s) ease;
 					}
 					.field-error-msg.visible { opacity: 1; }
 					.person-item {
-						background: rgba(255, 255, 255, 0.03);
-						border-radius: 1rem;
+						background: var(--surface-card, hsla(0, 0%, 100%, 0.03));
+						border-radius: var(--radius-lg, 1rem);
 						padding: 1rem;
 						margin-bottom: 1rem;
 						display: flex;
@@ -258,9 +259,9 @@ export class CircleManager extends HTMLElement {
 				}
 				.name { font-weight: 700; color: var(--text-primary, hsla(0, 0%, 100%, 1)); display: block; overflow-wrap: break-word; }
 				.rel { font-size: 0.8rem; color: ${accent}; display: block; overflow-wrap: break-word; }
-				.ctx { font-size: 0.85rem; color: rgba(255, 255, 255, 0.6); margin: 0.5rem 0 0 0; overflow-wrap: break-word; }
+				.ctx { font-size: 0.85rem; color: var(--text-muted, hsla(0, 0%, 100%, 0.4)); opacity: 1.5; margin: 0.5rem 0 0 0; overflow-wrap: break-word; }
 				.edit-btn { margin-right: 0; }
-				.edit-btn:hover { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.2); }
+				.edit-btn:hover { background: var(--surface-card-hover, hsla(0, 0%, 100%, 0.06)); border-color: var(--border-subtle, hsla(0, 0%, 100%, 0.1)); }
 				.item-actions {
 					display: flex;
 					flex-direction: column;
@@ -273,8 +274,8 @@ export class CircleManager extends HTMLElement {
 						display: inline-block;
 						font-size: 0.7rem;
 						color: var(--accent-color, hsla(173, 80%, 40%, 1));
-						background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.1);
-						border: 1px solid rgba(var(--accent-color-rgb, 20, 184, 166), 0.2);
+						background: var(--surface-accent-subtle, hsla(173, 80%, 40%, 0.1));
+						border: 1px solid var(--border-accent, hsla(173, 80%, 40%, 0.2));
 						padding: 0.15rem 0.5rem;
 						border-radius: var(--radius-sm, 0.4rem);
 						margin-left: 0.5rem;
@@ -291,13 +292,13 @@ export class CircleManager extends HTMLElement {
 					}
 					.form-feedback.visible { opacity: 1; }
 					.form-feedback.error {
-						background: rgba(var(--color-danger-rgb, 239, 68, 68), 0.1);
-						border: 1px solid rgba(var(--color-danger-rgb, 239, 68, 68), 0.2);
-						color: var(--color-danger, hsla(0, 91%, 71%, 1));
+						background: var(--surface-danger-subtle, hsla(0, 84%, 60%, 0.1));
+						border: 1px solid var(--color-danger, hsla(0, 84%, 60%, 0.2));
+						color: var(--color-danger, hsla(0, 84%, 60%, 1));
 					}
 					.form-feedback.success {
-						background: rgba(var(--color-success-rgb, 34, 197, 94), 0.1);
-						border: 1px solid rgba(var(--color-success-rgb, 34, 197, 94), 0.2);
+						background: var(--surface-success-subtle, hsla(142, 69%, 58%, 0.1));
+						border: 1px solid var(--color-success, hsla(142, 69%, 58%, 0.2));
 						color: var(--color-success, hsla(142, 69%, 58%, 1));
 					}
 					button:focus-visible, input:focus-visible, textarea:focus-visible {
