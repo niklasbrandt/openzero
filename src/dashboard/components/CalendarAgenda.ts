@@ -1,4 +1,7 @@
 import { BUTTON_STYLES } from '../services/buttonStyles';
+import { ACCESSIBILITY_STYLES } from '../services/accessibilityStyles';
+import { SECTION_HEADER_STYLES } from '../services/sectionHeaderStyles';
+import { EMPTY_STATE_STYLES } from '../services/emptyStateStyles';
 
 export class CalendarAgenda extends HTMLElement {
 	private events: any[] = [];
@@ -94,7 +97,7 @@ export class CalendarAgenda extends HTMLElement {
 			console.error('Failed to fetch calendar', e);
 			const list = this.shadowRoot?.querySelector('#event-list');
 			if (list) {
-				list.innerHTML = `<div class="empty">${this.tr('api_error_calendar', 'Unable to load agenda. Check backend/integration.')}</div>`;
+				list.innerHTML = `<div class="empty-state">${this.tr('api_error_calendar', 'Unable to load agenda. Check backend/integration.')}</div>`;
 			}
 		}
 	}
@@ -141,7 +144,7 @@ export class CalendarAgenda extends HTMLElement {
 						</div>
 					</div>
 				`;
-			}).join('') || `<div class="empty">${this.tr('no_events', 'No upcoming events.')}</div>`;
+			}).join('') || `<div class="empty-state">${this.tr('no_events', 'No upcoming events.')}</div>`;
 		}
 
 		// Refresh filter buttons
@@ -190,9 +193,13 @@ export class CalendarAgenda extends HTMLElement {
 			this.shadowRoot.innerHTML = `
 				<style>
 					${BUTTON_STYLES}
-					h2 { font-size: 1.5rem; font-weight: bold; margin: 0; color: #fff; letter-spacing: 0.02em; display: flex; align-items: center; gap: 0.5rem; }
-					.icon { display: inline-flex; width: 28px; height: 28px; background: linear-gradient(135deg, #0066FF 0%, #14B8A6 100%); border-radius: 0.4rem; align-items: center; justify-content: center; flex-shrink: 0; }
-					.subtitle { font-size: 0.65rem; font-weight: 400; color: rgba(255, 255, 255, 0.3); margin-left: 0.5rem; text-transform: uppercase; letter-spacing: 0.1em; }
+					${ACCESSIBILITY_STYLES}
+					${SECTION_HEADER_STYLES}
+					${EMPTY_STATE_STYLES}
+					/* Override icon gradient */
+					h2 .h-icon {
+						background: linear-gradient(135deg, #0066FF 0%, var(--accent-color, #14B8A6) 100%);
+					}
 					:host { display: block; }
 					.card { height: 100%; display: flex; flex-direction: column; }
 					.header-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
@@ -205,7 +212,7 @@ export class CalendarAgenda extends HTMLElement {
 						padding: 0.3rem;
 						border-radius: 0.4rem;
 					}
-					.calendar-link:hover { color: #14B8A6; background: rgba(255, 255, 255, 0.05); }
+					.calendar-link:hover { color: var(--accent-color, #14B8A6); background: rgba(255, 255, 255, 0.05); }
 					#filters { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
 					.filter-btn {
 						background: rgba(255, 255, 255, 0.05);
@@ -218,9 +225,9 @@ export class CalendarAgenda extends HTMLElement {
 						transition: all 0.2s;
 					}
 					.filter-btn.active {
-						background: rgba(20, 184, 166, 0.2);
-						border-color: #14B8A6;
-						color: #14B8A6;
+						background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.2);
+						border-color: var(--accent-color, #14B8A6);
+						color: var(--accent-color, #14B8A6);
 					}
 					#event-list { overflow-y: auto; flex: 1; }
 					.event-item {
@@ -238,18 +245,18 @@ export class CalendarAgenda extends HTMLElement {
 						min-width: 70px;
 						font-size: 0.75rem;
 					}
-					.day { color: #14B8A6; font-weight: 700; }
-					.time { color: rgba(255, 255, 255, 0.4); }
+					.day { color: var(--accent-color, #14B8A6); font-weight: 700; }
+					.time { color: var(--text-muted, rgba(255, 255, 255, 0.4)); }
 					.details { display: flex; flex-direction: column; gap: 0.25rem; flex: 1; }
 					.summary { font-size: 0.9rem; color: #fff; font-weight: 500; }
 					.person-badge {
 						align-self: flex-start;
 						font-size: 0.7rem;
-						color: #14B8A6;
-						background: rgba(20, 184, 166, 0.1);
-						border: 1px solid rgba(20, 184, 166, 0.2);
+						color: var(--accent-color, #14B8A6);
+						background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.1);
+						border: 1px solid rgba(var(--accent-color-rgb, 20, 184, 166), 0.2);
 						padding: 0.15rem 0.5rem;
-						border-radius: 0.4rem;
+						border-radius: var(--radius-sm, 0.4rem);
 						text-transform: uppercase;
 						letter-spacing: 0.05em;
 					}
@@ -280,20 +287,16 @@ export class CalendarAgenda extends HTMLElement {
 					.birthday-item .summary { color: #fbcfe8 !important; }
 					.empty { font-size: 0.85rem; color: rgba(255, 255, 255, 0.3); text-align: center; padding: 2rem; }
 					.filter-btn:focus-visible, .calendar-link:focus-visible { 
-						outline: 2px solid #14B8A6; 
+						outline: 2px solid var(--accent-color, #14B8A6); 
 						outline-offset: 2px; 
 					}
-					.event-title-edit:focus-visible { outline: 2px solid #14B8A6; outline-offset: 1px; border-radius: 2px; }
-					.delete-btn:focus-visible { outline: 2px solid #f87171; outline-offset: 2px; }
-					.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
-					@media (prefers-reduced-motion: reduce) {
-						*, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
-					}
+					.event-title-edit:focus-visible { outline: 2px solid var(--accent-color, #14B8A6); outline-offset: 1px; border-radius: 2px; }
+					.delete-btn:focus-visible { outline: 2px solid var(--color-danger, #f87171); outline-offset: 2px; }
 				</style>
 				<div class="card">
 					<div class="header-container">
 						<h2>
-					<span class="icon" aria-hidden="true">
+					<span class="h-icon" aria-hidden="true">
 						<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
 							<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
 							<line x1="16" y1="2" x2="16" y2="6"></line>

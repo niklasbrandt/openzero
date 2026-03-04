@@ -1,4 +1,7 @@
 import { BUTTON_STYLES } from '../services/buttonStyles';
+import { ACCESSIBILITY_STYLES } from '../services/accessibilityStyles';
+import { SECTION_HEADER_STYLES } from '../services/sectionHeaderStyles';
+import { EMPTY_STATE_STYLES } from '../services/emptyStateStyles';
 
 export class LifeOverview extends HTMLElement {
 	private t: Record<string, string> = {};
@@ -76,7 +79,7 @@ export class LifeOverview extends HTMLElement {
 						<span class="summary">${e.summary} ${!e.is_local ? '<small style="color: #14B8A6;">(Google)</small>' : ''}</span>
 					</div>
 				`).join('')
-			: `<div class="empty">${this.tr('no_events', 'No upcoming events for the next 3 days.')}</div>`;
+			: `<div class="empty-state">${this.tr('no_events', 'No upcoming events for the next 3 days.')}</div>`;
 
 		container.innerHTML = `
 			<div class="overview-grid">
@@ -114,11 +117,15 @@ export class LifeOverview extends HTMLElement {
 			this.shadowRoot.innerHTML = `
 				<style>
 					${BUTTON_STYLES}
+					${ACCESSIBILITY_STYLES}
+					${SECTION_HEADER_STYLES}
+					${EMPTY_STATE_STYLES}
+					/* Override icon gradient */
+					h2 .h-icon {
+						background: linear-gradient(135deg, var(--accent-color, #14B8A6) 0%, #6366f1 100%);
+					}
 					:host { display: block; }
-					h2 { font-size: 1.5rem; font-weight: bold; margin: 0 0 1.5rem 0; color: #fff; letter-spacing: 0.02em; display: flex; align-items: center; gap: 0.5rem; }
-					.h-icon { display: inline-flex; width: 28px; height: 28px; background: linear-gradient(135deg, #14B8A6 0%, #6366f1 100%); border-radius: 0.4rem; align-items: center; justify-content: center; flex-shrink: 0; }
-					.h-subtitle { font-size: 0.65rem; font-weight: 400; color: rgba(255, 255, 255, 0.3); margin-left: 0.5rem; text-transform: uppercase; letter-spacing: 0.1em; }
-					h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255, 255, 255, 0.4); margin-bottom: 1rem; }
+					h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted, rgba(255, 255, 255, 0.4)); margin-bottom: 1rem; }
 					h3 small { font-size: 0.65rem; text-transform: none; letter-spacing: 0.02em; opacity: 0.8; margin-left: 0.4rem; font-weight: 400; }
 					
 					.overview-grid {
@@ -134,19 +141,19 @@ export class LifeOverview extends HTMLElement {
 					pre, .tree-content {
 						background: rgba(0, 0, 0, 0.2);
 						padding: 1.25rem;
-						border-radius: 0.75rem;
-						font-family: 'Fira Code', monospace;
+						border-radius: var(--radius-md, 0.75rem);
+						font-family: var(--font-mono, 'Fira Code', monospace);
 						font-size: 0.9rem;
 						line-height: 1.6;
-						color: rgba(255, 255, 255, 0.85);
+						color: var(--text-secondary, rgba(255, 255, 255, 0.85));
 						margin: 0;
 						overflow-x: auto;
-						border: 1px solid rgba(255, 255, 255, 0.03);
+						border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.03));
 						white-space: pre-wrap;
 					}
 
-					.tree-content b { color: #14B8A6; font-weight: 600; }
-					.tree-content a { color: inherit; text-decoration: none; border-bottom: 1px solid rgba(255,255,255,0.1); transition: all 0.2s; }
+					.tree-content b { color: var(--accent-color, #14B8A6); font-weight: 600; }
+					.tree-content a { color: inherit; text-decoration: none; border-bottom: 1px solid rgba(255,255,255,0.1); transition: all var(--duration-fast, 0.2s); }
 					.tree-content a:hover { color: #0066FF; border-bottom-color: #0066FF; }
 
 					.section-header {
@@ -185,17 +192,14 @@ export class LifeOverview extends HTMLElement {
 						border-radius: 0.6rem;
 						font-size: 0.85rem;
 					}
-					.time { color: #14B8A6; font-weight: 600; min-width: 70px; }
-					.summary { color: rgba(255, 255, 255, 0.8); }
+					.time { color: var(--accent-color, #14B8A6); font-weight: 600; min-width: 70px; }
+					.summary { color: var(--text-secondary, rgba(255, 255, 255, 0.8)); }
 					.summary small { color: #3b82f6; opacity: 0.7; font-size: 0.7rem; margin-left: 0.3rem; }
 
 
-					.error { color: #ef4444; text-align: center; padding: 2rem; }
-				.action-btn:focus-visible { outline: 2px solid #14B8A6; outline-offset: 3px; }
-				.tree-content a:focus-visible { outline: 2px solid #14B8A6; outline-offset: 2px; }
-				@media (prefers-reduced-motion: reduce) {
-					*, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
-				}
+					.error { color: var(--color-danger, #ef4444); text-align: center; padding: 2rem; }
+				.action-btn:focus-visible { outline: 2px solid var(--accent-color, #14B8A6); outline-offset: 3px; }
+				.tree-content a:focus-visible { outline: 2px solid var(--accent-color, #14B8A6); outline-offset: 2px; }
 				</style>
 				<div class="card">
 					<h2>

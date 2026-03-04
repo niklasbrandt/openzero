@@ -1,3 +1,8 @@
+import { ACCESSIBILITY_STYLES } from '../services/accessibilityStyles';
+import { SECTION_HEADER_STYLES } from '../services/sectionHeaderStyles';
+import { GLASS_TOOLTIP_STYLES } from '../services/glassTooltipStyles';
+import { EMPTY_STATE_STYLES } from '../services/emptyStateStyles';
+
 export class SoftwareStatus extends HTMLElement {
 	private data: any = null;
 	private t: Record<string, string> = {};
@@ -58,7 +63,7 @@ export class SoftwareStatus extends HTMLElement {
 		} catch (e) {
 			console.error('Failed to fetch software status:', e);
 			const el = this.shadowRoot?.querySelector('#sw-panel');
-			if (el) el.innerHTML = '<div class="empty">Could not reach backend.</div>';
+			if (el) el.innerHTML = '<div class="empty-state">Could not reach backend.</div>';
 		}
 	}
 
@@ -198,65 +203,10 @@ export class SoftwareStatus extends HTMLElement {
 		this.shadowRoot.innerHTML = `
 			<style>
 				:host { display: block; }
-				h2 {
-					font-size: 1.5rem;
-					font-weight: bold;
-					margin: 0 0 1.5rem 0;
-					color: #fff;
-					letter-spacing: 0.02em;
-					display: flex;
-					align-items: center;
-					gap: 0.5rem;
-				}
-				h2 .icon {
-					display: inline-flex;
-					width: 28px;
-					height: 28px;
-					background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-secondary) 100%);
-					border-radius: 0.4rem;
-					align-items: center;
-					justify-content: center;
-				}
-				h2 .subtitle {
-					font-size: 0.65rem;
-					font-weight: 400;
-					color: rgba(255, 255, 255, 0.3);
-					margin-left: 0.5rem;
-					text-transform: uppercase;
-					letter-spacing: 0.1em;
-				}
-
-				/* ── Tooltip ── */
-				.has-tip { position: relative; }
-				.glass-tooltip {
-					position: absolute;
-					bottom: calc(100% + 10px);
-					left: 0;
-					background: var(--tooltip-bg, rgba(255, 255, 255, 0.06));
-					backdrop-filter: blur(var(--tooltip-blur, 32px)) saturate(var(--tooltip-saturate, 1.6)) brightness(1.1);
-					-webkit-backdrop-filter: blur(var(--tooltip-blur, 32px)) saturate(var(--tooltip-saturate, 1.6)) brightness(1.1);
-					color: var(--tooltip-text, rgba(255, 255, 255, 0.92));
-					font-size: 0.72rem;
-					line-height: 1.5;
-					padding: 0.6rem 0.85rem;
-					border-radius: 0.6rem;
-					border: 1px solid var(--tooltip-border, rgba(255, 255, 255, 0.18));
-					white-space: normal;
-					width: max-content;
-					max-width: 280px;
-					pointer-events: none;
-					opacity: 0;
-					transition: all 0.24s cubic-bezier(0.23, 1, 0.32, 1);
-					z-index: 1000;
-					box-shadow: var(--tooltip-shadow, 0 8px 32px rgba(0, 0, 0, 0.35));
-				}
-				.has-tip:hover > .glass-tooltip,
-				.has-tip:focus-visible > .glass-tooltip { 
-					opacity: 1; 
-					transform: translateY(-4px);
-				}
-				.has-tip:has(.has-tip:hover) > .glass-tooltip,
-				.has-tip:has(.has-tip:focus-visible) > .glass-tooltip { opacity: 0 !important; }
+				${ACCESSIBILITY_STYLES}
+				${SECTION_HEADER_STYLES}
+				${GLASS_TOOLTIP_STYLES}
+				${EMPTY_STATE_STYLES}
 
 				/* ── Service Grid ── */
 				.svc-grid {
@@ -270,8 +220,8 @@ export class SoftwareStatus extends HTMLElement {
 					align-items: center;
 					gap: 0.4rem;
 					padding: 0.5rem 0.65rem;
-					background: rgba(255, 255, 255, 0.02);
-					border: 1px solid rgba(255, 255, 255, 0.04);
+					background: var(--surface-card, rgba(255, 255, 255, 0.03));
+					border: 1px solid var(--border-color, rgba(255, 255, 255, 0.06));
 					border-radius: 0.4rem;
 					cursor: help;
 				}
@@ -289,8 +239,8 @@ export class SoftwareStatus extends HTMLElement {
 				.svc-model {
 					font-size: 0.82rem;
 					font-weight: 600;
-					color: rgba(255, 255, 255, 0.85);
-					font-family: 'Fira Code', monospace;
+					color: var(--text-secondary, rgba(255, 255, 255, 0.85));
+					font-family: var(--font-mono, 'Fira Code', monospace);
 					letter-spacing: -0.01em;
 				}
 				.svc-dot {
@@ -299,19 +249,19 @@ export class SoftwareStatus extends HTMLElement {
 					border-radius: 50%;
 					flex-shrink: 0;
 				}
-				.svc-dot.online { background: #14B8A6; box-shadow: 0 0 6px rgba(20, 184, 166, 0.4); }
-				.svc-dot.offline { background: #ef4444; box-shadow: 0 0 6px rgba(239, 68, 68, 0.4); }
-				.svc-dot.warning { background: #eab308; box-shadow: 0 0 6px rgba(234, 179, 8, 0.4); }
+				.svc-dot.online { background: var(--accent-color, #14B8A6); box-shadow: 0 0 6px rgba(var(--accent-color-rgb, 20, 184, 166), 0.4); }
+				.svc-dot.offline { background: var(--color-danger, #ef4444); box-shadow: 0 0 6px rgba(var(--color-danger-rgb, 239, 68, 68), 0.4); }
+				.svc-dot.warning { background: var(--color-warning, #eab308); box-shadow: 0 0 6px rgba(var(--color-warning-rgb, 234, 179, 8), 0.4); }
 				.svc-name {
 					font-size: 0.7rem;
 					font-weight: 600;
-					color: rgba(255, 255, 255, 0.8);
+					color: var(--text-secondary, rgba(255, 255, 255, 0.8));
 					white-space: nowrap;
 				}
 				.svc-detail {
 					font-size: 0.65rem;
-					color: rgba(255, 255, 255, 0.35);
-					font-family: 'Fira Code', monospace;
+					color: var(--text-faint, rgba(255, 255, 255, 0.35));
+					font-family: var(--font-mono, 'Fira Code', monospace);
 					margin-left: auto;
 					white-space: nowrap;
 				}
@@ -321,7 +271,7 @@ export class SoftwareStatus extends HTMLElement {
 					font-size: 0.65rem;
 					text-transform: uppercase;
 					letter-spacing: 0.1em;
-					color: rgba(255, 255, 255, 0.3);
+					color: var(--text-faint, rgba(255, 255, 255, 0.3));
 					font-weight: 600;
 					display: block;
 					margin-bottom: 0.5rem;
@@ -341,31 +291,20 @@ export class SoftwareStatus extends HTMLElement {
 					font-size: 0.6rem;
 					text-transform: uppercase;
 					letter-spacing: 0.08em;
-					color: rgba(255, 255, 255, 0.25);
+					color: var(--text-faint, rgba(255, 255, 255, 0.25));
 					font-weight: 600;
 				}
 				.stack-value {
 					font-size: 0.82rem;
-					color: rgba(255, 255, 255, 0.7);
-					font-family: 'Fira Code', monospace;
+					color: var(--text-secondary, rgba(255, 255, 255, 0.7));
+					font-family: var(--font-mono, 'Fira Code', monospace);
 				}
 
-				.empty {
-					color: rgba(255, 255, 255, 0.2);
-					font-size: 0.85rem;
-					font-style: italic;
-					text-align: center;
-					padding: 1.5rem;
-				}
-				.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
-				.svc-item:focus-visible, .has-tip:focus-visible { outline: 2px solid #14B8A6; outline-offset: 2px; border-radius: 0.4rem; }
-				@media (prefers-reduced-motion: reduce) {
-					*, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
-				}
+				.svc-item:focus-visible, .has-tip:focus-visible { outline: 2px solid var(--accent-color, #14B8A6); outline-offset: 2px; border-radius: 0.4rem; }
 			</style>
 
 			<h2>
-				<span class="icon" aria-hidden="true">
+				<span class="h-icon" aria-hidden="true">
 					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
 						<polyline points="16 18 22 12 16 6"></polyline>
 						<polyline points="8 6 2 12 8 18"></polyline>
@@ -375,7 +314,7 @@ export class SoftwareStatus extends HTMLElement {
 			</h2>
 
 			<div id="sw-panel">
-				<div class="empty">${this.tr('loading_sw', 'Loading services...')}</div>
+				<div class="empty-state">${this.tr('loading_sw', 'Loading services...')}</div>
 			</div>
 		`;
 	}
