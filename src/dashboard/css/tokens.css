@@ -1,0 +1,105 @@
+/*
+ * openZero Design Tokens
+ * ----------------------
+ * Canonical CSS custom properties for the entire dashboard.
+ * All color values use HSLA per DESIGN.md SS2.
+ *
+ * NOTE: Do not use raw hex here. Every color must be an hsla() or rgba()
+ * expression so forced-colors / high-contrast overrides remain predictable.
+ */
+
+:root {
+	font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+	line-height: 1.6;
+	font-weight: 400;
+	font-size: 105%;
+	/* Slightly larger base for better legibility of complex symbols */
+
+	color-scheme: dark;
+	color: var(--text-primary, hsla(0, 0%, 100%, 1));
+	background-color: hsla(228, 45%, 4%, 1);
+
+	font-synthesis: none;
+	text-rendering: optimizeLegibility;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+
+	/* -- Accent palette -- */
+	--accent-color: hsla(173, 80%, 40%, 1);
+	--accent-color-rgb: 20, 184, 166;
+	--accent-secondary: hsla(216, 100%, 50%, 1);
+	--accent-secondary-rgb: 0, 102, 255;
+	--accent-tertiary: hsla(239, 84%, 67%, 1);
+	--accent-glow: hsla(173, 80%, 40%, 0.4);
+
+	/* -- Semantic status colors -- */
+	--color-success: hsla(142, 71%, 45%, 1);
+	--color-success-rgb: 34, 197, 94;
+	--color-success-light: hsla(142, 69%, 58%, 1);
+	--color-warning: hsla(45, 93%, 47%, 1);
+	--color-warning-rgb: 234, 179, 8;
+	--color-danger: hsla(0, 84%, 60%, 1);
+	--color-danger-rgb: 239, 68, 68;
+	--color-danger-light: hsla(0, 91%, 71%, 1);
+	--color-info: hsla(217, 91%, 60%, 1);
+	--color-info-rgb: 59, 130, 246;
+	--color-birthday: hsla(329, 86%, 70%, 1);
+	--color-birthday-rgb: 244, 114, 182;
+
+	/* -- Text hierarchy -- */
+	--text-primary: hsla(0, 0%, 100%, 1);
+	--text-secondary: rgba(255, 255, 255, 0.7);
+	--text-muted: rgba(255, 255, 255, 0.4);
+	--text-faint: rgba(255, 255, 255, 0.2);
+
+	/* -- Surfaces -- */
+	--bg-surface: rgba(20, 25, 45, 0.6);
+	--bg-body: hsla(228, 45%, 4%, 1);
+	--surface-card: rgba(255, 255, 255, 0.03);
+	--surface-card-hover: rgba(255, 255, 255, 0.05);
+	--surface-input: rgba(0, 0, 0, 0.2);
+	--surface-input-focus: rgba(0, 0, 0, 0.28);
+	--surface-hover: rgba(255, 255, 255, 0.06);
+
+	/* -- Borders -- */
+	--border-color: rgba(255, 255, 255, 0.06);
+	--border-subtle: rgba(255, 255, 255, 0.08);
+	--border-medium: rgba(255, 255, 255, 0.12);
+	--border-accent: rgba(var(--accent-color-rgb), 0.25);
+	--border-accent-focus: rgba(var(--accent-color-rgb), 0.4);
+
+	/* -- Radii -- */
+	--radius-xs: 0.25rem;
+	--radius-sm: 0.35rem;
+	--radius-md: 0.5rem;
+	--radius-lg: 0.75rem;
+	--radius-xl: 1rem;
+	--radius-2xl: 1.5rem;
+	--radius-pill: 9999px;
+
+	/* -- Glassmorphism -- */
+	--glass-blur: blur(24px);
+	--glass-opacity: 0.6;
+	--glass-saturate: 180%;
+	--glass-brightness: 100%;
+
+	/* -- Timing -- */
+	--duration-instant: 0.1s;
+	--duration-fast: 0.15s;
+	--duration-base: 0.3s;
+	--duration-slow: 0.5s;
+	--duration-hero: 0.8s;
+	--ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+	--ease-snap: cubic-bezier(0.23, 1, 0.32, 1);
+
+	/* -- Typography -- */
+	--font-mono: 'Fira Code', 'SF Mono', 'Cascadia Code', monospace;
+
+	/* -- Tooltip tokens -- */
+	--tooltip-bg: rgba(10, 15, 25, 0.7);
+	--tooltip-blur: 24px;
+	--tooltip-saturate: 180%;
+	--tooltip-border: rgba(255, 255, 255, 0.12);
+	--tooltip-text: hsla(0, 0%, 100%, 1);
+	--tooltip-shadow: 0 12px 48px rgba(0, 0, 0, 0.6);
+}

@@ -1,0 +1,111 @@
+/*
+ * openZero Shared Components
+ * --------------------------
+ * Tooltips, rule-item lists, footer, and the GitHub link.
+ * These are light-DOM components used across multiple pages.
+ */
+
+/* -- Rule items (email-rules list rows) -- */
+.rule-item {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	background: rgba(255, 255, 255, 0.02);
+	backdrop-filter: blur(8px);
+	-webkit-backdrop-filter: blur(8px);
+	padding: 0.75rem 1rem;
+	border-radius: 0.75rem;
+	margin-bottom: 0.5rem;
+	border: 1px solid transparent;
+	transition: all 0.25s ease;
+}
+
+.rule-item:hover {
+	border-color: rgba(255, 255, 255, 0.08);
+	background: rgba(255, 255, 255, 0.04);
+}
+
+/* -- Tooltips -- */
+[data-tooltip] {
+	position: relative;
+}
+
+[data-tooltip]::before {
+	content: attr(data-tooltip);
+	position: absolute;
+	top: 100%;
+	left: 50%;
+	transform: translateX(-50%) translateY(4px);
+	background: var(--tooltip-bg);
+	backdrop-filter: blur(var(--tooltip-blur)) saturate(var(--tooltip-saturate));
+	-webkit-backdrop-filter: blur(var(--tooltip-blur)) saturate(var(--tooltip-saturate));
+	color: var(--tooltip-text);
+	padding: 0.6rem 0.85rem;
+	border-radius: 0.6rem;
+	font-size: 0.72rem;
+	font-weight: 500;
+	white-space: pre-wrap;
+	opacity: 0;
+	visibility: hidden;
+	transition: all 0.24s cubic-bezier(0.23, 1, 0.32, 1);
+	pointer-events: none;
+	border: 1px solid var(--tooltip-border);
+	z-index: 1000;
+	width: max-content;
+	max-width: 260px;
+	text-align: center;
+	box-shadow: var(--tooltip-shadow);
+	line-height: 1.5;
+}
+
+[data-tooltip]:hover::before {
+	opacity: 1;
+	visibility: visible;
+	transform: translateX(-50%) translateY(10px);
+}
+
+[data-tooltip]:focus-visible::before,
+[data-tooltip]:focus-within::before {
+	opacity: 1;
+	visibility: visible;
+	transform: translateX(-50%) translateY(10px);
+}
+
+/* -- Footer -- */
+.dashboard-footer {
+	/* Span both masonry columns */
+	column-span: all;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 2rem 2vw;
+	margin-top: 2rem;
+	border-top: 1px solid var(--border-color);
+	color: var(--text-muted, rgba(255, 255, 255, 0.4));
+	font-size: 0.85rem;
+	width: 100%;
+}
+
+.dashboard-footer p {
+	margin: 0;
+}
+
+.github-link {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	color: var(--text-muted, rgba(255, 255, 255, 0.4));
+	text-decoration: none;
+	transition: all 0.3s ease;
+	padding: 0.5rem 1rem;
+	border-radius: 0.5rem;
+	background: rgba(255, 255, 255, 0.03);
+	border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.github-link:hover {
+	color: var(--text-primary, hsla(0, 0%, 100%, 1));
+	background: rgba(255, 255, 255, 0.08);
+	border-color: rgba(255, 255, 255, 0.15);
+	transform: translateY(-2px);
+}

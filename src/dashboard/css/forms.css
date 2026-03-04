@@ -1,0 +1,137 @@
+/*
+ * openZero Form Controls
+ * ----------------------
+ * Buttons (base + variants), inputs, textareas, and
+ * the planka board-link buttons used in the dashboard header.
+ */
+
+/* -- Planka board-link buttons -- */
+.planka-btn {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 16px;
+	background: rgba(255, 255, 255, 0.05);
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 8px;
+	color: var(--text-primary, hsla(0, 0%, 100%, 1));
+	text-decoration: none;
+	font-size: 0.9rem;
+	transition: all 0.2s ease;
+	backdrop-filter: blur(10px);
+}
+
+.planka-btn.operator-btn {
+	background: rgba(0, 163, 255, 0.1);
+	border-color: rgba(0, 163, 255, 0.3);
+}
+
+.planka-btn:hover {
+	background: rgba(255, 255, 255, 0.1);
+	transform: translateY(-1px);
+}
+
+.planka-btn.operator-btn:hover {
+	background: rgba(0, 163, 255, 0.2);
+}
+
+/* -- Base button -- */
+button {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4em;
+	border-radius: 0.5rem;
+	border: 1px solid rgba(var(--accent-color-rgb), 0.25);
+	padding: 0.38rem 0.85rem;
+	font-size: 0.78rem;
+	font-weight: 600;
+	font-family: inherit;
+	background: rgba(var(--accent-color-rgb), 0.1);
+	color: var(--accent-color);
+	cursor: pointer;
+	transition: background 0.2s, border-color 0.2s, color 0.2s, transform 0.1s;
+	letter-spacing: 0.02em;
+}
+
+button:hover {
+	background: rgba(var(--accent-color-rgb), 0.2);
+	border-color: var(--accent-color);
+}
+
+button:active { transform: scale(0.97); }
+button:disabled { opacity: 0.45; cursor: not-allowed; pointer-events: none; }
+button:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
+
+/* -- Primary / Save -- */
+.btn-primary, .save-btn {
+	background: var(--accent-color);
+	color: hsla(225, 54%, 8%, 1);
+	border-color: var(--accent-color);
+	font-weight: 700;
+}
+.btn-primary:hover, .save-btn:hover {
+	background: hsla(173, 80%, 32%, 1);
+	border-color: hsla(173, 80%, 32%, 1);
+	color: hsla(225, 54%, 8%, 1);
+}
+
+/* -- Ghost / Cancel -- */
+.btn-ghost, .cancel-btn {
+	background: transparent;
+	color: rgba(255, 255, 255, 0.6);
+	border-color: rgba(255, 255, 255, 0.12);
+}
+.btn-ghost:hover, .cancel-btn:hover {
+	background: rgba(255, 255, 255, 0.06);
+	border-color: rgba(255, 255, 255, 0.25);
+	color: rgba(255, 255, 255, 0.9);
+}
+
+/* -- Danger / Delete -- */
+.delete-btn, .btn-danger {
+	background: hsla(0, 84%, 60%, 0.1);
+	color: var(--color-danger-light, hsla(0, 91%, 71%, 1));
+	border-color: hsla(0, 84%, 60%, 0.25);
+}
+.delete-btn:hover, .btn-danger:hover {
+	background: hsla(0, 84%, 60%, 0.2);
+	border-color: hsla(0, 84%, 60%, 0.5);
+}
+.delete-btn:focus-visible, .btn-danger:focus-visible { outline-color: var(--color-danger-light, hsla(0, 91%, 71%, 1)); }
+
+/* -- Inputs & Textareas -- */
+input,
+textarea {
+	backdrop-filter: blur(8px);
+	-webkit-backdrop-filter: blur(8px);
+	border: 1px solid var(--border-color);
+	padding: 0.6rem 1rem;
+	color: var(--text-primary, hsla(0, 0%, 100%, 1));
+	width: 100%;
+	box-sizing: border-box;
+	margin-bottom: 1rem;
+	transition: all 0.3s ease;
+	font-family: inherit;
+}
+
+input:focus,
+textarea:focus {
+	outline: none;
+	border-color: rgba(20, 184, 166, 0.4);
+	background: rgba(0, 0, 0, 0.28);
+	box-shadow: 0 0 20px rgba(20, 184, 166, 0.08);
+}
+
+/* -- Pre / code blocks -- */
+pre {
+	background: rgba(0, 0, 0, 0.25);
+	backdrop-filter: blur(8px);
+	-webkit-backdrop-filter: blur(8px);
+	padding: 1rem;
+	border-radius: 0.75rem;
+	font-family: 'Fira Code', 'Courier New', monospace;
+	font-size: 0.9rem;
+	overflow-x: auto;
+	color: var(--accent-color, hsla(173, 80%, 40%, 1));
+	border: 1px solid rgba(255, 255, 255, 0.03);
+}
