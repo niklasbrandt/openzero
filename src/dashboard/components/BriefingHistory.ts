@@ -1,4 +1,6 @@
 import { BUTTON_STYLES } from '../services/buttonStyles';
+import { ACCESSIBILITY_STYLES } from '../services/accessibilityStyles';
+import { SECTION_HEADER_STYLES } from '../services/sectionHeaderStyles';
 
 export class BriefingHistory extends HTMLElement {
 	private t: Record<string, string> = {};
@@ -98,29 +100,32 @@ export class BriefingHistory extends HTMLElement {
 			this.shadowRoot.innerHTML = `
 				<style>
 					${BUTTON_STYLES}
-					h2 { font-size: 1.5rem; font-weight: bold; margin: 0 0 1.5rem 0; color: #fff; letter-spacing: 0.02em; display: flex; align-items: center; gap: 0.5rem; }
-					.icon { display: inline-flex; width: 28px; height: 28px; background: linear-gradient(135deg, #14B8A6 0%, #0066FF 100%); border-radius: 0.4rem; align-items: center; justify-content: center; flex-shrink: 0; }
-					.subtitle { font-size: 0.65rem; font-weight: 400; color: rgba(255, 255, 255, 0.3); margin-left: 0.5rem; text-transform: uppercase; letter-spacing: 0.1em; }
+					${ACCESSIBILITY_STYLES}
+					${SECTION_HEADER_STYLES}
+					/* Override icon gradient */
+					h2 .h-icon {
+						background: linear-gradient(135deg, var(--accent-color, #14B8A6) 0%, #0066FF 100%);
+					}
 					:host { display: block; }
 					.card {
 						display: flex;
 						flex-direction: column;
 					}
 					.briefing-item {
-						background: rgba(255, 255, 255, 0.02);
-						border-radius: 12px;
+						background: var(--surface-card, rgba(255, 255, 255, 0.02));
+						border-radius: var(--radius-lg, 12px);
 						margin-bottom: 0.75rem;
-						border: 1px solid rgba(255, 255, 255, 0.05);
+						border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.05));
 						overflow: hidden;
-						transition: background 0.3s ease, border-color 0.3s ease;
+						transition: background var(--duration-base, 0.3s) ease, border-color var(--duration-base, 0.3s) ease;
 					}
 					.briefing-item:hover {
-						background: rgba(255, 255, 255, 0.04);
-						border-color: rgba(255, 255, 255, 0.1);
+						background: var(--surface-card-hover, rgba(255, 255, 255, 0.04));
+						border-color: var(--border-medium, rgba(255, 255, 255, 0.1));
 					}
 					.briefing-item.active {
-						background: rgba(255, 255, 255, 0.04);
-						border-color: rgba(20, 184, 166, 0.2);
+						background: var(--surface-card-hover, rgba(255, 255, 255, 0.04));
+						border-color: rgba(var(--accent-color-rgb, 20, 184, 166), 0.2);
 					}
 					.meta { 
 						display: flex; 
@@ -136,35 +141,35 @@ export class BriefingHistory extends HTMLElement {
 						color: inherit;
 					}
 					.meta:focus-visible {
-						outline: 2px solid #14B8A6;
+						outline: 2px solid var(--accent-color, #14B8A6);
 						outline-offset: 2px;
 						border-radius: 4px;
 						background: rgba(255, 255, 255, 0.05);
 					}
 					.type { 
-						background: rgba(20, 184, 166, 0.1); 
-						color: #14B8A6; 
+						background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.1); 
+						color: var(--accent-color, #14B8A6); 
 						font-size: 0.65rem; 
 						padding: 0.2rem 0.6rem; 
-						border-radius: 20px; 
+						border-radius: var(--radius-pill, 20px); 
 						font-weight: 700;
 						letter-spacing: 0.05em;
-						border: 1px solid rgba(20, 184, 166, 0.2);
+						border: 1px solid rgba(var(--accent-color-rgb, 20, 184, 166), 0.2);
 					}
 					.date { 
 						font-size: 0.8rem; 
-						color: rgba(255, 255, 255, 0.4); 
+						color: var(--text-muted, rgba(255, 255, 255, 0.4)); 
 						font-weight: 500;
 					}
 					.chevron { 
 						transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); 
-						color: rgba(255, 255, 255, 0.2);
+						color: var(--text-faint, rgba(255, 255, 255, 0.2));
 						display: flex;
 						align-items: center;
 					}
 					.briefing-item.active .chevron { 
 						transform: rotate(180deg); 
-						color: #14B8A6;
+						color: var(--accent-color, #14B8A6);
 					}
 					
 					.content-wrapper {
@@ -186,8 +191,8 @@ export class BriefingHistory extends HTMLElement {
 						font-size: 0.95rem; 
 						white-space: pre-wrap; 
 						line-height: 1.6; 
-						color: rgba(255, 255, 255, 0.8); 
-						border-top: 1px solid rgba(255, 255, 255, 0.03);
+						color: var(--text-secondary, rgba(255, 255, 255, 0.8)); 
+						border-top: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.03));
 						padding-top: 1rem;
 					}
 					.load-more {
@@ -204,19 +209,15 @@ export class BriefingHistory extends HTMLElement {
 						transition: all 0.2s;
 					}
 					.load-more:hover {
-						background: rgba(20, 184, 166, 0.05);
-						color: #14B8A6;
-						border-color: rgba(20, 184, 166, 0.3);
+						background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.05);
+						color: var(--accent-color, #14B8A6);
+						border-color: rgba(var(--accent-color-rgb, 20, 184, 166), 0.3);
 					}
-					.load-more:focus-visible { outline: 2px solid #14B8A6; outline-offset: 2px; }
-					@media (prefers-reduced-motion: reduce) {
-						.content-wrapper { transition: none; }
-						.chevron { transition: none; }
-					}
+					.load-more:focus-visible { outline: 2px solid var(--accent-color, #14B8A6); outline-offset: 2px; }
 				</style>
 				<div class="card">
 					<h2>
-			<span class="icon" aria-hidden="true">
+			<span class="h-icon" aria-hidden="true">
 						<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
 								<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
 								<polyline points="14 2 14 8 20 8"></polyline>

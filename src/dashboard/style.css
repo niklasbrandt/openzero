@@ -12,6 +12,57 @@
  * Accessibility: EN 301 549 / WCAG 2.1 AA
  */
 
+/* ── Self-hosted fonts ── */
+@font-face {
+	font-family: 'Inter';
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url('./fonts/inter-400.woff2') format('woff2');
+}
+@font-face {
+	font-family: 'Inter';
+	font-style: normal;
+	font-weight: 500;
+	font-display: swap;
+	src: url('./fonts/inter-500.woff2') format('woff2');
+}
+@font-face {
+	font-family: 'Inter';
+	font-style: normal;
+	font-weight: 600;
+	font-display: swap;
+	src: url('./fonts/inter-600.woff2') format('woff2');
+}
+@font-face {
+	font-family: 'Inter';
+	font-style: normal;
+	font-weight: 700;
+	font-display: swap;
+	src: url('./fonts/inter-700.woff2') format('woff2');
+}
+@font-face {
+	font-family: 'Inter';
+	font-style: normal;
+	font-weight: 800;
+	font-display: swap;
+	src: url('./fonts/inter-800.woff2') format('woff2');
+}
+@font-face {
+	font-family: 'Fira Code';
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url('./fonts/firacode-400.woff2') format('woff2');
+}
+@font-face {
+	font-family: 'Fira Code';
+	font-style: normal;
+	font-weight: 700;
+	font-display: swap;
+	src: url('./fonts/firacode-700.woff2') format('woff2');
+}
+
 /* ── Screen-reader-only utility (WCAG 1.3.1, 1.1.1) ── */
 .sr-only {
   position: absolute;
@@ -63,17 +114,78 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
+  /* ── Accent palette ── */
   --accent-color: #14B8A6;
   --accent-color-rgb: 20, 184, 166;
   --accent-secondary: #0066FF;
   --accent-secondary-rgb: 0, 102, 255;
   --accent-tertiary: #6366F1;
   --accent-glow: rgba(20, 184, 166, 0.4);
-  --bg-surface: rgba(20, 25, 45, 0.6);
-  --border-color: rgba(255, 255, 255, 0.06);
-  --glass-blur: blur(24px);
 
-  /* Tooltip Tokens */
+  /* ── Semantic status colors ── */
+  --color-success: #22c55e;
+  --color-success-rgb: 34, 197, 94;
+  --color-success-light: #4ade80;
+  --color-warning: #eab308;
+  --color-warning-rgb: 234, 179, 8;
+  --color-danger: #ef4444;
+  --color-danger-rgb: 239, 68, 68;
+  --color-danger-light: #f87171;
+  --color-info: #3b82f6;
+  --color-info-rgb: 59, 130, 246;
+  --color-birthday: #f472b6;
+  --color-birthday-rgb: 244, 114, 182;
+
+  /* ── Text hierarchy ── */
+  --text-primary: #fff;
+  --text-secondary: rgba(255, 255, 255, 0.7);
+  --text-muted: rgba(255, 255, 255, 0.4);
+  --text-faint: rgba(255, 255, 255, 0.2);
+
+  /* ── Surfaces ── */
+  --bg-surface: rgba(20, 25, 45, 0.6);
+  --bg-body: #060810;
+  --surface-card: rgba(255, 255, 255, 0.03);
+  --surface-card-hover: rgba(255, 255, 255, 0.05);
+  --surface-input: rgba(0, 0, 0, 0.2);
+  --surface-input-focus: rgba(0, 0, 0, 0.28);
+  --surface-hover: rgba(255, 255, 255, 0.06);
+
+  /* ── Borders ── */
+  --border-color: rgba(255, 255, 255, 0.06);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-medium: rgba(255, 255, 255, 0.12);
+  --border-accent: rgba(var(--accent-color-rgb), 0.25);
+  --border-accent-focus: rgba(var(--accent-color-rgb), 0.4);
+
+  /* ── Radii ── */
+  --radius-xs: 0.25rem;
+  --radius-sm: 0.35rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+  --radius-pill: 9999px;
+
+  /* ── Glassmorphism ── */
+  --glass-blur: blur(24px);
+  --glass-opacity: 0.6;
+  --glass-saturate: 180%;
+  --glass-brightness: 100%;
+
+  /* ── Timing ── */
+  --duration-instant: 0.1s;
+  --duration-fast: 0.15s;
+  --duration-base: 0.3s;
+  --duration-slow: 0.5s;
+  --duration-hero: 0.8s;
+  --ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-snap: cubic-bezier(0.23, 1, 0.32, 1);
+
+  /* ── Typography ── */
+  --font-mono: 'Fira Code', 'SF Mono', 'Cascadia Code', monospace;
+
+  /* ── Tooltip tokens ── */
   --tooltip-bg: rgba(10, 15, 25, 0.7);
   --tooltip-blur: 24px;
   --tooltip-saturate: 180%;

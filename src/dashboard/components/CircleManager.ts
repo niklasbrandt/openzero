@@ -1,4 +1,6 @@
 import { BUTTON_STYLES } from '../services/buttonStyles';
+import { ACCESSIBILITY_STYLES } from '../services/accessibilityStyles';
+import { FEEDBACK_STYLES } from '../services/feedbackStyles';
 
 export class CircleManager extends HTMLElement {
 	private circleType: string = 'inner';
@@ -173,9 +175,11 @@ export class CircleManager extends HTMLElement {
 			this.shadowRoot.innerHTML = `
 				<style>
 					${BUTTON_STYLES}
+					${ACCESSIBILITY_STYLES}
+					${FEEDBACK_STYLES}
 					h2 { font-size: 1.5rem; font-weight: bold; margin: 0; color: #fff; letter-spacing: 0.02em; display: flex; align-items: center; gap: 0.5rem; overflow-wrap: break-word; word-break: break-word; min-width: 0; flex: 1; }
-					.h-icon { display: inline-flex; width: 28px; height: 28px; background: ${accent}; border-radius: 0.4rem; align-items: center; justify-content: center; flex-shrink: 0; }
-					.subtitle { font-size: 0.65rem; font-weight: 400; color: rgba(255, 255, 255, 0.3); margin-left: 0.5rem; text-transform: uppercase; letter-spacing: 0.1em; }
+					.h-icon { display: inline-flex; width: 28px; height: 28px; background: ${accent}; border-radius: var(--radius-sm, 0.4rem); align-items: center; justify-content: center; flex-shrink: 0; }
+					.subtitle { font-size: 0.65rem; font-weight: 400; color: var(--text-faint, rgba(255, 255, 255, 0.3)); margin-left: 0.5rem; text-transform: uppercase; letter-spacing: 0.1em; }
 					:host { display: block; }
 					.add-form {
 						display: grid;
@@ -215,12 +219,12 @@ export class CircleManager extends HTMLElement {
 						box-sizing: border-box;
 					}
 					input:focus, textarea:focus {
-						border-color: rgba(20, 184, 166, 0.4);
+						border-color: rgba(var(--accent-color-rgb, 20, 184, 166), 0.4);
 						background: rgba(0, 0, 0, 0.28);
 					}
 					input.field-error, textarea.field-error {
-						border-color: rgba(239, 68, 68, 0.5);
-						background: rgba(239, 68, 68, 0.05);
+						border-color: rgba(var(--color-danger-rgb, 239, 68, 68), 0.5);
+						background: rgba(var(--color-danger-rgb, 239, 68, 68), 0.05);
 					}
 					.field-hint {
 						font-size: 0.68rem;
@@ -268,11 +272,11 @@ export class CircleManager extends HTMLElement {
 					.cal-badge {
 						display: inline-block;
 						font-size: 0.7rem;
-						color: #14B8A6;
-						background: rgba(20, 184, 166, 0.1);
-						border: 1px solid rgba(20, 184, 166, 0.2);
+						color: var(--accent-color, #14B8A6);
+						background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.1);
+						border: 1px solid rgba(var(--accent-color-rgb, 20, 184, 166), 0.2);
 						padding: 0.15rem 0.5rem;
-						border-radius: 0.4rem;
+						border-radius: var(--radius-sm, 0.4rem);
 						margin-left: 0.5rem;
 					}
 
@@ -280,29 +284,25 @@ export class CircleManager extends HTMLElement {
 					.form-feedback {
 						font-size: 0.78rem;
 						padding: 0.5rem 0.75rem;
-						border-radius: 0.5rem;
+						border-radius: var(--radius-md, 0.5rem);
 						margin-top: 0.5rem;
 						opacity: 0;
-						transition: opacity 0.25s ease;
+						transition: opacity var(--duration-base, 0.25s) ease;
 					}
 					.form-feedback.visible { opacity: 1; }
 					.form-feedback.error {
-						background: rgba(239, 68, 68, 0.1);
-						border: 1px solid rgba(239, 68, 68, 0.2);
-						color: #f87171;
+						background: rgba(var(--color-danger-rgb, 239, 68, 68), 0.1);
+						border: 1px solid rgba(var(--color-danger-rgb, 239, 68, 68), 0.2);
+						color: var(--color-danger, #f87171);
 					}
 					.form-feedback.success {
-						background: rgba(34, 197, 94, 0.1);
-						border: 1px solid rgba(34, 197, 94, 0.2);
-						color: #4ade80;
+						background: rgba(var(--color-success-rgb, 34, 197, 94), 0.1);
+						border: 1px solid rgba(var(--color-success-rgb, 34, 197, 94), 0.2);
+						color: var(--color-success, #4ade80);
 					}
 					button:focus-visible, input:focus-visible, textarea:focus-visible {
-						outline: 2px solid #14B8A6;
+						outline: 2px solid var(--accent-color, #14B8A6);
 						outline-offset: 2px;
-					}
-					@media (prefers-reduced-motion: reduce) {
-						.add-form { animation: none; }
-						* { transition: none !important; }
 					}
 				</style>
 				<div class="card">

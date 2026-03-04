@@ -1,3 +1,5 @@
+import { ACCESSIBILITY_STYLES } from '../services/accessibilityStyles';
+
 export class WelcomeOnboarding extends HTMLElement {
 	constructor() {
 		super();
@@ -29,10 +31,11 @@ export class WelcomeOnboarding extends HTMLElement {
 			this.shadowRoot.innerHTML = `
 				<style>
 					:host { display: block; grid-column: 1 / -1; margin-bottom: 2rem; }
+					${ACCESSIBILITY_STYLES}
 					.card {
-						background: linear-gradient(135deg, rgba(20, 184, 166, 0.1), rgba(0, 102, 255, 0.1));
-						border: 1px solid rgba(20, 184, 166, 0.3);
-						border-radius: 1rem;
+						background: linear-gradient(135deg, rgba(var(--accent-color-rgb, 20, 184, 166), 0.1), rgba(0, 102, 255, 0.1));
+						border: 1px solid rgba(var(--accent-color-rgb, 20, 184, 166), 0.3);
+						border-radius: var(--radius-lg, 1rem);
 						padding: 2rem;
 						display: flex;
 						flex-direction: column;
@@ -43,8 +46,8 @@ export class WelcomeOnboarding extends HTMLElement {
 						from { opacity: 0; }
 						to { opacity: 1; }
 					}
-					h2 { margin: 0; font-size: 1.8rem; background: linear-gradient(135deg, #14B8A6, #0066FF); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-					p { margin: 0; color: rgba(255, 255, 255, 0.8); line-height: 1.6; }
+					h2 { margin: 0; font-size: 1.8rem; background: linear-gradient(135deg, var(--accent-color, #14B8A6), #0066FF); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+					p { margin: 0; color: var(--text-secondary, rgba(255, 255, 255, 0.8)); line-height: 1.6; }
 					
 					.steps {
 						display: grid;
@@ -61,40 +64,32 @@ export class WelcomeOnboarding extends HTMLElement {
 						gap: 0.75rem;
 						transition: all 0.3s ease;
 					}
-					.step-item.done { border-color: #14B8A6; background: rgba(20, 184, 166, 0.05); }
+					.step-item.done { border-color: var(--accent-color, #14B8A6); background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.05); }
 					.step-icon { 
 						width: 24px; height: 24px; border-radius: 50%; 
 						display: flex; align-items: center; justify-content: center;
 						background: rgba(255, 255, 255, 0.1); font-size: 0.8rem;
 					}
-					.done .step-icon { background: #14B8A6; color: #fff; }
+					.done .step-icon { background: var(--accent-color, #14B8A6); color: #fff; }
 					.step-text { font-weight: 500; font-size: 0.9rem; }
 					.step-text span { display: block; font-size: 0.75rem; color: rgba(255, 255, 255, 0.4); font-weight: 400; }
 
 					.cta {
 						align-self: flex-start;
-						background: #14B8A6;
+						background: var(--accent-color, #14B8A6);
 						color: #fff;
 						padding: 0.75rem 1.5rem;
-						border-radius: 0.75rem;
+						border-radius: var(--radius-md, 0.75rem);
 						text-decoration: none;
 						font-weight: 600;
 						font-size: 0.95rem;
-						transition: all 0.2s;
+						transition: all var(--duration-fast, 0.2s);
 						border: none;
 						cursor: pointer;
 					}
-					.cta:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(20, 184, 166, 0.4); }
-					.cta:focus-visible { outline: 2px solid #14B8A6; outline-offset: 3px; }
-					.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
-					@media (prefers-reduced-motion: reduce) {
-						*, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
-					}
-					.cta:focus-visible { outline: 2px solid #14B8A6; outline-offset: 3px; }
-					.step-item:focus-visible { outline: 2px solid rgba(20, 184, 166, 0.5); outline-offset: 2px; border-radius: 0.75rem; }
-					@media (prefers-reduced-motion: reduce) {
-						*, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
-					}
+					.cta:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(var(--accent-color-rgb, 20, 184, 166), 0.4); }
+					.cta:focus-visible { outline: 2px solid var(--accent-color, #14B8A6); outline-offset: 3px; }
+					.step-item:focus-visible { outline: 2px solid rgba(var(--accent-color-rgb, 20, 184, 166), 0.5); outline-offset: 2px; border-radius: 0.75rem; }
 				</style>
 				<div class="card">
 					<div>

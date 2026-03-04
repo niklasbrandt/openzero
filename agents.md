@@ -108,3 +108,14 @@ All code written for the openZero dashboard **MUST** conform to **WCAG 2.1 Level
 - **Always Push:** After committing changes to git, you MUST push to the remote repository. Never leave commits local-only.
 - **Always Sync VPS:** After pushing, you MUST run `scripts/sync.sh` to deploy the changes to the VPS. Code changes are not complete until they are live on the server.
 - **Single Step:** Treat commit, push, and VPS sync as one atomic workflow. Do not stop after committing without pushing and syncing.
+
+## 17. Design System & CSS Architecture
+
+- **Canonical Reference:** All visual decisions are documented in `docs/DESIGN.md`. Read it before modifying any component styling.
+- **Design Tokens:** Never use hardcoded hex colors in component CSS. Always reference `:root` custom properties via `var(--token, fallback)`. The fallback value ensures standalone functionality.
+- **Shared Style Modules:** Reusable CSS lives in `src/dashboard/services/*Styles.ts` as exported template string constants. Components interpolate them via `${MODULE_NAME}` inside `<style>` blocks. Do not duplicate sr-only, reduced-motion, scrollbar, or section-header CSS.
+- **rem Not em:** Use `rem` for all spacing (margin, padding, gap, width, height). The only acceptable use of `em` is `letter-spacing`.
+- **Class Naming:** Section header icons use `.h-icon`. Status indicators use `.status-dot`. Empty placeholders use `.empty-state`. Never use generic `.icon` or `.empty`.
+- **Shadow DOM Encapsulation:** Component styles stay inside their `.ts` template wrappers. Never extract into separate CSS files.
+- **Easing Rules:** Standard GSAP easing: `expo.out` (entrance), `expo.inOut` (transition), `power2.in` (exit), `power2.out` (micro). `elastic.out` and `bounce.out` are only permitted in goo mode (`oz-goo-*` scoped).
+- **Accessibility per Component:** Every Shadow DOM component must include `${ACCESSIBILITY_STYLES}` (providing `.sr-only`, `@media(prefers-reduced-motion)`, and `@media(forced-colors:active)`). Component-specific animation suppression goes in a separate reduced-motion block after the module.

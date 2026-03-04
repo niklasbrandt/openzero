@@ -1,4 +1,6 @@
 import { BUTTON_STYLES } from '../services/buttonStyles';
+import { ACCESSIBILITY_STYLES } from '../services/accessibilityStyles';
+import { SECTION_HEADER_STYLES } from '../services/sectionHeaderStyles';
 
 export class EmailRules extends HTMLElement {
   private t: Record<string, string> = {};
@@ -128,9 +130,8 @@ export class EmailRules extends HTMLElement {
     if (this.shadowRoot) {
       this.shadowRoot.innerHTML = `
 				<style>
-					h2 { font-size: 1.5rem; font-weight: bold; margin: 0 0 1.5rem 0; color: #fff; display: flex; align-items: center; gap: 0.5rem; letter-spacing: 0.02em; }
-					.icon { display: inline-flex; width: 28px; height: 28px; background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-secondary) 100%); border-radius: 0.4rem; align-items: center; justify-content: center; flex-shrink: 0; }
-					.subtitle { font-weight: 400; font-size: 0.75rem; color: rgba(255, 255, 255, 0.35); margin-left: auto; }
+					${ACCESSIBILITY_STYLES}
+					${SECTION_HEADER_STYLES}
 					:host { display: block; }
 					.add-box { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.5rem; background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 1rem; }
 					.input-row { display: flex; gap: 0.5rem; }
@@ -158,10 +159,10 @@ export class EmailRules extends HTMLElement {
 					.info { display: flex; flex-direction: column; gap: 4px; }
 					.pattern { color: #fff; font-weight: 500; font-size: 0.9rem; }
 					${BUTTON_STYLES}
-					.action-tag { font-size: 0.75rem; color: #14B8A6; opacity: 0.9; font-weight: 500; }
+					.action-tag { font-size: 0.75rem; color: var(--accent-color, #14B8A6); opacity: 0.9; font-weight: 500; }
 					.label-badge { 
-						background: rgba(20, 184, 166, 0.15); 
-						color: #14B8A6; 
+						background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.15); 
+						color: var(--accent-color, #14B8A6); 
 						font-size: 0.65rem; 
 						padding: 2px 6px; 
 						border-radius: 4px; 
@@ -175,7 +176,7 @@ export class EmailRules extends HTMLElement {
 					.item-actions { display: flex; align-items: center; }
 
 					.edit-btn:focus-visible, .delete-btn:focus-visible { outline: 2px solid rgba(255,255,255,0.4); outline-offset: 2px; }
-					input:focus-visible, select:focus-visible { outline: 2px solid #14B8A6; outline-offset: 2px; }
+					input:focus-visible, select:focus-visible { outline: 2px solid var(--accent-color, #14B8A6); outline-offset: 2px; }
 					.form-label {
 						display: block;
 						font-size: 0.68rem;
@@ -186,12 +187,11 @@ export class EmailRules extends HTMLElement {
 						margin: 0 0 0.25rem 0;
 					}
 					.input-col { display: flex; flex-direction: column; flex: 1; }
-					@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 				</style>
 				<div class="card">
 					<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
 						<h2>
-							<span class="icon" aria-hidden="true">
+							<span class="h-icon" aria-hidden="true">
 								<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
 									<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
 									<polyline points="22,6 12,13 2,6"></polyline>
