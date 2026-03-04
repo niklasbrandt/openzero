@@ -60,7 +60,6 @@ All identifiers are uppercase and uniquely suffixed so they cannot collide with 
 
 A Markdown report is saved to `docs/artifacts/regression_results.md` after each run (overwritten, not committed).
 
-**Known gap:** `/wipe_memory` is listed in `/help` but has no handler in the dashboard chat endpoint -- it falls through to the LLM and does nothing. Not tested here pending a fix.
 
 ---
 
