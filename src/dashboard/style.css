@@ -102,6 +102,74 @@ body {
      CSS custom properties are updated by the theme script on load. */
 }
 
+/* ── Custom-element FOUC prevention ──
+   Before the JS bundle registers each Web Component, the browser treats
+   the tags as unknown inline elements (0 height, no Shadow DOM). This
+   causes a layout-shift flash as they pop in. :not(:defined) hides them
+   until customElements.define() runs, reserving vertical space with
+   min-height so the masonry column layout stays stable. */
+chat-prompt:not(:defined),
+life-overview:not(:defined),
+create-project:not(:defined),
+calendar-agenda:not(:defined),
+user-card:not(:defined),
+memory-search:not(:defined),
+briefing-history:not(:defined),
+z-personality:not(:defined),
+circle-manager:not(:defined),
+email-rules:not(:defined),
+hardware-monitor:not(:defined),
+software-status:not(:defined),
+system-benchmark:not(:defined),
+calendar-manager:not(:defined),
+welcome-onboarding:not(:defined),
+project-tree:not(:defined) {
+	opacity: 0;
+	display: block;
+	min-height: 60px;
+}
+
+chat-prompt:defined,
+life-overview:defined,
+create-project:defined,
+calendar-agenda:defined,
+user-card:defined,
+memory-search:defined,
+briefing-history:defined,
+z-personality:defined,
+circle-manager:defined,
+email-rules:defined,
+hardware-monitor:defined,
+software-status:defined,
+system-benchmark:defined,
+calendar-manager:defined,
+welcome-onboarding:defined,
+project-tree:defined {
+	opacity: 1;
+	transition: opacity 0.15s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	chat-prompt:defined,
+	life-overview:defined,
+	create-project:defined,
+	calendar-agenda:defined,
+	user-card:defined,
+	memory-search:defined,
+	briefing-history:defined,
+	z-personality:defined,
+	circle-manager:defined,
+	email-rules:defined,
+	hardware-monitor:defined,
+	software-status:defined,
+	system-benchmark:defined,
+	calendar-manager:defined,
+	welcome-onboarding:defined,
+	project-tree:defined {
+		transition: none;
+	}
+}
+
 /* ── Page loading overlay ──
    Covers the page while widgets mount progressively, then fades
    out immediately once the JS bundle marks the body as ready.
@@ -497,6 +565,11 @@ h3 {
   break-inside: avoid;
   /* Push cards apart vertically; replaces grid-gap between rows */
   margin-bottom: 2rem;
+  /* Skip rendering for off-screen cards — reduces initial paint work
+     and masonry reflow cascades. The intrinsic size hint prevents the
+     column algorithm from collapsing cards before they are painted. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 300px;
   /* Prevent column blowout */
   min-width: 0;
   overflow-x: hidden;
