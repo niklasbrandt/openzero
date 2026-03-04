@@ -144,12 +144,25 @@ async function initTheme() {
 		if (res.ok) {
 			const data = await res.json();
 			const root = document.documentElement;
+			const cache: Record<string, string> = {};
 			if (data.color_primary) {
 				root.style.setProperty('--accent-color', data.color_primary);
 				root.style.setProperty('--accent-color-rgb', hexToRgb(data.color_primary));
+				cache.accent = data.color_primary;
 			}
-			if (data.color_secondary) root.style.setProperty('--accent-secondary', data.color_secondary);
-			if (data.color_tertiary) root.style.setProperty('--accent-tertiary', data.color_tertiary);
+			if (data.color_secondary) {
+				root.style.setProperty('--accent-secondary', data.color_secondary);
+				cache.secondary = data.color_secondary;
+			}
+			if (data.color_tertiary) {
+				root.style.setProperty('--accent-tertiary', data.color_tertiary);
+				cache.tertiary = data.color_tertiary;
+			}
+			// Persist so the next page load applies the palette instantly
+			// without waiting for the API round-trip (eliminates theme flash).
+			if (Object.keys(cache).length) {
+				localStorage.setItem('z_theme', JSON.stringify(cache));
+			}
 		}
 	} catch (e) {
 		console.warn('Theme initialization failed:', e);
