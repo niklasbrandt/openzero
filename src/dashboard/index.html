@@ -46,9 +46,9 @@
 	<div id="page-loader" aria-hidden="true"></div>
 
 	<!-- Skip navigation — EN 301 549 / WCAG 2.4.1 -->
-	<a href="#main-content" class="skip-link">Skip to main content</a>
+	<a href="#main-content" class="skip-link" data-tr-text="skip_to_content">Skip to main content</a>
 
-	<nav class="sidebar-nav" aria-label="Dashboard section navigation">
+	<nav class="sidebar-nav" aria-label="Dashboard section navigation" data-tr-aria="aria_nav_landmark">
 		<a href="#section-chat" data-section="section-chat" aria-label="Chat">
 			<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
 				stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
@@ -187,7 +187,7 @@
 	<main id="main-content">
 		<!-- ── Top sticky carousel-style anchor nav (visible 700–1099 px) ──
 		     Replaces sidebar at mid-viewports. WCAG 2.4.1 / EN 301 549 §9.2.4.1 -->
-		<nav class="top-marquee-nav" id="top-marquee-nav" aria-label="Dashboard section navigation">
+		<nav class="top-marquee-nav" id="top-marquee-nav" aria-label="Dashboard section navigation" data-tr-aria="aria_nav_landmark">
 			<a href="#section-chat" data-section="section-chat" aria-label="Chat">
 				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
 				<span data-tr="nav_chat">Chat</span>
@@ -250,10 +250,10 @@
 
 		<!-- ── Mobile full-screen nav drawer (hamburger, <700 px) ──
 		     WCAG 2.4.3 traversal order / EN 301 549 §9.2.4.3 -->
-		<div class="mobile-nav-drawer" id="mobile-nav-drawer" role="dialog" aria-modal="true" aria-label="Navigation menu">
+		<div class="mobile-nav-drawer" id="mobile-nav-drawer" role="dialog" aria-modal="true" aria-label="Navigation menu" data-tr-aria="aria_nav_drawer">
 			<div class="mobile-nav-drawer-header">
-				<h2>Navigate</h2>
-				<button class="mobile-nav-drawer-close" id="mobile-nav-close" aria-label="Close navigation menu">
+				<h2 data-tr-text="drawer_heading">Navigate</h2>
+				<button class="mobile-nav-drawer-close" id="mobile-nav-close" aria-label="Close navigation menu" data-tr-aria="aria_close_nav">
 					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
 				</button>
 			</div>
@@ -320,9 +320,9 @@
 		<div id="app">
 			<header class="dashboard-header">
 				<h1>openZero <span class="gradient-text">Dashboard</span></h1>
-				<div class="header-actions" role="toolbar" aria-label="Quick actions">
+				<div class="header-actions" role="toolbar" aria-label="Quick actions" data-tr-aria="aria_quick_actions">
 				<!-- Hamburger — opens mobile nav drawer at <700 px -->
-				<button class="mobile-nav-toggle" id="mobile-nav-open" aria-label="Open navigation menu" aria-expanded="false" aria-controls="mobile-nav-drawer">
+				<button class="mobile-nav-toggle" id="mobile-nav-open" aria-label="Open navigation menu" aria-expanded="false" aria-controls="mobile-nav-drawer" data-tr-aria="aria_open_nav">
 					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
 						<line x1="3" y1="6" x2="21" y2="6"></line>
 						<line x1="3" y1="12" x2="21" y2="12"></line>
@@ -368,68 +368,68 @@
 
 			<welcome-onboarding></welcome-onboarding>
 
-			<section class="dashboard-card chat-card" id="section-chat" aria-label="Chat">
+			<section class="dashboard-card chat-card" id="section-chat" aria-label="Chat" data-tr-aria="nav_chat">
 				<chat-prompt></chat-prompt>
 			</section>
 
-			<section class="dashboard-card life-overview-card" id="section-life" aria-label="Life">
+			<section class="dashboard-card life-overview-card" id="section-life" aria-label="Life" data-tr-aria="nav_life">
 				<life-overview></life-overview>
 				<create-project></create-project>
 			</section>
 
-			<section class="dashboard-card" id="section-calendar" aria-label="Calendar">
+			<section class="dashboard-card" id="section-calendar" aria-label="Calendar" data-tr-aria="nav_calendar">
 				<calendar-agenda></calendar-agenda>
 			</section>
 
-			<section class="dashboard-card" id="section-identity" aria-label="Profile">
+			<section class="dashboard-card" id="section-identity" aria-label="Profile" data-tr-aria="nav_profile">
 				<user-card></user-card>
 			</section>
 
-			<section class="dashboard-card" id="section-memory" aria-label="Memory">
+			<section class="dashboard-card" id="section-memory" aria-label="Memory" data-tr-aria="nav_memory">
 				<memory-search></memory-search>
 			</section>
 
-			<section class="dashboard-card" id="section-briefing" aria-label="Briefing">
+			<section class="dashboard-card" id="section-briefing" aria-label="Briefing" data-tr-aria="nav_briefing">
 				<briefing-history></briefing-history>
 			</section>
 
-			<section class="dashboard-card" id="section-personality" aria-label="Personality">
+			<section class="dashboard-card" id="section-personality" aria-label="Personality" data-tr-aria="nav_personality">
 				<z-personality></z-personality>
 			</section>
 
-			<section class="dashboard-card" id="section-inner" aria-label="Inner Circle">
+			<section class="dashboard-card" id="section-inner" aria-label="Inner Circle" data-tr-aria="nav_inner_circle">
 				<circle-manager type="inner"></circle-manager>
 			</section>
 
-			<section class="dashboard-card" id="section-close" aria-label="Close Circle">
+			<section class="dashboard-card" id="section-close" aria-label="Close Circle" data-tr-aria="nav_close_circle">
 				<circle-manager type="close"></circle-manager>
 			</section>
 
-			<section class="dashboard-card" id="section-outer" aria-label="Outer Circle">
+			<section class="dashboard-card" id="section-outer" aria-label="Outer Circle" data-tr-aria="nav_outer_circle">
 				<circle-manager type="outer"></circle-manager>
 			</section>
 
-			<section class="dashboard-card" id="section-email" aria-label="Email">
+			<section class="dashboard-card" id="section-email" aria-label="Email" data-tr-aria="nav_email">
 				<email-rules></email-rules>
 			</section>
 
-			<section class="dashboard-card" id="section-hardware" aria-label="Hardware">
+			<section class="dashboard-card" id="section-hardware" aria-label="Hardware" data-tr-aria="nav_hardware">
 				<hardware-monitor></hardware-monitor>
 			</section>
 
-			<section class="dashboard-card" id="section-software" aria-label="Software">
+			<section class="dashboard-card" id="section-software" aria-label="Software" data-tr-aria="nav_software">
 				<software-status></software-status>
 			</section>
 
-			<section class="dashboard-card" id="section-benchmark" aria-label="Benchmark">
+			<section class="dashboard-card" id="section-benchmark" aria-label="Benchmark" data-tr-aria="nav_benchmark">
 				<system-benchmark></system-benchmark>
 			</section>
 		</div>
 
 		<footer class="dashboard-footer">
-			<p>openZero — Private AI Agent Operating System</p>
+			<p data-tr-text="footer_tagline">openZero — Private AI Agent Operating System</p>
 			<a href="https://github.com/niklasbrandt/openzero" target="_blank" rel="noopener noreferrer"
-				class="github-link" aria-label="openZero on GitHub (opens in new tab)">
+				class="github-link" aria-label="openZero on GitHub (opens in new tab)" data-tr-aria="aria_github_link">
 				<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
 					stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
 					<path

@@ -302,6 +302,29 @@ async function initHeaderTranslations() {
 			const localised = t[key];
 			if (localised) el.textContent = localised;
 		});
+
+		// Sync aria-label on nav links from their child [data-tr] span text.
+		// This ensures screen readers announce the translated section name.
+		document.querySelectorAll<HTMLAnchorElement>('a[data-section]').forEach(a => {
+			const span = a.querySelector<HTMLElement>('[data-tr]');
+			if (span && span.textContent) {
+				a.setAttribute('aria-label', span.textContent);
+			}
+		});
+
+		// Translate aria-label on structural elements via [data-tr-aria].
+		document.querySelectorAll<HTMLElement>('[data-tr-aria]').forEach(el => {
+			const key = el.getAttribute('data-tr-aria')!;
+			const localised = t[key];
+			if (localised) el.setAttribute('aria-label', localised);
+		});
+
+		// Translate visible text on structural elements via [data-tr-text].
+		document.querySelectorAll<HTMLElement>('[data-tr-text]').forEach(el => {
+			const key = el.getAttribute('data-tr-text')!;
+			const localised = t[key];
+			if (localised) el.textContent = localised;
+		});
 	} catch (e) {
 		console.warn('Header translations init failed:', e);
 	}
