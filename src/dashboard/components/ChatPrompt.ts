@@ -56,6 +56,7 @@ export class ChatPrompt extends HTMLElement {
 				content: m.content,
 				timestamp: new Date(m.at),
 				channel: m.channel,
+				model: m.model || undefined,
 			}));
 
 			// Render immediately. With flex-direction: column-reverse, 
