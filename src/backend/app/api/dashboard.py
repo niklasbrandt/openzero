@@ -287,7 +287,7 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 			"• `/day`, `/week`, `/month`, `/quarter`, `/custom`, `/year` - Strategic briefings\n"
 			"• `/remind <text>` - Set a periodic reminder\n\n"
 			"**System:**\n"
-			"• `/wipe_memory` - Clear LLM recall\n\n"
+			"• `/purge` - Permanently wipe all semantic memory\n\n"
 			"Type any message to chat with Z directly."
 		)
 		return {"reply": help_text}
@@ -385,6 +385,13 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 			"*Every thought is an opportunity for evolution.*"
 		)
 		return {"reply": protocols_reply}
+	elif msg in ("/purge", "/wipe_memory"):
+		from app.services.memory import wipe_collection
+		success = await wipe_collection(confirm=True)
+		if success:
+			return {"reply": "✅ Semantic memory has been completely wiped. Z starts with a blank knowledge slate."}
+		else:
+			return {"reply": "❌ Failed to wipe memory. Check backend logs."}
 	elif msg.startswith("[ACTION:"):
 		from app.services.agent_actions import parse_and_execute_actions
 		clean_reply, executed_cmds = await parse_and_execute_actions(msg, db=db)
@@ -427,6 +434,65 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		}
 	except Exception as e:
 		raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/regression-cleanup")
+async def regression_cleanup(request: Request, db: AsyncSession = Depends(get_db)):
+	"""Server-side cleanup of regression test artifacts.
+	
+	Called by the test script after each run (including failed runs) to ensure
+	no test data pollutes the live system.
+	"""
+	results = []
+	
+	# 1. Clean Planka projects with REGRESSION prefix
+	try:
+		from app.services.planka import find_and_delete_projects_by_prefix
+		deleted_projects = await find_and_delete_projects_by_prefix("REGRESSION_TEST_")
+		for name in deleted_projects:
+			results.append(f"🧹 Deleted Planka project: {name}")
+	except Exception as e:
+		results.append(f"⚠️ Planka cleanup error: {e}")
+	
+	# 2. Clean regression test people
+	try:
+		res = await db.execute(select(Person).where(Person.name.like("TEST_%")))
+		test_people = res.scalars().all()
+		for p in test_people:
+			await db.delete(p)
+			results.append(f"🧹 Deleted test person: {p.name}")
+		await db.commit()
+	except Exception as e:
+		results.append(f"⚠️ People cleanup error: {e}")
+	
+	# 3. Clean regression test events
+	try:
+		from app.models.db import LocalEvent
+		res = await db.execute(select(LocalEvent).where(LocalEvent.summary.like("REGRESSION_%")))
+		test_events = res.scalars().all()
+		for ev in test_events:
+			await db.delete(ev)
+			results.append(f"🧹 Deleted test event: {ev.summary}")
+		await db.commit()
+	except Exception as e:
+		results.append(f"⚠️ Events cleanup error: {e}")
+	
+	# 4. Clean regression test memories from Qdrant
+	try:
+		from app.services.memory import get_qdrant, COLLECTION_NAME
+		client = get_qdrant()
+		points, _ = client.scroll(collection_name=COLLECTION_NAME, limit=200)
+		regression_ids = [p.id for p in points if "TEST_MEMORY_TOKEN" in (p.payload.get("text", "") if p.payload else "")]
+		if regression_ids:
+			from qdrant_client.models import PointIdsList
+			client.delete(collection_name=COLLECTION_NAME, points_selector=PointIdsList(points=regression_ids))
+			results.append(f"🧹 Deleted {len(regression_ids)} test memory vectors")
+	except Exception as e:
+		results.append(f"⚠️ Memory cleanup error: {e}")
+	
+	if not results:
+		results.append("✅ No regression artifacts found to clean.")
+	
+	return {"cleaned": results}
 
 @router.get("/calibration")
 async def get_calibration():
