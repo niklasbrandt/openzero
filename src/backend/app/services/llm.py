@@ -127,6 +127,15 @@ CORE RESPONSE RULE:
   - For **conversation**: be warm and human.
 - **ZERO FILLER**: No "Of course!", "I understand", "Sure".
 - **NO TAG TALK**: Never explain what you have stored or learned unless explicitly asked.
+- **NO EMOJIS**: Never use emojis in your responses. Communicate with words only.
+
+ACTIVE LISTENING — CRITICAL:
+- **READ the conversation history CAREFULLY** before responding. The user's earlier messages are FACTS.
+- When the user states they DID something ("I congratulated X", "I finished Y"), treat it as DONE. NEVER ask if they did it.
+- NEVER contradict or question what the user already told you.
+- When the user makes a simple statement or shares something, respond naturally and briefly. Do NOT over-interpret it or turn it into a question.
+- If the user clarifies or corrects you, accept the correction immediately and move on.
+- If you are unsure what the user means, re-read their message literally before guessing.
 
 Your Persona & Behavior:
 - You are talking to {user_name}. Be direct but professional.
@@ -362,7 +371,8 @@ def select_tier(user_message: str, tier_override: str = None) -> tuple[str, str,
 		"standard": (settings.LLM_STANDARD_URL, settings.LLM_MODEL_STANDARD),
 		"deep": (settings.LLM_DEEP_URL, settings.LLM_MODEL_DEEP),
 	}
-	base_url, display_name = tier_map.get(tier, tier_map["standard"])
+	base_url, model_name = tier_map.get(tier, tier_map["standard"])
+	display_name = f"{tier.capitalize()}: {model_name}"
 	return tier, base_url, display_name
 
 
@@ -668,7 +678,7 @@ async def chat_with_context(
 		if needs_agent:
 			# Agent path uses standard tier (tool calling doesn't need 14B)
 			agent_url = settings.LLM_STANDARD_URL
-			agent_display = settings.LLM_MODEL_STANDARD
+			agent_display = f"Standard: {settings.LLM_MODEL_STANDARD}"
 			last_model_used.set(agent_display)
 			print(f"DEBUG: Tool intent detected -- using LangGraph agent ({agent_display})")
 			llm = ChatOpenAI(
@@ -727,7 +737,7 @@ async def chat_with_context(
 				return "".join(chunks)
 			except (asyncio.TimeoutError, StopAsyncIteration):
 				print(f"DEBUG: Deep model timeout -- falling back to standard")
-				last_model_used.set(settings.LLM_MODEL_STANDARD)
+				last_model_used.set(f"Standard: {settings.LLM_MODEL_STANDARD}")
 				return await chat(
 					user_message,
 					system_override=system_with_context,
@@ -895,7 +905,7 @@ async def chat_stream_with_context(
 				return
 			except (asyncio.TimeoutError, StopAsyncIteration):
 				print(f"DEBUG: Deep stream timeout -- falling back to standard")
-				last_model_used.set(settings.LLM_MODEL_STANDARD)
+				last_model_used.set(f"Standard: {settings.LLM_MODEL_STANDARD}")
 				tier_name = "standard"
 
 		async for chunk in chat_stream(
@@ -920,7 +930,7 @@ def _build_history_text(history: list = None) -> str:
 		role = "User" if m.get("role") == "user" else "Z"
 		raw = m.get('content', '') or ""
 		# Keep user messages in full; truncate Z's output to save prompt tokens
-		content = raw if role == "User" else raw[:200]
+		content = raw if role == "User" else raw[:500]
 		history_lines.append(f"{role}: {content}")
 	return "RECENT CONVERSATION:\n" + "\n".join(history_lines)
 
