@@ -198,7 +198,7 @@ export class CalendarAgenda extends HTMLElement {
 					${EMPTY_STATE_STYLES}
 					/* Override icon gradient */
 					h2 .h-icon {
-						background: linear-gradient(135deg, #0066FF 0%, var(--accent-color, #14B8A6) 100%);
+						background: linear-gradient(135deg, hsla(216, 100%, 50%, 1) 0%, var(--accent-color, hsla(173, 80%, 40%, 1)) 100%);
 					}
 					:host { display: block; }
 					.card { height: 100%; display: flex; flex-direction: column; }
@@ -212,7 +212,7 @@ export class CalendarAgenda extends HTMLElement {
 						padding: 0.3rem;
 						border-radius: 0.4rem;
 					}
-					.calendar-link:hover { color: var(--accent-color, #14B8A6); background: rgba(255, 255, 255, 0.05); }
+					.calendar-link:hover { color: var(--accent-color, hsla(173, 80%, 40%, 1)); background: rgba(255, 255, 255, 0.05); }
 					#filters { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
 					.filter-btn {
 						background: rgba(255, 255, 255, 0.05);
@@ -226,8 +226,8 @@ export class CalendarAgenda extends HTMLElement {
 					}
 					.filter-btn.active {
 						background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.2);
-						border-color: var(--accent-color, #14B8A6);
-						color: var(--accent-color, #14B8A6);
+						border-color: var(--accent-color, hsla(173, 80%, 40%, 1));
+						color: var(--accent-color, hsla(173, 80%, 40%, 1));
 					}
 					#event-list { overflow-y: auto; flex: 1; }
 					.event-item {
@@ -245,14 +245,14 @@ export class CalendarAgenda extends HTMLElement {
 						min-width: 70px;
 						font-size: 0.75rem;
 					}
-					.day { color: var(--accent-color, #14B8A6); font-weight: 700; }
+					.day { color: var(--accent-color, hsla(173, 80%, 40%, 1)); font-weight: 700; }
 					.time { color: var(--text-muted, rgba(255, 255, 255, 0.4)); }
 					.details { display: flex; flex-direction: column; gap: 0.25rem; flex: 1; }
 					.summary { font-size: 0.9rem; color: #fff; font-weight: 500; }
 					.person-badge {
 						align-self: flex-start;
 						font-size: 0.7rem;
-						color: var(--accent-color, #14B8A6);
+						color: var(--accent-color, hsla(173, 80%, 40%, 1));
 						background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.1);
 						border: 1px solid rgba(var(--accent-color-rgb, 20, 184, 166), 0.2);
 						padding: 0.15rem 0.5rem;
@@ -262,7 +262,7 @@ export class CalendarAgenda extends HTMLElement {
 					}
 					.local-indicator {
 						font-size: 0.65rem;
-						color: var(--accent-secondary, #0066FF);
+						color: var(--accent-secondary, hsla(216, 100%, 50%, 1));
 						background: rgba(var(--accent-secondary-rgb, 0, 102, 255), 0.1);
 						border: 1px solid rgba(var(--accent-secondary-rgb, 0, 102, 255), 0.2);
 						padding: 0.1rem 0.4rem;
@@ -283,21 +283,21 @@ export class CalendarAgenda extends HTMLElement {
 						animation: rainbow-border 3s linear infinite;
 						background: rgba(255, 255, 255, 0.05) !important;
 					}
-					.birthday-item .day { color: #f472b6 !important; }
+					.birthday-item .day { color: hsla(329, 86%, 70%, 1) !important; }
 					.birthday-item .summary { color: #fbcfe8 !important; }
 					.empty-state { font-size: 0.85rem; color: var(--text-muted, rgba(255, 255, 255, 0.3)); text-align: center; padding: 2rem; }
 					.filter-btn:focus-visible, .calendar-link:focus-visible { 
-						outline: 2px solid var(--accent-color, #14B8A6); 
+						outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); 
 						outline-offset: 2px; 
 					}
-					.event-title-edit:focus-visible { outline: 2px solid var(--accent-color, #14B8A6); outline-offset: 1px; border-radius: 2px; }
-					.delete-btn:focus-visible { outline: 2px solid var(--color-danger, #f87171); outline-offset: 2px; }
+					.event-title-edit:focus-visible { outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); outline-offset: 1px; border-radius: 2px; }
+					.delete-btn:focus-visible { outline: 2px solid var(--color-danger, hsla(0, 91%, 71%, 1)); outline-offset: 2px; }
 				</style>
 				<div class="card">
 					<div class="header-container">
 						<h2>
 					<span class="h-icon" aria-hidden="true">
-						<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+						<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
 							<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
 							<line x1="16" y1="2" x2="16" y2="6"></line>
 							<line x1="8" y1="2" x2="8" y2="6"></line>
