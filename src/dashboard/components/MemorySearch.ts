@@ -1,4 +1,7 @@
 import { BUTTON_STYLES } from '../services/buttonStyles';
+import { ACCESSIBILITY_STYLES } from '../services/accessibilityStyles';
+import { SECTION_HEADER_STYLES } from '../services/sectionHeaderStyles';
+import { SCROLLBAR_STYLES } from '../services/scrollbarStyles';
 
 interface MemoryItem {
 	id: string | null;
@@ -253,33 +256,12 @@ stored_at: i.stored_at ?? null,
 		this.shadowRoot.innerHTML = `
 			<style>
 				${BUTTON_STYLES}
+				${ACCESSIBILITY_STYLES}
+				${SECTION_HEADER_STYLES}
+				${SCROLLBAR_STYLES}
 				:host { display: block; }
-				h2 {
-					font-size: 1.5rem;
-					font-weight: bold;
-					margin: 0 0 1rem 0;
-					color: #fff;
-					letter-spacing: 0.02em;
-					display: flex;
-					align-items: center;
-					gap: 0.5rem;
-				}
-				.icon {
-					display: inline-flex;
-					width: 28px; height: 28px;
-					background: linear-gradient(135deg, #8b5cf6 0%, #14B8A6 100%);
-					border-radius: 0.4rem;
-					align-items: center;
-					justify-content: center;
-					flex-shrink: 0;
-				}
-				.subtitle {
-					font-size: 0.65rem;
-					font-weight: 400;
-					color: rgba(255,255,255,0.3);
-					margin-left: auto;
-					text-transform: uppercase;
-					letter-spacing: 0.1em;
+				h2 .h-icon {
+					background: linear-gradient(135deg, #8b5cf6 0%, var(--accent-color, #14B8A6) 100%);
 				}
 				.tabs {
 					display: flex;
@@ -309,7 +291,7 @@ stored_at: i.stored_at ?? null,
 					color: #fff;
 				}
 				.tab-btn:focus-visible {
-					outline: 2px solid #14B8A6;
+					outline: 2px solid var(--accent-color, #14B8A6);
 					outline-offset: 2px;
 				}
 				.tab-btn:hover:not(.active) {
@@ -346,11 +328,11 @@ stored_at: i.stored_at ?? null,
 				}
 				input[type="search"]:focus {
 					outline: none;
-					border-color: rgba(20,184,166,0.4);
+					border-color: var(--border-accent-focus, rgba(20,184,166,0.4));
 					background: rgba(0,0,0,0.28);
 				}
 				input[type="search"]:focus-visible {
-					outline: 2px solid #14B8A6;
+					outline: 2px solid var(--accent-color, #14B8A6);
 					outline-offset: 2px;
 				}
 				.results-list {
@@ -362,26 +344,21 @@ stored_at: i.stored_at ?? null,
 					gap: 0.4rem;
 					max-height: 480px;
 					overflow-y: auto;
-					scrollbar-width: thin;
-					scrollbar-color: rgba(255,255,255,0.1) transparent;
 				}
-				.results-list::-webkit-scrollbar { width: 4px; }
-				.results-list::-webkit-scrollbar-track { background: transparent; }
-				.results-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
 				.result-item {
 					display: flex;
 					align-items: flex-start;
 					gap: 0.5rem;
 					padding: 0.65rem 0.75rem;
-					background: rgba(255,255,255,0.03);
-					border-radius: 0.6rem;
+					background: var(--surface-card, rgba(255,255,255,0.03));
+					border-radius: var(--radius-md, 0.6rem);
 					border-left: 3px solid rgba(139,92,246,0.5);
-					transition: background 0.15s, border-color 0.15s;
+					transition: background var(--duration-fast, 0.15s), border-color var(--duration-fast, 0.15s);
 				}
-				.result-item:hover { background: rgba(255,255,255,0.055); }
+				.result-item:hover { background: var(--surface-card-hover, rgba(255,255,255,0.055)); }
 				.result-item.item-pending {
-					border-left-color: rgba(239,68,68,0.7);
-					background: rgba(239,68,68,0.05);
+					border-left-color: rgba(var(--color-danger-rgb, 239,68,68), 0.7);
+					background: rgba(var(--color-danger-rgb, 239,68,68), 0.05);
 				}
 				.item-icon {
 					font-size: 1rem;
@@ -410,10 +387,10 @@ stored_at: i.stored_at ?? null,
 				.score {
 					font-size: 0.65rem;
 					font-weight: 700;
-					background: rgba(20,184,166,0.15);
-					color: #5eead4;
+					background: rgba(var(--accent-color-rgb, 20,184,166), 0.15);
+					color: var(--accent-color, #5eead4);
 					padding: 0.1rem 0.4rem;
-					border-radius: 0.3rem;
+					border-radius: var(--radius-xs, 0.3rem);
 					letter-spacing: 0.03em;
 				}
 				.item-date {
@@ -439,25 +416,25 @@ stored_at: i.stored_at ?? null,
 					min-width: 44px;
 				}
 				.delete-btn:hover {
-					color: rgba(239,68,68,0.9);
-					border-color: rgba(239,68,68,0.4);
-					background: rgba(239,68,68,0.08);
+					color: rgba(var(--color-danger-rgb, 239,68,68), 0.9);
+					border-color: rgba(var(--color-danger-rgb, 239,68,68), 0.4);
+					background: rgba(var(--color-danger-rgb, 239,68,68), 0.08);
 				}
 				.delete-btn.pending {
-					color: #f87171;
-					border-color: rgba(239,68,68,0.6);
-					background: rgba(239,68,68,0.12);
+					color: var(--color-danger, #f87171);
+					border-color: rgba(var(--color-danger-rgb, 239,68,68), 0.6);
+					background: rgba(var(--color-danger-rgb, 239,68,68), 0.12);
 					padding: 0.3rem 0.65rem;
 					gap: 0.4rem;
 					animation: pulse-warn 0.6s ease infinite alternate;
 				}
 				.delete-btn:focus-visible {
-					outline: 2px solid #14B8A6;
+					outline: 2px solid var(--accent-color, #14B8A6);
 					outline-offset: 2px;
 				}
 				@keyframes pulse-warn {
-					from { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
-					to   { box-shadow: 0 0 0 4px rgba(239,68,68,0.2); }
+					from { box-shadow: 0 0 0 0 rgba(var(--color-danger-rgb, 239,68,68), 0); }
+					to   { box-shadow: 0 0 0 4px rgba(var(--color-danger-rgb, 239,68,68), 0.2); }
 				}
 				.status-msg {
 					color: rgba(255,255,255,0.4);
@@ -491,7 +468,7 @@ stored_at: i.stored_at ?? null,
 					color: #fff;
 				}
 				.load-more-btn:focus-visible {
-					outline: 2px solid #14B8A6;
+					outline: 2px solid var(--accent-color, #14B8A6);
 					outline-offset: 2px;
 				}
 				.hint {
@@ -500,15 +477,7 @@ stored_at: i.stored_at ?? null,
 					margin: 0 0 0.75rem 0;
 					line-height: 1.5;
 				}
-				.sr-only {
-					position: absolute;
-					width: 1px; height: 1px;
-					padding: 0; margin: -1px;
-					overflow: hidden;
-					clip: rect(0,0,0,0);
-					white-space: nowrap;
-					border: 0;
-				}
+				/* Additional reduced-motion overrides beyond shared module */
 				@media (prefers-reduced-motion: reduce) {
 					.tab-btn, input[type="search"], .result-item,
 					.delete-btn, .load-more-btn { transition: none; }
@@ -522,7 +491,7 @@ stored_at: i.stored_at ?? null,
 
 			<div class="card">
 				<h2>
-					<span class="icon" aria-hidden="true">
+					<span class="h-icon" aria-hidden="true">
 						<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"
 							stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
 							<ellipse cx="12" cy="5" rx="9" ry="3"/>

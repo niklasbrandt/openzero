@@ -1,3 +1,11 @@
+import { ACCESSIBILITY_STYLES } from '../services/accessibilityStyles';
+import { SECTION_HEADER_STYLES } from '../services/sectionHeaderStyles';
+import { GLASS_TOOLTIP_STYLES } from '../services/glassTooltipStyles';
+import { EMPTY_STATE_STYLES } from '../services/emptyStateStyles';
+
+const BENCH_ACCENT = '#0066FF';
+const BENCH_ACCENT_RGB = '0, 102, 255';
+
 export class SystemBenchmark extends HTMLElement {
 	private benchResults: any[] = [];
 	private isRunning: boolean = false;
@@ -122,7 +130,7 @@ export class SystemBenchmark extends HTMLElement {
 		if (!el) return;
 
 		if (this.benchResults.length === 0) {
-			el.innerHTML = `<div class="empty">${this.tr('bench_empty', 'Click a tier button to measure tokens/second.')}</div>`;
+			el.innerHTML = `<div class="empty-state">${this.tr('bench_empty', 'Click a tier button to measure tokens/second.')}</div>`;
 			return;
 		}
 
@@ -202,64 +210,14 @@ export class SystemBenchmark extends HTMLElement {
 		this.shadowRoot.innerHTML = `
 			<style>
 				:host { display: block; }
-				.has-tip { position: relative; }
-				.glass-tooltip {
-					position: absolute;
-					bottom: calc(100% + 10px);
-					left: 0;
-					background: var(--tooltip-bg, rgba(255, 255, 255, 0.06));
-					backdrop-filter: blur(var(--tooltip-blur, 32px)) saturate(var(--tooltip-saturate, 1.6)) brightness(1.1);
-					-webkit-backdrop-filter: blur(var(--tooltip-blur, 32px)) saturate(var(--tooltip-saturate, 1.6)) brightness(1.1);
-					color: var(--tooltip-text, rgba(255, 255, 255, 0.92));
-					font-size: 0.72rem;
-					line-height: 1.5;
-					padding: 0.6rem 0.85rem;
-					border-radius: 0.6rem;
-					border: 1px solid var(--tooltip-border, rgba(255, 255, 255, 0.18));
-					white-space: normal;
-					width: max-content;
-					max-width: 280px;
-					pointer-events: none;
-					opacity: 0;
-					transition: all 0.24s cubic-bezier(0.23, 1, 0.32, 1);
-					z-index: 1000;
-					box-shadow: var(--tooltip-shadow, 0 8px 32px rgba(0, 0, 0, 0.35));
-				}
-				.has-tip:hover > .glass-tooltip,
-				.has-tip:focus-visible > .glass-tooltip {
-					opacity: 1;
-					transform: translateY(-4px);
-				}
-				.has-tip:has(.has-tip:hover) > .glass-tooltip,
-				.has-tip:has(.has-tip:focus-visible) > .glass-tooltip {
-					opacity: 0 !important;
-				}
-				h2 {
-					font-size: 1.5rem;
-					font-weight: bold;
-					margin: 0 0 1.5rem 0;
-					color: #fff;
-					letter-spacing: 0.02em;
-					display: flex;
-					align-items: center;
-					gap: 0.5rem;
-				}
-				h2 .icon {
-					display: inline-flex;
-					width: 28px;
-					height: 28px;
-					background: linear-gradient(135deg, #0066FF 0%, #14B8A6 100%);
-					border-radius: 0.4rem;
-					align-items: center;
-					justify-content: center;
-				}
-				h2 .subtitle {
-					font-size: 0.65rem;
-					font-weight: 400;
-					color: rgba(255, 255, 255, 0.3);
-					margin-left: 0.5rem;
-					text-transform: uppercase;
-					letter-spacing: 0.1em;
+				${ACCESSIBILITY_STYLES}
+				${GLASS_TOOLTIP_STYLES}
+				${SECTION_HEADER_STYLES}
+				${EMPTY_STATE_STYLES}
+
+				/* Override icon gradient for benchmark accent */
+				h2 .h-icon {
+					background: linear-gradient(135deg, ${BENCH_ACCENT} 0%, var(--accent-color, #14B8A6) 100%);
 				}
 
 				.bench-header-bar {
@@ -278,27 +236,27 @@ export class SystemBenchmark extends HTMLElement {
 				}
 
 				.bench-btn {
-					background: rgba(0, 102, 255, 0.08);
-					color: #0066FF;
-					border: 1px solid rgba(0, 102, 255, 0.2);
+					background: rgba(${BENCH_ACCENT_RGB}, 0.08);
+					color: ${BENCH_ACCENT};
+					border: 1px solid rgba(${BENCH_ACCENT_RGB}, 0.2);
 					padding: 0.35rem 0.8rem;
-					border-radius: 0.4rem;
+					border-radius: var(--radius-sm, 0.4rem);
 					font-size: 0.7rem;
 					font-weight: 600;
 					cursor: pointer;
-					transition: all 0.2s;
-					font-family: 'Fira Code', monospace;
+					transition: all var(--duration-fast, 0.2s);
+					font-family: var(--font-mono, 'Fira Code', monospace);
 					text-transform: uppercase;
 					letter-spacing: 0.05em;
 				}
 
 				.bench-btn:hover {
-					background: rgba(0, 102, 255, 0.2);
-					border-color: #0066FF;
+					background: rgba(${BENCH_ACCENT_RGB}, 0.2);
+					border-color: ${BENCH_ACCENT};
 				}
 
 				.bench-btn:focus-visible {
-					outline: 2px solid #0066FF;
+					outline: 2px solid ${BENCH_ACCENT};
 					outline-offset: 2px;
 				}
 
@@ -309,14 +267,14 @@ export class SystemBenchmark extends HTMLElement {
 				}
 
 				.bench-btn.all {
-					background: rgba(20, 184, 166, 0.08);
-					color: #14B8A6;
-					border-color: rgba(20, 184, 166, 0.2);
+					background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.08);
+					color: var(--accent-color, #14B8A6);
+					border-color: rgba(var(--accent-color-rgb, 20, 184, 166), 0.2);
 				}
 
 				.bench-btn.all:hover {
-					background: rgba(20, 184, 166, 0.2);
-					border-color: #14B8A6;
+					background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.2);
+					border-color: var(--accent-color, #14B8A6);
 				}
 
 				@keyframes pulse {
@@ -331,8 +289,8 @@ export class SystemBenchmark extends HTMLElement {
 					margin-bottom: 1.25rem;
 					padding: 0.6rem 0.8rem;
 					background: rgba(0, 0, 0, 0.15);
-					border-radius: 0.5rem;
-					border: 1px solid rgba(255, 255, 255, 0.03);
+					border-radius: var(--radius-md, 0.5rem);
+					border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.03));
 				}
 
 				.legend-item {
@@ -340,7 +298,7 @@ export class SystemBenchmark extends HTMLElement {
 					align-items: center;
 					gap: 0.35rem;
 					font-size: 0.65rem;
-					color: rgba(255, 255, 255, 0.45);
+					color: var(--text-muted, rgba(255, 255, 255, 0.45));
 					cursor: help;
 				}
 
@@ -351,10 +309,10 @@ export class SystemBenchmark extends HTMLElement {
 					flex-shrink: 0;
 				}
 
-				.legend-dot.excellent { background: #14B8A6; }
-				.legend-dot.good { background: #22c55e; }
-				.legend-dot.moderate { background: #eab308; }
-				.legend-dot.slow { background: #ef4444; }
+				.legend-dot.excellent { background: var(--accent-color, #14B8A6); }
+				.legend-dot.good { background: var(--color-success, #22c55e); }
+				.legend-dot.moderate { background: var(--color-warning, #eab308); }
+				.legend-dot.slow { background: var(--color-danger, #ef4444); }
 
 				#bench-results {
 					display: flex;
@@ -363,14 +321,14 @@ export class SystemBenchmark extends HTMLElement {
 				}
 
 				.bench-card {
-					background: rgba(255, 255, 255, 0.02);
-					border: 1px solid rgba(255, 255, 255, 0.04);
-					border-radius: 0.6rem;
+					background: var(--surface-card, rgba(255, 255, 255, 0.02));
+					border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.04));
+					border-radius: var(--radius-md, 0.6rem);
 					padding: 1rem;
 				}
 
 				.bench-card.error {
-					border-color: rgba(239, 68, 68, 0.2);
+					border-color: rgba(var(--color-danger-rgb, 239, 68, 68), 0.2);
 				}
 
 				.bench-header {
@@ -385,15 +343,15 @@ export class SystemBenchmark extends HTMLElement {
 					text-transform: uppercase;
 					letter-spacing: 0.1em;
 					font-weight: 700;
-					color: #0066FF;
-					font-family: 'Fira Code', monospace;
+					color: ${BENCH_ACCENT};
+					font-family: var(--font-mono, 'Fira Code', monospace);
 					cursor: help;
 				}
 
 				.bench-model {
 					font-size: 0.75rem;
-					color: rgba(255, 255, 255, 0.4);
-					font-family: 'Fira Code', monospace;
+					color: var(--text-muted, rgba(255, 255, 255, 0.4));
+					font-family: var(--font-mono, 'Fira Code', monospace);
 					cursor: help;
 				}
 
@@ -403,18 +361,18 @@ export class SystemBenchmark extends HTMLElement {
 					gap: 0.4rem;
 					padding: 0.4rem 0.7rem;
 					margin-bottom: 0.6rem;
-					border-radius: 0.4rem;
-					background: rgba(239, 68, 68, 0.08);
-					border: 1px solid rgba(239, 68, 68, 0.2);
+					border-radius: var(--radius-sm, 0.4rem);
+					background: rgba(var(--color-danger-rgb, 239, 68, 68), 0.08);
+					border: 1px solid rgba(var(--color-danger-rgb, 239, 68, 68), 0.2);
 					font-size: 0.7rem;
-					color: #ef4444;
+					color: var(--color-danger, #ef4444);
 					font-weight: 500;
 				}
 				.thread-warning .warning-icon { font-size: 0.85rem; }
 				.thread-warning .warning-text { line-height: 1.3; }
 
 				.bench-error {
-					color: #ef4444;
+					color: var(--color-danger, #ef4444);
 					font-size: 0.8rem;
 					margin-top: 0.5rem;
 				}
@@ -430,7 +388,7 @@ export class SystemBenchmark extends HTMLElement {
 				.tps-value {
 					font-size: 2rem;
 					font-weight: 800;
-					font-family: 'Fira Code', monospace;
+					font-family: var(--font-mono, 'Fira Code', monospace);
 					line-height: 1;
 				}
 
@@ -442,10 +400,10 @@ export class SystemBenchmark extends HTMLElement {
 					font-weight: 600;
 				}
 
-				.bench-tps.excellent .tps-value { color: #14B8A6; }
-				.bench-tps.good .tps-value { color: #22c55e; }
-				.bench-tps.moderate .tps-value { color: #eab308; }
-				.bench-tps.slow .tps-value { color: #ef4444; }
+				.bench-tps.excellent .tps-value { color: var(--accent-color, #14B8A6); }
+				.bench-tps.good .tps-value { color: var(--color-success, #22c55e); }
+				.bench-tps.moderate .tps-value { color: var(--color-warning, #eab308); }
+				.bench-tps.slow .tps-value { color: var(--color-danger, #ef4444); }
 
 				.rating-badge {
 					display: inline-flex;
@@ -462,29 +420,29 @@ export class SystemBenchmark extends HTMLElement {
 				.rating-icon { font-size: 0.8rem; }
 
 				.rating-badge.excellent {
-					background: rgba(20, 184, 166, 0.1);
-					color: #14B8A6;
-					border: 1px solid rgba(20, 184, 166, 0.2);
+					background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.1);
+					color: var(--accent-color, #14B8A6);
+					border: 1px solid rgba(var(--accent-color-rgb, 20, 184, 166), 0.2);
 				}
 				.rating-badge.good {
-					background: rgba(34, 197, 94, 0.1);
-					color: #22c55e;
-					border: 1px solid rgba(34, 197, 94, 0.2);
+					background: rgba(var(--color-success-rgb, 34, 197, 94), 0.1);
+					color: var(--color-success, #22c55e);
+					border: 1px solid rgba(var(--color-success-rgb, 34, 197, 94), 0.2);
 				}
 				.rating-badge.moderate {
-					background: rgba(234, 179, 8, 0.1);
-					color: #eab308;
-					border: 1px solid rgba(234, 179, 8, 0.2);
+					background: rgba(var(--color-warning-rgb, 234, 179, 8), 0.1);
+					color: var(--color-warning, #eab308);
+					border: 1px solid rgba(var(--color-warning-rgb, 234, 179, 8), 0.2);
 				}
 				.rating-badge.slow {
-					background: rgba(239, 68, 68, 0.1);
-					color: #ef4444;
-					border: 1px solid rgba(239, 68, 68, 0.2);
+					background: rgba(var(--color-danger-rgb, 239, 68, 68), 0.1);
+					color: var(--color-danger, #ef4444);
+					border: 1px solid rgba(var(--color-danger-rgb, 239, 68, 68), 0.2);
 				}
 
 				.rating-hint {
 					font-size: 0.72rem;
-					color: rgba(255, 255, 255, 0.35);
+					color: var(--text-faint, rgba(255, 255, 255, 0.35));
 					line-height: 1.4;
 					margin-bottom: 0.75rem;
 					font-style: italic;
@@ -507,39 +465,28 @@ export class SystemBenchmark extends HTMLElement {
 					font-size: 0.6rem;
 					text-transform: uppercase;
 					letter-spacing: 0.1em;
-					color: rgba(255, 255, 255, 0.25);
+					color: var(--text-faint, rgba(255, 255, 255, 0.25));
 					font-weight: 600;
 				}
 
 				.detail-value {
 					font-size: 0.85rem;
-					color: rgba(255, 255, 255, 0.7);
-					font-family: 'Fira Code', monospace;
+					color: var(--text-secondary, rgba(255, 255, 255, 0.7));
+					font-family: var(--font-mono, 'Fira Code', monospace);
 				}
 
 				.detail-hint {
 					font-size: 0.6rem;
-					color: rgba(255, 255, 255, 0.2);
+					color: var(--text-faint, rgba(255, 255, 255, 0.2));
 					line-height: 1.35;
 					margin-top: 0.15rem;
 				}
 
-				.empty {
-					color: rgba(255, 255, 255, 0.2);
-					font-size: 0.85rem;
-					font-style: italic;
-					text-align: center;
-					padding: 1.5rem;
-				}
-				.legend-dot { flex-shrink: 0; }
-				.legend-item:focus-visible { outline: 2px solid #14B8A6; outline-offset: 2px; border-radius: 2px; }
-				@media (prefers-reduced-motion: reduce) {
-					*, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
-				}
+				.legend-item:focus-visible { outline: 2px solid var(--accent-color, #14B8A6); outline-offset: 2px; border-radius: 2px; }
 			</style>
 
 			<h2>
-				<span class="icon" aria-hidden="true">
+				<span class="h-icon" aria-hidden="true">
 					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
 						<path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
 					</svg>
@@ -564,7 +511,7 @@ export class SystemBenchmark extends HTMLElement {
 			</div>
 
 			<div id="bench-results" aria-live="polite" aria-atomic="false" aria-label="${this.tr('aria_benchmark_results', 'Benchmark results')}">
-				<div class="empty">${this.tr('bench_empty', 'Click a tier button to measure tokens/second.')}</div>
+				<div class="empty-state">${this.tr('bench_empty', 'Click a tier button to measure tokens/second.')}</div>
 			</div>
 		`;
 

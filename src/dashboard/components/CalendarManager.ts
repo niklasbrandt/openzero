@@ -1,4 +1,6 @@
 import { BUTTON_STYLES } from '../services/buttonStyles';
+import { ACCESSIBILITY_STYLES } from '../services/accessibilityStyles';
+import { SCROLLBAR_STYLES } from '../services/scrollbarStyles';
 
 export class CalendarManager extends HTMLElement {
 	private t: Record<string, string> = {};
@@ -178,6 +180,8 @@ export class CalendarManager extends HTMLElement {
 			this.shadowRoot.innerHTML = `
 								<style>
 										${BUTTON_STYLES}
+										${ACCESSIBILITY_STYLES}
+										${SCROLLBAR_STYLES}
 										:host {
 												display: none;
 												position: fixed;
@@ -289,14 +293,14 @@ export class CalendarManager extends HTMLElement {
 												transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 										}
 										.day-cell:hover { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.2); color: #fff; transform: translateY(-2px); }
-										.day-cell.today { border-color: #14B8A6; color: #14B8A6; background: rgba(20, 184, 166, 0.08); font-weight: 700; }
-										.day-cell.selected { background: #14B8A6; color: #000; border-color: #14B8A6; transform: translateY(-2px); box-shadow: 0 10px 20px -5px rgba(20, 184, 166, 0.4); font-weight: 700; }
+										.day-cell.today { border-color: var(--accent-color, #14B8A6); color: var(--accent-color, #14B8A6); background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.08); font-weight: 700; }
+										.day-cell.selected { background: var(--accent-color, #14B8A6); color: #000; border-color: var(--accent-color, #14B8A6); transform: translateY(-2px); box-shadow: 0 10px 20px -5px rgba(var(--accent-color-rgb, 20, 184, 166), 0.4); font-weight: 700; }
 										
 										.event-dot {
 												position: absolute;
 												bottom: 6px;
 												width: 4px; height: 4px;
-												background: #14B8A6;
+												background: var(--accent-color, #14B8A6);
 												border-radius: 50%;
 												opacity: 0.8;
 										}
@@ -326,35 +330,33 @@ export class CalendarManager extends HTMLElement {
 												flex-direction: column;
 												gap: 0.75rem;
 										}
-										.events-list::-webkit-scrollbar { width: 4px; }
-										.events-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
 										
 										.event-card {
 												padding: 1rem;
-												background: rgba(255, 255, 255, 0.04);
+												background: var(--surface-card, rgba(255, 255, 255, 0.04));
 												border-radius: 14px;
-												border-left: 3px solid #14B8A6;
-												transition: transform 0.2s;
+												border-left: 3px solid var(--accent-color, #14B8A6);
+												transition: transform var(--duration-fast, 0.2s);
 										}
-										.event-card.birthday { border-left-color: #F472B6; background: rgba(244, 114, 182, 0.05); }
-										.event-card.local { border-left-color: #60A5FA; }
+										.event-card.birthday { border-left-color: var(--color-birthday, #F472B6); background: rgba(var(--color-birthday-rgb, 244, 114, 182), 0.05); }
+										.event-card.local { border-left-color: var(--color-info, #60A5FA); }
 
 										.event-card:hover { transform: translateX(4px); background: rgba(255, 255, 255, 0.07); }
 										
 										.event-card-inner { display: flex; justify-content: space-between; align-items: flex-start; }
 										.event-info { flex: 1; }
 .delete-event-btn {
-												background: rgba(239, 68, 68, 0.1);
-												border: 1px solid rgba(239, 68, 68, 0.25);
-												color: #f87171;
+												background: rgba(var(--color-danger-rgb, 239, 68, 68), 0.1);
+												border: 1px solid rgba(var(--color-danger-rgb, 239, 68, 68), 0.25);
+												color: var(--color-danger, #f87171);
 												cursor: pointer;
 												padding: 0.18rem 0.5rem;
-												border-radius: 0.35rem;
+												border-radius: var(--radius-xs, 0.35rem);
 												font-size: 0.72rem;
-												transition: background 0.2s, border-color 0.2s;
+												transition: background var(--duration-fast, 0.2s), border-color var(--duration-fast, 0.2s);
 												flex-shrink: 0;
 											}
-											.delete-event-btn:hover { background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.5); }
+											.delete-event-btn:hover { background: rgba(var(--color-danger-rgb, 239, 68, 68), 0.2); border-color: rgba(var(--color-danger-rgb, 239, 68, 68), 0.5); }
 										
 										.event-title { font-size: 0.9rem; font-weight: 600; color: #fff; margin-bottom: 0.25rem; display: block; }
 										.event-meta { font-size: 0.75rem; color: rgba(255,255,255,0.4); display: flex; align-items: center; gap: 0.5rem; }
@@ -377,29 +379,30 @@ export class CalendarManager extends HTMLElement {
 												font-size: 0.85rem;
 												outline: none;
 										}
-										input:focus { border-color: #14B8A6; background: rgba(255, 255, 255, 0.08); }
-					input:focus-visible { outline: 2px solid #14B8A6; outline-offset: 2px; }
-					button.submit:focus-visible { outline: 2px solid #14B8A6; outline-offset: 2px; }
-					.nav-btn:focus-visible, .close-btn:focus-visible { outline: 2px solid #14B8A6; outline-offset: 2px; border-radius: 8px; }
-					.day-cell:focus-visible { outline: 2px solid #14B8A6; outline-offset: 2px; }
-					.delete-event-btn:focus-visible { outline: 2px solid #f87171; outline-offset: 2px; }
+											input:focus { border-color: var(--accent-color, #14B8A6); background: rgba(255, 255, 255, 0.08); }
+					input:focus-visible { outline: 2px solid var(--accent-color, #14B8A6); outline-offset: 2px; }
+					button.submit:focus-visible { outline: 2px solid var(--accent-color, #14B8A6); outline-offset: 2px; }
+					.nav-btn:focus-visible, .close-btn:focus-visible { outline: 2px solid var(--accent-color, #14B8A6); outline-offset: 2px; border-radius: 8px; }
+					.day-cell:focus-visible { outline: 2px solid var(--accent-color, #14B8A6); outline-offset: 2px; }
+					.delete-event-btn:focus-visible { outline: 2px solid var(--color-danger, #f87171); outline-offset: 2px; }
+					/* Additional reduced-motion overrides beyond shared module */
 					@media (prefers-reduced-motion: reduce) {
 						*, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 					}
 										
 											button.submit {
-													background: #14B8A6;
+													background: var(--accent-color, #14B8A6);
 													color: #0a0f1e;
-													border: 1px solid #14B8A6;
+													border: 1px solid var(--accent-color, #14B8A6);
 													padding: 0.6rem;
-													border-radius: 0.5rem;
+													border-radius: var(--radius-sm, 0.5rem);
 													font-weight: 700;
 													cursor: pointer;
 													font-size: 0.85rem;
 													width: 100%;
-													transition: background 0.2s, border-color 0.2s;
+													transition: background var(--duration-fast, 0.2s), border-color var(--duration-fast, 0.2s);
 											}
-											button.submit:hover { background: #0d9488; border-color: #0d9488; color: #0a0f1e; }
+											button.submit:hover { background: color-mix(in srgb, var(--accent-color, #14B8A6) 85%, black); border-color: color-mix(in srgb, var(--accent-color, #14B8A6) 85%, black); color: #0a0f1e; }
 								</style>
 								
 <div class="modal" role="dialog" aria-modal="true" aria-labelledby="cal-modal-title">

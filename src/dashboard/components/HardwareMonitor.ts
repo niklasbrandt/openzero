@@ -1,3 +1,9 @@
+import { ACCESSIBILITY_STYLES } from '../services/accessibilityStyles';
+import { SECTION_HEADER_STYLES } from '../services/sectionHeaderStyles';
+import { GLASS_TOOLTIP_STYLES } from '../services/glassTooltipStyles';
+import { STATUS_STYLES } from '../services/statusStyles';
+import { EMPTY_STATE_STYLES } from '../services/emptyStateStyles';
+
 export class HardwareMonitor extends HTMLElement {
 	private cpuData: any = null;
 	private serverData: any = null;
@@ -56,7 +62,7 @@ export class HardwareMonitor extends HTMLElement {
 		} catch (e) {
 			console.error('Failed to fetch hardware info:', e);
 			const el = this.shadowRoot?.querySelector('#hw-panel');
-			if (el) el.innerHTML = `<div class="empty">${this.tr('hw_error', 'Could not reach hardware probe. Is the backend running?')}</div>`;
+			if (el) el.innerHTML = `<div class="empty-state">${this.tr('hw_error', 'Could not reach hardware probe. Is the backend running?')}</div>`;
 		}
 	}
 
@@ -164,7 +170,7 @@ export class HardwareMonitor extends HTMLElement {
 			</div>
 			${tierHtml}
 			<div class="capability-summary ${capabilityClass}" role="status" aria-label="${this.tr('aria_hw_capability', 'Hardware capability')}: ${capabilityText}">
-				<span class="capability-dot" aria-hidden="true"></span>
+				<span class="status-dot" aria-hidden="true"></span>
 				<span class="capability-text">${capabilityText}</span>
 			</div>
 		`;
@@ -189,78 +195,22 @@ export class HardwareMonitor extends HTMLElement {
 		this.shadowRoot.innerHTML = `
 			<style>
 				:host { display: block; }
-				h2 {
-					font-size: 1.5rem;
-					font-weight: bold;
-					margin: 0 0 1.5rem 0;
-					color: #fff;
-					letter-spacing: 0.02em;
-					display: flex;
-					align-items: center;
-					gap: 0.5rem;
-				}
-				h2 .icon {
-					display: inline-flex;
-					width: 28px;
-					height: 28px;
-					background: linear-gradient(135deg, #6366f1 0%, #14B8A6 100%);
-					border-radius: 0.4rem;
-					align-items: center;
-					justify-content: center;
-				}
-				h2 .subtitle {
-					font-size: 0.65rem;
-					font-weight: 400;
-					color: rgba(255, 255, 255, 0.3);
-					margin-left: 0.5rem;
-					text-transform: uppercase;
-					letter-spacing: 0.1em;
-				}
+				${ACCESSIBILITY_STYLES}
+				${SECTION_HEADER_STYLES}
+				${GLASS_TOOLTIP_STYLES}
+				${STATUS_STYLES}
+				${EMPTY_STATE_STYLES}
 
-				/* ── Custom tooltip system (real DOM for backdrop-filter) ── */
-				.has-tip {
-					position: relative;
-				}
-				.glass-tooltip {
-					position: absolute;
-					bottom: calc(100% + 10px);
-					left: 0;
-					background: var(--tooltip-bg, rgba(255, 255, 255, 0.06));
-					backdrop-filter: blur(var(--tooltip-blur, 32px)) saturate(var(--tooltip-saturate, 1.6)) brightness(1.1);
-					-webkit-backdrop-filter: blur(var(--tooltip-blur, 32px)) saturate(var(--tooltip-saturate, 1.6)) brightness(1.1);
-					color: var(--tooltip-text, rgba(255, 255, 255, 0.92));
-					font-size: 0.72rem;
-					line-height: 1.5;
-					padding: 0.6rem 0.85rem;
-					border-radius: 0.6rem;
-					border: 1px solid var(--tooltip-border, rgba(255, 255, 255, 0.18));
-					white-space: normal;
-					width: max-content;
-					max-width: 280px;
-					pointer-events: none;
-					opacity: 0;
-					transition: all 0.24s cubic-bezier(0.23, 1, 0.32, 1);
-					z-index: 1000;
-					box-shadow: var(--tooltip-shadow, 0 8px 32px rgba(0, 0, 0, 0.35));
-				}
-				.has-tip:hover > .glass-tooltip,
-				.has-tip:focus-visible > .glass-tooltip {
-					opacity: 1;
-					transform: translateY(-4px);
-				}
-				/* Suppress parent tooltip when a nested child is hovered */
-				.has-tip:has(.has-tip:hover) > .glass-tooltip,
-				.has-tip:has(.has-tip:focus-visible) > .glass-tooltip {
-					opacity: 0 !important;
-				}
+				/* ── Component: icon gradient override ── */
+				.h-icon { background: linear-gradient(135deg, var(--accent-tertiary, #6366f1) 0%, var(--accent-color, #14B8A6) 100%); }
 
 				.cpu-model {
 					font-size: 1rem;
 					font-weight: 600;
-					color: #fff;
+					color: var(--text-primary, #fff);
 					margin-bottom: 1rem;
 					line-height: 1.4;
-					font-family: 'Fira Code', 'SF Mono', monospace;
+					font-family: var(--font-mono, 'Fira Code', monospace);
 					cursor: help;
 				}
 
@@ -282,14 +232,14 @@ export class HardwareMonitor extends HTMLElement {
 					font-size: 0.65rem;
 					text-transform: uppercase;
 					letter-spacing: 0.1em;
-					color: rgba(255, 255, 255, 0.3);
+					color: var(--text-faint, rgba(255, 255, 255, 0.3));
 					font-weight: 600;
 				}
 
 				.spec-value {
 					font-size: 0.9rem;
-					color: rgba(255, 255, 255, 0.85);
-					font-family: 'Fira Code', monospace;
+					color: var(--text-secondary, rgba(255, 255, 255, 0.85));
+					font-family: var(--font-mono, 'Fira Code', monospace);
 				}
 
 				.simd-row {
@@ -310,10 +260,10 @@ export class HardwareMonitor extends HTMLElement {
 					font-weight: 700;
 					letter-spacing: 0.05em;
 					padding: 0.2rem 0.5rem;
-					border-radius: 0.3rem;
-					font-family: 'Fira Code', monospace;
+					border-radius: var(--radius-xs, 0.3rem);
+					font-family: var(--font-mono, 'Fira Code', monospace);
 					cursor: help;
-					transition: transform 0.15s ease;
+					transition: transform var(--duration-fast, 0.15s);
 				}
 
 				.simd-badge:hover, .simd-badge:focus-visible {
@@ -322,15 +272,15 @@ export class HardwareMonitor extends HTMLElement {
 				}
 
 				.simd-badge.active {
-					background: rgba(20, 184, 166, 0.15);
-					color: #14B8A6;
-					border: 1px solid rgba(20, 184, 166, 0.3);
+					background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.15);
+					color: var(--accent-color, #14B8A6);
+					border: 1px solid rgba(var(--accent-color-rgb, 20, 184, 166), 0.3);
 				}
 
 				.simd-badge.inactive {
-					background: rgba(255, 255, 255, 0.03);
-					color: rgba(255, 255, 255, 0.2);
-					border: 1px solid rgba(255, 255, 255, 0.06);
+					background: var(--surface-card, rgba(255, 255, 255, 0.03));
+					color: var(--text-faint, rgba(255, 255, 255, 0.2));
+					border: 1px solid var(--border-color, rgba(255, 255, 255, 0.06));
 					text-decoration: line-through;
 				}
 
@@ -345,33 +295,26 @@ export class HardwareMonitor extends HTMLElement {
 					letter-spacing: 0.02em;
 				}
 
-				.capability-dot {
-					width: 8px;
-					height: 8px;
-					border-radius: 50%;
-					flex-shrink: 0;
-				}
-
 				.capability-summary.excellent {
-					background: rgba(20, 184, 166, 0.08);
-					color: #14B8A6;
-					border: 1px solid rgba(20, 184, 166, 0.15);
+					background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.08);
+					color: var(--accent-color, #14B8A6);
+					border: 1px solid rgba(var(--accent-color-rgb, 20, 184, 166), 0.15);
 				}
-				.capability-summary.excellent .capability-dot { background: #14B8A6; }
+				.capability-summary.excellent .status-dot { background: var(--accent-color, #14B8A6); }
 
 				.capability-summary.good {
-					background: rgba(234, 179, 8, 0.08);
-					color: #eab308;
-					border: 1px solid rgba(234, 179, 8, 0.15);
+					background: rgba(var(--color-warning-rgb, 234, 179, 8), 0.08);
+					color: var(--color-warning, #eab308);
+					border: 1px solid rgba(var(--color-warning-rgb, 234, 179, 8), 0.15);
 				}
-				.capability-summary.good .capability-dot { background: #eab308; }
+				.capability-summary.good .status-dot { background: var(--color-warning, #eab308); }
 
 				.capability-summary.limited {
-					background: rgba(239, 68, 68, 0.08);
-					color: #ef4444;
-					border: 1px solid rgba(239, 68, 68, 0.15);
+					background: rgba(var(--color-danger-rgb, 239, 68, 68), 0.08);
+					color: var(--color-danger, #ef4444);
+					border: 1px solid rgba(var(--color-danger-rgb, 239, 68, 68), 0.15);
 				}
-				.capability-summary.limited .capability-dot { background: #ef4444; }
+				.capability-summary.limited .status-dot { background: var(--color-danger, #ef4444); }
 
 				/* ── RAM Bar ── */
 				.ram-section {
@@ -385,8 +328,8 @@ export class HardwareMonitor extends HTMLElement {
 				}
 				.ram-values {
 					font-size: 0.8rem;
-					color: rgba(255, 255, 255, 0.7);
-					font-family: 'Fira Code', monospace;
+					color: var(--text-secondary, rgba(255, 255, 255, 0.7));
+					font-family: var(--font-mono, 'Fira Code', monospace);
 				}
 				.ram-bar-track {
 					height: 8px;
@@ -398,20 +341,20 @@ export class HardwareMonitor extends HTMLElement {
 				.ram-bar-fill {
 					height: 100%;
 					border-radius: 4px;
-					transition: width 0.5s ease;
+					transition: width var(--duration-slow, 0.5s);
 				}
-				.ram-bar-fill.healthy { background: #14B8A6; }
-				.ram-bar-fill.warning { background: #eab308; }
-				.ram-bar-fill.critical { background: #ef4444; }
+				.ram-bar-fill.healthy { background: var(--accent-color, #14B8A6); }
+				.ram-bar-fill.warning { background: var(--color-warning, #eab308); }
+				.ram-bar-fill.critical { background: var(--color-danger, #ef4444); }
 				.ram-pct {
 					font-size: 0.65rem;
 					font-weight: 500;
 					margin-top: 0.25rem;
 					display: block;
 				}
-				.ram-pct.healthy { color: rgba(20, 184, 166, 0.7); }
-				.ram-pct.warning { color: rgba(234, 179, 8, 0.7); }
-				.ram-pct.critical { color: rgba(239, 68, 68, 0.8); }
+				.ram-pct.healthy { color: rgba(var(--accent-color-rgb, 20, 184, 166), 0.7); }
+				.ram-pct.warning { color: rgba(var(--color-warning-rgb, 234, 179, 8), 0.7); }
+				.ram-pct.critical { color: rgba(var(--color-danger-rgb, 239, 68, 68), 0.8); }
 
 				/* ── LLM Tier Grid ── */
 				.tier-section {
@@ -427,8 +370,8 @@ export class HardwareMonitor extends HTMLElement {
 					align-items: center;
 					gap: 0.4rem;
 					padding: 0.35rem 0.65rem;
-					background: rgba(255, 255, 255, 0.02);
-					border: 1px solid rgba(255, 255, 255, 0.04);
+					background: var(--surface-card, rgba(255, 255, 255, 0.03));
+					border: 1px solid var(--border-color, rgba(255, 255, 255, 0.06));
 					border-radius: 0.4rem;
 					flex: 1;
 				}
@@ -437,8 +380,8 @@ export class HardwareMonitor extends HTMLElement {
 					font-weight: 700;
 					text-transform: uppercase;
 					letter-spacing: 0.08em;
-					color: #0066FF;
-					font-family: 'Fira Code', monospace;
+					color: var(--accent-secondary, #0066FF);
+					font-family: var(--font-mono, 'Fira Code', monospace);
 				}
 				.tier-status {
 					font-size: 0.6rem;
@@ -446,36 +389,25 @@ export class HardwareMonitor extends HTMLElement {
 					text-transform: uppercase;
 					letter-spacing: 0.05em;
 				}
-				.tier-status.online { color: #14B8A6; }
-				.tier-status.offline { color: #ef4444; }
+				.tier-status.online { color: var(--accent-color, #14B8A6); }
+				.tier-status.offline { color: var(--color-danger, #ef4444); }
 				.tier-threads {
 					font-size: 0.7rem;
-					color: rgba(255, 255, 255, 0.5);
-					font-family: 'Fira Code', monospace;
+					color: var(--text-muted, rgba(255, 255, 255, 0.5));
+					font-family: var(--font-mono, 'Fira Code', monospace);
 					margin-left: auto;
 				}
 				.tier-warning {
-					color: #eab308;
+					color: var(--color-warning, #eab308);
 					font-size: 0.75rem;
 					cursor: help;
 				}
 
-				.empty {
-					color: rgba(255, 255, 255, 0.2);
-					font-size: 0.85rem;
-					font-style: italic;
-					text-align: center;
-					padding: 1.5rem;
-				}
-				.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
-				.simd-badge:focus-visible { outline: 2px solid #14B8A6; outline-offset: 2px; transform: scale(1.08); }
-				@media (prefers-reduced-motion: reduce) {
-					*, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
-				}
+				.simd-badge:focus-visible { outline: 2px solid var(--accent-color, #14B8A6); outline-offset: 2px; transform: scale(1.08); }
 			</style>
 
 			<h2>
-				<span class="icon" aria-hidden="true">
+				<span class="h-icon" aria-hidden="true">
 					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
 						<rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
 						<rect x="9" y="9" width="6" height="6"></rect>
@@ -493,7 +425,7 @@ export class HardwareMonitor extends HTMLElement {
 			</h2>
 
 			<div id="hw-panel">
-				<div class="empty">${this.tr('detecting_hw', 'Detecting hardware...')}</div>
+				<div class="empty-state">${this.tr('detecting_hw', 'Detecting hardware...')}</div>
 			</div>
 		`;
 	}

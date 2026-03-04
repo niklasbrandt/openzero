@@ -1,4 +1,5 @@
 import { BUTTON_STYLES } from '../services/buttonStyles';
+import { ACCESSIBILITY_STYLES } from '../services/accessibilityStyles';
 
 export class UserCard extends HTMLElement {
 	private me: any = null;
@@ -183,6 +184,7 @@ export class UserCard extends HTMLElement {
 		this.shadowRoot.innerHTML = `
 			<style>
 				${BUTTON_STYLES}
+				${ACCESSIBILITY_STYLES}
 				:host { display: block; height: 100%; }
 				.card {
 					height: 100%;
@@ -300,11 +302,11 @@ export class UserCard extends HTMLElement {
 				.save-btn { text-transform: uppercase; letter-spacing: 0.05em; }
 				.cancel-btn { text-transform: uppercase; letter-spacing: 0.05em; }
 				button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { 
-					outline: 2px solid var(--accent-color); 
+					outline: 2px solid var(--accent-color, #14B8A6); 
 					outline-offset: 2px; 
 				}
 				button:focus:not(:focus-visible), input:focus:not(:focus-visible), textarea:focus:not(:focus-visible), select:focus:not(:focus-visible) { outline: none; }
-				.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+				/* Additional reduced-motion overrides beyond shared module */
 				@media (prefers-reduced-motion: reduce) {
 					*, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 				}

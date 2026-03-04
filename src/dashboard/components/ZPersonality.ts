@@ -1,4 +1,8 @@
 import { BUTTON_STYLES } from '../services/buttonStyles';
+import { ACCESSIBILITY_STYLES } from '../services/accessibilityStyles';
+import { SECTION_HEADER_STYLES } from '../services/sectionHeaderStyles';
+import { SCROLLBAR_STYLES } from '../services/scrollbarStyles';
+import { EMPTY_STATE_STYLES } from '../services/emptyStateStyles';
 
 export class ZPersonality extends HTMLElement {
 	private personality: any = null;
@@ -106,18 +110,18 @@ export class ZPersonality extends HTMLElement {
 		this.shadowRoot.innerHTML = `
 			<style>
 				${BUTTON_STYLES}
+				${ACCESSIBILITY_STYLES}
+				${SECTION_HEADER_STYLES}
+				${SCROLLBAR_STYLES}
+				${EMPTY_STATE_STYLES}
 				:host { display: block; height: 100%; font-family: 'Inter', system-ui, sans-serif; }
 				.card { height: 100%; display: flex; flex-direction: column; gap: 1.25rem; color: #fff; }
 				
 				.header { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; flex-wrap: wrap; }
-				h2 { margin: 0; font-size: 1.5rem; display: flex; align-items: center; gap: 0.5rem; color: #fff; font-weight: bold; letter-spacing: 0.02em; overflow-wrap: break-word; word-break: break-word; min-width: 0; flex: 1; }
-				.icon {
-					width: 28px; height: 28px;
-					background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-secondary) 100%);
-					border-radius: 0.4rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+				/* Override h-icon for personality: show agent initial, not SVG */
+				h2 .h-icon {
 					font-weight: 800; font-size: 0.8rem;
 				}
-				.subtitle { font-size: 0.65rem; font-weight: 400; color: rgba(255, 255, 255, 0.3); margin-left: 0.5rem; text-transform: uppercase; letter-spacing: 0.1em; }
 
 				.edit-btn {
 					padding: 0.18rem 0.55rem;
@@ -132,29 +136,23 @@ export class ZPersonality extends HTMLElement {
 					color: rgba(255,255,255,0.4); cursor: pointer; border-bottom: 2px solid transparent;
 					transition: all 0.2s;
 				}
-				.tab.active { color: #14B8A6; border-color: #14B8A6; }
-				.tab:focus-visible { outline: 2px solid #14B8A6; outline-offset: 2px; border-radius: 2px 2px 0 0; }
-				.edit-btn:focus-visible, .save-btn:focus-visible, .cancel-btn:focus-visible { outline: 2px solid #14B8A6; outline-offset: 2px; border-radius: 4px; }
-				input[type="text"]:focus-visible, textarea:focus-visible, select:focus-visible, input[type="range"]:focus-visible, input[type="color"]:focus-visible { outline: 2px solid #14B8A6; outline-offset: 2px; }
-				.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
-				@media (prefers-reduced-motion: reduce) {
-					*, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
-				}
+				.tab.active { color: var(--accent-color, #14B8A6); border-color: var(--accent-color, #14B8A6); }
+				.tab:focus-visible { outline: 2px solid var(--accent-color, #14B8A6); outline-offset: 2px; border-radius: 2px 2px 0 0; }
+				.edit-btn:focus-visible, .save-btn:focus-visible, .cancel-btn:focus-visible { outline: 2px solid var(--accent-color, #14B8A6); outline-offset: 2px; border-radius: 4px; }
+				input[type="text"]:focus-visible, textarea:focus-visible, select:focus-visible, input[type="range"]:focus-visible, input[type="color"]:focus-visible { outline: 2px solid var(--accent-color, #14B8A6); outline-offset: 2px; }
 
 				.content { flex: 1; overflow-y: auto; padding-right: 4px; }
-				.content::-webkit-scrollbar { width: 4px; }
-				.content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
 
 				.trait-grid { display: grid; gap: 1rem; margin-top: 0.5rem; }
 				.trait-item { 
-					background: rgba(20, 184, 166, 0.03); padding: 0.75rem 1rem; border-radius: 0.75rem;
-					border: 1px solid rgba(255,255,255,0.05);
+					background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.03); padding: 0.75rem 1rem; border-radius: 0.75rem;
+					border: 1px solid var(--border-subtle, rgba(255,255,255,0.05));
 				}
-				.trait-label { font-size: 0.65rem; color: rgba(255,255,255,0.4); text-transform: uppercase; margin-bottom: 4px; display: block; }
+				.trait-label { font-size: 0.65rem; color: var(--text-muted, rgba(255,255,255,0.4)); text-transform: uppercase; margin-bottom: 4px; display: block; }
 				.trait-value { font-size: 0.9rem; color: #fff; font-weight: 500; }
 
 				.form-group { margin-bottom: 1.25rem; }
-				.form-label { font-size: 0.75rem; color: #14B8A6; font-weight: 700; display: block; margin-bottom: 0.5rem; }
+				.form-label { font-size: 0.75rem; color: var(--accent-color, #14B8A6); font-weight: 700; display: block; margin-bottom: 0.5rem; }
 				input[type="text"], textarea {
 					background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);
 					color: #fff; padding: 10px; border-radius: 0.5rem; width: 100%; box-sizing: border-box;
@@ -164,7 +162,7 @@ export class ZPersonality extends HTMLElement {
 				
 				.range-container { display: flex; align-items: center; gap: 1rem; }
 				.range-tag { font-size: 0.65rem; color: rgba(255,255,255,0.4); width: 60px; }
-				input[type="range"] { flex: 1; accent-color: #14B8A6; cursor: pointer; }
+				input[type="range"] { flex: 1; accent-color: var(--accent-color, #14B8A6); cursor: pointer; }
 
 				select.theme-selector {
 					background: rgba(0,0,0,0.3);
@@ -179,7 +177,7 @@ export class ZPersonality extends HTMLElement {
 					cursor: pointer;
 					appearance: auto;
 				}
-				select.theme-selector:focus-visible { outline: 2px solid #14B8A6; outline-offset: 2px; }
+				select.theme-selector:focus-visible { outline: 2px solid var(--accent-color, #14B8A6); outline-offset: 2px; }
 				.theme-swatch {
 					display: flex;
 					gap: 6px;
@@ -209,18 +207,16 @@ export class ZPersonality extends HTMLElement {
 					border-left: 3px solid #0066FF; animation: slideIn 0.3s ease-out backwards;
 				}
 				.prot-name { font-size: 0.8rem; font-weight: 700; letter-spacing: 0.02em; display: block; margin-bottom: 0.25rem; }
-				.prot-desc { font-size: 0.75rem; color: rgba(255,255,255,0.5); line-height: 1.4; }
+				.prot-desc { font-size: 0.75rem; color: var(--text-muted, rgba(255,255,255,0.5)); line-height: 1.4; }
 
 				@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 				@keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
-
-				.empty { text-align: center; padding: 2rem; color: rgba(255,255,255,0.2); font-size: 0.85rem; font-style: italic; }
 			</style>
 
 			<div class="card">
 				<div class="header">
 					<h2>
-						<div class="icon" aria-hidden="true">${agentInitial}</div>
+						<div class="h-icon" aria-hidden="true">${agentInitial}</div>
 						${this.isEditing ? this.tr('agent_config', 'Config') : (this.activeTab === 'personality' ? this.tr('agent_personality', 'Personality') : this.tr('agent_protocols', 'Protocols'))}
 					</h2>
 					${!this.isEditing && !this.isLoading && this.activeTab === 'personality' ? `<button class="edit-btn" id="edit-trigger" aria-label="Edit agent personality settings">${this.tr('refine', 'Refine')}</button>` : ''}
@@ -234,7 +230,7 @@ export class ZPersonality extends HTMLElement {
 				` : ''}
 
 				<div class="content" role="tabpanel" id="tabpanel-main" aria-labelledby="${this.activeTab === 'personality' ? 'tab-per' : 'tab-prot'}">
-					${this.isLoading ? `<div class="empty">${this.tr('aligning', 'Aligning neural paths...')}</div>` : ''}
+					${this.isLoading ? `<div class="empty-state">${this.tr('aligning', 'Aligning neural paths...')}</div>` : ''}
 					
 					${!this.isLoading && this.isEditing ? `
 						<div class="form">
@@ -307,7 +303,7 @@ export class ZPersonality extends HTMLElement {
 									<span class="prot-desc">${p.description}</span>
 								</div>
 							`).join('')}
-							${prot.length === 0 ? '<div class="empty">No active strategic protocols.</div>' : ''}
+							${prot.length === 0 ? '<div class="empty-state">No active strategic protocols.</div>' : ''}
 						</div>
 					` : ''}
 				</div>
