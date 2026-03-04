@@ -385,7 +385,7 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 			"*Every thought is an opportunity for evolution.*"
 		)
 		return {"reply": protocols_reply}
-	elif msg in ("/purge", "/wipe_memory"):
+	elif msg == "/purge":
 		from app.services.memory import wipe_collection
 		success = await wipe_collection(confirm=True)
 		if success:
