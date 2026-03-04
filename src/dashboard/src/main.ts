@@ -196,15 +196,21 @@ declare global {
 	interface Window {
 		__z_translations: Record<string, string> | null;
 		__z_translations_ready: Promise<void>;
+		__z_lang: string;
 	}
 }
 window.__z_translations = null;
+window.__z_lang = 'en';
 
 const translationsReady = (async () => {
 	try {
 		const res = await fetch('/api/dashboard/translations');
 		if (res.ok) {
-			window.__z_translations = await res.json();
+			const data = await res.json();
+			window.__z_translations = data.keys;
+			window.__z_lang = data.lang || 'en';
+			// Sync the <html> lang attribute for screen readers and SEO
+			document.documentElement.lang = window.__z_lang;
 		}
 	} catch (_) { /* components fall back to English defaults */ }
 })();
@@ -258,13 +264,13 @@ Promise.all([
 ]).then(dismissLoader);
 
 // ── Header CTA Translations ──
-// Fetches translations and applies localised labels, aria-label, and
-// data-tooltip values to the three header action buttons.
+// Applies localised labels, aria-label, and data-tooltip values 
+// to structural elements using the global translations cache.
 async function initHeaderTranslations() {
 	try {
-		const res = await fetch('/api/dashboard/translations');
-		if (!res.ok) return;
-		const t: Record<string, string> = await res.json();
+		await window.__z_translations_ready;
+		const t = window.__z_translations;
+		if (!t) return;
 
 		const tr = (key: string, fallback: string) => t[key] || fallback;
 
@@ -435,7 +441,7 @@ function initScrollSpy() {
 	pickActive();
 
 	// Smooth scroll + highlight on any nav link click
-	allNavLinks.forEach(link => {
+	allNavLinks.forEach((link, idx) => {
 		link.addEventListener('click', (e) => {
 			e.preventDefault();
 			const id = link.dataset.section!;
@@ -447,6 +453,43 @@ function initScrollSpy() {
 			}
 			// Close drawer if a drawer link was clicked
 			closeMobileDrawer();
+		});
+
+		// Arrow key navigation (roving focus support for landmarks)
+		link.addEventListener('keydown', (e) => {
+			const { key } = e;
+			let target = -1;
+
+			if (key === 'ArrowDown' || key === 'ArrowRight') {
+				e.preventDefault();
+				target = (idx + 1) % allNavLinks.length;
+			} else if (key === 'ArrowUp' || key === 'ArrowLeft') {
+				e.preventDefault();
+				target = (idx - 1 + allNavLinks.length) % allNavLinks.length;
+			} else if (key === 'Home') {
+				e.preventDefault();
+				target = 0;
+			} else if (key === 'End') {
+				e.preventDefault();
+				target = allNavLinks.length - 1;
+			}
+
+			if (target !== -1) {
+				// We map indices differently across 3 navs, so find the target 
+				// by section index within the SAME container.
+				const container = link.closest('nav, .mobile-nav-drawer');
+				if (container) {
+					const linksInContainer = Array.from(container.querySelectorAll<HTMLAnchorElement>('a[data-section]'));
+					const currentInC = linksInContainer.indexOf(link);
+					let nextInC = -1;
+					if (key === 'ArrowDown' || key === 'ArrowRight') nextInC = (currentInC + 1) % linksInContainer.length;
+					else if (key === 'ArrowUp' || key === 'ArrowLeft') nextInC = (currentInC - 1 + linksInContainer.length) % linksInContainer.length;
+					else if (key === 'Home') nextInC = 0;
+					else if (key === 'End') nextInC = linksInContainer.length - 1;
+
+					if (nextInC !== -1) linksInContainer[nextInC]?.focus();
+				}
+			}
 		});
 	});
 }
@@ -462,6 +505,33 @@ function openMobileDrawer() {
 	drawer.classList.add('open');
 	toggle?.setAttribute('aria-expanded', 'true');
 	document.body.style.overflow = 'hidden';
+
+	// Focus trap: identify first and last focusable elements
+	const focusable = drawer.querySelectorAll<HTMLElement>(
+		'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+	);
+	const first = focusable[0];
+	const last = focusable[focusable.length - 1];
+
+	function handleTrap(e: KeyboardEvent) {
+		if (e.key !== 'Tab' || !drawerOpen) return;
+		if (e.shiftKey) { // Shift + Tab
+			if (document.activeElement === first) {
+				e.preventDefault();
+				last?.focus();
+			}
+		} else { // Tab
+			if (document.activeElement === last) {
+				e.preventDefault();
+				first?.focus();
+			}
+		}
+	}
+
+	drawer.addEventListener('keydown', handleTrap as EventListener);
+	// Store ref to remove later if needed, though we reload/re-add on open
+	(drawer as any)._trapHandler = handleTrap;
+
 	// Focus the close button for keyboard accessibility
 	(drawer.querySelector('.mobile-nav-drawer-close') as HTMLButtonElement | null)?.focus();
 }
@@ -470,6 +540,11 @@ function closeMobileDrawer() {
 	const drawer = document.getElementById('mobile-nav-drawer');
 	const toggle = document.getElementById('mobile-nav-open');
 	if (!drawer || !drawerOpen) return;
+
+	if ((drawer as any)._trapHandler) {
+		drawer.removeEventListener('keydown', (drawer as any)._trapHandler);
+	}
+
 	drawerOpen = false;
 	drawer.classList.remove('open');
 	toggle?.setAttribute('aria-expanded', 'false');
