@@ -440,7 +440,7 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		# Sync to Global Central Memory
 		if not req.skip_history:
 			await save_global_message("dashboard", "user", msg)
-			await save_global_message("dashboard", "z", clean_reply)
+			await save_global_message("dashboard", "z", clean_reply, model=last_model_used.get())
 
 		# Memory is user-driven only (via /add or LEARN action tag)
 
@@ -693,14 +693,15 @@ async def dashboard_chat_stream(req: ChatRequest, request: Request, _rl: None = 
 			clean_reply, executed_cmds = await parse_and_execute_actions(full_response, db=db)
 
 		await save_global_message("dashboard", "user", msg)
-		await save_global_message("dashboard", "z", clean_reply)
+		model_label = last_model_used.get()
+		await save_global_message("dashboard", "z", clean_reply, model=model_label)
 
 		# Background memory extraction — learn from user message without blocking reply
 		import asyncio
 		from app.services.memory import extract_and_store_facts
 		asyncio.create_task(extract_and_store_facts(msg))
 
-		yield f"data: {json.dumps({'done': True, 'reply': clean_reply, 'actions': executed_cmds, 'model': last_model_used.get()})}\n\n"
+		yield f"data: {json.dumps({'done': True, 'reply': clean_reply, 'actions': executed_cmds, 'model': model_label})}\n\n"
 
 	return StreamingResponse(
 		event_generator(),
