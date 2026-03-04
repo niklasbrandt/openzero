@@ -301,6 +301,12 @@ export class SoftwareStatus extends HTMLElement {
 				}
 
 				.svc-item:focus-visible, .has-tip:focus-visible { outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); outline-offset: 2px; border-radius: 0.4rem; }
+				@media (forced-colors: active) {
+					.svc-dot.online { background: ButtonText; }
+					.svc-dot.offline { background: LinkText; }
+					.svc-dot.warning { background: ButtonText; border: 1px solid LinkText; }
+					.svc-dot { box-shadow: none; }
+				}
 			</style>
 
 			<h2>

@@ -115,7 +115,7 @@ export class ZPersonality extends HTMLElement {
 				${SCROLLBAR_STYLES}
 				${EMPTY_STATE_STYLES}
 				:host { display: block; height: 100%; font-family: 'Inter', system-ui, sans-serif; }
-				.card { height: 100%; display: flex; flex-direction: column; gap: 1.25rem; color: #fff; }
+				.card { height: 100%; display: flex; flex-direction: column; gap: 1.25rem; color: var(--text-primary, hsla(0, 0%, 100%, 1)); }
 				
 				.header { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; flex-wrap: wrap; }
 				/* Override h-icon for personality: show agent initial, not SVG */
@@ -149,13 +149,13 @@ export class ZPersonality extends HTMLElement {
 					border: 1px solid var(--border-subtle, rgba(255,255,255,0.05));
 				}
 				.trait-label { font-size: 0.65rem; color: var(--text-muted, rgba(255,255,255,0.4)); text-transform: uppercase; margin-bottom: 4px; display: block; }
-				.trait-value { font-size: 0.9rem; color: #fff; font-weight: 500; }
+				.trait-value { font-size: 0.9rem; color: var(--text-primary, hsla(0, 0%, 100%, 1)); font-weight: 500; }
 
 				.form-group { margin-bottom: 1.25rem; }
 				.form-label { font-size: 0.75rem; color: var(--accent-color, hsla(173, 80%, 40%, 1)); font-weight: 700; display: block; margin-bottom: 0.5rem; }
 				input[type="text"], textarea {
 					background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);
-					color: #fff; padding: 10px; border-radius: 0.5rem; width: 100%; box-sizing: border-box;
+					color: var(--text-primary, hsla(0, 0%, 100%, 1)); padding: 10px; border-radius: 0.5rem; width: 100%; box-sizing: border-box;
 					font-family: inherit; font-size: 0.85rem;
 				}
 				textarea { height: 80px; resize: none; }
@@ -167,7 +167,7 @@ export class ZPersonality extends HTMLElement {
 				select.theme-selector {
 					background: rgba(0,0,0,0.3);
 					border: 1px solid rgba(255,255,255,0.1);
-					color: #fff;
+					color: var(--text-primary, hsla(0, 0%, 100%, 1));
 					padding: 8px 10px;
 					border-radius: 0.5rem;
 					width: 100%;
@@ -211,6 +211,11 @@ export class ZPersonality extends HTMLElement {
 
 				@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 				@keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+				@media (forced-colors: active) {
+					.tab.active { border-color: Highlight; color: Highlight; }
+					.prot-item { border-left-color: Highlight; }
+					input[type="range"] { accent-color: Highlight; }
+				}
 			</style>
 
 			<div class="card">
@@ -219,7 +224,7 @@ export class ZPersonality extends HTMLElement {
 						<div class="h-icon" aria-hidden="true">${agentInitial}</div>
 						${this.isEditing ? this.tr('agent_config', 'Config') : (this.activeTab === 'personality' ? this.tr('agent_personality', 'Personality') : this.tr('agent_protocols', 'Protocols'))}
 					</h2>
-					${!this.isEditing && !this.isLoading && this.activeTab === 'personality' ? `<button class="edit-btn" id="edit-trigger" aria-label="Edit agent personality settings">${this.tr('refine', 'Refine')}</button>` : ''}
+					${!this.isEditing && !this.isLoading && this.activeTab === 'personality' ? `<button class="edit-btn" id="edit-trigger" aria-label="${this.tr('aria_edit_personality', 'Edit agent personality settings')}">${this.tr('refine', 'Refine')}</button>` : ''}
 				</div>
 
 				${!this.isEditing ? `
@@ -291,7 +296,7 @@ export class ZPersonality extends HTMLElement {
 
 					${!this.isLoading && !this.isEditing && this.activeTab === 'protocols' ? `
 						<div class="prot-explanation" style="font-size: 0.75rem; color: rgba(255,255,255,0.4); margin-bottom: 1rem; line-height: 1.4; padding: 0.5rem; background: rgba(0,102,255,0.05); border-radius: 4px; border-left: 2px solid hsla(216, 100%, 50%, 1);">
-							Operational Protocols are the agent's internal "Action Tags". They define the specific strategic actions ${per?.agent_name || 'Z'} can perform across integrated services. These are core system capabilities.
+							${this.tr('prot_explanation', `Operational Protocols are the agent's internal "Action Tags". They define the specific strategic actions ${per?.agent_name || 'Z'} can perform across integrated services. These are core system capabilities.`)}
 						</div>
 					<div class="prot-list" role="list">
 						${prot.map((p: any, i: number) => `
@@ -303,7 +308,7 @@ export class ZPersonality extends HTMLElement {
 									<span class="prot-desc">${p.description}</span>
 								</div>
 							`).join('')}
-							${prot.length === 0 ? '<div class="empty-state">No active strategic protocols.</div>' : ''}
+							${prot.length === 0 ? `<div class="empty-state">${this.tr('no_protocols', 'No active strategic protocols.')}</div>` : ''}
 						</div>
 					` : ''}
 				</div>

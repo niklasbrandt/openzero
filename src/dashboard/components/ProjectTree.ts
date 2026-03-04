@@ -153,6 +153,11 @@ export class ProjectTree extends HTMLElement {
 						outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); 
 						outline-offset: 2px; 
 					}
+					@media (forced-colors: active) {
+						.h-icon { background: ButtonFace; border: 1px solid ButtonText; }
+						.board-tag { border: 1px solid ButtonText; }
+						.card-count { color: LinkText; }
+					}
 				</style>
 				<div class="card">
 					<div class="header">

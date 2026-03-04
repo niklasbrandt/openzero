@@ -79,7 +79,7 @@ export class HardwareMonitor extends HTMLElement {
 		];
 
 		const badgesHtml = simdBadges.map(b =>
-			`<span class="simd-badge ${b.active ? 'active' : 'inactive'} has-tip" data-tip="${b.tip}" tabindex="0" role="img" aria-label="${b.name}: ${b.active ? 'Supported' : 'Not available'}. ${b.tip}">${b.name}</span>`
+			`<span class="simd-badge ${b.active ? 'active' : 'inactive'} has-tip" data-tip="${b.tip}" tabindex="0" role="img" aria-label="${b.name}: ${b.active ? this.tr('simd_supported', 'Supported') : this.tr('simd_unavailable', 'Not available')}. ${b.tip}">${b.name}</span>`
 		).join('');
 
 		const simdScore = (d.avx512 ? 3 : d.avx2 ? 2 : d.sse4_2 ? 1 : 0);
@@ -132,7 +132,7 @@ export class HardwareMonitor extends HTMLElement {
 			return `
 				<div class="tier-row">
 					<span class="tier-name">${t}</span>
-					<span class="tier-status ${statusCls}" aria-label="${t} tier is ${statusLabel}">${statusLabel}</span>
+					<span class="tier-status ${statusCls}" aria-label="${t} ${this.tr('tier_is', 'tier is')} ${statusLabel}">${statusLabel}</span>
 					<span class="tier-threads has-tip" data-tip="${this.tr('tip_threads_assigned', 'Threads assigned to this tier\'s llama-server instance.')}">${tier.threads || '?'}T</span>
 					${warningHtml}
 				</div>
@@ -207,7 +207,7 @@ export class HardwareMonitor extends HTMLElement {
 				.cpu-model {
 					font-size: 1rem;
 					font-weight: 600;
-					color: var(--text-primary, #fff);
+				color: var(--text-primary, hsla(0, 0%, 100%, 1));
 					margin-bottom: 1rem;
 					line-height: 1.4;
 					font-family: var(--font-mono, 'Fira Code', monospace);
@@ -404,6 +404,17 @@ export class HardwareMonitor extends HTMLElement {
 				}
 
 				.simd-badge:focus-visible { outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); outline-offset: 2px; transform: scale(1.08); }
+				@media (forced-colors: active) {
+					.h-icon { background: ButtonFace; border: 1px solid ButtonText; }
+					.simd-badge.active { border-color: Highlight; }
+					.status-dot { background: ButtonText; }
+					.capability-summary.excellent { border-color: Highlight; }
+					.capability-summary.limited { border-color: LinkText; }
+					.ram-bar-fill { background: Highlight; }
+					.ram-bar-fill.critical { background: LinkText; }
+					.tier-status.online { color: ButtonText; }
+					.tier-status.offline { color: LinkText; }
+				}
 			</style>
 
 			<h2>
