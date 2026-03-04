@@ -10,6 +10,25 @@
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap"
 		rel="stylesheet">
+	<!-- Instant theme paint: reads cached palette from localStorage before any
+	     JS bundle executes, eliminating the flash of default teal on load. -->
+	<script>
+		(function() {
+			try {
+				var t = localStorage.getItem('z_theme');
+				if (!t) return;
+				var d = JSON.parse(t);
+				var r = document.documentElement;
+				function hexRgb(h) {
+					h = h.replace('#','');
+					return parseInt(h.slice(0,2),16)+', '+parseInt(h.slice(2,4),16)+', '+parseInt(h.slice(4,6),16);
+				}
+				if (d.accent)   { r.style.setProperty('--accent-color', d.accent); r.style.setProperty('--accent-color-rgb', hexRgb(d.accent)); }
+				if (d.secondary) r.style.setProperty('--accent-secondary', d.secondary);
+				if (d.tertiary)  r.style.setProperty('--accent-tertiary', d.tertiary);
+			} catch(e) {}
+		})();
+	</script>
 </head>
 
 <body>
