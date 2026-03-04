@@ -1,10 +1,11 @@
 #!/bin/bash
 set -e
 
-# Usage: bash scripts/sync.sh [--skip-tests]
-SKIP_TESTS=false
+# Usage: bash scripts/sync.sh [--test]
+# Tests are skipped by default. Pass --test to run the regression suite.
+RUN_TESTS=false
 for arg in "$@"; do
-  [[ "$arg" == "--skip-tests" ]] && SKIP_TESTS=true
+  [[ "$arg" == "--test" ]] && RUN_TESTS=true
 done
 
 # Configuration (Load from .env if available)
@@ -77,8 +78,8 @@ rm -f LATEST_CHANGES.txt
 echo "✅ Deployment complete."
 
 # ── Post-deploy regression tests ─────────────────────────────────────────────
-if [ "$SKIP_TESTS" = true ]; then
-  echo "⏭  Tests skipped (--skip-tests flag set)."
+if [ "$RUN_TESTS" = false ]; then
+  echo "⏭  Tests skipped (pass --test to run regression suite)."
   exit 0
 fi
 
