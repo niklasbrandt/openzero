@@ -112,20 +112,20 @@ export class BriefingHistory extends HTMLElement {
 						flex-direction: column;
 					}
 					.briefing-item {
-						background: var(--surface-card, rgba(255, 255, 255, 0.02));
-						border-radius: var(--radius-lg, 12px);
+						background: var(--surface-card, hsla(0, 0%, 100%, 0.03));
+						border-radius: var(--radius-lg, 0.75rem);
 						margin-bottom: 0.75rem;
-						border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.05));
+						border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.08));
 						overflow: hidden;
 						transition: background var(--duration-base, 0.3s) ease, border-color var(--duration-base, 0.3s) ease;
 					}
 					.briefing-item:hover {
-						background: var(--surface-card-hover, rgba(255, 255, 255, 0.04));
-						border-color: var(--border-medium, rgba(255, 255, 255, 0.1));
+						background: var(--surface-card-hover, hsla(0, 0%, 100%, 0.05));
+						border-color: var(--border-medium, hsla(0, 0%, 100%, 0.12));
 					}
 					.briefing-item.active {
-						background: var(--surface-card-hover, rgba(255, 255, 255, 0.04));
-						border-color: rgba(var(--accent-color-rgb, 20, 184, 166), 0.2);
+						background: var(--surface-card-hover, hsla(0, 0%, 100%, 0.05));
+						border-color: hsla(173, 80%, 40%, 0.2);
 					}
 					.meta { 
 						display: flex; 
@@ -143,27 +143,27 @@ export class BriefingHistory extends HTMLElement {
 					.meta:focus-visible {
 						outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1));
 						outline-offset: 2px;
-						border-radius: 4px;
-						background: rgba(255, 255, 255, 0.05);
+						border-radius: var(--radius-sm, 0.35rem);
+						background: var(--surface-hover, hsla(0, 0%, 100%, 0.06));
 					}
 					.type { 
-						background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.1); 
+						background: hsla(173, 80%, 40%, 0.1); 
 						color: var(--accent-color, hsla(173, 80%, 40%, 1)); 
 						font-size: 0.65rem; 
 						padding: 0.2rem 0.6rem; 
-						border-radius: var(--radius-pill, 20px); 
+						border-radius: var(--radius-pill, 9999px); 
 						font-weight: 700;
 						letter-spacing: 0.05em;
-						border: 1px solid rgba(var(--accent-color-rgb, 20, 184, 166), 0.2);
+						border: 1px solid hsla(173, 80%, 40%, 0.2);
 					}
 					.date { 
 						font-size: 0.8rem; 
-						color: var(--text-muted, rgba(255, 255, 255, 0.4)); 
+						color: var(--text-muted, hsla(0, 0%, 100%, 0.4)); 
 						font-weight: 500;
 					}
 					.chevron { 
 						transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); 
-						color: var(--text-faint, rgba(255, 255, 255, 0.2));
+						color: var(--text-faint, hsla(0, 0%, 100%, 0.2));
 						display: flex;
 						align-items: center;
 					}
@@ -191,17 +191,17 @@ export class BriefingHistory extends HTMLElement {
 						font-size: 0.95rem; 
 						white-space: pre-wrap; 
 						line-height: 1.6; 
-						color: var(--text-secondary, rgba(255, 255, 255, 0.8)); 
-						border-top: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.03));
+						color: var(--text-secondary, hsla(0, 0%, 100%, 0.7)); 
+						border-top: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.08));
 						padding-top: 1rem;
 					}
 					.load-more {
 						width: 100%;
-						background: rgba(255, 255, 255, 0.02);
-						border: 1px dashed rgba(255, 255, 255, 0.1);
-						color: rgba(255, 255, 255, 0.4);
+						background: var(--surface-card, hsla(0, 0%, 100%, 0.03));
+						border: 1px dashed var(--border-medium, hsla(0, 0%, 100%, 0.12));
+						color: var(--text-muted, hsla(0, 0%, 100%, 0.4));
 						padding: 0.75rem;
-						border-radius: 12px;
+						border-radius: var(--radius-lg, 0.75rem);
 						font-size: 0.8rem;
 						font-weight: 600;
 						cursor: pointer;
@@ -209,9 +209,9 @@ export class BriefingHistory extends HTMLElement {
 						transition: all 0.2s;
 					}
 					.load-more:hover {
-						background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.05);
+						background: hsla(173, 80%, 40%, 0.1);
 						color: var(--accent-color, hsla(173, 80%, 40%, 1));
-						border-color: rgba(var(--accent-color-rgb, 20, 184, 166), 0.3);
+						border-color: hsla(173, 80%, 40%, 0.4);
 					}
 					.load-more:focus-visible { outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); outline-offset: 2px; }
 					@media (forced-colors: active) {
