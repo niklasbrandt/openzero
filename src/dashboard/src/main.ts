@@ -186,11 +186,38 @@ async function initTheme() {
 }
 themeReady = initTheme();
 
+// ── Centralized Translation Fetch ──
+// Fetches translations ONCE and exposes them to all components via
+// window.__z_translations. Components read from this cache in their
+// loadTranslations() instead of making independent /api/ calls.
+// This eliminates ~14 duplicate HTTP requests and the staggered
+// "popcorn" re-render effect where widgets pop in one by one.
+declare global {
+	interface Window {
+		__z_translations: Record<string, string> | null;
+		__z_translations_ready: Promise<void>;
+	}
+}
+window.__z_translations = null;
+
+const translationsReady = (async () => {
+	try {
+		const res = await fetch('/api/dashboard/translations');
+		if (res.ok) {
+			window.__z_translations = await res.json();
+		}
+	} catch (_) { /* components fall back to English defaults */ }
+})();
+window.__z_translations_ready = translationsReady;
+
 // ── Page loader dismissal ──
-// Wait for BOTH DOMContentLoaded and the theme palette API call before
-// revealing content. A 1.5 s hard timeout prevents a slow API from
-// blocking the page indefinitely. The double-rAF before removing the
-// hidden class ensures the browser commits the final colour paint first.
+// Wait for DOMContentLoaded, theme palette, translations, AND critical
+// above-the-fold Web Components to be defined before revealing content.
+// A 2.5 s hard timeout prevents a slow API from blocking the page
+// indefinitely. The :not(:defined) CSS hides components anyway, so even
+// if the loader fades early there is no visible flash.
+// The double-rAF before removing the hidden class ensures the browser
+// commits the final colour paint first.
 function dismissLoader() {
 	const loader = document.getElementById('page-loader');
 	if (!loader) return;
@@ -209,11 +236,26 @@ const domReady = new Promise<void>(resolve => {
 	else document.addEventListener('DOMContentLoaded', () => resolve(), { once: true });
 });
 
-// Race the theme fetch against a 1.5 s timeout so a slow backend never
-// leaves the loader up indefinitely.
-const themeTimeout = new Promise<void>(resolve => setTimeout(resolve, 1500));
+// Wait for critical above-the-fold components to register their Custom
+// Element definition so the :not(:defined) -> :defined CSS transition
+// happens behind the loader, not in front of the user's eyes.
+const criticalComponents = Promise.all([
+	customElements.whenDefined('chat-prompt'),
+	customElements.whenDefined('life-overview'),
+	customElements.whenDefined('user-card'),
+]);
 
-Promise.all([domReady, Promise.race([themeReady, themeTimeout])]).then(dismissLoader);
+// Race ALL readiness signals against a 2.5 s timeout so a slow backend
+// never leaves the loader up indefinitely.
+const loaderTimeout = new Promise<void>(resolve => setTimeout(resolve, 2500));
+
+Promise.all([
+	domReady,
+	Promise.race([
+		Promise.all([themeReady, translationsReady, criticalComponents]),
+		loaderTimeout,
+	]),
+]).then(dismissLoader);
 
 // ── Header CTA Translations ──
 // Fetches translations and applies localised labels, aria-label, and
@@ -303,18 +345,71 @@ function initScrollSpy() {
 		marqueeLink?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
 	}
 
-	const observer = new IntersectionObserver((entries) => {
-		entries.forEach(entry => {
-			if (entry.isIntersecting) {
-				setActive(entry.target.id);
-			}
-		});
-	}, {
-		rootMargin: '-20% 0px -60% 0px',
-		threshold: 0
-	});
+	// Scroll-spy: pick the section whose visual centre is closest to
+	// the viewport centre band (35%-65% of viewport height). Among
+	// sections sharing the same vertical band, the one closest to the
+	// horizontal centre wins — important for column-count masonry layout
+	// where two cards sit side-by-side at the same Y position.
+	let currentActive = '';
+	let rafPending = false;
 
-	sections.forEach(section => observer.observe(section));
+	function pickActive() {
+		const vh = window.innerHeight;
+		const vw = window.innerWidth;
+		const bandTop = vh * 0.35;
+		const bandBot = vh * 0.65;
+		const vcx = vw / 2;
+		const vcy = vh / 2;
+
+		let bestId = '';
+		let bestDist = Infinity;
+
+		for (const sec of sections) {
+			const r = sec.getBoundingClientRect();
+			// Section must overlap the centre band vertically
+			if (r.bottom < bandTop || r.top > bandBot) continue;
+
+			const cx = (r.left + r.right) / 2;
+			const cy = (r.top + r.bottom) / 2;
+			// Euclidean distance from section centre to viewport centre;
+			// horizontal distance acts as natural tiebreaker for same-row cards
+			const dist = Math.hypot(cx - vcx, cy - vcy);
+			if (dist < bestDist) {
+				bestDist = dist;
+				bestId = sec.id;
+			}
+		}
+
+		// Fallback: nothing in the centre band — pick nearest to viewport centre
+		if (!bestId) {
+			for (const sec of sections) {
+				const r = sec.getBoundingClientRect();
+				const cy = (r.top + r.bottom) / 2;
+				const dist = Math.abs(cy - vcy);
+				if (dist < bestDist) {
+					bestDist = dist;
+					bestId = sec.id;
+				}
+			}
+		}
+
+		if (bestId && bestId !== currentActive) {
+			currentActive = bestId;
+			setActive(bestId);
+		}
+		rafPending = false;
+	}
+
+	function onScroll() {
+		if (!rafPending) {
+			rafPending = true;
+			requestAnimationFrame(pickActive);
+		}
+	}
+
+	window.addEventListener('scroll', onScroll, { passive: true });
+	// Initial highlight on page load
+	pickActive();
 
 	// Smooth scroll + highlight on any nav link click
 	allNavLinks.forEach(link => {
