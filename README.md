@@ -248,11 +248,11 @@ Run it manually at any time via: `python3 scripts/test_live_vps_protocols.py --u
 
 ### Prompt Injection Test Suite
 
-A dedicated offline test suite (`tests/test_prompt_injection.py`) validates the structural integrity of the prompt construction pipeline against **208 attack vectors across 20 categories**. The suite runs without any infrastructure -- no LLM, no database, no network required.
+A dedicated offline test suite (`tests/test_prompt_injection.py`) validates the structural integrity of the prompt construction pipeline against **239 tests across 23 categories** (208 attack vector tests + 31 production integration tests). The suite runs without any infrastructure -- no LLM, no database, no network required.
 
-Categories include: direct prompt injection, indirect injection via memory/calendar/documents, jailbreak attempts (DAN, developer mode, grandma exploit), context manipulation (ChatML/LLaMA/Phi/Qwen token injection), memory poisoning, identity hijacking, data exfiltration, privilege escalation, encoding-based evasion (base64, ROT13, homoglyphs, Zalgo, leetspeak), multi-turn manipulation, structured data injection (JSON, YAML, SQL, SSTI), Telegram-specific attacks, dashboard XSS/CSS injection, API endpoint attacks (CRLF, path traversal), and combined advanced attacks (sandwich, steganographic, emotional, authority impersonation).
+Categories include: direct prompt injection, indirect injection via memory/calendar/documents, jailbreak attempts (DAN, developer mode, grandma exploit), context manipulation (ChatML/LLaMA/Phi/Qwen token injection), memory poisoning, identity hijacking, data exfiltration, privilege escalation, encoding-based evasion (base64, ROT13, homoglyphs, Zalgo, leetspeak), multi-turn manipulation, structured data injection (JSON, YAML, SQL, SSTI), Telegram-specific attacks, dashboard XSS/CSS injection, API endpoint attacks (CRLF, path traversal), combined advanced attacks, and production integration tests that import and validate the actual `sanitise_input()` and `_ADVERSARIAL_PATTERNS` implementations.
 
-The suite also exports reference sanitisation functions (`sanitise_input`, `sanitise_html`, `strip_html_comments`, `escape_csv_cell`) that document the recommended input boundary defences. Full results and architecture details are in [`docs/artifacts/prompt_injection_tests.md`](docs/artifacts/prompt_injection_tests.md).
+The production code implements 5 hardening measures identified by the test findings: input sanitisation with model control token stripping (`sanitise_input()` in `llm.py`), adversarial content filtering in memory storage (`memory.py`), action tag stripping from retrieved memory context, and history role filtering (system-role messages dropped from client-provided chat history). Full results and architecture details are in [`docs/artifacts/prompt_injection_tests.md`](docs/artifacts/prompt_injection_tests.md).
 
 Run it with:
 

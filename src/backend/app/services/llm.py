@@ -20,6 +20,8 @@ Core Functions:
 import httpx
 import json
 import logging
+import re
+import unicodedata
 from datetime import datetime
 from typing import AsyncGenerator
 import pytz
@@ -27,6 +29,62 @@ from contextvars import ContextVar
 import uuid
 
 logger = logging.getLogger(__name__)
+
+# Known model control tokens that must be stripped from user input.
+# These could trick the tokenizer into treating user text as protocol.
+_CONTROL_TOKEN_PATTERNS: list[str] = [
+	"<|im_start|>", "<|im_end|>", "<|endoftext|>", "<|system|>",
+	"<|end|>", "<|user|>", "<|assistant|>",
+	"[INST]", "[/INST]", "<<SYS>>", "<</SYS>>",
+	"</s>", "<s>",
+]
+
+# Regex that matches any of the control tokens (escaped for literal matching).
+_CONTROL_TOKEN_RE = re.compile(
+	"|".join(re.escape(tok) for tok in _CONTROL_TOKEN_PATTERNS),
+	re.IGNORECASE,
+)
+
+# Max input length (characters) accepted from any user surface.
+_MAX_INPUT_LENGTH = 8000
+
+
+def sanitise_input(text: str) -> str:
+	"""Pre-process user input before it reaches the LLM.
+
+	Defence-in-depth layer that neutralises:
+	- Null bytes and Unicode control characters
+	- Zalgo / combining-mark abuse
+	- Model-specific control tokens (ChatML, LLaMA, Phi, Qwen)
+	- BOM markers
+	- Excessive length
+	"""
+	if not text:
+		return ""
+
+	# 1. Strip null bytes
+	text = text.replace("\x00", "")
+
+	# 2. Remove BOM
+	text = text.lstrip("\ufeff")
+
+	# 3. NFKD normalise then strip combining marks (defeats Zalgo)
+	text = unicodedata.normalize("NFKD", text)
+	text = "".join(ch for ch in text if unicodedata.category(ch) != "Mn")
+
+	# 4. Strip Unicode control characters (C0/C1) except common whitespace
+	text = "".join(
+		ch for ch in text
+		if ch in ("\n", "\r", "\t") or not unicodedata.category(ch).startswith("C")
+	)
+
+	# 5. Strip known model control tokens
+	text = _CONTROL_TOKEN_RE.sub("", text)
+
+	# 6. Length cap
+	text = text[:_MAX_INPUT_LENGTH]
+
+	return text.strip()
 from app.config import settings
 from app.services.agent_actions import AVAILABLE_TOOLS
 from langchain_openai import ChatOpenAI
@@ -168,6 +226,11 @@ async def get_agent_personality() -> str:
 			roast = traits.get("roast", 0)
 			if roast >= 4: prompt += f"- Roast Level: {roast}/5 (Brutal). Feel free to sharply mock the user's mistakes or logic with biting sarcasm.\n"
 			elif roast >= 2: prompt += f"- Roast Level: {roast}/5 (Playful). Use light, witty jabs and occasional sarcasm.\n"
+
+			cringe = traits.get("cringe", 0)
+			if cringe >= 8: prompt += f"- Cringeness: {cringe}/10 (Extreme). Be intentionally cringeworthy. Use excessive, slightly misused Gen-Z slang, way too many emojis, and socially awkward, 'fellow kids' energy. Make it almost hard to read.\n"
+			elif cringe >= 5: prompt += f"- Cringeness: {cringe}/10 (Noticeable). Use outdated memes, awkward metaphors, and try a bit too hard to be 'cool' or 'hip'.\n"
+			elif cringe >= 2: prompt += f"- Cringeness: {cringe}/10 (Subtle). Slightly socially awkward or uses occasional corporate-speak mixed with 'hip' phrasing.\n"
 
 			depth = traits.get("depth", 4)
 			if depth >= 5: prompt += "- Analytical Depth: Deep-dive into second-order effects and structural analysis.\n"
@@ -313,6 +376,8 @@ async def chat_stream(
 ) -> AsyncGenerator[str, None]:
 	"""Stream tokens from the LLM as an async generator.
 	This is the core function — chat() wraps this for blocking use."""
+	# Sanitise user input before anything else
+	user_message = sanitise_input(user_message)
 	user_name = kwargs.get("user_name", "User")
 	user_profile = kwargs.get("user_profile", {})
 
@@ -473,6 +538,17 @@ async def chat_with_context(
 	from sqlalchemy import select
 	from app.services.memory import semantic_search
 
+	# Sanitise user input before anything else
+	user_message = sanitise_input(user_message)
+
+	# Filter history: only allow user/assistant roles (Finding 6 -- prevent
+	# client-supplied system-role messages from reaching the model)
+	if history:
+		history = [
+			h for h in history
+			if h.get("role") in ("user", "assistant")
+		]
+
 	start_time = time.time()
 
 	async def fetch_people():
@@ -543,7 +619,12 @@ async def chat_with_context(
 		try:
 			result = await semantic_search(user_message, top_k=3)
 			if result and "No memories found" not in result and "Memory system" not in result:
-				return f"RELEVANT MEMORIES:\n{result}"
+				# Strip any action tags that may have been poisoned into memory
+				# (Finding 3 -- action tags must only come from assistant responses)
+				result = re.sub(r'\[ACTION:.*?\]', '', result, flags=re.IGNORECASE | re.DOTALL)
+				result = result.strip()
+				if result:
+					return f"RELEVANT MEMORIES:\n{result}"
 			return ""
 		except Exception as e:
 			print(f"DEBUG: Memory fetch error: {e}")
@@ -698,6 +779,16 @@ async def chat_stream_with_context(
 	from sqlalchemy import select
 	from app.services.memory import semantic_search
 
+	# Sanitise user input before anything else
+	user_message = sanitise_input(user_message)
+
+	# Filter history: only allow user/assistant roles
+	if history:
+		history = [
+			h for h in history
+			if h.get("role") in ("user", "assistant")
+		]
+
 	start_time = time.time()
 
 	# Reuse the same context-fetching logic
@@ -760,7 +851,11 @@ async def chat_stream_with_context(
 		try:
 			result = await semantic_search(user_message, top_k=3)
 			if result and "No memories found" not in result and "Memory system" not in result:
-				return f"RELEVANT MEMORIES:\n{result}"
+				# Strip any action tags that may have been poisoned into memory
+				result = re.sub(r'\[ACTION:.*?\]', '', result, flags=re.IGNORECASE | re.DOTALL)
+				result = result.strip()
+				if result:
+					return f"RELEVANT MEMORIES:\n{result}"
 			return ""
 		except Exception:
 			return ""
