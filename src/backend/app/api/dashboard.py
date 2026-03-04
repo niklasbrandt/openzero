@@ -273,23 +273,34 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		)
 		return {"reply": life_tree}
 	elif msg == "/help":
-		help_text = (
-			"🤖 **Z Operator Controls**\n\n"
-			"**Missions:**\n"
-			"• `/tree` - OS Mission Overview\n"
-			"• `/add <topic>` - Store something in memory\n"
-			"• `/protocols` - View Z's operational protocols\n\n"
-			"**Intelligence:**\n"
-			"• `/think <query>` - Multi-step reasoning\n"
-			"• `/search <query>` - Semantic search\n"
-			"• `/memories` - Show all stored facts\n"
-			"• `/unlearn <query>` - Evolve past a specific fact\n"
-			"• `/day`, `/week`, `/month`, `/quarter`, `/custom`, `/year` - Strategic briefings\n"
-			"• `/remind <text>` - Set a periodic reminder\n\n"
-			"**System:**\n"
-			"• `/purge` - Permanently wipe all semantic memory\n\n"
-			"Type any message to chat with Z directly."
-		)
+		from app.services.translations import get_user_lang, get_translations
+		lang = await get_user_lang()
+		t = get_translations(lang)
+		help_text = t.get("help_msg_full")
+		if not help_text:
+			sb = t.get("help_section_briefings", "Briefings & Reviews")
+			sm = t.get("help_section_missions", "Mission Control")
+			si = t.get("help_section_memory", "Memory & Intelligence")
+			ss = t.get("help_section_system", "System")
+			help_text = (
+				f"🤖 **Z Operator Controls**\n\n"
+				f"**{sb}:**\n"
+				"• `/day`, `/week`, `/month`, `/quarter`, `/year` — Strategic briefings\n\n"
+				f"**{sm}:**\n"
+				"• `/tree` — Life hierarchy & workspace overview\n"
+				"• `/think <query>` — Complex multi-step reasoning\n"
+				"• `/remind <text>` — Set a temporary recurring reminder\n"
+				"• `/custom <text>` — Create a persistent scheduled task\n"
+				"• `/protocols` — Inspect Z's agentic tools\n\n"
+				f"**{si}:**\n"
+				"• `/search <query>` — Semantic search\n"
+				"• `/memories` — List all stored facts\n"
+				"• `/add <topic>` — Commit a fact to memory\n"
+				"• `/unlearn <query>` — Remove a fact from the vault\n\n"
+				f"**{ss}:**\n"
+				"• `/purge` — Permanently wipe all semantic memory\n\n"
+				"Type any message to chat with Z directly."
+			)
 		return {"reply": help_text}
 	elif msg.startswith("/search ") or msg.startswith("/memory "):
 		query = msg.replace("/search", "").replace("/memory", "").strip()
@@ -386,12 +397,15 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		)
 		return {"reply": protocols_reply}
 	elif msg == "/purge":
+		from app.services.translations import get_user_lang, get_translations
 		from app.services.memory import wipe_collection
+		lang = await get_user_lang()
+		t = get_translations(lang)
 		success = await wipe_collection(confirm=True)
 		if success:
-			return {"reply": "✅ Semantic memory has been completely wiped. Z starts with a blank knowledge slate."}
+			return {"reply": t.get("purge_success", "\u2705 Semantic memory has been completely wiped.")}
 		else:
-			return {"reply": "❌ Failed to wipe memory. Check backend logs."}
+			return {"reply": t.get("purge_failed", "\u274c Failed to wipe memory. Check backend logs.")}
 	elif msg.startswith("[ACTION:"):
 		from app.services.agent_actions import parse_and_execute_actions
 		clean_reply, executed_cmds = await parse_and_execute_actions(msg, db=db)
