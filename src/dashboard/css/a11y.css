@@ -1,0 +1,82 @@
+/*
+ * openZero Accessibility Layer
+ * ----------------------------
+ * Global focus indicators, prefers-reduced-motion, forced-colors,
+ * and the widget-highlight animation.
+ *
+ * WCAG 2.1 AA / EN 301 549
+ */
+
+/* -- Global focus-visible ring (WCAG 2.4.7 / EN 301 549 SS9.2.4.7) --
+   Provides a consistent, high-contrast 3:1 focus indicator for all
+   interactive elements in the light DOM. Shadow DOM components supply
+   their own :focus-visible rules inline. */
+:focus-visible {
+	outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1));
+	outline-offset: 3px;
+}
+
+/* Suppress default outline for pointer/touch interactions */
+:focus:not(:focus-visible) {
+	outline: none;
+}
+
+/* Planka buttons inherit focus-visible */
+.planka-btn:focus-visible,
+.sidebar-nav a:focus-visible {
+	outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1));
+	outline-offset: 3px;
+	border-radius: 6px;
+}
+
+/* -- Prefers-reduced-motion (WCAG 2.3.3 / EN 301 549 SS9.2.3.3) -- */
+@media (prefers-reduced-motion: reduce) {
+
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
+}
+
+/* -- High-contrast / forced-colors mode (EN 301 549 SS9.1.4.11) -- */
+@media (forced-colors: active) {
+
+	.skip-link,
+	.planka-btn,
+	.sidebar-nav a {
+		forced-color-adjust: none;
+	}
+
+	:focus-visible {
+		outline: 3px solid ButtonText;
+	}
+}
+
+/* -- Widget highlight animation -- */
+@keyframes highlight-blink {
+	0% {
+		transform: scale(1);
+		box-shadow: 0 0 0 rgba(20, 184, 166, 0);
+	}
+
+	35% {
+		transform: scale(1.02);
+		box-shadow: 0 0 40px var(--accent-glow);
+		border-color: var(--accent-color);
+	}
+
+	100% {
+		transform: scale(1);
+		box-shadow: 0 0 0 rgba(20, 184, 166, 0);
+	}
+}
+
+.widget-highlight {
+	animation: highlight-blink 1.2s cubic-bezier(0.23, 1, 0.32, 1);
+	border-color: var(--accent-color) !important;
+	z-index: 50;
+}
