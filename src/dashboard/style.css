@@ -66,6 +66,7 @@
   --accent-color: #14B8A6;
   --accent-color-rgb: 20, 184, 166;
   --accent-secondary: #0066FF;
+  --accent-secondary-rgb: 0, 102, 255;
   --accent-tertiary: #6366F1;
   --accent-glow: rgba(20, 184, 166, 0.4);
   --bg-surface: rgba(20, 25, 45, 0.6);
@@ -97,7 +98,33 @@ body {
      overflow: hidden would trap touch-scroll and break the marquee nav. */
   overflow-x: clip;
   flex-wrap: wrap;
-  transition: background-color 0.8s ease;
+  /* No background-color transition — avoids visible color shift when
+     CSS custom properties are updated by the theme script on load. */
+}
+
+/* ── Page loading overlay ──
+   Covers the page while widgets mount progressively, then fades
+   out immediately once the JS bundle marks the body as ready.
+   This prevents the 'building' flash of unstyled component slots. */
+#page-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  background: #060810;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
+}
+#page-loader.hidden {
+  opacity: 0;
+}
+
+/* Suppresses ALL transitions while the class is present — used by the
+   inline theme script to apply CSS vars without any animated flash. */
+.no-transition *,
+.no-transition *::before,
+.no-transition *::after {
+  transition: none !important;
+  animation: none !important;
 }
 
 /* ── Sidebar Navigation ── */
