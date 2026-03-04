@@ -90,8 +90,12 @@ TEST_URL="${TEST_URL%/}"
 
 echo ""
 echo "🧪 Running post-deploy regression suite against $TEST_URL ..."
-echo "   (waiting 25s for backend to be ready)"
-sleep 25
+echo -n "   Waiting for backend "
+for i in $(seq 25 -1 1); do
+  echo -n "."
+  sleep 1
+done
+echo " ready!"
 
 # Check Python + httpx available
 if ! python3 -c "import httpx, asyncio" 2>/dev/null; then
@@ -99,8 +103,8 @@ if ! python3 -c "import httpx, asyncio" 2>/dev/null; then
   pip3 install httpx --quiet
 fi
 
-# Run the suite; non-zero exit means regressions detected
-if python3 tests/test_live_regression.py --url "$TEST_URL"; then
+# Run the suite with unbuffered output (-u) so progress prints in real-time
+if python3 -u tests/test_live_regression.py --url "$TEST_URL"; then
   echo ""
   echo "✅ All regression tests passed."
   echo "📄 Full report saved to: docs/artifacts/regression_results.md"

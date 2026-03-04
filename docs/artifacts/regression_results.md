@@ -1,18 +1,15 @@
 # Regression Test Report
-**Date:** 2026-03-04 13:42:00
+**Date:** 2026-03-04 17:13:58
 **Target:** http://open.zero
 
-### Detailed Execution Log
+### Log
 ```text
-🚀 **Session:** openZero Extensive Regression Suite on http://open.zero
+# Regression Test Report
+**Date:** 2026-03-04 17:13:58
+**Target:** http://open.zero
 
-✅ System Health OK
-✅ Memory Persistence Verified
-✅ Extracted & executed Planka creation tags.
-✅ Extracted & executed Personal OS creation tags.
-✅ Deep Demand Processed via secondary inference tier.
 
-🏁 Suite Complete. All tests passed and remnants cleaned up.
+❌ Suite failed: /api/dashboard/system returned 502
+
+🏁 Suite aborted/failed. Cleanup complete.
 ```
-
-*Regression suite execution complete.*
