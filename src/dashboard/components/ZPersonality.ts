@@ -287,24 +287,6 @@ export class ZPersonality extends HTMLElement {
 								<span class="trait-label">${this.tr('core_identity', 'Core Identity')}</span>
 								<div class="trait-value">${per?.role || 'Agent Operator'}</div>
 							</div>
-							<div class="trait-item" style="display: flex; justify-content: space-between;">
-								<div>
-									<span class="trait-label">${this.tr('humor_score', 'Humor Score')}</span>
-									<div class="trait-value" style="color: #0066FF;">${per?.humor || 0}/10</div>
-								</div>
-								<div style="text-align: center;">
-									<span class="trait-label">${this.tr('roast_level', 'Roast Level')}</span>
-									<div class="trait-value" style="color: #EF4444;">${per?.roast || 0}/5</div>
-								</div>
-								<div style="text-align: center;">
-									<span class="trait-label">${this.tr('cringeness', 'Cringeness')}</span>
-									<div class="trait-value" style="color: #F472B6;">${per?.cringe || 0}/10</div>
-								</div>
-								<div style="text-align: right;">
-									<span class="trait-label">${this.tr('honesty_score', 'Honesty Score')}</span>
-									<div class="trait-value" style="color: #14B8A6;">${per?.honesty || 0}/10</div>
-								</div>
-							</div>
 							<div class="trait-item">
 								<span class="trait-label">${this.tr('communication', 'Communication')}</span>
 								<div class="trait-value">${['', 'Elaborate', 'Nuanced', 'Balanced', 'Direct', 'Concise'][per?.directness || 3]} (${per?.directness}/5)</div>
