@@ -292,6 +292,7 @@ python3 scripts/test_live_vps_protocols.py --url http://YOUR_SERVER_IP --token y
 ```
 
 This live validation suite tests:
+
 1. **System Health API:** Verifies OS RAM/CPU metrics and subsystem statuses.
 2. **Memory Persistence:** Validates that semantic vault storage and retrieval work through the LLM.
 3. **Action Protocols:** Injects full Semantic Action Tags (for projects, lists, tasks, events, and people) to ensure the backend executes them correctly.
