@@ -28,38 +28,38 @@ Runtime: ~1.6 seconds (no network, no LLM, no database required).
 
 ## Category Breakdown
 
-| # | Category | Tests | Risk | What It Validates |
-|:--|:---------|------:|:-----|:------------------|
-| 1 | Input Sanitisation | 8 | High | Null bytes, Unicode control chars, length caps, HTML escaping, log injection, BOM stripping |
-| 2 | Direct Prompt Injection | 16 | Critical | "Ignore previous instructions", system prompt extraction, role-play override, few-shot injection, markdown code block injection |
-| 3 | Indirect Prompt Injection | 5 | Critical | Poisoned memory context, HTML comment injection in fetched pages, calendar event injection, document metadata injection, people context injection |
-| 4 | Jailbreak Attempts | 12 | High | Hypothetical framing, fictional character wrapper, token smuggling, base64 encoding, ASCII art, language switching, reverse psychology, grandma exploit, academic framing |
-| 5 | Context Manipulation | 7 | High | Fake conversation history, context window stuffing, ChatML/LLaMA/Phi/Qwen token injection for conversation reset, XML tag injection |
-| 6 | Memory Poisoning | 8 | Critical | Adversarial "facts" stored to Qdrant, poisoned retrieval, noise gate threshold, action tag injection via memory |
-| 7 | Identity Hijacking | 8 | High | Persona override attempts ("You are ChatGPT/DAN/HAL 9000"), identity confusion via secondary context |
-| 8 | Data Exfiltration | 16 | Critical | Env var extraction, file system access, markdown image exfiltration, cross-user data access |
-| 9 | Privilege Escalation | 14 | High | Admin impersonation, tool abuse (fake JSON tool calls), Docker escape instructions |
-| 10 | Instruction Override | 14 | High | Priority escalation ("CRITICAL override"), conditional logic, nested injection, chain-of-thought manipulation, summarisation-based leaking |
-| 11 | Encoding & Obfuscation | 8 | Medium | Base64, ROT13, hex, Unicode homoglyphs (Cyrillic), Zalgo text, leetspeak, whitespace steganography, fullwidth characters |
-| 12 | Multi-turn Manipulation | 4 | High | Gradual boundary pushing, context window exhaustion (100-turn history), trust building then exploit, payload splitting across turns |
-| 13 | Structured Data Injection | 13 | Medium | JSON prototype pollution, YAML deserialization, SQL injection in natural language, template injection (Jinja2, EJS, ERB, Java EL), CSV formula injection, action tag forgery |
-| 14 | Telegram-specific | 5 | High | Unregistered bot command injection, Telegram markdown injection, callback data validation, deep link injection, message coalescing buffer injection |
-| 15 | Dashboard-specific | 13 | High | XSS payloads (script, img, svg, iframe, event handlers), CSS injection, WebSocket schema validation, oversized payloads, token leakage in responses |
-| 16 | API Endpoints | 8 | High | CRLF header injection, path traversal (including URL-encoded), body size limits, bearer token format validation, history array role injection |
-| 17 | Advanced Combined | 14 | Critical | Sandwich attacks, recursive injection, typographic attacks (fullwidth Unicode), steganographic acrostics, urgency/time pressure, emotional manipulation, authority impersonation (OpenAI/Meta/law enforcement), multi-language injection, mathematical encoding, combined memory+context poisoning, action tag exfiltration via memory |
-| 18 | Resource Abuse | 3 | Medium | Token inflation prompts vs. tier caps (instant=200, standard=400, deep=800), recursive expansion, context length bounds (2000/2000/3000 char limits) |
-| 19 | Known Vulnerability Regressions | 9 | High | ChatML token injection, LLaMA [INST]/<<SYS>> injection, function calling format injection, Phi-4-mini special tokens, Qwen 2.5 special tokens |
-| 20 | Security Invariants | 12 | Critical | System prompt never in user messages, system prompt always first, user input never becomes system role, no code execution, identity persistence, no secrets in prompt structure, context isolation |
+| #   | Category                        | Tests | Risk     | What It Validates                                                                                                                                                                                                                                                                                                                      |
+| :-- | :------------------------------ | ----: | :------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Input Sanitisation              |     8 | High     | Null bytes, Unicode control chars, length caps, HTML escaping, log injection, BOM stripping                                                                                                                                                                                                                                            |
+| 2   | Direct Prompt Injection         |    16 | Critical | "Ignore previous instructions", system prompt extraction, role-play override, few-shot injection, markdown code block injection                                                                                                                                                                                                        |
+| 3   | Indirect Prompt Injection       |     5 | Critical | Poisoned memory context, HTML comment injection in fetched pages, calendar event injection, document metadata injection, people context injection                                                                                                                                                                                      |
+| 4   | Jailbreak Attempts              |    12 | High     | Hypothetical framing, fictional character wrapper, token smuggling, base64 encoding, ASCII art, language switching, reverse psychology, grandma exploit, academic framing                                                                                                                                                              |
+| 5   | Context Manipulation            |     7 | High     | Fake conversation history, context window stuffing, ChatML/LLaMA/Phi/Qwen token injection for conversation reset, XML tag injection                                                                                                                                                                                                    |
+| 6   | Memory Poisoning                |     8 | Critical | Adversarial "facts" stored to Qdrant, poisoned retrieval, noise gate threshold, action tag injection via memory                                                                                                                                                                                                                        |
+| 7   | Identity Hijacking              |     8 | High     | Persona override attempts ("You are ChatGPT/DAN/HAL 9000"), identity confusion via secondary context                                                                                                                                                                                                                                   |
+| 8   | Data Exfiltration               |    16 | Critical | Env var extraction, file system access, markdown image exfiltration, cross-user data access                                                                                                                                                                                                                                            |
+| 9   | Privilege Escalation            |    14 | High     | Admin impersonation, tool abuse (fake JSON tool calls), Docker escape instructions                                                                                                                                                                                                                                                     |
+| 10  | Instruction Override            |    14 | High     | Priority escalation ("CRITICAL override"), conditional logic, nested injection, chain-of-thought manipulation, summarisation-based leaking                                                                                                                                                                                             |
+| 11  | Encoding & Obfuscation          |     8 | Medium   | Base64, ROT13, hex, Unicode homoglyphs (Cyrillic), Zalgo text, leetspeak, whitespace steganography, fullwidth characters                                                                                                                                                                                                               |
+| 12  | Multi-turn Manipulation         |     4 | High     | Gradual boundary pushing, context window exhaustion (100-turn history), trust building then exploit, payload splitting across turns                                                                                                                                                                                                    |
+| 13  | Structured Data Injection       |    13 | Medium   | JSON prototype pollution, YAML deserialization, SQL injection in natural language, template injection (Jinja2, EJS, ERB, Java EL), CSV formula injection, action tag forgery                                                                                                                                                           |
+| 14  | Telegram-specific               |     5 | High     | Unregistered bot command injection, Telegram markdown injection, callback data validation, deep link injection, message coalescing buffer injection                                                                                                                                                                                    |
+| 15  | Dashboard-specific              |    13 | High     | XSS payloads (script, img, svg, iframe, event handlers), CSS injection, WebSocket schema validation, oversized payloads, token leakage in responses                                                                                                                                                                                    |
+| 16  | API Endpoints                   |     8 | High     | CRLF header injection, path traversal (including URL-encoded), body size limits, bearer token format validation, history array role injection                                                                                                                                                                                          |
+| 17  | Advanced Combined               |    14 | Critical | Sandwich attacks, recursive injection, typographic attacks (fullwidth Unicode), steganographic acrostics, urgency/time pressure, emotional manipulation, authority impersonation (OpenAI/Meta/law enforcement), multi-language injection, mathematical encoding, combined memory+context poisoning, action tag exfiltration via memory |
+| 18  | Resource Abuse                  |     3 | Medium   | Token inflation prompts vs. tier caps (instant=200, standard=400, deep=800), recursive expansion, context length bounds (2000/2000/3000 char limits)                                                                                                                                                                                   |
+| 19  | Known Vulnerability Regressions |     9 | High     | ChatML token injection, LLaMA [INST]/<<SYS>> injection, function calling format injection, Phi-4-mini special tokens, Qwen 2.5 special tokens                                                                                                                                                                                          |
+| 20  | Security Invariants             |    12 | Critical | System prompt never in user messages, system prompt always first, user input never becomes system role, no code execution, identity persistence, no secrets in prompt structure, context isolation                                                                                                                                     |
 
 **Total: 208 tests across 20 categories + 31 production integration tests (3 categories).**
 
 ### Production Integration Tests (Category 21)
 
-| # | Category | Tests | Risk | What It Validates |
-|:--|:---------|------:|:-----|:------------------|
-| 21a | Production sanitise_input() | 11 | Critical | Imports actual `sanitise_input()` from `llm.py` and validates null byte stripping, BOM removal, Zalgo normalisation, control char removal, ChatML/LLaMA/Phi token stripping, length cap, and combined attack vectors |
-| 21b | Memory adversarial filter | 16 | Critical | Imports actual `_ADVERSARIAL_PATTERNS` from `memory.py` and validates detection of 10 adversarial payloads + 6 safe-content false-positive checks |
-| 21c | History role filtering | 4 | High | Validates that `system`, `null`, `admin`, and `tool` role messages are filtered from client-provided history arrays |
+| #   | Category                    | Tests | Risk     | What It Validates                                                                                                                                                                                                    |
+| :-- | :-------------------------- | ----: | :------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 21a | Production sanitise_input() |    11 | Critical | Imports actual `sanitise_input()` from `llm.py` and validates null byte stripping, BOM removal, Zalgo normalisation, control char removal, ChatML/LLaMA/Phi token stripping, length cap, and combined attack vectors |
+| 21b | Memory adversarial filter   |    16 | Critical | Imports actual `_ADVERSARIAL_PATTERNS` from `memory.py` and validates detection of 10 adversarial payloads + 6 safe-content false-positive checks                                                                    |
+| 21c | History role filtering      |     4 | High     | Validates that `system`, `null`, `admin`, and `tool` role messages are filtered from client-provided history arrays                                                                                                  |
 
 ## Architecture Tested
 
@@ -84,13 +84,13 @@ The `PromptBuilder` class in the test file replicates this structure exactly, al
 
 The test file also exports reference implementations of sanitisation utilities that openZero should apply at each input boundary:
 
-| Function | Purpose |
-|:---------|:--------|
-| `sanitise_input()` | Strip null bytes, Unicode control chars, Zalgo combining marks; NFKD normalise; length-cap |
-| `sanitise_html()` | HTML-escape for dashboard rendering (delegates to `html.escape`) |
-| `strip_html_comments()` | Remove HTML comments that could hide instructions in fetched web content |
-| `escape_csv_cell()` | Prefix formula-triggering characters (`=`, `+`, `-`, `@`) to prevent CSV injection |
-| `sanitise_log_line()` | Escape newlines to prevent log injection/forgery |
+| Function                | Purpose                                                                                    |
+| :---------------------- | :----------------------------------------------------------------------------------------- |
+| `sanitise_input()`      | Strip null bytes, Unicode control chars, Zalgo combining marks; NFKD normalise; length-cap |
+| `sanitise_html()`       | HTML-escape for dashboard rendering (delegates to `html.escape`)                           |
+| `strip_html_comments()` | Remove HTML comments that could hide instructions in fetched web content                   |
+| `escape_csv_cell()`     | Prefix formula-triggering characters (`=`, `+`, `-`, `@`) to prevent CSV injection         |
+| `sanitise_log_line()`   | Escape newlines to prevent log injection/forgery                                           |
 
 ## Key Findings & Remediation Status
 
