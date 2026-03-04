@@ -264,6 +264,56 @@ async def create_project(name: str, description: str = "") -> dict:
 			data = resp.json()
 			return data.get("item") or data
 
+async def delete_project(project_id: str) -> bool:
+	"""Cascade-delete a Planka project: cards → lists → boards → project."""
+	token = await get_planka_auth_token()
+	headers = {"Authorization": f"Bearer {token}"}
+	async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, headers=headers, timeout=30.0) as client:
+		try:
+			# Get project details with boards
+			det = await client.get(f"/api/projects/{project_id}")
+			det.raise_for_status()
+			boards = det.json().get("included", {}).get("boards", [])
+			
+			for board in boards:
+				bid = board["id"]
+				# Get board contents
+				bd = await client.get(f"/api/boards/{bid}")
+				if bd.status_code == 200:
+					bd_data = bd.json()
+					cards = bd_data.get("included", {}).get("cards", [])
+					lists = bd_data.get("included", {}).get("lists", [])
+					for c in cards:
+						await client.delete(f"/api/cards/{c['id']}")
+					for l in lists:
+						await client.delete(f"/api/lists/{l['id']}")
+				await client.delete(f"/api/boards/{bid}")
+			
+			# Now delete the empty project
+			resp = await client.delete(f"/api/projects/{project_id}")
+			resp.raise_for_status()
+			logger.debug("Deleted Planka project %s", project_id)
+			return True
+		except Exception as e:
+			logger.error("delete_project failed for %s: %s", project_id, e)
+			return False
+
+async def find_and_delete_projects_by_prefix(prefix: str) -> list:
+	"""Find and cascade-delete all Planka projects whose name starts with a given prefix."""
+	token = await get_planka_auth_token()
+	headers = {"Authorization": f"Bearer {token}"}
+	deleted = []
+	async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, headers=headers, timeout=15.0) as client:
+		resp = await client.get("/api/projects")
+		resp.raise_for_status()
+		projects = resp.json().get("items", [])
+	
+	for p in projects:
+		if p.get("name", "").startswith(prefix):
+			if await delete_project(p["id"]):
+				deleted.append(p["name"])
+	return deleted
+
 async def create_board(project_id: str, name: str) -> dict:
 	"""Create a new board in a project."""
 	token = await get_planka_auth_token()
