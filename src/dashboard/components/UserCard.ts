@@ -259,8 +259,8 @@ export class UserCard extends HTMLElement {
 					background: rgba(255, 255, 255, 0.05);
 					border: 1px solid rgba(255, 255, 255, 0.1);
 					color: var(--accent-color);
-					width: 34px;
-					height: 34px;
+					width: 44px;
+					height: 44px;
 					display: flex;
 					align-items: center;
 					justify-content: center;
@@ -327,47 +327,47 @@ export class UserCard extends HTMLElement {
 					<div class="field">
 						${this.isEditing
 				? `<label class="label" for="bday-input">${this.tr('birthday', 'Birthday')}</label><input id="bday-input" type="text" placeholder="YYYY-MM-DD" value="${me.birthday || ''}" autocomplete="bday" aria-describedby="bday-hint"><span id="bday-hint" style="font-size:0.6rem;color:rgba(255,255,255,0.25);">Format: YYYY-MM-DD (optional)</span>`
-				: `<div class="label" aria-hidden="true">${this.tr('birthday', 'Birthday')}</div><div class="value">${me.birthday || this.tr('not_set', 'Not set')}</div>`}
+				: `<div class="label">${this.tr('birthday', 'Birthday')}</div><div class="value">${me.birthday || this.tr('not_set', 'Not set')}</div>`}
 					</div>
 					<div class="field">
 						${this.isEditing
 				? `<label class="label" for="gender-input">${this.tr('gender', 'Gender')}</label><input id="gender-input" type="text" placeholder="e.g. Non-binary" value="${me.gender || ''}" autocomplete="sex">`
-				: `<div class="label" aria-hidden="true">${this.tr('gender', 'Gender')}</div><div class="value">${me.gender || this.tr('not_set', 'Not set')}</div>`}
+				: `<div class="label">${this.tr('gender', 'Gender')}</div><div class="value">${me.gender || this.tr('not_set', 'Not set')}</div>`}
 					</div>
 					<div class="field">
 						${this.isEditing
 				? `<label class="label" for="residency-input">${this.tr('residency', 'Residency')}</label><input id="residency-input" type="text" placeholder="City, Country" value="${me.residency || ''}">`
-				: `<div class="label" aria-hidden="true">${this.tr('residency', 'Residency')}</div><div class="value">${me.residency || this.tr('not_set', 'Not set')}</div>`}
+				: `<div class="label">${this.tr('residency', 'Residency')}</div><div class="value">${me.residency || this.tr('not_set', 'Not set')}</div>`}
 					</div>
 					<div class="field">
 						${this.isEditing
 				? `<label class="label" for="town-input">${this.tr('town', 'Town')}</label><input id="town-input" type="text" placeholder="Berlin" value="${me.town || ''}">`
-				: `<div class="label" aria-hidden="true">${this.tr('town', 'Town')}</div><div class="value">${me.town || this.tr('not_set', 'Not set')}</div>`}
+				: `<div class="label">${this.tr('town', 'Town')}</div><div class="value">${me.town || this.tr('not_set', 'Not set')}</div>`}
 					</div>
 					<div class="field">
 						${this.isEditing
 				? `<label class="label" for="country-input">${this.tr('country', 'Country')}</label><input id="country-input" type="text" placeholder="Germany" value="${me.country || ''}" autocomplete="country-name">`
-				: `<div class="label" aria-hidden="true">${this.tr('country', 'Country')}</div><div class="value">${me.country || this.tr('not_set', 'Not set')}</div>`}
+				: `<div class="label">${this.tr('country', 'Country')}</div><div class="value">${me.country || this.tr('not_set', 'Not set')}</div>`}
 					</div>
 					<div class="field">
 						${this.isEditing
 				? `<label class="label" for="timezone-input">${this.tr('timezone_label', 'Timezone')}</label><input id="timezone-input" type="text" placeholder="Europe/Berlin" value="${me.timezone || ''}" aria-describedby="tz-hint"><span id="tz-hint" style="font-size:0.6rem;color:rgba(255,255,255,0.25);">IANA timezone identifier</span>`
-				: `<div class="label" aria-hidden="true">${this.tr('timezone_label', 'Timezone')}</div><div class="value">${me.timezone || this.tr('not_set', 'Not set')}</div>`}
+				: `<div class="label">${this.tr('timezone_label', 'Timezone')}</div><div class="value">${me.timezone || this.tr('not_set', 'Not set')}</div>`}
 					</div>
 					<div class="field">
 						${this.isEditing
 				? `<label class="label" for="brief-input">${this.tr('briefing_time', 'Briefing Time')}</label><input id="brief-input" type="text" placeholder="08:00" value="${me.briefing_time || ''}" aria-describedby="brief-hint"><span id="brief-hint" style="font-size:0.6rem;color:rgba(255,255,255,0.25);">24h HH:MM format</span>`
-				: `<div class="label" aria-hidden="true">${this.tr('briefing_time', 'Briefing Time')}</div><div class="value">${me.briefing_time || '08:00'}</div>`}
+				: `<div class="label">${this.tr('briefing_time', 'Briefing Time')}</div><div class="value">${me.briefing_time || '08:00'}</div>`}
 					</div>
 					<div class="field">
 						${this.isEditing
 				? `<label class="label" for="language-input">${this.tr('language_label', 'Language')}</label><select id="language-input" aria-label="Select Z\'s response language">${Object.entries(this.languages).map(([code, lang]) => `<option value="${code}" ${(me.language || 'en') === code ? 'selected' : ''}>${lang.native} · ${this.tr('lang_' + code, lang.eng)}</option>`).join('')}</select>`
-				: `<div class="label" aria-hidden="true">${this.tr('language_label', 'Language')}</div><div class="value">${this.languages[me.language as string]?.native || 'English'} · ${this.tr('lang_' + (me.language || 'en'), this.languages[me.language as string]?.eng || 'English')}</div>`}
+				: `<div class="label">${this.tr('language_label', 'Language')}</div><div class="value">${this.languages[me.language as string]?.native || 'English'} · ${this.tr('lang_' + (me.language || 'en'), this.languages[me.language as string]?.eng || 'English')}</div>`}
 					</div>
 					<div class="field" style="grid-column: span 2;">
 						${this.isEditing
 				? `<label class="label" for="work-input">${this.tr('work_times', 'Typical Work Times')}</label><input id="work-input" type="text" placeholder="e.g. 09:00 - 18:00" value="${me.work_times || ''}">`
-				: `<div class="label" aria-hidden="true">${this.tr('work_times', 'Typical Work Times')}</div><div class="value">${me.work_times || this.tr('not_set', 'Not set')}</div>`}
+				: `<div class="label">${this.tr('work_times', 'Typical Work Times')}</div><div class="value">${me.work_times || this.tr('not_set', 'Not set')}</div>`}
 					</div>
 					
 					<div class="field" style="grid-column: span 2; margin-top: 0.5rem;">
