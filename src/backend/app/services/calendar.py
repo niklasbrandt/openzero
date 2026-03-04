@@ -39,22 +39,27 @@ async def fetch_calendar_events(calendar_id: str = "primary", max_results: int =
 	try:
 		if not start_date:
 			start_date = datetime.datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-		
+
 		if not end_date:
 			end_date = start_date + datetime.timedelta(days=days_ahead)
-		
+
 		time_min = start_date.isoformat() + "Z"
 		time_max = end_date.isoformat() + "Z"
 
-		events_result = service.events().list(
-			calendarId=calendar_id,
-			timeMin=time_min,
-			timeMax=time_max,
-			maxResults=max_results,
-			singleEvents=True,
-			orderBy="startTime",
-		).execute()
-		
+		# Wrap the synchronous .execute() call so it doesn't block the asyncio event loop
+		loop = asyncio.get_event_loop()
+		events_result = await loop.run_in_executor(
+			None,
+			lambda: service.events().list(
+				calendarId=calendar_id,
+				timeMin=time_min,
+				timeMax=time_max,
+				maxResults=max_results,
+				singleEvents=True,
+				orderBy="startTime",
+			).execute()
+		)
+
 		events = events_result.get("items", [])
 		return [{
 			"summary": e.get("summary", "No Title"),
