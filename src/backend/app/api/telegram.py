@@ -47,8 +47,11 @@ async def _get_stats_footer() -> str:
 	stats_text = f"{t.get('memories_found', 'Memories')}: {stats['points']}{model_tag}" if stats['status'] != 'error' else f"{t.get('memory_search', 'Memory')}: Offline"
 	return f"\n\n<i>{stats_text}</i>"
 
-def get_nav_markup(t: dict, token: str = "") -> InlineKeyboardMarkup:
+def get_nav_markup(t: dict = None, token: str = "") -> InlineKeyboardMarkup:
 	"""Standard navigation buttons (Large touch targets)."""
+	if not t:
+		t = get_translations("en")
+
 	base_url = settings.BASE_URL.rstrip('/')
 	auth_qs = f"/api/auth?token={token}" if token else ""
 	keyboard = [
