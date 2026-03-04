@@ -205,28 +205,31 @@ export class CalendarAgenda extends HTMLElement {
 					.card { height: 100%; display: flex; flex-direction: column; }
 					.header-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
 					.calendar-link {
-						color: rgba(255, 255, 255, 0.5);
-						transition: color 0.2s;
+						color: var(--text-muted, hsla(0, 0%, 100%, 0.4));
+						transition: color 0.2s, background 0.2s;
 						display: flex;
 						align-items: center;
 						justify-content: center;
 						padding: 0.3rem;
-						border-radius: 0.4rem;
+						border-radius: var(--radius-sm, 0.35rem);
 					}
-					.calendar-link:hover { color: var(--accent-color, hsla(173, 80%, 40%, 1)); background: rgba(255, 255, 255, 0.05); }
+					.calendar-link:hover { 
+						color: var(--accent-color, hsla(173, 80%, 40%, 1)); 
+						background: var(--surface-hover, hsla(0, 0%, 100%, 0.06)); 
+					}
 					#filters { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
 					.filter-btn {
-						background: rgba(255, 255, 255, 0.05);
-						border: 1px solid rgba(255, 255, 255, 0.1);
-						color: rgba(255, 255, 255, 0.6);
+						background: var(--surface-card, hsla(0, 0%, 100%, 0.03));
+						border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.08));
+						color: var(--text-muted, hsla(0, 0%, 100%, 0.4));
 						padding: 0.25rem 0.75rem;
-						border-radius: 2rem;
+						border-radius: var(--radius-pill, 9999px);
 						font-size: 0.75rem;
 						cursor: pointer;
 						transition: all 0.2s;
 					}
 					.filter-btn.active {
-						background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.2);
+						background: hsla(173, 80%, 40%, 0.2);
 						border-color: var(--accent-color, hsla(173, 80%, 40%, 1));
 						color: var(--accent-color, hsla(173, 80%, 40%, 1));
 					}
@@ -235,8 +238,8 @@ export class CalendarAgenda extends HTMLElement {
 						display: flex;
 						gap: 1rem;
 						padding: 0.75rem;
-						background: rgba(255, 255, 255, 0.02);
-						border-radius: 0.75rem;
+						background: var(--surface-card, hsla(0, 0%, 100%, 0.03));
+						border-radius: var(--radius-lg, 0.75rem);
 						margin-bottom: 0.5rem;
 						border: 1px solid transparent;
 					}
@@ -247,46 +250,46 @@ export class CalendarAgenda extends HTMLElement {
 						font-size: 0.75rem;
 					}
 					.day { color: var(--accent-color, hsla(173, 80%, 40%, 1)); font-weight: 700; }
-					.time { color: var(--text-muted, rgba(255, 255, 255, 0.4)); }
+					.time { color: var(--text-muted, hsla(0, 0%, 100%, 0.4)); }
 					.details { display: flex; flex-direction: column; gap: 0.25rem; flex: 1; }
 					.summary { font-size: 0.9rem; color: var(--text-primary, hsla(0, 0%, 100%, 1)); font-weight: 500; }
 					.person-badge {
 						align-self: flex-start;
 						font-size: 0.7rem;
 						color: var(--accent-color, hsla(173, 80%, 40%, 1));
-						background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.1);
-						border: 1px solid rgba(var(--accent-color-rgb, 20, 184, 166), 0.2);
+						background: hsla(173, 80%, 40%, 0.1);
+						border: 1px solid hsla(173, 80%, 40%, 0.2);
 						padding: 0.15rem 0.5rem;
-						border-radius: var(--radius-sm, 0.4rem);
+						border-radius: var(--radius-sm, 0.35rem);
 						text-transform: uppercase;
 						letter-spacing: 0.05em;
 					}
 					.local-indicator {
 						font-size: 0.65rem;
 						color: var(--accent-secondary, hsla(216, 100%, 50%, 1));
-						background: rgba(var(--accent-secondary-rgb, 0, 102, 255), 0.1);
-						border: 1px solid rgba(var(--accent-secondary-rgb, 0, 102, 255), 0.2);
+						background: hsla(216, 100%, 50%, 0.1);
+						border: 1px solid hsla(216, 100%, 50%, 0.2);
 						padding: 0.1rem 0.4rem;
-						border-radius: var(--radius-xs, 0.3rem);
+						border-radius: var(--radius-xs, 0.25rem);
 						margin-right: 0.3rem;
 						vertical-align: middle;
 					}
 					@keyframes rainbow-border {
-						0% { border-color: #ff0000; box-shadow: 0 0 5px #ff000033; }
-						20% { border-color: #ff8800; }
-						40% { border-color: #ffff00; }
-						60% { border-color: #00ff00; }
-						80% { border-color: #0088ff; }
-						100% { border-color: #cc00ff; box-shadow: 0 0 5px #cc00ff33; }
+						0% { border-color: hsla(0, 100%, 50%, 1); box-shadow: 0 0 5px hsla(0, 100%, 50%, 0.2); }
+						20% { border-color: hsla(32, 100%, 50%, 1); }
+						40% { border-color: hsla(60, 100%, 50%, 1); }
+						60% { border-color: hsla(120, 100%, 50%, 1); }
+						80% { border-color: hsla(210, 100%, 50%, 1); }
+						100% { border-color: hsla(282, 100%, 50%, 1); box-shadow: 0 0 5px hsla(282, 100%, 50%, 0.2); }
 					}
 					.birthday-item {
-						border: 1px solid #ff0000 !important;
+						border: 1px solid hsla(0, 100%, 50%, 1) !important;
 						animation: rainbow-border 3s linear infinite;
-						background: rgba(255, 255, 255, 0.05) !important;
+						background: var(--surface-card-hover, hsla(0, 0%, 100%, 0.05)) !important;
 					}
 					.birthday-item .day { color: hsla(329, 86%, 70%, 1) !important; }
-					.birthday-item .summary { color: #fbcfe8 !important; }
-					.empty-state { font-size: 0.85rem; color: var(--text-muted, rgba(255, 255, 255, 0.3)); text-align: center; padding: 2rem; }
+					.birthday-item .summary { color: hsla(330, 95%, 85%, 1) !important; }
+					.empty-state { font-size: 0.85rem; color: var(--text-faint, hsla(0, 0%, 100%, 0.2)); text-align: center; padding: 2rem; }
 					.filter-btn:focus-visible, .calendar-link:focus-visible { 
 						outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); 
 						outline-offset: 2px; 
