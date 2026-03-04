@@ -36,9 +36,9 @@ export const SECTION_HEADER_STYLES = `
 
 	.h-icon {
 		display: inline-flex;
-		width: 28px;
-		height: 28px;
-		background: linear-gradient(135deg, var(--accent-color, #14B8A6) 0%, var(--accent-secondary, #0066FF) 100%);
+		width: 32px;
+		height: 32px;
+		background: linear-gradient(135deg, var(--accent-color, hsla(173, 80%, 40%, 1)) 0%, var(--accent-secondary, hsla(216, 100%, 50%, 1)) 100%);
 		border-radius: 0.4rem;
 		align-items: center;
 		justify-content: center;

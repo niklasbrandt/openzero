@@ -33,11 +33,11 @@ export class UserCard extends HTMLElement {
 	};
 
 	private themeOptions: Record<string, { label: string, colors: string[] }> = {
-		fusion: { label: 'Default Fusion', colors: ["#14B8A6", "#0066FF", "#6366F1"] },
+		fusion: { label: 'Default Fusion', colors: ["hsla(173, 80%, 40%, 1)", "hsla(216, 100%, 50%, 1)", "hsla(239, 84%, 67%, 1)"] },
 		cyberpunk: { label: 'Cyberpunk Neon', colors: ["#FF00FF", "#00FFFF", "#FFFF00"] },
 		night_city: { label: 'Night City', colors: ["#F700FF", "#2100A3", "#FEDD00"] },
 		forest: { label: 'Deep Forest', colors: ["#22C55E", "#15803D", "#84CC16"] },
-		deep_sea: { label: 'Deep Sea', colors: ["#0066FF", "#000080", "#00CED1"] },
+		deep_sea: { label: 'Deep Sea', colors: ["hsla(216, 100%, 50%, 1)", "#000080", "#00CED1"] },
 		ember: { label: 'Ember Glass', colors: ["#F97316", "#EF4444", "#F59E0B"] },
 		aurora: { label: 'Aurora Borealis', colors: ["#A855F7", "#EC4899", "#06B6D4"] },
 		midnight: { label: 'Midnight Blue', colors: ["#3B82F6", "#1D4ED8", "#60A5FA"] },
@@ -251,7 +251,7 @@ export class UserCard extends HTMLElement {
 				}
 
 				select option {
-					background: #1a1a2e;
+					background: hsla(240, 28%, 14%, 1);
 					color: #fff;
 				}
 
@@ -302,7 +302,7 @@ export class UserCard extends HTMLElement {
 				.save-btn { text-transform: uppercase; letter-spacing: 0.05em; }
 				.cancel-btn { text-transform: uppercase; letter-spacing: 0.05em; }
 				button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { 
-					outline: 2px solid var(--accent-color, #14B8A6); 
+					outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); 
 					outline-offset: 2px; 
 				}
 				button:focus:not(:focus-visible), input:focus:not(:focus-visible), textarea:focus:not(:focus-visible), select:focus:not(:focus-visible) { outline: none; }
@@ -385,15 +385,15 @@ export class UserCard extends HTMLElement {
 									<button id="theme-next" class="theme-cycle-btn" title="Next Theme" aria-label="Next theme">›</button>
 								</div>
 								<div style="display: flex; gap: 0.5rem;">
-									<input type="color" id="color-primary-input" value="${me.color_primary || '#14B8A6'}" style="width:32px; height:32px; padding:0; border:none; background:none;">
-									<input type="color" id="color-secondary-input" value="${me.color_secondary || '#0066FF'}" style="width:32px; height:32px; padding:0; border:none; background:none;">
-									<input type="color" id="color-tertiary-input" value="${me.color_tertiary || '#6366F1'}" style="width:32px; height:32px; padding:0; border:none; background:none;">
+									<input type="color" id="color-primary-input" value="${me.color_primary || 'hsla(173, 80%, 40%, 1)'}" style="width:32px; height:32px; padding:0; border:none; background:none;">
+									<input type="color" id="color-secondary-input" value="${me.color_secondary || 'hsla(216, 100%, 50%, 1)'}" style="width:32px; height:32px; padding:0; border:none; background:none;">
+									<input type="color" id="color-tertiary-input" value="${me.color_tertiary || 'hsla(239, 84%, 67%, 1)'}" style="width:32px; height:32px; padding:0; border:none; background:none;">
 								</div>
 							` : `
 								<div style="display: flex; gap: 0.5rem;">
-									<div style="width:16px; height:16px; border-radius:4px; background:${me.color_primary || '#14B8A6'}" title="Primary"></div>
-									<div style="width:16px; height:16px; border-radius:4px; background:${me.color_secondary || '#0066FF'}" title="Secondary"></div>
-									<div style="width:16px; height:16px; border-radius:4px; background:${me.color_tertiary || '#6366F1'}" title="Tertiary"></div>
+									<div style="width:16px; height:16px; border-radius:4px; background:${me.color_primary || 'hsla(173, 80%, 40%, 1)'}" title="Primary"></div>
+									<div style="width:16px; height:16px; border-radius:4px; background:${me.color_secondary || 'hsla(216, 100%, 50%, 1)'}" title="Secondary"></div>
+									<div style="width:16px; height:16px; border-radius:4px; background:${me.color_tertiary || 'hsla(239, 84%, 67%, 1)'}" title="Tertiary"></div>
 								</div>
 							`}
 						</div>
@@ -428,9 +428,9 @@ export class UserCard extends HTMLElement {
 
 		// Global Color Application
 		const applyColors = () => {
-			const cp = (this.shadowRoot?.querySelector('#color-primary-input') as HTMLInputElement)?.value || me.color_primary || '#14B8A6';
-			const cs = (this.shadowRoot?.querySelector('#color-secondary-input') as HTMLInputElement)?.value || me.color_secondary || '#0066FF';
-			const ct = (this.shadowRoot?.querySelector('#color-tertiary-input') as HTMLInputElement)?.value || me.color_tertiary || '#6366F1';
+			const cp = (this.shadowRoot?.querySelector('#color-primary-input') as HTMLInputElement)?.value || me.color_primary || 'hsla(173, 80%, 40%, 1)';
+			const cs = (this.shadowRoot?.querySelector('#color-secondary-input') as HTMLInputElement)?.value || me.color_secondary || 'hsla(216, 100%, 50%, 1)';
+			const ct = (this.shadowRoot?.querySelector('#color-tertiary-input') as HTMLInputElement)?.value || me.color_tertiary || 'hsla(239, 84%, 67%, 1)';
 
 			document.documentElement.style.setProperty('--accent-color', cp);
 			document.documentElement.style.setProperty('--accent-secondary', cs);

@@ -6,7 +6,7 @@
 
 ## 0. Mandatory Initial Step
 
-- **CRITICAL:** At the beginning of EVERY interaction or whenever you are prompted for a new task, you MUST read and analyze **agents.md**, **AGENT_LOG.md**, and **README.md**.
+- **CRITICAL:** At the beginning of EVERY interaction or whenever you are prompted for a new task, you MUST read and analyze **agents.md**, **AGENT_LOG.md**, **docs/DESIGN.md** and **README.md**.
 - You must use the context from these files to ensure your behavior aligns with the project's specific boundaries and that you do not repeat errors recorded in the log.
 
 ## 10. Build Documentation Maintenance

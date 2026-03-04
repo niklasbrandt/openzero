@@ -46,7 +46,7 @@ export class WelcomeOnboarding extends HTMLElement {
 						from { opacity: 0; }
 						to { opacity: 1; }
 					}
-					h2 { margin: 0; font-size: 1.8rem; background: linear-gradient(135deg, var(--accent-color, #14B8A6), #0066FF); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+					h2 { margin: 0; font-size: 1.8rem; background: linear-gradient(135deg, var(--accent-color, hsla(173, 80%, 40%, 1)), hsla(216, 100%, 50%, 1)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 					p { margin: 0; color: var(--text-secondary, rgba(255, 255, 255, 0.8)); line-height: 1.6; }
 					
 					.steps {
@@ -64,19 +64,19 @@ export class WelcomeOnboarding extends HTMLElement {
 						gap: 0.75rem;
 						transition: all 0.3s ease;
 					}
-					.step-item.done { border-color: var(--accent-color, #14B8A6); background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.05); }
+					.step-item.done { border-color: var(--accent-color, hsla(173, 80%, 40%, 1)); background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.05); }
 					.step-icon { 
 						width: 24px; height: 24px; border-radius: 50%; 
 						display: flex; align-items: center; justify-content: center;
 						background: rgba(255, 255, 255, 0.1); font-size: 0.8rem;
 					}
-					.done .step-icon { background: var(--accent-color, #14B8A6); color: #fff; }
+					.done .step-icon { background: var(--accent-color, hsla(173, 80%, 40%, 1)); color: #fff; }
 					.step-text { font-weight: 500; font-size: 0.9rem; }
 					.step-text span { display: block; font-size: 0.75rem; color: rgba(255, 255, 255, 0.4); font-weight: 400; }
 
 					.cta {
 						align-self: flex-start;
-						background: var(--accent-color, #14B8A6);
+						background: var(--accent-color, hsla(173, 80%, 40%, 1));
 						color: #fff;
 						padding: 0.75rem 1.5rem;
 						border-radius: var(--radius-md, 0.75rem);
@@ -88,7 +88,7 @@ export class WelcomeOnboarding extends HTMLElement {
 						cursor: pointer;
 					}
 					.cta:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(var(--accent-color-rgb, 20, 184, 166), 0.4); }
-					.cta:focus-visible { outline: 2px solid var(--accent-color, #14B8A6); outline-offset: 3px; }
+					.cta:focus-visible { outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); outline-offset: 3px; }
 					.step-item:focus-visible { outline: 2px solid rgba(var(--accent-color-rgb, 20, 184, 166), 0.5); outline-offset: 2px; border-radius: 0.75rem; }
 				</style>
 				<div class="card">

@@ -122,7 +122,7 @@ export class LifeOverview extends HTMLElement {
 					${EMPTY_STATE_STYLES}
 					/* Override icon gradient */
 					h2 .h-icon {
-						background: linear-gradient(135deg, var(--accent-color, #14B8A6) 0%, #6366f1 100%);
+						background: linear-gradient(135deg, var(--accent-color, hsla(173, 80%, 40%, 1)) 0%, var(--accent-tertiary, hsla(239, 84%, 67%, 1)) 100%);
 					}
 					:host { display: block; }
 					h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted, rgba(255, 255, 255, 0.4)); margin-bottom: 1rem; }
@@ -152,9 +152,9 @@ export class LifeOverview extends HTMLElement {
 						white-space: pre-wrap;
 					}
 
-					.tree-content b { color: var(--accent-color, #14B8A6); font-weight: 600; }
+					.tree-content b { color: var(--accent-color, hsla(173, 80%, 40%, 1)); font-weight: 600; }
 					.tree-content a { color: inherit; text-decoration: none; border-bottom: 1px solid rgba(255,255,255,0.1); transition: all var(--duration-fast, 0.2s); }
-					.tree-content a:hover { color: #0066FF; border-bottom-color: #0066FF; }
+					.tree-content a:hover { color: hsla(216, 100%, 50%, 1); border-bottom-color: hsla(216, 100%, 50%, 1); }
 
 					.section-header {
 						display: flex;
@@ -192,20 +192,20 @@ export class LifeOverview extends HTMLElement {
 						border-radius: 0.6rem;
 						font-size: 0.85rem;
 					}
-					.time { color: var(--accent-color, #14B8A6); font-weight: 600; min-width: 70px; }
+					.time { color: var(--accent-color, hsla(173, 80%, 40%, 1)); font-weight: 600; min-width: 70px; }
 					.summary { color: var(--text-secondary, rgba(255, 255, 255, 0.8)); }
-					.summary small { color: var(--color-info, #3b82f6); opacity: 0.7; font-size: 0.7rem; margin-left: 0.3rem; }
-					.google-tag { color: var(--accent-color, #14B8A6); opacity: 0.85; }
+					.summary small { color: var(--color-info, hsla(217, 91%, 60%, 1)); opacity: 0.7; font-size: 0.7rem; margin-left: 0.3rem; }
+					.google-tag { color: var(--accent-color, hsla(173, 80%, 40%, 1)); opacity: 0.85; }
 
 
-					.error { color: var(--color-danger, #ef4444); text-align: center; padding: 2rem; }
-				.action-btn:focus-visible { outline: 2px solid var(--accent-color, #14B8A6); outline-offset: 3px; }
-				.tree-content a:focus-visible { outline: 2px solid var(--accent-color, #14B8A6); outline-offset: 2px; }
+					.error { color: var(--color-danger, hsla(0, 84%, 60%, 1)); text-align: center; padding: 2rem; }
+				.action-btn:focus-visible { outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); outline-offset: 3px; }
+				.tree-content a:focus-visible { outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); outline-offset: 2px; }
 				</style>
 				<div class="card">
 					<h2>
 					<span class="h-icon" aria-hidden="true">
-						<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+						<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
 							<circle cx="12" cy="12" r="10"></circle>
 							<line x1="2" y1="12" x2="22" y2="12"></line>
 							<path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>

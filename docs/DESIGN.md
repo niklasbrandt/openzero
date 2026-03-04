@@ -1,83 +1,96 @@
 # openZero Design System
 
-> Corporate identity and design language reference for the openZero dashboard.
-> This document is the single source of truth for visual decisions across every
-> component, page, and interaction pattern.
+> The visual language of openZero. This document is the single source of truth
+> for every color, shape, motion, and spacing decision across the dashboard.
 
 ---
 
 ## 1. Brand Voice
 
-openZero communicates through a neutral, technical brand identity. The visual
-language is precise, understated, and confidence-driven. No decorative
-flourishes, no gratuitous animation, no marketing polish. Every pixel exists
-because it aids comprehension, reinforces hierarchy, or improves usability.
+openZero feels like mission control at 2 AM -- calm, focused, and quietly
+powerful. The interface rewards sustained attention. Every surface is
+translucent, every accent is earned, every animation serves orientation.
 
-The system is a tool, not a product page. The dashboard is an operational
-surface where information density and legibility outweigh aesthetic novelty.
+The design philosophy: **clarity through restraint, personality through
+precision.** Information density is high because the operator trusts this
+system to surface what matters. Visual hierarchy does the talking so the
+interface itself can stay quiet.
+
+This is a living environment, not a static page. It breathes through subtle
+glassmorphism, responds to user identity through configurable accent
+palettes, and treats accessibility as a first-class design constraint rather
+than an afterthought.
 
 ---
 
 ## 2. Color Architecture
 
+Colors are authored in HSLA for intuitive hue/saturation reasoning. Every
+token is user-configurable through the identity card, making the palette
+a personal signature rather than a fixed brand.
+
 ### 2.1 Accent Palette
 
-The accent palette is user-configurable via the identity card. Default values
-serve as the canonical fallbacks throughout CSS custom properties.
-
-| Token                    | Default      | Purpose                          |
-|:-------------------------|:-------------|:---------------------------------|
-| `--accent-color`         | `#14B8A6`    | Primary brand accent             |
-| `--accent-color-rgb`     | `20,184,166` | RGB triplet for `rgba()` usage   |
-| `--accent-secondary`     | `#0066FF`    | Secondary gradient endpoint      |
-| `--accent-secondary-rgb` | `0,102,255`  | RGB triplet                      |
-| `--accent-tertiary`      | `#6366F1`    | Tertiary / decorative accent     |
-| `--accent-glow`          | `rgba(20,184,166,0.4)` | Ambient glow effect    |
+| Token                    | Default                        | Purpose                          |
+|:-------------------------|:-------------------------------|:---------------------------------|
+| `--accent-color`         | `hsla(173, 80%, 40%, 1)`      | Primary accent -- teal energy    |
+| `--accent-color-rgb`     | `20, 184, 166`                | RGB triplet for compositing      |
+| `--accent-secondary`     | `hsla(216, 100%, 50%, 1)`     | Secondary gradient endpoint      |
+| `--accent-secondary-rgb` | `0, 102, 255`                 | RGB triplet                      |
+| `--accent-tertiary`      | `hsla(239, 84%, 67%, 1)`      | Tertiary / decorative accent     |
+| `--accent-glow`          | `hsla(173, 80%, 40%, 0.4)`    | Ambient glow halo                |
 
 ### 2.2 Semantic Status
 
-| Token              | Default     | Use Case           |
-|:-------------------|:------------|:-------------------|
-| `--color-success`  | `#22c55e`   | Confirmations, OK  |
-| `--color-warning`  | `#eab308`   | Caution states     |
-| `--color-danger`   | `#ef4444`   | Errors, deletions  |
-| `--color-info`     | `#3b82f6`   | Informational      |
-| `--color-birthday` | `#f472b6`   | Birthday events    |
+| Token              | Default                     | Use Case           |
+|:-------------------|:----------------------------|:-------------------|
+| `--color-success`  | `hsla(142, 71%, 45%, 1)`    | Confirmations, OK  |
+| `--color-warning`  | `hsla(45, 93%, 47%, 1)`     | Caution states     |
+| `--color-danger`   | `hsla(0, 84%, 60%, 1)`      | Errors, deletions  |
+| `--color-info`     | `hsla(217, 91%, 60%, 1)`    | Informational      |
+| `--color-birthday` | `hsla(329, 86%, 70%, 1)`    | Birthday events    |
 
-Each semantic color has a corresponding `-rgb` triplet and optionally a
-`-light` variant for foreground text on dark translucent backgrounds.
+Each semantic color carries a `-rgb` triplet for alpha compositing and
+optionally a `-light` variant for foreground text on dark translucent
+backgrounds.
 
 ### 2.3 Text Hierarchy
 
+Text fades from full white to near-invisible in four deliberate steps.
+Each step has a clear semantic role so components stay consistent without
+guessing opacity values.
+
 | Token              | Value                       | Role                 |
 |:-------------------|:----------------------------|:---------------------|
-| `--text-primary`   | `#fff`                      | Headings, key labels |
-| `--text-secondary` | `rgba(255,255,255,0.7)`     | Body copy            |
-| `--text-muted`     | `rgba(255,255,255,0.4)`     | Metadata, hints      |
-| `--text-faint`     | `rgba(255,255,255,0.2)`     | Placeholders         |
+| `--text-primary`   | `hsla(0, 0%, 100%, 1)`      | Headings, key labels |
+| `--text-secondary` | `hsla(0, 0%, 100%, 0.7)`    | Body copy            |
+| `--text-muted`     | `hsla(0, 0%, 100%, 0.4)`    | Metadata, hints      |
+| `--text-faint`     | `hsla(0, 0%, 100%, 0.2)`    | Placeholders         |
 
 ### 2.4 Surfaces and Borders
 
-Surfaces use translucent backgrounds that layer on top of the body gradient.
-Borders remain subtle to avoid visual clutter.
+Surfaces are translucent layers that let the body gradient breathe through.
+Borders stay whisper-quiet so content remains the focal point.
 
-| Token                    | Value                          |
-|:-------------------------|:-------------------------------|
-| `--surface-card`         | `rgba(255,255,255,0.03)`       |
-| `--surface-card-hover`   | `rgba(255,255,255,0.05)`       |
-| `--surface-input`        | `rgba(0,0,0,0.2)`             |
-| `--surface-input-focus`  | `rgba(0,0,0,0.28)`            |
-| `--surface-hover`        | `rgba(255,255,255,0.06)`       |
-| `--border-subtle`        | `rgba(255,255,255,0.08)`       |
-| `--border-medium`        | `rgba(255,255,255,0.12)`       |
-| `--border-accent`        | `rgba(accent-rgb,0.25)`       |
-| `--border-accent-focus`  | `rgba(accent-rgb,0.4)`        |
+| Token                    | Value                              |
+|:-------------------------|:-----------------------------------|
+| `--surface-card`         | `hsla(0, 0%, 100%, 0.03)`         |
+| `--surface-card-hover`   | `hsla(0, 0%, 100%, 0.05)`         |
+| `--surface-input`        | `hsla(0, 0%, 0%, 0.2)`            |
+| `--surface-input-focus`  | `hsla(0, 0%, 0%, 0.28)`           |
+| `--surface-hover`        | `hsla(0, 0%, 100%, 0.06)`         |
+| `--border-subtle`        | `hsla(0, 0%, 100%, 0.08)`         |
+| `--border-medium`        | `hsla(0, 0%, 100%, 0.12)`         |
+| `--border-accent`        | `hsla(173, 80%, 40%, 0.25)`       |
+| `--border-accent-focus`  | `hsla(173, 80%, 40%, 0.4)`        |
 
 ---
 
 ## 3. Typography
 
 ### 3.1 Font Stack
+
+All typefaces are self-hosted from the VPS -- no external CDN dependencies.
 
 | Purpose    | Family                                                     |
 |:-----------|:-----------------------------------------------------------|
@@ -88,8 +101,8 @@ Borders remain subtle to avoid visual clutter.
 ### 3.2 Scale
 
 Base font size is `105%` (~16.8px). All sizing uses `rem` relative to this
-base. Letter-spacing values are the sole exception where `em` is acceptable
-since spacing should scale proportionally with the element's own font size.
+base. Letter-spacing is the sole exception where `em` is acceptable since it
+should scale proportionally with the element's own font size.
 
 | Level      | Size      | Weight | Letter-Spacing |
 |:-----------|:----------|:-------|:---------------|
@@ -113,11 +126,13 @@ since spacing should scale proportionally with the element's own font size.
 
 ### 4.1 Spacing
 
-No formal spacing scale is enforced beyond the general rem guideline.
-Component-internal spacing uses practical values (0.25rem, 0.5rem, 0.75rem,
-1rem, 1.5rem, 2rem).
+Components breathe through a practical spacing vocabulary: 0.25rem, 0.5rem,
+0.75rem, 1rem, 1.5rem, 2rem. Generous whitespace is intentional -- it
+creates visual calm inside information-dense panels.
 
 ### 4.2 Border Radii
+
+Corners soften progressively from tight badges to expansive containers.
 
 | Token          | Value     | Typical Use                   |
 |:---------------|:----------|:------------------------------|
@@ -133,26 +148,33 @@ Component-internal spacing uses practical values (0.25rem, 0.5rem, 0.75rem,
 
 ## 5. Glassmorphism
 
-The dashboard relies on layered translucent surfaces with backdrop filters.
-These tokens govern the glass aesthetic globally:
+The dashboard's signature texture: layered translucent surfaces with
+backdrop blur that let color gradients bleed through. The effect creates
+depth without shadow hierarchies and makes the interface feel like it
+exists in a physical space.
 
-| Token              | Default  | Notes                         |
-|:-------------------|:---------|:------------------------------|
-| `--glass-blur`     | `blur(24px)` | Standard blur                |
-| `--glass-opacity`  | `0.6`   | Panel opacity baseline         |
-| `--glass-saturate` | `180%`  | Color saturation boost         |
-| `--glass-brightness`| `100%` | Brightness adjustment          |
+| Token              | Default      | Notes                         |
+|:-------------------|:-------------|:------------------------------|
+| `--glass-blur`     | `blur(24px)` | Standard blur                 |
+| `--glass-opacity`  | `0.6`        | Panel opacity baseline        |
+| `--glass-saturate` | `180%`       | Color saturation boost        |
+| `--glass-brightness`| `100%`      | Brightness adjustment         |
 
 Tooltip surfaces use their own sub-tokens (`--tooltip-bg`, `--tooltip-blur`,
-`--tooltip-saturate`, `--tooltip-border`, `--tooltip-shadow`).
+`--tooltip-saturate`, `--tooltip-border`, `--tooltip-shadow`) so they can
+float above card surfaces with a heavier glass treatment.
 
 ---
 
 ## 6. Animation and Timing
 
+Motion in openZero is purposeful: it guides attention, confirms actions,
+and creates spatial continuity. Speed is calibrated so interactions feel
+instant while larger transitions feel deliberate.
+
 ### 6.1 Duration Tokens
 
-| Token               | Value   | Use Case                        |
+| Token                | Value   | Use Case                        |
 |:---------------------|:--------|:--------------------------------|
 | `--duration-instant` | `0.1s`  | Micro-interactions (focus ring) |
 | `--duration-fast`    | `0.15s` | Hover states, toggles           |
@@ -162,14 +184,12 @@ Tooltip surfaces use their own sub-tokens (`--tooltip-bg`, `--tooltip-blur`,
 
 ### 6.2 Easing
 
-| Token            | Value                              | Role              |
-|:-----------------|:-----------------------------------|:-------------------|
-| `--ease-default` | `cubic-bezier(0.4, 0, 0.2, 1)`    | General motion     |
+| Token            | Value                             | Role              |
+|:-----------------|:----------------------------------|:-------------------|
+| `--ease-default` | `cubic-bezier(0.4, 0, 0.2, 1)`   | General motion     |
 | `--ease-snap`    | `cubic-bezier(0.23, 1, 0.32, 1)` | Snappy entrances   |
 
 ### 6.3 GSAP Easing Rules (Phase 1+)
-
-Standard production animations use these GSAP easing functions:
 
 | Context       | Easing         |
 |:--------------|:---------------|
@@ -183,10 +203,10 @@ Standard production animations use these GSAP easing functions:
 
 ### 6.4 Reduced Motion
 
-Every component includes `@media (prefers-reduced-motion: reduce)` blocks
-that suppress transitions and animations. The shared `ACCESSIBILITY_STYLES`
-module handles the baseline; components add overrides for their specific
-keyframe animations.
+Every component includes `@media (prefers-reduced-motion: reduce)` blocks.
+The shared `ACCESSIBILITY_STYLES` module provides the baseline; components
+add overrides for their specific keyframe animations so the experience
+remains fully usable without any motion at all.
 
 ---
 
@@ -194,7 +214,9 @@ keyframe animations.
 
 Reusable CSS fragments live in `src/dashboard/services/` as exported
 template string constants. Components import and interpolate them inside
-their Shadow DOM `<style>` blocks via `${MODULE_NAME}`.
+their Shadow DOM `<style>` blocks via `${MODULE_NAME}`. This keeps every
+component self-contained while sharing a single source of truth for
+recurring patterns.
 
 | Module                    | Export Name            | Purpose                             |
 |:--------------------------|:-----------------------|:------------------------------------|
@@ -214,7 +236,7 @@ their Shadow DOM `<style>` blocks via `${MODULE_NAME}`.
 
 | Pattern        | Standard Class   | Notes                                  |
 |:---------------|:-----------------|:---------------------------------------|
-| Section icon   | `.h-icon`        | 28x28 gradient badge next to `h2`      |
+| Section icon   | `.h-icon`        | 32x32 gradient badge next to `h2`      |
 | Status dot     | `.status-dot`    | 8px semantic indicator                 |
 | Empty fallback | `.empty-state`   | Centered italic "no data" text         |
 | Feedback toast | `.feedback`      | With `.success`, `.error`, `.info`     |
@@ -226,16 +248,17 @@ their Shadow DOM `<style>` blocks via `${MODULE_NAME}`.
 ### 8.1 Shadow DOM
 
 All dashboard components are native Web Components using
-`attachShadow({ mode: 'open' })`. Styles are defined as template literal
-`<style>` blocks within each component's `.ts` file. This single-file
-encapsulation pattern is intentional and must not be extracted into separate
-CSS files.
+`attachShadow({ mode: 'open' })`. Styles live as template literal `<style>`
+blocks within each component's `.ts` file -- a single-file encapsulation
+pattern that keeps markup, logic, and styling collocated. This is
+intentional and must not be extracted into separate CSS files.
 
 ### 8.2 Token Penetration
 
 CSS custom properties defined on `:root` in `style.css` naturally cross
 Shadow DOM boundaries. Components reference these tokens via `var()` with
-hardcoded fallback values ensuring standalone functionality.
+hardcoded HSLA fallback values ensuring standalone functionality even if
+the global stylesheet is absent.
 
 ### 8.3 Component-Specific Overrides
 
@@ -246,29 +269,40 @@ interpolation:
 ```css
 ${SECTION_HEADER_STYLES}
 h2 .h-icon {
-	background: linear-gradient(135deg, #8b5cf6 0%, var(--accent-color, #14B8A6) 100%);
+	background: linear-gradient(135deg, hsla(263, 90%, 65%, 1) 0%, var(--accent-color) 100%);
 }
 ```
+
+### 8.4 Icon Style
+
+Section header icons are **line-only** (stroke, never filled) at 20x20px
+rendered in a 24x24 viewBox. They sit inside a 32x32 gradient badge
+(`.h-icon`). Every icon SVG must carry `fill="none"`, `stroke="white"`,
+`stroke-width="2"`, `aria-hidden="true"`, and `focusable="false"`.
 
 ---
 
 ## 9. Accessibility
 
-The dashboard conforms to **WCAG 2.1 Level AA** and **EN 301 549**.
+Accessibility is a design material, not a compliance checkbox. The dashboard
+conforms to **WCAG 2.1 Level AA** and **EN 301 549** because good
+accessibility produces good design: clear focus states, logical reading
+order, and meaningful feedback benefit every user.
 
-### 9.1 Non-Negotiable Requirements
+### 9.1 Core Requirements
 
-- All interactive elements must be keyboard-navigable with visible
-  `:focus-visible` rings (minimum 2px solid, using accent color).
+- All interactive elements are keyboard-navigable with visible
+  `:focus-visible` rings (minimum 2px solid, accent color).
 - Minimum touch target: 44x44px.
-- Color is never the sole conveyor of meaning.
-- Every dynamic content region uses `aria-live` with appropriate politeness.
+- Color is never the sole conveyor of meaning -- text or icons always
+  accompany color indicators.
+- Dynamic content regions use `aria-live` with appropriate politeness.
 - Heading hierarchy (`h1` through `h3`) is maintained without skipping.
 
 ### 9.2 Screen-Reader Text
 
 All user-facing ARIA strings use `this.tr('key', 'English fallback')` for
-localization support. English strings must never be hardcoded directly in
+localization support. English strings are never hardcoded directly in
 `aria-label` or `aria-describedby` attributes.
 
 ### 9.3 Media Queries
@@ -283,21 +317,23 @@ Every Shadow DOM component includes:
 
 ## 10. Dark / Light / Auto Theming (Planned)
 
-Current implementation is dark-mode only. Phase 2+ will introduce:
+The current implementation is dark-mode only -- optimized for the 2 AM
+mission control aesthetic. Phase 2+ will introduce:
 
 - A `prefers-color-scheme` media query for auto detection.
 - Light-mode token overrides within `:root` using `[data-theme="light"]`.
 - A persistent toggle stored per-user in the identity record.
-- All current `rgba(255,255,255,...)` values will be swapped to semantic
-  tokens that resolve differently per scheme.
+- All current `hsla(0, 0%, 100%, ...)` values will resolve through semantic
+  tokens that flip per scheme.
 
 ---
 
 ## 11. Cursor Parallax (Planned)
 
-Phase 3+ introduces a mouse-tracking parallax layer:
+Phase 3+ introduces a mouse-tracking parallax layer that gives the
+glassmorphism panels a subtle spatial quality:
 
-- Glassmorphism panels shift subtly based on pointer coordinates.
+- Panels shift based on pointer coordinates, creating a sense of depth.
 - Movement is throttled to `requestAnimationFrame` cadence.
 - Disabled entirely when `prefers-reduced-motion: reduce` is active.
 
@@ -305,30 +341,32 @@ Phase 3+ introduces a mouse-tracking parallax layer:
 
 ## 12. Goo Mode (Planned)
 
-An opt-in easter egg animation layer scoped to `oz-goo-*` CSS classes:
+An opt-in easter egg -- organic, fluid morphing of UI borders and
+backgrounds scoped to `oz-goo-*` CSS classes:
 
-- Organic, fluid morphing of UI element borders and backgrounds.
 - Uses `elastic.out` and `bounce.out` GSAP easing (the only permitted use
   of these easing functions in the entire codebase).
-- Activated through the glass settings panel; never on by default.
+- Activated through the settings panel. Never on by default.
+- A playful counterpoint to the otherwise measured visual language.
 
 ---
 
-## 13. Self-Hosted Fonts (Planned)
+## 13. Self-Hosted Fonts
 
-All typefaces will be served from the VPS to eliminate Google Fonts dependency:
+All typefaces are served from the VPS to eliminate external dependencies.
+Font files live under `src/dashboard/fonts/` and load via `@font-face`
+declarations in `style.css`.
 
-| Family              | Weights        | Subsets                 |
-|:--------------------|:---------------|:------------------------|
-| Inter               | 400, 500, 600, 700, 800 | Latin, Latin Extended |
-| Fira Code           | 400, 700       | Latin                   |
-| Noto Sans SC        | 400, 700       | CJK Simplified Chinese  |
-| Noto Sans JP        | 400, 700       | CJK Japanese            |
-| Noto Sans KR        | 400, 700       | CJK Korean              |
-| Noto Sans Devanagari| 400, 700       | Hindi                   |
-| Noto Sans Bengali   | 400, 700       | Bengali                 |
-| Noto Sans Arabic    | 400, 700       | Arabic                  |
+| Family              | Weights                  | Status    |
+|:--------------------|:-------------------------|:----------|
+| Inter               | 400, 500, 600, 700, 800 | Shipped   |
+| Fira Code           | 400, 700                 | Shipped   |
+| Noto Sans SC        | 400, 700                 | Planned   |
+| Noto Sans JP        | 400, 700                 | Planned   |
+| Noto Sans KR        | 400, 700                 | Planned   |
+| Noto Sans Devanagari| 400, 700                 | Planned   |
+| Noto Sans Bengali   | 400, 700                 | Planned   |
+| Noto Sans Arabic    | 400, 700                 | Planned   |
 
-Font files will be stored under `src/dashboard/fonts/` and loaded via
-`@font-face` declarations in `style.css`. CJK fonts use `unicode-range`
-subsetting to avoid loading unnecessary glyphs.
+CJK fonts will use `unicode-range` subsetting to avoid loading unnecessary
+glyphs.

@@ -396,8 +396,8 @@ export class ChatPrompt extends HTMLElement {
 	 */
 	private pickBubbleTextColor(): '#000000' | '#ffffff' {
 		const style = getComputedStyle(document.documentElement);
-		const hex1  = style.getPropertyValue('--accent-color').trim()    || '#14B8A6';
-		const hex2  = style.getPropertyValue('--accent-secondary').trim() || '#0066FF';
+		const hex1  = style.getPropertyValue('--accent-color').trim()    || 'hsla(173, 80%, 40%, 1)';
+		const hex2  = style.getPropertyValue('--accent-secondary').trim() || 'hsla(216, 100%, 50%, 1)';
 
 		const c1 = this.parseHex(hex1);
 		const c2 = this.parseHex(hex2);

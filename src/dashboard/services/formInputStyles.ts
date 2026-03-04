@@ -54,7 +54,7 @@ export const FORM_INPUT_STYLES = `
 	}
 
 	select option {
-		background: #1a1a2e;
+		background: hsla(240, 28%, 14%, 1);
 		color: var(--text-primary, #fff);
 	}
 

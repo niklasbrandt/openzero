@@ -3,7 +3,7 @@ import { SECTION_HEADER_STYLES } from '../services/sectionHeaderStyles';
 import { GLASS_TOOLTIP_STYLES } from '../services/glassTooltipStyles';
 import { EMPTY_STATE_STYLES } from '../services/emptyStateStyles';
 
-const BENCH_ACCENT = '#0066FF';
+const BENCH_ACCENT = 'hsla(216, 100%, 50%, 1)';
 const BENCH_ACCENT_RGB = '0, 102, 255';
 
 export class SystemBenchmark extends HTMLElement {
@@ -217,7 +217,7 @@ export class SystemBenchmark extends HTMLElement {
 
 				/* Override icon gradient for benchmark accent */
 				h2 .h-icon {
-					background: linear-gradient(135deg, ${BENCH_ACCENT} 0%, var(--accent-color, #14B8A6) 100%);
+					background: linear-gradient(135deg, ${BENCH_ACCENT} 0%, var(--accent-color, hsla(173, 80%, 40%, 1)) 100%);
 				}
 
 				.bench-header-bar {
@@ -268,13 +268,13 @@ export class SystemBenchmark extends HTMLElement {
 
 				.bench-btn.all {
 					background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.08);
-					color: var(--accent-color, #14B8A6);
+					color: var(--accent-color, hsla(173, 80%, 40%, 1));
 					border-color: rgba(var(--accent-color-rgb, 20, 184, 166), 0.2);
 				}
 
 				.bench-btn.all:hover {
 					background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.2);
-					border-color: var(--accent-color, #14B8A6);
+					border-color: var(--accent-color, hsla(173, 80%, 40%, 1));
 				}
 
 				@keyframes pulse {
@@ -309,10 +309,10 @@ export class SystemBenchmark extends HTMLElement {
 					flex-shrink: 0;
 				}
 
-				.legend-dot.excellent { background: var(--accent-color, #14B8A6); }
-				.legend-dot.good { background: var(--color-success, #22c55e); }
-				.legend-dot.moderate { background: var(--color-warning, #eab308); }
-				.legend-dot.slow { background: var(--color-danger, #ef4444); }
+				.legend-dot.excellent { background: var(--accent-color, hsla(173, 80%, 40%, 1)); }
+				.legend-dot.good { background: var(--color-success, hsla(142, 71%, 45%, 1)); }
+				.legend-dot.moderate { background: var(--color-warning, hsla(45, 93%, 47%, 1)); }
+				.legend-dot.slow { background: var(--color-danger, hsla(0, 84%, 60%, 1)); }
 
 				#bench-results {
 					display: flex;
@@ -365,14 +365,14 @@ export class SystemBenchmark extends HTMLElement {
 					background: rgba(var(--color-danger-rgb, 239, 68, 68), 0.08);
 					border: 1px solid rgba(var(--color-danger-rgb, 239, 68, 68), 0.2);
 					font-size: 0.7rem;
-					color: var(--color-danger, #ef4444);
+					color: var(--color-danger, hsla(0, 84%, 60%, 1));
 					font-weight: 500;
 				}
 				.thread-warning .warning-icon { font-size: 0.85rem; }
 				.thread-warning .warning-text { line-height: 1.3; }
 
 				.bench-error {
-					color: var(--color-danger, #ef4444);
+					color: var(--color-danger, hsla(0, 84%, 60%, 1));
 					font-size: 0.8rem;
 					margin-top: 0.5rem;
 				}
@@ -400,10 +400,10 @@ export class SystemBenchmark extends HTMLElement {
 					font-weight: 600;
 				}
 
-				.bench-tps.excellent .tps-value { color: var(--accent-color, #14B8A6); }
-				.bench-tps.good .tps-value { color: var(--color-success, #22c55e); }
-				.bench-tps.moderate .tps-value { color: var(--color-warning, #eab308); }
-				.bench-tps.slow .tps-value { color: var(--color-danger, #ef4444); }
+				.bench-tps.excellent .tps-value { color: var(--accent-color, hsla(173, 80%, 40%, 1)); }
+				.bench-tps.good .tps-value { color: var(--color-success, hsla(142, 71%, 45%, 1)); }
+				.bench-tps.moderate .tps-value { color: var(--color-warning, hsla(45, 93%, 47%, 1)); }
+				.bench-tps.slow .tps-value { color: var(--color-danger, hsla(0, 84%, 60%, 1)); }
 
 				.rating-badge {
 					display: inline-flex;
@@ -421,22 +421,22 @@ export class SystemBenchmark extends HTMLElement {
 
 				.rating-badge.excellent {
 					background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.1);
-					color: var(--accent-color, #14B8A6);
+					color: var(--accent-color, hsla(173, 80%, 40%, 1));
 					border: 1px solid rgba(var(--accent-color-rgb, 20, 184, 166), 0.2);
 				}
 				.rating-badge.good {
 					background: rgba(var(--color-success-rgb, 34, 197, 94), 0.1);
-					color: var(--color-success, #22c55e);
+					color: var(--color-success, hsla(142, 71%, 45%, 1));
 					border: 1px solid rgba(var(--color-success-rgb, 34, 197, 94), 0.2);
 				}
 				.rating-badge.moderate {
 					background: rgba(var(--color-warning-rgb, 234, 179, 8), 0.1);
-					color: var(--color-warning, #eab308);
+					color: var(--color-warning, hsla(45, 93%, 47%, 1));
 					border: 1px solid rgba(var(--color-warning-rgb, 234, 179, 8), 0.2);
 				}
 				.rating-badge.slow {
 					background: rgba(var(--color-danger-rgb, 239, 68, 68), 0.1);
-					color: var(--color-danger, #ef4444);
+					color: var(--color-danger, hsla(0, 84%, 60%, 1));
 					border: 1px solid rgba(var(--color-danger-rgb, 239, 68, 68), 0.2);
 				}
 
@@ -482,12 +482,12 @@ export class SystemBenchmark extends HTMLElement {
 					margin-top: 0.15rem;
 				}
 
-				.legend-item:focus-visible { outline: 2px solid var(--accent-color, #14B8A6); outline-offset: 2px; border-radius: 2px; }
+				.legend-item:focus-visible { outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); outline-offset: 2px; border-radius: 2px; }
 			</style>
 
 			<h2>
 				<span class="h-icon" aria-hidden="true">
-					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
 						<path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
 					</svg>
 				</span>
