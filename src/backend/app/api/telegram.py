@@ -15,20 +15,9 @@ import pytz
 import re
 from datetime import datetime, timedelta
 import logging
-from app.services.translations import get_translations
+from app.services.translations import get_translations, get_user_lang
 
 logger = logging.getLogger(__name__)
-
-async def get_user_lang() -> str:
-	"""Fetch user language from identity profile."""
-	try:
-		from app.models.db import AsyncSessionLocal, Person
-		from sqlalchemy import select
-		async with AsyncSessionLocal() as session:
-			res = await session.execute(select(Person).where(Person.circle_type == "identity"))
-			ident = res.scalar_one_or_none()
-			return ident.language if ident and ident.language else "en"
-	except: return "en"
 
 bot_app: Application | None = None
 
@@ -763,26 +752,24 @@ async def cmd_add_topic(update: Update, context: ContextTypes.DEFAULT_TYPE):
 @owner_only
 async def cmd_purge(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	"""Request semantic memory purge with detailed confirmation."""
+	lang = await get_user_lang()
+	t = get_translations(lang)
 	keyboard = [
 		[
-			InlineKeyboardButton("\U0001f525 Yes, purge everything", callback_data="wipe_confirm"),
-			InlineKeyboardButton("\u270b Cancel", callback_data="wipe_cancel"),
+			InlineKeyboardButton(f"\U0001f525 {t.get('purge_confirm_btn', 'Yes, purge everything')}", callback_data="wipe_confirm"),
+			InlineKeyboardButton(f"\u270b {t.get('purge_cancel_btn', 'Cancel')}", callback_data="wipe_cancel"),
 		]
 	]
 	reply_markup = InlineKeyboardMarkup(keyboard)
 	await update.message.reply_text(
 		"<blockquote>"
-		"\u26a0\ufe0f <b>Semantic Memory Purge</b>\n\n"
-		"This will permanently delete <b>all</b> facts stored in Z's long-term memory vault (Qdrant).\n\n"
-		"<b>What gets deleted:</b>\n"
-		"- All stored facts, preferences, and personal context\n"
-		"- All learned information from past conversations\n"
-		"- All manually committed memories (/add)\n\n"
-		"<b>What is NOT affected:</b>\n"
-		"- Your calendar, task boards, and projects (Planka)\n"
-		"- Your circle of trust (people database)\n"
-		"- Briefing history\n\n"
-		"This action is <b>irreversible</b>. Z will start with a blank knowledge slate."
+		f"\u26a0\ufe0f <b>{t.get('purge_heading', 'Semantic Memory Purge')}</b>\n\n"
+		f"{t.get('purge_body', 'This will permanently delete <b>all</b> facts stored in Z\u2019s long-term memory vault (Qdrant).')}\n\n"
+		f"<b>{t.get('purge_deleted_label', 'What gets deleted:')}</b>\n"
+		f"{t.get('purge_deleted_items', '- All stored facts, preferences, and personal context\n- All learned information from past conversations\n- All manually committed memories (/add)')}\n\n"
+		f"<b>{t.get('purge_safe_label', 'What is NOT affected:')}</b>\n"
+		f"{t.get('purge_safe_items', '- Your calendar, task boards, and projects (Planka)\n- Your circle of trust (people database)\n- Briefing history')}\n\n"
+		f"{t.get('purge_irreversible', 'This action is <b>irreversible</b>. Z will start with a blank knowledge slate.')}"
 		"</blockquote>",
 		parse_mode="HTML",
 		reply_markup=reply_markup
@@ -792,16 +779,17 @@ async def cmd_purge(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_wipe_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	query = update.callback_query
 	await query.answer()
-	
+	lang = await get_user_lang()
+	t = get_translations(lang)
 	if query.data == "wipe_confirm":
 		from app.services.memory import wipe_collection
 		success = await wipe_collection(confirm=True)
 		if success:
-			await query.edit_message_text("✅ Semantic memory has been completely wiped.")
+			await query.edit_message_text(t.get("purge_success", "\u2705 Semantic memory has been completely wiped."))
 		else:
-			await query.edit_message_text("❌ Failed to wipe memory. Check logs.")
+			await query.edit_message_text(t.get("purge_failed", "\u274c Failed to wipe memory. Check logs."))
 	else:
-		await query.edit_message_text("Cancelled. Memories are safe.")
+		await query.edit_message_text(t.get("purge_cancelled", "Cancelled. Memories are safe."))
 
 @owner_only
 async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):

@@ -201,6 +201,45 @@ _EN = {
     "projects": "Projects",
     "calendar": "Calendar",
     "help_msg": "I am Z. Commands: /day, /week, /memory, /add, /think",
+    "help_msg_full": (
+        "\U0001f916 *Z \u2014 Operator Controls*\n\n"
+        "*Briefings & Reviews*\n"
+        "/day \u2014 Proactive morning briefing\n"
+        "/week \u2014 Strategic weekly review\n"
+        "/month \u2014 High-level 30-day review\n"
+        "/quarter \u2014 90-day roadmap review\n"
+        "/year \u2014 Yearly goal review\n\n"
+        "*Mission Control*\n"
+        "/tree \u2014 Life hierarchy & workspace overview\n"
+        "/think \u2014 Complex multi-step reasoning\n"
+        "/remind \u2014 Set a temporary recurring reminder\n"
+        "/custom \u2014 Create a persistent scheduled task\n\n"
+        "*Memory & Intelligence*\n"
+        "/search \u2014 Semantic search of the knowledge vault\n"
+        "/memories \u2014 List all permanently stored facts\n"
+        "/add \u2014 Commit specific facts to memory\n"
+        "/unlearn \u2014 Remove a fact from the vault\n"
+        "/protocols \u2014 Inspect Z\u2019s agentic tools\n\n"
+        "*System*\n"
+        "/purge \u2014 Permanently delete all memories\n\n"
+        "_Tap any command to execute it directly._"
+    ),
+    "help_section_briefings": "Briefings & Reviews",
+    "help_section_missions": "Mission Control",
+    "help_section_memory": "Memory & Intelligence",
+    "help_section_system": "System",
+    "purge_heading": "Semantic Memory Purge",
+    "purge_body": "This will permanently delete <b>all</b> facts stored in Z\u2019s long-term memory vault (Qdrant).",
+    "purge_deleted_label": "What gets deleted:",
+    "purge_deleted_items": "- All stored facts, preferences, and personal context\n- All learned information from past conversations\n- All manually committed memories (/add)",
+    "purge_safe_label": "What is NOT affected:",
+    "purge_safe_items": "- Your calendar, task boards, and projects (Planka)\n- Your circle of trust (people database)\n- Briefing history",
+    "purge_irreversible": "This action is <b>irreversible</b>. Z will start with a blank knowledge slate.",
+    "purge_confirm_btn": "Yes, purge everything",
+    "purge_cancel_btn": "Cancel",
+    "purge_success": "\u2705 Semantic memory has been completely wiped.",
+    "purge_failed": "\u274c Failed to wipe memory. Check backend logs.",
+    "purge_cancelled": "Cancelled. Memories are safe.",
     "mon": "Monday", "tue": "Tuesday", "wed": "Wednesday", "thu": "Thursday", "fri": "Friday", "sat": "Saturday", "sun": "Sunday",
     "status_heading": "System Status Report",
     "intelligence": "Intelligence",
@@ -575,6 +614,45 @@ _DE = {
     "projects": "Projekte",
     "calendar": "Kalender",
     "help_msg": "Befehle: /day, /week, /memory, /add, /think",
+    "help_msg_full": (
+        "\U0001f916 *Z \u2014 Operator-Steuerung*\n\n"
+        "*Briefings & \u00dcbersichten*\n"
+        "/day \u2014 Proaktives Morgenbriefing\n"
+        "/week \u2014 Strategische w\u00f6chentliche \u00dcbersicht\n"
+        "/month \u2014 30-Tage-\u00dcbersicht\n"
+        "/quarter \u2014 90-Tage-Roadmap-\u00dcbersicht\n"
+        "/year \u2014 J\u00e4hrliche Zielauswertung\n\n"
+        "*Missionskontrolle*\n"
+        "/tree \u2014 Lebenshierarchie & Workspace-\u00dcbersicht\n"
+        "/think \u2014 Komplexes mehrstufiges Denken\n"
+        "/remind \u2014 Tempor\u00e4re Erinnerung setzen\n"
+        "/custom \u2014 Persistente geplante Aufgabe erstellen\n\n"
+        "*Ged\u00e4chtnis & Intelligenz*\n"
+        "/search \u2014 Semantische Suche im Wissensspeicher\n"
+        "/memories \u2014 Alle gespeicherten Fakten anzeigen\n"
+        "/add \u2014 Fakten dauerhaft speichern\n"
+        "/unlearn \u2014 Fakten aus dem Speicher entfernen\n"
+        "/protocols \u2014 Z\u2019s agentische Werkzeuge einsehen\n\n"
+        "*System*\n"
+        "/purge \u2014 Alle Erinnerungen dauerhaft l\u00f6schen\n\n"
+        "_Tippe einen Befehl um ihn direkt auszuf\u00fchren._"
+    ),
+    "help_section_briefings": "Briefings & \u00dcbersichten",
+    "help_section_missions": "Missionskontrolle",
+    "help_section_memory": "Ged\u00e4chtnis & Intelligenz",
+    "help_section_system": "System",
+    "purge_heading": "Semantisches Ged\u00e4chtnis l\u00f6schen",
+    "purge_body": "Dadurch werden <b>alle</b> Fakten im Langzeitged\u00e4chtnis von Z (Qdrant) dauerhaft gel\u00f6scht.",
+    "purge_deleted_label": "Wird gel\u00f6scht:",
+    "purge_deleted_items": "- Alle gespeicherten Fakten, Pr\u00e4ferenzen und pers\u00f6nlicher Kontext\n- Alle gelernten Informationen aus vergangenen Gespr\u00e4chen\n- Alle manuell gespeicherten Erinnerungen (/add)",
+    "purge_safe_label": "Nicht betroffen:",
+    "purge_safe_items": "- Kalender, Aufgaben-Boards und Projekte (Planka)\n- Vertrauenskreis (Personen-Datenbank)\n- Briefing-Verlauf",
+    "purge_irreversible": "Diese Aktion ist <b>unwiderruflich</b>. Z beginnt mit einem leeren Wissensspeicher.",
+    "purge_confirm_btn": "Ja, alles l\u00f6schen",
+    "purge_cancel_btn": "Abbrechen",
+    "purge_success": "\u2705 Semantisches Ged\u00e4chtnis vollst\u00e4ndig gel\u00f6scht.",
+    "purge_failed": "\u274c Ged\u00e4chtnis konnte nicht gel\u00f6scht werden. Backend-Logs pr\u00fcfen.",
+    "purge_cancelled": "Abgebrochen. Erinnerungen sind sicher.",
     "mon": "Montag", "tue": "Dienstag", "wed": "Mittwoch", "thu": "Donnerstag", "fri": "Freitag", "sat": "Samstag", "sun": "Sonntag",
     "status_heading": "Systemstatusbericht",
     "intelligence": "Intelligenz",
@@ -1964,3 +2042,17 @@ def get_done_keywords() -> set[str]:
     # Add common English synonyms used in existing logic
     keywords.update({"done", "complete", "finish", "erledigt", "termine", "hecho"})
     return keywords
+
+
+async def get_user_lang() -> str:
+    """Fetch the configured language from the identity profile.
+    Uses a fresh DB session -- safe to call from any api or service module."""
+    try:
+        from app.models.db import AsyncSessionLocal, Person
+        from sqlalchemy import select
+        async with AsyncSessionLocal() as session:
+            res = await session.execute(select(Person).where(Person.circle_type == "identity"))
+            ident = res.scalar_one_or_none()
+            return ident.language if ident and ident.language else "en"
+    except:
+        return "en"
