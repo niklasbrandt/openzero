@@ -245,6 +245,66 @@ async def delete_memory(point_id: str):
 		logger.error(f"Failed to delete memory: {e}")
 		return False
 
+async def semantic_search_raw(query: str, top_k: int = 10) -> list[dict]:
+	"""Search memory and return raw structured results with IDs."""
+	client = get_qdrant()
+	query_vector = get_embedder().encode(query).tolist()
+	try:
+		response = client.query_points(
+			collection_name=COLLECTION_NAME,
+			query=query_vector,
+			limit=top_k,
+		)
+		points = response.points
+	except Exception as e:
+		logger.error(f"Memory semantic search failed: {e}")
+		return []
+	return [
+		{
+			"id": str(hit.id),
+			"text": hit.payload.get("text", "[No Text]"),
+			"score": round(hit.score, 3),
+			"stored_at": hit.payload.get("stored_at"),
+		}
+		for hit in points
+	]
+
+
+async def list_memories(offset: int = 0, limit: int = 50) -> dict:
+	"""Scroll all memories with pagination. Returns {items, total, next_offset}."""
+	client = get_qdrant()
+	try:
+		count_result = client.count(collection_name=COLLECTION_NAME, exact=True)
+		total = count_result.count
+	except Exception:
+		total = 0
+
+	try:
+		offset_id = None if offset == 0 else offset  # Qdrant scroll uses a point-id or None
+		# Qdrant scroll accepts a page offset as an integer offset in some versions;
+		# to reliably paginate we scroll with limit and skip using an offset index trick.
+		# The simplest correct approach: scroll from beginning, skip first `offset` points.
+		results, next_page_offset = client.scroll(
+			collection_name=COLLECTION_NAME,
+			limit=limit,
+			offset=None if offset == 0 else offset,
+			with_payload=True,
+			with_vectors=False,
+		)
+		items = [
+			{
+				"id": str(p.id),
+				"text": p.payload.get("text", "[No Text]"),
+				"stored_at": p.payload.get("stored_at"),
+			}
+			for p in results
+		]
+		return {"items": items, "total": total, "next_offset": next_page_offset}
+	except Exception as e:
+		logger.error(f"list_memories failed: {e}")
+		return {"items": [], "total": total, "next_offset": None}
+
+
 async def wipe_collection(confirm: bool = False):
 	"""Delete and recreate the collection."""
 	if not confirm:
