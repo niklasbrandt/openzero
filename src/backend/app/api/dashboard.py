@@ -1822,7 +1822,10 @@ async def get_translations_endpoint(db: AsyncSession = Depends(get_db)):
 	res = await db.execute(select(Person).where(Person.circle_type == "identity"))
 	me = res.scalar_one_or_none()
 	lang = (me.language if me and me.language else "en")
-	return get_translations(lang)
+	return {
+		"lang": lang,
+		"keys": get_translations(lang)
+	}
 
 
 # --- System Status ---
