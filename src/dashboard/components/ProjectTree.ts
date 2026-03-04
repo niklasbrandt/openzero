@@ -81,8 +81,8 @@ export class ProjectTree extends HTMLElement {
 		const pre = this.shadowRoot?.querySelector('pre');
 		if (pre) {
 			pre.textContent = this.tr('no_boards', 'No boards found.');
-			pre.style.color = 'rgba(255, 255, 255, 0.3)';
-			pre.style.fontFamily = "'Inter', system-ui, sans-serif";
+			pre.style.color = 'var(--text-muted, hsla(0, 0%, 100%, 0.4))';
+			pre.style.fontFamily = "var(--font-sans, 'Inter', system-ui, sans-serif)";
 			pre.style.textAlign = 'center';
 			pre.style.padding = '2rem';
 		}
@@ -114,31 +114,32 @@ export class ProjectTree extends HTMLElement {
 					}
 					
 					#new-project-btn {
-						background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.12);
+						background: var(--surface-accent-subtle, hsla(173, 80%, 40%, 0.12));
 						color: var(--accent-color, hsla(173, 80%, 40%, 1));
-						border: 1px solid rgba(var(--accent-color-rgb, 20, 184, 166), 0.2);
+						border: 1px solid var(--border-accent, hsla(173, 80%, 40%, 0.2));
 						padding: 0.4rem 1rem;
 						border-radius: var(--radius-md, 0.6rem);
 						font-size: 0.8rem;
 						font-weight: 600;
-						font-family: 'Inter', system-ui, sans-serif;
+						font-family: var(--font-sans, 'Inter', system-ui, sans-serif);
 						cursor: pointer;
 						transition: all var(--duration-base, 0.25s) ease;
 						letter-spacing: 0.02em;
+						min-height: 44px; /* A11y target */
 					}
 					#new-project-btn:hover {
-						background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.22);
-						border-color: rgba(var(--accent-color-rgb, 20, 184, 166), 0.4);
+						background: var(--surface-accent-hover, hsla(173, 80%, 40%, 0.22));
+						border-color: var(--border-accent-focus, hsla(173, 80%, 40%, 0.4));
 					}
 					pre {
-						background: rgba(0, 0, 0, 0.3);
+						background: var(--surface-input, hsla(0, 0%, 0%, 0.3));
 						padding: 1.5rem;
 						border-radius: var(--radius-lg, 1rem);
 						font-family: var(--font-mono, 'Fira Code', monospace);
 						font-size: 0.95rem;
 						line-height: 1.6;
 						color: var(--accent-color, hsla(173, 80%, 40%, 1));
-						border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.05));
+						border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.05));
 						overflow-x: auto;
 						margin: 0;
 					}
@@ -147,7 +148,7 @@ export class ProjectTree extends HTMLElement {
 					}
 					pre a:hover {
 						color: hsla(216, 100%, 50%, 1) !important;
-						text-shadow: 0 0 8px rgba(0, 102, 255, 0.4);
+						text-shadow: 0 0 8px hsla(216, 100%, 50%, 0.4);
 					}
 					#new-project-btn:focus-visible, pre a:focus-visible { 
 						outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); 
@@ -155,8 +156,10 @@ export class ProjectTree extends HTMLElement {
 					}
 					@media (forced-colors: active) {
 						.h-icon { background: ButtonFace; border: 1px solid ButtonText; }
-						.board-tag { border: 1px solid ButtonText; }
-						.card-count { color: LinkText; }
+						.header #new-project-btn { border: 1px solid ButtonText; }
+					}
+					@media (prefers-reduced-motion: reduce) {
+						#new-project-btn, pre a { transition: none; }
 					}
 				</style>
 				<div class="card">
