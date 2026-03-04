@@ -235,7 +235,11 @@ The system runs an **automated backup** every night at 4 AM. Environment variabl
 
 ### Continuous Testing
 
-The platform includes a live regression suite (`tests/test_live_regression.py`) that executes automatically at the end of every `sync.sh` deployment.
+The platform includes a live regression suite (`tests/test_live_regression.py`). Tests are skipped by default during deployment; pass `--test` to run them:
+
+```bash
+bash scripts/sync.sh --test
+```
 
 Because openZero relies heavily on AI behavior, traditional unit tests are insufficient. The integrated suite tests the end-to-end capabilities of the live environment by:
 
