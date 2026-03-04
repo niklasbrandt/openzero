@@ -144,7 +144,8 @@ async def serve_dashboard():
 async def root_redirect():
     return RedirectResponse(url="/home")
 
-if os.path.exists("static"):
+if os.path.exists("static/dashboard-assets"):
     app.mount("/dashboard-assets", StaticFiles(directory="static/dashboard-assets"), name="dashboard-assets")
+if os.path.exists("static"):
     # Also mount the rest of static without html=True fallback
     app.mount("/static", StaticFiles(directory="static"), name="static")
