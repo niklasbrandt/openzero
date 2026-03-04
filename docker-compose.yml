@@ -49,7 +49,7 @@ services:
       - N_PREDICT=${LLM_INSTANT_PREDICT:-256}
       - BATCH_SIZE=${LLM_INSTANT_BATCH:-512}
     healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:8081/health"]
+      test: [ "CMD", "curl", "-sf", "http://localhost:8081/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -73,7 +73,7 @@ services:
       - N_PREDICT=${LLM_STANDARD_PREDICT:-1024}
       - BATCH_SIZE=${LLM_STANDARD_BATCH:-512}
     healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:8082/health"]
+      test: [ "CMD", "curl", "-sf", "http://localhost:8082/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -97,7 +97,7 @@ services:
       - N_PREDICT=${LLM_DEEP_PREDICT:-2048}
       - BATCH_SIZE=${LLM_DEEP_BATCH:-256}
     healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:8083/health"]
+      test: [ "CMD", "curl", "-sf", "http://localhost:8083/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -194,6 +194,7 @@ services:
       - PYTHONUNBUFFERED=1
     volumes:
       - gmail_tokens:/app/tokens
+      - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - internal
     # No external port — Traefik handles routing
@@ -227,7 +228,7 @@ services:
   redis:
     image: redis:7-alpine
     restart: always
-    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
+    command: [ "redis-server", "--requirepass", "${REDIS_PASSWORD}" ]
     networks:
       - internal
     volumes:
@@ -242,7 +243,7 @@ services:
     healthcheck:
       # Test actual DNS resolution, not just the web UI — gravity.db corruption
       # makes the web UI healthy while DNS silently fails for all clients.
-      test: ["CMD", "dig", "@127.0.0.1", "open.zero", "+short", "+time=3"]
+      test: [ "CMD", "dig", "@127.0.0.1", "open.zero", "+short", "+time=3" ]
       interval: 30s
       timeout: 5s
       retries: 3

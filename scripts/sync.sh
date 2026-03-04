@@ -90,8 +90,8 @@ TEST_URL="${TEST_URL%/}"
 
 echo ""
 echo "🧪 Running post-deploy regression suite against $TEST_URL ..."
-echo "   (waiting 8s for backend to be ready)"
-sleep 8
+echo "   (waiting 25s for backend to be ready)"
+sleep 25
 
 # Check Python + httpx available
 if ! python3 -c "import httpx, asyncio" 2>/dev/null; then
@@ -103,8 +103,10 @@ fi
 if python3 scripts/test_live_vps_protocols.py --url "$TEST_URL"; then
   echo ""
   echo "✅ All regression tests passed."
+  echo "📄 Full report saved to: docs/artifacts/regression_results.md"
 else
   echo ""
   echo "❌ REGRESSION DETECTED — review output above before proceeding."
+  echo "📄 Partial/Failed report saved to: docs/artifacts/regression_results.md"
   exit 1
 fi

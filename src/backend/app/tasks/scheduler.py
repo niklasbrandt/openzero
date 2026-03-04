@@ -292,7 +292,7 @@ async def check_pihole_dns():
 
 	try:
 		result = subprocess.run(
-			["dig", "@127.0.0.1", "open.zero", "+short", "+time=3", "+tries=1"],
+			["dig", f"@{settings.SERVER_IP}", "open.zero", "+short", "+time=3", "+tries=1"],
 			capture_output=True, text=True, timeout=8
 		)
 		dns_ok = result.returncode == 0 and result.stdout.strip() != ""
@@ -317,7 +317,7 @@ async def check_pihole_dns():
 
 	# DNS failed
 	_dns_fail_count += 1
-	logger.warning("dns_watchdog: DNS failure #%d — 127.0.0.1:53 not answering for open.zero", _dns_fail_count)
+	logger.warning("dns_watchdog: DNS failure #%d — %s:53 not answering for open.zero", _dns_fail_count, settings.SERVER_IP)
 
 	# Inspect FTL log for gravity DB corruption signature
 	gravity_broken = False
@@ -326,7 +326,9 @@ async def check_pihole_dns():
 			["docker", "exec", "openzero-pihole-1", "tail", "-50", "/var/log/pihole/FTL.log"],
 			capture_output=True, text=True, timeout=10
 		)
-		if "no such table" in ftl_check.stdout or "gravityDB" in ftl_check.stdout:
+		ftl_out = ftl_check.stdout.lower()
+		# Add more patterns like 'database not available'
+		if "no such table" in ftl_out or "gravitydb" in ftl_out or "database not available" in ftl_out:
 			gravity_broken = True
 			logger.error("dns_watchdog: gravity DB corruption detected in FTL.log")
 	except Exception as e:

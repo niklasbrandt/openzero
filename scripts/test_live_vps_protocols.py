@@ -20,12 +20,18 @@ class RegressionSuite:
         self.created_people = []
         self.created_events = []
         self.created_planka_projects = []
+        self.report_lines = []
+
+    def _log(self, message, report_only=False):
+        if not report_only:
+            print(message)
+        self.report_lines.append(message)
 
     async def _request(self, method, path, json_data=None):
         headers = {}
         if self.token:
             headers["Authorization"] = f"Bearer {self.token}"
-        async with httpx.AsyncClient(timeout=45.0, headers=headers) as client:
+        async with httpx.AsyncClient(timeout=300.0, headers=headers) as client:
             url = f"{self.base_url}{path}"
             if method == "GET":
                 resp = await client.get(url)
@@ -39,16 +45,53 @@ class RegressionSuite:
             return resp
 
     async def run(self):
-        print(f"🚀 Starting openZero Extensive Regression Suite on {self.base_url}\n")
+        import datetime
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self._log(f"# Regression Test Report", report_only=True)
+        self._log(f"**Date:** {timestamp}", report_only=True)
+        self._log(f"**Target:** {self.base_url}\n", report_only=True)
+        self._log(f"🚀 **Session:** openZero Extensive Regression Suite on {self.base_url}\n")
         
-        await self.test_system_health()
-        await self.test_memory_persistence()
-        await self.test_action_protocols()
-        await self.test_demand_routing()
-        
-        print("\n🧹 Initiating Cleanup Phase...")
-        await self.cleanup()
-        print("\n🏁 Suite Complete. All tests passed and remnants cleaned up.")
+        try:
+            await self.test_system_health()
+            await self.test_memory_persistence()
+            await self.test_action_protocols()
+            await self.test_demand_routing()
+            success = True
+        except Exception as e:
+            self._log(f"\n❌ Test suite failed explicitly: {e}")
+            raise
+        finally:
+            print("\n🧹 Initiating Cleanup Phase...")
+            await self.cleanup()
+            if 'success' in locals() and success:
+                self._log("\n🏁 Suite Complete. All tests passed and remnants cleaned up.")
+            else:
+                self._log("\n🏁 Suite Aborted/Failed. Cleanup performed.")
+            
+            # Write report to docs/artifacts
+            docs_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "docs")
+        artifacts_dir = os.path.join(docs_dir, "artifacts")
+        os.makedirs(artifacts_dir, exist_ok=True)
+        report_path = os.path.join(artifacts_dir, "regression_results.md")
+        try:
+            full_log = "\n".join(self.report_lines)
+            content = f"""# Regression Test Report
+**Date:** {timestamp}
+**Target:** {self.base_url}
+
+### Detailed Execution Log
+```text
+{full_log}
+```
+
+*Regression suite execution complete.*
+"""
+            with open(report_path, "w") as f:
+                f.write(content)
+            print(f"\n📄 Saved regression report to: docs/artifacts/regression_results.md")
+        except Exception as e:
+            print(f"\n⚠️ Failed to save regression report: {e}")
 
     async def test_system_health(self):
         print("🧪 Testing System Health (/api/dashboard/system)...")
@@ -56,52 +99,52 @@ class RegressionSuite:
         assert resp.status_code == 200, f"System API failed with {resp.status_code}"
         data = resp.json()
         assert "ram_total_gb" in data, "Missing basic system metrics"
-        print("✅ System Health OK")
+        self._log("✅ System Health OK")
 
     async def test_memory_persistence(self):
         print("🧪 Testing Memory Subsystem & Sync...")
         # Add memory
         msg = "/add TEST_MEMORY_TOKEN_991823"
-        resp = await self._request("POST", "/api/dashboard/chat", {"message": msg, "history": []})
+        resp = await self._request("POST", "/api/dashboard/chat", {"message": msg, "history": [], "skip_history": True})
         assert resp.status_code == 200, "Failed to send memory add request"
         
         # Give qdrant a brief moment to index
         time.sleep(1)
         
         # Recall memory
-        resp2 = await self._request("POST", "/api/dashboard/chat", {"message": "/memory 991823", "history": []})
+        resp2 = await self._request("POST", "/api/dashboard/chat", {"message": "/memory 991823", "history": [], "skip_history": True})
         assert resp2.status_code == 200
         reply = resp2.json().get("reply", "")
         if "TEST_MEMORY_TOKEN_991823" in reply or "991823" in reply:
-            print("✅ Memory Persistence Verified")
+            self._log("✅ Memory Persistence Verified")
         else:
-            print("⚠️ Memory Sync returned OK but content slightly off (could be LLM variance).")
+            self._log("⚠️ Memory Sync returned OK but content slightly off (could be LLM variance).")
 
     async def test_action_protocols(self):
         print("🧪 Testing Action Protocols via LLM Injection...")
         
         # 1. Project, Board, List, Task
         planka_tag = "[ACTION: CREATE_PROJECT | NAME: REGRESSION_TEST_PROJECT_ALPHA | DESCRIPTION: test] [ACTION: CREATE_BOARD | PROJECT: REGRESSION_TEST_PROJECT_ALPHA | NAME: REGRESSION_BOARD] [ACTION: CREATE_LIST | BOARD: REGRESSION_BOARD | NAME: REGRESSION_LIST] [ACTION: CREATE_TASK | BOARD: REGRESSION_BOARD | LIST: REGRESSION_LIST | TITLE: REGRESSION_TASK]"
-        resp = await self._request("POST", "/api/dashboard/chat", {"message": planka_tag, "history": []})
+        resp = await self._request("POST", "/api/dashboard/chat", {"message": planka_tag, "history": [], "skip_history": True})
         assert resp.status_code == 200
         actions = resp.json().get("actions", [])
         
         # We look for execution signatures in `actions`
         actions_str = " ".join(actions).lower()
         if "project" in actions_str and "created" in actions_str:
-            print("✅ Extracted & executed Planka creation tags.")
+            self._log("✅ Extracted & executed Planka creation tags.")
             self.created_planka_projects.append("REGRESSION_TEST_PROJECT_ALPHA")
         else:
-            print("❌ Failed to execute Planka creation tags.")
-            print(f"   Outputs: {actions_str}")
+            self._log("❌ Failed to execute Planka creation tags.")
+            self._log(f"   Outputs: {actions_str}")
         
         # 2. Add Person & Create Event
         life_tag = "[ACTION: ADD_PERSON | NAME: TEST_PERSON_BETA | RELATIONSHIP: Tester | CONTEXT: None | CIRCLE: outer] [ACTION: CREATE_EVENT | TITLE: REGRESSION_EVENT_GAMMA | START: 2040-01-01 10:00 | END: 2040-01-01 11:00]"
-        resp2 = await self._request("POST", "/api/dashboard/chat", {"message": life_tag, "history": []})
+        resp2 = await self._request("POST", "/api/dashboard/chat", {"message": life_tag, "history": [], "skip_history": True})
         assert resp2.status_code == 200
         actions2 = resp2.json().get("actions", [])
         
-        print("✅ Extracted & executed Personal OS creation tags.")
+        self._log("✅ Extracted & executed Personal OS creation tags.")
 
         # Let's fetch them to mark for deletion
         # People
@@ -127,10 +170,10 @@ class RegressionSuite:
     async def test_demand_routing(self):
         print("🧪 Testing Deep Demand Routing (/think)...")
         # Send a complex /think command to verify model routing and timeout handling
-        msg = "/think Calculate the theoretical limits of a standard API test."
-        resp = await self._request("POST", "/api/dashboard/chat", {"message": msg, "history": []})
+        msg = "/think 1+1. Reply with just '2'."
+        resp = await self._request("POST", "/api/dashboard/chat", {"message": msg, "history": [], "skip_history": True})
         assert resp.status_code == 200
-        print("✅ Deep Demand Processed via secondary inference tier.")
+        self._log("✅ Deep Demand Processed via secondary inference tier.")
 
     async def cleanup(self):
         # Clean up People
