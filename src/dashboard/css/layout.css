@@ -105,6 +105,9 @@ welcome-onboarding {
 
 	.dashboard-card {
 		margin-bottom: 1.5rem;
+		/* Phase 2 optimization: skip painting for off-screen cards */
+		content-visibility: auto;
+		contain-intrinsic-size: 1px 400px;
 	}
 }
 
