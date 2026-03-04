@@ -478,6 +478,17 @@ _EN = {
     "nav_software": "Software",
     "nav_benchmark": "Benchmark",
 
+    # ── Structural i18n (light-DOM landmarks, skip-link, footer) ──
+    "skip_to_content": "Skip to main content",
+    "aria_nav_landmark": "Dashboard section navigation",
+    "aria_nav_drawer": "Navigation menu",
+    "drawer_heading": "Navigate",
+    "aria_close_nav": "Close navigation menu",
+    "aria_open_nav": "Open navigation menu",
+    "aria_quick_actions": "Quick actions",
+    "footer_tagline": "openZero \u2014 Private AI Agent Operating System",
+    "aria_github_link": "openZero on GitHub (opens in new tab)",
+
     # -- Languages --
     "lang_en": "English",
     "lang_de": "German",
@@ -1011,6 +1022,17 @@ _DE = {
     "nav_hardware": "Hardware",
     "nav_software": "Software",
     "nav_benchmark": "Benchmark",
+
+    # ── Structural i18n (light-DOM landmarks, skip-link, footer) ──
+    "skip_to_content": "Zum Hauptinhalt springen",
+    "aria_nav_landmark": "Dashboard-Bereichsnavigation",
+    "aria_nav_drawer": "Navigationsmenue",
+    "drawer_heading": "Navigieren",
+    "aria_close_nav": "Navigationsmenue schliessen",
+    "aria_open_nav": "Navigationsmenue oeffnen",
+    "aria_quick_actions": "Schnellaktionen",
+    "footer_tagline": "openZero \u2014 Privates KI-Agenten-Betriebssystem",
+    "aria_github_link": "openZero auf GitHub (oeffnet in neuem Tab)",
 
     # -- Sprachen --
     "lang_en": "Englisch",
