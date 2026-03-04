@@ -87,18 +87,20 @@ export class ChatPrompt extends HTMLElement {
 			fetch('/api/dashboard/system').catch(() => { });
 		}, { once: true }); // Only once per session/load
 
-		// Retry failed messages when user comes back to the tab
+		// Sync chat (including Telegram messages) when the user returns to the tab/window
+		const syncOnReturn = () => {
+			if (this.pendingRequests === 0) {
+				if (this.pendingRetry) {
+					this.retryPending();
+				} else {
+					this.loadHistory();
+				}
+			}
+		};
 		document.addEventListener('visibilitychange', () => {
-			if (document.visibilityState === 'visible' && this.pendingRetry && this.pendingRequests === 0) {
-				this.retryPending();
-			}
+			if (document.visibilityState === 'visible') syncOnReturn();
 		});
-
-		window.addEventListener('focus', () => {
-			if (this.pendingRetry && this.pendingRequests === 0) {
-				this.retryPending();
-			}
-		});
+		window.addEventListener('focus', syncOnReturn);
 	}
 
 	private async handleSend() {

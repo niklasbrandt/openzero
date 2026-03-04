@@ -235,7 +235,7 @@ export class ZPersonality extends HTMLElement {
 					
 					${!this.isLoading && this.isEditing ? `
 						<div class="form">
-							${per.questions.map((q: any) => `
+							${per.questions.filter((q: any) => q.id !== 'agent_name').map((q: any) => `
 								<div class="form-group">
 									<label class="form-label">${q.label}</label>
 									${q.type === 'range' ? `
