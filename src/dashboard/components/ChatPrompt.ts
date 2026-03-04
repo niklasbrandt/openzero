@@ -129,20 +129,6 @@ export class ChatPrompt extends HTMLElement {
 		this.updateSendButton();
 		this.showTypingIndicator();
 
-		// UX for slow local CPU generation
-		const slowWarningTimer = setTimeout(() => {
-			const typingBubble = this.shadowRoot?.querySelector('.typing-bubble');
-			if (typingBubble) {
-				const warning = document.createElement('div');
-				warning.style.fontSize = '0.75rem';
-				warning.style.color = 'rgba(255, 255, 255, 0.78)';
-				warning.style.marginTop = '0.5rem';
-				warning.style.marginLeft = '0.5rem';
-				warning.innerText = this.tr('warming_up', 'Warming up local engine...');
-				typingBubble.parentElement?.appendChild(warning);
-			}
-		}, 6000);
-
 		try {
 			const response = await fetch('/api/dashboard/chat', {
 				method: 'POST',
@@ -191,7 +177,6 @@ export class ChatPrompt extends HTMLElement {
 				timestamp: new Date(),
 			});
 		} finally {
-			clearTimeout(slowWarningTimer);
 			this.pendingRequests = Math.max(0, this.pendingRequests - 1);
 			this.updateSendButton();
 			if (this.pendingRequests <= 0) this.hideTypingIndicator();

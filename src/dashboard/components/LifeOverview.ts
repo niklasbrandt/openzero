@@ -9,13 +9,18 @@ export class LifeOverview extends HTMLElement {
 	}
 
 	connectedCallback() {
-		this.render();
-		this.loadTranslations().then(() => this.fetchData());
+		this.loadTranslations().then(() => {
+			this.render();
+			this.fetchData();
+		});
 		window.addEventListener('refresh-data', () => {
 			this.fetchData();
 		});
 		window.addEventListener('identity-updated', () => {
-			this.loadTranslations().then(() => this.fetchData());
+			this.loadTranslations().then(() => {
+				this.render();
+				this.fetchData();
+			});
 		});
 	}
 
