@@ -287,12 +287,16 @@ project-tree:defined {
   }
 }
 
-/* Extra-large viewports: give the grid breathing room so it doesn't hug
+/* Extra-large viewports: give the layout breathing room so it doesn't hug
    the sidebar edge on ultra-wide monitors (≥1600px). */
 @media (min-width: 1600px) {
   #app {
     padding: 2.5rem 3rem 6rem 3rem;
-    gap: 2.5rem;
+    column-gap: 2.5rem;
+  }
+
+  .dashboard-card {
+    margin-bottom: 2.5rem;
   }
 }
 
@@ -526,17 +530,13 @@ project-tree:defined {
 #app {
   width: 100%;
   max-width: 1400px;
-  /* Center the grid. At ≥1100px, main#main-content already has padding-left:56px
+  /* Center the layout. At ≥1100px, main#main-content already has padding-left:56px
      (sidebar width) so margin:0 auto centers within the remaining viewport. */
   margin: 0 auto;
   padding: 2rem 2rem 6rem 2rem;
-  /* Two-column grid: items flow left-to-right so visual order matches the
-     sidebar / DOM order (CSS column-count filled top-to-bottom per column,
-     which broke the correspondence). */
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 2rem;
-  align-items: start;
+  /* Masonry: two-column flow packs widgets vertically without row gaps. */
+  column-count: 2;
+  column-gap: 2rem;
   min-width: 0;
   overflow-x: hidden;
   box-sizing: border-box;
@@ -566,8 +566,10 @@ h3 {
     0 8px 32px rgba(0, 0, 0, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
   transition: border-color 0.4s ease, box-shadow 0.4s ease;
-  /* break-inside kept for older column-count fallback (no-op in grid) */
+  /* Prevent masonry column breaks inside cards */
   break-inside: avoid;
+  /* Vertical spacing between cards in masonry flow */
+  margin-bottom: 2rem;
   /* Skip rendering for off-screen cards — reduces initial paint work. */
   content-visibility: auto;
   contain-intrinsic-size: auto 300px;
@@ -586,8 +588,8 @@ h3 {
 }
 
 .dashboard-header {
-  /* Span both grid columns */
-  grid-column: 1 / -1;
+  /* Span both masonry columns */
+  column-span: all;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -634,8 +636,8 @@ h3 {
 .chat-card,
 .life-overview-card,
 welcome-onboarding {
-  /* Span both grid columns */
-  grid-column: 1 / -1;
+  /* Span both masonry columns */
+  column-span: all;
 }
 
 .dashboard-header h1 {
@@ -805,21 +807,29 @@ pre {
   transform: translateX(-50%) translateY(10px);
 }
 
-/* ── Tablet (700px – 1099px): two-column grid below the marquee nav ── */
+/* ── Tablet (700px – 1099px): two-column masonry below the marquee nav ── */
 @media (min-width: 700px) and (max-width: 1099px) {
   #app {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1.5rem;
+    column-count: 2;
+    column-gap: 1.5rem;
     padding: 1.5rem 1.5rem 5rem 1.5rem;
+  }
+
+  .dashboard-card {
+    margin-bottom: 1.5rem;
   }
 }
 
 /* ── Mobile (≤699px): single column ── */
 @media (max-width: 699px) {
   #app {
-    grid-template-columns: 1fr;
-    gap: 1rem;
+    column-count: 1;
+    column-gap: 0;
     padding: 0.75rem;
+  }
+
+  .dashboard-card {
+    margin-bottom: 1rem;
   }
 
   .dashboard-header {
@@ -865,8 +875,8 @@ pre {
 
 /* Footer Section */
 .dashboard-footer {
-  /* Span both grid columns */
-  grid-column: 1 / -1;
+  /* Span both masonry columns */
+  column-span: all;
   display: flex;
   justify-content: space-between;
   align-items: center;
