@@ -243,10 +243,9 @@ class RegressionSuite:
 		return cmd
 
 	async def test_briefing_commands(self):
-		print("🧪 Briefing commands (/day, /week, /month, /quarter, /year) [parallel]...")
-		cmds = ["/day", "/week", "/month", "/quarter", "/year"]
-		results = await asyncio.gather(*[self._briefing_request(cmd) for cmd in cmds])
-		for cmd in results:
+		print("🧪 Briefing commands (/day, /week, /month, /quarter, /year) [600s timeout each]...")
+		for cmd in ["/day", "/week", "/month", "/quarter", "/year"]:
+			await self._briefing_request(cmd)
 			self._log(f"✅ {cmd} OK")
 		self._log("✅ All briefing commands returned 200")
 
