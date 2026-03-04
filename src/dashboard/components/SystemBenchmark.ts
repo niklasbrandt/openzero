@@ -483,6 +483,13 @@ export class SystemBenchmark extends HTMLElement {
 				}
 
 				.legend-item:focus-visible { outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); outline-offset: 2px; border-radius: 2px; }
+				@media (forced-colors: active) {
+					.h-icon { background: ButtonFace; border: 1px solid ButtonText; }
+					.bench-btn { border: 1px solid Highlight; color: Highlight; }
+					.legend-dot { border: 1px solid ButtonText; }
+					.rating-badge { border: 1px solid ButtonText; }
+					.thread-warning { border-color: LinkText; color: LinkText; }
+				}
 			</style>
 
 			<h2>
@@ -496,10 +503,10 @@ export class SystemBenchmark extends HTMLElement {
 
 			<div class="bench-header-bar">
 				<div class="bench-actions">
-					<button class="bench-btn has-tip" id="bench-instant" data-tip="${this.tr('tip_bench_instant', 'Benchmark the instant tier (~3-4B model). Used for quick tasks like fact extraction and classification.')}" aria-label="Benchmark instant tier">${this.tr('bench_instant', 'Bench instant')}</button>
-					<button class="bench-btn has-tip" id="bench-standard" data-tip="${this.tr('tip_bench_standard', 'Benchmark the standard tier (~8B model). Used for general conversation and reasoning.')}" aria-label="Benchmark standard tier">${this.tr('bench_standard', 'Bench standard')}</button>
-					<button class="bench-btn has-tip" id="bench-deep" data-tip="${this.tr('tip_bench_deep', 'Benchmark the deep tier (~14B model). Used for complex analysis and strategic thinking.')}" aria-label="Benchmark deep tier">${this.tr('bench_deep', 'Bench deep')}</button>
-					<button class="bench-btn all has-tip" id="bench-all" data-tip="${this.tr('tip_bench_all', 'Run all three tier benchmarks sequentially to get a complete performance picture.')}" aria-label="Run all benchmarks">${this.tr('bench_run_all', 'Run All')}</button>
+					<button class="bench-btn has-tip" id="bench-instant" data-tip="${this.tr('tip_bench_instant', 'Benchmark the instant tier (~3-4B model). Used for quick tasks like fact extraction and classification.')}" aria-label="${this.tr('aria_bench_instant', 'Benchmark instant tier')}">${this.tr('bench_instant', 'Bench instant')}</button>
+					<button class="bench-btn has-tip" id="bench-standard" data-tip="${this.tr('tip_bench_standard', 'Benchmark the standard tier (~8B model). Used for general conversation and reasoning.')}" aria-label="${this.tr('aria_bench_standard', 'Benchmark standard tier')}">${this.tr('bench_standard', 'Bench standard')}</button>
+					<button class="bench-btn has-tip" id="bench-deep" data-tip="${this.tr('tip_bench_deep', 'Benchmark the deep tier (~14B model). Used for complex analysis and strategic thinking.')}" aria-label="${this.tr('aria_bench_deep', 'Benchmark deep tier')}">${this.tr('bench_deep', 'Bench deep')}</button>
+					<button class="bench-btn all has-tip" id="bench-all" data-tip="${this.tr('tip_bench_all', 'Run all three tier benchmarks sequentially to get a complete performance picture.')}" aria-label="${this.tr('aria_bench_all', 'Run all benchmarks')}">${this.tr('bench_run_all', 'Run All')}</button>
 				</div>
 			</div>
 

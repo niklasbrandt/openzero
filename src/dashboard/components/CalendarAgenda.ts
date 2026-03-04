@@ -137,7 +137,7 @@ export class CalendarAgenda extends HTMLElement {
 										data-id="${e.id}"
 										${!e.is_local || e.is_birthday ? 'disabled' : ''}
 										aria-label="${!e.is_local || e.is_birthday ? this.tr('aria_event_name', 'Event') + ': ' : this.tr('aria_edit_event', 'Edit event title') + ': '}${e.summary}"
-										style="background: transparent; border: none; font-size: 0.9rem; font-weight: 500; color: #fff; width: 100%; outline: none;">
+										style="background: transparent; border: none; font-size: 0.9rem; font-weight: 500; color: var(--text-primary, hsla(0, 0%, 100%, 1)); width: 100%; outline: none;">
 								</span>
 								${e.is_local && !e.is_birthday ? `<button class="delete-btn btn-sm" data-id="${e.id}" title="${this.tr('delete', 'Delete')}" aria-label="${this.tr('delete', 'Delete')}">✕</button>` : ''}
 							</div>
@@ -249,7 +249,7 @@ export class CalendarAgenda extends HTMLElement {
 					.day { color: var(--accent-color, hsla(173, 80%, 40%, 1)); font-weight: 700; }
 					.time { color: var(--text-muted, rgba(255, 255, 255, 0.4)); }
 					.details { display: flex; flex-direction: column; gap: 0.25rem; flex: 1; }
-					.summary { font-size: 0.9rem; color: #fff; font-weight: 500; }
+					.summary { font-size: 0.9rem; color: var(--text-primary, hsla(0, 0%, 100%, 1)); font-weight: 500; }
 					.person-badge {
 						align-self: flex-start;
 						font-size: 0.7rem;
@@ -294,6 +294,12 @@ export class CalendarAgenda extends HTMLElement {
 					.event-title-edit:focus-visible { outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); outline-offset: 1px; border-radius: 2px; }
 					.delete-btn:focus-visible { outline: 2px solid var(--color-danger, hsla(0, 91%, 71%, 1)); outline-offset: 2px; }
 					.delete-btn { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+					@media (forced-colors: active) {
+						.h-icon { background: ButtonFace; border: 1px solid ButtonText; }
+						.filter-btn.active { border-color: Highlight; }
+						.person-badge, .location-badge { border: 1px solid ButtonText; }
+						.birthday-item { border-color: LinkText; animation: none; }
+					}
 				</style>
 				<div class="card">
 					<div class="header-container">
@@ -308,8 +314,8 @@ export class CalendarAgenda extends HTMLElement {
 					</span>
 					${this.tr('calendar_agenda', 'Calendar')}
 				</h2>
-					<a href="https://calendar.google.com" target="_blank" class="calendar-link" title="Open Google Calendar" aria-label="${this.tr('aria_open_google_calendar', 'Open Google Calendar (opens in new tab)')}" rel="noopener noreferrer">
-							<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<a href="https://calendar.google.com" target="_blank" class="calendar-link" title="${this.tr('aria_open_google_calendar', 'Open Google Calendar (opens in new tab)')}" aria-label="${this.tr('aria_open_google_calendar', 'Open Google Calendar (opens in new tab)')}" rel="noopener noreferrer">
+							<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
 								<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
 								<line x1="16" y1="2" x2="16" y2="6"></line>
 								<line x1="8" y1="2" x2="8" y2="6"></line>
