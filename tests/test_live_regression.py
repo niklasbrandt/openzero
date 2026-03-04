@@ -32,14 +32,14 @@ class RegressionSuite:
 
 	def _log(self, message, report_only=False):
 		if not report_only:
-			print(message)
+			print(message, flush=True)
 		self.report_lines.append(message)
 
-	async def _request(self, method, path, json_data=None):
+	async def _request(self, method, path, json_data=None, timeout=300.0):
 		headers = {}
 		if self.token:
 			headers["Authorization"] = f"Bearer {self.token}"
-		async with httpx.AsyncClient(timeout=300.0, headers=headers) as client:
+		async with httpx.AsyncClient(timeout=timeout, headers=headers) as client:
 			url = f"{self.base_url}{path}"
 			if method == "GET":
 				return await client.get(url)
@@ -58,7 +58,7 @@ class RegressionSuite:
 		self._log(f"# Regression Test Report", report_only=True)
 		self._log(f"**Date:** {timestamp}", report_only=True)
 		self._log(f"**Target:** {self.base_url}\n", report_only=True)
-		print(f"🚀 openZero Regression Suite -- {self.base_url}\n")
+		print(f"🚀 openZero Regression Suite -- {self.base_url}\n", flush=True)
 
 		success = False
 		try:
@@ -92,7 +92,7 @@ class RegressionSuite:
 			self._log(f"\n❌ Suite failed: {e}")
 			raise
 		finally:
-			print("\n🧹 Cleanup...")
+			print("\n🧹 Cleanup...", flush=True)
 			await self.cleanup()
 			status = "All tests passed." if success else "Suite aborted/failed."
 			self._log(f"\n🏁 {status} Cleanup complete.")
@@ -234,14 +234,20 @@ class RegressionSuite:
 	# Briefing commands (LLM-heavy -- verify 200 + non-empty reply only)
 	# ------------------------------------------------------------------
 
+	async def _briefing_request(self, cmd):
+		"""Single briefing call with an extended 600 s timeout."""
+		resp = await self._request("POST", "/api/dashboard/chat", {
+			"message": cmd, "history": [], "skip_history": True,
+		}, timeout=600.0)
+		assert resp.status_code == 200, f"{cmd} returned {resp.status_code}"
+		return cmd
+
 	async def test_briefing_commands(self):
-		print("🧪 Briefing commands (/day, /week, /month, /quarter, /year)...")
-		for cmd in ["/day", "/week", "/month", "/quarter", "/year"]:
-			resp = await self._request("POST", "/api/dashboard/chat", {
-				"message": cmd, "history": [], "skip_history": True,
-			})
-			assert resp.status_code == 200, f"{cmd} returned {resp.status_code}"
-			assert resp.json().get("reply") or True, f"{cmd} returned empty reply"
+		print("🧪 Briefing commands (/day, /week, /month, /quarter, /year) [parallel]...")
+		cmds = ["/day", "/week", "/month", "/quarter", "/year"]
+		results = await asyncio.gather(*[self._briefing_request(cmd) for cmd in cmds])
+		for cmd in results:
+			self._log(f"✅ {cmd} OK")
 		self._log("✅ All briefing commands returned 200")
 
 	# ------------------------------------------------------------------
