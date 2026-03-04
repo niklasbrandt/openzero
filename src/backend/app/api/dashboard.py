@@ -759,7 +759,7 @@ async def get_life_tree(db: AsyncSession = Depends(get_db)):
 					bday_this_year = datetime.datetime(now.year + 1, month, day)
 				
 				days_until = (bday_this_year - now.replace(hour=0, minute=0, second=0)).days
-				if 0 <= days_until <= 7:
+				if 0 <= days_until <= 3:
 					formatted_events.append({
 						"summary": f"🎂 {p.name}'s Birthday",
 						"time": bday_this_year.strftime('%a, %d %b'),
@@ -1118,9 +1118,14 @@ class ProjectCreate(BaseModel):
 
 @router.post("/projects")
 async def create_project(project: ProjectCreate):
-	"""Create a new project via Planka or local storage."""
-	# For now, return success — wire to Planka or DB as needed
-	return {"status": "created", "name": project.name}
+    """Create a new project in Planka."""
+    from app.services.planka import create_project as planka_create_project
+    try:
+        result = await planka_create_project(project.name, project.description)
+        return {"status": "created", "name": project.name, "id": result.get("id")}
+    except Exception as e:
+        logger.error("Failed to create project in Planka: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to create project")
 
 # --- Memory ---
 @router.get("/memory/search")

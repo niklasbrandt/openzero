@@ -650,7 +650,8 @@ project-tree:defined {
   column-count: 2;
   column-gap: 2rem;
   min-width: 0;
-  overflow-x: hidden;
+  /* overflow-x: hidden removed -- body already clips at page level;
+     removing lets tooltips escape card boundaries. */
   box-sizing: border-box;
 }
 
@@ -687,7 +688,8 @@ h3 {
   contain-intrinsic-size: auto 300px;
   /* Prevent column blowout */
   min-width: 0;
-  overflow-x: hidden;
+  /* overflow-x: hidden removed -- word-break + min-width:0 prevent
+     blowout while letting tooltips extend past card edges. */
   word-break: break-word;
 }
 
@@ -914,6 +916,13 @@ pre {
 }
 
 [data-tooltip]:hover::before {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(10px);
+}
+
+[data-tooltip]:focus-visible::before,
+[data-tooltip]:focus-within::before {
   opacity: 1;
   visibility: visible;
   transform: translateX(-50%) translateY(10px);
