@@ -31,6 +31,10 @@ import httpx
 import time as _time
 from collections import defaultdict
 from app.config import settings
+import psutil
+import platform
+import subprocess
+import os
 
 import logging
 
@@ -804,53 +808,6 @@ async def get_life_tree(db: AsyncSession = Depends(get_db)):
 		"projects_tree": tree,
 		"social_circles": social_data,
 		"timeline": formatted_events[:5]
-	}
-
-	# 0. Check if explicitly dismissed
-	from app.models.db import Preference
-	res_dismiss = await db.execute(select(Preference).where(Preference.key == "onboarding_dismissed"))
-	dismissed = res_dismiss.scalar_one_or_none()
-	is_dismissed = dismissed and dismissed.value == "true"
-	
-	# 1. Check if any people are added
-	result = await db.execute(select(Person))
-	people_count = len(result.scalars().all())
-	
-	# 2. Check if about-me.md has been modified
-	import os
-	about_me_path = "/app/personal/about-me.md"
-	has_profile = False
-	if os.path.exists(about_me_path):
-		size = os.path.getsize(about_me_path)
-		if size > 100:
-			has_profile = True
-	
-	if not has_profile:
-		from app.services.memory import semantic_search
-		memories = await semantic_search("my identity and goals", top_k=3)
-		if memories and "No memories found" not in memories:
-			has_profile = True
-			
-	# 3. Check calendar sync
-	from app.services.calendar import get_calendar_service
-	from app.models.db import LocalEvent
-	has_google = get_calendar_service() is not None
-	
-	result = await db.execute(select(LocalEvent))
-	local_count = len(result.scalars().all())
-	
-	has_calendar = has_google or (local_count > 0)
-	
-	needs_onboarding = (not is_dismissed) and ((people_count == 0) or not has_profile or not has_calendar)
-	
-	return {
-		"needs_onboarding": needs_onboarding,
-		"base_url": settings.BASE_URL,
-		"steps": {
-			"inner_circle": people_count > 0,
-			"profile": has_profile,
-			"calendar": has_calendar
-		}
 	}
 
 @router.post("/onboarding-dismiss")
@@ -1866,7 +1823,6 @@ async def get_system_status(db: AsyncSession = Depends(get_db)):
     """Deep health check of all OS subsystems."""
     from app.services.llm import last_model_used
     from app.services.memory import get_memory_stats
-    import subprocess
 
     try:
         mem_stats = await get_memory_stats()
@@ -1874,7 +1830,6 @@ async def get_system_status(db: AsyncSession = Depends(get_db)):
         mem_stats = {"points": 0}
 
     # System RAM for health metrics
-    import psutil
     ram = psutil.virtual_memory()
     ram_total_gb = round(ram.total / (1024**3), 1)
     ram_used_pct = ram.percent
@@ -1897,6 +1852,8 @@ async def get_system_status(db: AsyncSession = Depends(get_db)):
             dns_detail = dig.stdout.strip().split("\n")[0]
         else:
             dns_detail = "no answer"
+    except FileNotFoundError:
+        dns_detail = "dig not found"
     except Exception as e:
         dns_detail = str(e)[:80]
 
