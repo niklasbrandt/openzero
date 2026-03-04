@@ -100,7 +100,7 @@ if ! python3 -c "import httpx, asyncio" 2>/dev/null; then
 fi
 
 # Run the suite; non-zero exit means regressions detected
-if python3 scripts/test_live_vps_protocols.py --url "$TEST_URL"; then
+if python3 tests/test_live_regression.py --url "$TEST_URL"; then
   echo ""
   echo "✅ All regression tests passed."
   echo "📄 Full report saved to: docs/artifacts/regression_results.md"
