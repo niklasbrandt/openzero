@@ -283,6 +283,21 @@ If Z isn't replying or you want to see what he's thinking:
 3. **Check Pi-hole (Privacy DNS):**
    Once Tailscale is connected, browse to `http://YOUR_SERVER_IP/admin` to manage your local DNS.
 
+### Running Regression Tests Manually
+
+To verify the health and AI capabilities of your live openZero deployment at any time, run the integrated regression suite from your laptop:
+
+```bash
+python3 scripts/test_live_vps_protocols.py --url http://YOUR_SERVER_IP --token your_dashboard_token
+```
+
+This live validation suite tests:
+1. **System Health API:** Verifies OS RAM/CPU metrics and subsystem statuses.
+2. **Memory Persistence:** Validates that semantic vault storage and retrieval work through the LLM.
+3. **Action Protocols:** Injects full Semantic Action Tags (for projects, lists, tasks, events, and people) to ensure the backend executes them correctly.
+4. **Deep Routing:** Checks that complex demands successfully route to the deep inference tier.
+5. **Clean up:** Automatically deletes any test data it creates in the database and Planka.
+
 ---
 
 ## 🌐 Optional: Using a Vanity Domain (open.zero)
@@ -311,6 +326,41 @@ Since you cannot safely edit `/etc/hosts` on a mobile phone, and normal Wi-Fi DN
 Tailscale will now magically route _only_ queries for `open.zero` to your OpenZero server, allowing your phone to connect!
 
 Now you can reach your dashboard at `http://open.zero/home`.
+
+---
+
+## 🧪 Phase 8: Running Tests
+
+openZero includes two independent test suites.
+
+### Prompt Injection Risk Tests (Offline)
+
+Validates the prompt construction pipeline against 208 adversarial attack vectors. No running services required -- this tests the structural integrity of how user input is assembled into LLM prompts.
+
+```bash
+# Install pytest (once)
+pip install pytest
+
+# Run all 208 tests
+python -m pytest tests/test_prompt_injection.py -v --tb=short
+
+# Run a specific category
+python -m pytest tests/test_prompt_injection.py -v -k "MemoryPoisoning"
+python -m pytest tests/test_prompt_injection.py -v -k "TelegramSpecific"
+python -m pytest tests/test_prompt_injection.py -v -k "SecurityInvariants"
+```
+
+All tests should pass with 0 failures. See [`docs/artifacts/prompt_injection_tests.md`](docs/artifacts/prompt_injection_tests.md) for full category breakdown and findings.
+
+### Live Protocol Regression Suite (Requires Running Stack)
+
+Tests the end-to-end capabilities of the live environment including LLM responses, memory persistence, and action tag execution.
+
+```bash
+python3 scripts/test_live_vps_protocols.py --url http://YOUR_SERVER_IP --token your_token_here
+```
+
+This suite runs automatically at the end of every `scripts/sync.sh` deployment.
 
 ---
 
