@@ -1,4 +1,5 @@
 import os
+import asyncio
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -34,21 +35,36 @@ async def fetch_unread_emails(max_results: int = 20) -> list[dict]:
 	service = get_gmail_service()
 	if not service:
 		return []
-	
+
 	try:
-		results = service.users().messages().list(
-			userId="me",
-			q="is:unread",
-			maxResults=max_results,
-		).execute()
+		loop = asyncio.get_event_loop()
+
+		# Wrap the synchronous list call so it doesn't block the asyncio event loop
+		results = await loop.run_in_executor(
+			None,
+			lambda: service.users().messages().list(
+				userId="me",
+				q="is:unread",
+				maxResults=max_results,
+			).execute()
+		)
 
 		messages = results.get("messages", [])
+
+		# Fetch each message detail in parallel (non-blocking)
+		async def _fetch_detail(msg_id: str):
+			return await loop.run_in_executor(
+				None,
+				lambda: service.users().messages().get(
+					userId="me", id=msg_id, format="metadata",
+					metadataHeaders=["From", "Subject"],
+				).execute()
+			)
+
+		details = await asyncio.gather(*[_fetch_detail(m["id"]) for m in messages])
+
 		emails = []
-		for msg in messages:
-			detail = service.users().messages().get(
-				userId="me", id=msg["id"], format="metadata",
-				metadataHeaders=["From", "Subject"],
-			).execute()
+		for msg, detail in zip(messages, details):
 			headers = {h["name"]: h["value"] for h in detail["payload"]["headers"]}
 			emails.append({
 				"id": msg["id"],

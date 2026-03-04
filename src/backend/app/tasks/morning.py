@@ -56,9 +56,6 @@ async def morning_briefing():
 		people = people_result.scalars().all()
 	
 	# --- Contextual Automation ---
-	automation_actions = await run_contextual_automation(people)
-	automation_summary = "\n".join([f"- {a}" for a in automation_actions]) if automation_actions else "No automated tasks created today."
-	
 	async def get_person_briefing_data(p: Person):
 		data = f"- {p.name} ({p.relationship}): {p.context}"
 		if p.birthday:
@@ -70,32 +67,44 @@ async def morning_briefing():
 
 	inner_circle_tasks = [get_person_briefing_data(p) for p in people if p.circle_type == "inner"]
 	close_circle_tasks = [get_person_briefing_data(p) for p in people if p.circle_type == "close"]
-	
-	inner_context_list = await asyncio.gather(*inner_circle_tasks)
-	close_context_list = await asyncio.gather(*close_circle_tasks)
-	
+
+	inner_context_list, close_context_list = await asyncio.gather(
+		asyncio.gather(*inner_circle_tasks),
+		asyncio.gather(*close_circle_tasks),
+	)
+
 	inner_context = "\n".join(inner_context_list) if inner_context_list else "No primary family focus today."
 	close_context = "\n".join(close_context_list) if close_context_list else "No specific friend connections planned."
-	
-	# 2.2 Gather Calendar & Weather Context
-	try:
-		calendar_events = await fetch_calendar_events(days_ahead=0)
-	except Exception as ce:
-		print(f"DEBUG: Calendar fetch during briefing skipped: {ce}")
-		calendar_events = []
+
+	# 2.2 Batch 1 — calendar + automation in parallel (both independent)
+	print("DEBUG: morning_briefing — starting batch-1 gather (calendar + automation)")
+	_t1 = asyncio.get_event_loop().time()
+
+	async def _fetch_calendar_safe():
+		try:
+			return await fetch_calendar_events(days_ahead=0)
+		except Exception as ce:
+			print(f"DEBUG: Calendar fetch during briefing skipped: {ce}")
+			return []
+
+	calendar_events, automation_actions = await asyncio.gather(
+		_fetch_calendar_safe(),
+		run_contextual_automation(people),
+	)
+	print(f"DEBUG: morning_briefing — batch-1 done in {asyncio.get_event_loop().time() - _t1:.1f}s")
+
+	automation_summary = "\n".join([f"- {a}" for a in automation_actions]) if automation_actions else "No automated tasks created today."
 
 	calendar_summary_parts = []
 	for e in calendar_events:
 		time_str = e['start'].split('T')[1][:5] if 'T' in e['start'] else None
 		if time_str == "00:00": time_str = None
-		
 		item = f"- {e['summary']}"
 		if time_str: item += f" ({time_str})"
 		calendar_summary_parts.append(item)
-	
 	calendar_summary = "\n".join(calendar_summary_parts) if calendar_summary_parts else "No events scheduled for today."
-	
-	# Simple travel detection
+
+	# Simple travel detection (needs calendar result — done before batch 2)
 	detected_location = None
 	for event in calendar_events:
 		summary = event['summary'].lower()
@@ -105,31 +114,35 @@ async def morning_briefing():
 					detected_location = event['summary'].split(kw.strip())[-1].strip()
 					break
 		if detected_location: break
-	
-	weather_report = await get_weather_forecast(detected_location)
-	
-	tree = await get_project_tree(as_html=False)
-	
-	# 2.3 Gather latest email context
+
+	# 2.3 Batch 2 — weather + project tree + email context + memories (all independent)
+	print("DEBUG: morning_briefing — starting batch-2 gather (weather + tree + emails + memories)")
+	_t2 = asyncio.get_event_loop().time()
+
 	from app.models.db import EmailSummary
-	async with AsyncSessionLocal() as session:
-		# Get summaries not yet included
-		res = await session.execute(select(EmailSummary).where(EmailSummary.included_in_briefing == False))
-		summaries = res.scalars().all()
-		
-		if summaries:
-			email_summary = "\n".join([f"- {s.sender}: {s.subject} {f'[{s.badge}]' if s.badge else ''} (Summary: {s.summary})" for s in summaries])
-			# Mark as read
-			for s in summaries: s.included_in_briefing = True
-			await session.commit()
-		else:
-			# Fallback to direct fetch if no cached summaries
-			emails = await fetch_unread_emails(max_results=5)
-			email_summary = "\n".join([f"- {e['from']}: {e['subject']}" for e in emails]) if emails else "No new emails."
-	
-	# 2.4 Gather yesterday's new memories for quality review
 	from app.services.memory import get_recent_memories
-	recent_memories = await get_recent_memories(hours=24)
+
+	async def _get_email_summary():
+		async with AsyncSessionLocal() as session:
+			res = await session.execute(select(EmailSummary).where(EmailSummary.included_in_briefing == False))
+			summaries = res.scalars().all()
+			if summaries:
+				result = "\n".join([f"- {s.sender}: {s.subject} {f'[{s.badge}]' if s.badge else ''} (Summary: {s.summary})" for s in summaries])
+				for s in summaries: s.included_in_briefing = True
+				await session.commit()
+				return result
+		# Fallback to direct fetch if no cached summaries
+		emails = await fetch_unread_emails(max_results=5)
+		return "\n".join([f"- {e['from']}: {e['subject']}" for e in emails]) if emails else "No new emails."
+
+	weather_report, tree, email_summary, recent_memories = await asyncio.gather(
+		get_weather_forecast(detected_location),
+		get_project_tree(as_html=False),
+		_get_email_summary(),
+		get_recent_memories(hours=24),
+	)
+	print(f"DEBUG: morning_briefing — batch-2 done in {asyncio.get_event_loop().time() - _t2:.1f}s")
+
 	memory_review = ""
 	if recent_memories:
 		memory_review = "\n".join([f"• {m['text']}" for m in recent_memories])
@@ -150,8 +163,15 @@ async def morning_briefing():
 		f"LATEST EMAILS:\n{email_summary}\n"
 	)
 	
-	# 3. Generate Briefing
-	raw_content = await chat(full_prompt)
+	# 3. Generate Briefing — deep tier with 90s hard timeout, fallback to standard
+	print("DEBUG: morning_briefing — starting LLM generation")
+	_t3 = asyncio.get_event_loop().time()
+	try:
+		raw_content = await asyncio.wait_for(chat(full_prompt, tier="deep"), timeout=90.0)
+	except asyncio.TimeoutError:
+		print("DEBUG: morning_briefing — deep tier timed out after 90s, falling back to standard tier")
+		raw_content = await chat(full_prompt, tier="standard")
+	print(f"DEBUG: morning_briefing — LLM done in {asyncio.get_event_loop().time() - _t3:.1f}s")
 	
 	# 3.2 Post-Processing & Cleanup
 	from app.services.agent_actions import parse_and_execute_actions
@@ -187,22 +207,17 @@ async def morning_briefing():
 		reflection = _CLOSING_REFLECTIONS[day_of_year % len(_CLOSING_REFLECTIONS)]
 		content += f"\n\n✨ *Reflection:*\n_{reflection}_"
 
-	# --- Multi-Modal (TTS) ---
-	audio_briefing = None
-	try:
-		# We strip some markdown characters for cleaner speech
-		clean_text = content.replace("*", "").replace("#", "").replace("_", "")
-		audio_briefing = await generate_speech(clean_text)
-	except Exception as e:
-		print(f"TTS Briefing generation failed: {e}")
+	# --- Multi-Modal (TTS) — fire as background task so text delivery is not blocked ---
+	clean_text = content.replace("*", "").replace("#", "").replace("_", "")
+	tts_task = asyncio.create_task(generate_speech(clean_text))
 
 	# 4. Store in Database for Dashboard
 	async with AsyncSessionLocal() as session:
 		briefing = Briefing(type="day", content=content)
 		session.add(briefing)
 		await session.commit()
-	
-	# 5. Send to Telegram (Proactive delivery)
+
+	# 5. Send text notification to Telegram immediately (does not wait for TTS)
 	from app.services.translations import get_translations
 	lang = "en"
 	async with AsyncSessionLocal() as session:
@@ -217,7 +232,13 @@ async def morning_briefing():
 		f"{separator}\n☀️ *Good Morning!*\n\n{content}",
 		reply_markup=get_nav_markup(t)
 	)
-	if audio_briefing:
-		await send_voice_message(audio_briefing, caption="🎙️ Audio Briefing")
+
+	# 5b. Wait for TTS to finish and send voice (with generous timeout — non-blocking for text above)
+	try:
+		audio_briefing = await asyncio.wait_for(tts_task, timeout=90.0)
+		if audio_briefing:
+			await send_voice_message(audio_briefing, caption="🎙️ Audio Briefing")
+	except (asyncio.TimeoutError, Exception) as e:
+		print(f"TTS briefing skipped: {e}")
 
 	return content
