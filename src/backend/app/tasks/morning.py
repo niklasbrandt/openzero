@@ -203,10 +203,19 @@ async def morning_briefing():
 		await session.commit()
 	
 	# 5. Send to Telegram (Proactive delivery)
+	from app.services.translations import get_translations
+	lang = "en"
+	async with AsyncSessionLocal() as session:
+		res = await session.execute(select(Person).where(Person.circle_type == "identity"))
+		ident = res.scalar_one_or_none()
+		if ident and ident.language:
+			lang = ident.language
+	t = get_translations(lang)
+
 	separator = "---"
 	await send_notification(
 		f"{separator}\n☀️ *Good Morning!*\n\n{content}",
-		reply_markup=get_nav_markup()
+		reply_markup=get_nav_markup(t)
 	)
 	if audio_briefing:
 		await send_voice_message(audio_briefing, caption="🎙️ Audio Briefing")
