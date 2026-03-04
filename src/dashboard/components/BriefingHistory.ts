@@ -221,7 +221,7 @@ export class BriefingHistory extends HTMLElement {
 								<line x1="16" y1="17" x2="8" y2="17"></line>
 							</svg>
 						</span>
-						${this.tr('briefing_history', 'Briefing History')}
+						${this.tr('briefing_history', 'Briefing')}
 					<span class="subtitle" aria-hidden="true">${this.tr('briefing_subtitle', 'Daily Reports')}</span>
 				</h2>
 				<div id="briefing-list" role="list" aria-label="Briefing history entries" aria-live="polite">${this.tr('loading', 'Loading...')}</div>

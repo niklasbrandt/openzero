@@ -218,7 +218,7 @@ export class ZPersonality extends HTMLElement {
 				<div class="header">
 					<h2>
 						<div class="icon" aria-hidden="true">${agentInitial}</div>
-						${this.isEditing ? this.tr('agent_config', 'Agent Config') : (this.activeTab === 'personality' ? this.tr('agent_personality', 'Agent Personality') : this.tr('agent_protocols', 'Agent Protocols'))}
+						${this.isEditing ? this.tr('agent_config', 'Config') : (this.activeTab === 'personality' ? this.tr('agent_personality', 'Personality') : this.tr('agent_protocols', 'Protocols'))}
 					</h2>
 					${!this.isEditing && !this.isLoading && this.activeTab === 'personality' ? `<button class="edit-btn" id="edit-trigger" aria-label="Edit agent personality settings">${this.tr('refine', 'Refine')}</button>` : ''}
 				</div>

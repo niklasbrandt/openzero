@@ -155,9 +155,9 @@ export class CircleManager extends HTMLElement {
 	render() {
 		if (this.shadowRoot) {
 			const titles: Record<string, string> = {
-				inner: this.tr('inner_circle_full', 'Inner Circle (Family & Care)'),
-				close: this.tr('close_circle_full', 'Close Circle (Friends & Social)'),
-				outer: this.tr('outer_circle_full', 'Outer Circle (Acquaintances)'),
+				inner: this.tr('inner_circle_full', 'Inner Circle'),
+				close: this.tr('close_circle_full', 'Close Circle'),
+				outer: this.tr('outer_circle_full', 'Outer Circle'),
 			};
 			const accents: Record<string, string> = {
 				inner: '#3b82f6',

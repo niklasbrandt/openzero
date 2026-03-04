@@ -2,6 +2,7 @@ export class HardwareMonitor extends HTMLElement {
 	private cpuData: any = null;
 	private serverData: any = null;
 	private t: Record<string, string> = {};
+	private _refreshTimer: ReturnType<typeof setInterval> | null = null;
 
 	constructor() {
 		super();
@@ -11,9 +12,17 @@ export class HardwareMonitor extends HTMLElement {
 	connectedCallback() {
 		this.render();
 		this.loadTranslations().then(() => this.fetchAll());
+		this._refreshTimer = setInterval(() => this.fetchAll(), 10_000);
 		window.addEventListener('identity-updated', () => {
 			this.loadTranslations().then(() => this.updatePanel());
 		});
+	}
+
+	disconnectedCallback() {
+		if (this._refreshTimer) {
+			clearInterval(this._refreshTimer);
+			this._refreshTimer = null;
+		}
 	}
 
 	private async loadTranslations() {

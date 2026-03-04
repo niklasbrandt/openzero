@@ -198,7 +198,7 @@ export class LifeOverview extends HTMLElement {
 							<path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
 						</svg>
 					</span>
-					${this.tr('life_overview', 'Life Overview')}
+					${this.tr('life_overview', 'Life')}
 					</h2>
 					<div id="overview-container">
 						<div style="text-align: center; padding: 2rem; color: rgba(255,255,255,0.3);">${this.tr('mapping_world', 'Mapping your world...')}</div>
