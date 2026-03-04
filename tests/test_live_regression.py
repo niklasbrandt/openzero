@@ -182,9 +182,12 @@ class RegressionSuite:
 	async def test_memory_commands(self):
 		print("🧪 Memory commands (/add, /search, /memories, /unlearn)...")
 
+		add_token = "TEST_MEMORY_TOKEN"
+		unlearn_token = "TEST_UNLEARN_TOKEN"
+
 		# /add
 		resp = await self._request("POST", "/api/dashboard/chat", {
-			"message": "/add TEST_MEMORY_TOKEN_991823",
+			"message": f"/add {add_token}",
 			"history": [], "skip_history": True,
 		})
 		assert resp.status_code == 200, f"/add returned {resp.status_code}"
@@ -194,12 +197,12 @@ class RegressionSuite:
 
 		# /search (alias /memory)
 		resp = await self._request("POST", "/api/dashboard/chat", {
-			"message": "/search 991823",
+			"message": f"/search {add_token}",
 			"history": [], "skip_history": True,
 		})
 		assert resp.status_code == 200, f"/search returned {resp.status_code}"
 		reply = resp.json().get("reply", "")
-		if "991823" in reply:
+		if add_token.lower().replace("_", "") in reply.lower().replace("_", ""):
 			self._log("✅ /add + /search round-trip verified")
 		else:
 			self._log("⚠️ /search returned OK but token not found (possible LLM variance)")
@@ -213,14 +216,20 @@ class RegressionSuite:
 		assert resp.json().get("reply"), "/memories returned empty reply"
 		self._log("✅ /memories OK")
 
+		# Clean up the /add token used for the search round-trip test
+		await self._request("POST", "/api/dashboard/chat", {
+			"message": f"/unlearn {add_token}",
+			"history": [], "skip_history": True,
+		})
+
 		# /unlearn -- store a distinct token, then remove it
 		await self._request("POST", "/api/dashboard/chat", {
-			"message": "/add TEST_UNLEARN_TOKEN_887712",
+			"message": f"/add {unlearn_token}",
 			"history": [], "skip_history": True,
 		})
 		await asyncio.sleep(1)
 		resp = await self._request("POST", "/api/dashboard/chat", {
-			"message": "/unlearn TEST_UNLEARN_TOKEN_887712",
+			"message": f"/unlearn {unlearn_token}",
 			"history": [], "skip_history": True,
 		})
 		assert resp.status_code == 200, f"/unlearn returned {resp.status_code}"

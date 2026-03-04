@@ -499,7 +499,9 @@ async def regression_cleanup(request: Request, db: AsyncSession = Depends(get_db
 		from app.services.memory import get_qdrant, COLLECTION_NAME
 		client = get_qdrant()
 		points, _ = client.scroll(collection_name=COLLECTION_NAME, limit=200)
-		regression_ids = [p.id for p in points if "TEST_MEMORY_TOKEN" in (p.payload.get("text", "") if p.payload else "")]
+		import re as _re
+		_REGRESSION_PAT = _re.compile(r'TEST.?MEMORY.?TOKEN|TEST.?UNLEARN.?TOKEN', _re.IGNORECASE)
+		regression_ids = [p.id for p in points if _REGRESSION_PAT.search(p.payload.get("text", "") if p.payload else "")]
 		if regression_ids:
 			from qdrant_client.models import PointIdsList
 			client.delete(collection_name=COLLECTION_NAME, points_selector=PointIdsList(points=regression_ids))
