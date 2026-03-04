@@ -86,6 +86,7 @@ export class ZPersonality extends HTMLElement {
 				this.personality = { ...data.personality, questions: this.personality.questions };
 				this.isEditing = false;
 				this.render();
+				window.location.reload();
 			}
 		} catch (e) {
 			alert('Failed to save personality.');
@@ -246,12 +247,12 @@ export class ZPersonality extends HTMLElement {
 									` : q.type === 'textarea' ? `
 										<textarea id="input-${q.id}" placeholder="${q.placeholder}">${per[q.id] || ''}</textarea>
 							` : q.type === 'select' ? (() => {
-								const currentOpt = q.options.find((o: any) => o.value === per[q.id]) || q.options[0];
-								const c = currentOpt?.colors || {};
-								return `
+				const currentOpt = q.options.find((o: any) => o.value === per[q.id]) || q.options[0];
+				const c = currentOpt?.colors || {};
+				return `
 									<select id="input-${q.id}" class="theme-selector" aria-label="${q.label}">
 										${q.options.map((opt: any) => `
-											<option value="${opt.value}" ${per[q.id] === opt.value ? 'selected' : ''} data-colors='${JSON.stringify(opt.colors)}'>${opt.label}</option>
+											<option value="${opt.value}" ${per[q.id] === opt.value ? 'selected' : ''} data-colors='${JSON.stringify(opt.colors)}'>${this.tr('theme_' + opt.value, opt.label)}</option>
 										`).join('')}
 									</select>
 									<div class="theme-swatch" id="swatch-${q.id}" aria-hidden="true">
@@ -261,7 +262,7 @@ export class ZPersonality extends HTMLElement {
 										<span class="swatch-label">${currentOpt?.label || ''}</span>
 									</div>
 								`;
-							})() : q.type === 'color' ? `
+			})() : q.type === 'color' ? `
 										<div style="display: flex; align-items: center; gap: 1rem;">
 											<input type="color" id="input-${q.id}" value="${per[q.id] || '#ffffff'}" style="width: 40px; height: 32px; padding: 2px; border: none; cursor: pointer; background: transparent;">
 											<span style="font-size: 0.75rem; color: rgba(255,255,255,0.4);">${per[q.id] || ''}</span>
@@ -294,6 +295,10 @@ export class ZPersonality extends HTMLElement {
 								<div style="text-align: center;">
 									<span class="trait-label">${this.tr('roast_level', 'Roast Level')}</span>
 									<div class="trait-value" style="color: #EF4444;">${per?.roast || 0}/5</div>
+								</div>
+								<div style="text-align: center;">
+									<span class="trait-label">${this.tr('cringeness', 'Cringeness')}</span>
+									<div class="trait-value" style="color: #F472B6;">${per?.cringe || 0}/10</div>
 								</div>
 								<div style="text-align: right;">
 									<span class="trait-label">${this.tr('honesty_score', 'Honesty Score')}</span>
@@ -369,7 +374,7 @@ export class ZPersonality extends HTMLElement {
 					const colors = JSON.parse(colorsRaw);
 					const hexToRgb = (hex: string) => {
 						const h = hex.replace('#', '');
-						return `${parseInt(h.slice(0,2),16)}, ${parseInt(h.slice(2,4),16)}, ${parseInt(h.slice(4,6),16)}`;
+						return `${parseInt(h.slice(0, 2), 16)}, ${parseInt(h.slice(2, 4), 16)}, ${parseInt(h.slice(4, 6), 16)}`;
 					};
 					const root = document.documentElement;
 					root.style.setProperty('--accent-color', colors.primary);

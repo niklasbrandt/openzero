@@ -52,8 +52,11 @@ def get_nav_markup(t: dict = None, token: str = "") -> InlineKeyboardMarkup:
 	if not t:
 		t = get_translations("en")
 
+	if not token:
+		token = settings.DASHBOARD_TOKEN
+
 	base_url = settings.BASE_URL.rstrip('/')
-	auth_qs = f"/api/auth?token={token}" if token else ""
+	auth_qs = f"/api/dashboard/auth?token={token}" if token else ""
 	keyboard = [
 		[
 			InlineKeyboardButton(f"🏠 {t.get('dashboard', 'Dashboard')}", url=f"{base_url}{auth_qs + '&redirect=/home' if auth_qs else '/home'}"),
@@ -281,7 +284,7 @@ async def start_telegram_bot():
 			mobile_hint = ""
 			if settings.DASHBOARD_TOKEN:
 				base = settings.BASE_URL.rstrip('/')
-				auth_url = f"{base}/api/auth?token={settings.DASHBOARD_TOKEN}"
+				auth_url = f"{base}/api/dashboard/auth?token={settings.DASHBOARD_TOKEN}"
 				mobile_hint = f"\n\n📲 <a href='{auth_url}'>Open dashboard</a> — tap once to save access"
 
 			await send_notification_html(

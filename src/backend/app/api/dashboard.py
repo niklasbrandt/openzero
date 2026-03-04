@@ -67,6 +67,8 @@ async def require_auth(
         provided = authorization[7:]
     if not provided:
         provided = request.query_params.get("token")
+    if not provided:
+        provided = request.cookies.get("z_auth_token")
 
     if provided != token:
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -163,6 +165,7 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
 	message: str
 	history: List[ChatMessage] = []
+	skip_history: bool = False
 
 @router.get("/chat/history")
 async def chat_history(limit: int = 30):
@@ -382,7 +385,15 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 			"*Every thought is an opportunity for evolution.*"
 		)
 		return {"reply": protocols_reply}
-	
+	elif msg.startswith("[ACTION:"):
+		from app.services.agent_actions import parse_and_execute_actions
+		clean_reply, executed_cmds = await parse_and_execute_actions(msg, db=db)
+		return {
+			"reply": clean_reply or "Direct execution complete.",
+			"actions": executed_cmds,
+			"model": "operator_direct"
+		}
+
 	# Use consolidated chat with context
 	from app.services.llm import chat_with_context
 	from app.models.db import get_global_history, save_global_message
@@ -402,8 +413,9 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		clean_reply, executed_cmds = await parse_and_execute_actions(reply, db=db)
 
 		# Sync to Global Central Memory
-		await save_global_message("dashboard", "user", msg)
-		await save_global_message("dashboard", "z", clean_reply)
+		if not req.skip_history:
+			await save_global_message("dashboard", "user", msg)
+			await save_global_message("dashboard", "z", clean_reply)
 
 		# Memory is user-driven only (via /add or LEARN action tag)
 
