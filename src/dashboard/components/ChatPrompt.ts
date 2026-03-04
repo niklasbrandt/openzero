@@ -532,19 +532,19 @@ export class ChatPrompt extends HTMLElement {
 			}
 
 			.empty-icon {
-				color: rgba(255,255,255,0.333);
+				color: var(--text-faint, hsla(0, 0%, 100%, 0.2));
 				margin-bottom: 0.25rem;
 			}
 
 			.empty-state p {
-				color: rgba(255, 255, 255, 0.75);
+				color: var(--text-secondary, hsla(0, 0%, 100%, 0.7));
 				font-size: 1rem;
 				font-weight: 500;
 				margin: 0;
 			}
 
 			.empty-state span {
-				color: rgba(255,255,255,0.66);
+				color: var(--text-muted, hsla(0, 0%, 100%, 0.4));
 				font-size: 0.85rem;
 			}
 
@@ -557,19 +557,22 @@ export class ChatPrompt extends HTMLElement {
 			}
 			
 			.cmd-chip {
-				background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.1);
-				border: 1px solid rgba(var(--accent-color-rgb, 20, 184, 166), 0.2);
-				color: var(--accent-color);
-				padding: 0.2rem 0.5rem;
-				border-radius: 0.4rem;
+				background: var(--surface-card, hsla(0, 0%, 100%, 0.03));
+				border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.08));
+				color: var(--accent-color, hsla(173, 80%, 40%, 1));
+				padding: 0.2rem 0.6rem;
+				border-radius: var(--radius-sm, 0.35rem);
 				font-size: 0.75rem;
 				font-family: inherit;
 				cursor: pointer;
-				transition: background 0.15s ease, border-color 0.15s ease;
+				transition: all var(--duration-fast, 0.2s);
+				min-height: 44px; /* WCAG 2.1 AA */
+				display: inline-flex;
+				align-items: center;
 			}
 			.cmd-chip:hover, .cmd-chip:focus-visible {
-				background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.2);
-				border-color: rgba(var(--accent-color-rgb, 20, 184, 166), 0.4);
+				background: var(--surface-card-hover, hsla(0, 0%, 100%, 0.05));
+				border-color: var(--border-accent, hsla(173, 80%, 40%, 0.25));
 				outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1));
 				outline-offset: 2px;
 			}
@@ -582,7 +585,7 @@ export class ChatPrompt extends HTMLElement {
 			}
 
 			.message.animate {
-				animation: msgIn 0.3s ease forwards;
+				animation: msgIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 			}
 
 			.message:not(.animate) {
@@ -601,21 +604,21 @@ export class ChatPrompt extends HTMLElement {
 			}
 
 			.bubble {
-				padding: 0.75rem 1rem;
-				border-radius: 1.25rem;
-				font-size: 0.9rem;
-				line-height: 1.55;
+				padding: 0.75rem 1.25rem;
+				border-radius: var(--radius-lg, 0.85rem);
+				font-size: 0.95rem;
+				line-height: 1.6;
 				position: relative;
 			}
 
 			.message.user .bubble {
-				background: linear-gradient(135deg, rgba(var(--accent-color-rgb, 20, 184, 166), 0.2), rgba(var(--accent-secondary-rgb, 0, 102, 255), 0.15));
+				background: var(--surface-card, hsla(0, 0%, 100%, 0.03));
 				backdrop-filter: blur(12px);
 				-webkit-backdrop-filter: blur(12px);
 				color: var(--text-primary, hsla(0, 0%, 100%, 1));
-				border: 1px solid rgba(255, 255, 255, 0.12);
-				border-bottom-right-radius: 0.35rem;
-				box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+				border: 1px solid var(--border-medium, hsla(0, 0%, 100%, 0.12));
+				border-bottom-right-radius: var(--radius-xs, 0.25rem);
+				box-shadow: 0 8px 32px hsla(0, 0%, 0%, 0.25), inset 0 1px 0 hsla(0, 0%, 100%, 0.05);
 			}
 
 			.message.assistant .bubble {
@@ -623,18 +626,19 @@ export class ChatPrompt extends HTMLElement {
 				backdrop-filter: blur(24px) saturate(1.8) brightness(1.2);
 				-webkit-backdrop-filter: blur(24px) saturate(1.8) brightness(1.2);
 				color: var(--text-primary, hsla(0, 0%, 100%, 1));
-				border: 1px solid rgba(255, 255, 255, 0.2);
-				border-radius: 1.5rem;
-				border-bottom-left-radius: 0.35rem; /* Sharp corner for agent */
-				box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-				padding: 1.25rem 1.75rem;
+				border: 1px solid hsla(0, 0%, 100%, 0.2);
+				border-radius: var(--radius-xl, 1.25rem);
+				border-bottom-left-radius: var(--radius-xs, 0.25rem);
+				box-shadow: 0 12px 48px hsla(0, 0%, 0%, 0.4), inset 0 1px 0 hsla(0, 0%, 100%, 0.2);
+				padding: 1.5rem 2rem;
 			}
 
 			.bubble .time {
 				display: block;
-				font-size: 0.65rem;
-				color: rgba(255,255,255,0.35);
+				font-size: 0.7rem;
+				color: var(--text-faint, hsla(0, 0%, 100%, 0.2));
 				text-align: right;
+				font-weight: 500;
 			}
 
 			/* Assistant bubble sub-elements inherit the contrast-chosen text colour */
@@ -648,67 +652,70 @@ export class ChatPrompt extends HTMLElement {
 				display: flex;
 				justify-content: space-between;
 				align-items: center;
-				gap: 0.5rem;
-				margin-top: 0.35rem;
+				gap: 0.75rem;
+				margin-top: 0.5rem;
 			}
 
 			.model-tag {
-				font-size: 0.6rem;
-				color: var(--accent-color);
+				font-size: 0.65rem;
+				color: var(--accent-color, hsla(173, 80%, 40%, 1));
 				opacity: 0.7;
+				text-transform: uppercase;
+				letter-spacing: 0.05em;
+				font-weight: 700;
+			}
+
+			.channel-tag {
+				font-size: 0.65rem;
+				color: var(--text-faint, hsla(0, 0%, 100%, 0.2));
 				text-transform: uppercase;
 				letter-spacing: 0.05em;
 				font-weight: 600;
 			}
 
-			.channel-tag {
-				font-size: 0.6rem;
-				color: rgba(255, 255, 255, 0.25);
-				text-transform: uppercase;
-				letter-spacing: 0.05em;
-				font-weight: 500;
-			}
-
 			.message.assistant .bubble .time {
 				text-align: left;
-				opacity: 0.45;
-			}
-
-			.message.assistant .bubble .model-tag {
 				opacity: 0.6;
 			}
 
+			.message.assistant .bubble .model-tag {
+				opacity: 0.7;
+			}
+
 			.message.assistant .bubble .channel-tag {
-				opacity: 0.35;
+				opacity: 0.4;
 			}
 
 			.bubble-content a {
-				color: var(--accent-color);
+				color: var(--accent-color, hsla(173, 80%, 40%, 1));
 				text-decoration: underline;
 				text-underline-offset: 4px;
 				transition: color 0.2s;
 			}
 			.message.user .bubble-content a {
 				color: var(--text-primary, hsla(0, 0%, 100%, 1));
-				text-decoration-color: rgba(255, 255, 255, 0.4);
+				text-decoration-color: var(--text-muted, hsla(0, 0%, 100%, 0.4));
 			}
 			.bubble-content a:hover {
-				color: var(--accent-secondary);
+				color: var(--accent-secondary, hsla(216, 100%, 50%, 1));
 			}
 
 			/* ── Typing indicator ── */
 			.typing-bubble {
 				display: flex;
 				align-items: center;
-				gap: 0.3rem;
-				padding: 0.85rem 1.2rem;
+				gap: 0.4rem;
+				padding: 1rem 1.5rem;
+				background: var(--surface-card, hsla(0, 0%, 100%, 0.03));
+				border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.08));
+				border-radius: var(--radius-lg, 0.85rem);
 			}
 
 			.dot {
-				width: 7px;
-				height: 7px;
+				width: 6px;
+				height: 6px;
 				border-radius: 50%;
-				background: rgba(255,255,255,0.35);
+				background: var(--text-muted, hsla(0, 0%, 100%, 0.4));
 				animation: typing 1.4s infinite ease-in-out;
 			}
 
@@ -716,73 +723,76 @@ export class ChatPrompt extends HTMLElement {
 			.dot:nth-child(3) { animation-delay: 0.4s; }
 
 			@keyframes typing {
-				0%, 60%, 100% { transform: translateY(0); opacity: 0.35; }
-				30% { transform: translateY(-6px); opacity: 1; }
+				0%, 60%, 100% { transform: translateY(0); opacity: 0.3; }
+				30% { transform: translateY(-4px); opacity: 1; }
 			}
 
 			/* ── Input area ── */
 			.input-area {
 				display: flex;
-				gap: 0.5rem;
+				gap: 0.75rem;
 				align-items: flex-end;
-				margin-top: 0.75rem;
-				padding-top: 0.75rem;
-				border-top: 1px solid rgba(255,255,255,0.05);
+				margin-top: 1rem;
+				padding-top: 1rem;
+				border-top: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.08));
 			}
 
 			textarea {
 				flex: 1;
 				resize: none;
-				background: rgba(0, 0, 0, 0.2);
+				background: hsla(0, 0%, 0%, 0.3);
 				backdrop-filter: blur(8px);
 				-webkit-backdrop-filter: blur(8px);
-				border: 1px solid rgba(255, 255, 255, 0.08);
-				border-radius: 0.75rem;
-				padding: 0.6rem 1rem;
+				border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.08));
+				border-radius: var(--radius-md, 0.5rem);
+				padding: 0.75rem 1.25rem;
 				color: var(--text-primary, hsla(0, 0%, 100%, 1));
-				font-family: 'Inter', system-ui, sans-serif;
+				font-family: inherit;
 				font-size: 1.1rem;
-				line-height: 1.2;
+				line-height: 1.4;
 				outline: none;
-				transition: border-color 0.3s ease, background 0.3s ease, box-shadow 0.3s ease;
-				min-height: 63px;
-				max-height: 160px;
+				transition: all var(--duration-fast, 0.2s);
+				min-height: 56px;
+				max-height: 200px;
 				overflow-y: auto;
 			}
 
 			textarea::placeholder {
-				color: rgba(255, 255, 255, 0.64);
+				color: var(--text-muted, hsla(0, 0%, 100%, 0.4));
 			}
 
 			textarea:focus {
-				border-color: var(--accent-color);
-				background: rgba(0, 0, 0, 0.28);
-				box-shadow: 0 0 20px rgba(var(--accent-color-rgb, 20, 184, 166), 0.08);
+				border-color: var(--accent-color, hsla(173, 80%, 40%, 1));
+				background: hsla(0, 0%, 0%, 0.4);
+				box-shadow: 0 0 0 3px hsla(173, 80%, 40%, 0.1);
 			}
 
 			#send-btn {
-				width: 84px;
-				height: 84px;
-				border-radius: 0.6rem;
-				border: 1px solid rgba(var(--accent-color-rgb, 20, 184, 166), 0.2);
-				background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.12);
-				color: var(--accent-color);
+				width: 56px;
+				height: 56px;
+				border-radius: var(--radius-md, 0.5rem);
+				border: 1px solid var(--border-accent, hsla(173, 80%, 40%, 0.25));
+				background: hsla(173, 80%, 40%, 0.1);
+				color: var(--accent-color, hsla(173, 80%, 40%, 1));
 				cursor: pointer;
 				display: flex;
 				align-items: center;
 				justify-content: center;
 				flex-shrink: 0;
-				transition: all 0.25s ease;
+				transition: all var(--duration-fast, 0.2s);
 			}
 
 			#send-btn:hover:not(:disabled) {
-				background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.22);
-				border-color: var(--accent-color);
+				background: hsla(173, 80%, 40%, 0.2);
+				border-color: var(--accent-color, hsla(173, 80%, 40%, 1));
+				transform: translateY(-2px);
+				box-shadow: 0 4px 12px hsla(173, 80%, 40%, 0.2);
 			}
 
 			#send-btn:disabled {
-				opacity: 0.5;
+				opacity: 0.4;
 				cursor: not-allowed;
+				filter: grayscale(1);
 			}
 
 			/* ── Spinner ── */

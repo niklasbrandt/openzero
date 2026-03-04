@@ -265,44 +265,44 @@ stored_at: i.stored_at ?? null,
 				}
 				.tabs {
 					display: flex;
-					gap: 0.25rem;
+					gap: 1rem;
 					margin-bottom: 1rem;
-					background: rgba(255,255,255,0.04);
-					border-radius: 0.75rem;
-					padding: 0.25rem;
+					border-bottom: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.1));
 				}
 				.tab-btn {
-					flex: 1;
 					background: none;
 					border: none;
-					color: rgba(255,255,255,0.5);
-					font-family: inherit;
-					font-size: 0.8rem;
+					border-bottom: 2px solid transparent;
+					color: var(--text-muted, hsla(0, 0%, 100%, 0.4));
+					padding: 0.5rem 0.15rem;
+					font-size: 0.9rem;
 					font-weight: 600;
-					padding: 0.4rem 0.75rem;
-					border-radius: 0.55rem;
 					cursor: pointer;
-					transition: background 0.18s, color 0.18s;
-					letter-spacing: 0.04em;
-					text-transform: uppercase;
+					transition: color var(--duration-fast, 0.15s), border-color var(--duration-fast, 0.15s);
+					min-height: 44px; /* A11y target */
+				}
+				.tab-btn:hover {
+					color: var(--text-primary, hsla(0, 0%, 100%, 1));
 				}
 				.tab-btn.active, .tab-btn[aria-selected="true"] {
-					background: rgba(255,255,255,0.1);
-					color: var(--text-primary, hsla(0, 0%, 100%, 1));
+					color: var(--accent-color, hsla(173, 80%, 40%, 1));
+					border-bottom-color: var(--accent-color, hsla(173, 80%, 40%, 1));
+					background: none;
+					border-radius: 0;
 				}
 				.tab-btn:focus-visible {
 					outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1));
 					outline-offset: 2px;
 				}
 				.tab-btn:hover:not(.active) {
-					color: rgba(255,255,255,0.75);
-					background: rgba(255,255,255,0.06);
+					color: var(--text-primary, hsla(0, 0%, 100%, 1));
+					background: none;
 				}
 				label {
 					display: block;
 					font-size: 0.7rem;
 					font-weight: 600;
-					color: rgba(255,255,255,0.5);
+					color: var(--text-muted, hsla(0, 0%, 100%, 0.4));
 					text-transform: uppercase;
 					letter-spacing: 0.06em;
 					margin-bottom: 0.25rem;
@@ -316,20 +316,20 @@ stored_at: i.stored_at ?? null,
 				.input-group { flex: 1; }
 				input[type="search"] {
 					width: 100%;
-					background: rgba(0,0,0,0.2);
-					border: 1px solid rgba(255,255,255,0.08);
-					border-radius: 0.75rem;
+					background: var(--surface-input, hsla(0, 0%, 0%, 0.2));
+					border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.1));
+					border-radius: var(--radius-md, 0.6rem);
 					padding: 0.6rem 1rem;
 					color: var(--text-primary, hsla(0, 0%, 100%, 1));
 					font-family: inherit;
 					font-size: 0.9rem;
 					box-sizing: border-box;
-					transition: border-color 0.2s, background 0.2s;
+					transition: border-color var(--duration-fast, 0.15s), background var(--duration-fast, 0.15s);
 				}
 				input[type="search"]:focus {
 					outline: none;
-					border-color: var(--border-accent-focus, rgba(20,184,166,0.4));
-					background: rgba(0,0,0,0.28);
+					border-color: var(--border-accent-focus, hsla(173, 80%, 40%, 0.4));
+					background: var(--surface-input-focus, hsla(0, 0%, 0%, 0.3));
 				}
 				input[type="search"]:focus-visible {
 					outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1));
@@ -350,15 +350,15 @@ stored_at: i.stored_at ?? null,
 					align-items: flex-start;
 					gap: 0.5rem;
 					padding: 0.65rem 0.75rem;
-					background: var(--surface-card, rgba(255,255,255,0.03));
+					background: var(--surface-card, hsla(0, 0%, 100%, 0.03));
 					border-radius: var(--radius-md, 0.6rem);
-					border-left: 3px solid rgba(139,92,246,0.5);
+					border-left: 3px solid var(--accent-secondary, hsla(259, 94%, 66%, 0.5));
 					transition: background var(--duration-fast, 0.15s), border-color var(--duration-fast, 0.15s);
 				}
-				.result-item:hover { background: var(--surface-card-hover, rgba(255,255,255,0.055)); }
+				.result-item:hover { background: var(--surface-card-hover, hsla(0, 0%, 100%, 0.06)); }
 				.result-item.item-pending {
-					border-left-color: rgba(var(--color-danger-rgb, 239,68,68), 0.7);
-					background: rgba(var(--color-danger-rgb, 239,68,68), 0.05);
+					border-left-color: var(--color-danger, hsla(0, 84%, 60%, 1));
+					background: var(--surface-danger-subtle, hsla(0, 84%, 60%, 0.05));
 				}
 				.item-icon {
 					font-size: 1rem;
@@ -376,7 +376,8 @@ stored_at: i.stored_at ?? null,
 				.item-text {
 					font-size: 0.875rem;
 					line-height: 1.5;
-					color: rgba(255,255,255,0.88);
+					color: var(--text-primary, hsla(0, 0%, 100%, 1));
+					opacity: 0.9;
 					word-break: break-word;
 				}
 				.item-meta {
@@ -387,15 +388,15 @@ stored_at: i.stored_at ?? null,
 				.score {
 					font-size: 0.65rem;
 					font-weight: 700;
-					background: rgba(var(--accent-color-rgb, 20,184,166), 0.15);
-					color: var(--accent-color, hsla(171, 77%, 64%, 1));
+					background: var(--accent-subtle, hsla(173, 80%, 40%, 0.15));
+					color: var(--accent-color, hsla(173, 80%, 40%, 1));
 					padding: 0.1rem 0.4rem;
 					border-radius: var(--radius-xs, 0.3rem);
 					letter-spacing: 0.03em;
 				}
 				.item-date {
 					font-size: 0.65rem;
-					color: rgba(255,255,255,0.3);
+					color: var(--text-muted, hsla(0, 0%, 100%, 0.4));
 				}
 				.delete-btn {
 					flex-shrink: 0;
@@ -404,26 +405,26 @@ stored_at: i.stored_at ?? null,
 					justify-content: center;
 					gap: 0.3rem;
 					background: none;
-					border: 1px solid rgba(255,255,255,0.1);
-					border-radius: 0.45rem;
-					color: rgba(255,255,255,0.3);
+					border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.1));
+					border-radius: var(--radius-sm, 0.45rem);
+					color: var(--text-muted, hsla(0, 0%, 100%, 0.4));
 					padding: 0.3rem 0.5rem;
 					font-size: 0.7rem;
 					font-family: inherit;
 					cursor: pointer;
-					transition: background 0.15s, color 0.15s, border-color 0.15s;
+					transition: background var(--duration-fast, 0.15s), color var(--duration-fast, 0.15s), border-color var(--duration-fast, 0.15s);
 					min-height: 44px;
 					min-width: 44px;
 				}
 				.delete-btn:hover {
-					color: rgba(var(--color-danger-rgb, 239,68,68), 0.9);
-					border-color: rgba(var(--color-danger-rgb, 239,68,68), 0.4);
-					background: rgba(var(--color-danger-rgb, 239,68,68), 0.08);
+					color: var(--color-danger, hsla(0, 84%, 60%, 1));
+					border-color: var(--color-danger, hsla(0, 84%, 60%, 0.4));
+					background: var(--surface-danger-subtle, hsla(0, 84%, 60%, 0.08));
 				}
 				.delete-btn.pending {
-					color: var(--color-danger, hsla(0, 91%, 71%, 1));
-					border-color: rgba(var(--color-danger-rgb, 239,68,68), 0.6);
-					background: rgba(var(--color-danger-rgb, 239,68,68), 0.12);
+					color: var(--color-danger, hsla(0, 84%, 60%, 1));
+					border-color: var(--color-danger, hsla(0, 84%, 60%, 0.6));
+					background: var(--surface-danger-subtle, hsla(0, 84%, 60%, 0.12));
 					padding: 0.3rem 0.65rem;
 					gap: 0.4rem;
 					animation: pulse-warn 0.6s ease infinite alternate;
@@ -433,18 +434,18 @@ stored_at: i.stored_at ?? null,
 					outline-offset: 2px;
 				}
 				@keyframes pulse-warn {
-					from { box-shadow: 0 0 0 0 rgba(var(--color-danger-rgb, 239,68,68), 0); }
-					to   { box-shadow: 0 0 0 4px rgba(var(--color-danger-rgb, 239,68,68), 0.2); }
+					from { box-shadow: 0 0 0 0 hsla(0, 84%, 60%, 0); }
+					to   { box-shadow: 0 0 0 4px hsla(0, 84%, 60%, 0.2); }
 				}
 				.status-msg {
-					color: rgba(255,255,255,0.4);
+					color: var(--text-muted, hsla(0, 0%, 100%, 0.4));
 					font-size: 0.85rem;
 					padding: 1rem 0.25rem;
 					text-align: center;
 				}
 				.results-count {
 					font-size: 0.7rem;
-					color: rgba(255,255,255,0.35);
+					color: var(--text-muted, hsla(0, 0%, 100%, 0.4));
 					margin: 0 0 0.6rem 0;
 					text-transform: uppercase;
 					letter-spacing: 0.06em;
@@ -452,19 +453,19 @@ stored_at: i.stored_at ?? null,
 				.load-more-btn {
 					width: 100%;
 					margin-top: 0.75rem;
-					background: rgba(255,255,255,0.05);
-					border: 1px solid rgba(255,255,255,0.1);
-					border-radius: 0.65rem;
-					color: rgba(255,255,255,0.6);
+					background: var(--surface-card, hsla(0, 0%, 100%, 0.03));
+					border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.1));
+					border-radius: var(--radius-md, 0.6rem);
+					color: var(--text-muted, hsla(0, 0%, 100%, 0.4));
 					font-family: inherit;
 					font-size: 0.8rem;
 					font-weight: 600;
 					padding: 0.6rem;
 					cursor: pointer;
-					transition: background 0.15s, color 0.15s;
+					transition: background var(--duration-fast, 0.15s), color var(--duration-fast, 0.15s);
 				}
 				.load-more-btn:hover {
-					background: rgba(255,255,255,0.09);
+					background: var(--surface-card-hover, hsla(0, 0%, 100%, 0.06));
 					color: var(--text-primary, hsla(0, 0%, 100%, 1));
 				}
 				.load-more-btn:focus-visible {
@@ -473,7 +474,7 @@ stored_at: i.stored_at ?? null,
 				}
 				.hint {
 					font-size: 0.68rem;
-					color: rgba(255,255,255,0.3);
+					color: var(--text-muted, hsla(0, 0%, 100%, 0.4));
 					margin: 0 0 0.75rem 0;
 					line-height: 1.5;
 				}

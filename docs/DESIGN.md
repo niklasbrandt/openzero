@@ -351,7 +351,37 @@ backgrounds scoped to `oz-goo-*` CSS classes:
 
 ---
 
-## 13. Self-Hosted Fonts
+## 13. CSS Architecture and Modularization
+
+The dashboard's global CSS has been modularized to maintain clarity as the
+system scales. The main `style.css` acts as a barrel file, importing
+dedicated modules from `src/dashboard/css/`.
+
+| File              | Purpose                                          |
+|:------------------|:-------------------------------------------------|
+| `tokens.css`      | Design tokens, CSS variables, HSLA palette       |
+| `fonts.css`       | `@font-face` declarations for self-hosted fonts  |
+| `base.css`        | Global resets, headings, basic element styles    |
+| `layout.css`      | Dashboard grid, masonry column setup, spacing    |
+| `nav.css`         | Sidebar, marquee, and mobile drawer navigation   |
+| `forms.css`       | Buttons, inputs, textareas, global interactions  |
+| `components.css`  | Shared high-level patterns (tooltips, footer)    |
+| `a11y.css`        | Accessibility overrides, focus rings, reduced-motion|
+
+### 13.1 Modification Workflow
+
+- **Design Changes:** Edit `css/tokens.css` to update the core palette or
+  radii.
+- **Structural Changes:** Update `css/layout.css` for grid modifications.
+- **Interactions:** Use `css/forms.css` or `css/nav.css` for styling specific
+  interactive systems.
+- **Component Collocation:** Remember that Web Component specific styles
+  **must** remain collocated in their `.ts` files inside Shadow DOM. Global
+  CSS modules are only for Light-DOM structural and fallback styling.
+
+---
+
+## 14. Self-Hosted Fonts
 
 All typefaces are served from the VPS to eliminate external dependencies.
 Font files live under `src/dashboard/fonts/` and load via `@font-face`

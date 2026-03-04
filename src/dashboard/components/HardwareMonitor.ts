@@ -232,13 +232,13 @@ export class HardwareMonitor extends HTMLElement {
 					font-size: 0.65rem;
 					text-transform: uppercase;
 					letter-spacing: 0.1em;
-					color: var(--text-faint, rgba(255, 255, 255, 0.3));
+					color: var(--text-muted, hsla(0, 0%, 100%, 0.4));
 					font-weight: 600;
 				}
 
 				.spec-value {
 					font-size: 0.9rem;
-					color: var(--text-secondary, rgba(255, 255, 255, 0.85));
+					color: var(--text-secondary, hsla(0, 0%, 100%, 0.85));
 					font-family: var(--font-mono, 'Fira Code', monospace);
 				}
 
@@ -248,6 +248,7 @@ export class HardwareMonitor extends HTMLElement {
 					gap: 0.75rem;
 					margin-bottom: 1rem;
 					cursor: help;
+					min-height: 44px;
 				}
 
 				.simd-badges {
@@ -259,11 +260,14 @@ export class HardwareMonitor extends HTMLElement {
 					font-size: 0.7rem;
 					font-weight: 700;
 					letter-spacing: 0.05em;
-					padding: 0.2rem 0.5rem;
+					padding: 0.2rem 0.6rem;
 					border-radius: var(--radius-xs, 0.3rem);
 					font-family: var(--font-mono, 'Fira Code', monospace);
 					cursor: help;
-					transition: transform var(--duration-fast, 0.15s);
+					transition: transform var(--duration-fast, 0.15s), background var(--duration-fast), border var(--duration-fast);
+					min-height: 28px;
+					display: flex;
+					align-items: center;
 				}
 
 				.simd-badge:hover, .simd-badge:focus-visible {
@@ -272,15 +276,15 @@ export class HardwareMonitor extends HTMLElement {
 				}
 
 				.simd-badge.active {
-					background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.15);
-					color: var(--accent-color, hsla(173, 80%, 40%, 1));
-					border: 1px solid rgba(var(--accent-color-rgb, 20, 184, 166), 0.3);
+					background: var(--surface-accent-subtle, hsla(173, 80%, 40%, 0.15));
+					color: var(--accent-primary, hsla(173, 80%, 40%, 1));
+					border: 1px solid var(--border-accent-subtle, hsla(173, 80%, 40%, 0.3));
 				}
 
 				.simd-badge.inactive {
-					background: var(--surface-card, rgba(255, 255, 255, 0.03));
-					color: var(--text-faint, rgba(255, 255, 255, 0.2));
-					border: 1px solid var(--border-color, rgba(255, 255, 255, 0.06));
+					background: var(--surface-card, hsla(0, 0%, 100%, 0.03));
+					color: var(--text-muted, hsla(0, 0%, 100%, 0.2));
+					border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.06));
 					text-decoration: line-through;
 				}
 
@@ -293,28 +297,29 @@ export class HardwareMonitor extends HTMLElement {
 					font-size: 0.75rem;
 					font-weight: 500;
 					letter-spacing: 0.02em;
+					min-height: 44px;
 				}
 
 				.capability-summary.excellent {
-					background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.08);
-					color: var(--accent-color, hsla(173, 80%, 40%, 1));
-					border: 1px solid rgba(var(--accent-color-rgb, 20, 184, 166), 0.15);
+					background: var(--surface-accent-subtle, hsla(173, 80%, 40%, 0.08));
+					color: var(--accent-primary, hsla(173, 80%, 40%, 1));
+					border: 1px solid var(--border-accent-subtle, hsla(173, 80%, 40%, 0.15));
 				}
-				.capability-summary.excellent .status-dot { background: var(--accent-color, hsla(173, 80%, 40%, 1)); }
+				.capability-summary.excellent .status-dot { background: var(--accent-primary, hsla(173, 80%, 40%, 1)); }
 
 				.capability-summary.good {
-					background: rgba(var(--color-warning-rgb, 234, 179, 8), 0.08);
-					color: var(--color-warning, hsla(45, 93%, 47%, 1));
-					border: 1px solid rgba(var(--color-warning-rgb, 234, 179, 8), 0.15);
+					background: var(--surface-warning-subtle, hsla(45, 93%, 47%, 0.08));
+					color: var(--status-warning, hsla(45, 93%, 47%, 1));
+					border: 1px solid var(--border-warning-subtle, hsla(45, 93%, 47%, 0.15));
 				}
-				.capability-summary.good .status-dot { background: var(--color-warning, hsla(45, 93%, 47%, 1)); }
+				.capability-summary.good .status-dot { background: var(--status-warning, hsla(45, 93%, 47%, 1)); }
 
 				.capability-summary.limited {
-					background: rgba(var(--color-danger-rgb, 239, 68, 68), 0.08);
-					color: var(--color-danger, hsla(0, 84%, 60%, 1));
-					border: 1px solid rgba(var(--color-danger-rgb, 239, 68, 68), 0.15);
+					background: var(--surface-danger-subtle, hsla(0, 84%, 60%, 0.08));
+					color: var(--status-danger, hsla(0, 84%, 60%, 1));
+					border: 1px solid var(--border-danger-subtle, hsla(0, 84%, 60%, 0.15));
 				}
-				.capability-summary.limited .status-dot { background: var(--color-danger, hsla(0, 84%, 60%, 1)); }
+				.capability-summary.limited .status-dot { background: var(--status-danger, hsla(0, 84%, 60%, 1)); }
 
 				/* ── RAM Bar ── */
 				.ram-section {
@@ -328,12 +333,12 @@ export class HardwareMonitor extends HTMLElement {
 				}
 				.ram-values {
 					font-size: 0.8rem;
-					color: var(--text-secondary, rgba(255, 255, 255, 0.7));
+					color: var(--text-secondary, hsla(0, 0%, 100%, 0.7));
 					font-family: var(--font-mono, 'Fira Code', monospace);
 				}
 				.ram-bar-track {
 					height: 8px;
-					background: rgba(255, 255, 255, 0.05);
+					background: var(--surface-card, hsla(0, 0%, 100%, 0.05));
 					border-radius: 4px;
 					overflow: hidden;
 					cursor: help;
@@ -343,18 +348,18 @@ export class HardwareMonitor extends HTMLElement {
 					border-radius: 4px;
 					transition: width var(--duration-slow, 0.5s);
 				}
-				.ram-bar-fill.healthy { background: var(--accent-color, hsla(173, 80%, 40%, 1)); }
-				.ram-bar-fill.warning { background: var(--color-warning, hsla(45, 93%, 47%, 1)); }
-				.ram-bar-fill.critical { background: var(--color-danger, hsla(0, 84%, 60%, 1)); }
+				.ram-bar-fill.healthy { background: var(--accent-primary, hsla(173, 80%, 40%, 1)); }
+				.ram-bar-fill.warning { background: var(--status-warning, hsla(45, 93%, 47%, 1)); }
+				.ram-bar-fill.critical { background: var(--status-danger, hsla(0, 84%, 60%, 1)); }
 				.ram-pct {
 					font-size: 0.65rem;
 					font-weight: 500;
 					margin-top: 0.25rem;
 					display: block;
 				}
-				.ram-pct.healthy { color: rgba(var(--accent-color-rgb, 20, 184, 166), 0.7); }
-				.ram-pct.warning { color: rgba(var(--color-warning-rgb, 234, 179, 8), 0.7); }
-				.ram-pct.critical { color: rgba(var(--color-danger-rgb, 239, 68, 68), 0.8); }
+				.ram-pct.healthy { color: var(--accent-primary, hsla(173, 80%, 40%, 0.8)); }
+				.ram-pct.warning { color: var(--status-warning, hsla(45, 93%, 47%, 0.8)); }
+				.ram-pct.critical { color: var(--status-danger, hsla(0, 84%, 60%, 0.85)); }
 
 				/* ── LLM Tier Grid ── */
 				.tier-section {
@@ -370,10 +375,11 @@ export class HardwareMonitor extends HTMLElement {
 					align-items: center;
 					gap: 0.4rem;
 					padding: 0.35rem 0.65rem;
-					background: var(--surface-card, rgba(255, 255, 255, 0.03));
-					border: 1px solid var(--border-color, rgba(255, 255, 255, 0.06));
+					background: var(--surface-card, hsla(0, 0%, 100%, 0.03));
+					border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.06));
 					border-radius: 0.4rem;
 					flex: 1;
+					min-height: 44px;
 				}
 				.tier-name {
 					font-size: 0.65rem;
@@ -389,21 +395,24 @@ export class HardwareMonitor extends HTMLElement {
 					text-transform: uppercase;
 					letter-spacing: 0.05em;
 				}
-				.tier-status.online { color: var(--accent-color, hsla(173, 80%, 40%, 1)); }
-				.tier-status.offline { color: var(--color-danger, hsla(0, 84%, 60%, 1)); }
+				.tier-status.online { color: var(--accent-primary, hsla(173, 80%, 40%, 1)); }
+				.tier-status.offline { color: var(--status-danger, hsla(0, 84%, 60%, 1)); }
 				.tier-threads {
 					font-size: 0.7rem;
-					color: var(--text-muted, rgba(255, 255, 255, 0.5));
+					color: var(--text-muted, hsla(0, 0%, 100%, 0.5));
 					font-family: var(--font-mono, 'Fira Code', monospace);
 					margin-left: auto;
 				}
 				.tier-warning {
-					color: var(--color-warning, hsla(45, 93%, 47%, 1));
+					color: var(--status-warning, hsla(45, 93%, 47%, 1));
 					font-size: 0.75rem;
 					cursor: help;
 				}
 
-				.simd-badge:focus-visible { outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); outline-offset: 2px; transform: scale(1.08); }
+				.simd-badge:focus-visible, .tier-row:focus-visible { 
+					outline: 2px solid var(--accent-primary, hsla(173, 80%, 40%, 1)); 
+					outline-offset: 2px; 
+				}
 				@media (forced-colors: active) {
 					.h-icon { background: ButtonFace; border: 1px solid ButtonText; }
 					.simd-badge.active { border-color: Highlight; }
@@ -419,7 +428,7 @@ export class HardwareMonitor extends HTMLElement {
 
 			<h2>
 				<span class="h-icon" aria-hidden="true">
-					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
 						<rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
 						<rect x="9" y="9" width="6" height="6"></rect>
 						<line x1="9" y1="1" x2="9" y2="4"></line>

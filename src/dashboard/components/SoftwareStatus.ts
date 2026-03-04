@@ -220,16 +220,18 @@ export class SoftwareStatus extends HTMLElement {
 					align-items: center;
 					gap: 0.4rem;
 					padding: 0.5rem 0.65rem;
-					background: var(--surface-card, rgba(255, 255, 255, 0.03));
-					border: 1px solid var(--border-color, rgba(255, 255, 255, 0.06));
+					background: var(--surface-card, hsla(0, 0%, 100%, 0.03));
+					border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.06));
 					border-radius: 0.4rem;
 					cursor: help;
+					min-height: 44px; /* WCAG touch target */
 				}
 				.svc-llm {
 					flex-direction: column;
 					align-items: stretch;
 					gap: 0.2rem;
 					padding: 0.55rem 0.65rem;
+					min-height: 56px;
 				}
 				.svc-llm .svc-row {
 					display: flex;
@@ -239,28 +241,37 @@ export class SoftwareStatus extends HTMLElement {
 				.svc-model {
 					font-size: 0.82rem;
 					font-weight: 600;
-					color: var(--text-secondary, rgba(255, 255, 255, 0.85));
+					color: var(--text-secondary, hsla(0, 0%, 100%, 0.85));
 					font-family: var(--font-mono, 'Fira Code', monospace);
 					letter-spacing: -0.01em;
 				}
 				.svc-dot {
-					width: 7px;
-					height: 7px;
+					width: 8px;
+					height: 8px;
 					border-radius: 50%;
 					flex-shrink: 0;
 				}
-				.svc-dot.online { background: var(--accent-color, hsla(173, 80%, 40%, 1)); box-shadow: 0 0 6px rgba(var(--accent-color-rgb, 20, 184, 166), 0.4); }
-				.svc-dot.offline { background: var(--color-danger, hsla(0, 84%, 60%, 1)); box-shadow: 0 0 6px rgba(var(--color-danger-rgb, 239, 68, 68), 0.4); }
-				.svc-dot.warning { background: var(--color-warning, hsla(45, 93%, 47%, 1)); box-shadow: 0 0 6px rgba(var(--color-warning-rgb, 234, 179, 8), 0.4); }
+				.svc-dot.online { 
+					background: var(--accent-primary, hsla(173, 80%, 40%, 1)); 
+					box-shadow: 0 0 8px var(--surface-accent-subtle, hsla(173, 80%, 40%, 0.2)); 
+				}
+				.svc-dot.offline { 
+					background: var(--status-danger, hsla(0, 84%, 60%, 1)); 
+					box-shadow: 0 0 8px var(--surface-danger-subtle, hsla(0, 84%, 60%, 0.2)); 
+				}
+				.svc-dot.warning { 
+					background: var(--status-warning, hsla(45, 93%, 47%, 1)); 
+					box-shadow: 0 0 8px var(--surface-warning-subtle, hsla(45, 93%, 47%, 0.2)); 
+				}
 				.svc-name {
 					font-size: 0.7rem;
 					font-weight: 600;
-					color: var(--text-secondary, rgba(255, 255, 255, 0.8));
+					color: var(--text-secondary, hsla(0, 0%, 100%, 0.8));
 					white-space: nowrap;
 				}
 				.svc-detail {
 					font-size: 0.65rem;
-					color: var(--text-faint, rgba(255, 255, 255, 0.35));
+					color: var(--text-muted, hsla(0, 0%, 100%, 0.4));
 					font-family: var(--font-mono, 'Fira Code', monospace);
 					margin-left: auto;
 					white-space: nowrap;
@@ -271,7 +282,7 @@ export class SoftwareStatus extends HTMLElement {
 					font-size: 0.65rem;
 					text-transform: uppercase;
 					letter-spacing: 0.1em;
-					color: var(--text-faint, rgba(255, 255, 255, 0.3));
+					color: var(--text-muted, hsla(0, 0%, 100%, 0.4));
 					font-weight: 600;
 					display: block;
 					margin-bottom: 0.5rem;
@@ -279,28 +290,36 @@ export class SoftwareStatus extends HTMLElement {
 				.stack-grid {
 					display: grid;
 					grid-template-columns: repeat(2, 1fr);
-					gap: 0.5rem;
+					gap: 0.4rem;
 				}
 				.stack-item {
 					display: flex;
 					flex-direction: column;
 					gap: 0.15rem;
 					cursor: help;
+					padding: 0.4rem 0.65rem;
+					background: var(--surface-card-subtle, hsla(0, 0%, 100%, 0.015));
+					border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.04));
+					border-radius: 0.3rem;
+					min-height: 48px;
 				}
 				.stack-label {
 					font-size: 0.6rem;
 					text-transform: uppercase;
 					letter-spacing: 0.08em;
-					color: var(--text-faint, rgba(255, 255, 255, 0.25));
+					color: var(--text-muted, hsla(0, 0%, 100%, 0.3));
 					font-weight: 600;
 				}
 				.stack-value {
 					font-size: 0.82rem;
-					color: var(--text-secondary, rgba(255, 255, 255, 0.7));
+					color: var(--text-secondary, hsla(0, 0%, 100%, 0.7));
 					font-family: var(--font-mono, 'Fira Code', monospace);
 				}
 
-				.svc-item:focus-visible, .has-tip:focus-visible { outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); outline-offset: 2px; border-radius: 0.4rem; }
+				.svc-item:focus-visible, .stack-item:focus-visible { 
+					outline: 2px solid var(--accent-primary, hsla(173, 80%, 40%, 1)); 
+					outline-offset: 2px;
+				}
 				@media (forced-colors: active) {
 					.svc-dot.online { background: ButtonText; }
 					.svc-dot.offline { background: LinkText; }
@@ -311,7 +330,7 @@ export class SoftwareStatus extends HTMLElement {
 
 			<h2>
 				<span class="h-icon" aria-hidden="true">
-					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
 						<polyline points="16 18 22 12 16 6"></polyline>
 						<polyline points="8 6 2 12 8 18"></polyline>
 					</svg>

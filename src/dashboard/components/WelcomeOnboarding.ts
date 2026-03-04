@@ -49,21 +49,21 @@ export class WelcomeOnboarding extends HTMLElement {
 					:host { display: block; grid-column: 1 / -1; margin-bottom: 2rem; }
 					${ACCESSIBILITY_STYLES}
 					.card {
-						background: linear-gradient(135deg, rgba(var(--accent-color-rgb, 20, 184, 166), 0.1), rgba(0, 102, 255, 0.1));
-						border: 1px solid rgba(var(--accent-color-rgb, 20, 184, 166), 0.3);
+						background: linear-gradient(135deg, var(--surface-accent-subtle, hsla(173, 80%, 40%, 0.1)), hsla(216, 100%, 50%, 0.1));
+						border: 2px solid var(--border-accent, hsla(173, 80%, 40%, 0.3));
 						border-radius: var(--radius-lg, 1rem);
 						padding: 2rem;
 						display: flex;
 						flex-direction: column;
 						gap: 1.5rem;
-						animation: slideIn 0.5s ease-out;
+						animation: slideIn var(--duration-base, 0.25s) ease-out;
 					}
 					@keyframes slideIn {
-						from { opacity: 0; }
-						to { opacity: 1; }
+						from { opacity: 0; transform: translateY(-10px); }
+						to { opacity: 1; transform: translateY(0); }
 					}
 					h2 { margin: 0; font-size: 1.8rem; background: linear-gradient(135deg, var(--accent-color, hsla(173, 80%, 40%, 1)), hsla(216, 100%, 50%, 1)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-					p { margin: 0; color: var(--text-secondary, rgba(255, 255, 255, 0.8)); line-height: 1.6; }
+					p { margin: 0; color: var(--text-primary, hsla(0, 0%, 100%, 1)); opacity: 0.8; line-height: 1.6; }
 					
 					.steps {
 						display: grid;
@@ -71,24 +71,31 @@ export class WelcomeOnboarding extends HTMLElement {
 						gap: 1rem;
 					}
 					.step-item {
-						background: rgba(255, 255, 255, 0.05);
+						background: var(--surface-card, hsla(0, 0%, 100%, 0.03));
 						padding: 1rem;
-						border-radius: 0.75rem;
-						border: 1px solid rgba(255, 255, 255, 0.08);
+						border-radius: var(--radius-md, 0.75rem);
+						border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.1));
 						display: flex;
 						align-items: center;
 						gap: 0.75rem;
-						transition: all 0.3s ease;
+						transition: all var(--duration-base, 0.25s) ease;
 					}
-					.step-item.done { border-color: var(--accent-color, hsla(173, 80%, 40%, 1)); background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.05); }
+					.step-item.done { 
+						border-color: var(--accent-color, hsla(173, 80%, 40%, 1)); 
+						background: var(--surface-accent-subtle, hsla(173, 80%, 40%, 0.05)); 
+					}
 					.step-icon { 
-						width: 24px; height: 24px; border-radius: 50%; 
+						width: 28px; height: 28px; border-radius: 50%; 
 						display: flex; align-items: center; justify-content: center;
-						background: rgba(255, 255, 255, 0.1); font-size: 0.8rem;
+						background: var(--surface-card-hover, hsla(0, 0%, 100%, 0.06)); font-size: 0.8rem;
+						flex-shrink: 0;
 					}
-								.done .step-icon { background: var(--accent-color, hsla(173, 80%, 40%, 1)); color: var(--text-primary, hsla(0, 0%, 100%, 1)); }
-					.step-text { font-weight: 500; font-size: 0.9rem; }
-					.step-text span { display: block; font-size: 0.75rem; color: rgba(255, 255, 255, 0.4); font-weight: 400; }
+					.done .step-icon { 
+						background: var(--accent-color, hsla(173, 80%, 40%, 1)); 
+						color: var(--text-primary, hsla(0, 0%, 100%, 1)); 
+					}
+					.step-text { font-weight: 600; font-size: 0.95rem; color: var(--text-primary, hsla(0, 0%, 100%, 1)); }
+					.step-text span { display: block; font-size: 0.75rem; color: var(--text-muted, hsla(0, 0%, 100%, 0.4)); font-weight: 400; margin-top: 0.1rem; }
 
 					.cta {
 						align-self: flex-start;
@@ -102,12 +109,16 @@ export class WelcomeOnboarding extends HTMLElement {
 						transition: all var(--duration-fast, 0.2s);
 						border: none;
 						cursor: pointer;
+						min-height: 44px; /* A11y target */
 					}
-					.cta:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(var(--accent-color-rgb, 20, 184, 166), 0.4); }
+					.cta:hover { transform: translateY(-2px); box-shadow: 0 4px 12px hsla(173, 80%, 40%, 0.4); }
 					.cta:focus-visible { outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); outline-offset: 3px; }
-					.step-item:focus-visible { outline: 2px solid rgba(var(--accent-color-rgb, 20, 184, 166), 0.5); outline-offset: 2px; border-radius: 0.75rem; }
+					.step-item:focus-visible { outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); outline-offset: 2px; }
+					@media (prefers-reduced-motion: reduce) {
+						.card, .step-item, .cta { animation: none; transition: none; transform: none; }
+					}
 					@media (forced-colors: active) {
-						.welcome-card { background: Canvas; border: 2px solid ButtonText; }
+						.card { background: Canvas; border: 2px solid ButtonText; }
 						h2 { background: none; color: ButtonText; -webkit-text-fill-color: ButtonText; }
 						.step-item.done { border-color: Highlight; }
 						.done .step-icon { background: Highlight; color: HighlightText; }

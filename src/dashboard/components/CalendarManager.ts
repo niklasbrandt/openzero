@@ -235,27 +235,27 @@ export class CalendarManager extends HTMLElement {
 												display: none;
 												position: fixed;
 												top: 0; left: 0; width: 100%; height: 100%;
-												background: rgba(0, 0, 0, 0.4);
+												background: hsla(0, 0%, 0%, 0.4);
 												backdrop-filter: blur(12px);
 												z-index: 2000;
 												align-items: center;
 												justify-content: center;
 												padding: 1.5rem;
-												font-family: 'Inter', system-ui, sans-serif;
+												font-family: inherit;
 										}
 										:host([open]) { display: flex; }
 										
 										.modal {
-												background: rgba(20, 20, 25, 0.9);
-												border: 1px solid rgba(255, 255, 255, 0.12);
-												border-radius: 2rem;
+												background: hsla(240, 10%, 9%, 0.9);
+												border: 1px solid var(--border-medium, hsla(0, 0%, 100%, 0.12));
+												border-radius: var(--radius-2xl, 1.5rem);
 												width: 100%;
 												max-width: 1000px;
 												max-height: 85vh;
 												display: flex;
 												flex-direction: column;
 												overflow: hidden;
-												box-shadow: 0 40px 120px -20px rgba(0, 0, 0, 0.6);
+												box-shadow: 0 40px 120px -20px hsla(0, 0%, 0%, 0.6);
 												animation: modalPop 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 										}
 										@keyframes modalPop {
@@ -265,11 +265,11 @@ export class CalendarManager extends HTMLElement {
 										
 										.header {
 												padding: 1.5rem 2rem;
-												border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+												border-bottom: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.08));
 												display: flex;
 												justify-content: space-between;
 												align-items: center;
-												background: rgba(255, 255, 255, 0.02);
+												background: var(--surface-card, hsla(0, 0%, 100%, 0.03));
 										}
 										
 										.nav-controls {
@@ -286,21 +286,24 @@ export class CalendarManager extends HTMLElement {
 												letter-spacing: -0.01em;
 										}
 										.nav-btn {
-												background: rgba(255, 255, 255, 0.06);
-												border: 1px solid rgba(255, 255, 255, 0.1);
+												background: var(--surface-card-hover, hsla(0, 0%, 100%, 0.05));
+												border: 1px solid var(--border-medium, hsla(0, 0%, 100%, 0.12));
 												color: var(--text-primary, hsla(0, 0%, 100%, 1));
 												width: 32px; height: 32px;
-												border-radius: 8px;
+												border-radius: var(--radius-sm, 0.35rem);
 												display: flex; align-items: center; justify-content: center;
 												cursor: pointer;
 												transition: all 0.2s;
 										}
-										.nav-btn:hover { background: rgba(255, 255, 255, 0.12); border-color: rgba(255,255,255,0.2); }
+										.nav-btn:hover { 
+												background: var(--surface-hover, hsla(0, 0%, 100%, 0.06)); 
+												border-color: var(--border-accent, hsla(173, 80%, 40%, 0.25)); 
+										}
 
 										.close-btn {
 												background: transparent;
 												border: none;
-												color: rgba(255, 255, 255, 0.4);
+												color: var(--text-muted, hsla(0, 0%, 100%, 0.4));
 												font-size: 1.5rem;
 												cursor: pointer;
 												transition: color 0.2s;
@@ -316,7 +319,7 @@ export class CalendarManager extends HTMLElement {
 										
 										.calendar-panel {
 												padding: 2rem;
-												border-right: 1px solid rgba(255, 255, 255, 0.06);
+												border-right: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.08));
 												display: flex;
 												flex-direction: column;
 												gap: 2rem;
@@ -326,24 +329,41 @@ export class CalendarManager extends HTMLElement {
 												grid-template-columns: repeat(7, 1fr);
 												gap: 8px;
 										}
-										.weekday { text-align: center; font-size: 0.7rem; color: rgba(255,255,255,0.3); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding-bottom: 0.5rem; }
+										.weekday { text-align: center; font-size: 0.7rem; color: var(--text-faint, hsla(0, 0%, 100%, 0.2)); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding-bottom: 0.5rem; }
 										.day-cell {
 												aspect-ratio: 1.2;
-												background: rgba(255, 255, 255, 0.03);
-												border: 1px solid rgba(255, 255, 255, 0.06);
-												border-radius: 12px;
+												background: var(--surface-card, hsla(0, 0%, 100%, 0.03));
+												border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.08));
+												border-radius: var(--radius-md, 0.5rem);
 												display: flex;
 												align-items: center;
 												justify-content: center;
 												font-size: 0.95rem;
-												color: rgba(255,255,255,0.6);
+												color: var(--text-secondary, hsla(0, 0%, 100%, 0.7));
 												position: relative;
 												cursor: pointer;
 												transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 										}
-										.day-cell:hover { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.2); color: var(--text-primary, hsla(0, 0%, 100%, 1)); transform: translateY(-2px); }
-										.day-cell.today { border-color: var(--accent-color, hsla(173, 80%, 40%, 1)); color: var(--accent-color, hsla(173, 80%, 40%, 1)); background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.08); font-weight: 700; }
-										.day-cell.selected { background: var(--accent-color, hsla(173, 80%, 40%, 1)); color: hsla(0, 0%, 0%, 1); border-color: var(--accent-color, hsla(173, 80%, 40%, 1)); transform: translateY(-2px); box-shadow: 0 10px 20px -5px rgba(var(--accent-color-rgb, 20, 184, 166), 0.4); font-weight: 700; }
+										.day-cell:hover { 
+												background: var(--surface-card-hover, hsla(0, 0%, 100%, 0.05)); 
+												border-color: var(--border-accent, hsla(173, 80%, 40%, 0.25)); 
+												color: var(--text-primary, hsla(0, 0%, 100%, 1)); 
+												transform: translateY(-2px); 
+										}
+										.day-cell.today { 
+												border-color: var(--accent-color, hsla(173, 80%, 40%, 1)); 
+												color: var(--accent-color, hsla(173, 80%, 40%, 1)); 
+												background: hsla(173, 80%, 40%, 0.1); 
+												font-weight: 700; 
+										}
+										.day-cell.selected { 
+												background: var(--accent-color, hsla(173, 80%, 40%, 1)); 
+												color: hsla(0, 0%, 0%, 1); 
+												border-color: var(--accent-color, hsla(173, 80%, 40%, 1)); 
+												transform: translateY(-2px); 
+												box-shadow: 0 10px 20px -5px hsla(173, 80%, 40%, 0.4); 
+												font-weight: 700; 
+										}
 										
 										.event-dot {
 												position: absolute;
@@ -356,7 +376,7 @@ export class CalendarManager extends HTMLElement {
 										.day-cell.selected .event-dot { background: hsla(0, 0%, 0%, 1); }
 
 										.agenda-panel {
-												background: rgba(255, 255, 255, 0.015);
+												background: hsla(0, 0%, 100%, 0.015);
 												display: flex;
 												flex-direction: column;
 												overflow: hidden;
@@ -368,7 +388,7 @@ export class CalendarManager extends HTMLElement {
 												font-weight: 700;
 												text-transform: uppercase;
 												letter-spacing: 0.1em;
-												color: rgba(255, 255, 255, 0.4);
+												color: var(--text-muted, hsla(0, 0%, 100%, 0.4));
 										}
 
 										.events-list {
@@ -382,15 +402,15 @@ export class CalendarManager extends HTMLElement {
 										
 										.event-card {
 												padding: 1rem;
-												background: var(--surface-card, rgba(255, 255, 255, 0.04));
-												border-radius: 14px;
+												background: var(--surface-card, hsla(0, 0%, 100%, 0.03));
+												border-radius: var(--radius-md, 0.5rem);
 												border-left: 3px solid var(--accent-color, hsla(173, 80%, 40%, 1));
-												transition: transform var(--duration-fast, 0.2s);
+												transition: transform var(--duration-fast, 0.2s), background var(--duration-fast, 0.2s);
 										}
-										.event-card.birthday { border-left-color: var(--color-birthday, #F472B6); background: rgba(var(--color-birthday-rgb, 244, 114, 182), 0.05); }
-										.event-card.local { border-left-color: var(--color-info, #60A5FA); }
+										.event-card.birthday { border-left-color: var(--color-birthday, hsla(329, 86%, 70%, 1)); background: hsla(329, 86%, 70%, 0.05); }
+										.event-card.local { border-left-color: var(--color-info, hsla(217, 91%, 60%, 1)); }
 
-										.event-card:hover { transform: translateX(4px); background: rgba(255, 255, 255, 0.07); }
+										.event-card:hover { transform: translateX(4px); background: var(--surface-card-hover, hsla(0, 0%, 100%, 0.05)); }
 										
 										.event-card-inner { display: flex; justify-content: space-between; align-items: flex-start; }
 										.event-info { flex: 1; }
@@ -418,45 +438,50 @@ export class CalendarManager extends HTMLElement {
 
 										.quick-add {
 												padding: 1.5rem;
-												border-top: 1px solid rgba(255, 255, 255, 0.06);
-												background: rgba(0, 0, 0, 0.2);
+												border-top: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.08));
+												background: hsla(0, 0%, 100%, 0.01);
 										}
-										.event-form { display: flex; flex-direction: column; gap: 0.75rem; }
-										.input-group { display: flex; flex-direction: column; gap: 0.5rem; }
-										
-										input { 
-												background: rgba(255, 255, 255, 0.05); 
-												border: 1px solid rgba(255, 255, 255, 0.1); 
-												padding: 0.6rem 0.8rem; 
-												border-radius: 10px; 
-												color: var(--text-primary, hsla(0, 0%, 100%, 1)); 
-												font-size: 0.85rem;
+										.event-form {
+												display: flex;
+												flex-direction: column;
+												gap: 12px;
+										}
+										.event-form input {
+												background: hsla(0, 0%, 100%, 0.04);
+												border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.08));
+												border-radius: var(--radius-md, 0.5rem);
+												color: var(--text-primary, hsla(0, 0%, 100%, 1));
+												padding: 12px 1rem;
+												font-size: 0.9rem;
+												font-family: inherit;
+												transition: all 0.2s;
+										}
+										.event-form input:focus {
+												background: hsla(0, 0%, 100%, 0.07);
+												border-color: var(--accent-color, hsla(173, 80%, 40%, 1));
 												outline: none;
+												box-shadow: 0 0 0 3px hsla(173, 80%, 40%, 0.1);
 										}
-											input:focus { border-color: var(--accent-color, hsla(173, 80%, 40%, 1)); background: rgba(255, 255, 255, 0.08); }
-					input:focus-visible { outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); outline-offset: 2px; }
-					button.submit:focus-visible { outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); outline-offset: 2px; }
-					.nav-btn:focus-visible, .close-btn:focus-visible { outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); outline-offset: 2px; border-radius: 8px; }
-					.day-cell:focus-visible { outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); outline-offset: 2px; }
-					.delete-event-btn:focus-visible { outline: 2px solid var(--color-danger, hsla(0, 91%, 71%, 1)); outline-offset: 2px; }
-					/* Additional reduced-motion overrides beyond shared module */
-					@media (prefers-reduced-motion: reduce) {
-						*, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
-					}
-										
-											button.submit {
-													background: var(--accent-color, hsla(173, 80%, 40%, 1));
-													color: hsla(225, 50%, 8%, 1);
-													border: 1px solid var(--accent-color, hsla(173, 80%, 40%, 1));
-													padding: 0.6rem;
-													border-radius: var(--radius-sm, 0.5rem);
-													font-weight: 700;
-													cursor: pointer;
-													font-size: 0.85rem;
-													width: 100%;
-													transition: background var(--duration-fast, 0.2s), border-color var(--duration-fast, 0.2s);
-											}
-											button.submit:hover { background: color-mix(in srgb, var(--accent-color, hsla(173, 80%, 40%, 1)) 85%, black); border-color: color-mix(in srgb, var(--accent-color, hsla(173, 80%, 40%, 1)) 85%, black); color: hsla(225, 50%, 8%, 1); }
+										.input-group {
+												display: grid;
+												grid-template-columns: 1fr 1fr;
+												gap: 12px;
+										}
+										.submit {
+												background: var(--accent-color, hsla(173, 80%, 40%, 1));
+												color: hsla(0, 0%, 0%, 1);
+												border: none;
+												border-radius: var(--radius-md, 0.5rem);
+												padding: 12px;
+												font-weight: 700;
+												cursor: pointer;
+												transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+												box-shadow: 0 4px 15px -5px hsla(173, 80%, 40%, 0.4);
+										}
+										.submit:hover { 
+												transform: translateY(-2px); 
+												box-shadow: 0 8px 25px -5px hsla(173, 80%, 40%, 0.6); 
+										}
 											@media (forced-colors: active) {
 												.day-cell.today { border-color: Highlight; }
 												.day-cell.selected { background: Highlight; color: HighlightText; border-color: Highlight; }

@@ -288,9 +288,9 @@ export class SystemBenchmark extends HTMLElement {
 					flex-wrap: wrap;
 					margin-bottom: 1.25rem;
 					padding: 0.6rem 0.8rem;
-					background: rgba(0, 0, 0, 0.15);
+					background: var(--surface-input, hsla(0, 0%, 0%, 0.15));
 					border-radius: var(--radius-md, 0.5rem);
-					border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.03));
+					border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.03));
 				}
 
 				.legend-item {
@@ -298,7 +298,7 @@ export class SystemBenchmark extends HTMLElement {
 					align-items: center;
 					gap: 0.35rem;
 					font-size: 0.65rem;
-					color: var(--text-muted, rgba(255, 255, 255, 0.45));
+					color: var(--text-muted, hsla(0, 0%, 100%, 0.45));
 					cursor: help;
 				}
 
@@ -310,7 +310,7 @@ export class SystemBenchmark extends HTMLElement {
 				}
 
 				.legend-dot.excellent { background: var(--accent-color, hsla(173, 80%, 40%, 1)); }
-				.legend-dot.good { background: var(--color-success, hsla(142, 71%, 45%, 1)); }
+				.legend-dot.good { background: var(--color-success, hsla(142, 69%, 58%, 1)); }
 				.legend-dot.moderate { background: var(--color-warning, hsla(45, 93%, 47%, 1)); }
 				.legend-dot.slow { background: var(--color-danger, hsla(0, 84%, 60%, 1)); }
 
@@ -321,14 +321,14 @@ export class SystemBenchmark extends HTMLElement {
 				}
 
 				.bench-card {
-					background: var(--surface-card, rgba(255, 255, 255, 0.02));
-					border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.04));
+					background: var(--surface-card, hsla(0, 0%, 100%, 0.02));
+					border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.04));
 					border-radius: var(--radius-md, 0.6rem);
 					padding: 1rem;
 				}
 
 				.bench-card.error {
-					border-color: rgba(var(--color-danger-rgb, 239, 68, 68), 0.2);
+					border-color: var(--color-danger, hsla(0, 84%, 60%, 0.2));
 				}
 
 				.bench-header {
@@ -350,7 +350,7 @@ export class SystemBenchmark extends HTMLElement {
 
 				.bench-model {
 					font-size: 0.75rem;
-					color: var(--text-muted, rgba(255, 255, 255, 0.4));
+					color: var(--text-muted, hsla(0, 0%, 100%, 0.4));
 					font-family: var(--font-mono, 'Fira Code', monospace);
 					cursor: help;
 				}
@@ -362,8 +362,8 @@ export class SystemBenchmark extends HTMLElement {
 					padding: 0.4rem 0.7rem;
 					margin-bottom: 0.6rem;
 					border-radius: var(--radius-sm, 0.4rem);
-					background: rgba(var(--color-danger-rgb, 239, 68, 68), 0.08);
-					border: 1px solid rgba(var(--color-danger-rgb, 239, 68, 68), 0.2);
+					background: var(--surface-danger-subtle, hsla(0, 84%, 60%, 0.08));
+					border: 1px solid var(--color-danger, hsla(0, 84%, 60%, 0.2));
 					font-size: 0.7rem;
 					color: var(--color-danger, hsla(0, 84%, 60%, 1));
 					font-weight: 500;
@@ -378,8 +378,7 @@ export class SystemBenchmark extends HTMLElement {
 				}
 
 				.bench-tps {
-					display: flex;
-					align-items: baseline;
+					display: baseline;
 					gap: 0.3rem;
 					margin-bottom: 0.4rem;
 					cursor: help;
@@ -401,7 +400,7 @@ export class SystemBenchmark extends HTMLElement {
 				}
 
 				.bench-tps.excellent .tps-value { color: var(--accent-color, hsla(173, 80%, 40%, 1)); }
-				.bench-tps.good .tps-value { color: var(--color-success, hsla(142, 71%, 45%, 1)); }
+				.bench-tps.good .tps-value { color: var(--color-success, hsla(142, 69%, 58%, 1)); }
 				.bench-tps.moderate .tps-value { color: var(--color-warning, hsla(45, 93%, 47%, 1)); }
 				.bench-tps.slow .tps-value { color: var(--color-danger, hsla(0, 84%, 60%, 1)); }
 
@@ -420,29 +419,30 @@ export class SystemBenchmark extends HTMLElement {
 				.rating-icon { font-size: 0.8rem; }
 
 				.rating-badge.excellent {
-					background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.1);
+					background: var(--surface-accent-subtle, hsla(173, 80%, 40%, 0.1));
 					color: var(--accent-color, hsla(173, 80%, 40%, 1));
-					border: 1px solid rgba(var(--accent-color-rgb, 20, 184, 166), 0.2);
+					border: 1px solid var(--border-accent, hsla(173, 80%, 40%, 0.2));
 				}
 				.rating-badge.good {
-					background: rgba(var(--color-success-rgb, 34, 197, 94), 0.1);
-					color: var(--color-success, hsla(142, 71%, 45%, 1));
-					border: 1px solid rgba(var(--color-success-rgb, 34, 197, 94), 0.2);
+					background: var(--surface-success-subtle, hsla(142, 69%, 58%, 0.1));
+					color: var(--color-success, hsla(142, 69%, 58%, 1));
+					border: 1px solid var(--color-success, hsla(142, 69%, 58%, 0.2));
 				}
 				.rating-badge.moderate {
-					background: rgba(var(--color-warning-rgb, 234, 179, 8), 0.1);
+					background: var(--surface-warning-subtle, hsla(45, 93%, 47%, 0.1));
 					color: var(--color-warning, hsla(45, 93%, 47%, 1));
-					border: 1px solid rgba(var(--color-warning-rgb, 234, 179, 8), 0.2);
+					border: 1px solid var(--color-warning, hsla(45, 93%, 47%, 0.2));
 				}
 				.rating-badge.slow {
-					background: rgba(var(--color-danger-rgb, 239, 68, 68), 0.1);
+					background: var(--surface-danger-subtle, hsla(0, 84%, 60%, 0.1));
 					color: var(--color-danger, hsla(0, 84%, 60%, 1));
-					border: 1px solid rgba(var(--color-danger-rgb, 239, 68, 68), 0.2);
+					border: 1px solid var(--color-danger, hsla(0, 84%, 60%, 0.2));
 				}
 
 				.rating-hint {
 					font-size: 0.72rem;
-					color: var(--text-faint, rgba(255, 255, 255, 0.35));
+					color: var(--text-muted, hsla(0, 0%, 100%, 0.4));
+					opacity: 0.8;
 					line-height: 1.4;
 					margin-bottom: 0.75rem;
 					font-style: italic;
@@ -465,19 +465,22 @@ export class SystemBenchmark extends HTMLElement {
 					font-size: 0.6rem;
 					text-transform: uppercase;
 					letter-spacing: 0.1em;
-					color: var(--text-faint, rgba(255, 255, 255, 0.25));
+					color: var(--text-muted, hsla(0, 0%, 100%, 0.4));
+					opacity: 0.6;
 					font-weight: 600;
 				}
 
 				.detail-value {
 					font-size: 0.85rem;
-					color: var(--text-secondary, rgba(255, 255, 255, 0.7));
+					color: var(--text-primary, hsla(0, 0%, 100%, 1));
+					opacity: 0.7;
 					font-family: var(--font-mono, 'Fira Code', monospace);
 				}
 
 				.detail-hint {
 					font-size: 0.6rem;
-					color: var(--text-faint, rgba(255, 255, 255, 0.2));
+					color: var(--text-muted, hsla(0, 0%, 100%, 0.4));
+					opacity: 0.5;
 					line-height: 1.35;
 					margin-top: 0.15rem;
 				}
