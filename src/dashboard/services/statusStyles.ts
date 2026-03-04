@@ -31,13 +31,13 @@ export const STATUS_STYLES = `
 	.status-dot.online,
 	.status-dot.excellent,
 	.status-dot.healthy {
-		background: var(--accent-color, #14B8A6);
+		background: var(--accent-color, hsla(173, 80%, 40%, 1));
 		box-shadow: 0 0 ${DOT_GLOW_SPREAD} rgba(var(--accent-color-rgb, 20, 184, 166), 0.4);
 	}
 
 	/* ── Good / success ── */
 	.status-dot.good {
-		background: var(--color-success, #22c55e);
+		background: var(--color-success, hsla(142, 71%, 45%, 1));
 		box-shadow: 0 0 ${DOT_GLOW_SPREAD} rgba(var(--color-success-rgb, 34, 197, 94), 0.4);
 	}
 
@@ -45,7 +45,7 @@ export const STATUS_STYLES = `
 	.status-dot.warning,
 	.status-dot.moderate,
 	.status-dot.limited {
-		background: var(--color-warning, #eab308);
+		background: var(--color-warning, hsla(45, 93%, 47%, 1));
 		box-shadow: 0 0 ${DOT_GLOW_SPREAD} rgba(var(--color-warning-rgb, 234, 179, 8), 0.4);
 	}
 
@@ -54,7 +54,7 @@ export const STATUS_STYLES = `
 	.status-dot.offline,
 	.status-dot.error,
 	.status-dot.slow {
-		background: var(--color-danger, #ef4444);
+		background: var(--color-danger, hsla(0, 84%, 60%, 1));
 		box-shadow: 0 0 ${DOT_GLOW_SPREAD} rgba(var(--color-danger-rgb, 239, 68, 68), 0.4);
 	}
 `;

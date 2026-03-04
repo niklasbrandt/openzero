@@ -186,10 +186,10 @@ export class CreateProject extends HTMLElement {
 				box-shadow: 0 0 20px rgba(var(--accent-color-rgb, 20, 184, 166), 0.08);
 			}
 			input:focus-visible, textarea:focus-visible {
-				outline: 2px solid var(--accent-color, #14B8A6);
+				outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1));
 				outline-offset: 2px;
 			}
-			button:focus-visible { outline: 2px solid var(--accent-color, #14B8A6); outline-offset: 2px; }
+			button:focus-visible { outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); outline-offset: 2px; }
 
 			.hint {
 				font-size: 0.75rem;
@@ -233,13 +233,13 @@ export class CreateProject extends HTMLElement {
 			.feedback.success {
 				background: rgba(var(--color-success-rgb, 34, 197, 94), 0.1);
 				border: 1px solid rgba(var(--color-success-rgb, 34, 197, 94), 0.2);
-				color: var(--color-success, #4ade80);
+				color: var(--color-success, hsla(142, 69%, 58%, 1));
 			}
 
 			.feedback.error {
 				background: rgba(var(--color-danger-rgb, 239, 68, 68), 0.1);
 				border: 1px solid rgba(var(--color-danger-rgb, 239, 68, 68), 0.2);
-				color: var(--color-danger, #f87171);
+				color: var(--color-danger, hsla(0, 91%, 71%, 1));
 			}
 
 			/* ── Spinner ── */
