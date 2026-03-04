@@ -76,7 +76,7 @@ export class LifeOverview extends HTMLElement {
 			? data.timeline.map((e: any) => `
 					<div class="timeline-item" role="listitem">
 						<span class="time">${e.time}</span>
-						<span class="summary">${e.summary} ${!e.is_local ? '<small style="color: #14B8A6;">(Google)</small>' : ''}</span>
+						<span class="summary">${e.summary} ${!e.is_local ? '<small class="google-tag">(Google)</small>' : ''}</span>
 					</div>
 				`).join('')
 			: `<div class="empty-state">${this.tr('no_events', 'No upcoming events for the next 3 days.')}</div>`;
@@ -194,7 +194,8 @@ export class LifeOverview extends HTMLElement {
 					}
 					.time { color: var(--accent-color, #14B8A6); font-weight: 600; min-width: 70px; }
 					.summary { color: var(--text-secondary, rgba(255, 255, 255, 0.8)); }
-					.summary small { color: #3b82f6; opacity: 0.7; font-size: 0.7rem; margin-left: 0.3rem; }
+					.summary small { color: var(--color-info, #3b82f6); opacity: 0.7; font-size: 0.7rem; margin-left: 0.3rem; }
+					.google-tag { color: var(--accent-color, #14B8A6); opacity: 0.85; }
 
 
 					.error { color: var(--color-danger, #ef4444); text-align: center; padding: 2rem; }

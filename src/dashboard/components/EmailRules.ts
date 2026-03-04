@@ -177,6 +177,9 @@ export class EmailRules extends HTMLElement {
 
 					.edit-btn:focus-visible, .delete-btn:focus-visible { outline: 2px solid rgba(255,255,255,0.4); outline-offset: 2px; }
 					input:focus-visible, select:focus-visible { outline: 2px solid var(--accent-color, #14B8A6); outline-offset: 2px; }
+					.required {
+						color: var(--color-danger, #f87171);
+					}
 					.form-label {
 						display: block;
 						font-size: 0.68rem;
@@ -207,7 +210,7 @@ export class EmailRules extends HTMLElement {
 						<legend style="font-size:0.75rem;font-weight:600;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.06em;padding:0 0.25rem;">${this.editingId ? this.tr('edit_rule_legend', 'Edit Rule') : this.tr('new_rule_legend', 'New Rule')}</legend>
 						<div class="input-row">
 							<div class="input-col">
-								<label class="form-label" for="ruleInput">${this.tr('pattern_label', 'Sender Pattern')} <span aria-hidden="true" style="color:#f87171">*</span></label>
+								<label class="form-label" for="ruleInput">${this.tr('pattern_label', 'Sender Pattern')} <span class="required" aria-hidden="true">*</span></label>
 								<input type="text" id="ruleInput" required aria-required="true" placeholder="e.g. @domain.com or Invoice" autocomplete="off" aria-describedby="rule-hint">
 								<span id="rule-hint" style="font-size:0.65rem;color:rgba(255,255,255,0.25);margin-top:0.15rem;">Match against sender address or subject keywords</span>
 							</div>

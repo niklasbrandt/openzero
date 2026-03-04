@@ -131,7 +131,7 @@ export class CalendarAgenda extends HTMLElement {
 						<div class="details">
 							<div class="summary-row" style="display: flex; justify-content: space-between; align-items: flex-start;">
 								<span class="summary" style="flex: 1;">
-									${!e.is_local ? `<span class="local-indicator" style="color: #14B8A6; background: rgba(20, 184, 166, 0.1); border-color: rgba(20, 184, 166, 0.2);">Google</span> ` : ''}
+									${!e.is_local ? `<span class="local-indicator">Google</span> ` : ''}
 									<input type="text" class="event-title-edit" 
 										value="${e.summary}" 
 										data-id="${e.id}"
@@ -262,11 +262,11 @@ export class CalendarAgenda extends HTMLElement {
 					}
 					.local-indicator {
 						font-size: 0.65rem;
-						color: #0066FF;
-						background: rgba(0, 102, 255, 0.1);
-						border: 1px solid rgba(0, 102, 255, 0.2);
+						color: var(--accent-secondary, #0066FF);
+						background: rgba(var(--accent-secondary-rgb, 0, 102, 255), 0.1);
+						border: 1px solid rgba(var(--accent-secondary-rgb, 0, 102, 255), 0.2);
 						padding: 0.1rem 0.4rem;
-						border-radius: 0.3rem;
+						border-radius: var(--radius-xs, 0.3rem);
 						margin-right: 0.3rem;
 						vertical-align: middle;
 					}
@@ -285,7 +285,7 @@ export class CalendarAgenda extends HTMLElement {
 					}
 					.birthday-item .day { color: #f472b6 !important; }
 					.birthday-item .summary { color: #fbcfe8 !important; }
-					.empty { font-size: 0.85rem; color: rgba(255, 255, 255, 0.3); text-align: center; padding: 2rem; }
+					.empty-state { font-size: 0.85rem; color: var(--text-muted, rgba(255, 255, 255, 0.3)); text-align: center; padding: 2rem; }
 					.filter-btn:focus-visible, .calendar-link:focus-visible { 
 						outline: 2px solid var(--accent-color, #14B8A6); 
 						outline-offset: 2px; 
