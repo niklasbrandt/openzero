@@ -34,9 +34,10 @@ export class CalendarManager extends HTMLElement {
 	}
 
 	connectedCallback() {
-		this.render();
-		this.loadTranslations();
-		this.fetchEvents();
+		this.loadTranslations().then(() => {
+			this.render();
+			this.fetchEvents();
+		});
 		window.addEventListener('open-calendar', () => this.toggle(true));
 		window.addEventListener('refresh-data', (e: any) => {
 			if (e.detail && e.detail.actions && e.detail.actions.includes('calendar')) {
