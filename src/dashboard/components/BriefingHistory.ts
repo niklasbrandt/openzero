@@ -9,7 +9,10 @@ export class BriefingHistory extends HTMLElement {
 	}
 
 	private async loadTranslations() {
+		if (window.__z_translations) { this.t = window.__z_translations; return; }
 		try {
+			await window.__z_translations_ready;
+			if (window.__z_translations) { this.t = window.__z_translations; return; }
 			const res = await fetch('/api/dashboard/translations');
 			if (res.ok) this.t = await res.json();
 		} catch (_) { }

@@ -14,7 +14,10 @@ export class ZPersonality extends HTMLElement {
 	}
 
 	private async loadTranslations() {
+		if (window.__z_translations) { this.t = window.__z_translations; return; }
 		try {
+			await window.__z_translations_ready;
+			if (window.__z_translations) { this.t = window.__z_translations; return; }
 			const res = await fetch('/api/dashboard/translations');
 			if (res.ok) this.t = await res.json();
 		} catch (_) { }
@@ -279,10 +282,6 @@ export class ZPersonality extends HTMLElement {
 						</div>
 					` : !this.isLoading && this.activeTab === 'personality' ? `
 						<div class="trait-grid">
-							<div class="trait-item">
-								<span class="trait-label">${this.tr('digital_avatar', 'Digital Avatar')}</span>
-								<div class="trait-value" style="color: #14B8A6; font-weight: 800; letter-spacing: 0.05em;">${per?.agent_name || 'Z'}</div>
-							</div>
 							<div class="trait-item">
 								<span class="trait-label">${this.tr('core_identity', 'Core Identity')}</span>
 								<div class="trait-value">${per?.role || 'Agent Operator'}</div>
