@@ -125,8 +125,8 @@ export class EmailRules extends HTMLElement {
     if (this.shadowRoot) {
       this.shadowRoot.innerHTML = `
 				<style>
-					h2 { font-size: 1.1rem; font-weight: bold; margin: 0 0 1rem 0; color: #fff; display: flex; align-items: center; gap: 0.6rem; }
-					.h-icon { display: flex; align-items: center; justify-content: center; opacity: 0.6; }
+					h2 { font-size: 1.5rem; font-weight: bold; margin: 0 0 1.5rem 0; color: #fff; display: flex; align-items: center; gap: 0.5rem; letter-spacing: 0.02em; }
+					.icon { display: inline-flex; width: 28px; height: 28px; background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-secondary) 100%); border-radius: 0.4rem; align-items: center; justify-content: center; flex-shrink: 0; }
 					.subtitle { font-weight: 400; font-size: 0.75rem; color: rgba(255, 255, 255, 0.35); margin-left: auto; }
 					:host { display: block; }
 					.add-box { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.5rem; background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 1rem; }
@@ -186,9 +186,9 @@ export class EmailRules extends HTMLElement {
 					@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 				</style>
 				<div class="card">
-					<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+					<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
 						<h2>
-							<span class="h-icon" aria-hidden="true">
+							<span class="icon" aria-hidden="true">
 								<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
 									<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
 									<polyline points="22,6 12,13 2,6"></polyline>
