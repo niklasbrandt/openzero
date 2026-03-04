@@ -13,6 +13,41 @@ export class CalendarManager extends HTMLElement {
 	private isSubmitting = false;
 	private abortController: AbortController | null = null;
 
+	/** Bound handler for Escape and focus-trap while modal is open */
+	private _handleKeyDown = (e: KeyboardEvent) => {
+		if (e.key === 'Escape') {
+			e.preventDefault();
+			this.toggle(false);
+			return;
+		}
+		if (e.key === 'Tab') {
+			this._trapFocus(e);
+		}
+	};
+
+	/** Keep Tab/Shift+Tab cycling within the modal */
+	private _trapFocus(e: KeyboardEvent) {
+		const modal = this.shadowRoot?.querySelector('.modal');
+		if (!modal) return;
+		const focusable = modal.querySelectorAll<HTMLElement>(
+			'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+		);
+		if (focusable.length === 0) return;
+		const first = focusable[0];
+		const last = focusable[focusable.length - 1];
+		if (e.shiftKey) {
+			if (this.shadowRoot?.activeElement === first) {
+				e.preventDefault();
+				last.focus();
+			}
+		} else {
+			if (this.shadowRoot?.activeElement === last) {
+				e.preventDefault();
+				first.focus();
+			}
+		}
+	}
+
 	constructor() {
 		super();
 		this.attachShadow({ mode: 'open' });
@@ -46,6 +81,10 @@ export class CalendarManager extends HTMLElement {
 				this.fetchEvents();
 			}
 		});
+	}
+
+	disconnectedCallback() {
+		document.removeEventListener('keydown', this._handleKeyDown);
 	}
 
 	async fetchEvents() {
@@ -90,8 +129,18 @@ export class CalendarManager extends HTMLElement {
 
 			this.setAttribute('open', '');
 			this.fetchEvents();
+
+			// Trap focus inside modal and handle Escape
+			document.addEventListener('keydown', this._handleKeyDown);
+
+			// Focus close button after render settles
+			requestAnimationFrame(() => {
+				const closeBtn = this.shadowRoot?.querySelector('#close-modal') as HTMLElement;
+				closeBtn?.focus();
+			});
 		} else {
 			this.removeAttribute('open');
+			document.removeEventListener('keydown', this._handleKeyDown);
 		}
 		this.render();
 	}
@@ -142,7 +191,7 @@ export class CalendarManager extends HTMLElement {
 	}
 
 	async deleteEvent(id: string) {
-		if (!confirm('Are you sure you want to delete this event?')) return;
+		if (!confirm(this.tr('confirm_delete_event', 'Are you sure you want to delete this event?'))) return;
 		try {
 			const response = await fetch(`/api/dashboard/calendar/local/${id}`, {
 				method: 'DELETE'
@@ -355,6 +404,11 @@ export class CalendarManager extends HTMLElement {
 												font-size: 0.72rem;
 												transition: background var(--duration-fast, 0.2s), border-color var(--duration-fast, 0.2s);
 												flex-shrink: 0;
+												min-width: 44px;
+												min-height: 44px;
+												display: inline-flex;
+												align-items: center;
+												justify-content: center;
 											}
 											.delete-event-btn:hover { background: rgba(var(--color-danger-rgb, 239, 68, 68), 0.2); border-color: rgba(var(--color-danger-rgb, 239, 68, 68), 0.5); }
 										
@@ -426,12 +480,15 @@ export class CalendarManager extends HTMLElement {
 														
 														<div class="quick-add">
 																<form class="event-form" id="add-event-form">
-																		<input type="text" name="summary" placeholder="Quick add event..." required>
+																		<label for="cal-summary" class="sr-only">${this.tr('aria_event_title', 'Event title')}</label>
+																		<input type="text" id="cal-summary" name="summary" placeholder="${this.tr('quick_add_event', 'Quick add event...')}" required aria-required="true">
 																		<div class="input-group">
-																				<input type="datetime-local" name="start" required>
-																				<input type="datetime-local" name="end">
+																				<label for="cal-start" class="sr-only">${this.tr('aria_start_time', 'Start date and time')}</label>
+																				<input type="datetime-local" id="cal-start" name="start" required aria-required="true" aria-label="${this.tr('aria_start_time', 'Start date and time')}">
+																				<label for="cal-end" class="sr-only">${this.tr('aria_end_time', 'End date and time')}</label>
+																				<input type="datetime-local" id="cal-end" name="end" aria-label="${this.tr('aria_end_time', 'End date and time (optional)')}">
 																		</div>
-																		<button type="submit" class="submit">Add to Calendar</button>
+																		<button type="submit" class="submit">${this.tr('add_to_calendar', 'Add to Calendar')}</button>
 																</form>
 														</div>
 												</div>
@@ -556,7 +613,7 @@ export class CalendarManager extends HTMLElement {
 		});
 
 		this.shadowRoot.querySelectorAll('.day-cell[data-day]').forEach(cell => {
-			cell.addEventListener('click', () => {
+			const selectDay = () => {
 				const day = parseInt(cell.getAttribute('data-day') || '1');
 				this.selectedDate = day;
 				this.render();
@@ -565,6 +622,14 @@ export class CalendarManager extends HTMLElement {
 				const isoStr = new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
 				const startInput = this.shadowRoot?.querySelector('input[name="start"]') as HTMLInputElement;
 				if (startInput) startInput.value = isoStr;
+			};
+			cell.addEventListener('click', selectDay);
+			cell.addEventListener('keydown', (e: Event) => {
+				const ke = e as KeyboardEvent;
+				if (ke.key === 'Enter' || ke.key === ' ') {
+					ke.preventDefault();
+					selectDay();
+				}
 			});
 		});
 	}

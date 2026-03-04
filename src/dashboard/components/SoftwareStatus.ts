@@ -169,7 +169,7 @@ export class SoftwareStatus extends HTMLElement {
 		];
 
 		const stackHtml = stackItems.map(s => `
-			<div class="stack-item has-tip" data-tip="${s.tip}">
+			<div class="stack-item has-tip" data-tip="${s.tip}" tabindex="0" aria-label="${s.label}: ${s.value}">
 				<span class="stack-label">${s.label}</span>
 				<span class="stack-value">${s.value}</span>
 			</div>
@@ -313,7 +313,7 @@ export class SoftwareStatus extends HTMLElement {
 				${this.tr('software', 'Software')}
 			</h2>
 
-			<div id="sw-panel">
+			<div id="sw-panel" aria-live="polite" aria-label="${this.tr('aria_sw_status', 'Software status')}">
 				<div class="empty-state">${this.tr('loading_sw', 'Loading services...')}</div>
 			</div>
 		`;

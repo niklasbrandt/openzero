@@ -125,8 +125,8 @@ export class CircleManager extends HTMLElement {
 						<p class="ctx">${p.context || this.tr('no_focus', 'No specific focus set.')}</p>
 					</div>
 					<div class="item-actions" role="group" aria-label="${this.tr('aria_actions_for', 'Actions for')} ${p.name}">
-						<button class="edit-btn" data-id="${p.id}" aria-label="Edit details for ${p.name}">${this.tr('edit', 'Edit')}</button>
-						<button class="delete-btn" data-id="${p.id}" aria-label="Remove ${p.name} from circle">${this.tr('remove', 'Remove')}</button>
+						<button class="edit-btn" data-id="${p.id}" aria-label="${this.tr('aria_edit_details', 'Edit details for')} ${p.name}">${this.tr('edit', 'Edit')}</button>
+						<button class="delete-btn" data-id="${p.id}" aria-label="${this.tr('aria_remove_from_circle', 'Remove from circle')}: ${p.name}">${this.tr('remove', 'Remove')}</button>
 					</div>
 				</div>
 			`).join('') || this.tr('no_people', 'No people added to this circle.');
