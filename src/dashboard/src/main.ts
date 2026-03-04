@@ -148,10 +148,12 @@ async function initTheme() {
 			if (data.color_primary) {
 				root.style.setProperty('--accent-color', data.color_primary);
 				root.style.setProperty('--accent-color-rgb', hexToRgb(data.color_primary));
+				root.style.setProperty('--accent-glow', `rgba(${hexToRgb(data.color_primary)}, 0.4)`);
 				cache.accent = data.color_primary;
 			}
 			if (data.color_secondary) {
 				root.style.setProperty('--accent-secondary', data.color_secondary);
+				root.style.setProperty('--accent-secondary-rgb', hexToRgb(data.color_secondary));
 				cache.secondary = data.color_secondary;
 			}
 			if (data.color_tertiary) {
@@ -169,6 +171,18 @@ async function initTheme() {
 	}
 }
 initTheme();
+
+// ── Page loader dismissal ──
+// DOMContentLoaded fires after all deferred module scripts have run and all
+// custom elements in the document have been upgraded (connectedCallback done).
+// Fading out here guarantees widgets are fully rendered before content appears.
+document.addEventListener('DOMContentLoaded', () => {
+	const loader = document.getElementById('page-loader');
+	if (!loader) return;
+	loader.classList.add('hidden');
+	// Remove from DOM after the fade completes
+	loader.addEventListener('transitionend', () => loader.remove(), { once: true });
+});
 
 // ── Header CTA Translations ──
 // Fetches translations and applies localised labels, aria-label, and
