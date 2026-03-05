@@ -25,12 +25,16 @@
 	-moz-osx-font-smoothing: grayscale;
 
 	/* -- Accent palette -- */
-	--accent-color: hsla(173, 80%, 40%, 1);
-	--accent-color-rgb: 20, 184, 166;
+	--accent-primary: hsla(173, 80%, 40%, 1);
+	--accent-primary-rgb: 20, 184, 166;
 	--accent-secondary: hsla(216, 100%, 50%, 1);
 	--accent-secondary-rgb: 0, 102, 255;
 	--accent-tertiary: hsla(239, 84%, 67%, 1);
 	--accent-glow: hsla(173, 80%, 40%, 0.4);
+
+	/* -- Legacy Mapping (for compatibility) -- */
+	--accent-color: var(--accent-primary);
+	--accent-color-rgb: var(--accent-primary-rgb);
 
 	/* -- Semantic status colors -- */
 	--color-success: hsla(142, 71%, 45%, 1);
@@ -48,25 +52,25 @@
 
 	/* -- Text hierarchy -- */
 	--text-primary: hsla(0, 0%, 100%, 1);
-	--text-secondary: rgba(255, 255, 255, 0.7);
-	--text-muted: rgba(255, 255, 255, 0.4);
-	--text-faint: rgba(255, 255, 255, 0.2);
+	--text-secondary: hsla(0, 0%, 100%, 0.7);
+	--text-muted: hsla(0, 0%, 100%, 0.4);
+	--text-faint: hsla(0, 0%, 100%, 0.2);
 
 	/* -- Surfaces -- */
-	--bg-surface: rgba(20, 25, 45, 0.6);
 	--bg-body: hsla(228, 45%, 4%, 1);
-	--surface-card: rgba(255, 255, 255, 0.03);
-	--surface-card-hover: rgba(255, 255, 255, 0.05);
-	--surface-input: rgba(0, 0, 0, 0.2);
-	--surface-input-focus: rgba(0, 0, 0, 0.28);
-	--surface-hover: rgba(255, 255, 255, 0.06);
+	--bg-surface: hsla(228, 40%, 12%, 0.6);
+	--surface-card: hsla(0, 0%, 100%, 0.03);
+	--surface-card-hover: hsla(0, 0%, 100%, 0.05);
+	--surface-input: hsla(0, 0%, 0%, 0.2);
+	--surface-input-focus: hsla(0, 0%, 0%, 0.28);
+	--surface-hover: hsla(0, 0%, 100%, 0.06);
 
 	/* -- Borders -- */
-	--border-color: rgba(255, 255, 255, 0.06);
-	--border-subtle: rgba(255, 255, 255, 0.08);
-	--border-medium: rgba(255, 255, 255, 0.12);
-	--border-accent: rgba(var(--accent-color-rgb), 0.25);
-	--border-accent-focus: rgba(var(--accent-color-rgb), 0.4);
+	--border-color: hsla(0, 0%, 100%, 0.06);
+	--border-subtle: hsla(0, 0%, 100%, 0.08);
+	--border-medium: hsla(0, 0%, 100%, 0.12);
+	--border-accent: hsla(var(--accent-primary-rgb), 0.25);
+	--border-accent-focus: hsla(var(--accent-primary-rgb), 0.4);
 
 	/* -- Radii -- */
 	--radius-xs: 0.25rem;
@@ -102,4 +106,38 @@
 	--tooltip-border: rgba(255, 255, 255, 0.12);
 	--tooltip-text: hsla(0, 0%, 100%, 1);
 	--tooltip-shadow: 0 12px 48px rgba(0, 0, 0, 0.6);
+}
+
+/* -- Light Theme Overrides -- */
+[data-theme="light"] {
+	color-scheme: light;
+	--bg-body: hsla(228, 20%, 98%, 1);
+	--bg-surface: hsla(228, 20%, 95%, 0.8);
+	
+	/* Neutral Flip */
+	--text-primary: hsla(228, 45%, 4%, 1);
+	--text-secondary: hsla(228, 45%, 4%, 0.7);
+	--text-muted: hsla(228, 45%, 4%, 0.4);
+	--text-faint: hsla(228, 45%, 4%, 0.2);
+
+	--surface-card: hsla(228, 45%, 4%, 0.04);
+	--surface-card-hover: hsla(228, 45%, 4%, 0.08);
+	--surface-input: hsla(0, 0%, 100%, 0.8);
+	--surface-input-focus: hsla(0, 0%, 100%, 1);
+	--surface-hover: hsla(228, 45%, 4%, 0.06);
+
+	--border-color: hsla(228, 45%, 4%, 0.08);
+	--border-subtle: hsla(228, 45%, 4%, 0.12);
+	--border-medium: hsla(228, 45%, 4%, 0.16);
+
+	/* Glass Overrides for Light */
+	--glass-opacity: 0.85;
+	--glass-saturate: 140%;
+	--glass-brightness: 105%;
+
+	/* Tooltip Flip */
+	--tooltip-bg: hsla(228, 20%, 98%, 0.9);
+	--tooltip-border: hsla(228, 45%, 4%, 0.1);
+	--tooltip-text: hsla(228, 45%, 4%, 1);
+	--tooltip-shadow: 0 12px 48px rgba(0, 0, 0, 0.1);
 }

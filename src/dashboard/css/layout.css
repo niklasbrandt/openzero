@@ -20,6 +20,8 @@
 	/* overflow-x: hidden removed -- body already clips at page level;
 	   removing lets tooltips escape card boundaries. */
 	box-sizing: border-box;
+	/* Ensure masonry container handles overflowing children for tooltips */
+	overflow: visible;
 }
 
 /* -- Dashboard card (glassmorphism surface) -- */
@@ -46,6 +48,8 @@
 	/* overflow-x: hidden removed -- word-break + min-width:0 prevent
 	   blowout while letting tooltips extend past card edges. */
 	word-break: break-word;
+	/* Critical: Ensure tooltips can escape the card */
+	overflow: visible;
 }
 
 .dashboard-card:hover {

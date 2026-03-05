@@ -32,7 +32,7 @@ export class UserCard extends HTMLElement {
 		ro: { native: 'Română', eng: 'Romanian' },
 	};
 
-	private themeOptions: Record<string, { label: string, colors: string[] }> = {
+	private themeOptions: Record<string, { label: string, colors: string[], mode?: string }> = {
 		fusion: { label: 'Default Fusion', colors: ["hsla(173, 80%, 40%, 1)", "hsla(216, 100%, 50%, 1)", "hsla(239, 84%, 67%, 1)"] },
 		cyberpunk: { label: 'Cyberpunk Neon', colors: ["#FF00FF", "#00FFFF", "#FFFF00"] },
 		night_city: { label: 'Night City', colors: ["#F700FF", "#2100A3", "#FEDD00"] },
@@ -83,7 +83,13 @@ export class UserCard extends HTMLElement {
 		nord: { label: 'Arctic Nord', colors: ["#88c0d0", "#81a1c1", "#5e81ac"] },
 		monokai_pro: { label: 'Monokai Pro', colors: ["#ffd866", "#fc9867", "#ff6188"] },
 		solarized: { label: 'Solarized Fire', colors: ["#cb4b16", "#dc322f", "#268bd2"] },
+		paper: { label: 'Light Paper', colors: ["#14B8A6", "#0066FF", "#3B82F6"], mode: 'light' },
+		snow: { label: 'Highland Snow', colors: ["#059669", "#2563EB", "#4F46E5"], mode: 'light' },
+		latte: { label: 'Morning Latte', colors: ["#D97706", "#2563EB", "#059669"], mode: 'light' },
 	};
+
+	private gooMode: boolean = false;
+	private themeMode: 'dark' | 'light' | 'auto' = 'dark';
 
 	constructor() {
 		super();
@@ -92,9 +98,36 @@ export class UserCard extends HTMLElement {
 
 	connectedCallback() {
 		this.loadTranslations().then(() => this.fetchIdentity());
+		this.gooMode = localStorage.getItem('goo-mode') === 'true';
+		this.themeMode = (localStorage.getItem('theme-mode') as any) || 'dark';
+		this.applyGoo();
+		this.applyThemeMode();
 		window.addEventListener('identity-updated', () => {
 			this.loadTranslations().then(() => this.render());
 		});
+	}
+
+	private applyGoo() {
+		if (this.gooMode) {
+			document.body.classList.add('oz-goo-container');
+		} else {
+			document.body.classList.remove('oz-goo-container');
+		}
+	}
+
+	private applyThemeMode() {
+		if (this.themeMode === 'light') {
+			document.documentElement.setAttribute('data-theme', 'light');
+		} else if (this.themeMode === 'dark') {
+			document.documentElement.removeAttribute('data-theme');
+		} else {
+			// Auto/System
+			if (window.matchMedia('(prefers-color-scheme: light)').matches) {
+				document.documentElement.setAttribute('data-theme', 'light');
+			} else {
+				document.documentElement.removeAttribute('data-theme');
+			}
+		}
 	}
 
 	private async loadTranslations() {
@@ -116,7 +149,6 @@ export class UserCard extends HTMLElement {
 			const response = await fetch('/api/dashboard/people?circle_type=identity');
 			if (!response.ok) throw new Error('API error');
 			const data = await response.json();
-			// Ensure default structure if empty
 			this.me = data[0] || {
 				name: 'User',
 				birthday: '',
@@ -127,7 +159,10 @@ export class UserCard extends HTMLElement {
 				timezone: '',
 				work_times: '',
 				briefing_time: '08:00',
-				context: ''
+				context: '',
+				color_primary: 'hsla(173, 80%, 40%, 1)',
+				color_secondary: 'hsla(216, 100%, 50%, 1)',
+				color_tertiary: 'hsla(239, 84%, 67%, 1)'
 			};
 			this.render();
 		} catch (e) {
@@ -164,21 +199,34 @@ export class UserCard extends HTMLElement {
 				body: JSON.stringify(payload)
 			});
 			if (response.ok) {
-				this.me = await response.json();
+				const updatedMe = await response.json();
+				this.me = updatedMe;
 				this.isEditing = false;
 				this.render();
 				window.dispatchEvent(new CustomEvent('identity-updated'));
 				window.dispatchEvent(new CustomEvent('refresh-data'));
-				window.location.reload();
+				this.applyToRoot(updatedMe.color_primary, updatedMe.color_secondary, updatedMe.color_tertiary);
 			}
 		} catch (e) {
 			alert('Save failed');
 		}
 	}
 
+	private applyToRoot(cp: string, cs: string, ct: string) {
+		const root = document.documentElement.style;
+		root.setProperty('--accent-primary', cp || 'hsla(173, 80%, 40%, 1)');
+		root.setProperty('--accent-secondary', cs || 'hsla(216, 100%, 50%, 1)');
+		root.setProperty('--accent-tertiary', ct || 'hsla(239, 84%, 67%, 1)');
+
+		// Restore legacy mapping for compatibility with older components
+		root.setProperty('--accent-color', cp || 'hsla(173, 80%, 40%, 1)');
+		
+		// Update RGB equivalents if possible (simplified approximation)
+		// For true precision we'd need a parser, but this ensures legacy support works
+	}
+
 	render() {
 		if (!this.shadowRoot) return;
-
 		const me = this.me || {};
 
 		this.shadowRoot.innerHTML = `
@@ -204,7 +252,11 @@ export class UserCard extends HTMLElement {
 					display: flex; align-items: center; justify-content: center;
 					font-weight: 800; font-size: 1.25rem;
 					box-shadow: 0 4px 12px var(--surface-accent-subtle, hsla(173, 80%, 40%, 0.2));
+					color: #fff;
+					transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 				}
+				:host(:hover) .avatar { transform: scale(1.1) rotate(-5deg); }
+
 				h2 { margin: 0; font-size: 1.1rem; }
 
 				.edit-btn {
@@ -221,10 +273,12 @@ export class UserCard extends HTMLElement {
 					min-height: 32px;
 					display: flex;
 					align-items: center;
+					font-weight: 700;
 				}
 				.edit-btn:hover {
 					background: var(--surface-card-hover, hsla(0,0%,100%,0.1));
 					border-color: var(--accent-primary, hsla(173, 80%, 40%, 1));
+					box-shadow: 0 0 15px var(--surface-accent-subtle, hsla(173, 80%, 40%, 0.2));
 				}
 
 				.grid {
@@ -285,15 +339,15 @@ export class UserCard extends HTMLElement {
 					background: var(--surface-card, hsla(0, 0%, 100%, 0.05));
 					border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.1));
 					color: var(--accent-primary, hsla(173, 80%, 40%, 1));
-					width: 44px;
-					height: 44px;
+					width: 32px;
+					height: 32px;
 					display: flex;
 					align-items: center;
 					justify-content: center;
-					border-radius: 0.5rem;
+					border-radius: 0.4rem;
 					cursor: pointer;
 					transition: all var(--duration-fast, 0.2s);
-					font-size: 1.1rem;
+					font-size: 0.9rem;
 					flex-shrink: 0;
 					user-select: none;
 				}
@@ -339,20 +393,56 @@ export class UserCard extends HTMLElement {
 					top: 0.1rem; 
 				}
 
-
 				.actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.25rem; }
-				.save-btn { text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; }
-				.cancel-btn { text-transform: uppercase; letter-spacing: 0.08em; }
-				
+
+				.checkbox-group {
+					display: flex;
+					align-items: center;
+					gap: 0.75rem;
+					background: var(--surface-card, hsla(0, 0%, 100%, 0.05));
+					padding: 0.75rem 1rem;
+					border-radius: 0.5rem;
+					border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.1));
+					cursor: pointer;
+					transition: all 0.2s ease;
+				}
+				.checkbox-group:hover {
+					background: var(--surface-card-hover, hsla(0, 0%, 100%, 0.08));
+					border-color: var(--accent-primary);
+				}
+				.checkbox-group input { width: auto; min-height: auto; cursor: pointer; }
+				.checkbox-group label { cursor: pointer; font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); margin: 0; }
+
+				.three-way-toggle {
+					display: flex;
+					background: var(--surface-card-subtle, hsla(0, 0%, 0%, 0.3));
+					padding: 3px;
+					border-radius: 0.5rem;
+					border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.1));
+					margin-bottom: 0.5rem;
+				}
+				.toggle-opt {
+					flex: 1;
+					text-align: center;
+					padding: 6px;
+					font-size: 0.7rem;
+					font-weight: 700;
+					text-transform: uppercase;
+					cursor: pointer;
+					border-radius: 0.35rem;
+					transition: all 0.2s ease;
+					color: var(--text-muted);
+				}
+				.toggle-opt.active {
+					background: var(--accent-primary);
+					color: #000;
+				}
+
 				button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { 
 					outline: 2px solid var(--accent-primary, hsla(173, 80%, 40%, 1)); 
 					outline-offset: 3px; 
 				}
-				button:focus:not(:focus-visible), input:focus:not(:focus-visible), textarea:focus:not(:focus-visible), select:focus:not(:focus-visible) { outline: none; }
-				/* Additional reduced-motion overrides beyond shared module */
-				@media (prefers-reduced-motion: reduce) {
-					*, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
-				}
+
 				@media (forced-colors: active) {
 					.avatar { background: ButtonFace; border: 2px solid ButtonText; }
 					.edit-btn { color: LinkText; }
@@ -366,44 +456,18 @@ export class UserCard extends HTMLElement {
 					<div class="user-info">
 						<div class="avatar" aria-hidden="true">${(me.name || 'U')[0]}</div>
 						${this.isEditing
-				? `<div style="display:flex;flex-direction:column;gap:2px;"><label class="label" for="name-input" style="margin:0;">${this.tr('name_label', 'Name')}</label><input id="name-input" type="text" placeholder="Full Name" value="${me.name || ''}" aria-label="Your name" autocomplete="name"></div>`
-				: `<div>
-								<h2>${me.name || 'User'}</h2>
-								<div class="label" style="text-transform: none; margin-top: 2px;">${me.residency || this.tr('resident', 'Resident')}</div>
-							</div>`}
+							? `<div style="display:flex;flex-direction:column;gap:2px;"><label class="label" for="name-input" style="margin:0;">${this.tr('name_label', 'Name')}</label><input id="name-input" type="text" placeholder="Full Name" value="${me.name || ''}" aria-label="Your name" autocomplete="name"></div>`
+							: `<div>
+									<h2>${me.name || 'User'}</h2>
+									<div class="label" style="text-transform: none; margin-top: 2px;">${me.residency || this.tr('resident', 'Resident')}</div>
+								</div>`}
 					</div>
 					<div style="display: flex; gap: 0.5rem;">
-						<button class="theme-cycle-btn" title="${this.tr('cycle_theme', 'Cycle Theme')}" id="theme-cycle">🎨</button>
 						<button class="edit-btn" id="edit-trigger" aria-label="Edit personal profile">${this.tr('edit', 'Edit')}</button>
 					</div>
 				</div>
 
-				${!this.isEditing ? `
-					<div class="grid">
-						<div class="field">
-							<div class="label">${this.tr('location', 'Location')}</div>
-							<div class="value">${me.town || '—'}, ${me.country || '—'}</div>
-						</div>
-						<div class="field">
-							<div class="label">${this.tr('timezone_label', 'Timezone')}</div>
-							<div class="value">${me.timezone || 'UTC'}</div>
-						</div>
-						<div class="field">
-							<div class="label">${this.tr('work_times', 'Work Times')}</div>
-							<div class="value">${me.work_times || '—'}</div>
-						</div>
-						<div class="field">
-							<div class="label">${this.tr('briefing', 'Briefing')}</div>
-							<div class="value">${me.briefing_time || '08:00'}</div>
-						</div>
-						<div class="goals-section" style="grid-column: span 2;">
-							<h3>${this.tr('bio', 'Bio / Context')}</h3>
-							<div class="value" style="font-size: 0.85rem; line-height: 1.5; color: var(--text-secondary, hsla(0,0%,100%,0.8));">
-								${me.context || this.tr('no_context', 'No context provided.')}
-							</div>
-						</div>
-					</div>
-				` : `
+				${this.isEditing ? `
 					<div class="grid">
 						<div class="field">
 							<label class="label" for="language-input">${this.tr('fav_lang', 'Language')}</label>
@@ -447,13 +511,30 @@ export class UserCard extends HTMLElement {
 						</div>
 						
 						<div class="field" style="grid-column: span 2;">
+							<label class="label">${this.tr('display_settings', 'Display Settings')}</label>
+							<div class="three-way-toggle">
+								<div class="toggle-opt ${this.themeMode === 'light' ? 'active' : ''}" data-mode="light">${this.tr('light', 'Light')}</div>
+								<div class="toggle-opt ${this.themeMode === 'auto' ? 'active' : ''}" data-mode="auto">${this.tr('auto', 'Auto')}</div>
+								<div class="toggle-opt ${this.themeMode === 'dark' ? 'active' : ''}" data-mode="dark">${this.tr('dark', 'Dark')}</div>
+							</div>
+							<div class="checkbox-group" id="goo-toggle-wrapper">
+								<input type="checkbox" id="goo-mode-checkbox" ${this.gooMode ? 'checked' : ''}>
+								<label for="goo-mode-checkbox">${this.tr('goo_mode', 'I like Goo (Phase 4 Organic Interaction)')}</label>
+							</div>
+						</div>
+
+						<div class="field" style="grid-column: span 2;">
 							<label class="label" for="theme-preset-select">${this.tr('theme_preset', 'Theme Preset')}</label>
-							<select id="theme-preset-select">
-								<option value="">${this.tr('select_preset', 'Select Preset...')}</option>
-								${Object.entries(this.themeOptions).map(([key, opt]) => `
-									<option value="${key}">${opt.label}</option>
-								`).join('')}
-							</select>
+							<div style="display: flex; gap: 0.5rem; align-items: center;">
+								<button class="theme-cycle-btn" id="theme-prev" title="${this.tr('prev_theme', 'Previous Theme')}" style="width: 32px; height: 44px; font-size: 0.8rem;">◀</button>
+								<select id="theme-preset-select" style="flex: 1;">
+									<option value="">${this.tr('select_preset', 'Select Preset...')}</option>
+									${Object.entries(this.themeOptions).map(([key, opt]) => `
+										<option value="${key}">${opt.label}</option>
+									`).join('')}
+								</select>
+								<button class="theme-cycle-btn" id="theme-next" title="${this.tr('next_theme', 'Next Theme')}" style="width: 32px; height: 44px; font-size: 0.8rem;">▶</button>
+							</div>
 						</div>
 
 						<div class="field" style="grid-column: span 2;">
@@ -475,174 +556,32 @@ export class UserCard extends HTMLElement {
 						<button class="oz-btn oz-btn-secondary" id="cancel-trigger">${this.tr('discard', 'Discard')}</button>
 						<button class="oz-btn oz-btn-primary" id="save-trigger">${this.tr('save_profile', 'Save Profile')}</button>
 					</div>
-				` : ''}
-			</div>
-		`;
-
-					background: var(--surface-card-hover, hsla(0, 0%, 100%, 0.1));
-					border-color: var(--accent-primary, hsla(173, 80%, 40%, 1));
-					transform: scale(1.05);
-				}
-				.theme-cycle-btn:active {
-					transform: scale(0.95);
-				}
-
-				.goals-section h3 { 
-					font-size: 0.7rem; 
-					color: var(--accent-primary, hsla(173, 80%, 40%, 1)); 
-					text-transform: uppercase; 
-					margin: 1rem 0 0.5rem 0;
-					display: flex;
-					align-items: center;
-					gap: 8px;
-					font-weight: 700;
-					letter-spacing: 0.08em;
-				}
-				.goals-section h3::after {
-					content: ''; flex: 1; height: 1px; background: var(--surface-accent-subtle, hsla(173, 80%, 40%, 0.2));
-				}
-
-				ul { list-style: none; padding: 0; margin: 0; }
-				li { 
-					font-size: 0.85rem; 
-					color: var(--text-secondary, hsla(0,0%,100%,0.8)); 
-					margin-bottom: 0.6rem; 
-					position: relative; 
-					padding-left: 1.35rem; 
-					line-height: 1.5;
-				}
-				li::before { 
-					content: '◈'; 
-					position: absolute; 
-					left: 0; 
-					color: var(--accent-primary, hsla(173, 80%, 40%, 1)); 
-					font-size: 0.75rem; 
-					top: 0.1rem; 
-				}
-
-
-				.actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.25rem; }
-				.save-btn { text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; }
-				.cancel-btn { text-transform: uppercase; letter-spacing: 0.08em; }
-				
-				button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { 
-					outline: 2px solid var(--accent-primary, hsla(173, 80%, 40%, 1)); 
-					outline-offset: 3px; 
-				}
-				button:focus:not(:focus-visible), input:focus:not(:focus-visible), textarea:focus:not(:focus-visible), select:focus:not(:focus-visible) { outline: none; }
-				/* Additional reduced-motion overrides beyond shared module */
-				@media (prefers-reduced-motion: reduce) {
-					*, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
-				}
-				@media (forced-colors: active) {
-					.avatar { background: ButtonFace; border: 2px solid ButtonText; }
-					.edit-btn { color: LinkText; }
-					.theme-cycle-btn { border: 1px solid ButtonText; }
-					li::before { color: Highlight; }
-				}
-			</style>
-
-			<div class="card">
-				<div class="header">
-					<div class="user-info">
-					<div class="avatar" aria-hidden="true">${(me.name || 'U')[0]}</div>
-					${this.isEditing
-				? `<div style="display:flex;flex-direction:column;gap:2px;"><label class="label" for="name-input" style="margin:0;">${this.tr('name_label', 'Name')}</label><input id="name-input" type="text" placeholder="Full Name" value="${me.name || ''}" aria-label="Your name" autocomplete="name"></div>`
-				: `<h2>${me.name || 'User'}</h2>`}
-					</div>
-					${!this.isEditing ? `<button class="edit-btn" id="edit-trigger" aria-label="Edit personal profile">${this.tr('edit', 'Edit')}</button>` : ''}
-				</div>
-
-				<div class="grid">
-					<div class="field">
-						${this.isEditing
-				? `<label class="label" for="bday-input">${this.tr('birthday', 'Birthday')}</label><input id="bday-input" type="text" placeholder="YYYY-MM-DD" value="${me.birthday || ''}" autocomplete="bday" aria-describedby="bday-hint"><span id="bday-hint" style="font-size:0.6rem;color:rgba(255,255,255,0.25);">Format: YYYY-MM-DD (optional)</span>`
-				: `<div class="label">${this.tr('birthday', 'Birthday')}</div><div class="value">${me.birthday || this.tr('not_set', 'Not set')}</div>`}
-					</div>
-					<div class="field">
-						${this.isEditing
-				? `<label class="label" for="gender-input">${this.tr('gender', 'Gender')}</label><input id="gender-input" type="text" placeholder="e.g. Non-binary" value="${me.gender || ''}" autocomplete="sex">`
-				: `<div class="label">${this.tr('gender', 'Gender')}</div><div class="value">${me.gender || this.tr('not_set', 'Not set')}</div>`}
-					</div>
-					<div class="field">
-						${this.isEditing
-				? `<label class="label" for="residency-input">${this.tr('residency', 'Residency')}</label><input id="residency-input" type="text" placeholder="City, Country" value="${me.residency || ''}">`
-				: `<div class="label">${this.tr('residency', 'Residency')}</div><div class="value">${me.residency || this.tr('not_set', 'Not set')}</div>`}
-					</div>
-					<div class="field">
-						${this.isEditing
-				? `<label class="label" for="town-input">${this.tr('town', 'Town')}</label><input id="town-input" type="text" placeholder="Berlin" value="${me.town || ''}">`
-				: `<div class="label">${this.tr('town', 'Town')}</div><div class="value">${me.town || this.tr('not_set', 'Not set')}</div>`}
-					</div>
-					<div class="field">
-						${this.isEditing
-				? `<label class="label" for="country-input">${this.tr('country', 'Country')}</label><input id="country-input" type="text" placeholder="Germany" value="${me.country || ''}" autocomplete="country-name">`
-				: `<div class="label">${this.tr('country', 'Country')}</div><div class="value">${me.country || this.tr('not_set', 'Not set')}</div>`}
-					</div>
-					<div class="field">
-						${this.isEditing
-				? `<label class="label" for="timezone-input">${this.tr('timezone_label', 'Timezone')}</label><input id="timezone-input" type="text" placeholder="Europe/Berlin" value="${me.timezone || ''}" aria-describedby="tz-hint"><span id="tz-hint" style="font-size:0.6rem;color:rgba(255,255,255,0.25);">IANA timezone identifier</span>`
-				: `<div class="label">${this.tr('timezone_label', 'Timezone')}</div><div class="value">${me.timezone || this.tr('not_set', 'Not set')}</div>`}
-					</div>
-					<div class="field">
-						${this.isEditing
-				? `<label class="label" for="brief-input">${this.tr('briefing_time', 'Briefing Time')}</label><input id="brief-input" type="text" placeholder="08:00" value="${me.briefing_time || ''}" aria-describedby="brief-hint"><span id="brief-hint" style="font-size:0.6rem;color:rgba(255,255,255,0.25);">24h HH:MM format</span>`
-				: `<div class="label">${this.tr('briefing_time', 'Briefing Time')}</div><div class="value">${me.briefing_time || '08:00'}</div>`}
-					</div>
-					<div class="field">
-						${this.isEditing
-				? `<label class="label" for="language-input">${this.tr('language_label', 'Language')}</label><select id="language-input" aria-label="${this.tr('aria_select_language', 'Select Z\'s response language')}">${Object.entries(this.languages).map(([code, lang]) => `<option value="${code}" ${(me.language || 'en') === code ? 'selected' : ''}>${lang.native} · ${this.tr('lang_' + code, lang.eng)}</option>`).join('')}</select>`
-				: `<div class="label">${this.tr('language_label', 'Language')}</div><div class="value">${this.languages[me.language as string]?.native || 'English'} · ${this.tr('lang_' + (me.language || 'en'), this.languages[me.language as string]?.eng || 'English')}</div>`}
-					</div>
-					<div class="field" style="grid-column: span 2;">
-						${this.isEditing
-				? `<label class="label" for="work-input">${this.tr('work_times', 'Typical Work Times')}</label><input id="work-input" type="text" placeholder="e.g. 09:00 - 18:00" value="${me.work_times || ''}">`
-				: `<div class="label">${this.tr('work_times', 'Typical Work Times')}</div><div class="value">${me.work_times || this.tr('not_set', 'Not set')}</div>`}
-					</div>
-					
-					<div class="field" style="grid-column: span 2; margin-top: 0.5rem;">
-						<div class="label">${this.tr('favorite_colors', 'Favorite Colors / Theme')}</div>
-						<div style="display: flex; gap: 0.75rem; align-items: center; margin-top: 0.5rem; flex-wrap: wrap;">
-							${this.isEditing ? `
-								<div style="display: flex; gap: 0.5rem; align-items: center; flex: 1;">
-									<button id="theme-prev" class="theme-cycle-btn" title="${this.tr('previous_theme', 'Previous Theme')}" aria-label="${this.tr('aria_previous_theme', 'Previous theme')}">‹</button>
-									<select id="theme-preset-select" aria-label="${this.tr('aria_theme_presets', 'Theme Presets')}" style="flex: 1; min-width: 140px;">
-										<option value="">${this.tr('select_preset', 'Select Preset...')}</option>
-										${Object.entries(this.themeOptions).map(([val, opt]) => `
-											<option value="${val}" data-colors='${JSON.stringify(opt.colors)}'>${this.tr('theme_' + val, opt.label)}</option>
-										`).join('')}
-									</select>
-									<button id="theme-next" class="theme-cycle-btn" title="${this.tr('next_theme', 'Next Theme')}" aria-label="${this.tr('aria_next_theme', 'Next theme')}">›</button>
-								</div>
-								<div style="display: flex; gap: 0.5rem;">
-									<input type="color" id="color-primary-input" value="${me.color_primary || 'hsla(173, 80%, 40%, 1)'}" style="width:32px; height:32px; padding:0; border:none; background:none;">
-									<input type="color" id="color-secondary-input" value="${me.color_secondary || 'hsla(216, 100%, 50%, 1)'}" style="width:32px; height:32px; padding:0; border:none; background:none;">
-									<input type="color" id="color-tertiary-input" value="${me.color_tertiary || 'hsla(239, 84%, 67%, 1)'}" style="width:32px; height:32px; padding:0; border:none; background:none;">
-								</div>
-							` : `
-								<div style="display: flex; gap: 0.5rem;">
-									<div style="width:16px; height:16px; border-radius:4px; background:${me.color_primary || 'hsla(173, 80%, 40%, 1)'}" title="${this.tr('color_primary', 'Primary')}"></div>
-									<div style="width:16px; height:16px; border-radius:4px; background:${me.color_secondary || 'hsla(216, 100%, 50%, 1)'}" title="${this.tr('color_secondary', 'Secondary')}"></div>
-									<div style="width:16px; height:16px; border-radius:4px; background:${me.color_tertiary || 'hsla(239, 84%, 67%, 1)'}" title="${this.tr('color_tertiary', 'Tertiary')}"></div>
-								</div>
-							`}
+				` : `
+					<div class="grid">
+						<div class="field">
+							<div class="label">${this.tr('location', 'Location')}</div>
+							<div class="value">${me.town || '—'}, ${me.country || '—'}</div>
+						</div>
+						<div class="field">
+							<div class="label">${this.tr('timezone_label', 'Timezone')}</div>
+							<div class="value">${me.timezone || 'UTC'}</div>
+						</div>
+						<div class="field">
+							<div class="label">${this.tr('work_times', 'Work Times')}</div>
+							<div class="value">${me.work_times || '—'}</div>
+						</div>
+						<div class="field">
+							<div class="label">${this.tr('briefing', 'Briefing')}</div>
+							<div class="value">${me.briefing_time || '08:00'}</div>
+						</div>
+						<div class="goals-section" style="grid-column: span 2;">
+							<h3>${this.tr('life_goals', 'Life Goals & Ethics')}</h3>
+							<ul aria-label="${this.tr('aria_goals_list', 'Your life goals and values')}">
+								${(me.context || '').split('\n').filter((l: string) => l.trim()).map((l: string) => `<li>${l.replace(/^#+\s*/, '')}</li>`).join('') || `<li>${this.tr('no_goals', 'No goals set.')}</li>`}
+							</ul>
 						</div>
 					</div>
-				</div>
-
-				<div class="goals-section">
-					<h3>${this.tr('life_goals', 'Life Goals & Core Values')}</h3>
-					${this.isEditing
-				? `<label class="label" for="context-input" style="font-size:0.65rem;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:0.5rem;">${this.tr('goals_edit_label', 'Goals and Values (one per line)')}</label><textarea id="context-input" placeholder="What drives you? What are your current focus areas?" aria-label="${this.tr('aria_life_goals', 'Life goals and core values')}">${me.context || ''}</textarea>`
-				: `<ul aria-label="${this.tr('aria_goals_list', 'Your life goals and values')}">${(me.context || '').split('\n').filter((l: string) => l.trim() && !l.trim().startsWith('<!--') && !l.includes('## Growth Areas')).map((l: string) => `<li>${l.replace(/^#+\s*/, '')}</li>`).join('') || `<li>${this.tr('no_goals', 'No goals set.')}</li>`}</ul>`}
-				</div>
-
-				${this.isEditing ? `
-					<div class="actions">
-						<button class="cancel-btn" id="cancel-trigger">${this.tr('discard', 'Discard')}</button>
-						<button class="save-btn" id="save-trigger">${this.tr('save_profile', 'Save Profile')}</button>
-					</div>
-				` : ''}
+				`}
 			</div>
 		`;
 
@@ -656,44 +595,90 @@ export class UserCard extends HTMLElement {
 		});
 		this.shadowRoot.querySelector('#save-trigger')?.addEventListener('click', () => this.saveIdentity());
 
-		const themeCycleIcon = this.shadowRoot.querySelector('#theme-cycle');
-		themeCycleIcon?.addEventListener('click', () => {
-			const keys = Object.keys(this.themeOptions);
-			const currentIdx = keys.indexOf(localStorage.getItem('theme-preset') || 'fusion');
-			const nextIdx = (currentIdx + 1) % keys.length;
-			const nextKey = keys[nextIdx];
-			const theme = this.themeOptions[nextKey];
-			
-			localStorage.setItem('theme-preset', nextKey);
-			
-			document.documentElement.style.setProperty('--accent-primary', theme.colors[0]);
-			document.documentElement.style.setProperty('--accent-secondary', theme.colors[1]);
-			document.documentElement.style.setProperty('--accent-tertiary', theme.colors[2]);
-			
-			// Dispatch event for other components to react if needed
-			window.dispatchEvent(new CustomEvent('theme-changed', { detail: theme }));
-		});
-
-		// Global Color Application (Manual overrides)
 		const applyColors = () => {
 			const cp = (this.shadowRoot?.querySelector('#color-primary-input') as HTMLInputElement)?.value || me.color_primary || 'hsla(173, 80%, 40%, 1)';
 			const cs = (this.shadowRoot?.querySelector('#color-secondary-input') as HTMLInputElement)?.value || me.color_secondary || 'hsla(216, 100%, 50%, 1)';
 			const ct = (this.shadowRoot?.querySelector('#color-tertiary-input') as HTMLInputElement)?.value || me.color_tertiary || 'hsla(239, 84%, 67%, 1)';
-
-			document.documentElement.style.setProperty('--accent-primary', cp);
-			document.documentElement.style.setProperty('--accent-secondary', cs);
-			document.documentElement.style.setProperty('--accent-tertiary', ct);
+			this.applyToRoot(cp, cs, ct);
 		};
 
 		if (this.isEditing) {
-			const preset = this.shadowRoot?.querySelector('#theme-preset-select');
-			preset?.addEventListener('change', (e: any) => {
-				const opt = (this.shadowRoot?.querySelector('#theme-preset-select') as HTMLSelectElement).value;
-				const theme = this.themeOptions[opt];
+			const gooToggle = this.shadowRoot?.querySelector('#goo-mode-checkbox') as HTMLInputElement;
+			gooToggle?.addEventListener('change', () => {
+				this.gooMode = gooToggle.checked;
+				localStorage.setItem('goo-mode', String(this.gooMode));
+				this.applyGoo();
+			});
+
+			this.shadowRoot?.querySelectorAll('.toggle-opt').forEach(opt => {
+				opt.addEventListener('click', () => {
+					this.themeMode = (opt as HTMLElement).dataset.mode as any;
+					localStorage.setItem('theme-mode', this.themeMode);
+					this.applyThemeMode();
+					this.render(); // Redraw toggle state
+				});
+			});
+
+			const presetSelect = this.shadowRoot?.querySelector('#theme-preset-select') as HTMLSelectElement;
+
+			const cycleTheme = (direction: 'next' | 'prev') => {
+				const keys = Object.keys(this.themeOptions);
+				const currentKey = presetSelect.value || localStorage.getItem('theme-preset') || 'fusion';
+				let currentIdx = keys.indexOf(currentKey);
+				if (currentIdx === -1) currentIdx = 0;
+
+				const nextIdx = direction === 'next' 
+					? (currentIdx + 1) % keys.length 
+					: (currentIdx - 1 + keys.length) % keys.length;
+				
+				const nextKey = keys[nextIdx];
+				presetSelect.value = nextKey;
+				
+				// Trigger the change event logic
+				const theme = this.themeOptions[nextKey] as any;
 				if (theme) {
 					(this.shadowRoot?.querySelector('#color-primary-input') as HTMLInputElement).value = theme.colors[0];
 					(this.shadowRoot?.querySelector('#color-secondary-input') as HTMLInputElement).value = theme.colors[1];
 					(this.shadowRoot?.querySelector('#color-tertiary-input') as HTMLInputElement).value = theme.colors[2];
+					
+					if (theme.mode === 'light') {
+						this.themeMode = 'light';
+						localStorage.setItem('theme-mode', 'light');
+						this.applyThemeMode();
+					} else {
+						this.themeMode = 'dark';
+						localStorage.setItem('theme-mode', 'dark');
+						this.applyThemeMode();
+					}
+					
+					applyColors();
+				}
+			};
+
+			this.shadowRoot?.querySelector('#theme-next')?.addEventListener('click', (e) => {
+				e.preventDefault();
+				cycleTheme('next');
+			});
+
+			this.shadowRoot?.querySelector('#theme-prev')?.addEventListener('click', (e) => {
+				e.preventDefault();
+				cycleTheme('prev');
+			});
+
+			presetSelect?.addEventListener('change', () => {
+				const opt = presetSelect.value;
+				const theme = this.themeOptions[opt] as any;
+				if (theme) {
+					(this.shadowRoot?.querySelector('#color-primary-input') as HTMLInputElement).value = theme.colors[0];
+					(this.shadowRoot?.querySelector('#color-secondary-input') as HTMLInputElement).value = theme.colors[1];
+					(this.shadowRoot?.querySelector('#color-tertiary-input') as HTMLInputElement).value = theme.colors[2];
+					
+					if (theme.mode === 'light') {
+						document.documentElement.setAttribute('data-theme', 'light');
+					} else {
+						document.documentElement.removeAttribute('data-theme');
+					}
+					
 					applyColors();
 				}
 			});
@@ -703,10 +688,8 @@ export class UserCard extends HTMLElement {
 			});
 		}
 
-		// Apply immediately on load
 		applyColors();
 
-		// Accessibility: Submit on Enter from single-line inputs only (not textarea)
 		this.shadowRoot.querySelectorAll('input').forEach(el => {
 			el.addEventListener('keydown', (e: any) => {
 				if (e.key === 'Enter' && !e.shiftKey) {

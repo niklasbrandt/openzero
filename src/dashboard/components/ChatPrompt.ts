@@ -468,7 +468,7 @@ export class ChatPrompt extends HTMLElement {
 	}
 
 	private sendSVG(): string {
-		return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`;
+		return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="oz-goo-blob"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`;
 	}
 
 	private spinnerSVG(): string {
@@ -601,6 +601,7 @@ export class ChatPrompt extends HTMLElement {
 				max-width: 95%;
 				width: 100%;
 				margin: 0.5rem 0;
+				transform: translate(var(--p-depth-1, 0), var(--p-depth-2, 0));
 			}
 
 			.bubble {
@@ -609,6 +610,11 @@ export class ChatPrompt extends HTMLElement {
 				font-size: 0.95rem;
 				line-height: 1.6;
 				position: relative;
+				transition: transform var(--duration-base, 0.3s) var(--ease-snap);
+			}
+
+			.message:hover .bubble {
+				transform: scale(1.005);
 			}
 
 			.message.user .bubble {
@@ -782,6 +788,14 @@ export class ChatPrompt extends HTMLElement {
 				transition: all var(--duration-fast, 0.2s);
 			}
 
+			#send-btn svg { width: 18px; height: 18px; transition: transform var(--duration-fast, 0.2s); }
+			#send-btn:hover:not(:disabled) svg { transform: translateX(2px) translateY(-1px) scale(1.1); }
+
+			.oz-goo-blob {
+				position: relative;
+				z-index: 1;
+			}
+
 			#send-btn:hover:not(:disabled) {
 				background: hsla(173, 80%, 40%, 0.2);
 				border-color: var(--accent-color, hsla(173, 80%, 40%, 1));
@@ -797,12 +811,13 @@ export class ChatPrompt extends HTMLElement {
 
 			/* ── Spinner ── */
 			.spinner {
-				animation: spin 0.8s linear infinite;
+				animation: spin 0.8s linear infinite; scale(0.98); }
+				to	 { opacity: 1; transform: translateY(0) scale(1); }
 			}
 
-			@keyframes spin {
-				to { transform: rotate(360deg); }
-			}
+			.message.assistant .bubble {
+				animation: msgIn 0.5s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+				transform: translate(var(--p-depth-1, 0), var(--p-depth-2, 0))
 
 			@keyframes msgIn {
 				from { opacity: 0; transform: translateY(12px); }

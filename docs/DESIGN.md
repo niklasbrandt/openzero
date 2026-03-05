@@ -31,24 +31,24 @@ a personal signature rather than a fixed brand.
 
 ### 2.1 Accent Palette
 
-| Token                    | Default                        | Purpose                          |
-|:-------------------------|:-------------------------------|:---------------------------------|
-| `--accent-color`         | `hsla(173, 80%, 40%, 1)`      | Primary accent -- teal energy    |
-| `--accent-color-rgb`     | `20, 184, 166`                | RGB triplet for compositing      |
-| `--accent-secondary`     | `hsla(216, 100%, 50%, 1)`     | Secondary gradient endpoint      |
-| `--accent-secondary-rgb` | `0, 102, 255`                 | RGB triplet                      |
-| `--accent-tertiary`      | `hsla(239, 84%, 67%, 1)`      | Tertiary / decorative accent     |
-| `--accent-glow`          | `hsla(173, 80%, 40%, 0.4)`    | Ambient glow halo                |
+| Token                    | Default                    | Purpose                       |
+| :----------------------- | :------------------------- | :---------------------------- |
+| `--accent-color`         | `hsla(173, 80%, 40%, 1)`   | Primary accent -- teal energy |
+| `--accent-color-rgb`     | `20, 184, 166`             | RGB triplet for compositing   |
+| `--accent-secondary`     | `hsla(216, 100%, 50%, 1)`  | Secondary gradient endpoint   |
+| `--accent-secondary-rgb` | `0, 102, 255`              | RGB triplet                   |
+| `--accent-tertiary`      | `hsla(239, 84%, 67%, 1)`   | Tertiary / decorative accent  |
+| `--accent-glow`          | `hsla(173, 80%, 40%, 0.4)` | Ambient glow halo             |
 
 ### 2.2 Semantic Status
 
-| Token              | Default                     | Use Case           |
-|:-------------------|:----------------------------|:-------------------|
-| `--color-success`  | `hsla(142, 71%, 45%, 1)`    | Confirmations, OK  |
-| `--color-warning`  | `hsla(45, 93%, 47%, 1)`     | Caution states     |
-| `--color-danger`   | `hsla(0, 84%, 60%, 1)`      | Errors, deletions  |
-| `--color-info`     | `hsla(217, 91%, 60%, 1)`    | Informational      |
-| `--color-birthday` | `hsla(329, 86%, 70%, 1)`    | Birthday events    |
+| Token              | Default                  | Use Case          |
+| :----------------- | :----------------------- | :---------------- |
+| `--color-success`  | `hsla(142, 71%, 45%, 1)` | Confirmations, OK |
+| `--color-warning`  | `hsla(45, 93%, 47%, 1)`  | Caution states    |
+| `--color-danger`   | `hsla(0, 84%, 60%, 1)`   | Errors, deletions |
+| `--color-info`     | `hsla(217, 91%, 60%, 1)` | Informational     |
+| `--color-birthday` | `hsla(329, 86%, 70%, 1)` | Birthday events   |
 
 Each semantic color carries a `-rgb` triplet for alpha compositing and
 optionally a `-light` variant for foreground text on dark translucent
@@ -60,29 +60,29 @@ Text fades from full white to near-invisible in four deliberate steps.
 Each step has a clear semantic role so components stay consistent without
 guessing opacity values.
 
-| Token              | Value                       | Role                 |
-|:-------------------|:----------------------------|:---------------------|
-| `--text-primary`   | `hsla(0, 0%, 100%, 1)`      | Headings, key labels |
-| `--text-secondary` | `hsla(0, 0%, 100%, 0.7)`    | Body copy            |
-| `--text-muted`     | `hsla(0, 0%, 100%, 0.4)`    | Metadata, hints      |
-| `--text-faint`     | `hsla(0, 0%, 100%, 0.2)`    | Placeholders         |
+| Token              | Value                    | Role                 |
+| :----------------- | :----------------------- | :------------------- |
+| `--text-primary`   | `hsla(0, 0%, 100%, 1)`   | Headings, key labels |
+| `--text-secondary` | `hsla(0, 0%, 100%, 0.7)` | Body copy            |
+| `--text-muted`     | `hsla(0, 0%, 100%, 0.4)` | Metadata, hints      |
+| `--text-faint`     | `hsla(0, 0%, 100%, 0.2)` | Placeholders         |
 
 ### 2.4 Surfaces and Borders
 
 Surfaces are translucent layers that let the body gradient breathe through.
 Borders stay whisper-quiet so content remains the focal point.
 
-| Token                    | Value                              |
-|:-------------------------|:-----------------------------------|
-| `--surface-card`         | `hsla(0, 0%, 100%, 0.03)`         |
-| `--surface-card-hover`   | `hsla(0, 0%, 100%, 0.05)`         |
-| `--surface-input`        | `hsla(0, 0%, 0%, 0.2)`            |
-| `--surface-input-focus`  | `hsla(0, 0%, 0%, 0.28)`           |
-| `--surface-hover`        | `hsla(0, 0%, 100%, 0.06)`         |
-| `--border-subtle`        | `hsla(0, 0%, 100%, 0.08)`         |
-| `--border-medium`        | `hsla(0, 0%, 100%, 0.12)`         |
-| `--border-accent`        | `hsla(173, 80%, 40%, 0.25)`       |
-| `--border-accent-focus`  | `hsla(173, 80%, 40%, 0.4)`        |
+| Token                   | Value                       |
+| :---------------------- | :-------------------------- |
+| `--surface-card`        | `hsla(0, 0%, 100%, 0.03)`   |
+| `--surface-card-hover`  | `hsla(0, 0%, 100%, 0.05)`   |
+| `--surface-input`       | `hsla(0, 0%, 0%, 0.2)`      |
+| `--surface-input-focus` | `hsla(0, 0%, 0%, 0.28)`     |
+| `--surface-hover`       | `hsla(0, 0%, 100%, 0.06)`   |
+| `--border-subtle`       | `hsla(0, 0%, 100%, 0.08)`   |
+| `--border-medium`       | `hsla(0, 0%, 100%, 0.12)`   |
+| `--border-accent`       | `hsla(173, 80%, 40%, 0.25)` |
+| `--border-accent-focus` | `hsla(173, 80%, 40%, 0.4)`  |
 
 ---
 
@@ -92,11 +92,11 @@ Borders stay whisper-quiet so content remains the focal point.
 
 All typefaces are self-hosted from the VPS -- no external CDN dependencies.
 
-| Purpose    | Family                                                     |
-|:-----------|:-----------------------------------------------------------|
-| Body       | `Inter`, system-ui, -apple-system, sans-serif              |
-| Monospace  | `Fira Code`, `SF Mono`, `Cascadia Code`, monospace         |
-| CJK        | `Noto Sans SC/JP/KR` (planned self-hosted)                 |
+| Purpose   | Family                                             |
+| :-------- | :------------------------------------------------- |
+| Body      | `Inter`, system-ui, -apple-system, sans-serif      |
+| Monospace | `Fira Code`, `SF Mono`, `Cascadia Code`, monospace |
+| CJK       | `Noto Sans SC/JP/KR` (planned self-hosted)         |
 
 ### 3.2 Scale
 
@@ -104,14 +104,14 @@ Base font size is `105%` (~16.8px). All sizing uses `rem` relative to this
 base. Letter-spacing is the sole exception where `em` is acceptable since it
 should scale proportionally with the element's own font size.
 
-| Level      | Size      | Weight | Letter-Spacing |
-|:-----------|:----------|:-------|:---------------|
-| H1         | 2rem      | 800    | -0.02em        |
-| H2         | 1.5rem    | 700    | 0.02em         |
-| Subtitle   | 0.65rem   | 400    | 0.1em          |
-| Body       | 0.9rem    | 400    | --             |
-| Label      | 0.7rem    | 600    | 0.06em         |
-| Small      | 0.65rem   | 500    | 0.03em         |
+| Level    | Size    | Weight | Letter-Spacing |
+| :------- | :------ | :----- | :------------- |
+| H1       | 2rem    | 800    | -0.02em        |
+| H2       | 1.5rem  | 700    | 0.02em         |
+| Subtitle | 0.65rem | 400    | 0.1em          |
+| Body     | 0.9rem  | 400    | --             |
+| Label    | 0.7rem  | 600    | 0.06em         |
+| Small    | 0.65rem | 500    | 0.03em         |
 
 ### 3.3 Rules
 
@@ -134,15 +134,15 @@ creates visual calm inside information-dense panels.
 
 Corners soften progressively from tight badges to expansive containers.
 
-| Token          | Value     | Typical Use                   |
-|:---------------|:----------|:------------------------------|
-| `--radius-xs`  | `0.25rem` | Small badges, tags            |
-| `--radius-sm`  | `0.35rem` | Buttons, inline inputs        |
-| `--radius-md`  | `0.5rem`  | Cards, form elements          |
-| `--radius-lg`  | `0.75rem` | Panels, modals                |
-| `--radius-xl`  | `1rem`    | Large containers              |
-| `--radius-2xl` | `1.5rem`  | Hero cards, chat bubbles      |
-| `--radius-pill`| `9999px`  | Pill-shaped badges            |
+| Token           | Value     | Typical Use              |
+| :-------------- | :-------- | :----------------------- |
+| `--radius-xs`   | `0.25rem` | Small badges, tags       |
+| `--radius-sm`   | `0.35rem` | Buttons, inline inputs   |
+| `--radius-md`   | `0.5rem`  | Cards, form elements     |
+| `--radius-lg`   | `0.75rem` | Panels, modals           |
+| `--radius-xl`   | `1rem`    | Large containers         |
+| `--radius-2xl`  | `1.5rem`  | Hero cards, chat bubbles |
+| `--radius-pill` | `9999px`  | Pill-shaped badges       |
 
 ---
 
@@ -153,12 +153,12 @@ backdrop blur that let color gradients bleed through. The effect creates
 depth without shadow hierarchies and makes the interface feel like it
 exists in a physical space.
 
-| Token              | Default      | Notes                         |
-|:-------------------|:-------------|:------------------------------|
-| `--glass-blur`     | `blur(24px)` | Standard blur                 |
-| `--glass-opacity`  | `0.6`        | Panel opacity baseline        |
-| `--glass-saturate` | `180%`       | Color saturation boost        |
-| `--glass-brightness`| `100%`      | Brightness adjustment         |
+| Token                | Default      | Notes                  |
+| :------------------- | :----------- | :--------------------- |
+| `--glass-blur`       | `blur(24px)` | Standard blur          |
+| `--glass-opacity`    | `0.6`        | Panel opacity baseline |
+| `--glass-saturate`   | `180%`       | Color saturation boost |
+| `--glass-brightness` | `100%`       | Brightness adjustment  |
 
 Tooltip surfaces use their own sub-tokens (`--tooltip-bg`, `--tooltip-blur`,
 `--tooltip-saturate`, `--tooltip-border`, `--tooltip-shadow`) so they can
@@ -175,7 +175,7 @@ instant while larger transitions feel deliberate.
 ### 6.1 Duration Tokens
 
 | Token                | Value   | Use Case                        |
-|:---------------------|:--------|:--------------------------------|
+| :------------------- | :------ | :------------------------------ |
 | `--duration-instant` | `0.1s`  | Micro-interactions (focus ring) |
 | `--duration-fast`    | `0.15s` | Hover states, toggles           |
 | `--duration-base`    | `0.3s`  | Standard transitions            |
@@ -184,19 +184,19 @@ instant while larger transitions feel deliberate.
 
 ### 6.2 Easing
 
-| Token            | Value                             | Role              |
-|:-----------------|:----------------------------------|:-------------------|
-| `--ease-default` | `cubic-bezier(0.4, 0, 0.2, 1)`   | General motion     |
-| `--ease-snap`    | `cubic-bezier(0.23, 1, 0.32, 1)` | Snappy entrances   |
+| Token            | Value                            | Role             |
+| :--------------- | :------------------------------- | :--------------- |
+| `--ease-default` | `cubic-bezier(0.4, 0, 0.2, 1)`   | General motion   |
+| `--ease-snap`    | `cubic-bezier(0.23, 1, 0.32, 1)` | Snappy entrances |
 
 ### 6.3 GSAP Easing Rules (Phase 1+)
 
-| Context       | Easing         |
-|:--------------|:---------------|
-| Entrance      | `expo.out`     |
-| Transition    | `expo.inOut`   |
-| Exit          | `power2.in`    |
-| Micro-motion  | `power2.out`   |
+| Context      | Easing       |
+| :----------- | :----------- |
+| Entrance     | `expo.out`   |
+| Transition   | `expo.inOut` |
+| Exit         | `power2.in`  |
+| Micro-motion | `power2.out` |
 
 `elastic.out` and `bounce.out` are permitted **only** inside goo mode
 (scoped to `oz-goo-*` animation classes). This is a hard rule.
@@ -218,28 +218,28 @@ their Shadow DOM `<style>` blocks via `${MODULE_NAME}`. This keeps every
 component self-contained while sharing a single source of truth for
 recurring patterns.
 
-| Module                    | Export Name            | Purpose                             |
-|:--------------------------|:-----------------------|:------------------------------------|
-| `accessibilityStyles.ts`  | `ACCESSIBILITY_STYLES` | `.sr-only`, reduced-motion, forced-colors |
-| `sectionHeaderStyles.ts`  | `SECTION_HEADER_STYLES`| `h2`, `.h-icon`, `.subtitle`       |
-| `buttonStyles.ts`         | `BUTTON_STYLES`        | `.btn-primary`, `.btn-ghost`       |
-| `formInputStyles.ts`      | `FORM_INPUT_STYLES`    | `input`, `textarea`, `select`      |
-| `glassTooltipStyles.ts`   | `GLASS_TOOLTIP_STYLES` | `.has-tip`, `.glass-tooltip`       |
-| `scrollbarStyles.ts`      | `SCROLLBAR_STYLES`     | Thin 4px webkit scrollbar          |
-| `statusStyles.ts`         | `STATUS_STYLES`        | `.status-dot` with semantic colors |
-| `badgeStyles.ts`          | `BADGE_STYLES`         | `.badge` with variant classes      |
-| `listItemStyles.ts`       | `LIST_ITEM_STYLES`     | `.list-item` card-row pattern      |
-| `emptyStateStyles.ts`     | `EMPTY_STATE_STYLES`   | `.empty-state` placeholder         |
-| `feedbackStyles.ts`       | `FEEDBACK_STYLES`      | `.feedback` toast with variants    |
+| Module                   | Export Name             | Purpose                                   |
+| :----------------------- | :---------------------- | :---------------------------------------- |
+| `accessibilityStyles.ts` | `ACCESSIBILITY_STYLES`  | `.sr-only`, reduced-motion, forced-colors |
+| `sectionHeaderStyles.ts` | `SECTION_HEADER_STYLES` | `h2`, `.h-icon`, `.subtitle`              |
+| `buttonStyles.ts`        | `BUTTON_STYLES`         | `.btn-primary`, `.btn-ghost`              |
+| `formInputStyles.ts`     | `FORM_INPUT_STYLES`     | `input`, `textarea`, `select`             |
+| `glassTooltipStyles.ts`  | `GLASS_TOOLTIP_STYLES`  | `.has-tip`, `.glass-tooltip`              |
+| `scrollbarStyles.ts`     | `SCROLLBAR_STYLES`      | Thin 4px webkit scrollbar                 |
+| `statusStyles.ts`        | `STATUS_STYLES`         | `.status-dot` with semantic colors        |
+| `badgeStyles.ts`         | `BADGE_STYLES`          | `.badge` with variant classes             |
+| `listItemStyles.ts`      | `LIST_ITEM_STYLES`      | `.list-item` card-row pattern             |
+| `emptyStateStyles.ts`    | `EMPTY_STATE_STYLES`    | `.empty-state` placeholder                |
+| `feedbackStyles.ts`      | `FEEDBACK_STYLES`       | `.feedback` toast with variants           |
 
 ### 7.1 Class Name Conventions
 
-| Pattern        | Standard Class   | Notes                                  |
-|:---------------|:-----------------|:---------------------------------------|
-| Section icon   | `.h-icon`        | 32x32 gradient badge next to `h2`      |
-| Status dot     | `.status-dot`    | 8px semantic indicator                 |
-| Empty fallback | `.empty-state`   | Centered italic "no data" text         |
-| Feedback toast | `.feedback`      | With `.success`, `.error`, `.info`     |
+| Pattern        | Standard Class | Notes                              |
+| :------------- | :------------- | :--------------------------------- |
+| Section icon   | `.h-icon`      | 32x32 gradient badge next to `h2`  |
+| Status dot     | `.status-dot`  | 8px semantic indicator             |
+| Empty fallback | `.empty-state` | Centered italic "no data" text     |
+| Feedback toast | `.feedback`    | With `.success`, `.error`, `.info` |
 
 ---
 
@@ -308,6 +308,7 @@ localization support. English strings are never hardcoded directly in
 ### 9.3 Media Queries
 
 Every Shadow DOM component includes:
+
 - `@media (prefers-reduced-motion: reduce)` -- transitions and animations
   reduced to near-zero.
 - `@media (forced-colors: active)` -- high-contrast mode fallbacks using
@@ -357,16 +358,16 @@ The dashboard's global CSS has been modularized to maintain clarity as the
 system scales. The main `style.css` acts as a barrel file, importing
 dedicated modules from `src/dashboard/css/`.
 
-| File              | Purpose                                          |
-|:------------------|:-------------------------------------------------|
-| `tokens.css`      | Design tokens, CSS variables, HSLA palette       |
-| `fonts.css`       | `@font-face` declarations for self-hosted fonts  |
-| `base.css`        | Global resets, headings, basic element styles    |
-| `layout.css`      | Dashboard grid, masonry column setup, spacing    |
-| `nav.css`         | Sidebar, marquee, and mobile drawer navigation   |
-| `forms.css`       | Buttons, inputs, textareas, global interactions  |
-| `components.css`  | Shared high-level patterns (tooltips, footer)    |
-| `a11y.css`        | Accessibility overrides, focus rings, reduced-motion|
+| File             | Purpose                                              |
+| :--------------- | :--------------------------------------------------- |
+| `tokens.css`     | Design tokens, CSS variables, HSLA palette           |
+| `fonts.css`      | `@font-face` declarations for self-hosted fonts      |
+| `base.css`       | Global resets, headings, basic element styles        |
+| `layout.css`     | Dashboard grid, masonry column setup, spacing        |
+| `nav.css`        | Sidebar, marquee, and mobile drawer navigation       |
+| `forms.css`      | Buttons, inputs, textareas, global interactions      |
+| `components.css` | Shared high-level patterns (tooltips, footer)        |
+| `a11y.css`       | Accessibility overrides, focus rings, reduced-motion |
 
 ### 13.1 Modification Workflow
 
@@ -387,16 +388,16 @@ All typefaces are served from the VPS to eliminate external dependencies.
 Font files live under `src/dashboard/fonts/` and load via `@font-face`
 declarations in `style.css`.
 
-| Family              | Weights                  | Status    |
-|:--------------------|:-------------------------|:----------|
-| Inter               | 400, 500, 600, 700, 800 | Shipped   |
-| Fira Code           | 400, 700                 | Shipped   |
-| Noto Sans SC        | 400, 700                 | Planned   |
-| Noto Sans JP        | 400, 700                 | Planned   |
-| Noto Sans KR        | 400, 700                 | Planned   |
-| Noto Sans Devanagari| 400, 700                 | Planned   |
-| Noto Sans Bengali   | 400, 700                 | Planned   |
-| Noto Sans Arabic    | 400, 700                 | Planned   |
+| Family               | Weights                 | Status  |
+| :------------------- | :---------------------- | :------ |
+| Inter                | 400, 500, 600, 700, 800 | Shipped |
+| Fira Code            | 400, 700                | Shipped |
+| Noto Sans SC         | 400, 700                | Planned |
+| Noto Sans JP         | 400, 700                | Planned |
+| Noto Sans KR         | 400, 700                | Planned |
+| Noto Sans Devanagari | 400, 700                | Planned |
+| Noto Sans Bengali    | 400, 700                | Planned |
+| Noto Sans Arabic     | 400, 700                | Planned |
 
 CJK fonts will use `unicode-range` subsetting to avoid loading unnecessary
 glyphs.
