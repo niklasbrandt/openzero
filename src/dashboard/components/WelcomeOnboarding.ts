@@ -106,7 +106,7 @@ export class WelcomeOnboarding extends HTMLElement {
 
 					.cta {
 						align-self: flex-start;
-						background: var(--accent-primary, hsla(173, 80%, 40%, 1));
+						background: var(--accent-primary-dark, hsla(173, 80%, 25%, 1));
 						color: hsla(0, 0%, 100%, 1);
 						padding: 0.75rem 1.5rem;
 						border-radius: var(--radius-md, 0.75rem);
@@ -167,7 +167,7 @@ export class WelcomeOnboarding extends HTMLElement {
 					</ul>
 
 					<div style="display: flex; align-items: center; justify-content: space-between; margin-top: 1rem;">
-						<button class="cta" id="dismiss-onboarding-btn" aria-label="${this.tr('aria_dismiss_onboarding', 'Dismiss setup onboarding checklist')}">${this.tr('dismiss_onboarding', 'Dismiss Onboarding')}</button>
+						<button class="cta" id="dismiss-onboarding-btn">${this.tr('dismiss_onboarding', 'Dismiss Onboarding')}</button>
 					</div>
 				</div>
 			`;
