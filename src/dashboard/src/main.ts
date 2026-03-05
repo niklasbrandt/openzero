@@ -57,6 +57,10 @@ function getAuthToken(): string {
 }
 
 function promptForToken(): string {
+	// navigator.webdriver is true in automated environments (Lighthouse,
+	// Puppeteer, Playwright). The blocking window.prompt() has no human to
+	// answer it and would hang the main thread forever, causing NO_FCP.
+	if (navigator.webdriver) return '';
 	const token = window.prompt(
 		'openZero: Enter your dashboard access token (set via DASHBOARD_TOKEN in .env):'
 	) || '';
