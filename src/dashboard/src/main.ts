@@ -67,6 +67,7 @@ function promptForToken(): string {
 }
 
 // Patch window.fetch to inject Authorization header for all /api/ requests.
+let _authPromptPending = false;
 const _originalFetch = window.fetch.bind(window);
 window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
 	const url = typeof input === 'string' ? input : input instanceof Request ? input.url : input.toString();
@@ -86,12 +87,19 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Res
 
 	const response = await _originalFetch(input, init);
 
-	// On 401, prompt once for the token and offer to reload
-	if (response.status === 401 && url.startsWith('/api/')) {
-		const newToken = promptForToken();
-		if (newToken) {
-			window.location.reload();
-		}
+	// On 401, prompt ONCE for the token (debounced).  Multiple parallel API
+	// calls may all return 401 on first load — the flag prevents a dialog-storm
+	// and ensures the blocking window.prompt() runs only once.
+	if (response.status === 401 && url.startsWith('/api/') && !_authPromptPending) {
+		_authPromptPending = true;
+		// Defer so the current fetch chain returns before the blocking prompt.
+		setTimeout(() => {
+			const newToken = promptForToken();
+			_authPromptPending = false;
+			if (newToken) {
+				window.location.reload();
+			}
+		}, 200);
 	}
 
 	return response;
