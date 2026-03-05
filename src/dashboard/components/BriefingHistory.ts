@@ -58,9 +58,7 @@ export class BriefingHistory extends HTMLElement {
 		const list = this.shadowRoot?.querySelector('#briefing-list');
 		if (!list) return;
 
-		if (briefings.length > 0) {
-			list.setAttribute('role', 'list');
-		} else {
+		if (briefings.length === 0) {
 			list.removeAttribute('role');
 		}
 
@@ -94,7 +92,9 @@ export class BriefingHistory extends HTMLElement {
 			`).join('');
 
 		list.innerHTML = `
-			${itemsHtml || this.tr('no_briefings', 'No briefings yet.')}
+			<div class="briefing-items-list"${briefings.length > 0 ? ' role="list"' : ''}>
+				${itemsHtml || this.tr('no_briefings', 'No briefings yet.')}
+			</div>
 			${briefings.length >= 5 ? `<button class="load-more" id="load-more-btn">${this.tr('show_more', 'Show More History')}</button>` : ''}
 		`;
 
