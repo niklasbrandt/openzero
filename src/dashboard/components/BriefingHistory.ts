@@ -42,7 +42,10 @@ export class BriefingHistory extends HTMLElement {
 			this.displayBriefings(data);
 		} catch (e) {
 			const list = this.shadowRoot?.querySelector('#briefing-list');
-			if (list) list.textContent = 'No briefings yet.';
+			if (list) {
+				list.removeAttribute('role');
+				list.textContent = 'No briefings yet.';
+			}
 		}
 	}
 
@@ -54,6 +57,12 @@ export class BriefingHistory extends HTMLElement {
 	displayBriefings(briefings: any[]) {
 		const list = this.shadowRoot?.querySelector('#briefing-list');
 		if (!list) return;
+
+		if (briefings.length > 0) {
+			list.setAttribute('role', 'list');
+		} else {
+			list.removeAttribute('role');
+		}
 
 		const itemsHtml = briefings.map((b) => `
 				<div class="briefing-item" role="listitem">
@@ -245,7 +254,7 @@ export class BriefingHistory extends HTMLElement {
 						${this.tr('briefing_history', 'Briefing')}
 					<span class="subtitle" aria-hidden="true">${this.tr('briefing_subtitle', 'Daily Reports')}</span>
 				</h2>
-				<div id="briefing-list" role="list" aria-label="${this.tr('aria_briefing_list', 'Briefing history entries')}" aria-live="polite">${this.tr('loading', 'Loading...')}</div>
+				<div id="briefing-list" aria-label="${this.tr('aria_briefing_list', 'Briefing history entries')}" aria-live="polite">${this.tr('loading', 'Loading...')}</div>
 				</div>
 			`;
 		}

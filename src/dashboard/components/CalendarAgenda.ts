@@ -97,6 +97,7 @@ export class CalendarAgenda extends HTMLElement {
 			console.error('Failed to fetch calendar', e);
 			const list = this.shadowRoot?.querySelector('#event-list');
 			if (list) {
+				list.removeAttribute('role');
 				list.innerHTML = `<div class="empty-state">${this.tr('api_error_calendar', 'Unable to load agenda. Check backend/integration.')}</div>`;
 			}
 		}
@@ -115,6 +116,12 @@ export class CalendarAgenda extends HTMLElement {
 			const filtered = this.filterPerson
 				? this.events.filter(e => e.person === this.filterPerson)
 				: this.events;
+
+			if (filtered.length > 0) {
+				list.setAttribute('role', 'list');
+			} else {
+				list.removeAttribute('role');
+			}
 
 			list.innerHTML = filtered.map(e => {
 				const date = new Date(e.start);
@@ -328,7 +335,7 @@ export class CalendarAgenda extends HTMLElement {
 						</a>
 					</div>
 					<div id="filters"></div>
-					<div id="event-list" role="list" aria-live="polite">${this.tr('loading_events', 'Loading events...')}</div>
+					<div id="event-list" aria-live="polite">${this.tr('loading_events', 'Loading events...')}</div>
 				</div>
 			`;
 		}

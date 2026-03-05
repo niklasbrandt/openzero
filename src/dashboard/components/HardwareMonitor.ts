@@ -185,6 +185,7 @@ export class HardwareMonitor extends HTMLElement {
 			if (!text || el.querySelector('.glass-tooltip')) return;
 			const tip = document.createElement('span');
 			tip.className = 'glass-tooltip';
+			tip.setAttribute('aria-hidden', 'true');
 			tip.textContent = text;
 			el.appendChild(tip);
 		});

@@ -193,6 +193,7 @@ export class SoftwareStatus extends HTMLElement {
 			if (!text || el.querySelector('.glass-tooltip')) return;
 			const tip = document.createElement('span');
 			tip.className = 'glass-tooltip';
+			tip.setAttribute('aria-hidden', 'true');
 			tip.textContent = text;
 			el.appendChild(tip);
 		});
@@ -271,7 +272,7 @@ export class SoftwareStatus extends HTMLElement {
 				}
 				.svc-detail {
 					font-size: 0.65rem;
-					color: var(--text-muted, hsla(0, 0%, 100%, 0.4));
+					color: var(--text-secondary, hsla(0, 0%, 100%, 0.7));
 					font-family: var(--font-mono, 'Fira Code', monospace);
 					margin-left: auto;
 					white-space: nowrap;
