@@ -387,6 +387,9 @@ export class ZPersonality extends HTMLElement {
 		// ── Live theme preview ──
 		// When the user picks a theme from the select, immediately apply the
 		// palette to the document root so they can see the preview before saving.
+		// Updates BOTH the HSL-decomposed vars (used by --accent-primary computed
+		// token) and the legacy direct mappings, matching initTheme() in main.ts.
+		// Transitions are suppressed to avoid a visible colour flash.
 		const themeSelector = this.shadowRoot.querySelector<HTMLSelectElement>('.theme-selector');
 		if (themeSelector) {
 			themeSelector.addEventListener('change', () => {
@@ -399,11 +402,61 @@ export class ZPersonality extends HTMLElement {
 						const h = hex.replace('#', '');
 						return `${parseInt(h.slice(0, 2), 16)}, ${parseInt(h.slice(2, 4), 16)}, ${parseInt(h.slice(4, 6), 16)}`;
 					};
+					const hexToHsl = (hex: string) => {
+						const h = hex.replace('#', '');
+						let r = parseInt(h.slice(0, 2), 16) / 255;
+						let g = parseInt(h.slice(2, 4), 16) / 255;
+						let b = parseInt(h.slice(4, 6), 16) / 255;
+						const max = Math.max(r, g, b), min = Math.min(r, g, b);
+						let _h = 0, s = 0, l = (max + min) / 2;
+						if (max !== min) {
+							const d = max - min;
+							s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+							switch (max) {
+								case r: _h = (g - b) / d + (g < b ? 6 : 0); break;
+								case g: _h = (b - r) / d + 2; break;
+								case b: _h = (r - g) / d + 4; break;
+							}
+							_h /= 6;
+						}
+						return { h: Math.round(_h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
+					};
 					const root = document.documentElement;
-					root.style.setProperty('--accent-color', colors.primary);
-					root.style.setProperty('--accent-color-rgb', hexToRgb(colors.primary));
-					root.style.setProperty('--accent-secondary', colors.secondary);
-					root.style.setProperty('--accent-tertiary', colors.tertiary);
+
+					// Suppress transitions so the palette swap paints in one
+					// frame with no visible colour animation.
+					root.classList.add('no-transition');
+
+					// Helper: update HSL-decomposed tokens + legacy mapping
+					const applyColor = (prefix: string, hex: string) => {
+						const hsl = hexToHsl(hex);
+						root.style.setProperty(`--${prefix}-h`, hsl.h.toString());
+						root.style.setProperty(`--${prefix}-s`, `${hsl.s}%`);
+						root.style.setProperty(`--${prefix}-l`, `${hsl.l}%`);
+
+						if (prefix === 'accent-primary') {
+							root.style.setProperty('--accent-color', hex);
+							root.style.setProperty('--accent-color-rgb', hexToRgb(hex));
+							root.style.setProperty('--accent-glow', `rgba(${hexToRgb(hex)}, 0.4)`);
+						} else if (prefix === 'accent-secondary') {
+							root.style.setProperty('--accent-secondary', hex);
+							root.style.setProperty('--accent-secondary-rgb', hexToRgb(hex));
+						} else if (prefix === 'accent-tertiary') {
+							root.style.setProperty('--accent-tertiary', hex);
+						}
+					};
+
+					applyColor('accent-primary', colors.primary);
+					applyColor('accent-secondary', colors.secondary);
+					applyColor('accent-tertiary', colors.tertiary);
+
+					// Re-enable transitions after the browser commits the paint.
+					requestAnimationFrame(() => {
+						requestAnimationFrame(() => {
+							root.classList.remove('no-transition');
+						});
+					});
+
 					// Update the swatch dots in real time
 					const swatchId = 'swatch-' + themeSelector.id.replace('input-', '');
 					const swatchEl = this.shadowRoot!.getElementById(swatchId);
