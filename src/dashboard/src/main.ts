@@ -67,6 +67,9 @@ function promptForToken(): string {
 }
 
 // Patch window.fetch to inject Authorization header for all /api/ requests.
+// When no token is stored, API calls are short-circuited with a synthetic
+// 401 response -- this avoids ~14 network round-trips that would all fail
+// and prevents the "network busy" state that blocks Lighthouse scoring.
 let _authPromptPending = false;
 const _originalFetch = window.fetch.bind(window);
 window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
@@ -82,17 +85,32 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Res
 					: (init.headers as Record<string, string> ?? {})),
 				'Authorization': `Bearer ${token}`,
 			};
+		} else {
+			// No token stored — every /api/ call will 401 anyway.
+			// Return a synthetic 401 without touching the network.
+			if (!_authPromptPending) {
+				_authPromptPending = true;
+				setTimeout(() => {
+					const newToken = promptForToken();
+					_authPromptPending = false;
+					if (newToken) {
+						window.location.reload();
+					}
+				}, 200);
+			}
+			return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+				status: 401,
+				headers: { 'Content-Type': 'application/json' },
+			});
 		}
 	}
 
 	const response = await _originalFetch(input, init);
 
-	// On 401, prompt ONCE for the token (debounced).  Multiple parallel API
-	// calls may all return 401 on first load — the flag prevents a dialog-storm
-	// and ensures the blocking window.prompt() runs only once.
+	// Handle expired/invalid tokens -- the server returned 401 despite us
+	// sending a token.  Prompt once so the user can re-enter.
 	if (response.status === 401 && url.startsWith('/api/') && !_authPromptPending) {
 		_authPromptPending = true;
-		// Defer so the current fetch chain returns before the blocking prompt.
 		setTimeout(() => {
 			const newToken = promptForToken();
 			_authPromptPending = false;
