@@ -41,6 +41,17 @@
 	outline-offset: 2px;
 }
 
+/* -- Horizontal clip --
+   Applied to <html> instead of <body> so that position:fixed children
+   of <body> (sidebar-nav, page-loader) stay pinned to the viewport.
+   WebKit/Safari treats overflow:clip on <body> as a new containing
+   block, which breaks fixed positioning.
+   overflow:clip does NOT create a scroll container, so inner elements
+   (e.g. .top-marquee-nav) can still scroll horizontally on touch. */
+html {
+	overflow-x: clip;
+}
+
 /* -- Body -- */
 body {
 	margin: 0;
@@ -54,10 +65,6 @@ body {
 			transparent 50%),
 		linear-gradient(135deg, var(--bg-body, hsla(228, 45%, 4%, 1)) 0%, hsla(228, 45%, 8%, 1) 100%);
 	transition: background-color var(--duration-base);
-	/* overflow: clip does NOT create a scroll container, so inner elements
-	   (e.g. .top-marquee-nav) can still scroll horizontally on touch devices.
-	   overflow: hidden would trap touch-scroll and break the marquee nav. */
-	overflow-x: clip;
 	flex-wrap: wrap;
 	scroll-padding: 2rem;
 }

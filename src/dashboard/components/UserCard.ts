@@ -1,5 +1,6 @@
 import { BUTTON_STYLES } from '../services/buttonStyles';
 import { ACCESSIBILITY_STYLES } from '../services/accessibilityStyles';
+import { initGoo } from '../services/gooStyles';
 
 export class UserCard extends HTMLElement {
 	private me: any = null;
@@ -102,6 +103,8 @@ export class UserCard extends HTMLElement {
 		this.themeMode = (localStorage.getItem('theme-mode') as any) || 'dark';
 		this.applyGoo();
 		this.applyThemeMode();
+		initGoo(this);
+		window.addEventListener('goo-changed', () => initGoo(this));
 		window.addEventListener('identity-updated', () => {
 			this.loadTranslations().then(() => this.render());
 		});
@@ -608,6 +611,7 @@ export class UserCard extends HTMLElement {
 				this.gooMode = gooToggle.checked;
 				localStorage.setItem('goo-mode', String(this.gooMode));
 				this.applyGoo();
+				window.dispatchEvent(new Event('goo-changed'));
 			});
 
 			this.shadowRoot?.querySelectorAll('.toggle-opt').forEach(opt => {

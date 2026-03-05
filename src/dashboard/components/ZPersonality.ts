@@ -3,6 +3,7 @@ import { ACCESSIBILITY_STYLES } from '../services/accessibilityStyles';
 import { SECTION_HEADER_STYLES } from '../services/sectionHeaderStyles';
 import { SCROLLBAR_STYLES } from '../services/scrollbarStyles';
 import { EMPTY_STATE_STYLES } from '../services/emptyStateStyles';
+import { initGoo } from '../services/gooStyles';
 
 export class ZPersonality extends HTMLElement {
 	private personality: any = null;
@@ -33,6 +34,8 @@ export class ZPersonality extends HTMLElement {
 
 	connectedCallback() {
 		this.loadTranslations().then(() => this.fetchData());
+		initGoo(this);
+		window.addEventListener('goo-changed', () => { initGoo(this); this.render(); });
 	}
 
 	async fetchData() {
@@ -316,7 +319,7 @@ export class ZPersonality extends HTMLElement {
 					` : !this.isLoading && this.activeTab === 'personality' ? `
 						<div class="trait-grid">
 							${(() => {
-								const isGoo = localStorage.getItem('z_goo_mode') === 'true';
+								const isGoo = localStorage.getItem('goo-mode') === 'true';
 								const traits = [
 									{ label: this.tr('core_identity', 'Core Identity'), value: per?.role || 'Agent Operator' },
 									{ label: this.tr('communication', 'Communication'), value: `${['', 'Elaborate', 'Nuanced', 'Balanced', 'Direct', 'Concise'][per?.directness || 3]} (${per?.directness}/5)` }
