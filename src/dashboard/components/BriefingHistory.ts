@@ -68,7 +68,7 @@ export class BriefingHistory extends HTMLElement {
 							<span class="date">${new Date(b.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
 						</div>
 						<div class="chevron" aria-hidden="true">
-							<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+							<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" class="oz-goo-blob">
 								<path d="m6 9 6 6 6-6"/>
 							</svg>
 						</div>
@@ -105,11 +105,21 @@ export class BriefingHistory extends HTMLElement {
 					/* Override icon gradient */
 					h2 .h-icon {
 						background: linear-gradient(135deg, var(--accent-color, hsla(173, 80%, 40%, 1)) 0%, hsla(216, 100%, 50%, 1) 100%);
+						transform: translate(var(--p-depth-1, 0), var(--p-depth-2, 0));
 					}
 					:host { display: block; }
 					.card {
 						display: flex;
 						flex-direction: column;
+						position: relative;
+					}
+					.bg-glow {
+						position: absolute;
+						top: -10px; right: -10px; width: 100px; height: 100px;
+						background: radial-gradient(circle at center, var(--accent-glow) 0%, transparent 70%);
+						opacity: 0.1;
+						pointer-events: none;
+						z-index: 0;
 					}
 					.briefing-item {
 						background: var(--surface-card, hsla(0, 0%, 100%, 0.03));
@@ -118,6 +128,8 @@ export class BriefingHistory extends HTMLElement {
 						border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.08));
 						overflow: hidden;
 						transition: background var(--duration-base, 0.3s) ease, border-color var(--duration-base, 0.3s) ease;
+						position: relative;
+						z-index: 1;
 					}
 					.briefing-item:hover {
 						background: var(--surface-card-hover, hsla(0, 0%, 100%, 0.05));
@@ -221,9 +233,10 @@ export class BriefingHistory extends HTMLElement {
 					}
 				</style>
 				<div class="card">
+					<div class="bg-glow" style="transform: translate(var(--p-depth-1), var(--p-depth-2))"></div>
 					<h2>
 			<span class="h-icon" aria-hidden="true">
-						<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+						<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" class="oz-goo-blob">
 								<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
 								<polyline points="14 2 14 8 20 8"></polyline>
 								<line x1="16" y1="13" x2="8" y2="13"></line>

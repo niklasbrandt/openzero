@@ -57,12 +57,19 @@ export class WelcomeOnboarding extends HTMLElement {
 						flex-direction: column;
 						gap: 1.5rem;
 						animation: slideIn var(--duration-base, 0.25s) ease-out;
+						box-shadow: 0 8px 32px var(--surface-accent-subtle, hsla(173, 80%, 40%, 0.1));
 					}
 					@keyframes slideIn {
 						from { opacity: 0; transform: translateY(-10px); }
 						to { opacity: 1; transform: translateY(0); }
 					}
-					h2 { margin: 0; font-size: 1.8rem; background: linear-gradient(135deg, var(--accent-color, hsla(173, 80%, 40%, 1)), hsla(216, 100%, 50%, 1)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+					h2 { 
+						margin: 0; 
+						font-size: 1.8rem; 
+						background: linear-gradient(135deg, var(--accent-primary, hsla(173, 80%, 40%, 1)), var(--accent-secondary, hsla(216, 100%, 50%, 1))); 
+						-webkit-background-clip: text; 
+						-webkit-text-fill-color: transparent; 
+					}
 					p { margin: 0; color: var(--text-primary, hsla(0, 0%, 100%, 1)); opacity: 0.8; line-height: 1.6; }
 					
 					.steps {
@@ -81,7 +88,7 @@ export class WelcomeOnboarding extends HTMLElement {
 						transition: all var(--duration-base, 0.25s) ease;
 					}
 					.step-item.done { 
-						border-color: var(--accent-color, hsla(173, 80%, 40%, 1)); 
+						border-color: var(--accent-primary, hsla(173, 80%, 40%, 1)); 
 						background: var(--surface-accent-subtle, hsla(173, 80%, 40%, 0.05)); 
 					}
 					.step-icon { 
@@ -91,7 +98,7 @@ export class WelcomeOnboarding extends HTMLElement {
 						flex-shrink: 0;
 					}
 					.done .step-icon { 
-						background: var(--accent-color, hsla(173, 80%, 40%, 1)); 
+						background: var(--accent-primary, hsla(173, 80%, 40%, 1)); 
 						color: var(--text-primary, hsla(0, 0%, 100%, 1)); 
 					}
 					.step-text { font-weight: 600; font-size: 0.95rem; color: var(--text-primary, hsla(0, 0%, 100%, 1)); }
@@ -99,8 +106,8 @@ export class WelcomeOnboarding extends HTMLElement {
 
 					.cta {
 						align-self: flex-start;
-						background: var(--accent-color, hsla(173, 80%, 40%, 1));
-						color: var(--text-primary, hsla(0, 0%, 100%, 1));
+						background: var(--accent-primary, hsla(173, 80%, 40%, 1));
+						color: hsla(0, 0%, 100%, 1);
 						padding: 0.75rem 1.5rem;
 						border-radius: var(--radius-md, 0.75rem);
 						text-decoration: none;
@@ -110,10 +117,11 @@ export class WelcomeOnboarding extends HTMLElement {
 						border: none;
 						cursor: pointer;
 						min-height: 44px; /* A11y target */
+						box-shadow: 0 4px 12px var(--surface-accent-subtle, hsla(173, 80%, 40%, 0.2));
 					}
-					.cta:hover { transform: translateY(-2px); box-shadow: 0 4px 12px hsla(173, 80%, 40%, 0.4); }
-					.cta:focus-visible { outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); outline-offset: 3px; }
-					.step-item:focus-visible { outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); outline-offset: 2px; }
+					.cta:hover { transform: translateY(-2px); box-shadow: 0 6px 16px var(--surface-accent-subtle, hsla(173, 80%, 40%, 0.4)); }
+					.cta:focus-visible { outline: 2px solid var(--accent-primary, hsla(173, 80%, 40%, 1)); outline-offset: 3px; }
+					.step-item:focus-visible { outline: 2px solid var(--accent-primary, hsla(173, 80%, 40%, 1)); outline-offset: 2px; }
 					@media (prefers-reduced-motion: reduce) {
 						.card, .step-item, .cta { animation: none; transition: none; transform: none; }
 					}

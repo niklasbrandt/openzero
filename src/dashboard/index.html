@@ -442,6 +442,18 @@
 	</main>
 
 	<calendar-manager></calendar-manager>
+
+	<!-- Goo Filter: Core SVG primitive for Phase 4 motion -->
+	<svg xmlns="http://www.w3.org/2000/svg" version="1.1" style="display:none" aria-hidden="true" focusable="false">
+		<defs>
+			<filter id="oz-goo">
+				<feGaussianBlur in="SourceGraphic" stdDeviation="15" result="blur" />
+				<feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 25 -10" result="oz-goo" />
+				<feComposite in="SourceGraphic" in2="oz-goo" operator="atop" />
+			</filter>
+		</defs>
+	</svg>
+
 	<script type="module" src="/src/main.ts"></script>
 </body>
 
