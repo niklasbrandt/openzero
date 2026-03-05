@@ -1,4 +1,5 @@
 import { BUTTON_STYLES } from '../services/buttonStyles';
+import { initGoo } from '../services/gooStyles';
 import { ACCESSIBILITY_STYLES } from '../services/accessibilityStyles';
 import { FEEDBACK_STYLES } from '../services/feedbackStyles';
 
@@ -44,6 +45,8 @@ export class CircleManager extends HTMLElement {
 	connectedCallback() {
 		this.circleType = this.getAttribute('type') || 'inner';
 		this.loadTranslations().then(() => { this.render(); this.fetchPeople(); });
+		initGoo(this);
+		window.addEventListener('goo-changed', () => initGoo(this));
 		window.addEventListener('refresh-data', (e: any) => {
 			if (e.detail && e.detail.actions && e.detail.actions.includes('people')) {
 				this.fetchPeople();
