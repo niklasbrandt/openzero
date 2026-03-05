@@ -316,16 +316,21 @@ Every Shadow DOM component includes:
 
 ---
 
-## 10. Dark / Light / Auto Theming (Planned)
+## 10. Dark / Light / Auto Theming
 
-The current implementation is dark-mode only -- optimized for the 2 AM
-mission control aesthetic. Phase 2+ will introduce:
+Three-way theme toggle (Dark / Light / Auto) in UserCard, persisted via
+`localStorage` under `theme-mode`. Auto mode respects
+`prefers-color-scheme`.
 
-- A `prefers-color-scheme` media query for auto detection.
-- Light-mode token overrides within `:root` using `[data-theme="light"]`.
-- A persistent toggle stored per-user in the identity record.
-- All current `hsla(0, 0%, 100%, ...)` values will resolve through semantic
-  tokens that flip per scheme.
+- `css/tokens.css` defines `[data-theme="light"]` overrides for all
+  surface, text, border, and tooltip tokens.
+- Accent lightness values are adjusted per-theme via `--accent-primary-l`,
+  `--accent-secondary-l`, `--accent-tertiary-l` to maintain WCAG AA
+  contrast on light surfaces.
+- Theme presets in UserCard (Paper, Snow, Latte) automatically switch to
+  light mode when selected.
+- All `hsla(0, 0%, 100%, ...)` white-on-dark values resolve through
+  semantic tokens that flip per scheme.
 
 ---
 
