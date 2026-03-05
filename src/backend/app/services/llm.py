@@ -365,16 +365,17 @@ def select_tier(user_message: str, tier_override: str = None) -> tuple[str, str,
 		msg_lower = (user_message or "").lower().strip()
 		msg_len = len(user_message) if user_message else 0
 
-		# Banter/creative: short but needs social reasoning — force standard
+		# Content intent takes priority over length heuristics:
+		# 1. Banter/creative — needs social reasoning, force standard
 		if any(p in msg_lower for p in BANTER_PATTERNS):
 			tier = "standard"
-		# Instant: trivial messages
-		elif msg_len < 15 or msg_lower in TRIVIAL_PATTERNS:
-			tier = "instant"
-		# Deep: complex reasoning
+		# 2. Deep reasoning keywords — never demote to instant
 		elif any(kw in msg_lower for kw in SMART_KEYWORDS) or msg_len > 800:
 			tier = "deep"
-		# Standard: everything else
+		# 3. Instant: truly trivial (pure greetings / ack / very short)
+		elif msg_len < 15 or msg_lower in TRIVIAL_PATTERNS:
+			tier = "instant"
+		# 4. Standard: everything else
 		else:
 			tier = "standard"
 
