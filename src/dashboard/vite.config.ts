@@ -7,7 +7,9 @@ import { defineConfig, Plugin } from 'vite'
  * preload href always matches the actual asset path.
  */
 function fontPreloadPlugin(): Plugin {
-	const criticalFonts = ['inter-400', 'inter-700']
+	// Preload only Latin subsets of Inter 400 + 700 (first-paint weights).
+	// These are ~29-30 KB each vs the original ~112 KB full fonts.
+	const criticalFonts = ['inter-400-latin', 'inter-700-latin']
 	return {
 		name: 'openzero-font-preload',
 		enforce: 'post',

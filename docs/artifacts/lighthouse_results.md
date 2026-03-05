@@ -10,6 +10,30 @@
 
 ---
 
+## Run 3 (unicode-range font splitting): 92 / 100 (+12)
+
+Changes applied: split each font into Latin core (~29-31 KB) + extended (~47-92 KB) subsets with `unicode-range` in CSS. Browser only downloads extended subsets when non-Latin characters appear on the page. All glyphs (Cyrillic, Greek, Vietnamese, Latin Extended) preserved. Vite preload updated to target Latin subsets only.
+
+| Metric                   | Run 1  | Run 2  | Run 3  | Delta (1->3) | Status |
+|:-------------------------|:-------|:-------|:-------|:-------------|:-------|
+| **Performance Score**    | **76** | **80** | **92** | **+16**      |        |
+| First Contentful Paint   | 1.2 s  | 1.2 s  | 1.2 s  | 0            | Pass   |
+| Largest Contentful Paint | 6.9 s  | 5.3 s  | 3.4 s  | -3.5 s       | Warn   |
+| Speed Index              | 3.0 s  | 1.3 s  | 1.4 s  | -1.6 s       | Pass   |
+| Total Blocking Time      | 40 ms  | 50 ms  | 20 ms  | -20 ms       | Pass   |
+| Cumulative Layout Shift  | 0      | 0      | 0      | 0            | Pass   |
+| Time to Interactive      | 6.9 s  | 5.3 s  | 3.4 s  | -3.5 s       | Pass   |
+
+### Key changes (Run 3)
+
+- Total byte weight: 888 KB -> 281 KB (-68%)
+- Fonts loaded on Latin-only page: 6 (was 7) -- browser skips extended files when not needed
+- Total requests: 51 (was 52)
+- LCP still dominated by render delay (no backend), but almost halved from Run 2
+- Cache: 8 resources flagged (local test, no cache middleware)
+
+---
+
 ## Run 2 (post-optimization): 80 / 100 (+4)
 
 Changes applied: font preload plugin (Inter 400 + 700), CacheHeaderMiddleware in main.py (immutable cache for `/dashboard-assets/`), `perf:audit:prod` npm script.
@@ -190,10 +214,12 @@ Added `CacheHeaderMiddleware` in `main.py` that sets `Cache-Control: public, max
 
 Added `perf:audit:prod` npm script targeting `http://open.zero/home` for real-world LCP measurement with backend APIs responding.
 
-### Phase 4 (next): Font subsetting
+### Phase 4: Unicode-range font splitting -- DONE (score 80 -> 92)
 
-All 5 Inter weights (400-800) are actively used across 22 declarations. Subsetting to Latin-only could reduce each font file from ~115 KB to ~30-40 KB, saving ~400 KB total. This requires `pyftsubset` or `glyphhanger` tooling.
+Split each font into Latin core (~29-31 KB) + extended (~47-92 KB) subsets using `pyftsubset` (fonttools). All glyphs preserved (Cyrillic, Greek, Vietnamese, Latin Extended). Added `unicode-range` declarations to `fonts.css` so the browser only downloads extended subsets when non-Latin characters appear on the page. Updated Vite preload plugin to target `inter-400-latin` and `inter-700-latin` instead of the full files.
+
+**Result**: Total byte weight dropped from 888 KB to 281 KB (-68%). LCP dropped from 5.3s to 3.4s (-1.9s). Score jumped from 80 to 92. TTI dropped from 5.3s to 3.4s.
 
 ### Phase 5 (deferred): Inline critical CSS
 
-The render-blocking CSS audit flags only 150 ms savings (5.9 KB compressed). This is low priority -- the CSS file is small and benefits from separate caching. Only revisit if the score still falls short after Phase 4.
+The render-blocking CSS audit flags only 150 ms savings (5.8 KB compressed). This is low priority -- the CSS file is small and benefits from separate caching. Score is already at 92/100 without this. The remaining LCP (3.4s) is entirely render delay from JS-driven Shadow DOM components with no backend -- not addressable via CSS inlining.
