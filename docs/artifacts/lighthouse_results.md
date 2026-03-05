@@ -8,7 +8,68 @@
 - **Backend**: None -- all `/api/*` calls returned 404 (static file server only)
 - **Note**: LCP is inflated because API failures cause components to render error states instead of real content. Re-test against production for meaningful LCP data.
 
-## Performance Score: 76 / 100
+---
+
+## Run 2 (post-optimization): 80 / 100 (+4)
+
+Changes applied: font preload plugin (Inter 400 + 700), CacheHeaderMiddleware in main.py (immutable cache for `/dashboard-assets/`), `perf:audit:prod` npm script.
+
+| Metric                   | Baseline | Post-opt | Delta   | Status |
+|:-------------------------|:---------|:---------|:--------|:-------|
+| **Performance Score**    | **76**   | **80**   | **+4**  |        |
+| First Contentful Paint   | 1.2 s    | 1.2 s    | 0       | Pass   |
+| Largest Contentful Paint | 6.9 s    | 5.3 s    | -1.6 s  | Fail   |
+| Speed Index              | 3.0 s    | 1.3 s    | -1.7 s  | Pass   |
+| Total Blocking Time      | 40 ms    | 50 ms    | +10 ms  | Pass   |
+| Cumulative Layout Shift  | 0        | 0        | 0       | Pass   |
+| Time to Interactive      | 6.9 s    | 5.3 s    | -1.6 s  | Warn   |
+
+### LCP element (Run 2)
+
+- **Element**: `span` inside `chat-prompt` Shadow DOM (empty-state text)
+  - Selector: `div#messages > div.empty-state > span`
+  - Text: "Ask anything -- manage tasks, query memories, or get briefed."
+  - Dimensions: 343x46px at y=321
+- **Phase split**:
+  - TTFB: 461 ms (9%)
+  - Load Delay: 0 ms (0%)
+  - Load Time: 0 ms (0%)
+  - Render Delay: 4,855 ms (91%) -- still dominant, but 1.6s faster than baseline
+
+### Critical chains (Run 2)
+
+Reduced from 8 chains to 1 chain. Longest: depth 3, duration 141 ms (was 440 ms).
+
+The font preload moved Inter 400 + 700 out of the CSS-dependent chain. The remaining chain goes through a non-preloaded font (Inter 800) discovered via CSS.
+
+### Cache (Run 2, local test -- no middleware)
+
+7 resources flagged (was 9). The `npx serve` static server does not set cache headers, so this test does not reflect the `CacheHeaderMiddleware` deployed on the VPS. The Fira Code fonts dropped out of the flagged list.
+
+| Resource                    | TTL  | Transfer Size |
+|:----------------------------|:-----|:--------------|
+| inter-800-BUaDDWMS.woff2    | 0 ms | 115,147 B     |
+| inter-700-BOs3KVhN.woff2    | 0 ms | 115,131 B     |
+| inter-600-BAEEcJ4E.woff2    | 0 ms | 115,103 B     |
+| inter-500-CDhBSFyE.woff2    | 0 ms | 114,639 B     |
+| inter-400-COLGFB3M.woff2    | 0 ms | 111,559 B     |
+| index-DAd4XybI.js            | 0 ms | 54,595 B      |
+| index-CyFrH-zg.css          | 0 ms | 5,926 B       |
+| **Total wasted bytes**      |      | **632,100 B** |
+
+### Main-thread work (Run 2 -- 1.4 s)
+
+| Category           | Time    |
+|:-------------------|:--------|
+| Other              | 471 ms  |
+| Style and Layout   | 432 ms  |
+| Script Evaluation  | 335 ms  |
+| Parse HTML and CSS | 72 ms   |
+| Rendering          | 65 ms   |
+
+---
+
+## Run 1 (baseline): 76 / 100
 
 | Metric                   | Value  | Status |
 |:-------------------------|:-------|:-------|
@@ -115,26 +176,24 @@ All 9 hashed assets served with `Cache-Control` unset (cache lifetime: 0 ms). Th
 
 ## Improvement Plan
 
-### Phase 1: Font preload (estimated impact: -200-400 ms FCP/LCP)
+### Phase 1: Font preload -- DONE (score 76 -> 80)
 
-Add `<link rel="preload" as="font" type="font/woff2" crossorigin>` for Inter 400 and Inter 700 in the HTML `<head>`. These are the two weights used on first paint (body text and bold headings). This moves them from chain depth 3 (HTML -> CSS -> font) to depth 1 (HTML -> font), eliminating one waterfall hop.
+Added Vite `transformIndexHtml` plugin (`fontPreloadPlugin`) that injects `<link rel="preload" as="font" type="font/woff2" crossorigin>` for Inter 400 and Inter 700 at build time with correct content-hashed paths.
 
-A Vite `transformIndexHtml` plugin injects the correct content-hashed font paths at build time, since filenames change on every build (e.g., `inter-400-COLGFB3M.woff2`).
+**Result**: LCP dropped from 6.9s to 5.3s (-1.6s). Speed Index dropped from 3.0s to 1.3s (-1.7s). Critical chains reduced from 8 to 1, duration 440ms to 141ms.
 
-### Phase 2: Cache headers for hashed assets (estimated impact: repeat visit time halved)
+### Phase 2: Cache headers -- DONE (deployed, not reflected in local audit)
 
-Add ASGI middleware in `main.py` that sets `Cache-Control: public, max-age=31536000, immutable` for requests under `/dashboard-assets/`. All files there have content hashes, making them safe for immutable caching. The root HTML keeps `no-cache` so reloads always fetch the latest asset references.
+Added `CacheHeaderMiddleware` in `main.py` that sets `Cache-Control: public, max-age=31536000, immutable` for `/dashboard-assets/*` requests. Root HTML (`/home`, `/`) gets `no-cache`. Effect visible only against production VPS, not local `npx serve`.
 
-This eliminates the "9 resources found" cache audit warning and saves 844 KB of wasted transfer on repeat visits.
+### Phase 3: Production Lighthouse script -- DONE
 
-### Phase 3: Production Lighthouse script (estimated impact: accurate LCP measurement)
+Added `perf:audit:prod` npm script targeting `http://open.zero/home` for real-world LCP measurement with backend APIs responding.
 
-Add a `perf:audit:prod` npm script targeting the real VPS URL. Current LCP (6.9s) is inflated by API 404 error states. Real production LCP should be significantly lower since components render actual content instead of error messages.
+### Phase 4 (next): Font subsetting
 
-### Phase 4 (deferred): Font subsetting
-
-All 5 Inter weights (400-800) are actively used across 22 declarations. Subsetting to Latin-only could reduce each font file from ~115 KB to ~30-40 KB, saving ~400 KB total. This requires `pyftsubset` or `glyphhanger` tooling and is deferred until Phases 1-3 are measured.
+All 5 Inter weights (400-800) are actively used across 22 declarations. Subsetting to Latin-only could reduce each font file from ~115 KB to ~30-40 KB, saving ~400 KB total. This requires `pyftsubset` or `glyphhanger` tooling.
 
 ### Phase 5 (deferred): Inline critical CSS
 
-The render-blocking CSS audit flags only 150 ms savings (5.9 KB compressed). This is low priority -- the CSS file is small and benefits from separate caching. Only revisit if the score still falls short after Phases 1-3.
+The render-blocking CSS audit flags only 150 ms savings (5.9 KB compressed). This is low priority -- the CSS file is small and benefits from separate caching. Only revisit if the score still falls short after Phase 4.
