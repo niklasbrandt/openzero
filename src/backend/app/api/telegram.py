@@ -897,6 +897,10 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 
 	response = "".join(chunks)
 
+	# Sanitise output: strip emojis, model-generated slash commands, etc.
+	from app.services.llm import sanitise_output
+	response = sanitise_output(response)
+
 	async with AsyncSessionLocal() as db:
 		clean_reply, _ = await parse_and_execute_actions(response, db=db)
 
