@@ -7,6 +7,9 @@ export class SoftwareStatus extends HTMLElement {
 	private data: any = null;
 	private t: Record<string, string> = {};
 	private _refreshTimer: ReturnType<typeof setInterval> | null = null;
+	private _observer: IntersectionObserver | null = null;
+	private _visible = false;
+	private _onVisChange = () => this._handleVisibilityChange();
 
 	constructor() {
 		super();
@@ -18,7 +21,19 @@ export class SoftwareStatus extends HTMLElement {
 			this.render();
 			this.fetchStatus();
 		});
-		this._refreshTimer = setInterval(() => this.fetchStatus(), 10_000);
+		this._observer = new IntersectionObserver(
+			([entry]) => {
+				this._visible = entry.isIntersecting;
+				if (entry.isIntersecting && !document.hidden) {
+					this._startPolling();
+				} else {
+					this._stopPolling();
+				}
+			},
+			{ threshold: 0 }
+		);
+		this._observer.observe(this);
+		document.addEventListener('visibilitychange', this._onVisChange);
 		window.addEventListener('identity-updated', () => {
 			this.loadTranslations().then(() => {
 				this.render();
@@ -28,6 +43,28 @@ export class SoftwareStatus extends HTMLElement {
 	}
 
 	disconnectedCallback() {
+		this._stopPolling();
+		if (this._observer) {
+			this._observer.disconnect();
+			this._observer = null;
+		}
+		document.removeEventListener('visibilitychange', this._onVisChange);
+	}
+
+	private _handleVisibilityChange() {
+		if (document.hidden) {
+			this._stopPolling();
+		} else if (this._visible) {
+			this._startPolling();
+		}
+	}
+
+	private _startPolling() {
+		if (this._refreshTimer) return;
+		this._refreshTimer = setInterval(() => this.fetchStatus(), 10_000);
+	}
+
+	private _stopPolling() {
 		if (this._refreshTimer) {
 			clearInterval(this._refreshTimer);
 			this._refreshTimer = null;
