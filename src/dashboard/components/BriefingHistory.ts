@@ -105,7 +105,6 @@ export class BriefingHistory extends HTMLElement {
 					/* Override icon gradient */
 					h2 .h-icon {
 						background: linear-gradient(135deg, var(--accent-color, hsla(173, 80%, 40%, 1)) 0%, hsla(216, 100%, 50%, 1) 100%);
-						transform: translate(var(--p-depth-1, 0), var(--p-depth-2, 0));
 					}
 					:host { display: block; }
 					.card {
@@ -233,7 +232,7 @@ export class BriefingHistory extends HTMLElement {
 					}
 				</style>
 				<div class="card">
-					<div class="bg-glow" style="transform: translate(var(--p-depth-1), var(--p-depth-2))"></div>
+					<div class="bg-glow"></div>
 					<h2>
 			<span class="h-icon" aria-hidden="true">
 						<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" class="oz-goo-blob">

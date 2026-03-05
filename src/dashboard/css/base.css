@@ -48,12 +48,11 @@ body {
 	min-width: 320px;
 	min-height: 100vh;
 	background-color: var(--bg-body, hsla(228, 45%, 4%, 1));
-	background-image: 
-		radial-gradient(circle at calc(50% + (var(--mouse-x, 0) * 10%)) calc(50% + (var(--mouse-y, 0) * 10%)), 
-			var(--accent-glow, hsla(173, 80%, 40%, 0.15)) 0%, 
-			transparent 60%),
+	background-image:
+		radial-gradient(circle at 30% 20%,
+			var(--accent-glow, hsla(173, 80%, 40%, 0.15)) 0%,
+			transparent 50%),
 		linear-gradient(135deg, var(--bg-body, hsla(228, 45%, 4%, 1)) 0%, hsla(228, 45%, 8%, 1) 100%);
-	background-attachment: fixed;
 	transition: background-color var(--duration-base);
 	/* overflow: clip does NOT create a scroll container, so inner elements
 	   (e.g. .top-marquee-nav) can still scroll horizontally on touch devices.

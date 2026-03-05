@@ -179,8 +179,6 @@ export class CreateProject extends HTMLElement {
 				width: 100%;
 				box-sizing: border-box;
 				background: rgba(0, 0, 0, 0.2);
-				backdrop-filter: blur(8px);
-				-webkit-backdrop-filter: blur(8px);
 				border: 1px solid rgba(255, 255, 255, 0.08);
 				border-radius: 0.75rem;
 				padding: 0.6rem 1rem;

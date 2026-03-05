@@ -27,8 +27,6 @@
 /* -- Dashboard card (glassmorphism surface) -- */
 .dashboard-card {
 	background: var(--bg-surface);
-	backdrop-filter: var(--glass-blur);
-	-webkit-backdrop-filter: var(--glass-blur);
 	border: 1px solid var(--border-color);
 	border-radius: 12px;
 	padding: 1.5rem;

@@ -240,7 +240,6 @@ export class LifeOverview extends HTMLElement {
 					/* Override icon gradient and add Parallax */
 					h2 .h-icon {
 						background: linear-gradient(135deg, var(--accent-color, hsla(173, 80%, 40%, 1)) 0%, var(--accent-tertiary, hsla(239, 84%, 67%, 1)) 100%);
-						transform: translate(var(--p-depth-1, 0), var(--p-depth-2, 0));
 					}
 					
 					h3 small { 
