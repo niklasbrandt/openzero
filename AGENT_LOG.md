@@ -72,3 +72,7 @@ This file tracks policy violations, behavioral corrections, and manual overrides
 - Replaced hardcoded accent hex colors with a triple-accent system (--accent-primary, etc.).
 - Repaired CSS syntax error in base.css.
 - Verified full build and sync after modernization.
+
+- **Goo Mode localStorage key mismatch broke cross-component sync**: UserCard stored goo state under `goo-mode` but ChatPrompt and ZPersonality read from `z_goo_mode`. Toggling goo in settings had no visible effect on chat bubbles or personality traits. Fix: standardized all components to `goo-mode`. Rule: when multiple components share a localStorage key, grep the entire codebase for the key name before assuming consistency -- naming drift between files is invisible at runtime until a user interaction crosses the boundary.
+
+- **Body-level SVG feGaussianBlur filter destroyed GPU performance**: `components.css` applied `filter: url("#oz-goo")` to `.oz-goo-container` which is `document.body`. This forced the browser to composite the ENTIRE page through a Gaussian blur + color matrix on every single frame, even at idle. Fix: removed the body-level filter, replaced with targeted CSS-only effects (transform/opacity only) scoped to individual interactive elements. The SVG filter definition is retained in `index.html` for potential micro-element decoration. Rule: never apply SVG `filter:` to `<body>` or any full-page container -- it forces full-page compositing per frame regardless of whether anything changed.

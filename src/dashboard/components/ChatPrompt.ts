@@ -1,5 +1,6 @@
 import { ACCESSIBILITY_STYLES } from '../services/accessibilityStyles';
 import { SCROLLBAR_STYLES } from '../services/scrollbarStyles';
+import { GOO_STYLES, initGoo } from '../services/gooStyles';
 
 interface ChatMessage {
 	role: 'user' | 'assistant';
@@ -27,6 +28,8 @@ export class ChatPrompt extends HTMLElement {
 			this.render();
 			this.loadHistory();
 		});
+		initGoo(this);
+		window.addEventListener('goo-changed', () => { initGoo(this); this.render(); });
 		window.addEventListener('identity-updated', () => {
 			this.loadTranslations().then(() => this.render());
 		});
@@ -365,19 +368,17 @@ export class ChatPrompt extends HTMLElement {
 
 	/**
 	 * Apply active Goo Mode effects to chat elements.
-	 * This wraps the bubbles in the SVG filter and updates their entrance animation.
+	 * Uses CSS-only bouncy entrance animation (no SVG filter on containers).
 	 */
 	private applyGooLiquification() {
-		const isGoo = localStorage.getItem('z_goo_mode') === 'true';
+		const isGoo = localStorage.getItem('goo-mode') === 'true';
 		const messages = this.shadowRoot?.querySelectorAll('.message.animate');
-		
+
 		if (isGoo && messages) {
 			messages.forEach(msg => {
 				const bubble = msg.querySelector('.bubble');
 				if (bubble) {
-					bubble.classList.add('oz-goo-container');
-					// We use a stronger bounce for goo mode
-					(bubble as HTMLElement).style.animation = 'msgInGoo 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards';
+					(bubble as HTMLElement).style.animation = 'oz-goo-msg 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards';
 				}
 			});
 		}
@@ -508,6 +509,7 @@ export class ChatPrompt extends HTMLElement {
 		<style>
 					${ACCESSIBILITY_STYLES}
 					${SCROLLBAR_STYLES}
+					${GOO_STYLES}
 					h2 { font-size: 1.5rem; font-weight: bold; margin: 0 0 1rem 0; color: var(--text-primary, hsla(0, 0%, 100%, 1)); letter-spacing: 0.02em; }
 			:host {
 				display: block;
