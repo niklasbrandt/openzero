@@ -50,6 +50,14 @@ export class LifeOverview extends HTMLElement {
 		const newProjectBtn = this.shadowRoot?.querySelector('#new-project-btn');
 		newProjectBtn?.addEventListener('click', () => this.toggleProjectForm());
 
+		const newBoardBtn = this.shadowRoot?.querySelector('#new-board-btn');
+		newBoardBtn?.addEventListener('click', () => {
+			const createProject = document.querySelector('create-project') as any;
+			if (createProject && typeof createProject.toggle === 'function') {
+				createProject.toggle();
+			}
+		});
+
 		const projectForm = this.shadowRoot?.querySelector('#inline-project-form');
 		projectForm?.addEventListener('submit', (e) => {
 			e.preventDefault();
@@ -160,7 +168,7 @@ export class LifeOverview extends HTMLElement {
 						<h3>${this.tr('boards_heading', 'Boards')}</h3>
 						<div class="header-actions">
 							<button class="action-btn" id="new-project-btn" aria-label="${this.tr('aria_new_project', 'Create new project')}">${this.tr('new_project', '+ New Project')}</button>
-							<button class="action-btn" onclick="this.closest('life-overview').parentElement.querySelector('create-project').toggle()">${this.tr('new_board', '+ New Board')}</button>
+							<button class="action-btn" id="new-board-btn">${this.tr('new_board', '+ New Board')}</button>
 						</div>
 					</div>
 					<div class="project-form-wrap${this.projectFormOpen ? ' open' : ''}">
@@ -207,18 +215,34 @@ export class LifeOverview extends HTMLElement {
 					${EMPTY_STATE_STYLES}
 					${FORM_INPUT_STYLES}
 					${FEEDBACK_STYLES}
-					/* Override icon gradient */
-					h2 .h-icon {
-						background: linear-gradient(135deg, var(--accent-color, hsla(173, 80%, 40%, 1)) 0%, var(--accent-tertiary, hsla(239, 84%, 67%, 1)) 100%);
-					}
+
 					:host { display: block; }
+
+					.bg-glow {
+						position: absolute;
+						top: -20px; right: 10px; width: 150px; height: 150px;
+						background: radial-gradient(circle at center, var(--accent-glow) 0%, transparent 70%);
+						opacity: 0.1;
+						pointer-events: none;
+						z-index: 0;
+					}
+
 					h3 { 
 						font-size: 0.85rem; 
 						text-transform: uppercase; 
 						letter-spacing: 0.1em; 
 						color: var(--text-muted, hsla(0, 0%, 100%, 0.4)); 
 						margin-bottom: 1rem; 
+						position: relative;
+						z-index: 1;
 					}
+					
+					/* Override icon gradient and add Parallax */
+					h2 .h-icon {
+						background: linear-gradient(135deg, var(--accent-color, hsla(173, 80%, 40%, 1)) 0%, var(--accent-tertiary, hsla(239, 84%, 67%, 1)) 100%);
+						transform: translate(var(--p-depth-1, 0), var(--p-depth-2, 0));
+					}
+					
 					h3 small { 
 						font-size: 0.65rem; 
 						text-transform: none; 
@@ -232,6 +256,7 @@ export class LifeOverview extends HTMLElement {
 						display: grid;
 						grid-template-columns: 1.5fr 1fr;
 						gap: 2rem;
+						position: relative;
 					}
 
 					@media (max-width: 900px) {

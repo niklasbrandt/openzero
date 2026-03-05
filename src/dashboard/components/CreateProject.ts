@@ -77,12 +77,17 @@ export class CreateProject extends HTMLElement {
 
 			this.showFeedback(this.tr('board_created', `Board "${name}" created successfully!`), 'success');
 			this.resetForm();
+			this.toggle(); // Close the form on success
 
 			// Notify other components (e.g. ProjectTree) to refresh
 			this.dispatchEvent(new CustomEvent('project-created', {
 				bubbles: true,
 				composed: true,
 				detail: { name, description, tags },
+			}));
+			// Also trigger global refresh
+			window.dispatchEvent(new CustomEvent('refresh-data', {
+				detail: { actions: ['project', 'board'] }
 			}));
 		} catch (e) {
 			this.showFeedback(this.tr('board_create_failed', 'Failed to create board. Please try again.'), 'error');

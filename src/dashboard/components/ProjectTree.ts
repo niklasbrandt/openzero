@@ -44,17 +44,17 @@ export class ProjectTree extends HTMLElement {
 
 	private setupToggle() {
 		this.shadowRoot?.querySelector('#new-project-btn')?.addEventListener('click', () => {
-			// Toggle the sibling <create-project> element in the light DOM
-			const createProject = this.parentElement?.querySelector('create-project') as HTMLElement | null;
-			if (createProject) {
+			// Toggle the <create-project> element in the light DOM
+			const createProject = document.querySelector('create-project') as any;
+			if (createProject && typeof createProject.toggle === 'function') {
+				createProject.toggle();
+				
 				const isOpen = createProject.getAttribute('data-open') === 'true';
-				createProject.setAttribute('data-open', isOpen ? 'false' : 'true');
-
 				const btn = this.shadowRoot?.querySelector('#new-project-btn');
 				if (btn) {
-					btn.textContent = isOpen ? this.tr('new_board', '+ New Board') : `\u2212 ${this.tr('cancel', 'Cancel')}`;
-					btn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
-					btn.setAttribute('aria-label', isOpen ? this.tr('aria_add_project', 'Add a new project board') : this.tr('cancel_add_board', 'Cancel adding new board'));
+					btn.textContent = isOpen ? `\u2212 ${this.tr('cancel', 'Cancel')}` : this.tr('new_board', '+ New Board');
+					btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+					btn.setAttribute('aria-label', isOpen ? this.tr('cancel_add_board', 'Cancel adding new board') : this.tr('aria_add_project', 'Add a new project board'));
 				}
 			}
 		});
