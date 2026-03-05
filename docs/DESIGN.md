@@ -329,30 +329,55 @@ mission control aesthetic. Phase 2+ will introduce:
 
 ---
 
-## 11. Cursor Parallax (Planned)
+## 11. Goo Mode
 
-Phase 3+ introduces a mouse-tracking parallax layer that gives the
-glassmorphism panels a subtle spatial quality:
+An opt-in personality layer -- organic, fluid CSS-only animations scoped
+exclusively to the `oz-goo` host class and `oz-goo-*` utility classes.
+A playful counterpoint to the otherwise measured visual language.
 
-- Panels shift based on pointer coordinates, creating a sense of depth.
-- Movement is throttled to `requestAnimationFrame` cadence.
-- Disabled entirely when `prefers-reduced-motion: reduce` is active.
+### 11.1 Activation
+
+- Toggled via the settings panel in UserCard. Stored in `localStorage`
+  under `goo-mode`. Never on by default.
+- UserCard dispatches a `goo-changed` window event on toggle. All Shadow
+  DOM components listen and call `initGoo(this)` to sync their host
+  `.oz-goo` class in real time.
+
+### 11.2 Shadow DOM Scoping
+
+CSS rules use `:host(.oz-goo)` selectors so goo styles activate
+per-component without leaking. Light-DOM goo (sidebar nav, GitHub link)
+is scoped via `.oz-goo-container` on `<body>` in `css/components.css`.
+
+### 11.3 Shared Modules
+
+| Module                       | What It Provides                                      |
+| :--------------------------- | :---------------------------------------------------- |
+| `services/gooStyles.ts`      | `GOO_STYLES` constant (elastic buttons, organic card  |
+|                              | morph, bouncy entrance, status-dot pulse, elastic     |
+|                              | form focus) and `initGoo()` helper                    |
+| `services/buttonStyles.ts`   | `:host(.oz-goo) button` rules -- all components that  |
+|                              | import `BUTTON_STYLES` get elastic buttons for free   |
+| `css/components.css`         | Light-DOM goo for sidebar nav links and GitHub link   |
+
+### 11.4 Performance Contract
+
+- All animations use `transform` and `opacity` only (GPU-composited).
+  No layout-triggering properties.
+- The SVG `feGaussianBlur` filter (defined in `index.html`) is never
+  applied to containers -- it forces full-page compositing per frame.
+  The filter definition is retained for potential micro-element use.
+- `will-change` is scoped to active animation duration only.
+
+### 11.5 Easing
+
+`cubic-bezier(0.175, 0.885, 0.32, 1.275)` -- the CSS approximation of
+`elastic.out`. This and `bounce.out` remain the only permitted elastic
+easing functions in the codebase (per S6.3).
 
 ---
 
-## 12. Goo Mode (Planned)
-
-An opt-in easter egg -- organic, fluid morphing of UI borders and
-backgrounds scoped to `oz-goo-*` CSS classes:
-
-- Uses `elastic.out` and `bounce.out` GSAP easing (the only permitted use
-  of these easing functions in the entire codebase).
-- Activated through the settings panel. Never on by default.
-- A playful counterpoint to the otherwise measured visual language.
-
----
-
-## 13. CSS Architecture and Modularization
+## 12. CSS Architecture and Modularization
 
 The dashboard's global CSS has been modularized to maintain clarity as the
 system scales. The main `style.css` acts as a barrel file, importing
@@ -369,7 +394,7 @@ dedicated modules from `src/dashboard/css/`.
 | `components.css` | Shared high-level patterns (tooltips, footer)        |
 | `a11y.css`       | Accessibility overrides, focus rings, reduced-motion |
 
-### 13.1 Modification Workflow
+### 12.1 Modification Workflow
 
 - **Design Changes:** Edit `css/tokens.css` to update the core palette or
   radii.
@@ -382,22 +407,39 @@ dedicated modules from `src/dashboard/css/`.
 
 ---
 
-## 14. Self-Hosted Fonts
+## 13. Self-Hosted Fonts
 
 All typefaces are served from the VPS to eliminate external dependencies.
 Font files live under `src/dashboard/fonts/` and load via `@font-face`
-declarations in `style.css`.
+declarations in `css/fonts.css`.
 
-| Family               | Weights                 | Status  |
-| :------------------- | :---------------------- | :------ |
-| Inter                | 400, 500, 600, 700, 800 | Shipped |
-| Fira Code            | 400, 700                | Shipped |
-| Noto Sans SC         | 400, 700                | Planned |
-| Noto Sans JP         | 400, 700                | Planned |
-| Noto Sans KR         | 400, 700                | Planned |
-| Noto Sans Devanagari | 400, 700                | Planned |
-| Noto Sans Bengali    | 400, 700                | Planned |
-| Noto Sans Arabic     | 400, 700                | Planned |
+| Family               | Weights                  | Status  |
+| :------------------- | :----------------------- | :------ |
+| Inter                | 400, 500, 600, 700, 800  | Shipped |
+| Fira Code            | 400, 700                 | Shipped |
+| Noto Sans SC         | 400, 700                 | Planned |
+| Noto Sans JP         | 400, 700                 | Planned |
+| Noto Sans KR         | 400, 700                 | Planned |
+| Noto Sans Devanagari | 400, 700                 | Planned |
+| Noto Sans Bengali    | 400, 700                 | Planned |
+| Noto Sans Arabic     | 400, 700                 | Planned |
 
-CJK fonts will use `unicode-range` subsetting to avoid loading unnecessary
-glyphs.
+### 13.1 Unicode-Range Subsetting
+
+Inter is already split into **Latin core** (~29 KB per weight) and
+**Extended** (~86 KB) subsets using `unicode-range` declarations in
+`css/fonts.css`. The browser only downloads the extended subset when
+non-Latin characters appear on the page.
+
+CJK and Indic fonts will extend this same pattern:
+
+1. Each weight is split into script-specific WOFF2 subsets.
+2. `unicode-range` declarations cover the relevant Unicode blocks
+   (e.g. CJK Unified Ideographs `U+4E00-9FFF`, Hangul `U+AC00-D7AF`).
+3. The browser downloads zero CJK/Indic bytes for Latin-only pages.
+4. Multiple subsets per script (common vs. rare characters) keep
+   initial payloads small even for CJK-heavy content.
+
+This approach reduced the shipped font payload from 888 KB to 281 KB
+(-68%) during the Lighthouse optimization pass and will scale
+identically for i18n expansion.

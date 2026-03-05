@@ -1,4 +1,5 @@
 import { BUTTON_STYLES } from '../services/buttonStyles';
+import { initGoo } from '../services/gooStyles';
 import { ACCESSIBILITY_STYLES } from '../services/accessibilityStyles';
 import { SCROLLBAR_STYLES } from '../services/scrollbarStyles';
 
@@ -75,6 +76,8 @@ export class CalendarManager extends HTMLElement {
 			this.render();
 			this.fetchEvents();
 		});
+		initGoo(this);
+		window.addEventListener('goo-changed', () => initGoo(this));
 		window.addEventListener('open-calendar', () => this.toggle(true));
 		window.addEventListener('refresh-data', (e: any) => {
 			if (e.detail && e.detail.actions && e.detail.actions.includes('calendar')) {
