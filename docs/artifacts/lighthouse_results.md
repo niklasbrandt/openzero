@@ -26,7 +26,7 @@ Changes from Run 7:
 | **Best Practices**  | **96**        | **96**               |
 | **SEO**             | **100**       | **100**              |
 
-*Simulated mobile (4x CPU slowdown) Perf 90-91 is Lighthouse throttle simulation variance at BenchmarkIndex ~2400. Unthrottled (`--throttling-method=provided`) confirms Perf 100 consistently. No code regression -- bundle size, TBT, CLS all identical to Run 7.
+*Simulated mobile (4x CPU slowdown) Perf 90-91 is due to 90% host RAM usage during test (memory pressure + swap contention amplified by Lighthouse's 4x CPU throttle). BenchmarkIndex ~2400. Unthrottled (`--throttling-method=provided`) confirms Perf 100 consistently. No code regression -- bundle size, TBT, CLS all identical to Run 7.
 
 | Metric (Simulated Mobile) | Value      | Score | Status |
 |:--------------------------|:-----------|:------|:-------|
