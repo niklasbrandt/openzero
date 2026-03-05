@@ -206,7 +206,7 @@ export class EmailRules extends HTMLElement {
 							</span>
 							${this.tr('email_rules', 'Email')}
 						</h2>
-						${!this.isAdding ? `<button id="showAddBtn" class="btn-primary" aria-label="${this.tr('aria_add_email_rule', 'Add new email rule')}">+ ${this.tr('new_rule', 'New Rule')}</button>` : ''}
+						${!this.isAdding ? `<button id="showAddBtn" class="btn-primary" aria-label="+ ${this.tr('new_rule', 'New Rule')} — ${this.tr('aria_add_email_rule', 'Add new email rule')}">+ ${this.tr('new_rule', 'New Rule')}</button>` : ''}
 					</div>
 
 					${this.isAdding ? `

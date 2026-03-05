@@ -1,12 +1,39 @@
-# Lighthouse Performance Baseline
+# Lighthouse Audit Results
 
 ## Test Methodology
 
 - **Tool**: Lighthouse CLI v12.8.2 (headless Chrome)
 - **Target**: Production build served via `npx serve dist/ -l 4173` (`http://127.0.0.1:4173`)
-- **Build**: Vite production bundle (single CSS + single JS + 7 woff2 fonts)
+- **Build**: Vite production bundle (single CSS + single JS + 14 woff2 font subsets)
 - **Backend**: None -- all `/api/*` calls returned 404 (static file server only)
 - **Note**: LCP is inflated because API failures cause components to render error states instead of real content. Re-test against production for meaningful LCP data.
+
+---
+
+## Run 4 (full audit -- a11y, SEO, best practices): Perf 92 / A11y 100 / SEO 100 / BP 96
+
+Changes applied: fixed ARIA `role="list"` violations (dynamic role management on CalendarAgenda + BriefingHistory -- role only set when items present), fixed WCAG 2.5.3 label-content-name-mismatch (cmd-chip aria-labels now include visible text, tooltip spans marked `aria-hidden="true"`), fixed color contrast on `.cmd-chip` (CSS specificity fix: `.empty-state > span` instead of `.empty-state span`) and `.svc-detail` (changed from `--text-muted` 0.4 to `--text-secondary` 0.7 opacity), added `<meta name="description">` for SEO.
+
+| Category            | Run 4  | Status |
+|:--------------------|:-------|:-------|
+| **Performance**     | **92** | Pass   |
+| **Accessibility**   | **100**| Pass   |
+| **Best Practices**  | **96** | Pass   |
+| **SEO**             | **100**| Pass   |
+
+| Metric                   | Run 1  | Run 2  | Run 3  | Run 4  | Delta (1->4) | Status |
+|:-------------------------|:-------|:-------|:-------|:-------|:-------------|:-------|
+| **Performance Score**    | **76** | **80** | **92** | **92** | **+16**      |        |
+| First Contentful Paint   | 1.2 s  | 1.2 s  | 1.2 s  | 1.2 s  | 0            | Pass   |
+| Largest Contentful Paint | 6.9 s  | 5.3 s  | 3.4 s  | 3.4 s  | -3.5 s       | Warn   |
+| Speed Index              | 3.0 s  | 1.3 s  | 1.4 s  | 1.4 s  | -1.6 s       | Pass   |
+| Total Blocking Time      | 40 ms  | 50 ms  | 20 ms  | 20 ms  | -20 ms       | Pass   |
+| Cumulative Layout Shift  | 0      | 0      | 0      | 0      | 0            | Pass   |
+| Time to Interactive      | 6.9 s  | 5.3 s  | 3.4 s  | 3.4 s  | -3.5 s       | Pass   |
+
+### Remaining non-scoring audit: Best Practices 96
+
+- Console errors from API 404s (no backend in test environment). Not addressable locally.
 
 ---
 
@@ -220,6 +247,17 @@ Split each font into Latin core (~29-31 KB) + extended (~47-92 KB) subsets using
 
 **Result**: Total byte weight dropped from 888 KB to 281 KB (-68%). LCP dropped from 5.3s to 3.4s (-1.9s). Score jumped from 80 to 92. TTI dropped from 5.3s to 3.4s.
 
-### Phase 5 (deferred): Inline critical CSS
+### Phase 5: Accessibility + SEO audit -- DONE (A11y 95 -> 100, SEO 90 -> 100)
+
+Full-category Lighthouse audit revealed WCAG violations and missing SEO metadata:
+
+- **ARIA required children**: `role="list"` on `#event-list` (CalendarAgenda) and `#briefing-list` (BriefingHistory) without `role="listitem"` children in error/loading states. Fix: removed static `role="list"` from template HTML, set it dynamically via JS only when items are present.
+- **Label-content-name-mismatch (WCAG 2.5.3)**: 7 cmd-chip buttons had `aria-label` not containing visible text. Fix: prepended visible text (e.g. "/day --") to aria-labels. 4 bench buttons had tooltip text (`<span class="glass-tooltip">`) counted as visible content, making `aria-label` a subset mismatch. Fix: added `aria-hidden="true"` to all injected tooltip spans across SystemBenchmark, HardwareMonitor, and SoftwareStatus.
+- **Color contrast (WCAG 1.4.3)**: `.cmd-chip` computed as 3.77:1 instead of 4.5:1 because `.empty-state span` (specificity 0-1-1) overrode `.cmd-chip` color (0-1-0). Fix: changed to `.empty-state > span` (direct child only). `.svc-detail` at 0.4 opacity white (3.77:1). Fix: changed to `--text-secondary` (0.7 opacity, ~6.5:1).
+- **Missing meta description**: Added `<meta name="description">` to `index.html`.
+
+**Result**: Accessibility 95 -> 100, SEO 90 -> 100. Best Practices holds at 96 (console errors from no-backend testing only).
+
+### Phase 6 (deferred): Inline critical CSS
 
 The render-blocking CSS audit flags only 150 ms savings (5.8 KB compressed). This is low priority -- the CSS file is small and benefits from separate caching. Score is already at 92/100 without this. The remaining LCP (3.4s) is entirely render delay from JS-driven Shadow DOM components with no backend -- not addressable via CSS inlining.

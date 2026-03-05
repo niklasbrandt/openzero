@@ -323,13 +323,13 @@ export class ChatPrompt extends HTMLElement {
 					<span>${this.tr('chat_hint', 'Ask anything — manage tasks, query memories, or get briefed.')}</span>
 					<nav aria-label="${this.tr('aria_quick_commands', 'Quick commands')}" class="command-hints">
 						<ul role="list" style="display:flex;flex-wrap:wrap;gap:0.5rem;justify-content:center;list-style:none;padding:0;margin:1rem 0 0 0;">
-							<li role="listitem"><span class="cmd-chip" tabindex="0" role="button" aria-label="${this.tr('aria_cmd_day', 'Daily briefing command')}">/day</span></li>
-							<li role="listitem"><span class="cmd-chip" tabindex="0" role="button" aria-label="${this.tr('aria_cmd_week', 'Weekly briefing command')}">/week</span></li>
-							<li role="listitem"><span class="cmd-chip" tabindex="0" role="button" aria-label="${this.tr('aria_cmd_month', 'Monthly briefing command')}">/month</span></li>
-							<li role="listitem"><span class="cmd-chip" tabindex="0" role="button" aria-label="${this.tr('aria_cmd_year', 'Yearly briefing command')}">/year</span></li>
-							<li role="listitem"><span class="cmd-chip" tabindex="0" role="button" aria-label="${this.tr('aria_cmd_memory', 'Search memory command')}">/memory</span></li>
-							<li role="listitem"><span class="cmd-chip" tabindex="0" role="button" aria-label="${this.tr('aria_cmd_add', 'Add memory command')}">/add</span></li>
-							<li role="listitem"><span class="cmd-chip" tabindex="0" role="button" aria-label="${this.tr('aria_cmd_think', 'Deep think command')}">/think</span></li>
+							<li role="listitem"><span class="cmd-chip" tabindex="0" role="button" aria-label="/day — ${this.tr('aria_cmd_day', 'Daily briefing command')}">/day</span></li>
+							<li role="listitem"><span class="cmd-chip" tabindex="0" role="button" aria-label="/week — ${this.tr('aria_cmd_week', 'Weekly briefing command')}">/week</span></li>
+							<li role="listitem"><span class="cmd-chip" tabindex="0" role="button" aria-label="/month — ${this.tr('aria_cmd_month', 'Monthly briefing command')}">/month</span></li>
+							<li role="listitem"><span class="cmd-chip" tabindex="0" role="button" aria-label="/year — ${this.tr('aria_cmd_year', 'Yearly briefing command')}">/year</span></li>
+							<li role="listitem"><span class="cmd-chip" tabindex="0" role="button" aria-label="/memory — ${this.tr('aria_cmd_memory', 'Search memory command')}">/memory</span></li>
+							<li role="listitem"><span class="cmd-chip" tabindex="0" role="button" aria-label="/add — ${this.tr('aria_cmd_add', 'Add memory command')}">/add</span></li>
+							<li role="listitem"><span class="cmd-chip" tabindex="0" role="button" aria-label="/think — ${this.tr('aria_cmd_think', 'Deep think command')}">/think</span></li>
 						</ul>
 					</nav>
 				</div>
@@ -566,7 +566,7 @@ export class ChatPrompt extends HTMLElement {
 				margin: 0;
 			}
 
-			.empty-state span {
+			.empty-state > span {
 				color: var(--text-muted, hsla(0, 0%, 100%, 0.4));
 				font-size: 0.85rem;
 			}
@@ -878,13 +878,13 @@ export class ChatPrompt extends HTMLElement {
 				<span>${this.tr('chat_hint', 'Ask anything — manage tasks, query memories, or get briefed.')}</span>
 				<nav class="command-hints" aria-label="${this.tr('aria_quick_commands', 'Quick commands')}">
 					<ul role="list" style="display:flex;flex-wrap:wrap;gap:0.5rem;justify-content:center;list-style:none;padding:0;margin:1rem 0 0 0;">
-						<li role="listitem"><span class="cmd-chip" tabindex="0" role="button" aria-label="${this.tr('aria_cmd_day', 'Daily briefing command')}">/day</span></li>
-						<li role="listitem"><span class="cmd-chip" tabindex="0" role="button" aria-label="${this.tr('aria_cmd_week', 'Weekly briefing command')}">/week</span></li>
-						<li role="listitem"><span class="cmd-chip" tabindex="0" role="button" aria-label="${this.tr('aria_cmd_month', 'Monthly briefing command')}">/month</span></li>
-						<li role="listitem"><span class="cmd-chip" tabindex="0" role="button" aria-label="${this.tr('aria_cmd_year', 'Yearly briefing command')}">/year</span></li>
-						<li role="listitem"><span class="cmd-chip" tabindex="0" role="button" aria-label="${this.tr('aria_cmd_memory', 'Search memory command')}">/memory</span></li>
-						<li role="listitem"><span class="cmd-chip" tabindex="0" role="button" aria-label="${this.tr('aria_cmd_add', 'Add memory command')}">/add</span></li>
-						<li role="listitem"><span class="cmd-chip" tabindex="0" role="button" aria-label="${this.tr('aria_cmd_think', 'Deep think command')}">/think</span></li>
+						<li role="listitem"><span class="cmd-chip" tabindex="0" role="button" aria-label="/day — ${this.tr('aria_cmd_day', 'Daily briefing command')}">/day</span></li>
+						<li role="listitem"><span class="cmd-chip" tabindex="0" role="button" aria-label="/week — ${this.tr('aria_cmd_week', 'Weekly briefing command')}">/week</span></li>
+						<li role="listitem"><span class="cmd-chip" tabindex="0" role="button" aria-label="/month — ${this.tr('aria_cmd_month', 'Monthly briefing command')}">/month</span></li>
+						<li role="listitem"><span class="cmd-chip" tabindex="0" role="button" aria-label="/year — ${this.tr('aria_cmd_year', 'Yearly briefing command')}">/year</span></li>
+						<li role="listitem"><span class="cmd-chip" tabindex="0" role="button" aria-label="/memory — ${this.tr('aria_cmd_memory', 'Search memory command')}">/memory</span></li>
+						<li role="listitem"><span class="cmd-chip" tabindex="0" role="button" aria-label="/add — ${this.tr('aria_cmd_add', 'Add memory command')}">/add</span></li>
+						<li role="listitem"><span class="cmd-chip" tabindex="0" role="button" aria-label="/think — ${this.tr('aria_cmd_think', 'Deep think command')}">/think</span></li>
 					</ul>
 				</nav>
 			</div>
