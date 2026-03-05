@@ -813,6 +813,26 @@ async def get_life_tree(db: AsyncSession = Depends(get_db)):
 		"timeline": formatted_events[:5]
 	}
 
+@router.get("/onboarding-status")
+async def onboarding_status(db: AsyncSession = Depends(get_db)):
+	"""Check whether the user still needs the onboarding walkthrough."""
+	from app.models.db import Preference
+	stmt = select(Preference).where(Preference.key == "onboarding_dismissed")
+	res = await db.execute(stmt)
+	pref = res.scalar_one_or_none()
+	dismissed = pref is not None and pref.value == "true"
+	if dismissed:
+		return {"needs_onboarding": False, "steps": []}
+	# Return onboarding steps for first-time users
+	return {
+		"needs_onboarding": True,
+		"steps": [
+			{"key": "profile", "label": "Set up your profile", "done": False},
+			{"key": "circles", "label": "Add people to your circles", "done": False},
+			{"key": "calendar", "label": "Connect your calendar", "done": False},
+		]
+	}
+
 @router.post("/onboarding-dismiss")
 async def dismiss_onboarding(db: AsyncSession = Depends(get_db)):
 	"""Persistently dismiss the onboarding hints."""
