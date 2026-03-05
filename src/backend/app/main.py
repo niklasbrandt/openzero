@@ -102,11 +102,32 @@ async def lifespan(app: FastAPI):
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse, FileResponse
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
 from app.api.dashboard import router as dashboard_router, auth_router
 from app.api.health import router as health_router
 from app.config import settings
 
 app = FastAPI(title="Personal AI OS", lifespan=lifespan)
+
+
+class CacheHeaderMiddleware(BaseHTTPMiddleware):
+    """Set immutable cache headers for content-hashed dashboard assets.
+
+    Files under /dashboard-assets/ have content hashes in their names
+    (e.g. index-CyFrH-zg.css), making them safe for aggressive caching.
+    The root HTML is served with no-cache so reloads always get fresh
+    asset references.
+    """
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        path = request.url.path
+        if path.startswith("/dashboard-assets/"):
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        elif path in ("/home", "/"):
+            response.headers["Cache-Control"] = "no-cache"
+        return response
+
 
 # Add CORS for the dashboard — restrict to the configured base URL (not wildcard)
 app.add_middleware(
@@ -116,6 +137,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(CacheHeaderMiddleware)
 
 app.include_router(auth_router)
 app.include_router(dashboard_router)

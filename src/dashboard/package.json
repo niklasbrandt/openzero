@@ -8,7 +8,8 @@
         "build": "tsc && vite build",
         "preview": "vite preview",
         "perf:baseline": "lighthouse http://localhost:5173 --only-categories=performance --output=json --output=html --output-path=./lighthouse-baseline --chrome-flags='--headless=new'",
-        "perf:audit": "lighthouse http://localhost:5173 --only-categories=performance --output=json --output=html --output-path=./lighthouse-report --chrome-flags='--headless=new'"
+        "perf:audit": "lighthouse http://localhost:5173 --only-categories=performance --output=json --output=html --output-path=./lighthouse-report --chrome-flags='--headless=new'",
+        "perf:audit:prod": "lighthouse http://open.zero/home --only-categories=performance --output=json --output=html --output-path=./lighthouse-prod --chrome-flags='--headless=new'"
     },
     "devDependencies": {
         "lighthouse": "^12.0.0",
