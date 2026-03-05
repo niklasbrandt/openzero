@@ -70,7 +70,7 @@ export class BriefingHistory extends HTMLElement {
 						onclick="this.parentElement.classList.toggle('active'); this.setAttribute('aria-expanded', this.parentElement.classList.contains('active').toString())"
 						aria-expanded="false"
 						aria-controls="briefing-content-${b.id || b.created_at}"
-						aria-label="${this.tr('aria_toggle_briefing', 'Toggle briefing from')} ${new Date(b.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}"
+						aria-label="${b.type.toUpperCase()} -- ${new Date(b.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} -- ${this.tr('aria_toggle_briefing', 'Toggle briefing')}"
 					>
 						<div class="meta-left">
 							<span class="type">${b.type.toUpperCase()}</span>

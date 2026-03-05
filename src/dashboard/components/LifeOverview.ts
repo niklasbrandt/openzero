@@ -198,7 +198,7 @@ export class LifeOverview extends HTMLElement {
 
 					<section class="timeline" aria-label="${this.tr('aria_upcoming_timeline', 'Upcoming timeline')}">
 						<h3>${this.tr('timeline_heading', 'Timeline (Next 3 Days)')}</h3>
-						<div class="timeline-list" role="list">${timelineHtml}</div>
+						<div class="timeline-list"${data.timeline.length > 0 ? ' role="list"' : ''}>${timelineHtml}</div>
 					</section>
 				</div>
 			</div>

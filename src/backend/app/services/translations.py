@@ -320,7 +320,7 @@ _EN = {
     "hint_ttft_moderate": "High TTFT. Model may still be loading into memory or swapping.",
     "hint_ttft_slow": "Very high TTFT -- likely cold-loading or memory-constrained.",
     # ── Accessibility / ARIA labels ──
-    "aria_toggle_briefing": "Toggle briefing from",
+    "aria_toggle_briefing": "Toggle briefing",
     "aria_briefing_content": "Briefing content from",
     "aria_open_google_calendar": "Open Google Calendar (opens in new tab)",
     "aria_prev_month": "Previous month",
@@ -877,7 +877,7 @@ _DE = {
     "hint_ttft_moderate": "Hohe TTFT. Modell lädt eventuell noch.",
     "hint_ttft_slow": "Sehr hohe TTFT -- Speicherengpass oder Kaltstart.",
     # ── Accessibility / ARIA labels ──
-    "aria_toggle_briefing": "Briefing umschalten von",
+    "aria_toggle_briefing": "Briefing umschalten",
     "aria_briefing_content": "Briefing-Inhalt vom",
     "aria_open_google_calendar": "Google Kalender oeffnen (oeffnet in neuem Tab)",
     "aria_prev_month": "Vorheriger Monat",
