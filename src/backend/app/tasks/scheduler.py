@@ -110,6 +110,15 @@ async def start_scheduler():
 		replace_existing=True,
 	)
 
+	# Yearly Review — January 2nd at 11:00
+	from app.tasks.yearly import yearly_review
+	scheduler.add_job(
+		yearly_review,
+		CronTrigger(month=1, day=2, hour=11, minute=0),
+		id="yearly_review",
+		replace_existing=True,
+	)
+
 	# Email Polling (via Gmail API or other mail client API) — every 10 minutes
 	scheduler.add_job(
 		poll_gmail,
@@ -231,19 +240,19 @@ async def load_custom_tasks():
 	from app.models.db import AsyncSessionLocal, CustomTask
 	from sqlalchemy import select
 	from app.api.telegram import send_notification
-	
+
 	try:
 		async with AsyncSessionLocal() as session:
 			res = await session.execute(select(CustomTask).where(CustomTask.is_active == True))
 			tasks = res.scalars().all()
-			
+
 			for t in tasks:
 				# Use a wrapper to capture the specific message for this job
 				def make_task(msg):
 					async def notify_task():
-						await send_notification(f"🔔 *Custom Turnus Alert*\n\n{msg}")
+						await send_notification(f"\U0001f514 *Custom Turnus Alert*\n\n{msg}")
 					return notify_task
-				
+
 				trigger = None
 				if t.job_type == "cron":
 					# Validate before loading (defense-in-depth against stale bad rows)
@@ -269,9 +278,18 @@ async def load_custom_tasks():
 					if not kwargs:
 						logger.warning("Skipping custom task '%s': invalid interval spec '%s'", t.name, t.spec)
 						continue
-					logger.info(f"Loaded persistent custom task: {t.name} ({t.job_type})")
+					trigger = IntervalTrigger(**kwargs)
+
+				if trigger:
+					scheduler.add_job(
+						make_task(t.message),
+						trigger,
+						id=f"custom_{t.id}",
+						replace_existing=True,
+					)
+					logger.info("Loaded persistent custom task: %s (%s)", t.name, t.job_type)
 	except Exception as e:
-		logger.error(f"Failed to load custom tasks: {e}")
+		logger.error("Failed to load custom tasks: %s", e)
 
 async def stop_scheduler():
 	scheduler.shutdown(wait=False)

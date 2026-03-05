@@ -354,13 +354,13 @@ openZero includes two independent test suites.
 
 ### Prompt Injection Risk Tests (Offline)
 
-Validates the prompt construction pipeline against 208 adversarial attack vectors. No running services required -- this tests the structural integrity of how user input is assembled into LLM prompts.
+Validates the prompt construction pipeline against 239 adversarial attack vectors across 23 categories. No running services required -- this tests the structural integrity of how user input is assembled into LLM prompts.
 
 ```bash
 # Install pytest (once)
 pip install pytest
 
-# Run all 208 tests
+# Run all 239 tests
 python -m pytest tests/test_security_prompt_injection.py -v --tb=short
 
 # Run a specific category

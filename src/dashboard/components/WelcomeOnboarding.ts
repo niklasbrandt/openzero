@@ -1,4 +1,5 @@
 import { ACCESSIBILITY_STYLES } from '../services/accessibilityStyles';
+import { GOO_STYLES, initGoo } from '../services/gooStyles';
 
 export class WelcomeOnboarding extends HTMLElement {
 	private t: Record<string, string> = {};
@@ -24,6 +25,8 @@ export class WelcomeOnboarding extends HTMLElement {
 
 	connectedCallback() {
 		this.loadTranslations().then(() => this.checkStatus());
+		initGoo(this);
+		window.addEventListener('goo-changed', () => initGoo(this));
 	}
 
 	async checkStatus() {
@@ -48,6 +51,7 @@ export class WelcomeOnboarding extends HTMLElement {
 				<style>
 					:host { display: block; grid-column: 1 / -1; margin-bottom: 2rem; }
 					${ACCESSIBILITY_STYLES}
+					${GOO_STYLES}
 					.card {
 						background: linear-gradient(135deg, var(--surface-accent-subtle, hsla(173, 80%, 40%, 0.1)), hsla(216, 100%, 50%, 0.1));
 						border: 2px solid var(--border-accent, hsla(173, 80%, 40%, 0.3));

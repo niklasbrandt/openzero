@@ -73,33 +73,89 @@ async def fetch_calendar_events(calendar_id: str = "primary", max_results: int =
 		return []
 
 async def fetch_caldav_events(start_date: datetime.datetime, end_date: datetime.datetime) -> list[dict]:
-	"""Fetch events from the private CalDAV server."""
+	"""Fetch events from the private CalDAV server via REPORT (RFC 4791)."""
 	from app.config import settings
 	import httpx
 	if not settings.CALDAV_URL or not settings.CALDAV_USERNAME:
 		return []
 
+	body = (
+		'<?xml version="1.0" encoding="utf-8" ?>'
+		'<C:calendar-query xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">'
+		'<D:prop><D:getetag/><C:calendar-data/></D:prop>'
+		'<C:filter><C:comp-filter name="VCALENDAR">'
+		'<C:comp-filter name="VEVENT">'
+		'<C:time-range '
+		f'start="{start_date.strftime("%Y%m%dT%H%M%SZ")}" '
+		f'end="{end_date.strftime("%Y%m%dT%H%M%SZ")}"/>'
+		'</C:comp-filter></C:comp-filter></C:filter>'
+		'</C:calendar-query>'
+	)
+
 	try:
-		# Very basic CalDAV REPORT request (simplified)
-		# Note: Full CalDAV parsing usually requires 'vobject' or 'icalendar' libs.
-		# For now we use a lightweight search if possible, or assume user has a simple endpoint.
-		# Since the user says 'already worked', we assume standard CalDAV.
 		auth = (settings.CALDAV_USERNAME, settings.CALDAV_PASSWORD)
-		async with httpx.AsyncClient(auth=auth, timeout=10.0) as client:
-			# Simplified: Just fetch all items in the calendar collection.
-			# Real CalDAV would use a 1-day range filter in the body.
-			resp = await client.request("PROPFIND", settings.CALDAV_URL, headers={"Depth": "1"})
-			if resp.status_code >= 400: return []
-			
-			# Parse ICS files (very roughly if no lib allowed/provided)
-			# Ideal: use icalendar.Calendar.from_ical(resp.text)
-			# But given we shouldn't add too many new libs unless it's in reqs...
-			# We'll assume the user has the lib or we just return an empty list for now
-			# actually, since I don't see the lib in requirements, I will return empty
-			# but add the placeholder function so the logic is correct.
-			return []
-	except:
+		headers = {
+			"Depth": "1",
+			"Content-Type": "application/xml; charset=utf-8",
+		}
+		async with httpx.AsyncClient(auth=auth, timeout=15.0) as client:
+			resp = await client.request(
+				"REPORT", settings.CALDAV_URL, content=body, headers=headers
+			)
+			if resp.status_code >= 400:
+				print(f"CalDAV REPORT returned {resp.status_code}")
+				return []
+
+		return _parse_caldav_multistatus(resp.text)
+	except Exception as e:
+		print(f"CalDAV Read Error: {e}")
 		return []
+
+
+def _parse_caldav_multistatus(xml_text: str) -> list[dict]:
+	"""Extract VEVENT data from a CalDAV multistatus XML response."""
+	import re
+	from icalendar import Calendar
+
+	events: list[dict] = []
+	# Extract all calendar-data CDATA from the multistatus response
+	pattern = re.compile(
+		r"<(?:[A-Za-z0-9_-]+:)?calendar-data[^>]*>(.*?)</(?:[A-Za-z0-9_-]+:)?calendar-data>",
+		re.DOTALL,
+	)
+	for match in pattern.finditer(xml_text):
+		ics_text = match.group(1).strip()
+		try:
+			cal = Calendar.from_ical(ics_text)
+			for component in cal.walk():
+				if component.name != "VEVENT":
+					continue
+				dt_start = component.get("dtstart")
+				dt_end = component.get("dtend")
+				start_val = dt_start.dt if dt_start else None
+				end_val = dt_end.dt if dt_end else start_val
+				if start_val is None:
+					continue
+				# Normalise to ISO string
+				if isinstance(start_val, datetime.datetime):
+					start_iso = start_val.isoformat()
+				else:
+					start_iso = start_val.isoformat()
+				if isinstance(end_val, datetime.datetime):
+					end_iso = end_val.isoformat()
+				else:
+					end_iso = end_val.isoformat()
+
+				events.append({
+					"summary": str(component.get("summary", "No Title")),
+					"start": start_iso,
+					"end": end_iso,
+					"id": str(component.get("uid", "")),
+					"source": "caldav",
+				})
+		except Exception:
+			continue
+	return events
 
 async def create_caldav_event(title: str, start: datetime.datetime, end: datetime.datetime) -> bool:
 	"""Sync a local event to the private CalDAV server."""
