@@ -1,4 +1,4 @@
-# OpenZero Configuration
+# openZero Configuration
 # Copy this file to `config.yaml` to customize the behavior of your AI Operating System.
 # This file allows you to toggle features on/off and adjust the scheduling (turnus) of background tasks.
 

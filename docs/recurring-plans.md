@@ -83,25 +83,59 @@ Like a board meeting with yourself. Honest but encouraging:
 
 ```python
 from app.services.llm import chat
-from app.api.telegram import send_notification
+from app.services.planka import get_project_tree
+from app.models.db import AsyncSessionLocal, Briefing, Project
+from sqlalchemy import select
+import datetime
 
-async def weekly_review() -> str:
-    """Analyze the week and send a structured report."""
+async def weekly_review():
+    """Generate and store the weekly review with project stagnation checks."""
 
-    # TODO: Pull actual data from Planka and Postgres
-    prompt = """You are reviewing my week. Based on the following data, generate a
-structured weekly review with these sections:
+    tree = await get_project_tree(as_html=False)
 
-1. **Wins** — what went well
-2. **Stagnation** — projects that haven't moved (list them if there are many)
-3. **Balance Check** — career/health/family/creative balance
-4. **Next Week Focus** — top 3 priorities
+    # Identify stagnant projects (Active but not updated in > 7 days)
+    stagnant_list = []
+    async with AsyncSessionLocal() as session:
+        today = datetime.datetime.utcnow()
+        week_ago = today - datetime.timedelta(days=7)
+        result = await session.execute(
+            select(Project).where(
+                Project.status == "active",
+                Project.updated_at < week_ago
+            )
+        )
+        stagnant_projects = result.scalars().all()
+        stagnant_list = [
+            f"- {p.name} (Stagnant for {(today - p.updated_at).days} days)"
+            for p in stagnant_projects
+        ]
 
-Be honest but encouraging. Use bullet points. Under 400 words."""
+    stagnant_text = (
+        "\n".join(stagnant_list)
+        if stagnant_list
+        else "All active projects show recent momentum."
+    )
 
-    review = await chat(prompt)
-    await send_notification(f" *Weekly Review*\n\n{review}")
-    return review
+    prompt = (
+        "Z, weekly review. Summarize progress, roadblocks, and 3 goals for next week. "
+        "Identify STAGNANT PROJECTS and suggest micro-tasks to unblock them.\n\n"
+        f"PROJECT TREE:\n{tree}\n\n"
+        f"STAGNANT PROJECTS (DATA-DRIVEN):\n{stagnant_text}\n"
+    )
+
+    content = await chat(prompt)
+
+    async with AsyncSessionLocal() as session:
+        briefing = Briefing(type="week", content=content)
+        session.add(briefing)
+        await session.commit()
+
+    from app.api.telegram import send_notification
+    from app.config import settings
+    await send_notification(
+        f"Weekly Review Ready\n\n{content}\n\n[Dashboard]({settings.BASE_URL}/home)"
+    )
+    return content
 ```
 
 ---
@@ -123,31 +157,34 @@ Be honest but encouraging. Use bullet points. Under 400 words."""
 
 ```python
 from app.services.llm import chat
-from app.services.memory import semantic_search
-from app.api.telegram import send_notification
-from datetime import datetime
+from app.services.planka import get_project_tree
+from app.models.db import AsyncSessionLocal, Briefing
+import datetime
 
-async def monthly_review() -> str:
-    """Generate a monthly big-picture review."""
+async def monthly_review():
+    """Generate and store the monthly review."""
 
-    month = datetime.now().strftime("%B %Y")
+    tree = await get_project_tree(as_html=False)
 
-    # TODO: Pull actual data from Planka, Postgres, Qdrant
-    prompt = f"""You are conducting a monthly review for {month}.
+    prompt = (
+        "Z, monthly review. Summarize 30-day progress, stalled initiatives, "
+        "and 3 major goals for next month. Strictly data-driven.\n\n"
+        f"PROJECTS:\n{tree}"
+    )
 
-Generate a structured monthly review with these sections:
+    content = await chat(prompt)
 
-1. **Goal Progress** — status of major goals across all life domains
-2. **Domain Balance** — career / health / family / finance / creative
-3. **Highlights** — notable achievements or decisions this month
-4. **System Health** — any operational notes
-5. **Next Month Intent** — one clear intention per domain
+    async with AsyncSessionLocal() as session:
+        briefing = Briefing(type="month", content=content)
+        session.add(briefing)
+        await session.commit()
 
-Be reflective but forward-looking. Under 500 words."""
-
-    review = await chat(prompt)
-    await send_notification(f" *Monthly Review — {month}*\n\n{review}")
-    return review
+    from app.api.telegram import send_notification
+    from app.config import settings
+    await send_notification(
+        f"Monthly Mission Review\n\n{content}\n\n[Dashboard]({settings.BASE_URL}/home)"
+    )
+    return content
 ```
 
 ### Scheduler Registration (add to `app/tasks/scheduler.py`):

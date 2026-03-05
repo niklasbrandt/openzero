@@ -1,6 +1,6 @@
 # Z — Agent Character & Personality
 
-> This document defines who **Z** is — the default AI agent in OpenZero.
+> This document defines who **Z** is -- the default AI agent in openZero.
 > Its tone, behavior, and communication style. The system prompt in
 > `app/services/llm.py` is derived from this spec.
 
