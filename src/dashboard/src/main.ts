@@ -114,7 +114,7 @@ async function plankaAutoLogin() {
 		iframe.setAttribute('aria-hidden', 'true');
 		document.body.appendChild(iframe);
 
-		// Remove after 10 seconds to keep the DOM clean 
+		// Remove after 10 seconds to keep the DOM clean
 		// after the redirect cycle has likely finished.
 		setTimeout(() => {
 			if (document.body.contains(iframe)) {
@@ -127,7 +127,14 @@ async function plankaAutoLogin() {
 	}
 }
 
-plankaAutoLogin();
+// Defer Planka SSO until after the page load event so the hidden iframe
+// (and its nested Planka React app iframe) cannot block the main page's
+// load event.  This is purely background work — no visible impact.
+if (document.readyState === 'complete') {
+	setTimeout(plankaAutoLogin, 2000);
+} else {
+	window.addEventListener('load', () => setTimeout(plankaAutoLogin, 2000), { once: true });
+}
 
 // ── Theme Management ──
 function hexToHsl(hex: string): { h: number, s: number, l: number } {
