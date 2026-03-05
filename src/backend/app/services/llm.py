@@ -327,6 +327,15 @@ TRIVIAL_PATTERNS = {
 	"bye", "cya", "later", "cheers", "np", "k", "kk", "yea", "yeah",
 }
 
+# Short messages that require social/creative reasoning — must not hit instant tier
+# even when they fall under the length threshold.
+BANTER_PATTERNS = [
+	"roast me", "roast", "joke", "tell me a joke", "be mean", "be rude",
+	"compliment me", "flirt", "rap", "rap about", "poem", "haiku",
+	"be funny", "be sarcastic", "insult me", "make fun of me",
+	"impress me", "surprise me", "challenge me", "banter",
+]
+
 SMART_KEYWORDS = [
 	"plan", "analyze", "analyse", "reason", "strategic", "complex",
 	"code", "math", "calculate", "summarize session", "briefing",
@@ -356,8 +365,11 @@ def select_tier(user_message: str, tier_override: str = None) -> tuple[str, str,
 		msg_lower = (user_message or "").lower().strip()
 		msg_len = len(user_message) if user_message else 0
 
+		# Banter/creative: short but needs social reasoning — force standard
+		if any(p in msg_lower for p in BANTER_PATTERNS):
+			tier = "standard"
 		# Instant: trivial messages
-		if msg_len < 15 or msg_lower in TRIVIAL_PATTERNS:
+		elif msg_len < 15 or msg_lower in TRIVIAL_PATTERNS:
 			tier = "instant"
 		# Deep: complex reasoning
 		elif any(kw in msg_lower for kw in SMART_KEYWORDS) or msg_len > 800:
