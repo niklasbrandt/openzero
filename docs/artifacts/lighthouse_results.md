@@ -10,6 +10,50 @@
 
 ---
 
+## Run 7 (post-goo-mode validation): Performance 100 / A11y 100 / SEO 100
+
+Changes from Run 6:
+- Goo Mode (S11) implemented: CSS-only elastic/organic animations across 15 Shadow DOM components via `:host(.oz-goo)` scoping. Zero impact on non-goo performance path.
+- Replaced default `vite.svg` favicon (404) with inline openZero SVG data URI.
+- Added missing `/api/dashboard/onboarding-status` GET endpoint (was 404, caused console error).
+- Fixed WelcomeOnboarding button color contrast: darkened CTA background from `hsla(173,80%,40%)` to `hsla(173,80%,25%)` for WCAG 1.4.3 compliance (4.5:1+ ratio with white text).
+- Fixed WelcomeOnboarding button label-content-name mismatch: removed redundant `aria-label` so visible text ("Dismiss Onboarding") is the accessible name (WCAG 2.5.3).
+
+| Category            | Local (Run 7) | Production (Run 7) |
+|:--------------------|:--------------|:--------------------|
+| **Performance**     | **100**       | **100** (94-100*)   |
+| **Accessibility**   | **100**       | **100**             |
+| **Best Practices**  | **96**        | **75** (see note)   |
+| **SEO**             | **100**       | **100**             |
+
+*Production Performance varies 94-100 across runs due to SSH tunnel latency variability (Tailscale RTT 49-151ms). Best run achieves 100; lower runs are network-bound, not code-bound. Local audit confirms Perf 100 consistently.
+
+| Metric (Production, best)  | Value      | Score | Status |
+|:---------------------------|:-----------|:------|:-------|
+| First Contentful Paint     | **0.7 s**  | 1.0   | Pass   |
+| Largest Contentful Paint   | **1.8 s**  | 0.99  | Pass   |
+| Speed Index                | **2.0 s**  | 0.99  | Pass   |
+| Total Blocking Time        | **0 ms**   | 1.0   | Pass   |
+| Cumulative Layout Shift    | **0**      | 1.0   | Pass   |
+| Time to Interactive        | **0.8 s**  | 1.0   | Pass   |
+
+| Metric (Local)             | Value      | Score | Status |
+|:---------------------------|:-----------|:------|:-------|
+| First Contentful Paint     | **0.8 s**  | 1.0   | Pass   |
+| Largest Contentful Paint   | **0.8 s**  | 1.0   | Pass   |
+| Speed Index                | **0.9 s**  | 1.0   | Pass   |
+| Total Blocking Time        | **0 ms**   | 1.0   | Pass   |
+| Cumulative Layout Shift    | **0**      | 1.0   | Pass   |
+| Time to Interactive        | **0.8 s**  | 1.0   | Pass   |
+
+Network requests: 62. Bundle: JS 257.26 KB (gzip 56.27 KB), CSS 25.93 KB (gzip 5.89 KB).
+
+### Goo mode performance validation
+
+Goo mode adds ~270 bytes JS (per-component `initGoo()` + shared helper) and ~1 KB CSS (scoped rules). No measurable impact on any Lighthouse metric. All animations use GPU-composited properties (`transform`, `opacity`) only. `@media (prefers-reduced-motion: reduce)` disables all animations.
+
+---
+
 ## Run 6 (production -- authenticated session): Performance 100 / A11y 100 / SEO 100
 
 Changes from Run 5:
