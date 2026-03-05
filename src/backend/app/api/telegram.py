@@ -762,14 +762,25 @@ async def cmd_purge(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		]
 	]
 	reply_markup = InlineKeyboardMarkup(keyboard)
+	default_deleted = (
+		"- All stored facts, preferences, and personal context\n"
+		"- All learned information from past conversations\n"
+		"- All manually committed memories (/add)"
+	)
+	default_safe = (
+		"- Your calendar, task boards, and projects (Planka)\n"
+		"- Your circle of trust (people database)\n"
+		"- Briefing history"
+	)
+	default_body = "This will permanently delete <b>all</b> facts stored in Z\u2019s long-term memory vault (Qdrant)."
 	await update.message.reply_text(
 		"<blockquote>"
 		f"\u26a0\ufe0f <b>{t.get('purge_heading', 'Semantic Memory Purge')}</b>\n\n"
-		f"{t.get('purge_body', 'This will permanently delete <b>all</b> facts stored in Z\u2019s long-term memory vault (Qdrant).')}\n\n"
+		f"{t.get('purge_body', default_body)}\n\n"
 		f"<b>{t.get('purge_deleted_label', 'What gets deleted:')}</b>\n"
-		f"{t.get('purge_deleted_items', '- All stored facts, preferences, and personal context\n- All learned information from past conversations\n- All manually committed memories (/add)')}\n\n"
+		f"{t.get('purge_deleted_items', default_deleted)}\n\n"
 		f"<b>{t.get('purge_safe_label', 'What is NOT affected:')}</b>\n"
-		f"{t.get('purge_safe_items', '- Your calendar, task boards, and projects (Planka)\n- Your circle of trust (people database)\n- Briefing history')}\n\n"
+		f"{t.get('purge_safe_items', default_safe)}\n\n"
 		f"{t.get('purge_irreversible', 'This action is <b>irreversible</b>. Z will start with a blank knowledge slate.')}"
 		"</blockquote>",
 		parse_mode="HTML",
