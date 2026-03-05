@@ -275,16 +275,16 @@ export class CalendarAgenda extends HTMLElement {
 						vertical-align: middle;
 					}
 					@keyframes rainbow-border {
-						0% { border-color: hsla(0, 100%, 50%, 1); box-shadow: 0 0 5px hsla(0, 100%, 50%, 0.2); }
+						0% { border-color: hsla(0, 100%, 50%, 1); }
 						20% { border-color: hsla(32, 100%, 50%, 1); }
 						40% { border-color: hsla(60, 100%, 50%, 1); }
 						60% { border-color: hsla(120, 100%, 50%, 1); }
 						80% { border-color: hsla(210, 100%, 50%, 1); }
-						100% { border-color: hsla(282, 100%, 50%, 1); box-shadow: 0 0 5px hsla(282, 100%, 50%, 0.2); }
+						100% { border-color: hsla(282, 100%, 50%, 1); }
 					}
 					.birthday-item {
 						border: 1px solid hsla(0, 100%, 50%, 1) !important;
-						animation: rainbow-border 3s linear infinite;
+						animation: rainbow-border 4s linear infinite;
 						background: var(--surface-card-hover, hsla(0, 0%, 100%, 0.05)) !important;
 					}
 					.birthday-item .day { color: hsla(329, 86%, 70%, 1) !important; }
