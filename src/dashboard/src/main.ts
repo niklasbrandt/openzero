@@ -601,9 +601,9 @@ if (urlParams.get('open') === 'calendar') {
 		root.style.setProperty('--mouse-y', currentY.toFixed(3));
 
 		// Parallax movement depth for components using the mouse tokens
-		// 15px max movement for --p-depth-depth-1, 30px for depth-2
-		root.style.setProperty('--p-depth-1', `${currentX * 15}px`);
-		root.style.setProperty('--p-depth-2', `${currentY * 30}px`);
+		// Increased depth range for more dramatic layering
+		root.style.setProperty('--p-depth-1', `${(currentX * 20).toFixed(2)}px`);
+		root.style.setProperty('--p-depth-2', `${(currentY * 40).toFixed(2)}px`);
 
 		requestAnimationFrame(update);
 	}
