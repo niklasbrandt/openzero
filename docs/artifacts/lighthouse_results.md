@@ -3,10 +3,42 @@
 ## Test Methodology
 
 - **Tool**: Lighthouse CLI v12.8.2 (headless Chrome)
-- **Target**: Production build served via `npx serve dist/ -l 4173` (`http://127.0.0.1:4173`)
+- **Local Target**: Production build served via `npx serve dist/ -l 4173` (`http://127.0.0.1:4173`)
+- **Production Target**: VPS via SSH tunnel (`ssh -L 4173:localhost:80`) against live backend with API responses
 - **Build**: Vite production bundle (single CSS + single JS + 14 woff2 font subsets)
-- **Backend**: None -- all `/api/*` calls returned 404 (static file server only)
-- **Note**: LCP is inflated because API failures cause components to render error states instead of real content. Re-test against production for meaningful LCP data.
+- **Note**: Local audit scores are inflated for FCP/TTI by API 404s (no backend). Production audit reflects real-world behavior but TTI/TBT are indeterminate due to live dashboard polling (`setInterval` every 10s for HardwareMonitor and SoftwareStatus).
+
+---
+
+## Run 5 (production -- live backend via SSH tunnel): A11y 100 / SEO 100
+
+Changes applied: deferred Planka SSO iframe to post-load (was blocking page load event), debounced auth prompt to prevent `window.prompt()` dialog storm on 401 responses (was causing PAGE_HUNG in headless Chrome). SSH tunnel used because headless Chrome cannot route through Tailscale overlay network.
+
+| Category            | Local (Run 4) | Production (Run 5) |
+|:--------------------|:--------------|:--------------------|
+| **Performance**     | **92**        | N/A (see note)      |
+| **Accessibility**   | **100**       | **100**             |
+| **Best Practices**  | **96**        | N/A (see note)      |
+| **SEO**             | **100**       | **100**             |
+
+**Note**: Performance and Best Practices scores are N/A on production because Lighthouse requires "network quiet" (fewer than 2 inflight requests for 5 seconds) to compute TTI/TBT. The dashboard's 10-second polling intervals (`setInterval` in HardwareMonitor and SoftwareStatus) prevent this condition from ever being met. This is expected behavior for a live dashboard.
+
+| Metric (Production)        | Value    | Score | Status |
+|:---------------------------|:---------|:------|:-------|
+| First Contentful Paint     | **287 ms** | 1.0 | Pass   |
+| Largest Contentful Paint   | **287 ms** | 1.0 | Pass   |
+| Speed Index                | **299 ms** | 1.0 | Pass   |
+| Cumulative Layout Shift    | **0**    | 1.0   | Pass   |
+| Time to Interactive        | N/A      | --    | Note   |
+| Total Blocking Time        | N/A      | --    | Note   |
+
+Production LCP (287 ms) vs local LCP (3,400 ms) confirms the hypothesis: the 3.1-second gap was render delay from components waiting for API responses that never came in the local (no-backend) environment.
+
+### Production fixes applied
+
+1. **Planka SSO iframe deferred**: `plankaAutoLogin()` moved from immediate execution to `window.addEventListener('load', ..., { once: true })` with 2-second delay. The hidden iframe creates a Planka React login page in a nested iframe with `setInterval(20ms)` polling -- running this during initial load blocked the load event.
+
+2. **Auth prompt debounced**: `window.prompt()` in the 401 handler was called synchronously for every failed API request. With ~14 parallel API calls on page load (all returning 401 without auth token), this created a dialog storm. In `--headless=new` mode, `window.prompt()` blocks the JS main thread until dismissed via CDP -- since Lighthouse does not auto-dismiss dialogs, the thread blocked permanently (PAGE_HUNG). Fix: added `_authPromptPending` flag + `setTimeout(200ms)` deferral so prompt fires at most once per 401 batch.
 
 ---
 

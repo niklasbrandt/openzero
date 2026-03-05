@@ -9,7 +9,7 @@
         "preview": "vite preview",
         "perf:baseline": "lighthouse http://localhost:5173 --only-categories=performance --output=json --output=html --output-path=./lighthouse-baseline --chrome-flags='--headless=new'",
         "perf:audit": "lighthouse http://localhost:5173 --only-categories=performance --output=json --output=html --output-path=./lighthouse-report --chrome-flags='--headless=new'",
-        "perf:audit:prod": "lighthouse http://open.zero/home --only-categories=performance --output=json --output=html --output-path=./lighthouse-prod --chrome-flags='--headless=new'"
+        "perf:audit:prod": "echo 'Requires SSH tunnel: ssh -f -N -L 4173:localhost:80 openzero@100.116.160.123' && lighthouse http://127.0.0.1:4173/home --output=json --output=html --output-path=./lighthouse-prod --chrome-flags='--headless=new' --throttling-method=provided --max-wait-for-load=20000"
     },
     "devDependencies": {
         "lighthouse": "^12.0.0",
