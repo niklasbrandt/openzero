@@ -24,9 +24,7 @@
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	background: rgba(255, 255, 255, 0.02);
-	backdrop-filter: blur(8px);
-	-webkit-backdrop-filter: blur(8px);
+	background: rgba(255, 255, 255, 0.04);
 	padding: 0.75rem 1rem;
 	border-radius: 0.75rem;
 	margin-bottom: 0.5rem;

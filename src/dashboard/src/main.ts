@@ -620,35 +620,3 @@ if (urlParams.get('open') === 'calendar') {
 		window.dispatchEvent(new CustomEvent('open-calendar'));
 	}, 500);
 }
-
-// ── Phase 3: Cursor Parallax & Dynamic Motion Layer ──
-(function initCursorParallax() {
-	if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-
-	const root = document.documentElement;
-	let targetX = 0, targetY = 0;
-	let currentX = 0, currentY = 0;
-
-	window.addEventListener('mousemove', (e) => {
-		// Normalize mouse position to range [-1, 1]
-		targetX = (e.clientX / window.innerWidth) * 2 - 1;
-		targetY = (e.clientY / window.innerHeight) * 2 - 1;
-	}, { passive: true });
-
-	function update() {
-		// Smoothing (Lerp)
-		currentX += (targetX - currentX) * 0.1;
-		currentY += (targetY - currentY) * 0.1;
-
-		root.style.setProperty('--mouse-x', currentX.toFixed(3));
-		root.style.setProperty('--mouse-y', currentY.toFixed(3));
-
-		// Parallax movement depth for components using the mouse tokens
-		// Increased depth range for more dramatic layering
-		root.style.setProperty('--p-depth-1', `${(currentX * 20).toFixed(2)}px`);
-		root.style.setProperty('--p-depth-2', `${(currentY * 40).toFixed(2)}px`);
-
-		requestAnimationFrame(update);
-	}
-	requestAnimationFrame(update);
-})();

@@ -147,9 +147,7 @@ export class ZPersonality extends HTMLElement {
 				.trait-item { 
 					background: var(--surface-card, hsla(0,0%,100%,0.05)); padding: 0.75rem 1rem; border-radius: 0.75rem;
 					border: 1px solid var(--border-subtle, hsla(0,0%,100%,0.1));
-					/* Phase 3: Parallax Depth Layering */
-					transform: translate(calc(var(--p-depth-1, 0) * 0.8), calc(var(--p-depth-2, 0) * 0.8));
-					transition: transform 0.1s linear, background var(--duration-fast, 0.2s);
+					transition: background var(--duration-fast, 0.2s);
 					position: relative;
 					overflow: hidden;
 				}
