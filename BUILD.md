@@ -330,7 +330,25 @@ Now you can reach your dashboard at `http://open.zero/home`.
 
 ---
 
-## 🧪 Phase 8: Running Tests
+## 🎨 Phase 9: Customizing the Interface (UI & Theming)
+
+The openZero dashboard features a high-performance mission-control interface. You can customize its appearance and behaviors directly from the **User Card** in the top-right corner.
+
+### 1. Theme Presets
+- Over **50 HSLA-based presets** (Fusion, Cyberpunk, Nordic, Dracula, etc.) are available.
+- Switching themes updates the `--accent-primary`, `--accent-secondary`, and `--accent-tertiary` color tokens globally.
+
+### 2. Auto/Light Mode support
+- Special themes (Paper, Snow, Latte) activate **Light Mode**.
+- Most presets are optimized for **Dark Mode** to preserve battery and reduce eye strain in mission-control environments.
+
+### 3. Motion & Performance
+- **Cursor Parallax:** The background glow and accent highlights track your mouse movements using a hardware-accelerated `lerp` engine.
+- **Goo Mode (Phase 4):** Organic fluid interactions are driven by an SVG filter (`#oz-goo`) and CSS classes (`.oz-goo-container`).
+
+---
+
+## 🧪 Phase 10: Running Tests
 
 openZero includes two independent test suites.
 

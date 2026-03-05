@@ -5,6 +5,20 @@
  * These are light-DOM components used across multiple pages.
  */
 
+/* ── Phase 4: Goo Mode Foundation ── */
+.oz-goo-container {
+	filter: url("#oz-goo");
+	position: relative;
+}
+
+.oz-goo-blob {
+	position: absolute;
+	border-radius: 50%;
+	background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+	filter: blur(4px);
+	mix-blend-mode: screen;
+}
+
 /* -- Rule items (email-rules list rows) -- */
 .rule-item {
 	display: flex;
