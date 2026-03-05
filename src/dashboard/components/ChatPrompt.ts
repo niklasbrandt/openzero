@@ -358,6 +358,29 @@ export class ChatPrompt extends HTMLElement {
 
 		// Apply contrast-aware text color to every agent bubble
 		this.applyBubbleTextColor();
+
+		// Apply Goo Mode liquification if enabled
+		this.applyGooLiquification();
+	}
+
+	/**
+	 * Apply active Goo Mode effects to chat elements.
+	 * This wraps the bubbles in the SVG filter and updates their entrance animation.
+	 */
+	private applyGooLiquification() {
+		const isGoo = localStorage.getItem('z_goo_mode') === 'true';
+		const messages = this.shadowRoot?.querySelectorAll('.message.animate');
+		
+		if (isGoo && messages) {
+			messages.forEach(msg => {
+				const bubble = msg.querySelector('.bubble');
+				if (bubble) {
+					bubble.classList.add('oz-goo-container');
+					// We use a stronger bounce for goo mode
+					(bubble as HTMLElement).style.animation = 'msgInGoo 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards';
+				}
+			});
+		}
 	}
 
 	/**
@@ -817,16 +840,27 @@ export class ChatPrompt extends HTMLElement {
 
 			.message.assistant .bubble {
 				animation: msgIn 0.5s cubic-bezier(0.23, 1, 0.32, 1) forwards;
-				transform: translate(var(--p-depth-1, 0), var(--p-depth-2, 0))
+				/* Phase 3: Parallax Depth Layering */
+				transform: translate(calc(var(--p-depth-1, 0) * -1.5), calc(var(--p-depth-1, 0) * -1.5));
+				transition: transform 0.1s linear, background var(--duration-fast, 0.2s);
+			}
+
+			.message.user .bubble {
+				/* Phase 3: Parallax Depth Layering */
+				transform: translate(calc(var(--p-depth-1, 0) * 1.5), calc(var(--p-depth-1, 0) * 1.5));
+				transition: transform 0.1s linear, background var(--duration-fast, 0.2s);
+			}
 
 			@keyframes msgIn {
-				from { opacity: 0; transform: translateY(12px); }
-				to	 { opacity: 1; transform: translateY(0); }
+				from { opacity: 0; transform: translateY(12px) translate(calc(var(--p-depth-1, 0) * -1.5), calc(var(--p-depth-1, 0) * -1.5)); }
+				to	 { opacity: 1; transform: translateY(0) translate(calc(var(--p-depth-1, 0) * -1.5), calc(var(--p-depth-1, 0) * -1.5)); }
 			}
 
-			.message.assistant .bubble {
-				animation: msgIn 0.5s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+			@keyframes msgInGoo {
+				from { opacity: 0; transform: translateY(24px) scale(0.8); filter: blur(10px); }
+				to	 { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
 			}
+
 			/* Reduced-motion overrides beyond shared module */
 			@media (prefers-reduced-motion: reduce) {
 				.message, .message.assistant .bubble,
