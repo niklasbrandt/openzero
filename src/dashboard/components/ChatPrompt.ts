@@ -624,7 +624,6 @@ export class ChatPrompt extends HTMLElement {
 				max-width: 95%;
 				width: 100%;
 				margin: 0.5rem 0;
-				transform: translate(var(--p-depth-1, 0), var(--p-depth-2, 0));
 			}
 
 			.bubble {
@@ -642,8 +641,6 @@ export class ChatPrompt extends HTMLElement {
 
 			.message.user .bubble {
 				background: var(--surface-card, hsla(0, 0%, 100%, 0.03));
-				backdrop-filter: blur(12px);
-				-webkit-backdrop-filter: blur(12px);
 				color: var(--text-primary, hsla(0, 0%, 100%, 1));
 				border: 1px solid var(--border-medium, hsla(0, 0%, 100%, 0.12));
 				border-bottom-right-radius: var(--radius-xs, 0.25rem);
@@ -652,8 +649,6 @@ export class ChatPrompt extends HTMLElement {
 
 			.message.assistant .bubble {
 				background: linear-gradient(135deg, var(--accent-color), var(--accent-secondary));
-				backdrop-filter: blur(24px) saturate(1.8) brightness(1.2);
-				-webkit-backdrop-filter: blur(24px) saturate(1.8) brightness(1.2);
 				color: var(--text-primary, hsla(0, 0%, 100%, 1));
 				border: 1px solid hsla(0, 0%, 100%, 0.2);
 				border-radius: var(--radius-xl, 1.25rem);
@@ -770,8 +765,6 @@ export class ChatPrompt extends HTMLElement {
 				flex: 1;
 				resize: none;
 				background: hsla(0, 0%, 0%, 0.3);
-				backdrop-filter: blur(8px);
-				-webkit-backdrop-filter: blur(8px);
 				border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.08));
 				border-radius: var(--radius-md, 0.5rem);
 				padding: 0.75rem 1.25rem;
@@ -840,20 +833,16 @@ export class ChatPrompt extends HTMLElement {
 
 			.message.assistant .bubble {
 				animation: msgIn 0.5s cubic-bezier(0.23, 1, 0.32, 1) forwards;
-				/* Phase 3: Parallax Depth Layering */
-				transform: translate(calc(var(--p-depth-1, 0) * -1.5), calc(var(--p-depth-1, 0) * -1.5));
-				transition: transform 0.1s linear, background var(--duration-fast, 0.2s);
+				transition: background var(--duration-fast, 0.2s);
 			}
 
 			.message.user .bubble {
-				/* Phase 3: Parallax Depth Layering */
-				transform: translate(calc(var(--p-depth-1, 0) * 1.5), calc(var(--p-depth-1, 0) * 1.5));
-				transition: transform 0.1s linear, background var(--duration-fast, 0.2s);
+				transition: background var(--duration-fast, 0.2s);
 			}
 
 			@keyframes msgIn {
-				from { opacity: 0; transform: translateY(12px) translate(calc(var(--p-depth-1, 0) * -1.5), calc(var(--p-depth-1, 0) * -1.5)); }
-				to	 { opacity: 1; transform: translateY(0) translate(calc(var(--p-depth-1, 0) * -1.5), calc(var(--p-depth-1, 0) * -1.5)); }
+				from { opacity: 0; transform: translateY(12px); }
+				to	 { opacity: 1; transform: translateY(0); }
 			}
 
 			@keyframes msgInGoo {

@@ -70,7 +70,7 @@
 
 	/* -- Surfaces -- */
 	--bg-body: hsla(228, 45%, 4%, 1);
-	--bg-surface: hsla(228, 40%, 12%, 0.6);
+	--bg-surface: hsla(228, 40%, 12%, 0.88);
 	--surface-card: hsla(0, 0%, 100%, 0.03);
 	--surface-card-hover: hsla(0, 0%, 100%, 0.05);
 	--surface-input: hsla(0, 0%, 0%, 0.2);
@@ -92,12 +92,6 @@
 	--radius-xl: 1rem;
 	--radius-2xl: 1.5rem;
 	--radius-pill: 9999px;
-
-	/* -- Glassmorphism -- */
-	--glass-blur: blur(24px);
-	--glass-opacity: 0.6;
-	--glass-saturate: 180%;
-	--glass-brightness: 100%;
 
 	/* -- Timing -- */
 	--duration-instant: 0.1s;
@@ -124,7 +118,7 @@
 [data-theme="light"] {
 	color-scheme: light;
 	--bg-body: hsla(228, 20%, 98%, 1);
-	--bg-surface: hsla(228, 20%, 95%, 0.8);
+	--bg-surface: hsla(228, 20%, 95%, 0.92);
 	
 	/* Neutral Flip */
 	--text-primary: hsla(228, 45%, 4%, 1);
@@ -141,11 +135,6 @@
 	--border-color: hsla(228, 45%, 4%, 0.08);
 	--border-subtle: hsla(228, 45%, 4%, 0.12);
 	--border-medium: hsla(228, 45%, 4%, 0.16);
-
-	/* Glass Overrides for Light */
-	--glass-opacity: 0.85;
-	--glass-saturate: 140%;
-	--glass-brightness: 105%;
 
 	/* Tooltip Flip */
 	--tooltip-bg: hsla(228, 20%, 98%, 0.9);
