@@ -147,6 +147,32 @@ export class ZPersonality extends HTMLElement {
 				.trait-item { 
 					background: var(--surface-card, hsla(0,0%,100%,0.05)); padding: 0.75rem 1rem; border-radius: 0.75rem;
 					border: 1px solid var(--border-subtle, hsla(0,0%,100%,0.1));
+					/* Phase 3: Parallax Depth Layering */
+					transform: translate(calc(var(--p-depth-1, 0) * 0.8), calc(var(--p-depth-2, 0) * 0.8));
+					transition: transform 0.1s linear, background var(--duration-fast, 0.2s);
+					position: relative;
+					overflow: hidden;
+				}
+				.trait-item.oz-goo-container {
+					border: none;
+					background: var(--accent-primary, hsla(173, 80%, 40%, 0.1));
+				}
+				.trait-indicator {
+					position: absolute;
+					bottom: 0;
+					left: 0;
+					height: 2px;
+					background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+					width: 100%;
+					opacity: 0.3;
+				}
+				.trait-item.oz-goo-container .trait-indicator {
+					height: 4px;
+					border-radius: 2px;
+					bottom: 4px;
+					left: 4px;
+					width: calc(100% - 8px);
+					opacity: 0.6;
 				}
 				.trait-label { font-size: 0.65rem; color: var(--text-muted, hsla(0,0%,100%,0.4)); text-transform: uppercase; margin-bottom: 4px; display: block; }
 				.trait-value { font-size: 0.9rem; color: var(--text-primary, hsla(0, 0%, 100%, 1)); font-weight: 500; }
@@ -291,14 +317,20 @@ export class ZPersonality extends HTMLElement {
 						</div>
 					` : !this.isLoading && this.activeTab === 'personality' ? `
 						<div class="trait-grid">
-							<div class="trait-item">
-								<span class="trait-label">${this.tr('core_identity', 'Core Identity')}</span>
-								<div class="trait-value">${per?.role || 'Agent Operator'}</div>
-							</div>
-							<div class="trait-item">
-								<span class="trait-label">${this.tr('communication', 'Communication')}</span>
-								<div class="trait-value">${['', 'Elaborate', 'Nuanced', 'Balanced', 'Direct', 'Concise'][per?.directness || 3]} (${per?.directness}/5)</div>
-							</div>
+							${(() => {
+								const isGoo = localStorage.getItem('z_goo_mode') === 'true';
+								const traits = [
+									{ label: this.tr('core_identity', 'Core Identity'), value: per?.role || 'Agent Operator' },
+									{ label: this.tr('communication', 'Communication'), value: `${['', 'Elaborate', 'Nuanced', 'Balanced', 'Direct', 'Concise'][per?.directness || 3]} (${per?.directness}/5)` }
+								];
+								return traits.map(t => `
+									<div class="trait-item ${isGoo ? 'oz-goo-container' : ''}">
+										<span class="trait-label">${t.label}</span>
+										<div class="trait-value">${t.value}</div>
+										<div class="trait-indicator" aria-hidden="true"></div>
+									</div>
+								`).join('');
+							})()}
 						</div>
 					` : ''}
 
