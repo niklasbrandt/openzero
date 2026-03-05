@@ -130,6 +130,30 @@ async function plankaAutoLogin() {
 plankaAutoLogin();
 
 // ── Theme Management ──
+function hexToHsl(hex: string): { h: number, s: number, l: number } {
+	let r = 0, g = 0, b = 0;
+	const h = hex.replace('#', '');
+	r = parseInt(h.slice(0, 2), 16) / 255;
+	g = parseInt(h.slice(2, 4), 16) / 255;
+	b = parseInt(h.slice(4, 6), 16) / 255;
+
+	const max = Math.max(r, g, b), min = Math.min(r, g, b);
+	let _h = 0, s = 0, l = (max + min) / 2;
+
+	if (max !== min) {
+		const d = max - min;
+		s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+		switch (max) {
+			case r: _h = (g - b) / d + (g < b ? 6 : 0); break;
+			case g: _h = (b - r) / d + 2; break;
+			case b: _h = (r - g) / d + 4; break;
+		}
+		_h /= 6;
+	}
+
+	return { h: Math.round(_h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
+}
+
 function hexToRgb(hex: string) {
 	const h = hex.replace('#', '');
 	const r = parseInt(h.slice(0, 2), 16);
@@ -153,23 +177,42 @@ async function initTheme() {
 			// partially visible behind a fading loader.
 			root.classList.add('no-transition');
 			const cache: Record<string, string> = {};
+			
+			const applyColor = (prefix: string, hex: string) => {
+				const hsl = hexToHsl(hex);
+				root.style.setProperty(`--${prefix}-h`, hsl.h.toString());
+				root.style.setProperty(`--${prefix}-s`, `${hsl.s}%`);
+				// Only set L if it's NOT light mode (let CSS handles light mode adjust) or override regardless?
+				// To keep user preference but allow light mode to dim, we set the BASE L.
+				root.style.setProperty(`--${prefix}-l`, `${hsl.l}%`);
+				
+				// Legacy/Direct mappings
+				if (prefix === 'accent-primary') {
+					root.style.setProperty('--accent-color', hex);
+					root.style.setProperty('--accent-color-rgb', hexToRgb(hex));
+					root.style.setProperty('--accent-glow', `rgba(${hexToRgb(hex)}, 0.4)`);
+				} else if (prefix === 'accent-secondary') {
+					root.style.setProperty('--accent-secondary', hex);
+					root.style.setProperty('--accent-secondary-rgb', hexToRgb(hex));
+				} else if (prefix === 'accent-tertiary') {
+					root.style.setProperty('--accent-tertiary', hex);
+				}
+			};
+
 			if (data.color_primary) {
-				root.style.setProperty('--accent-color', data.color_primary);
-				root.style.setProperty('--accent-color-rgb', hexToRgb(data.color_primary));
-				root.style.setProperty('--accent-glow', `rgba(${hexToRgb(data.color_primary)}, 0.4)`);
+				applyColor('accent-primary', data.color_primary);
 				cache.accent = data.color_primary;
 			}
 			if (data.color_secondary) {
-				root.style.setProperty('--accent-secondary', data.color_secondary);
-				root.style.setProperty('--accent-secondary-rgb', hexToRgb(data.color_secondary));
+				applyColor('accent-secondary', data.color_secondary);
 				cache.secondary = data.color_secondary;
 			}
 			if (data.color_tertiary) {
-				root.style.setProperty('--accent-tertiary', data.color_tertiary);
+				applyColor('accent-tertiary', data.color_tertiary);
 				cache.tertiary = data.color_tertiary;
 			}
+			
 			// Persist so the next page load applies the palette instantly
-			// without waiting for the API round-trip (eliminates theme flash).
 			if (Object.keys(cache).length) {
 				localStorage.setItem('z_theme', JSON.stringify(cache));
 			}

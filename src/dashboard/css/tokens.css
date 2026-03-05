@@ -25,12 +25,24 @@
 	-moz-osx-font-smoothing: grayscale;
 
 	/* -- Accent palette -- */
-	--accent-primary: hsla(173, 80%, 40%, 1);
+	--accent-primary-h: 173;
+	--accent-primary-s: 80%;
+	--accent-primary-l: 40%;
+	--accent-primary: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 1);
 	--accent-primary-rgb: 20, 184, 166;
-	--accent-secondary: hsla(216, 100%, 50%, 1);
+	
+	--accent-secondary-h: 216;
+	--accent-secondary-s: 100%;
+	--accent-secondary-l: 50%;
+	--accent-secondary: hsla(var(--accent-secondary-h), var(--accent-secondary-s), var(--accent-secondary-l), 1);
 	--accent-secondary-rgb: 0, 102, 255;
-	--accent-tertiary: hsla(239, 84%, 67%, 1);
-	--accent-glow: hsla(173, 80%, 40%, 0.4);
+	
+	--accent-tertiary-h: 239;
+	--accent-tertiary-s: 84%;
+	--accent-tertiary-l: 67%;
+	--accent-tertiary: hsla(var(--accent-tertiary-h), var(--accent-tertiary-s), var(--accent-tertiary-l), 1);
+	
+	--accent-glow: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.4);
 
 	/* -- Legacy Mapping (for compatibility) -- */
 	--accent-color: var(--accent-primary);
@@ -140,4 +152,12 @@
 	--tooltip-border: hsla(228, 45%, 4%, 0.1);
 	--tooltip-text: hsla(228, 45%, 4%, 1);
 	--tooltip-shadow: 0 12px 48px rgba(0, 0, 0, 0.1);
+
+	/* Theme-aware Accent Adjustments (Phase 2.1)
+	 * For light mode, we slightly darken high-vibrancy accents to ensure 
+	 * contrast against light surfaces (WCAG AA). 
+	 */
+	--accent-primary-l: 35%;
+	--accent-secondary-l: 45%;
+	--accent-tertiary-l: 50%;
 }
