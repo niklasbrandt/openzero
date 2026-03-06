@@ -79,7 +79,7 @@ async def start_telegram_bot():
 		logging.warning("TELEGRAM_BOT_TOKEN not set. Bot will not start.")
 		return
 
-	logging.info("DEBUG: start_telegram_bot - step 1: Building app")
+	logger.debug("start_telegram_bot - step 1: Building app")
 	bot_app = (
 		Application.builder()
 		.token(settings.TELEGRAM_BOT_TOKEN)
@@ -88,7 +88,7 @@ async def start_telegram_bot():
 	)
 
 	# Register handlers
-	print("DEBUG: start_telegram_bot - step 2: Registering handlers")
+	logger.debug("start_telegram_bot - step 2: Registering handlers")
 	bot_app.add_handler(CommandHandler("start", cmd_start))
 	bot_app.add_handler(CommandHandler("tree", cmd_tree))
 	bot_app.add_handler(CommandHandler("review", cmd_review))
@@ -120,13 +120,13 @@ async def start_telegram_bot():
 	bot_app.add_handler(MessageHandler(filters.VOICE, handle_voice))
 
 	# Initialize and start polling (non-blocking)
-	print("DEBUG: start_telegram_bot - step 3: Initializing")
+	logger.debug("start_telegram_bot - step 3: Initializing")
 	await bot_app.initialize()
-	print("DEBUG: start_telegram_bot - step 4: Starting")
+	logger.debug("start_telegram_bot - step 4: Starting")
 	await bot_app.start()
-	print("DEBUG: start_telegram_bot - step 5: Start Polling (processing pending updates)")
+	logger.debug("start_telegram_bot - step 5: Start Polling (processing pending updates)")
 	await bot_app.updater.start_polling(drop_pending_updates=False)
-	print("DEBUG: start_telegram_bot - step 6: Polling started")
+	logger.debug("start_telegram_bot - step 6: Polling started")
 
 	# Proactive greeting with Context & Stats (Run in background to avoid blocking startup)
 	async def send_startup_greeting():
@@ -137,7 +137,7 @@ async def start_telegram_bot():
 			from sqlalchemy import select
 			import os
 			
-			logging.info("DEBUG: start_telegram_bot - step 7: Fetching stats for greeting")
+			logger.debug("start_telegram_bot - step 7: Fetching stats for greeting")
 			stats = await get_memory_stats()
 			stats_text = f"Memories: {stats['points']}" if stats['status'] != 'error' else "Memory: Offline"
 			
@@ -145,7 +145,7 @@ async def start_telegram_bot():
 			release_info = ""
 			notes_file = "LATEST_CHANGES.txt"
 			if os.path.exists(notes_file):
-				print("DEBUG: Greeting Seq - Step 1: Release Notes detected")
+				logger.debug("Greeting Seq - Step 1: Release Notes detected")
 				try:
 					with open(notes_file, "r") as f:
 						changes = f.read().strip()
@@ -157,7 +157,7 @@ async def start_telegram_bot():
 			# Unified Context gathering
 			event_summary_parts = []
 
-			print("DEBUG: Greeting Seq - Step 2: Fetching Unified Calendar")
+			logger.debug("Greeting Seq - Step 2: Fetching Unified Calendar")
 			try:
 				from app.services.calendar import fetch_unified_events
 				# Use a safe timeout to prevent blocking the greeting forever if CalDAV is slow
@@ -174,10 +174,10 @@ async def start_telegram_bot():
 						if time_str: display_item += f" ({time_str})"
 						event_summary_parts.append(display_item)
 			except Exception as cal_err:
-				print(f"DEBUG: Calendar Greeting Error: {cal_err}")
+				logger.warning("Calendar Greeting Error: %s", cal_err)
 
 			# 2. Birthdays & user language
-			logging.info("DEBUG: Greeting Seq - Step 3: Local People/Birthdays")
+			logger.debug("Greeting Seq - Step 3: Local People/Birthdays")
 			user_lang = "en"
 			async with AsyncSessionLocal() as session:
 				# Get user language from identity record
@@ -199,7 +199,7 @@ async def start_telegram_bot():
 						event_summary_parts.append(f"🎂 {p.name}'s Birthday {tag}")
 
 			event_summary = "\n".join(event_summary_parts) if event_summary_parts else "No upcoming events scheduled."
-			print(f"DEBUG: Greeting Seq - Context Ready ({len(event_summary_parts)} items)")
+			logger.debug("Greeting Seq - Context Ready (%d items)", len(event_summary_parts))
 			
 			has_events = bool(event_summary_parts)
 			events_block = f"Events:\n{event_summary}" if has_events else ""
@@ -231,7 +231,7 @@ async def start_telegram_bot():
 				"NEVER invent data not present in SYSTEM_DATA."
 				f"{lang_directive}"
 			)
-			print("DEBUG: Greeting Seq - Calling LLM (deep tier)")
+			logger.debug("Greeting Seq - Calling LLM (deep tier)")
 
 			# Strings returned by llm.py on timeout/failure — must not reach the user
 			_ERROR_INDICATORS = ["initializing my local core", "synchronize my reasoning", "Error connecting", "No response from"]
@@ -242,12 +242,12 @@ async def start_telegram_bot():
 
 			# Fallback 1: deep tier timed out — try standard tier
 			if _is_error(raw_greeting):
-				print("DEBUG: Greeting - Deep tier timeout, falling back to standard")
+				logger.debug("Greeting - Deep tier timeout, falling back to standard")
 				raw_greeting = await chat(greeting_prompt, system_override=system_override, tier="standard")
 
 			# Fallback 2: both models failed — send clean static greeting
 			if _is_error(raw_greeting):
-				print("DEBUG: Greeting - Both models unavailable, using static greeting")
+				logger.warning("Greeting - Both models unavailable, using static greeting")
 				time_str = format_time() + "\n"
 				
 				changes_note = f"\n\n🔄 *Recent Logic Updates:*\n{release_info.strip()}" if release_info else ""
@@ -256,7 +256,7 @@ async def start_telegram_bot():
 
 			# Clean action tags from output
 			greeting, _ = await parse_and_execute_actions(raw_greeting)
-			print("DEBUG: Greeting Seq - OK")
+			logger.debug("Greeting Seq - OK")
 
 			# Prepend real current time (don't trust LLM for timestamps)
 			greeting_clean = strip_llm_time_header(greeting)
@@ -278,7 +278,7 @@ async def start_telegram_bot():
 				f"<blockquote><b>{real_time}</b>\n\n{_md_to_html(greeting_clean)}\n\n<i>{stats_text}</i>{mobile_hint}</blockquote>",
 				reply_markup=get_nav_markup(t, token=settings.DASHBOARD_TOKEN)
 			)
-			logging.info("DEBUG: Greeting Seq - Notification Delivered")
+			logger.debug("Greeting Seq - Notification Delivered")
 
 			# --- Restart Recovery: respond to unanswered user messages ---
 			await _recover_unanswered_messages()
@@ -312,7 +312,7 @@ async def _recover_unanswered_messages():
 
 		unanswered.reverse()  # chronological order
 		combined = "\n".join(unanswered)
-		logging.info(f"Restart recovery: {len(unanswered)} unanswered user message(s) found. Responding now.")
+		logger.info("Restart recovery: %d unanswered user message(s) found. Responding now.", len(unanswered))
 
 		from app.services.llm import chat_with_context
 		from app.models.db import AsyncSessionLocal
@@ -344,7 +344,7 @@ async def _recover_unanswered_messages():
 			f"<blockquote>{display_reply}{footer}</blockquote>",
 			reply_markup=get_nav_markup(t)
 		)
-		logging.info("Restart recovery: response delivered.")
+		logger.info("Restart recovery: response delivered.")
 	except Exception as e:
 		logging.error(f"Restart recovery failed: {e}")
 
@@ -433,7 +433,7 @@ async def safe_reply(update: Update, text: str, reply_markup=None):
 		html_text = _md_to_html(text)
 		await msg.reply_text(f"<blockquote>{html_text}</blockquote>", parse_mode="HTML", reply_markup=reply_markup)
 	except Exception as e:
-		print(f"DEBUG: HTML reply failed, falling back to plain: {e}")
+		logger.debug("HTML reply failed, falling back to plain: %s", e)
 		await msg.reply_text(text, reply_markup=reply_markup)
 
 async def safe_edit(message, text: str, parse_mode="HTML", reply_markup=None):
@@ -441,7 +441,7 @@ async def safe_edit(message, text: str, parse_mode="HTML", reply_markup=None):
 	try:
 		await message.edit_text(text, parse_mode=parse_mode, reply_markup=reply_markup)
 	except Exception as e:
-		print(f"DEBUG: HTML edit failed, falling back to plain: {e}")
+		logger.debug("HTML edit failed, falling back to plain: %s", e)
 		try:
 			await message.edit_text(text)
 		except: pass
@@ -488,7 +488,7 @@ async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		)
 		await safe_reply(update, status_report, reply_markup=get_nav_markup(t))
 	except Exception as e:
-		print(f"ERROR: cmd_status failed: {e}")
+		logger.error("cmd_status failed: %s", e)
 		await safe_reply(update, "System Status check failed. Check local backend logs.")
 
 # --- Command Handlers ---
@@ -838,7 +838,7 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
 			if chat_id not in _pending_messages:
 				_pending_messages[chat_id] = []
 			_pending_messages[chat_id].append(user_text)
-			logging.info(f"Message coalesced (buffered {len(_pending_messages[chat_id])} msgs while Z thinks)")
+			logger.info("Message coalesced (buffered %d msgs while Z thinks)", len(_pending_messages[chat_id]))
 			return
 
 		async with lock:
@@ -855,7 +855,7 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
 				await _process_freetext(update, context, chat_id, llm_text, is_followup=True)
 
 	except Exception as e:
-		print(f"ERROR: handle_freetext failed: {e}")
+		logger.error("handle_freetext failed: %s", e)
 		try:
 			await safe_reply(update, "I encountered friction while processing that request. My local core is still active, but that specific thread was dropped.")
 		except: pass
@@ -984,7 +984,7 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		footer = await _get_stats_footer()
 		await safe_edit(status_msg, f"<blockquote>{display_reply}{footer}</blockquote>", parse_mode="HTML", reply_markup=get_nav_markup())
 	except Exception as e:
-		print(f"ERROR: handle_voice failed: {e}")
+		logger.error("handle_voice failed: %s", e)
 		await safe_reply(update, "Voice processing failed. There might be an issue with the transcription or intelligence layer.")
 
 @owner_only

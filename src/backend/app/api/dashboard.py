@@ -450,7 +450,8 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 			"model": last_model_used.get()
 		}
 	except Exception as e:
-		raise HTTPException(status_code=500, detail=str(e)) from e
+		logger.error("dashboard_chat error: %s", e)
+		raise HTTPException(status_code=500, detail="Internal server error") from e
 
 @router.post("/regression-cleanup")
 async def regression_cleanup(request: Request, db: AsyncSession = Depends(get_db)):
