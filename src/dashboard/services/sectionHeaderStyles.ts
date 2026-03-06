@@ -48,7 +48,9 @@ export const SECTION_HEADER_STYLES = `
 	.subtitle {
 		font-size: 0.65rem;
 		font-weight: 400;
-		color: var(--text-faint, rgba(255, 255, 255, 0.3));
+		/* text-muted (0.55 opacity) rather than text-faint to meet WCAG AA 4.5:1
+		   on accent-tinted widget surfaces introduced by the surface-tinting pass. */
+		color: var(--text-muted, hsla(0, 0%, 100%, 0.55));
 		margin-left: 0.5rem;
 		text-transform: uppercase;
 		letter-spacing: 0.1em;

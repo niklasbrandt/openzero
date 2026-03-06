@@ -3,3 +3,8 @@ dist/
 lighthouse-report*
 lighthouse-baseline*
 lighthouse-prod*
+# Playwright local browser binaries (installed via npx playwright install)
+pw-browsers/
+# Playwright test outputs
+playwright-report/
+test-results/

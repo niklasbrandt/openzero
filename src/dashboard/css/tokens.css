@@ -43,6 +43,16 @@
 	--accent-tertiary: hsla(var(--accent-tertiary-h), var(--accent-tertiary-s), var(--accent-tertiary-l), 1);
 	
 	--accent-glow: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.4);
+	/* Use as text color where the accent must contrast against the current surface.
+	   Dark mode: bright teal (40% L) is fine against dark surfaces.
+	   Light mode override (--accent-text below) darkens this for WCAG AA compliance. */
+	--accent-text: var(--accent-primary);
+	/* Use for text ON top of accent-colored button backgrounds (e.g. .btn-primary).
+	   Always dark navy so it contrasts on both teal and blue accent surfaces (≥6:1). */
+	--on-accent-text: hsla(228, 45%, 8%, 1);
+	/* blue accent as text — 65% L gives ≥5.9:1 on the darkest expected
+	   tinted surface (#241314), WCAG AA compliant. */
+	--accent-secondary-text: hsl(var(--accent-secondary-h), 100%, 65%);
 
 	/* -- Legacy Mapping (for compatibility) -- */
 	--accent-color: var(--accent-primary);
@@ -65,7 +75,9 @@
 	/* -- Text hierarchy -- */
 	--text-primary: hsla(0, 0%, 100%, 1);
 	--text-secondary: hsla(0, 0%, 100%, 0.7);
-	--text-muted: hsla(0, 0%, 100%, 0.4);
+	/* 0.55 opacity white achieves ≥4.5:1 contrast on the darkest expected tinted
+	   surface (hsl(355,30%,12%) at 0.88 alpha = ~#241314), WCAG AA compliant. */
+	--text-muted: hsla(0, 0%, 100%, 0.55);
 	--text-faint: hsla(0, 0%, 100%, 0.2);
 
 	/* -- Surfaces -- */
@@ -115,7 +127,46 @@
 	--tooltip-shadow: 0 12px 48px rgba(0, 0, 0, 0.6);
 }
 
-/* -- Light Theme Overrides -- */
+/*
+ * @media light mirrors [data-theme="light"] so CSS custom properties cascade
+ * correctly into Shadow DOM when light mode is activated via media emulation
+ * (e.g. Playwright page.emulateMedia({ colorScheme: 'light' })).
+ * The :not([data-theme="dark"]) guard prevents this from overriding an
+ * explicit manual dark-mode preference stored as data-theme="dark".
+ */
+@media (prefers-color-scheme: light) {
+	:root:not([data-theme="dark"]) {
+		color-scheme: light;
+		--bg-body: hsla(228, 20%, 98%, 1);
+		--bg-body-end: hsla(228, 20%, 94%, 1);
+		--bg-surface: hsla(var(--accent-primary-h), 20%, 95%, 0.92);
+		--text-primary: hsla(228, 45%, 4%, 1);
+		--text-secondary: hsla(228, 45%, 4%, 0.7);
+		--text-muted: hsla(228, 45%, 4%, 0.65);
+		--text-faint: hsla(228, 45%, 4%, 0.2);
+		--surface-card: hsla(var(--accent-primary-h), 30%, 30%, 0.05);
+		--surface-card-hover: hsla(var(--accent-primary-h), 30%, 30%, 0.09);
+		--surface-input: hsla(0, 0%, 100%, 0.8);
+		--surface-input-focus: hsla(0, 0%, 100%, 1);
+		--surface-hover: hsla(var(--accent-primary-h), 30%, 30%, 0.07);
+		--border-color: hsla(228, 45%, 4%, 0.08);
+		--border-subtle: hsla(228, 45%, 4%, 0.12);
+		--border-medium: hsla(228, 45%, 4%, 0.16);
+		--tooltip-bg: hsla(228, 20%, 98%, 0.9);
+		--tooltip-border: hsla(228, 45%, 4%, 0.1);
+		--tooltip-text: hsla(228, 45%, 4%, 1);
+		--tooltip-shadow: 0 12px 48px rgba(0, 0, 0, 0.1);
+		--accent-primary-l: 35%;
+		--accent-secondary-l: 45%;
+		--accent-tertiary-l: 50%;
+		--color-danger: hsla(0, 84%, 42%, 1);
+		--color-danger-light: hsla(0, 84%, 58%, 1);
+		--accent-text: hsl(var(--accent-primary-h), 80%, 22%);
+		--accent-secondary-text: hsl(var(--accent-secondary-h), 100%, 32%);
+	}
+}
+
+/* -- Light Theme Overrides (explicit data-theme attribute) -- */
 [data-theme="light"] {
 	color-scheme: light;
 	--bg-body: hsla(228, 20%, 98%, 1);
@@ -125,7 +176,9 @@
 	/* Neutral Flip */
 	--text-primary: hsla(228, 45%, 4%, 1);
 	--text-secondary: hsla(228, 45%, 4%, 0.7);
-	--text-muted: hsla(228, 45%, 4%, 0.4);
+	/* 0.65 opacity dark text achieves ≥4.5:1 contrast on the lightest expected
+	   tinted surface (hsl(355,20%,95%) at 0.92 alpha = ~#f5f1f1), WCAG AA compliant. */
+	--text-muted: hsla(228, 45%, 4%, 0.65);
 	--text-faint: hsla(228, 45%, 4%, 0.2);
 
 	--surface-card: hsla(var(--accent-primary-h), 30%, 30%, 0.05);
@@ -151,4 +204,12 @@
 	--accent-primary-l: 35%;
 	--accent-secondary-l: 45%;
 	--accent-tertiary-l: 50%;
+	/* Danger/error text needs lower lightness on near-white surfaces (WCAG AA). */
+	--color-danger: hsla(0, 84%, 42%, 1);
+	--color-danger-light: hsla(0, 84%, 58%, 1);
+	/* Accent-as-text in light mode: use 22% lightness so hsl(173,80%,22%) teal
+	   achieves ≥4.5:1 on the near-white tinted card surface (#eee8e8 type). */
+	--accent-text: hsl(var(--accent-primary-h), 80%, 22%);
+	/* 32% L blue achieves ≥8:1 on near-white tinted surfaces (WCAG AA+). */
+	--accent-secondary-text: hsl(var(--accent-secondary-h), 100%, 32%);
 }

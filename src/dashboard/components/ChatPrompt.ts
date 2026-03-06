@@ -584,7 +584,9 @@ export class ChatPrompt extends HTMLElement {
 			.cmd-chip {
 				background: var(--surface-card, hsla(0, 0%, 100%, 0.03));
 				border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.08));
-				color: var(--accent-color, hsla(173, 80%, 40%, 1));
+				/* --accent-text adapts: dark mode uses the bright accent (fine on dark bg),
+				   light mode uses a much darker shade (22% L) for WCAG AA 4.5:1 on near-white surfaces. */
+				color: var(--accent-text, var(--accent-primary, hsla(173, 80%, 40%, 1)));
 				padding: 0.2rem 0.6rem;
 				border-radius: var(--radius-sm, 0.35rem);
 				font-size: 0.75rem;
