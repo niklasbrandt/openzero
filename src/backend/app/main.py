@@ -133,6 +133,26 @@ class CacheHeaderMiddleware(BaseHTTPMiddleware):
         return response
 
 
+class SecurityHeaderMiddleware(BaseHTTPMiddleware):
+    """Inject OWASP-recommended security headers on every response (A5).
+
+    - X-Content-Type-Options: prevents MIME-sniffing attacks
+    - X-Frame-Options: blocks clickjacking (SAMEORIGIN allows Planka iframes
+      served from the same origin; change to DENY if iframes are removed)
+    - Referrer-Policy: limits referrer leakage to same-origin upgrades
+    - Permissions-Policy: opt out of sensitive browser capabilities
+    - X-XSS-Protection: legacy header; belt-and-suspenders for older browsers
+    """
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "SAMEORIGIN"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        return response
+
+
 # Add CORS for the dashboard — restrict to the configured base URL (not wildcard)
 app.add_middleware(
     CORSMiddleware,
@@ -142,6 +162,7 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type"],
 )
 app.add_middleware(CacheHeaderMiddleware)
+app.add_middleware(SecurityHeaderMiddleware)
 
 app.include_router(auth_router)
 app.include_router(dashboard_router)
