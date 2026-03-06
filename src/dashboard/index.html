@@ -26,16 +26,41 @@
 					h = h.replace('#','');
 					return parseInt(h.slice(0,2),16)+', '+parseInt(h.slice(2,4),16)+', '+parseInt(h.slice(4,6),16);
 				}
+				function hexHsl(h) {
+					h = h.replace('#','');
+					var R=parseInt(h.slice(0,2),16)/255, G=parseInt(h.slice(2,4),16)/255, B=parseInt(h.slice(4,6),16)/255;
+					var mx=Math.max(R,G,B), mn=Math.min(R,G,B), H=0, s=0, l=(mx+mn)/2;
+					if(mx!==mn){var d=mx-mn;s=l>0.5?d/(2-mx-mn):d/(mx+mn);
+						switch(mx){case R:H=(G-B)/d+(G<B?6:0);break;case G:H=(B-R)/d+2;break;case B:H=(R-G)/d+4;break;}H/=6;}
+					return{h:Math.round(H*360),s:Math.round(s*100),l:Math.round(l*100)};
+				}
 				if (d.accent) {
+					var p = hexHsl(d.accent);
+					r.style.setProperty('--accent-primary-h', p.h);
+					r.style.setProperty('--accent-primary-s', p.s+'%');
+					r.style.setProperty('--accent-primary-l', p.l+'%');
+					r.style.setProperty('--accent-primary-rgb', hexRgb(d.accent));
+					r.style.setProperty('--accent-primary', 'hsla('+p.h+', '+p.s+'%, '+p.l+'%, 1)');
 					r.style.setProperty('--accent-color', d.accent);
 					r.style.setProperty('--accent-color-rgb', hexRgb(d.accent));
 					r.style.setProperty('--accent-glow', 'rgba('+hexRgb(d.accent)+', 0.4)');
 				}
 				if (d.secondary) {
-					r.style.setProperty('--accent-secondary', d.secondary);
+					var s = hexHsl(d.secondary);
+					r.style.setProperty('--accent-secondary-h', s.h);
+					r.style.setProperty('--accent-secondary-s', s.s+'%');
+					r.style.setProperty('--accent-secondary-l', s.l+'%');
 					r.style.setProperty('--accent-secondary-rgb', hexRgb(d.secondary));
+					r.style.setProperty('--accent-secondary', 'hsla('+s.h+', '+s.s+'%, '+s.l+'%, 1)');
 				}
-				if (d.tertiary) r.style.setProperty('--accent-tertiary', d.tertiary);
+				if (d.tertiary) {
+					var tt = hexHsl(d.tertiary);
+					r.style.setProperty('--accent-tertiary-h', tt.h);
+					r.style.setProperty('--accent-tertiary-s', tt.s+'%');
+					r.style.setProperty('--accent-tertiary-l', tt.l+'%');
+					r.style.setProperty('--accent-tertiary-rgb', hexRgb(d.tertiary));
+					r.style.setProperty('--accent-tertiary', 'hsla('+tt.h+', '+tt.s+'%, '+tt.l+'%, 1)');
+				}
 			} catch(e) {}
 		})();
 	</script>
