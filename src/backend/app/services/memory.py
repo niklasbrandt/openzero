@@ -59,7 +59,7 @@ async def ensure_collection():
 				),
 			)
 	except Exception as e:
-		print(f"Error connecting to Qdrant: {e}")
+		logger.warning("Error connecting to Qdrant: %s", e)
 
 async def store_memory(text: str, metadata: dict = None):
 	"""
@@ -251,7 +251,7 @@ async def get_memory_stats() -> dict:
 			"vectors": count_result.count
 		}
 	except Exception as e:
-		print(f"Memory stats error: {e}")
+		logger.warning("Memory stats error: %s", e)
 		return {"points": 0, "status": "error", "vectors": 0}
 
 async def delete_memory(point_id: str):
