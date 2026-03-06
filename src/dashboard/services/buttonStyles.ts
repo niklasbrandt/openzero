@@ -26,7 +26,7 @@ export const BUTTON_STYLES = `
 		font-weight: 600;
 		font-family: inherit;
 		background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.1);
-		color: var(--accent-color, hsla(173, 80%, 40%, 1));
+		color: var(--accent-text, var(--accent-color, hsla(173, 80%, 40%, 1)));
 		cursor: pointer;
 		transition: background var(--duration-base, 0.3s), border-color var(--duration-base, 0.3s), color var(--duration-base, 0.3s), transform var(--duration-instant, 0.1s);
 		letter-spacing: 0.02em;
@@ -42,7 +42,9 @@ export const BUTTON_STYLES = `
 	/* Primary / filled — save, submit, add-confirm */
 	.btn-primary, .save-btn {
 		background: var(--accent-color, hsla(173, 80%, 40%, 1));
-		color: var(--bg-body, hsla(225, 50%, 8%, 1));
+		/* --on-accent-text is always dark navy (hsla(228,45%,8%)) so it contrasts
+		   against the teal/blue accent bg in both dark AND light mode (≥6:1). */
+		color: var(--on-accent-text, hsla(228, 45%, 8%, 1));
 		border-color: var(--accent-color, hsla(173, 80%, 40%, 1));
 		font-weight: 700;
 	}
