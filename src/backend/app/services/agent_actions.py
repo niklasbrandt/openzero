@@ -1,8 +1,7 @@
 import re
-import asyncio
 import logging
 from langchain_core.tools import tool
-from typing import Optional, List
+from typing import Optional
 from app.services.planka import create_task as planka_create_task
 from app.services.planka import create_project as planka_create_project
 from app.services.planka import create_board as planka_create_board
@@ -69,8 +68,8 @@ async def learn_memory(text: str) -> str:
 async def schedule_reminder(message: str, interval_minutes: int, duration_hours: Optional[int] = None) -> str:
     """Schedule a periodic reminder. Interval in minutes, duration in hours."""
     # --- Input validation (H-A1) ---
-    if not (1 <= interval_minutes <= 1440):
-        return "Error: interval_minutes must be between 1 and 1440 (max 1 day)."
+    if not (1 <= interval_minutes <= 10080):
+        return "Error: interval_minutes must be between 1 and 10080 (max 1 week)."
     if duration_hours is not None and not (1 <= duration_hours <= 168):
         return "Error: duration_hours must be between 1 and 168 (max 1 week)."
     message = message[:500]
@@ -134,7 +133,7 @@ async def schedule_persistent_custom(name: str, message: str, job_type: str, spe
     from sqlalchemy import select, func as sa_func
     async with AsyncSessionLocal() as session:
         count_result = await session.execute(
-            select(sa_func.count()).select_from(CustomTask).where(CustomTask.is_active == True)
+            select(sa_func.count()).select_from(CustomTask).where(CustomTask.is_active.is_(True))
         )
         if count_result.scalar() >= 20:
             return "Error: maximum of 20 active custom tasks reached. Deactivate an existing task first."
@@ -273,8 +272,8 @@ async def parse_and_execute_actions(reply: str, db=None):
         from app.models.db import Person, AsyncSessionLocal
         # --- Input validation (M-A2) ---
         circle_clean = circle.strip().lower()
-        if circle_clean not in {"inner", "close"}:
-            circle_clean = "close"
+        if circle_clean not in {"inner", "close", "outer", "identity"}:
+            circle_clean = "outer"
         name_clean = name.strip()[:100]
         rel_clean = rel.strip()[:100]
         ctx_clean = ctx.strip()[:1000]
@@ -303,7 +302,8 @@ async def parse_and_execute_actions(reply: str, db=None):
         raw_tag = match.group(0)
         tasks, breakdown, end_val = match.groups()
         from app.models.db import TrackingSession, AsyncSessionLocal
-        import datetime, json
+        import datetime
+        import json
         async with AsyncSessionLocal() as session:
             # 1. Parse milestones
             milestones = []

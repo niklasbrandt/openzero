@@ -241,6 +241,24 @@ The dashboard is protected by a bearer token. You must set one before the backen
 > [!IMPORTANT]
 > If the backend returns HTTP 500 on every dashboard request, the `DASHBOARD_TOKEN` env var is missing or empty. Set it and restart the backend container: `docker compose up -d --no-deps backend`.
 
+### 5b. Restrict Dashboard to Tailscale Only (Optional, Recommended)
+
+By default, Traefik binds port 80 on all interfaces (`0.0.0.0`). If you are using Tailscale, you can restrict it to your server's Tailscale IP so the dashboard is unreachable from the public internet.
+
+1. Find your server's Tailscale IP (run on the VPS):
+
+    ```bash
+    tailscale ip -4
+    ```
+
+2. Add it to your **local** `.env`:
+
+    ```env
+    TAILSCALE_IP=100.x.x.x
+    ```
+
+    Leave `TAILSCALE_IP` unset (or empty) on servers without Tailscale — the default `0.0.0.0` binding is used automatically.
+
 ### 6. Trigger the Sync (ON YOUR LAPTOP)
 
 Run the sync script from the project root on your laptop:
