@@ -241,6 +241,29 @@ The dashboard is protected by a bearer token. You must set one before the backen
 > [!IMPORTANT]
 > If the backend returns HTTP 500 on every dashboard request, the `DASHBOARD_TOKEN` env var is missing or empty. Set it and restart the backend container: `docker compose up -d --no-deps backend`.
 
+### 5c. Set Up Personal Context Folder
+
+The `personal/` folder is the highest-authority context source for Z. Files here are injected into every system prompt and refreshed every hour.
+
+1. Create your personal files from the examples:
+
+    ```bash
+    cp docs/about-me.example.md personal/about-me.md
+    cp docs/requirements.example.md personal/requirements.md
+    ```
+
+2. Edit both files with your real personal details. You can also add any `.txt`, `.docx`, or `.pdf` files (CVs, certificates, diaries) to the folder.
+
+3. The folder is bind-mounted read-only into the backend container. It is excluded from all git commits and VPS syncs — it never leaves your local machine.
+
+4. On the VPS, you must create the folder manually before starting the stack (it will not be synced):
+
+    ```bash
+    mkdir -p ~/openzero/personal
+    ```
+
+    Then copy your personal files to the server over your Tailscale connection if you want Z to have access to them there.
+
 ### 5b. Restrict Dashboard to Tailscale Only (Optional, Recommended)
 
 By default, Traefik binds port 80 on all interfaces (`0.0.0.0`). If you are using Tailscale, you can restrict it to your server's Tailscale IP so the dashboard is unreachable from the public internet.
