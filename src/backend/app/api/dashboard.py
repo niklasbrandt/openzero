@@ -15,6 +15,7 @@ integrations, allowing the Web Components to stay lightweight and fast.
 """
 
 import hmac
+import re
 from fastapi import APIRouter, Depends, HTTPException, Request, Header
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession

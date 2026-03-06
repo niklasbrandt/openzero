@@ -11,7 +11,6 @@ Refreshed on startup and every hour by the scheduler.
 import asyncio
 import hashlib
 import logging
-import os
 import re
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -284,8 +283,8 @@ def _discover_files() -> list[Path]:
 
 
 def _compute_hash(files: list[Path]) -> str:
-	"""MD5 of all file mtimes + sizes — fast change detection."""
-	h = hashlib.md5()
+	"""SHA-256 of all file mtimes + sizes — fast change detection (not cryptographic use)."""
+	h = hashlib.sha256()
 	for p in files:
 		try:
 			st = p.stat()
