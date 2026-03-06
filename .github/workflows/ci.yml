@@ -286,7 +286,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install mypy and type stubs
-        run: pip install --quiet mypy types-redis types-pytz
+        run: pip install --quiet mypy types-redis types-pytz types-pytz
 
       - name: Run mypy
         run: |
