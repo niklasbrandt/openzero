@@ -1,6 +1,7 @@
 import os
 import datetime
 import asyncio
+import logging
 from typing import Optional, List
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -12,6 +13,8 @@ SCOPES = [
 ]
 TOKEN_PATH = "/app/tokens/token.json"
 CREDS_PATH = "/app/tokens/credentials.json"
+
+logger = logging.getLogger(__name__)
 
 def get_calendar_service():
 	"""Authenticate and return Google Calendar API service."""
@@ -69,7 +72,7 @@ async def fetch_calendar_events(calendar_id: str = "primary", max_results: int =
 			"source": "google"
 		} for e in events]
 	except Exception as e:
-		print(f"Error fetching calendar events for {calendar_id}: {e}")
+		logger.warning("Error fetching calendar events for %s: %s", calendar_id, e)
 		return []
 
 async def fetch_caldav_events(start_date: datetime.datetime, end_date: datetime.datetime) -> list[dict]:
@@ -103,12 +106,12 @@ async def fetch_caldav_events(start_date: datetime.datetime, end_date: datetime.
 				"REPORT", settings.CALDAV_URL, content=body, headers=headers
 			)
 			if resp.status_code >= 400:
-				print(f"CalDAV REPORT returned {resp.status_code}")
+				logger.warning("CalDAV REPORT returned %s", resp.status_code)
 				return []
 
 		return _parse_caldav_multistatus(resp.text)
 	except Exception as e:
-		print(f"CalDAV Read Error: {e}")
+		logger.warning("CalDAV Read Error: %s", e)
 		return []
 
 
@@ -189,7 +192,7 @@ async def create_caldav_event(title: str, start: datetime.datetime, end: datetim
 			resp = await client.put(url, content=ics_content, headers={"Content-Type": "text/calendar"})
 			return resp.status_code in [201, 204]
 	except Exception as e:
-		print(f"CalDAV Create Error: {e}")
+		logger.warning("CalDAV Create Error: %s", e)
 		return False
 
 async def fetch_unified_events(days_ahead: int = 30, start_date: Optional[datetime.datetime] = None) -> list[dict]:

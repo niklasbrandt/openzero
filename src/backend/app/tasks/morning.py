@@ -11,6 +11,9 @@ from app.config import settings
 from sqlalchemy import select
 import asyncio
 import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 _CLOSING_REFLECTIONS = [
 	"Two roads diverged in a wood, and I — I took the one less traveled by, and that has made all the difference. — Robert Frost",
@@ -77,21 +80,21 @@ async def morning_briefing():
 	close_context = "\n".join(close_context_list) if close_context_list else "No specific friend connections planned."
 
 	# 2.2 Batch 1 — calendar + automation in parallel (both independent)
-	print("DEBUG: morning_briefing — starting batch-1 gather (calendar + automation)")
+	logger.debug("morning_briefing — starting batch-1 gather (calendar + automation)")
 	_t1 = asyncio.get_event_loop().time()
 
 	async def _fetch_calendar_safe():
 		try:
 			return await fetch_calendar_events(days_ahead=0)
 		except Exception as ce:
-			print(f"DEBUG: Calendar fetch during briefing skipped: {ce}")
+			logger.debug("Calendar fetch during briefing skipped: %s", ce)
 			return []
 
 	calendar_events, automation_actions = await asyncio.gather(
 		_fetch_calendar_safe(),
 		run_contextual_automation(people),
 	)
-	print(f"DEBUG: morning_briefing — batch-1 done in {asyncio.get_event_loop().time() - _t1:.1f}s")
+	logger.debug("morning_briefing — batch-1 done in %.1fs", asyncio.get_event_loop().time() - _t1)
 
 	automation_summary = "\n".join([f"- {a}" for a in automation_actions]) if automation_actions else "No automated tasks created today."
 
@@ -116,7 +119,7 @@ async def morning_briefing():
 		if detected_location: break
 
 	# 2.3 Batch 2 — weather + project tree + email context + memories (all independent)
-	print("DEBUG: morning_briefing — starting batch-2 gather (weather + tree + emails + memories)")
+	logger.debug("morning_briefing — starting batch-2 gather (weather + tree + emails + memories)")
 	_t2 = asyncio.get_event_loop().time()
 
 	from app.models.db import EmailSummary
@@ -141,7 +144,7 @@ async def morning_briefing():
 		_get_email_summary(),
 		get_recent_memories(hours=24),
 	)
-	print(f"DEBUG: morning_briefing — batch-2 done in {asyncio.get_event_loop().time() - _t2:.1f}s")
+	logger.debug("morning_briefing — batch-2 done in %.1fs", asyncio.get_event_loop().time() - _t2)
 
 	memory_review = ""
 	if recent_memories:
@@ -164,14 +167,14 @@ async def morning_briefing():
 	)
 	
 	# 3. Generate Briefing — deep tier with 90s hard timeout, fallback to standard
-	print("DEBUG: morning_briefing — starting LLM generation")
+	logger.debug("morning_briefing — starting LLM generation")
 	_t3 = asyncio.get_event_loop().time()
 	try:
 		raw_content = await asyncio.wait_for(chat(full_prompt, tier="deep"), timeout=90.0)
 	except asyncio.TimeoutError:
-		print("DEBUG: morning_briefing — deep tier timed out after 90s, falling back to standard tier")
+		logger.warning("morning_briefing — deep tier timed out after 90s, falling back to standard tier")
 		raw_content = await chat(full_prompt, tier="standard")
-	print(f"DEBUG: morning_briefing — LLM done in {asyncio.get_event_loop().time() - _t3:.1f}s")
+	logger.debug("morning_briefing — LLM done in %.1fs", asyncio.get_event_loop().time() - _t3)
 	
 	# 3.2 Post-Processing & Cleanup
 	from app.services.agent_actions import parse_and_execute_actions
@@ -239,6 +242,6 @@ async def morning_briefing():
 		if audio_briefing:
 			await send_voice_message(audio_briefing, caption="🎙️ Audio Briefing")
 	except (asyncio.TimeoutError, Exception) as e:
-		print(f"TTS briefing skipped: {e}")
+		logger.warning("TTS briefing skipped: %s", e)
 
 	return content

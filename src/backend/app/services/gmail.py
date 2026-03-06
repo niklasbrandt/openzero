@@ -1,5 +1,6 @@
 import os
 import asyncio
+import logging
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -12,6 +13,8 @@ SCOPES = [
 ]
 TOKEN_PATH = "/app/tokens/token.json"
 CREDS_PATH = "/app/tokens/credentials.json"
+
+logger = logging.getLogger(__name__)
 
 def get_gmail_service():
 	"""Authenticate and return email API service."""
@@ -74,7 +77,7 @@ async def fetch_unread_emails(max_results: int = 20) -> list[dict]:
 			})
 		return emails
 	except Exception as e:
-		print(f"Error fetching emails: {e}")
+		logger.warning("Error fetching emails: %s", e)
 		return []
 async def create_draft_reply(message_id: str, reply_text: str):
 	"""Creates a draft reply to a specific message in the user's Gmail."""
@@ -118,5 +121,5 @@ async def create_draft_reply(message_id: str, reply_text: str):
 		}).execute()
 		return True
 	except Exception as e:
-		print(f"Error creating draft: {e}")
+		logger.warning("Error creating draft: %s", e)
 		return False
