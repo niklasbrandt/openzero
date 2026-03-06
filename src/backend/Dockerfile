@@ -25,12 +25,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Pre-install CPU-only PyTorch before requirements
 RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
 
-# Upgrade setuptools to patch CVE-2025-47273 (path traversal, fixed in 78.1.1).
-# python:3.12-slim ships 70.2.0 which Trivy flags as HIGH.
-RUN pip install --no-cache-dir "setuptools>=78.1.1"
-
 COPY src/backend/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Upgrade setuptools AFTER requirements to prevent pip downgrading it.
+# Patches CVE-2025-47273 (path traversal, HIGH); python:3.12-slim ships 70.2.0.
+RUN pip install --no-cache-dir -r requirements.txt \
+    && pip install --no-cache-dir "setuptools>=78.1.1"
 
 # Copy release context if exists (from sync.sh)
 COPY LATEST_CHANGES.txt* ./

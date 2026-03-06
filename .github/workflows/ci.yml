@@ -332,6 +332,10 @@ jobs:
     name: Docker build smoke-test
     runs-on: ubuntu-latest
     needs: [frontend, backend, security, lint, sast, eslint, mypy]
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
     steps:
       - uses: actions/checkout@v4
 
@@ -348,7 +352,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Trivy container scan (CRITICAL/HIGH CVEs)
+      - name: Trivy container scan — blocking (CRITICAL/HIGH CVEs)
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: openzero-backend-ci
@@ -356,6 +360,22 @@ jobs:
           exit-code: "1"
           severity: CRITICAL,HIGH
           ignore-unfixed: true
+
+      - name: Trivy container scan — SARIF report
+        if: always()
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: openzero-backend-ci
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+
+      - name: Upload Trivy SARIF to GitHub Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results.sarif
 
       - name: Build dashboard (vite build)
         working-directory: src/dashboard
