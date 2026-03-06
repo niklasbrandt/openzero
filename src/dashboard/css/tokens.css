@@ -71,12 +71,12 @@
 	/* -- Surfaces -- */
 	--bg-body: hsla(228, 45%, 4%, 1);
 	--bg-body-end: hsla(228, 45%, 8%, 1);
-	--bg-surface: hsla(228, 40%, 12%, 0.88);
-	--surface-card: hsla(0, 0%, 100%, 0.03);
-	--surface-card-hover: hsla(0, 0%, 100%, 0.05);
+	--bg-surface: hsla(var(--accent-primary-h), 30%, 12%, 0.88);
+	--surface-card: hsla(var(--accent-primary-h), 40%, 50%, 0.04);
+	--surface-card-hover: hsla(var(--accent-primary-h), 40%, 50%, 0.07);
 	--surface-input: hsla(0, 0%, 0%, 0.2);
 	--surface-input-focus: hsla(0, 0%, 0%, 0.28);
-	--surface-hover: hsla(0, 0%, 100%, 0.06);
+	--surface-hover: hsla(var(--accent-primary-h), 40%, 50%, 0.06);
 
 	/* -- Borders -- */
 	--border-color: hsla(0, 0%, 100%, 0.06);
@@ -120,7 +120,7 @@
 	color-scheme: light;
 	--bg-body: hsla(228, 20%, 98%, 1);
 	--bg-body-end: hsla(228, 20%, 94%, 1);
-	--bg-surface: hsla(228, 20%, 95%, 0.92);
+	--bg-surface: hsla(var(--accent-primary-h), 20%, 95%, 0.92);
 	
 	/* Neutral Flip */
 	--text-primary: hsla(228, 45%, 4%, 1);
@@ -128,11 +128,11 @@
 	--text-muted: hsla(228, 45%, 4%, 0.4);
 	--text-faint: hsla(228, 45%, 4%, 0.2);
 
-	--surface-card: hsla(228, 45%, 4%, 0.04);
-	--surface-card-hover: hsla(228, 45%, 4%, 0.08);
+	--surface-card: hsla(var(--accent-primary-h), 30%, 30%, 0.05);
+	--surface-card-hover: hsla(var(--accent-primary-h), 30%, 30%, 0.09);
 	--surface-input: hsla(0, 0%, 100%, 0.8);
 	--surface-input-focus: hsla(0, 0%, 100%, 1);
-	--surface-hover: hsla(228, 45%, 4%, 0.06);
+	--surface-hover: hsla(var(--accent-primary-h), 30%, 30%, 0.07);
 
 	--border-color: hsla(228, 45%, 4%, 0.08);
 	--border-subtle: hsla(228, 45%, 4%, 0.12);
