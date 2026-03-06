@@ -1,12 +1,14 @@
+from typing import Optional
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm import DeclarativeBase, sessionmaker
 from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 import datetime
 import uuid
 from app.config import settings
 
-Base = declarative_base()
+class Base(DeclarativeBase):
+	pass
 engine = create_async_engine(settings.DATABASE_URL, echo=False)
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
@@ -151,7 +153,7 @@ async def get_pending_thought(thought_id: str):
             return {"query": thought.query, "context_data": thought.context_data}
         return None
 
-async def save_global_message(channel: str, role: str, content: str, model: str = None):
+async def save_global_message(channel: str, role: str, content: str, model: Optional[str] = None):
     async with AsyncSessionLocal() as session:
         msg = GlobalMessage(channel=channel, role=role, content=content, model=model)
         session.add(msg)
