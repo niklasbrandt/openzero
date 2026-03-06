@@ -1,0 +1,60 @@
+# ruff configuration for openZero backend
+# Tuned for the tab-indented, Python 3.11, FastAPI codebase.
+line-length = 200
+
+[lint]
+# Target rules: real bugs (F), security (S bandit-equivalent), bugbear (B)
+# Skip style-only rules that conflict with the tab-first project convention.
+select = ["F", "B", "S", "E4", "E7"]
+
+ignore = [
+    # --- Project style (tabs intentional per agents.md) ---
+    "W191",   # tab-indentation (intentional)
+    "E101",   # mixed-spaces-and-tabs (from tabs in blank lines)
+
+    # --- Long lines are prevalent and accepted ---
+    "E501",   # line too long
+
+    # --- FastAPI patterns ---
+    "B008",   # function-call-in-default-argument (Depends(), Query(), etc.)
+
+    # --- Late imports (used extensively for startup perf) ---
+    "E402",   # module-import-not-at-top-of-file
+
+    # --- Subprocess with list args is safe (no shell=True anywhere) ---
+    "S603",   # subprocess-without-shell-equals-true
+    "S607",   # start-process-with-partial-path
+
+    # --- Non-security pseudo-random (UI calibration, benchmarks) ---
+    "S311",   # pseudo-random generators
+
+    # --- False positives: TOKEN_PATH / CREDS_PATH are file paths, not passwords ---
+    "S105",   # hardcoded-password-string
+    "S106",   # hardcoded-password-func-arg
+
+    # --- Optional integrations use try/except/pass by design ---
+    "S110",   # try-except-pass
+    "S112",   # try-except-continue
+
+    # --- Blanket exception catches in API handlers ---
+    "E722",   # bare-except (too noisy; addressed case-by-case)
+
+    # --- Pure style: one-liners and dict with repeated keys are project norms ---
+    "E701",   # multiple-statements-on-one-line-colon (e.g. `if x: continue`)
+    "F601",   # multi-value-repeated-key-literal (persona theme dict has intentional keys)
+    "E741",   # ambiguous-variable-name (l, O, I used in loop contexts)
+
+    # --- zip() without strict= is acceptable (unequal-length lists caught at runtime) ---
+    "B905",   # zip-without-explicit-strict
+
+    # --- Unused loop variable as counter is accepted ---
+    "B007",   # unused-loop-control-variable
+]
+
+# Exclude vendored / generated files
+exclude = [
+    "__pycache__",
+    ".venv",
+    "dist",
+    "migrations",
+]

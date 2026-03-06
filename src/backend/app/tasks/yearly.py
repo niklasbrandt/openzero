@@ -1,7 +1,6 @@
 from app.services.llm import chat
 from app.services.planka import get_project_tree
 from app.models.db import AsyncSessionLocal, Briefing
-import datetime
 
 async def yearly_review():
 	"""Generate and store the yearly review."""

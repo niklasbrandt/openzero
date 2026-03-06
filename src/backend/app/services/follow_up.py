@@ -1,9 +1,7 @@
-import httpx
 import logging
 from app.services.operator_board import operator_service
 from app.api.telegram import send_notification, _get_stats_footer
 from app.services.llm import chat
-from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -64,12 +62,13 @@ async def check_active_tracking_sessions():
     item-specific progress nudges as requested.
     """
     from app.models.db import TrackingSession, AsyncSessionLocal
-    import datetime, json
+    import datetime
+    import json
     from sqlalchemy import select
     
     try:
         async with AsyncSessionLocal() as db:
-            result = await db.execute(select(TrackingSession).where(TrackingSession.is_active == True))
+            result = await db.execute(select(TrackingSession).where(TrackingSession.is_active.is_(True)))
             sessions = result.scalars().all()
             
             now = datetime.datetime.now()

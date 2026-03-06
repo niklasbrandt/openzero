@@ -2,7 +2,6 @@ from app.services.llm import chat
 from app.services.planka import get_project_tree
 from app.models.db import AsyncSessionLocal, Briefing
 from app.api.telegram import send_notification
-import datetime
 
 async def quarterly_review():
 	"""Generate and store the quarterly strategic review."""

@@ -1,6 +1,5 @@
 import httpx
 import logging
-from app.config import settings
 from app.services.timezone import get_user_location
 
 logger = logging.getLogger(__name__)

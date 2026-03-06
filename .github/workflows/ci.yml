@@ -143,11 +143,49 @@ jobs:
       - name: Run prompt injection test suite
         run: python -m pytest tests/test_security_prompt_injection.py -v --tb=short
 
+  # ── Python linting (ruff) ────────────────────────────────────────────────────
+  lint:
+    name: Python lint (ruff)
+    runs-on: ubuntu-latest
+    needs: [backend]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install ruff
+        run: pip install --quiet ruff
+
+      - name: Lint backend
+        run: ruff check src/backend/app/
+
+  # ── Static security analysis (bandit) ────────────────────────────────────────
+  sast:
+    name: SAST — bandit security scan
+    runs-on: ubuntu-latest
+    needs: [backend]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install bandit
+        run: pip install --quiet bandit
+
+      - name: Run bandit (high-severity only)
+        run: bandit -r src/backend/app/ -ll -ii --skip B603,B607 -q
+
   # ── Build smoke-test (Docker) ─────────────────────────────────────────────────
   build:
     name: Docker build smoke-test
     runs-on: ubuntu-latest
-    needs: [frontend, backend, security]
+    needs: [frontend, backend, security, lint, sast]
     steps:
       - uses: actions/checkout@v4
 
