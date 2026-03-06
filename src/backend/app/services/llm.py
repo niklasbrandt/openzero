@@ -710,7 +710,7 @@ async def chat_with_context(
 					return f"RELEVANT MEMORIES:\n{result}"
 			return ""
 		except Exception as e:
-			print(f"DEBUG: Memory fetch error: {e}")
+			logger.debug("Memory fetch error: %s", e)
 			return ""
 
 	try:
@@ -731,7 +731,7 @@ async def chat_with_context(
 		# Build system prompt with real user identity from DB
 		formatted_system_prompt, _, _ = await build_system_prompt(user_name, user_profile)
 
-		print(f"DEBUG: Context gathered in {time.time() - start_time:.2f}s")
+		logger.debug("Context gathered in %.2fs", time.time() - start_time)
 
 		# 3-Tier model selection
 		tier_name, base_url, display_name = select_tier(user_message, tier_override)
@@ -753,7 +753,7 @@ async def chat_with_context(
 			agent_url = settings.LLM_STANDARD_URL
 			agent_display = f"Standard: {settings.LLM_MODEL_STANDARD}"
 			last_model_used.set(agent_display)
-			print(f"DEBUG: Tool intent detected -- using LangGraph agent ({agent_display})")
+			logger.debug("Tool intent detected -- using LangGraph agent (%s)", agent_display)
 			llm = ChatOpenAI(
 				base_url=f"{agent_url}/v1",
 				api_key="not-needed",
@@ -783,12 +783,12 @@ async def chat_with_context(
 			_AGENT_ERROR_MARKERS = ["encountered friction", "thread was dropped", "local core is still active", "warming up"]
 			if not any(m in reply.lower() for m in _AGENT_ERROR_MARKERS):
 				return sanitise_output(reply)
-			print(f"DEBUG: Agent returned error string, falling back to direct chat")
+			logger.debug("Agent returned error string, falling back to direct chat")
 
 		# --- Direct chat path --- conversational messages and agent fallback
 		# Timeout-racing for deep tier: try deep first, fall back to standard
 		if tier_name == "deep" and settings.SMART_MODEL_INTERACTIVE:
-			print(f"DEBUG: Racing deep model with {settings.DEEP_MODEL_TIMEOUT_S}s timeout")
+			logger.debug("Racing deep model with %ds timeout", settings.DEEP_MODEL_TIMEOUT_S)
 			history_text = _build_history_text(history)
 			context_injection = "\n\n".join(filter(None, [full_prompt, history_text]))
 			system_with_context = f"{formatted_system_prompt}\n\n{context_injection}" if context_injection else formatted_system_prompt
@@ -809,7 +809,7 @@ async def chat_with_context(
 					chunks.append(chunk)
 				return sanitise_output("".join(chunks))
 			except (asyncio.TimeoutError, StopAsyncIteration):
-				print(f"DEBUG: Deep model timeout -- falling back to standard")
+				logger.debug("Deep model timeout -- falling back to standard")
 				last_model_used.set(f"Standard: {settings.LLM_MODEL_STANDARD}")
 				return sanitise_output(await chat(
 					user_message,
@@ -820,7 +820,7 @@ async def chat_with_context(
 				))
 
 		# Standard / Instant direct path
-		print(f"DEBUG: Direct chat [{tier_name}] -> {display_name}")
+		logger.debug("Direct chat [%s] -> %s", tier_name, display_name)
 		history_text = _build_history_text(history)
 		context_injection = "\n\n".join(filter(None, [full_prompt, history_text]))
 		system_with_context = f"{formatted_system_prompt}\n\n{context_injection}" if context_injection else formatted_system_prompt
@@ -837,7 +837,7 @@ async def chat_with_context(
 			user_profile=user_profile,
 		))
 	except Exception as e:
-		print("DEBUG: chat_with_context failed, falling back to bare chat:", e)
+		logger.warning("chat_with_context failed, falling back to bare chat: %s", e)
 		return sanitise_output(await chat(
 			user_message,
 			system_override=formatted_system_prompt if 'formatted_system_prompt' in locals() else None,
@@ -949,7 +949,7 @@ async def chat_stream_with_context(
 		)
 		full_prompt = "\n\n".join(filter(None, [people_p, project_p, memory_p]))
 		formatted_system_prompt, _, _ = await build_system_prompt(user_name, user_profile)
-		print(f"DEBUG: Stream context gathered in {time.time() - start_time:.2f}s")
+		logger.debug("Stream context gathered in %.2fs", time.time() - start_time)
 
 		tier_name, base_url, display_name = select_tier(user_message, tier_override)
 		last_model_used.set(display_name)
@@ -981,7 +981,7 @@ async def chat_stream_with_context(
 						yield cleaned
 				return
 			except (asyncio.TimeoutError, StopAsyncIteration):
-				print(f"DEBUG: Deep stream timeout -- falling back to standard")
+				logger.debug("Deep stream timeout -- falling back to standard")
 				last_model_used.set(f"Standard: {settings.LLM_MODEL_STANDARD}")
 				tier_name = "standard"
 
@@ -996,7 +996,7 @@ async def chat_stream_with_context(
 			if cleaned:
 				yield cleaned
 	except Exception as e:
-		print(f"DEBUG: chat_stream_with_context failed: {e}")
+		logger.warning("chat_stream_with_context failed: %s", e)
 		yield "I encountered a temporary issue. Please try again."
 
 

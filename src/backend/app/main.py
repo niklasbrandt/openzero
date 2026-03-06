@@ -37,6 +37,10 @@ async def lifespan(app: FastAPI):
         logging.warning(f"⚠ Warning: Could not connect to Postgres: {e}")
     
     # 2. Initialize Qdrant collection
+    if settings.IS_DOCKER and not settings.QDRANT_API_KEY:
+        raise RuntimeError(
+            "QDRANT_API_KEY must be set in .env when running in Docker."
+        )
     try:
         await ensure_collection()
         from app.services.memory import get_memory_stats
@@ -92,7 +96,7 @@ async def lifespan(app: FastAPI):
         asyncio.create_task(run_background_startup())
 
     except Exception as e:
-        print(f"⚠ Warning: Core startup failed: {e}")
+        logging.warning(f"⚠ Warning: Core startup failed: {e}")
         
     yield
     # --- SHUTDOWN ---
@@ -134,8 +138,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[settings.BASE_URL],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "DELETE"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 app.add_middleware(CacheHeaderMiddleware)
 

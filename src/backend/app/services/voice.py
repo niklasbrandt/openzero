@@ -1,8 +1,11 @@
 import os
 import httpx
+import logging
 from app.config import settings
 from pydub import AudioSegment
 import io
+
+logger = logging.getLogger(__name__)
 
 async def transcribe_voice(audio_bytes: bytes) -> str:
 	"""
@@ -17,7 +20,7 @@ async def transcribe_voice(audio_bytes: bytes) -> str:
 		audio.export(buffer, format="wav")
 		wav_bytes = buffer.getvalue()
 	except Exception as e:
-		print(f"Error converting audio: {e}")
+		logger.warning("Error converting audio: %s", e)
 		return ""
 
 	# Prefer local Whisper if configured
@@ -25,8 +28,7 @@ async def transcribe_voice(audio_bytes: bytes) -> str:
 		try:
 			return await _transcribe_local(wav_bytes)
 		except Exception as e:
-			print(f"Local transcription failed, falling back: {e}")
-
+			logger.warning("Local transcription failed, falling back: %s", e)
 	if settings.LLM_PROVIDER == "local":
 		# If we had a local whisper container, we'd call it here
 		# For now, default to Groq if API key is present for transcribed chat
