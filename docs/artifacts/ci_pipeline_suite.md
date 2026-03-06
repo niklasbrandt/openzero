@@ -18,25 +18,32 @@ Trigger: push/PR to `main`
 | --- | --------------- | ---------------------------------- | :-----------: | -------------------------------------------------------------------- |
 | 1   | `frontend`      | tsc --noEmit + npm audit           |      yes      | Strict TypeScript; high-severity JS dep audit                        |
 | 2   | `backend`       | py_compile + AST key-balance check |      yes      | All `.py` files; verifies `_EN` == `_DE` translation keys            |
-| 3   | `accessibility` | axe-core + Playwright (Chromium)   |      yes      | WCAG 2.1 AA, Shadow DOM, 10 test cases -- needs `frontend`           |
-| 4   | `security`      | pytest prompt-injection suite      |      yes      | 268 tests across 25 classes -- needs `backend`                       |
-| 5   | `lint`          | ruff                               |      yes      | Backend app only -- needs `backend`                                  |
-| 6   | `sast`          | bandit -ll -ii                     |      yes      | High-severity Python SAST -- needs `backend`                         |
-| 7   | `dep-audit`     | pip-audit                          |      no       | OWASP A6 informational; `continue-on-error: true` -- needs `backend` |
-| 8   | `build`         | docker build + Trivy + vite build  |      yes      | CRITICAL/HIGH CVEs exit-code 1; needs all gate jobs                  |
+| 3   | `accessibility` | axe-core + Playwright (Chromium)   |      yes      | WCAG 2.1 AA, Shadow DOM, 10 test cases — needs `frontend`            |
+| 4   | `security`      | pytest prompt-injection suite      |      yes      | 268 tests across 25 classes + coverage report — needs `backend`      |
+| 5   | `lint`          | ruff                               |      yes      | Backend app only — needs `backend`                                   |
+| 6   | `sast`          | bandit -ll -ii                     |      yes      | High-severity Python SAST — needs `backend`                          |
+| 7   | `dep-audit`     | pip-audit                          |      no       | OWASP A6 informational; torch/pymupdf exempted — needs `backend`     |
+| 8   | `eslint`        | ESLint 9 + typescript-eslint       |      yes      | TS/JS linting, max 20 warnings — needs `frontend`                    |
+| 9   | `mypy`          | mypy --ignore-missing-imports      |      yes      | Python type-check — needs `backend`                                  |
+| 10  | `lighthouse`    | @lhci/cli                          |   warn only   | Perf/a11y/best-practices audit, continue-on-error — needs `frontend` |
+| 11  | `build`         | docker build + Trivy + vite build  |      yes      | CRITICAL/HIGH CVEs exit-code 1; needs all gate jobs                  |
 
 **Job dependency graph:**
 
 ```
 frontend ──┬──▶ accessibility
-           │
-backend ───┼──▶ security ──┐
-           ├──▶ lint       ├──▶ build
-           ├──▶ sast       │
-           └──▶ dep-audit ─┘ (non-blocking)
+           ├──▶ eslint ──────────────────────────────┐
+           └──▶ lighthouse (warn only, non-blocking)  │
+                                                      │
+backend ───┬──▶ security ──┐                          ├──▶ build
+           ├──▶ lint       ├──────────────────────────┤
+           ├──▶ sast       │                          │
+           ├──▶ mypy ──────┘                          │
+           └──▶ dep-audit ─┘ (non-blocking)           │
+                             └────────────────────────┘
 ```
 
-`build` needs: `frontend`, `backend`, `security`, `lint`, `sast`
+`build` needs: `frontend`, `backend`, `security`, `lint`, `sast`, `eslint`, `mypy`
 
 ---
 
@@ -108,15 +115,19 @@ Trigger: push/PR to `main`
 | Python syntax + translation key check   | done   | ci.yml job `backend`                                                     |
 | axe-core Playwright accessibility job   | done   | ci.yml job `accessibility`; artifact spec in `accessibility_ci_tests.md` |
 | Prompt injection security job           | done   | ci.yml job `security`; 268 tests                                         |
+| Security test coverage report           | done   | ci.yml job `security`; pytest-cov, artifact `security-coverage`          |
 | ruff lint job                           | done   | ci.yml job `lint`                                                        |
 | bandit SAST job                         | done   | ci.yml job `sast`                                                        |
 | pip-audit dep audit job (informational) | done   | ci.yml job `dep-audit`                                                   |
+| ESLint TypeScript lint                  | done   | ci.yml job `eslint`; eslint.config.js + typescript-eslint                |
+| mypy Python type-check                  | done   | ci.yml job `mypy`; --ignore-missing-imports                              |
+| Lighthouse CI audit (informational)     | done   | ci.yml job `lighthouse`; .lighthouserc.json; continue-on-error           |
 | Docker build + Trivy container scan     | done   | ci.yml job `build`                                                       |
 | CodeQL SAST (Python + JS, weekly)       | done   | codeql.yml                                                               |
 | Trufflehog secret scanning              | done   | secrets.yml                                                              |
 | Class 25 tests for /personal command    | done   | test_security_prompt_injection.py                                        |
 
-**All planned CI pipeline items are implemented and deployed.**
+**All CI pipeline items are implemented and deployed.**
 
 ---
 
