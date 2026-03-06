@@ -132,7 +132,6 @@ class OperatorBoardService:
 		board_detail_resp.raise_for_status()
 		board_detail = board_detail_resp.json()
 		current_lists = board_detail.get("included", {}).get("lists", [])
-		list_names = [l["name"] for l in current_lists]
 
 		# Build sets for each logical list to match any language variant
 		list_key_all = {
