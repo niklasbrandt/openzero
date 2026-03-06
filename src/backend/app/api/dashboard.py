@@ -640,9 +640,22 @@ async def get_personality(db: AsyncSession = Depends(get_db)):
 		for k, v in default_personality.items():
 			if k not in saved: saved[k] = v
 		saved["questions"] = default_personality["questions"]
-		return saved
-	
-	return default_personality
+	else:
+		saved = default_personality
+
+	# Identity Person colors override personality preference so themes
+	# chosen in UserCard (which writes to the Person model) always win.
+	res2 = await db.execute(select(Person).where(Person.circle_type == "identity"))
+	identity = res2.scalar_one_or_none()
+	if identity:
+		if identity.color_primary:
+			saved["color_primary"] = identity.color_primary
+		if identity.color_secondary:
+			saved["color_secondary"] = identity.color_secondary
+		if identity.color_tertiary:
+			saved["color_tertiary"] = identity.color_tertiary
+
+	return saved
 
 @router.put("/personality")
 async def save_personality(data: dict, db: AsyncSession = Depends(get_db)):
