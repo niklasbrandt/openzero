@@ -356,7 +356,7 @@ export class CalendarManager extends HTMLElement {
 										.day-cell.today { 
 												border-color: var(--accent-color, hsla(173, 80%, 40%, 1)); 
 												color: var(--accent-color, hsla(173, 80%, 40%, 1)); 
-												background: hsla(173, 80%, 40%, 0.1); 
+												background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.1); 
 												font-weight: 700; 
 										}
 										.day-cell.selected { 
@@ -364,7 +364,7 @@ export class CalendarManager extends HTMLElement {
 												color: hsla(0, 0%, 0%, 1); 
 												border-color: var(--accent-color, hsla(173, 80%, 40%, 1)); 
 												transform: translateY(-2px); 
-												box-shadow: 0 10px 20px -5px hsla(173, 80%, 40%, 0.4); 
+												box-shadow: 0 10px 20px -5px rgba(var(--accent-color-rgb, 20, 184, 166), 0.4); 
 												font-weight: 700; 
 										}
 										
@@ -463,7 +463,7 @@ export class CalendarManager extends HTMLElement {
 												background: hsla(0, 0%, 100%, 0.07);
 												border-color: var(--accent-color, hsla(173, 80%, 40%, 1));
 												outline: none;
-												box-shadow: 0 0 0 3px hsla(173, 80%, 40%, 0.1);
+												box-shadow: 0 0 0 3px rgba(var(--accent-color-rgb, 20, 184, 166), 0.1);
 										}
 										.input-group {
 												display: grid;
@@ -479,11 +479,11 @@ export class CalendarManager extends HTMLElement {
 												font-weight: 700;
 												cursor: pointer;
 												transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-												box-shadow: 0 4px 15px -5px hsla(173, 80%, 40%, 0.4);
+												box-shadow: 0 4px 15px -5px rgba(var(--accent-color-rgb, 20, 184, 166), 0.4);
 										}
 										.submit:hover { 
 												transform: translateY(-2px); 
-												box-shadow: 0 8px 25px -5px hsla(173, 80%, 40%, 0.6); 
+												box-shadow: 0 8px 25px -5px rgba(var(--accent-color-rgb, 20, 184, 166), 0.6); 
 										}
 											@media (forced-colors: active) {
 												.day-cell.today { border-color: Highlight; }
