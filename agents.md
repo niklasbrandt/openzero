@@ -97,19 +97,26 @@ All code written for the openZero dashboard **MUST** conform to **WCAG 2.1 Level
 - **Status Transparency**: The dashboard MUST always reflect the current intelligence state of the system, including the model currently in use, memory point counts, and identity health status.
 - **Context Grounding**: Every response must be relateable to the current system time. Do not report progress on a timeframe that has already elapsed according to the internal clock.
 
-## 15. Dependency Management & Version Awareness
+## 15. Firewall & Port 53 Protection
+
+- **Port 53 is Tailscale-only:** DNS (port 53) MUST only be reachable via the Tailscale interface (`tailscale0`) from the CGNAT range `100.64.0.0/10`. This is enforced by UFW rules. NEVER add raw iptables rules that open port 53 to `0.0.0.0/0`.
+- **No Public DNS Exposure:** Pi-hole runs with `network_mode: host`, meaning port 53 is bound directly on the host. Any firewall misconfiguration exposes it to the entire internet, enabling DNS amplification attacks and FTL resource exhaustion.
+- **Pre-Deploy Firewall Audit:** Before any change that touches `docker-compose.yml` pihole config, UFW rules, or iptables, verify that `sudo iptables -L INPUT -n | grep 'dpt:53'` shows NO rules accepting from `0.0.0.0/0`. Only `tailscale0`-scoped UFW rules should exist.
+- **Post-Incident Verification:** If DNS stops working, run `ss -ulnp | grep 53` to confirm FTL is actually listening, and check `FTL.log` for `FATAL: realloc_shm` errors indicating a flood.
+
+## 16. Dependency Management & Version Awareness
 
 - **Respect Installed Versions:** Always verify and respect the specific version of a dependency (e.g., Pi-hole v6, specific Docker images, Node modules) installed in the project before suggesting changes or configurations.
 - **Study Relevant Documentation:** Configuration keys and behaviors often change between major versions (such as the removal or modification of constants like `DNSMASQ_LISTENING` in Pi-hole v6). Do not assume old configuration patterns apply to new versions.
 - **Fail Gracefully:** If an expected configuration file or constant is missing, investigate the version-specific documentation or the actual container environment rather than repeatedly trying the same command.
 
-## 16. Commit & Deploy Workflow
+## 17. Commit & Deploy Workflow
 
 - **Always Push:** After committing changes to git, you MUST push to the remote repository. Never leave commits local-only.
 - **Always Sync VPS:** After pushing, you MUST run `scripts/sync.sh` to deploy the changes to the VPS. Code changes are not complete until they are live on the server.
 - **Single Step:** Treat commit, push, and VPS sync as one atomic workflow. Do not stop after committing without pushing and syncing.
 
-## 17. Design System & CSS Architecture
+## 18. Design System & CSS Architecture
 
 - **Canonical Reference:** All visual decisions are documented in `docs/DESIGN.md`. Read it before modifying any component styling.
 - **Design Tokens:** Never use hardcoded hex colors in component CSS. Always reference `:root` custom properties via `var(--token, fallback)`. The fallback value ensures standalone functionality.
