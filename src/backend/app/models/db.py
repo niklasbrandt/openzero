@@ -1,6 +1,6 @@
 from typing import Optional
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import DeclarativeBase, sessionmaker
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 import datetime
@@ -10,7 +10,7 @@ from app.config import settings
 class Base(DeclarativeBase):
 	pass
 engine = create_async_engine(settings.DATABASE_URL, echo=False)
-AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 class Project(Base):
     __tablename__ = "projects"
@@ -135,7 +135,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 async def get_email_rules() -> list[EmailRule]:
     async with AsyncSessionLocal() as session:
         result = await session.execute(select(EmailRule))
-        return result.scalars().all()
+        return list(result.scalars().all())
 
 async def store_pending_thought(query: str, context_data: str) -> str:
     tid = uuid.uuid4()
