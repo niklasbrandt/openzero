@@ -69,3 +69,4 @@ Thumbs.db
 *.mov
 *.wmv
 .vite/
+.mypy_cache/
