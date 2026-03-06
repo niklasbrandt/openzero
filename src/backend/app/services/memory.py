@@ -4,7 +4,6 @@ import uuid
 import logging
 import re
 import datetime
-import unicodedata
 
 logger = logging.getLogger(__name__)
 
@@ -225,7 +224,7 @@ async def semantic_search(query: str, top_k: int = 5) -> str:
 		points = response.points
 	except Exception as e:
 		logger.error(f"Memory semantic search failed: {e}")
-		return f"Memory system not initialized or unreachable."
+		return "Memory system not initialized or unreachable."
 
 	if not points:
 		return "No memories found."
@@ -304,7 +303,6 @@ async def list_memories(offset: int = 0, limit: int = 50) -> dict:
 		total = 0
 
 	try:
-		offset_id = None if offset == 0 else offset  # Qdrant scroll uses a point-id or None
 		# Qdrant scroll accepts a page offset as an integer offset in some versions;
 		# to reliably paginate we scroll with limit and skip using an offset index trick.
 		# The simplest correct approach: scroll from beginning, skip first `offset` points.

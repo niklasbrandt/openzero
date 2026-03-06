@@ -14,6 +14,7 @@ No complex frontend state. The backend serves as the source of truth for all
 integrations, allowing the Web Components to stay lightweight and fast.
 """
 
+import hmac
 from fastapi import APIRouter, Depends, HTTPException, Request, Header
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,7 +23,6 @@ from app.models.db import AsyncSessionLocal, Project, EmailRule, Briefing, Perso
 from app.services.memory import semantic_search, semantic_search_raw, list_memories as list_memories_svc, delete_memory
 from app.services.planka import get_project_tree
 from app.services.operator_board import operator_service
-from app.services.llm import chat as llm_chat
 from pydantic import BaseModel
 from typing import List, Optional
 import datetime
@@ -74,7 +74,7 @@ async def require_auth(
     if not provided:
         provided = request.cookies.get("z_auth_token")
 
-    if provided != token:
+    if not hmac.compare_digest(provided, token):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
 
@@ -89,7 +89,7 @@ auth_router = APIRouter()
 @auth_router.get("/api/dashboard/auth", include_in_schema=False)
 async def auth_activate(token: str, redirect: str = "/home"):
     """Validate dashboard token, set a persistent cookie, redirect to destination."""
-    if not settings.DASHBOARD_TOKEN or token != settings.DASHBOARD_TOKEN:
+    if not settings.DASHBOARD_TOKEN or not hmac.compare_digest(token, settings.DASHBOARD_TOKEN):
         raise HTTPException(status_code=401, detail="Invalid token")
     # Sanitise redirect -- only allow relative paths
     if not redirect.startswith("/"):
@@ -172,8 +172,9 @@ class ChatRequest(BaseModel):
 	skip_history: bool = False
 
 @router.get("/chat/history")
-async def chat_history(limit: int = 30):
+async def chat_history(request: Request, limit: int = 30, _rl: None = Depends(_check_rate_limit)):
 	"""Return the last N cross-channel messages for persistent chat UI."""
+	limit = max(1, min(limit, 100))  # cap: 1–100
 	from app.models.db import get_global_history
 	msgs = await get_global_history(limit=limit)
 	return {"messages": msgs}
@@ -419,10 +420,9 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 			"model": "operator_direct"
 		}
 
-	# Use consolidated chat with context
-	from app.services.llm import chat_with_context
+		from app.services.llm import chat_with_context, last_model_used
 	from app.models.db import get_global_history, save_global_message
-	
+
 	# Recover Cross-Channel History
 	merged_history = await get_global_history(limit=10)
 	
@@ -444,14 +444,13 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 
 		# Memory is user-driven only (via /add or LEARN action tag)
 
-		from app.services.llm import last_model_used
 		return {
 			"reply": clean_reply,
 			"actions": executed_cmds,
 			"model": last_model_used.get()
 		}
 	except Exception as e:
-		raise HTTPException(status_code=500, detail=str(e))
+		raise HTTPException(status_code=500, detail=str(e)) from e
 
 @router.post("/regression-cleanup")
 async def regression_cleanup(request: Request, db: AsyncSession = Depends(get_db)):
@@ -748,7 +747,6 @@ async def get_life_tree(db: AsyncSession = Depends(get_db)):
 	}
 	
 	# 2. Upcoming Calendar & Birthdays
-	from app.services.calendar import fetch_calendar_events
 	try:
 		events = await fetch_calendar_events(max_results=5, days_ahead=7)
 	except Exception as ce:
@@ -1158,7 +1156,7 @@ async def create_project(project: ProjectCreate):
         return {"status": "created", "name": project.name, "id": result.get("id")}
     except Exception as e:
         logger.error("Failed to create project in Planka: %s", e)
-        raise HTTPException(status_code=500, detail="Failed to create project")
+        raise HTTPException(status_code=500, detail="Failed to create project") from e
 
 # --- Memory ---
 @router.get("/memory/search")
@@ -1535,14 +1533,13 @@ async def delete_local_event(event_id: str, db: AsyncSession = Depends(get_db)):
 		await db.execute(delete(LocalEvent).where(LocalEvent.id == id_int))
 		await db.commit()
 		return {"status": "deleted"}
-	except ValueError:
-		raise HTTPException(status_code=400, detail="Invalid event ID")
+	except ValueError as exc:
+		raise HTTPException(status_code=400, detail="Invalid event ID") from exc
 
 # --- Server Info (RAM, uptime, LLM tier health) ---
 @router.get("/server-info")
 async def server_info():
 	"""Return host RAM, uptime, and per-tier LLM configuration from llama-server /props."""
-	import platform
 	import os
 
 	info: dict = {
@@ -1612,9 +1609,7 @@ async def server_info():
 			try:
 				resp = await client.get(f"{base_url}/props")
 				if resp.status_code == 200:
-					props = resp.json()
 					tier_info["status"] = "online"
-					n_threads = props.get("total_slots", 0)  # fallback
 					# Try /health for slot data
 					try:
 						health_resp = await client.get(f"{base_url}/health")
@@ -1663,7 +1658,6 @@ async def server_info():
 @router.get("/llm-config")
 async def get_llm_config():
 	"""Return the configured LLM tier setup for the dashboard."""
-	import os
 	return {
 		"tiers": [
 			{
@@ -1692,7 +1686,6 @@ async def get_llm_config():
 async def benchmark_cpu():
 	"""Fetch VPS CPU info: model, cores, architecture, SIMD flags."""
 	import subprocess
-	import platform
 	import os
 
 	info = {

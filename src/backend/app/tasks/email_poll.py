@@ -1,4 +1,4 @@
-from app.services.gmail import fetch_unread_emails, create_draft_reply
+from app.services.gmail import fetch_unread_emails
 from app.services.llm import summarize_email, detect_calendar_events
 from app.api.telegram import send_notification
 from app.models.db import get_email_rules, store_pending_thought
@@ -73,7 +73,6 @@ async def poll_gmail():
 
 async def store_email_summary(email, is_urgent=False, badge=None):
 	from app.models.db import AsyncSessionLocal, EmailSummary
-	from app.services.llm import summarize_email
 	
 	async with AsyncSessionLocal() as db:
 		summary = await summarize_email(email["snippet"])

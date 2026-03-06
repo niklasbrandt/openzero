@@ -1,4 +1,3 @@
-import os
 import httpx
 import logging
 from app.config import settings

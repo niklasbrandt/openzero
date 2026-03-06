@@ -13,7 +13,7 @@ from app.services.agent_actions import parse_and_execute_actions
 import asyncio
 import pytz
 import re
-from datetime import datetime, timedelta
+from datetime import datetime
 import logging
 from app.services.translations import get_translations, get_user_lang
 
@@ -156,7 +156,6 @@ async def start_telegram_bot():
 
 			# Unified Context gathering
 			event_summary_parts = []
-			now = datetime.now(pytz.timezone(get_user_timezone()))
 
 			print("DEBUG: Greeting Seq - Step 2: Fetching Unified Calendar")
 			try:
@@ -232,7 +231,7 @@ async def start_telegram_bot():
 				"NEVER invent data not present in SYSTEM_DATA."
 				f"{lang_directive}"
 			)
-			print(f"DEBUG: Greeting Seq - Calling LLM (deep tier)")
+			print("DEBUG: Greeting Seq - Calling LLM (deep tier)")
 
 			# Strings returned by llm.py on timeout/failure — must not reach the user
 			_ERROR_INDICATORS = ["initializing my local core", "synchronize my reasoning", "Error connecting", "No response from"]

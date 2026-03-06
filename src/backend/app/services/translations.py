@@ -10,7 +10,6 @@ via /api/dashboard/translations and optionally renames Planka entities
 via the PATCH API.
 """
 
-from typing import Optional
 
 # ── Translation dictionaries ────────────────────────────────────────────
 # Start with en + de as first-class citizens. Other languages follow the
