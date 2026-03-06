@@ -222,6 +222,9 @@ async function initTheme() {
 				// Only set L if it's NOT light mode (let CSS handles light mode adjust) or override regardless?
 				// To keep user preference but allow light mode to dim, we set the BASE L.
 				root.style.setProperty(`--${prefix}-l`, `${hsl.l}%`);
+				// Composite tokens for rgba(var(...), alpha) and var(--accent-*) patterns
+				root.style.setProperty(`--${prefix}-rgb`, hexToRgb(hex));
+				root.style.setProperty(`--${prefix}`, `hsla(${hsl.h}, ${hsl.s}%, ${hsl.l}%, 1)`);
 				
 				// Legacy/Direct mappings
 				if (prefix === 'accent-primary') {

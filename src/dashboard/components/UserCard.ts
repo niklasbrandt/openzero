@@ -216,16 +216,70 @@ export class UserCard extends HTMLElement {
 	}
 
 	private applyToRoot(cp: string, cs: string, ct: string) {
-		const root = document.documentElement.style;
-		root.setProperty('--accent-primary', cp || 'hsla(173, 80%, 40%, 1)');
-		root.setProperty('--accent-secondary', cs || 'hsla(216, 100%, 50%, 1)');
-		root.setProperty('--accent-tertiary', ct || 'hsla(239, 84%, 67%, 1)');
+		const hexToRgb = (hex: string) => {
+			const h = hex.replace('#', '');
+			return `${parseInt(h.slice(0, 2), 16)}, ${parseInt(h.slice(2, 4), 16)}, ${parseInt(h.slice(4, 6), 16)}`;
+		};
+		const hexToHsl = (hex: string) => {
+			const h = hex.replace('#', '');
+			let r = parseInt(h.slice(0, 2), 16) / 255;
+			let g = parseInt(h.slice(2, 4), 16) / 255;
+			let b = parseInt(h.slice(4, 6), 16) / 255;
+			const max = Math.max(r, g, b), min = Math.min(r, g, b);
+			let _h = 0, s = 0, l = (max + min) / 2;
+			if (max !== min) {
+				const d = max - min;
+				s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+				switch (max) {
+					case r: _h = (g - b) / d + (g < b ? 6 : 0); break;
+					case g: _h = (b - r) / d + 2; break;
+					case b: _h = (r - g) / d + 4; break;
+				}
+				_h /= 6;
+			}
+			return { h: Math.round(_h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
+		};
+		const root = document.documentElement;
+		root.classList.add('no-transition');
 
-		// Restore legacy mapping for compatibility with older components
-		root.setProperty('--accent-color', cp || 'hsla(173, 80%, 40%, 1)');
-		
-		// Update RGB equivalents if possible (simplified approximation)
-		// For true precision we'd need a parser, but this ensures legacy support works
+		const applyColor = (prefix: string, hex: string) => {
+			const hsl = hexToHsl(hex);
+			root.style.setProperty(`--${prefix}-h`, hsl.h.toString());
+			root.style.setProperty(`--${prefix}-s`, `${hsl.s}%`);
+			root.style.setProperty(`--${prefix}-l`, `${hsl.l}%`);
+			root.style.setProperty(`--${prefix}-rgb`, hexToRgb(hex));
+			root.style.setProperty(`--${prefix}`, `hsla(${hsl.h}, ${hsl.s}%, ${hsl.l}%, 1)`);
+
+			if (prefix === 'accent-primary') {
+				root.style.setProperty('--accent-color', hex);
+				root.style.setProperty('--accent-color-rgb', hexToRgb(hex));
+				root.style.setProperty('--accent-glow', `rgba(${hexToRgb(hex)}, 0.4)`);
+			} else if (prefix === 'accent-secondary') {
+				root.style.setProperty('--accent-secondary', hex);
+				root.style.setProperty('--accent-secondary-rgb', hexToRgb(hex));
+			} else if (prefix === 'accent-tertiary') {
+				root.style.setProperty('--accent-tertiary', hex);
+			}
+		};
+
+		if (cp) applyColor('accent-primary', cp);
+		if (cs) applyColor('accent-secondary', cs);
+		if (ct) applyColor('accent-tertiary', ct);
+
+		// Update localStorage cache so next page load paints instantly
+		const cache: Record<string, string> = {};
+		if (cp) cache.accent = cp;
+		if (cs) cache.secondary = cs;
+		if (ct) cache.tertiary = ct;
+		if (Object.keys(cache).length) {
+			localStorage.setItem('z_theme', JSON.stringify(cache));
+		}
+
+		requestAnimationFrame(() => {
+			requestAnimationFrame(() => {
+				root.classList.remove('no-transition');
+			});
+		});
 	}
 
 	render() {

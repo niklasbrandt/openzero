@@ -70,6 +70,7 @@
 
 	/* -- Surfaces -- */
 	--bg-body: hsla(228, 45%, 4%, 1);
+	--bg-body-end: hsla(228, 45%, 8%, 1);
 	--bg-surface: hsla(228, 40%, 12%, 0.88);
 	--surface-card: hsla(0, 0%, 100%, 0.03);
 	--surface-card-hover: hsla(0, 0%, 100%, 0.05);
@@ -81,8 +82,8 @@
 	--border-color: hsla(0, 0%, 100%, 0.06);
 	--border-subtle: hsla(0, 0%, 100%, 0.08);
 	--border-medium: hsla(0, 0%, 100%, 0.12);
-	--border-accent: hsla(var(--accent-primary-rgb), 0.25);
-	--border-accent-focus: hsla(var(--accent-primary-rgb), 0.4);
+	--border-accent: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.25);
+	--border-accent-focus: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.4);
 
 	/* -- Radii -- */
 	--radius-xs: 0.25rem;
@@ -118,6 +119,7 @@
 [data-theme="light"] {
 	color-scheme: light;
 	--bg-body: hsla(228, 20%, 98%, 1);
+	--bg-body-end: hsla(228, 20%, 94%, 1);
 	--bg-surface: hsla(228, 20%, 95%, 0.92);
 	
 	/* Neutral Flip */
