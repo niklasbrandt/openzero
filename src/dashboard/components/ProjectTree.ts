@@ -107,7 +107,7 @@ export class ProjectTree extends HTMLElement {
 					${GOO_STYLES}
 					/* Override icon gradient for boards */
 					h2 .h-icon {
-						background: linear-gradient(135deg, var(--accent-color, hsla(173, 80%, 40%, 1)) 0%, hsla(216, 100%, 50%, 1) 100%);
+						background: linear-gradient(135deg, var(--accent-color, hsla(173, 80%, 40%, 1)) 0%, var(--accent-secondary, hsla(216, 100%, 50%, 1)) 100%);
 					}
 					:host { display: block; }
 					.header {
@@ -151,8 +151,8 @@ export class ProjectTree extends HTMLElement {
 						transition: color var(--duration-fast, 0.2s) ease, text-shadow var(--duration-fast, 0.2s) ease;
 					}
 					pre a:hover {
-						color: hsla(216, 100%, 50%, 1) !important;
-						text-shadow: 0 0 8px hsla(216, 100%, 50%, 0.4);
+						color: var(--accent-secondary, hsla(216, 100%, 50%, 1)) !important;
+						text-shadow: 0 0 8px rgba(var(--accent-secondary-rgb, 0, 102, 255), 0.4);
 					}
 					#new-project-btn:focus-visible, pre a:focus-visible { 
 						outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); 

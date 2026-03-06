@@ -53,7 +53,7 @@ export class WelcomeOnboarding extends HTMLElement {
 					${ACCESSIBILITY_STYLES}
 					${GOO_STYLES}
 					.card {
-						background: linear-gradient(135deg, var(--surface-accent-subtle, hsla(173, 80%, 40%, 0.1)), hsla(216, 100%, 50%, 0.1));
+						background: linear-gradient(135deg, var(--surface-accent-subtle, hsla(173, 80%, 40%, 0.1)), rgba(var(--accent-secondary-rgb, 0, 102, 255), 0.1));
 						border: 2px solid var(--border-accent, hsla(173, 80%, 40%, 0.3));
 						border-radius: var(--radius-lg, 1rem);
 						padding: 2rem;
