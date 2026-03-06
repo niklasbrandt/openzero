@@ -4,8 +4,8 @@ import { GLASS_TOOLTIP_STYLES } from '../services/glassTooltipStyles';
 import { EMPTY_STATE_STYLES } from '../services/emptyStateStyles';
 import { GOO_STYLES, initGoo } from '../services/gooStyles';
 
-const BENCH_ACCENT = 'hsla(216, 100%, 50%, 1)';
-const BENCH_ACCENT_RGB = '0, 102, 255';
+const BENCH_ACCENT = 'var(--accent-secondary, hsla(216, 100%, 50%, 1))';
+const BENCH_ACCENT_RGB = 'var(--accent-secondary-rgb, 0, 102, 255)';
 
 export class SystemBenchmark extends HTMLElement {
 	private benchResults: any[] = [];
