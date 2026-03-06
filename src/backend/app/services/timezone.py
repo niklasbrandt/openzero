@@ -1,3 +1,4 @@
+from typing import Optional
 import datetime
 import pytz
 import logging
@@ -110,7 +111,7 @@ def get_now() -> datetime.datetime:
 	tz = pytz.timezone(get_user_timezone())
 	return datetime.datetime.now(tz)
 
-def format_time(dt: datetime.datetime = None) -> str:
+def format_time(dt: Optional[datetime.datetime] = None) -> str:
 	"""
 	Format datetime as 'HH:MM - We. 2nd' (weekday abbrev + ordinal day).
 	If no dt provided, uses current time.
@@ -155,7 +156,7 @@ def get_birthday_proximity(birthday_str: str) -> str | None:
 		pass
 	return None
 
-def format_date_full(dt: datetime.datetime = None) -> str:
+def format_date_full(dt: Optional[datetime.datetime] = None) -> str:
 	"""Full date string: 'Monday, 2026-03-02 16:40:00 CET'"""
 	if dt is None:
 		dt = get_now()
