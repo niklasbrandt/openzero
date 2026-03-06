@@ -55,7 +55,7 @@ services:
       retries: 3
       start_period: 120s
     networks:
-      - internal
+      - llm
 
   llm-standard:
     image: ghcr.io/ggml-org/llama.cpp:server
@@ -79,7 +79,7 @@ services:
       retries: 3
       start_period: 180s
     networks:
-      - internal
+      - llm
 
   llm-deep:
     image: ghcr.io/ggml-org/llama.cpp:server
@@ -103,7 +103,7 @@ services:
       retries: 3
       start_period: 240s
     networks:
-      - internal
+      - llm
 
   whisper:
     image: onerahmet/openai-whisper-asr-webservice:v1.9.1
@@ -197,6 +197,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - internal
+      - llm
     # No external port — Traefik handles routing
     labels:
       - "traefik.enable=true"
@@ -216,7 +217,10 @@ services:
       - "--entrypoints.web.address=:80"
       - "--log.level=WARN"
     ports:
-      - "80:80"
+      # Bind to TAILSCALE_IP when set so port 80 is only reachable via the
+      # Tailscale mesh. Default 0.0.0.0 preserves behaviour for fresh
+      # deployments that have not yet set up Tailscale.
+      - "${TAILSCALE_IP:-0.0.0.0}:80:80"
       # Port 8080 (Traefik dashboard) intentionally not exposed
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
@@ -281,6 +285,11 @@ services:
 networks:
   internal:
     driver: bridge
+  llm:
+    driver: bridge
+    # Isolated network for LLM inference containers.
+    # Only the backend bridges both networks, preventing LLM containers
+    # from reaching postgres, redis, or planka directly.
 
 volumes:
   pgdata:

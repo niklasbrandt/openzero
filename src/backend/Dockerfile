@@ -34,8 +34,11 @@ COPY LATEST_CHANGES.txt* ./
 COPY src/backend/app/ ./app/
 COPY --from=dashboard-build /dashboard/dist/ ./static/
 
-# Non-root user setup removed to allow docker-socket interaction
-# RUN useradd -m -s /bin/bash appuser && chown -R appuser:appuser /app
-# USER appuser
+# Non-root user — GID 999 matches the standard docker socket group on Debian/Ubuntu
+# so appuser retains docker.sock access without running as root.
+RUN groupadd -f -g 999 docker \
+    && useradd -m -u 1000 -G docker appuser \
+    && chown -R appuser:appuser /app
+USER appuser
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
