@@ -6,7 +6,7 @@ on:
   pull_request:
     branches: [main]
   schedule:
-    - cron: "0 3 * * 1"  # Every Monday 03:00 UTC
+    - cron: "0 3 * * 1" # Every Monday 03:00 UTC
 
 jobs:
   analyze:
@@ -15,6 +15,7 @@ jobs:
     permissions:
       security-events: write
       contents: read
+      actions: read
 
     strategy:
       fail-fast: false
