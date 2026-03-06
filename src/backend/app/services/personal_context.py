@@ -22,7 +22,10 @@ logger = logging.getLogger(__name__)
 # Path resolution — /app/personal in Docker, project root /personal locally
 # ---------------------------------------------------------------------------
 _DOCKER_PATH = Path("/app/personal")
-_LOCAL_PATH = Path(__file__).parents[4] / "personal"
+try:
+	_LOCAL_PATH = Path(__file__).parents[4] / "personal"
+except IndexError:
+	_LOCAL_PATH = _DOCKER_PATH
 PERSONAL_FOLDER_PATH: Path = _DOCKER_PATH if _DOCKER_PATH.exists() else _LOCAL_PATH
 
 SUPPORTED_EXTENSIONS = {".md", ".txt", ".docx", ".pdf"}
