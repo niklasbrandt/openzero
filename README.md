@@ -207,6 +207,7 @@ All commands are available via the Telegram bot and the dashboard chat interface
 | `/think`     | Deep reasoning using the 14B model with human-in-the-loop approval.                                                                                             |
 | `/search`    | Semantic search of the knowledge vault -- finds by meaning, not keywords.                                                                                       |
 | `/memories`  | List all core knowledge currently in permanent memory.                                                                                                          |
+| `/personal`  | Display the personal context files currently loaded from the `personal/` folder (about-me, requirements and more).                                              |
 | `/unlearn`   | Refine Z's memory by evolving or removing specific points in the vault.                                                                                         |
 | `/add`       | Commit specific facts to Z's permanent knowledge vault (bypasses the noise filter).                                                                             |
 | `/remind`    | Set a temporary recurring reminder with interval and expiry (e.g., every 30 min for 4h).                                                                        |
