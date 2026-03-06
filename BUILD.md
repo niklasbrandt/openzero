@@ -398,14 +398,17 @@ openZero includes two independent test suites.
 
 ### Prompt Injection Risk Tests (Offline)
 
-Validates the prompt construction pipeline against 239 adversarial attack vectors across 23 categories. No running services required -- this tests the structural integrity of how user input is assembled into LLM prompts.
+Validates the prompt construction pipeline against 268 adversarial attack vectors across 25 categories. No running services required -- this tests the structural integrity of how user input is assembled into LLM prompts.
 
 ```bash
-# Install pytest (once)
-pip install pytest
+# Install pytest + coverage (once)
+pip install pytest pytest-cov
 
-# Run all 239 tests
+# Run all 268 tests
 python -m pytest tests/test_security_prompt_injection.py -v --tb=short
+
+# Run with coverage report
+python -m pytest tests/test_security_prompt_injection.py -v --tb=short --cov=tests
 
 # Run a specific category
 python -m pytest tests/test_security_prompt_injection.py -v -k "MemoryPoisoning"
@@ -424,6 +427,41 @@ python3 tests/test_live_regression.py --url http://YOUR_SERVER_IP --token your_t
 ```
 
 This suite runs automatically at the end of every `scripts/sync.sh` deployment.
+
+---
+
+## 🔬 Phase 11: CI / Quality Gates
+
+The GitHub Actions pipeline runs 11 jobs on every push to `main`.
+
+| Job | Tool | Blocks deploy? |
+| --- | ---- | :---: |
+| `frontend` | tsc --noEmit + npm audit | yes |
+| `backend` | py_compile + translation key check | yes |
+| `accessibility` | axe-core + Playwright WCAG 2.1 AA | yes |
+| `security` | pytest prompt-injection (268 tests) + coverage | yes |
+| `lint` | ruff | yes |
+| `sast` | bandit | yes |
+| `eslint` | ESLint 9 + typescript-eslint | yes |
+| `mypy` | mypy Python type-check | yes |
+| `dep-audit` | pip-audit (torch/pymupdf exempted) | no |
+| `lighthouse` | @lhci/cli perf + a11y budget | warn only |
+| `build` | Docker build + Trivy CRITICAL/HIGH scan | yes |
+
+To run the frontend linter locally:
+
+```bash
+cd src/dashboard
+npm ci
+npx eslint src/ components/ services/
+```
+
+To run mypy locally:
+
+```bash
+pip install mypy types-redis
+mypy src/backend/app/ --ignore-missing-imports --python-version=3.11
+```
 
 ---
 
