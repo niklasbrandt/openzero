@@ -353,9 +353,14 @@ async def stop_telegram_bot():
 	"""Gracefully stop the bot."""
 	global bot_app
 	if bot_app:
-		await bot_app.updater.stop()
-		await bot_app.stop()
-		await bot_app.shutdown()
+		try:
+			if bot_app.updater and bot_app.updater.running:
+				await bot_app.updater.stop()
+			if bot_app.running:
+				await bot_app.stop()
+			await bot_app.shutdown()
+		except Exception as e:
+			logging.warning(f"Telegram shutdown warning (non-fatal): {e}")
 
 async def send_notification(text: str, reply_markup=None):
 	"""Send a message to the owner wrapped in an HTML blockquote island."""
