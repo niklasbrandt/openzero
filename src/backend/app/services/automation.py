@@ -2,6 +2,9 @@ from app.services.calendar import fetch_calendar_events
 from app.services.planka import create_task
 from app.models.db import Person
 import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 PRIORITY_KEYWORDS = ["birthday", "deadline", "due", "important", "exam", "test", "appointment"]
 
@@ -16,7 +19,7 @@ async def run_contextual_automation(people: list[Person]):
 	try:
 		primary_events = await fetch_calendar_events(calendar_id="primary", days_ahead=7)
 	except Exception as ce:
-		print(f"DEBUG: Automation calendar scan skipped: {ce}")
+		logger.warning("Automation calendar scan skipped: %s", ce)
 		primary_events = []
 
 	for person in people:

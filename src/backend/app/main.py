@@ -134,8 +134,10 @@ class CacheHeaderMiddleware(BaseHTTPMiddleware):
 
 
 class SecurityHeaderMiddleware(BaseHTTPMiddleware):
-    """Inject OWASP-recommended security headers on every response (A5).
+    """Inject OWASP-recommended security headers on every response (A5/A8).
 
+    - Content-Security-Policy: restricts resource origins; 'unsafe-inline'
+      is required for Vite-built inline scripts/styles (A8)
     - X-Content-Type-Options: prevents MIME-sniffing attacks
     - X-Frame-Options: blocks clickjacking (SAMEORIGIN allows Planka iframes
       served from the same origin; change to DENY if iframes are removed)
@@ -145,6 +147,18 @@ class SecurityHeaderMiddleware(BaseHTTPMiddleware):
     """
     async def dispatch(self, request: Request, call_next):
         response = await call_next(request)
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline'; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data: blob:; "
+            "connect-src 'self'; "
+            "font-src 'self' data:; "
+            "frame-src 'self'; "
+            "object-src 'none'; "
+            "base-uri 'self'; "
+            "form-action 'self'"
+        )
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "SAMEORIGIN"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
