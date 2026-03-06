@@ -433,6 +433,8 @@ export class ZPersonality extends HTMLElement {
 						root.style.setProperty(`--${prefix}-h`, hsl.h.toString());
 						root.style.setProperty(`--${prefix}-s`, `${hsl.s}%`);
 						root.style.setProperty(`--${prefix}-l`, `${hsl.l}%`);
+						root.style.setProperty(`--${prefix}-rgb`, hexToRgb(hex));
+						root.style.setProperty(`--${prefix}`, `hsla(${hsl.h}, ${hsl.s}%, ${hsl.l}%, 1)`);
 
 						if (prefix === 'accent-primary') {
 							root.style.setProperty('--accent-color', hex);

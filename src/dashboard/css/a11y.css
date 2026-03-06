@@ -60,7 +60,7 @@
 @keyframes highlight-blink {
 	0% {
 		transform: scale(1);
-		box-shadow: 0 0 0 rgba(20, 184, 166, 0);
+		box-shadow: 0 0 0 rgba(var(--accent-color-rgb, 20, 184, 166), 0);
 	}
 
 	35% {
@@ -71,7 +71,7 @@
 
 	100% {
 		transform: scale(1);
-		box-shadow: 0 0 0 rgba(20, 184, 166, 0);
+		box-shadow: 0 0 0 rgba(var(--accent-color-rgb, 20, 184, 166), 0);
 	}
 }
 

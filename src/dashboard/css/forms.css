@@ -69,8 +69,8 @@ button:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2
 	font-weight: 700;
 }
 .btn-primary:hover, .save-btn:hover {
-	background: hsla(173, 80%, 32%, 1);
-	border-color: hsla(173, 80%, 32%, 1);
+	background: color-mix(in srgb, var(--accent-color, hsla(173, 80%, 40%, 1)) 85%, #000);
+	border-color: color-mix(in srgb, var(--accent-color, hsla(173, 80%, 40%, 1)) 85%, #000);
 	color: hsla(225, 54%, 8%, 1);
 }
 
@@ -114,9 +114,9 @@ textarea {
 input:focus,
 textarea:focus {
 	outline: none;
-	border-color: rgba(20, 184, 166, 0.4);
+	border-color: var(--border-accent-focus, hsla(173, 80%, 40%, 0.4));
 	background: rgba(0, 0, 0, 0.28);
-	box-shadow: 0 0 20px rgba(20, 184, 166, 0.08);
+	box-shadow: 0 0 20px rgba(var(--accent-color-rgb, 20, 184, 166), 0.08);
 }
 
 /* -- Pre / code blocks -- */
