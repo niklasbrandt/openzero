@@ -29,6 +29,10 @@ jobs:
         working-directory: src/dashboard
         run: node_modules/.bin/tsc --noEmit
 
+      - name: npm audit (high severity)
+        working-directory: src/dashboard
+        run: npm audit --audit-level=high
+
   # ── Backend syntax-check ─────────────────────────────────────────────────────
   backend:
     name: Python syntax-check
@@ -180,6 +184,26 @@ jobs:
 
       - name: Run bandit (high-severity only)
         run: bandit -r src/backend/app/ -ll -ii --skip B603,B607 -q
+
+  # ── Dependency audit (pip-audit / OWASP A6) ──────────────────────────────────
+  dep-audit:
+    name: Dependency audit (pip-audit)
+    runs-on: ubuntu-latest
+    needs: [backend]
+    continue-on-error: true   # informational — does not block the build
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install pip-audit
+        run: pip install --quiet pip-audit
+
+      - name: Audit Python dependencies
+        run: pip-audit -r src/backend/requirements.txt --progress-spinner off
 
   # ── Build smoke-test (Docker) ─────────────────────────────────────────────────
   build:
