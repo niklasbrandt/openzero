@@ -336,7 +336,7 @@ export class ZPersonality extends HTMLElement {
 					` : ''}
 
 					${!this.isLoading && !this.isEditing && this.activeTab === 'protocols' ? `
-						<div class="prot-explanation" style="font-size: 0.75rem; color: rgba(255,255,255,0.4); margin-bottom: 1rem; line-height: 1.4; padding: 0.5rem; background: rgba(0,102,255,0.05); border-radius: 4px; border-left: 2px solid hsla(216, 100%, 50%, 1);">
+						<div class="prot-explanation" style="font-size: 0.75rem; color: rgba(255,255,255,0.4); margin-bottom: 1rem; line-height: 1.4; padding: 0.5rem; background: rgba(0,102,255,0.05); border-radius: 4px; border-left: 2px solid var(--accent-secondary, hsla(216, 100%, 50%, 1));">
 							${this.tr('prot_explanation', `Operational Protocols are the agent's internal "Action Tags". They define the specific strategic actions ${per?.agent_name || 'Z'} can perform across integrated services. These are core system capabilities.`)}
 						</div>
 					<div class="prot-list" role="list">
