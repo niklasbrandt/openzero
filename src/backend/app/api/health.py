@@ -1,10 +1,11 @@
 import asyncio
 import logging
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 import httpx
 from sqlalchemy import text
 from app.config import settings
 from app.models.db import AsyncSessionLocal
+from app.api.dashboard import require_auth
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -32,7 +33,19 @@ async def _probe_qdrant() -> str:
 
 @router.get("/health")
 async def health_check():
-	"""Health check with real service probing."""
+	"""Public health probe — returns only overall status to avoid information disclosure."""
+	postgres_status, qdrant_status = await asyncio.gather(
+		_probe_postgres(),
+		_probe_qdrant(),
+	)
+	critical_ok = postgres_status == "reachable" and qdrant_status == "reachable"
+	overall = "online" if critical_ok else "degraded"
+	return {"status": overall}
+
+
+@router.get("/api/dashboard/health", dependencies=[Depends(require_auth)])
+async def health_check_detailed():
+	"""Authenticated detailed health endpoint — full service breakdown for operators."""
 	postgres_status, qdrant_status = await asyncio.gather(
 		_probe_postgres(),
 		_probe_qdrant(),
@@ -57,7 +70,6 @@ async def health_check():
 		**llm_status,
 	}
 
-	# Overall status degrades if any critical service is unreachable
 	critical_ok = postgres_status == "reachable" and qdrant_status == "reachable"
 	overall = "online" if critical_ok else "degraded"
 
