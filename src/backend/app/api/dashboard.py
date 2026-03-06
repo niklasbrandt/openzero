@@ -112,6 +112,11 @@ _rate_limit_store: dict = defaultdict(list)
 _RATE_LIMIT_MAX = 20
 _RATE_LIMIT_WINDOW = 60  # seconds
 
+# Stricter limiter for /chat and /chat/stream — LLM calls are expensive
+_chat_rate_limit_store: dict = defaultdict(list)
+_CHAT_RATE_LIMIT_MAX = 5
+_CHAT_RATE_LIMIT_WINDOW = 60  # seconds
+
 def _check_rate_limit(request: Request):
     """Sliding-window rate limiter: 20 requests per 60 s per client IP."""
     client_ip = (
@@ -125,6 +130,29 @@ def _check_rate_limit(request: Request):
     if len(hits) >= _RATE_LIMIT_MAX:
         raise HTTPException(status_code=429, detail="Rate limit exceeded. Try again shortly.")
     hits.append(now)
+
+def _check_chat_rate_limit(request: Request):
+    """Stricter sliding-window limiter for LLM chat endpoints: 5 requests per 60 s per client IP."""
+    client_ip = (
+        request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
+        or (request.client.host if request.client else "unknown")
+    )
+    now = _time.time()
+    window_start = now - _CHAT_RATE_LIMIT_WINDOW
+    hits = _chat_rate_limit_store[client_ip]
+    hits[:] = [t for t in hits if t > window_start]
+    if len(hits) >= _CHAT_RATE_LIMIT_MAX:
+        raise HTTPException(status_code=429, detail="Chat rate limit exceeded. Please wait before sending another message.")
+    hits.append(now)
+
+_REPLY_ALLOWLIST_RE = re.compile(
+    r'<(?!/?(?:b|i|code|pre|br|p)(?:\s[^>]*)?>)[^>]+>',
+    re.IGNORECASE,
+)
+
+def _sanitise_reply_html(text: str) -> str:
+    """Strip all HTML tags except the safe allowlist: b, i, code, pre, br, p."""
+    return _REPLY_ALLOWLIST_RE.sub("", text) if text else text
 
 
 router = APIRouter(prefix="/api/dashboard", dependencies=[Depends(require_auth)])
@@ -180,7 +208,7 @@ async def chat_history(request: Request, limit: int = 30, _rl: None = Depends(_c
 	return {"messages": msgs}
 
 @router.post("/chat")
-async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = Depends(get_db), _rl: None = Depends(_check_rate_limit)):
+async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = Depends(get_db), _rl: None = Depends(_check_chat_rate_limit)):
 	"""Chat with Z from the dashboard."""
 	msg = req.message.strip()
 	
@@ -445,7 +473,7 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		# Memory is user-driven only (via /add or LEARN action tag)
 
 		return {
-			"reply": clean_reply,
+			"reply": _sanitise_reply_html(clean_reply),
 			"actions": executed_cmds,
 			"model": last_model_used.get()
 		}
@@ -678,7 +706,7 @@ async def save_personality(data: dict, db: AsyncSession = Depends(get_db)):
 	return {"status": "ok", "personality": data}
 
 @router.post("/chat/stream")
-async def dashboard_chat_stream(req: ChatRequest, request: Request, _rl: None = Depends(_check_rate_limit)):
+async def dashboard_chat_stream(req: ChatRequest, request: Request, _rl: None = Depends(_check_chat_rate_limit)):
 	"""SSE streaming chat endpoint for real-time token delivery to dashboard."""
 	from starlette.responses import StreamingResponse
 	from app.services.llm import chat_stream_with_context, last_model_used
@@ -714,7 +742,7 @@ async def dashboard_chat_stream(req: ChatRequest, request: Request, _rl: None = 
 		from app.services.memory import extract_and_store_facts
 		asyncio.create_task(extract_and_store_facts(msg))
 
-		yield f"data: {json.dumps({'done': True, 'reply': clean_reply, 'actions': executed_cmds, 'model': model_label})}\n\n"
+		yield f"data: {json.dumps({'done': True, 'reply': _sanitise_reply_html(clean_reply), 'actions': executed_cmds, 'model': model_label})}\n\n"
 
 	return StreamingResponse(
 		event_generator(),

@@ -86,6 +86,10 @@ async def lifespan(app: FastAPI):
                 from app.services.timezone import refresh_user_settings
                 await refresh_user_settings()
                 logging.info("\u2713 User settings loaded from identity record.")
+                # 3c. Load personal context folder into system prompt
+                from app.services.personal_context import refresh_personal_context
+                await refresh_personal_context()
+                logging.info("\u2713 Personal context loaded from /personal folder.")
                 # 4. Initial Operator Board Sync
                 from app.services.operator_board import operator_service
                 sync_res = await operator_service.sync_operator_tasks()
@@ -113,6 +117,16 @@ from app.api.health import router as health_router
 from app.config import settings
 
 app = FastAPI(title="Personal AI OS", lifespan=lifespan)
+
+
+from fastapi import Request as _Request
+from fastapi.responses import JSONResponse as _JSONResponse
+
+@app.exception_handler(Exception)
+async def global_exception_handler(_request: _Request, exc: Exception):
+    import logging as _logging
+    _logging.getLogger(__name__).error("Unhandled exception: %s", exc, exc_info=True)
+    return _JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 
 class CacheHeaderMiddleware(BaseHTTPMiddleware):

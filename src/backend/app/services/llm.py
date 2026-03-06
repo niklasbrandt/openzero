@@ -17,6 +17,7 @@ Core Functions:
 - Streaming: Async generator for token-by-token delivery.
 """
 
+import base64
 import httpx
 import json
 import logging
@@ -81,7 +82,25 @@ def sanitise_input(text: str) -> str:
 	# 5. Strip known model control tokens
 	text = _CONTROL_TOKEN_RE.sub("", text)
 
-	# 6. Length cap
+	# 6. Strip HTML/XML tags to neutralise embedded XSS and structured-output confusion
+	text = re.sub(r'<[^>]{0,200}>', '', text)
+
+	# 7. Base64 decode heuristic: detect and re-sanitise encoded payloads
+	#    Matches blocks of 40+ chars of Base64 alphabet (encoding bypass, OWASP LLM01)
+	def _decode_and_rescan(m: re.Match) -> str:
+		try:
+			decoded = base64.b64decode(m.group(0) + '==').decode('utf-8', errors='ignore')
+			if any(ord(c) < 32 and c not in '\n\r\t' for c in decoded):
+				return ''  # binary garbage — drop it
+			logger.warning('sanitise_input: Base64-encoded payload detected and decoded for re-scan')
+			# Re-apply control token + adversarial stripping on decoded content
+			decoded = _CONTROL_TOKEN_RE.sub('', decoded)
+			return decoded[:500]  # cap decoded expansion
+		except Exception:
+			return ''
+	text = re.sub(r'[A-Za-z0-9+/]{40,}={0,2}', _decode_and_rescan, text)
+
+	# 8. Length cap
 	text = text[:_MAX_INPUT_LENGTH]
 
 	return text.strip()
@@ -120,12 +139,52 @@ _MODEL_SLASH_CMD_RE = re.compile(
 )
 
 
+# Sensitive data patterns to detect in LLM output (LLM02 / LLM07).
+# If any match, the matching segment is redacted before reaching the client.
+_SENSITIVE_OUTPUT_PATTERNS = re.compile(
+	r'(?:AKIA|ASIA|AIDA)[A-Z0-9]{16}'             # AWS access key
+	r'|sk-[A-Za-z0-9]{32,}',                       # OpenAI-style API key
+	re.IGNORECASE,
+)
+
+# Internal path patterns that should never appear in output
+_INTERNAL_PATH_RE = re.compile(
+	r'/app/[a-zA-Z0-9_./-]{3,}'
+	r'|/home/openzero/[a-zA-Z0-9_./-]{3,}'
+	r'|postgresql://[^\s]+'
+	r'|redis://[^\s]+',
+	re.IGNORECASE,
+)
+
+# First line of the system prompt — used to detect system-prompt echo attacks (LLM07)
+_SYSTEM_PROMPT_SENTINEL = "You are Z"
+# Minimum consecutive words from system prompt that trigger redaction
+_PROMPT_ECHO_MIN_WORDS = 8
+# Build a pattern from SYSTEM_PROMPT_CHAT constant words (populated after SYSTEM_PROMPT_CHAT is defined)
+_PROMPT_ECHO_RE: re.Pattern | None = None
+
+def _build_prompt_echo_re(system_prompt: str) -> re.Pattern:
+	"""Build a regex that detects runs of 8+ consecutive words from the system prompt."""
+	words = re.findall(r'[A-Za-z]{4,}', system_prompt)[:60]  # first 60 meaningful words
+	if len(words) < _PROMPT_ECHO_MIN_WORDS:
+		return re.compile(r'(?!x)x')  # never-match fallback
+	# Build overlapping sequences of 8 consecutive words
+	phrases = [
+		r'\b' + r'\s+'.join(re.escape(w) for w in words[i:i+_PROMPT_ECHO_MIN_WORDS]) + r'\b'
+		for i in range(len(words) - _PROMPT_ECHO_MIN_WORDS + 1)
+	]
+	return re.compile('|'.join(phrases), re.IGNORECASE)
+
+
 def sanitise_output(text: str) -> str:
 	"""Post-process LLM output before it reaches the user.
 
 	Defence-in-depth layer that cleans up common small-model failures:
 	- Emojis (system prompt says NO EMOJIS but small models ignore this)
 	- Slash commands echoed/fabricated by the model
+	- Sensitive data: API keys, internal file paths, connection strings (LLM02)
+	- System prompt echo detection — redacts responses that mirror the system
+	  prompt back to the user (LLM07)
 	- Leading/trailing whitespace cleanup
 	"""
 	if not text:
@@ -137,7 +196,21 @@ def sanitise_output(text: str) -> str:
 	# 2. Strip model-generated slash commands (e.g. "/deep what am i doing")
 	text = _MODEL_SLASH_CMD_RE.sub("", text)
 
-	# 3. Collapse multiple blank lines to at most two
+	# 3. Redact sensitive data patterns (API keys, connection strings, internal paths)
+	if _SENSITIVE_OUTPUT_PATTERNS.search(text):
+		logger.warning('sanitise_output: sensitive data pattern detected in LLM response — redacting')
+		text = _SENSITIVE_OUTPUT_PATTERNS.sub('[REDACTED]', text)
+	if _INTERNAL_PATH_RE.search(text):
+		logger.warning('sanitise_output: internal path detected in LLM response — redacting')
+		text = _INTERNAL_PATH_RE.sub('[REDACTED]', text)
+
+	# 4. Detect system prompt echo (LLM07 — prompt extraction attack)
+	global _PROMPT_ECHO_RE
+	if _PROMPT_ECHO_RE is not None and _PROMPT_ECHO_RE.search(text):
+		logger.warning('sanitise_output: system prompt echo detected — suppressing response')
+		return "I can't share that information."
+
+	# 5. Collapse multiple blank lines to at most two
 	text = re.sub(r"\n{3,}", "\n\n", text)
 
 	return text.strip()
@@ -212,6 +285,9 @@ NATURAL MEMORY:
 - Tags are INVISIBLE. Never mention storing or learning.
 
 Keep it tight. Mission first. """
+
+# Wire up the prompt-echo detector now that SYSTEM_PROMPT_CHAT is defined (LLM07)
+_PROMPT_ECHO_RE = _build_prompt_echo_re(SYSTEM_PROMPT_CHAT)
 
 # Extended prompt with action tag documentation (only for agent path)
 ACTION_TAG_DOCS = """
@@ -342,11 +418,16 @@ async def build_system_prompt(user_name: str, user_profile: dict) -> tuple[str, 
 
 	personality_directive = await get_agent_personality()
 
+	# Inject personal context as the highest-priority block (zero overhead when empty)
+	from app.services.personal_context import get_personal_context_for_prompt
+	personal_ctx = get_personal_context_for_prompt()
+	personal_block = ("\n\n" + personal_ctx) if personal_ctx else ""
+
 	formatted_system_prompt = SYSTEM_PROMPT_CHAT.format(
 		current_time=simplified_time,
 		user_name=user_name
-	) + user_id_context + lang_directive + personality_directive
-	
+	) + personal_block + user_id_context + lang_directive + personality_directive
+
 	context_header = f"Current Local Time (Raw): {format_date_full(now)}\n"
 	context_header += f"Current Formatted Time (Use This): {simplified_time}\n\n"
 	
@@ -934,6 +1015,11 @@ async def chat_stream_with_context(
 		try:
 			result = await semantic_search(user_message, top_k=3)
 			if result and "No memories found" not in result and "Memory system" not in result:
+				# Retrieval-time adversarial filter — block poisoned memory payloads
+				from app.services.memory import _ADVERSARIAL_PATTERNS
+				if _ADVERSARIAL_PATTERNS.search(result):
+					logger.warning("llm: adversarial pattern in retrieved memory — blocked from chat_with_context")
+					return ""
 				# Strip any action tags that may have been poisoned into memory
 				result = re.sub(r'\[ACTION:.*?\]', '', result, flags=re.IGNORECASE | re.DOTALL)
 				result = result.strip()

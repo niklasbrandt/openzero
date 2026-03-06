@@ -216,6 +216,15 @@ jobs:
       - name: Build backend image
         run: docker build -f src/backend/Dockerfile -t openzero-backend-ci .
 
+      - name: Trivy container scan (CRITICAL/HIGH CVEs)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: openzero-backend-ci
+          format: table
+          exit-code: "1"
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+
       - name: Build dashboard (vite build)
         working-directory: src/dashboard
         run: |
