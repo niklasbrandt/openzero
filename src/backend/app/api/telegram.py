@@ -1,4 +1,5 @@
-from telegram import Update, Bot, InlineKeyboardButton, InlineKeyboardMarkup
+from typing import Optional
+from telegram import Update, Bot, InlineKeyboardButton, InlineKeyboardMarkup  # type: ignore[attr-defined]
 from telegram.ext import (
 	Application,
 	CommandHandler,
@@ -36,7 +37,7 @@ async def _get_stats_footer() -> str:
 	stats_text = f"{t.get('memories_found', 'Memories')}: {stats['points']}{model_tag}" if stats['status'] != 'error' else f"{t.get('memory_search', 'Memory')}: Offline"
 	return f"\n\n<i>{stats_text}</i>"
 
-def get_nav_markup(t: dict = None, token: str = "") -> InlineKeyboardMarkup:
+def get_nav_markup(t: Optional[dict] = None, token: str = "") -> InlineKeyboardMarkup:
 	"""Standard navigation buttons (Large touch targets)."""
 	if not t:
 		t = get_translations("en")
@@ -63,7 +64,7 @@ def get_nav_markup(t: dict = None, token: str = "") -> InlineKeyboardMarkup:
 	return InlineKeyboardMarkup(keyboard)
 
 # --- Context Persistence ---
-chat_histories = {} # chat_id -> list of dicts {'role': 'user/z', 'content': str}
+chat_histories: dict[int, list[dict[str, str]]] = {} # chat_id -> list of dicts {'role': 'user/z', 'content': str}
 
 # --- Message Coalescing ---
 # Tracks in-flight LLM calls per chat. If Z is already thinking and more
@@ -378,7 +379,7 @@ async def send_notification_html(text: str, reply_markup=None):
 	"""Send an HTML-formatted message to the owner (already formatted)."""
 	if not settings.TELEGRAM_BOT_TOKEN or not settings.TELEGRAM_ALLOWED_USER_ID:
 		return
-	from telegram import LinkPreviewOptions
+	from telegram import LinkPreviewOptions  # type: ignore[attr-defined]
 	bot = Bot(token=settings.TELEGRAM_BOT_TOKEN)
 	await bot.send_message(
 		chat_id=int(settings.TELEGRAM_ALLOWED_USER_ID),
@@ -403,7 +404,7 @@ def strip_llm_time_header(text: str) -> str:
 	"""Remove LLM-generated time headers like '16:40 - Tuesday 3rd' from the start of text."""
 	return re.sub(r'^\d{1,2}:\d{2}\s*[-\u2013]?\s*[^\n]*\n*', '', text, count=1).strip()
 
-async def send_voice_message(audio_bytes: bytes, caption: str = None):
+async def send_voice_message(audio_bytes: bytes, caption: Optional[str] = None):
 	"""Send voice message to the owner."""
 	if not settings.TELEGRAM_BOT_TOKEN or not settings.TELEGRAM_ALLOWED_USER_ID:
 		return

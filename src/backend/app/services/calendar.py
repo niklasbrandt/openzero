@@ -33,7 +33,7 @@ def get_calendar_service():
 			token.write(creds.to_json())
 	return build("calendar", "v3", credentials=creds)
 
-async def fetch_calendar_events(calendar_id: str = "primary", max_results: int = 250, days_ahead: int = 30, start_date: datetime.datetime = None, end_date: datetime.datetime = None) -> list[dict]:
+async def fetch_calendar_events(calendar_id: str = "primary", max_results: int = 250, days_ahead: int = 30, start_date: Optional[datetime.datetime] = None, end_date: Optional[datetime.datetime] = None) -> list[dict]:
 	"""Fetch events for a specific calendar within a time range."""
 	service = get_calendar_service()
 	if not service:
@@ -139,6 +139,8 @@ def _parse_caldav_multistatus(xml_text: str) -> list[dict]:
 				end_val = dt_end.dt if dt_end else start_val
 				if start_val is None:
 					continue
+				if end_val is None:
+					end_val = start_val
 				# Normalise to ISO string
 				if isinstance(start_val, datetime.datetime):
 					start_iso = start_val.isoformat()
@@ -214,8 +216,8 @@ async def fetch_unified_events(days_ahead: int = 30, start_date: Optional[dateti
 	]
 	results = await asyncio.gather(*tasks, return_exceptions=True)
 	
-	google_evs = results[0] if not isinstance(results[0], Exception) else []
-	caldav_evs = results[1] if not isinstance(results[1], Exception) else []
+	google_evs: list[dict] = results[0] if not isinstance(results[0], BaseException) else []
+	caldav_evs: list[dict] = results[1] if not isinstance(results[1], BaseException) else []
 	
 	# 2. Local Database Events
 	async with AsyncSessionLocal() as db:

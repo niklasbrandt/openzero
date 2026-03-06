@@ -851,7 +851,7 @@ async def get_life_tree(db: AsyncSession = Depends(get_db)):
 		})
 
 	# Sort all events (Birthdays, Google, Local) by the original datetime object
-	formatted_events.sort(key=lambda x: x.get('sort_key', now))
+	formatted_events.sort(key=lambda x: x.get('sort_key', now))  # type: ignore[arg-type, return-value]
 
 	return {
 		"projects_tree": tree,

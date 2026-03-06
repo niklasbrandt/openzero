@@ -11,6 +11,7 @@ Key Responsibilities:
 - Ensuring robust connection handling across different environments.
 """
 
+from typing import Optional
 import httpx
 import logging
 from app.config import settings
@@ -57,7 +58,7 @@ async def get_planka_auth_token() -> str:
 import asyncio
 import time
 
-_tree_cache = {} # cache_key -> (timestamp, data)
+_tree_cache: dict[str, tuple[float, str]] = {} # cache_key -> (timestamp, data)
 
 async def get_project_tree(as_html: bool = True) -> str:
 	"""Recursively build a semantic text tree. Uses parallel requests and caching for speed."""
@@ -115,9 +116,9 @@ async def get_project_tree(as_html: bool = True) -> str:
 			board_resps = await asyncio.gather(*board_tasks, return_exceptions=True)
 			
 			# Map board responses back to their projects
-			project_boards = {i: [] for i in range(len(projects))}
+			project_boards: dict[int, list[str]] = {i: [] for i in range(len(projects))}
 			for meta, b_resp in zip(board_metadata, board_resps):
-				if isinstance(b_resp, Exception):
+				if isinstance(b_resp, BaseException):
 					project_boards[meta["project_idx"]].append(f"  └── {meta['name']} (Stats offline)")
 					continue
 
@@ -237,6 +238,7 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 			return True
 	except Exception as e:
 		logger.debug("create_task failed: %s", e)
+		return False
 
 async def create_project(name: str, description: str = "") -> dict:
 	"""Create a new project in Planka."""
@@ -346,7 +348,7 @@ async def create_board(project_id: str, name: str) -> dict:
 		
 		return board
 
-async def create_list(board_name: str, list_name: str, project_name: str = None) -> dict:
+async def create_list(board_name: str, list_name: str, project_name: Optional[str] = None) -> Optional[dict]:
 	"""Create a new list (column) in a board."""
 	token = await get_planka_auth_token()
 	headers = {"Authorization": f"Bearer {token}"}

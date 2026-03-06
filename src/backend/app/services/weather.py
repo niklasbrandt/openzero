@@ -1,3 +1,4 @@
+from typing import Optional
 import httpx
 import logging
 from app.services.timezone import get_user_location
@@ -23,7 +24,7 @@ _WMO_CODES = {
 def _describe_code(code: int) -> str:
 	return _WMO_CODES.get(code, "Variable conditions")
 
-async def get_weather_forecast(location_name: str = None) -> str:
+async def get_weather_forecast(location_name: Optional[str] = None) -> str:
 	"""
 	Fetches an hourly weather forecast for today, summarized into
 	morning / afternoon / evening segments with precipitation and wind.
