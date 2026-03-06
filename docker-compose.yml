@@ -195,6 +195,7 @@ services:
     volumes:
       - gmail_tokens:/app/tokens
       - /var/run/docker.sock:/var/run/docker.sock
+      - ./personal:/app/personal:ro
     networks:
       - internal
       - llm

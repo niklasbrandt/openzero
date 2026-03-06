@@ -287,6 +287,34 @@ openZero keeps your schedule private. To sync with your existing self-hosted cal
 2. **Edit your `.env`:** Fill in `CALDAV_URL`, `CALDAV_USERNAME`, and `CALDAV_PASSWORD`.
 3. **Sync:** The system automatically fetches events every few minutes and syncs new entries created through Z.
 
+### Personal Context Folder
+
+The `personal/` folder is a local-only, git-ignored directory that gives Z deep persistent knowledge about you. Files placed here are loaded on startup, refreshed every hour, and injected into every system prompt as the highest-authority context block.
+
+**Supported file types:** `.md`, `.txt`, `.docx`, `.pdf` -- diaries, CVs, certificates, instructions all work.
+
+**Setup:**
+
+```
+cp docs/about-me.example.md personal/about-me.md
+cp docs/requirements.example.md personal/requirements.md
+```
+
+Edit both files with your real personal details, then start the stack.
+
+**How it works:**
+
+- Z treats facts in this folder as the definitive source of truth about you -- they override all LLM defaults.
+- Content is compressed in two stages at scan time (deterministic, then LLM-assisted) to fit within a token budget. Compression results are cached, so there is zero latency impact on conversation.
+- The folder is bind-mounted read-only into the container (`./personal:/app/personal:ro`), so the backend can never write to it.
+- The folder is excluded from all `git` tracking and `rsync` deployments. It never leaves your local machine.
+
+**Security hardening applied to personal files:**
+
+- Action tags (`[ACTION: ...]`) are stripped before injection to prevent personal files from inadvertently triggering Z's agentic tool system.
+- Symlink traversal and archive-bomb attacks are blocked (PDF page cap 50, DOCX paragraph cap 500, file size gate 512 KB, parse timeout 30 s).
+- File magic bytes are validated against declared extensions -- a renamed binary is skipped with a warning.
+
 ### Deployment Expectations
 
 First-time builds and model downloads incur significant durations:

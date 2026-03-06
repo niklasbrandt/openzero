@@ -18,6 +18,14 @@ logger = logging.getLogger(__name__)
 scheduler = AsyncIOScheduler(timezone=pytz.utc)
 
 # ---------------------------------------------------------------------------
+# Subprocess security allowlist
+# ---------------------------------------------------------------------------
+_ALLOWED_SUBPROCESSES = {"/bin/bash"}
+_ALLOWED_SCRIPT_DIR = os.path.abspath(
+	os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../../scripts")
+)
+
+# ---------------------------------------------------------------------------
 # DNS Watchdog state
 # ---------------------------------------------------------------------------
 _dns_fail_count: int = 0
@@ -30,11 +38,16 @@ async def run_backup():
 		# Get absolute path to scripts/backup.sh relative to this file
 		current_dir = os.path.dirname(os.path.abspath(__file__))
 		script_path = os.path.abspath(os.path.join(current_dir, "../../../scripts/backup.sh"))
-		
-		if not os.path.exists(script_path):
-			logger.error(f"Backup script not found at: {script_path}")
+
+		# Security: allowlist check
+		if not script_path.startswith(_ALLOWED_SCRIPT_DIR + os.sep) and script_path != _ALLOWED_SCRIPT_DIR:
+			logger.error("Backup script path outside allowed directory: %s", script_path)
 			return
-			
+
+		if not os.path.exists(script_path):
+			logger.error("Backup script not found at: %s", script_path)
+			return
+
 		result = subprocess.run(["/bin/bash", script_path], capture_output=True, text=True)
 		if result.returncode == 0:
 			logger.info("Backup completed successfully.")
@@ -194,6 +207,15 @@ async def start_scheduler():
 
 	# 2. Load User-Defined Persistent Custom Tasks
 	await load_custom_tasks()
+
+	# 3. Hourly personal context scan
+	from app.services.personal_context import refresh_personal_context
+	scheduler.add_job(
+		refresh_personal_context,
+		IntervalTrigger(hours=1),
+		id="personal_context_scan",
+		replace_existing=True,
+	)
 
 	scheduler.start()
 	logger.info(f"Z: Missions scheduled. Morning Briefing set to {brief_hour:02d}:{brief_min:02d} {user_tz_str}")
