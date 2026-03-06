@@ -24,7 +24,7 @@ import logging
 import re
 import unicodedata
 from datetime import datetime
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Optional
 import pytz
 from contextvars import ContextVar
 import uuid
@@ -435,10 +435,10 @@ async def build_system_prompt(user_name: str, user_profile: dict) -> tuple[str, 
 
 async def chat(
 	user_message: str,
-	system_override: str = None,
-	provider: str = None,
-	model: str = None,
-	tier: str = None,
+	system_override: Optional[str] = None,
+	provider: Optional[str] = None,
+	model: Optional[str] = None,
+	tier: Optional[str] = None,
 	**kwargs
 ) -> str:
 	"""Blocking chat — collects all tokens from chat_stream() into a single string.
@@ -498,7 +498,7 @@ TIER_MAX_TOKENS = {
 	"deep": 800,
 }
 
-def select_tier(user_message: str, tier_override: str = None) -> tuple[str, str, str]:
+def select_tier(user_message: str, tier_override: Optional[str] = None) -> tuple[str, str, str]:
 	"""Select the appropriate LLM tier. Returns (tier_name, base_url, display_name)."""
 	if tier_override:
 		tier = tier_override
@@ -532,10 +532,10 @@ def select_tier(user_message: str, tier_override: str = None) -> tuple[str, str,
 
 async def chat_stream(
 	user_message: str,
-	system_override: str = None,
-	provider: str = None,
-	model: str = None,
-	tier: str = None,
+	system_override: Optional[str] = None,
+	provider: Optional[str] = None,
+	model: Optional[str] = None,
+	tier: Optional[str] = None,
 	**kwargs
 ) -> AsyncGenerator[str, None]:
 	"""Stream tokens from the LLM as an async generator.
@@ -685,10 +685,10 @@ async def chat_stream(
 
 async def chat_with_context(
 	user_message: str,
-	history: list = None,
+	history: Optional[list] = None,
 	include_projects: bool = False,
 	include_people: bool = True,
-	tier_override: str = None
+	tier_override: Optional[str] = None
 ) -> str:
 	"""
 	Wraps the standard chat with a rich snapshot of the user's world.
@@ -930,10 +930,10 @@ async def chat_with_context(
 
 async def chat_stream_with_context(
 	user_message: str,
-	history: list = None,
+	history: Optional[list] = None,
 	include_projects: bool = False,
 	include_people: bool = True,
-	tier_override: str = None
+	tier_override: Optional[str] = None
 ) -> AsyncGenerator[str, None]:
 	"""Streaming version of chat_with_context() for real-time token delivery.
 	Used by Telegram and Dashboard streaming endpoints."""
@@ -1086,7 +1086,7 @@ async def chat_stream_with_context(
 		yield "I encountered a temporary issue. Please try again."
 
 
-def _build_history_text(history: list = None) -> str:
+def _build_history_text(history: Optional[list] = None) -> str:
 	"""Build conversation history text from message list."""
 	if not history:
 		return ""

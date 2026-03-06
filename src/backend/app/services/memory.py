@@ -1,3 +1,4 @@
+from typing import Optional
 from qdrant_client import QdrantClient, models
 from app.config import settings
 import uuid
@@ -60,7 +61,7 @@ async def ensure_collection():
 	except Exception as e:
 		logger.warning("Error connecting to Qdrant: %s", e)
 
-async def store_memory(text: str, metadata: dict = None):
+async def store_memory(text: str, metadata: Optional[dict] = None):
 	"""
 	Embed text and store in Qdrant with Infrastructure-only guardrails.
 	
