@@ -788,7 +788,7 @@ export class ChatPrompt extends HTMLElement {
 			textarea:focus {
 				border-color: var(--accent-color, hsla(173, 80%, 40%, 1));
 				background: hsla(0, 0%, 0%, 0.4);
-				box-shadow: 0 0 0 3px hsla(173, 80%, 40%, 0.1);
+				box-shadow: 0 0 0 3px rgba(var(--accent-color-rgb, 20, 184, 166), 0.1);
 			}
 
 			#send-btn {
@@ -796,7 +796,7 @@ export class ChatPrompt extends HTMLElement {
 				height: 56px;
 				border-radius: var(--radius-md, 0.5rem);
 				border: 1px solid var(--border-accent, hsla(173, 80%, 40%, 0.25));
-				background: hsla(173, 80%, 40%, 0.1);
+				background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.1);
 				color: var(--accent-color, hsla(173, 80%, 40%, 1));
 				cursor: pointer;
 				display: flex;
@@ -815,10 +815,10 @@ export class ChatPrompt extends HTMLElement {
 			}
 
 			#send-btn:hover:not(:disabled) {
-				background: hsla(173, 80%, 40%, 0.2);
+				background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.2);
 				border-color: var(--accent-color, hsla(173, 80%, 40%, 1));
 				transform: translateY(-2px);
-				box-shadow: 0 4px 12px hsla(173, 80%, 40%, 0.2);
+				box-shadow: 0 4px 12px rgba(var(--accent-color-rgb, 20, 184, 166), 0.2);
 			}
 
 			#send-btn:disabled {

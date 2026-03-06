@@ -148,7 +148,7 @@ export class BriefingHistory extends HTMLElement {
 					}
 					.briefing-item.active {
 						background: var(--surface-card-hover, hsla(0, 0%, 100%, 0.05));
-						border-color: hsla(173, 80%, 40%, 0.2);
+						border-color: rgba(var(--accent-color-rgb, 20, 184, 166), 0.2);
 					}
 					.meta { 
 						display: flex; 
@@ -170,14 +170,14 @@ export class BriefingHistory extends HTMLElement {
 						background: var(--surface-hover, hsla(0, 0%, 100%, 0.06));
 					}
 					.type { 
-						background: hsla(173, 80%, 40%, 0.1); 
+						background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.1); 
 						color: var(--accent-color, hsla(173, 80%, 40%, 1)); 
 						font-size: 0.65rem; 
 						padding: 0.2rem 0.6rem; 
 						border-radius: var(--radius-pill, 9999px); 
 						font-weight: 700;
 						letter-spacing: 0.05em;
-						border: 1px solid hsla(173, 80%, 40%, 0.2);
+						border: 1px solid rgba(var(--accent-color-rgb, 20, 184, 166), 0.2);
 					}
 					.date { 
 						font-size: 0.8rem; 
@@ -232,9 +232,9 @@ export class BriefingHistory extends HTMLElement {
 						transition: all 0.2s;
 					}
 					.load-more:hover {
-						background: hsla(173, 80%, 40%, 0.1);
+						background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.1);
 						color: var(--accent-color, hsla(173, 80%, 40%, 1));
-						border-color: hsla(173, 80%, 40%, 0.4);
+						border-color: rgba(var(--accent-color-rgb, 20, 184, 166), 0.4);
 					}
 					.load-more:focus-visible { outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); outline-offset: 2px; }
 					@media (forced-colors: active) {

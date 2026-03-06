@@ -239,7 +239,7 @@ export class CalendarAgenda extends HTMLElement {
 						transition: all 0.2s;
 					}
 					.filter-btn.active {
-						background: hsla(173, 80%, 40%, 0.2);
+						background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.2);
 						border-color: var(--accent-color, hsla(173, 80%, 40%, 1));
 						color: var(--accent-color, hsla(173, 80%, 40%, 1));
 					}
@@ -267,8 +267,8 @@ export class CalendarAgenda extends HTMLElement {
 						align-self: flex-start;
 						font-size: 0.7rem;
 						color: var(--accent-color, hsla(173, 80%, 40%, 1));
-						background: hsla(173, 80%, 40%, 0.1);
-						border: 1px solid hsla(173, 80%, 40%, 0.2);
+						background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.1);
+						border: 1px solid rgba(var(--accent-color-rgb, 20, 184, 166), 0.2);
 						padding: 0.15rem 0.5rem;
 						border-radius: var(--radius-sm, 0.35rem);
 						text-transform: uppercase;
@@ -277,8 +277,8 @@ export class CalendarAgenda extends HTMLElement {
 					.local-indicator {
 						font-size: 0.65rem;
 						color: var(--accent-secondary, hsla(216, 100%, 50%, 1));
-						background: hsla(216, 100%, 50%, 0.1);
-						border: 1px solid hsla(216, 100%, 50%, 0.2);
+						background: rgba(var(--accent-secondary-rgb, 0, 102, 255), 0.1);
+						border: 1px solid rgba(var(--accent-secondary-rgb, 0, 102, 255), 0.2);
 						padding: 0.1rem 0.4rem;
 						border-radius: var(--radius-xs, 0.25rem);
 						margin-right: 0.3rem;
