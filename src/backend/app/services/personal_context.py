@@ -390,3 +390,21 @@ async def refresh_personal_context() -> None:
 def get_personal_context_for_prompt() -> str:
 	"""Return the cached personal context block (empty string if none)."""
 	return _prompt_block
+
+
+def get_personal_context_debug_report() -> str:
+	"""Return a human-readable summary of the compressed personal context for display."""
+	if not _prompt_block:
+		return "No personal context loaded. Check that the /personal folder contains .md, .pdf, or .docx files."
+
+	files = _compressed if _compressed else _cache
+	if not files:
+		return "Personal context cache is empty."
+
+	lines = [f"**Personal Context** — {len(files)} file(s) loaded\n"]
+	for fname, text in files.items():
+		preview = text.strip()
+		lines.append(f"**{fname}** ({len(text)} chars)\n{preview}")
+
+	lines.append(f"\n*Prompt block total: {len(_prompt_block)} chars*")
+	return "\n\n".join(lines)

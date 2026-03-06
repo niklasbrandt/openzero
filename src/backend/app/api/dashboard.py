@@ -331,6 +331,7 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 				"• `/add <topic>` — Commit a fact to memory\n"
 				"• `/unlearn <query>` — Remove a fact from the vault\n\n"
 				f"**{ss}:**\n"
+				"• `/personal` — Show compressed personal context Z loaded from /personal\n"
 				"• `/purge` — Permanently wipe all semantic memory\n\n"
 				"Type any message to chat with Z directly."
 			)
@@ -429,6 +430,10 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 			"*Every thought is an opportunity for evolution.*"
 		)
 		return {"reply": protocols_reply}
+	elif msg == "/personal":
+		from app.services.personal_context import get_personal_context_debug_report
+		report = get_personal_context_debug_report()
+		return {"reply": report}
 	elif msg == "/purge":
 		from app.services.translations import get_user_lang, get_translations
 		from app.services.memory import wipe_collection
