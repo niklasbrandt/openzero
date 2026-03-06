@@ -5,7 +5,7 @@ from app.tasks.morning import morning_briefing
 from app.tasks.weekly import weekly_review
 from app.tasks.email_poll import poll_gmail
 from app.tasks.operator_sync import run_operator_sync
-from app.services.timezone import update_detected_timezone, get_current_timezone, get_user_timezone
+from app.services.timezone import update_detected_timezone, get_current_timezone
 from app.config import settings
 import pytz
 import logging
@@ -54,7 +54,7 @@ async def start_scheduler():
 		# Configure scheduler with correct timezone to respect DST
 		scheduler.configure(timezone=pytz.timezone(user_tz_str))
 		logger.info(f"Scheduler initialized with timezone: {user_tz_str}")
-	except Exception as te:
+	except Exception:
 		logger.error(f"Invalid timezone configuration: {user_tz_str}. Falling back to UTC.")
 		scheduler.configure(timezone=pytz.utc)
 
@@ -243,7 +243,7 @@ async def load_custom_tasks():
 
 	try:
 		async with AsyncSessionLocal() as session:
-			res = await session.execute(select(CustomTask).where(CustomTask.is_active == True))
+			res = await session.execute(select(CustomTask).where(CustomTask.is_active.is_(True)))
 			tasks = res.scalars().all()
 
 			for t in tasks:

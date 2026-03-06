@@ -6,7 +6,7 @@ from app.services.calendar import fetch_calendar_events
 from app.services.weather import get_weather_forecast
 from app.services.tts import generate_speech
 from app.api.telegram import send_notification, send_voice_message, get_nav_markup
-from app.models.db import AsyncSessionLocal, Briefing, Project, Person
+from app.models.db import AsyncSessionLocal, Briefing, Person
 from app.config import settings
 from sqlalchemy import select
 import asyncio
@@ -127,7 +127,7 @@ async def morning_briefing():
 
 	async def _get_email_summary():
 		async with AsyncSessionLocal() as session:
-			res = await session.execute(select(EmailSummary).where(EmailSummary.included_in_briefing == False))
+			res = await session.execute(select(EmailSummary).where(EmailSummary.included_in_briefing.is_(False)))
 			summaries = res.scalars().all()
 			if summaries:
 				result = "\n".join([f"- {s.sender}: {s.subject} {f'[{s.badge}]' if s.badge else ''} (Summary: {s.summary})" for s in summaries])
