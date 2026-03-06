@@ -490,6 +490,31 @@ export class SystemBenchmark extends HTMLElement {
 				}
 
 				.legend-item:focus-visible { outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); outline-offset: 2px; border-radius: 2px; }
+
+				/* Light-theme contrast fix — WCAG AA ≥4.5:1
+				 * --accent-secondary-text at 65% L works on dark surfaces but fails
+				 * on near-white light backgrounds (~#f5f1f1).  Override to 32% L here
+				 * so .bench-btn and .bench-tier always achieve ≥8:1 in light mode,
+				 * regardless of the user's stored secondary hue. */
+				@media (prefers-color-scheme: light) {
+					.bench-btn,
+					.bench-tier {
+						color: hsl(var(--accent-secondary-h, 216), 100%, 32%);
+					}
+					.bench-btn:hover,
+					.bench-btn:focus-visible {
+						color: hsl(var(--accent-secondary-h, 216), 100%, 24%);
+					}
+				}
+				:host-context([data-theme="light"]) .bench-btn,
+				:host-context([data-theme="light"]) .bench-tier {
+					color: hsl(var(--accent-secondary-h, 216), 100%, 32%);
+				}
+				:host-context([data-theme="light"]) .bench-btn:hover,
+				:host-context([data-theme="light"]) .bench-btn:focus-visible {
+					color: hsl(var(--accent-secondary-h, 216), 100%, 24%);
+				}
+
 				@media (forced-colors: active) {
 					.h-icon { background: ButtonFace; border: 1px solid ButtonText; }
 					.bench-btn { border: 1px solid Highlight; color: Highlight; }
