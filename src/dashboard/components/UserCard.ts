@@ -122,14 +122,12 @@ export class UserCard extends HTMLElement {
 		if (this.themeMode === 'light') {
 			document.documentElement.setAttribute('data-theme', 'light');
 		} else if (this.themeMode === 'dark') {
-			document.documentElement.removeAttribute('data-theme');
+			// Explicit dark-mode attribute prevents @media(prefers-color-scheme:light)
+			// from overriding a manual dark preference when the OS theme is light.
+			document.documentElement.setAttribute('data-theme', 'dark');
 		} else {
-			// Auto/System
-			if (window.matchMedia('(prefers-color-scheme: light)').matches) {
-				document.documentElement.setAttribute('data-theme', 'light');
-			} else {
-				document.documentElement.removeAttribute('data-theme');
-			}
+			// Auto/System: remove attribute so @media handles theme selection.
+			document.documentElement.removeAttribute('data-theme');
 		}
 	}
 

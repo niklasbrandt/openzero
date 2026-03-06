@@ -288,8 +288,8 @@ stored_at: i.stored_at ?? null,
 					color: var(--text-primary, hsla(0, 0%, 100%, 1));
 				}
 				.tab-btn.active, .tab-btn[aria-selected="true"] {
-					color: var(--accent-color, hsla(173, 80%, 40%, 1));
-					border-bottom-color: var(--accent-color, hsla(173, 80%, 40%, 1));
+					color: var(--accent-text, var(--accent-color, hsla(173, 80%, 40%, 1)));
+					border-bottom-color: var(--accent-text, var(--accent-color, hsla(173, 80%, 40%, 1)));
 					background: none;
 					border-radius: 0;
 				}

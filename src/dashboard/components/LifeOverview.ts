@@ -384,7 +384,7 @@ export class LifeOverview extends HTMLElement {
 					.birthday-tag { font-size: 1rem; }
 
 
-					.error { color: var(--status-danger, hsla(0, 84%, 60%, 1)); text-align: center; padding: 2rem; }
+					.error { color: var(--color-danger, hsla(0, 84%, 42%, 1)); text-align: center; padding: 2rem; }
 				.action-btn:focus-visible { outline: 2px solid var(--accent-primary, hsla(173, 80%, 40%, 1)); outline-offset: 3px; }
 				.tree-content a:focus-visible { outline: 2px solid var(--accent-primary, hsla(173, 80%, 40%, 1)); outline-offset: 2px; }
 				@media (forced-colors: active) {
