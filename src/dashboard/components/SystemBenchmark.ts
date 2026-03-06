@@ -495,14 +495,20 @@ export class SystemBenchmark extends HTMLElement {
 				 * --accent-secondary-text at 65% L works on dark surfaces but fails
 				 * on near-white light backgrounds (~#f5f1f1).  Override to 32% L here
 				 * so .bench-btn and .bench-tier always achieve ≥8:1 in light mode,
-				 * regardless of the user's stored secondary hue. */
+				 * regardless of the user's stored secondary hue.
+				 *
+				 * IMPORTANT: the media query MUST be guarded with :host-context so the
+				 * 32% rule does NOT fire when data-theme="dark" is set on <html>, even
+				 * if the OS/browser prefers-color-scheme is still "light" (e.g. Playwright
+				 * Desktop Chrome which defaults to system light mode). Without the guard,
+				 * the dark-red (#a30000) foreground would render on a dark surface. */
 				@media (prefers-color-scheme: light) {
-					.bench-btn,
-					.bench-tier {
+					:host-context(:root:not([data-theme="dark"])) .bench-btn,
+					:host-context(:root:not([data-theme="dark"])) .bench-tier {
 						color: hsl(var(--accent-secondary-h, 216), 100%, 32%);
 					}
-					.bench-btn:hover,
-					.bench-btn:focus-visible {
+					:host-context(:root:not([data-theme="dark"])) .bench-btn:hover,
+					:host-context(:root:not([data-theme="dark"])) .bench-btn:focus-visible {
 						color: hsl(var(--accent-secondary-h, 216), 100%, 24%);
 					}
 				}
