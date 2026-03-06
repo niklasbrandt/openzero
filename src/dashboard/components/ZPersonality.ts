@@ -136,10 +136,10 @@ export class ZPersonality extends HTMLElement {
 				.tabs { display: flex; gap: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); }
 				.tab { 
 					padding: 0.5rem 0; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; 
-					color: rgba(255,255,255,0.4); cursor: pointer; border-bottom: 2px solid transparent;
+					color: var(--text-muted, rgba(255,255,255,0.55)); cursor: pointer; border-bottom: 2px solid transparent;
 					transition: all 0.2s;
 				}
-				.tab.active { color: var(--accent-primary, hsla(173, 80%, 40%, 1)); border-color: var(--accent-primary, hsla(173, 80%, 40%, 1)); }
+				.tab.active { color: var(--accent-text, var(--accent-primary, hsla(173, 80%, 40%, 1))); border-color: var(--accent-text, var(--accent-primary, hsla(173, 80%, 40%, 1))); }
 				.tab:focus-visible { outline: 2px solid var(--accent-primary, hsla(173, 80%, 40%, 1)); outline-offset: 2px; border-radius: 2px 2px 0 0; }
 				.edit-btn:focus-visible, .save-btn:focus-visible, .cancel-btn:focus-visible { outline: 2px solid var(--accent-primary, hsla(173, 80%, 40%, 1)); outline-offset: 2px; border-radius: 4px; }
 				input[type="text"]:focus-visible, textarea:focus-visible, select:focus-visible, input[type="range"]:focus-visible, input[type="color"]:focus-visible { outline: 2px solid var(--accent-primary, hsla(173, 80%, 40%, 1)); outline-offset: 2px; }

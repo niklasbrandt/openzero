@@ -299,7 +299,7 @@ export class CalendarAgenda extends HTMLElement {
 					}
 					.birthday-item .day { color: hsla(329, 86%, 70%, 1) !important; }
 					.birthday-item .summary { color: hsla(330, 95%, 85%, 1) !important; }
-					.empty-state { font-size: 0.85rem; color: var(--text-faint, hsla(0, 0%, 100%, 0.2)); text-align: center; padding: 2rem; }
+					.empty-state { font-size: 0.85rem; color: var(--text-secondary, hsla(0, 0%, 100%, 0.7)); text-align: center; padding: 2rem; }
 					.filter-btn:focus-visible, .calendar-link:focus-visible { 
 						outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); 
 						outline-offset: 2px; 

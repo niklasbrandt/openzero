@@ -4,7 +4,7 @@ import { GLASS_TOOLTIP_STYLES } from '../services/glassTooltipStyles';
 import { EMPTY_STATE_STYLES } from '../services/emptyStateStyles';
 import { GOO_STYLES, initGoo } from '../services/gooStyles';
 
-const BENCH_ACCENT = 'var(--accent-secondary, hsla(216, 100%, 50%, 1))';
+const BENCH_ACCENT = 'var(--accent-secondary-text, hsl(216, 100%, 65%))';
 const BENCH_ACCENT_RGB = 'var(--accent-secondary-rgb, 0, 102, 255)';
 
 export class SystemBenchmark extends HTMLElement {
@@ -272,7 +272,7 @@ export class SystemBenchmark extends HTMLElement {
 
 				.bench-btn.all {
 					background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.08);
-					color: var(--accent-color, hsla(173, 80%, 40%, 1));
+					color: var(--accent-text, var(--accent-color, hsla(173, 80%, 40%, 1)));
 					border-color: rgba(var(--accent-color-rgb, 20, 184, 166), 0.2);
 				}
 
