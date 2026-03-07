@@ -69,22 +69,6 @@ export class ZPersonality extends HTMLElement {
 			if (input) payload[q.id] = q.type === 'range' ? parseInt(input.value) : input.value;
 		});
 
-		// If a theme preset was selected, sync the individual color fields so
-		// initTheme() on next page load picks up the correct palette.
-		const themeSelect = shadow.querySelector<HTMLSelectElement>('.theme-selector');
-		if (themeSelect) {
-			const selectedOpt = themeSelect.options[themeSelect.selectedIndex];
-			const colorsRaw = selectedOpt?.getAttribute('data-colors');
-			if (colorsRaw) {
-				try {
-					const colors = JSON.parse(colorsRaw);
-					payload.color_primary = colors.primary;
-					payload.color_secondary = colors.secondary;
-					payload.color_tertiary = colors.tertiary;
-				} catch { /* not a theme select, ignore */ }
-			}
-		}
-
 		try {
 			const res = await fetch('/api/dashboard/personality', {
 				method: 'PUT',
@@ -191,43 +175,6 @@ export class ZPersonality extends HTMLElement {
 				.range-tag { font-size: 0.65rem; color: var(--text-muted, hsla(0,0%,100%,0.4)); width: 60px; }
 				input[type="range"] { flex: 1; accent-color: var(--accent-primary, hsla(173, 80%, 40%, 1)); cursor: pointer; min-height: 44px; }
 
-				select.theme-selector {
-					background: var(--surface-card-subtle, hsla(0,0%,0%,0.3));
-					border: 1px solid var(--border-subtle, hsla(0,0%,100%,0.1));
-					color: var(--text-primary, hsla(0, 0%, 100%, 1));
-					padding: 10px 12px;
-					border-radius: 0.5rem;
-					width: 100%;
-					box-sizing: border-box;
-					font-family: inherit;
-					font-size: 0.9rem;
-					cursor: pointer;
-					appearance: auto;
-					min-height: 44px;
-				}
-				select.theme-selector:focus-visible { outline: 2px solid var(--accent-primary, hsla(173, 80%, 40%, 1)); outline-offset: 2px; }
-				.theme-swatch {
-					display: flex;
-					gap: 6px;
-					margin-top: 12px;
-					align-items: center;
-					padding-bottom: 8px;
-				}
-				.swatch-dot {
-					width: 24px;
-					height: 24px;
-					border-radius: 50%;
-					border: 1px solid var(--border-subtle, hsla(0,0%,100%,0.15));
-					flex-shrink: 0;
-					transition: transform 0.2s ease;
-				}
-				.swatch-dot:hover { transform: scale(1.1); }
-				.swatch-label {
-					font-size: 0.7rem;
-					color: var(--text-muted, hsla(0,0%,100%,0.4));
-					margin-left: 4px;
-				}
-
 				.actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.25rem; }
 
 
@@ -243,13 +190,12 @@ export class ZPersonality extends HTMLElement {
 				@keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
 				
 				@media (prefers-reduced-motion: reduce) {
-					.tab, .edit-btn, .prot-item, .swatch-dot { transition: none !important; animation: none !important; }
+					.tab, .edit-btn, .prot-item { transition: none !important; animation: none !important; }
 				}
 				@media (forced-colors: active) {
 					.tab.active { border-color: Highlight; color: Highlight; }
 					.prot-item { border-left-color: Highlight; border: 1px solid CanvasText; }
 					input[type="range"] { accent-color: Highlight; }
-					.swatch-dot { border-color: CanvasText; }
 				}
 			</style>
 
@@ -274,7 +220,7 @@ export class ZPersonality extends HTMLElement {
 					
 					${!this.isLoading && this.isEditing ? `
 						<div class="form">
-							${per.questions.filter((q: any) => q.id !== 'agent_name').map((q: any) => `
+							${per.questions.filter((q: any) => q.id !== 'agent_name' && q.type !== 'select').map((q: any) => `
 								<div class="form-group">
 									<label class="form-label">${q.label}</label>
 									${q.type === 'range' ? `
@@ -285,23 +231,7 @@ export class ZPersonality extends HTMLElement {
 										</div>
 									` : q.type === 'textarea' ? `
 										<textarea id="input-${q.id}" placeholder="${q.placeholder}">${per[q.id] || ''}</textarea>
-							` : q.type === 'select' ? (() => {
-				const currentOpt = q.options.find((o: any) => o.value === per[q.id]) || q.options[0];
-				const c = currentOpt?.colors || {};
-				return `
-									<select id="input-${q.id}" class="theme-selector" aria-label="${q.label}">
-										${q.options.map((opt: any) => `
-											<option value="${opt.value}" ${per[q.id] === opt.value ? 'selected' : ''} data-colors='${JSON.stringify(opt.colors)}'>${this.tr('theme_' + opt.value, opt.label)}</option>
-										`).join('')}
-									</select>
-									<div class="theme-swatch" id="swatch-${q.id}" aria-hidden="true">
-										<div class="swatch-dot" style="background: ${c.primary || 'hsla(173, 80%, 40%, 1)'}"></div>
-										<div class="swatch-dot" style="background: ${c.secondary || 'hsla(216, 100%, 50%, 1)'}"></div>
-										<div class="swatch-dot" style="background: ${c.tertiary || 'hsla(239, 84%, 67%, 1)'}"></div>
-										<span class="swatch-label">${currentOpt?.label || ''}</span>
-									</div>
-								`;
-			})() : q.type === 'color' ? `
+							` : q.type === 'color' ? `
 										<div style="display: flex; align-items: center; gap: 1rem;">
 											<input type="color" id="input-${q.id}" value="${per[q.id] || '#ffffff'}" style="width: 40px; height: 32px; padding: 2px; border: none; cursor: pointer; background: transparent;">
 											<span style="font-size: 0.75rem; color: rgba(255,255,255,0.4);">${per[q.id] || ''}</span>
@@ -384,96 +314,6 @@ export class ZPersonality extends HTMLElement {
 			}
 		});
 
-		// ── Live theme preview ──
-		// When the user picks a theme from the select, immediately apply the
-		// palette to the document root so they can see the preview before saving.
-		// Updates BOTH the HSL-decomposed vars (used by --accent-primary computed
-		// token) and the legacy direct mappings, matching initTheme() in main.ts.
-		// Transitions are suppressed to avoid a visible colour flash.
-		const themeSelector = this.shadowRoot.querySelector<HTMLSelectElement>('.theme-selector');
-		if (themeSelector) {
-			themeSelector.addEventListener('change', () => {
-				const selectedOpt = themeSelector.options[themeSelector.selectedIndex];
-				const colorsRaw = selectedOpt.getAttribute('data-colors');
-				if (!colorsRaw) return;
-				try {
-					const colors = JSON.parse(colorsRaw);
-					const hexToRgb = (hex: string) => {
-						const h = hex.replace('#', '');
-						return `${parseInt(h.slice(0, 2), 16)}, ${parseInt(h.slice(2, 4), 16)}, ${parseInt(h.slice(4, 6), 16)}`;
-					};
-					const hexToHsl = (hex: string) => {
-						const h = hex.replace('#', '');
-						const r = parseInt(h.slice(0, 2), 16) / 255;
-						const g = parseInt(h.slice(2, 4), 16) / 255;
-						const b = parseInt(h.slice(4, 6), 16) / 255;
-						const max = Math.max(r, g, b), min = Math.min(r, g, b);
-						let _h = 0, s = 0;
-						const l = (max + min) / 2;
-						if (max !== min) {
-							const d = max - min;
-							s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-							switch (max) {
-								case r: _h = (g - b) / d + (g < b ? 6 : 0); break;
-								case g: _h = (b - r) / d + 2; break;
-								case b: _h = (r - g) / d + 4; break;
-							}
-							_h /= 6;
-						}
-						return { h: Math.round(_h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
-					};
-					const root = document.documentElement;
-
-					// Suppress transitions so the palette swap paints in one
-					// frame with no visible colour animation.
-					root.classList.add('no-transition');
-
-					// Helper: update HSL-decomposed tokens + legacy mapping
-					const applyColor = (prefix: string, hex: string) => {
-						const hsl = hexToHsl(hex);
-						root.style.setProperty(`--${prefix}-h`, hsl.h.toString());
-						root.style.setProperty(`--${prefix}-s`, `${hsl.s}%`);
-						root.style.setProperty(`--${prefix}-l`, `${hsl.l}%`);
-						root.style.setProperty(`--${prefix}-rgb`, hexToRgb(hex));
-						root.style.setProperty(`--${prefix}`, `hsla(${hsl.h}, ${hsl.s}%, ${hsl.l}%, 1)`);
-
-						if (prefix === 'accent-primary') {
-							root.style.setProperty('--accent-color', hex);
-							root.style.setProperty('--accent-color-rgb', hexToRgb(hex));
-							root.style.setProperty('--accent-glow', `rgba(${hexToRgb(hex)}, 0.4)`);
-						} else if (prefix === 'accent-secondary') {
-							root.style.setProperty('--accent-secondary', hex);
-							root.style.setProperty('--accent-secondary-rgb', hexToRgb(hex));
-						} else if (prefix === 'accent-tertiary') {
-							root.style.setProperty('--accent-tertiary', hex);
-						}
-					};
-
-					applyColor('accent-primary', colors.primary);
-					applyColor('accent-secondary', colors.secondary);
-					applyColor('accent-tertiary', colors.tertiary);
-
-					// Re-enable transitions after the browser commits the paint.
-					requestAnimationFrame(() => {
-						requestAnimationFrame(() => {
-							root.classList.remove('no-transition');
-						});
-					});
-
-					// Update the swatch dots in real time
-					const swatchId = 'swatch-' + themeSelector.id.replace('input-', '');
-					const swatchEl = this.shadowRoot!.getElementById(swatchId);
-					if (swatchEl) {
-						const dots = swatchEl.querySelectorAll<HTMLElement>('.swatch-dot');
-						if (dots[0]) dots[0].style.background = colors.primary;
-						if (dots[1]) dots[1].style.background = colors.secondary;
-						if (dots[2]) dots[2].style.background = colors.tertiary;
-						const label = swatchEl.querySelector<HTMLElement>('.swatch-label');
-						if (label) label.textContent = selectedOpt.textContent || '';
-					}
-				} catch { /* ignore JSON parse errors */ }
-			});
-		}
 	}
 }
 
