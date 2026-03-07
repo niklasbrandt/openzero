@@ -43,7 +43,7 @@ export class BriefingHistory extends HTMLElement {
 			if (!response.ok) throw new Error('API error');
 			const data = await response.json();
 			this.displayBriefings(data);
-		} catch (e) {
+		} catch (_e) {
 			const list = this.shadowRoot?.querySelector('#briefing-list');
 			if (list) {
 				list.removeAttribute('role');

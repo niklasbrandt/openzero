@@ -65,7 +65,7 @@ export class CircleManager extends HTMLElement {
 			if (!text) throw new Error('Empty response');
 			const data = JSON.parse(text);
 			this.displayPeople(data);
-		} catch (e) {
+		} catch (_e) {
 			const list = this.shadowRoot?.querySelector('#people-list');
 			if (list) list.textContent = this.tr('no_people', 'No people added to this circle.');
 		}

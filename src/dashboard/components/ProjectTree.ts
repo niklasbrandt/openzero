@@ -75,7 +75,7 @@ export class ProjectTree extends HTMLElement {
 			} else {
 				this.showEmpty();
 			}
-		} catch (e) {
+		} catch (_e) {
 			this.showEmpty();
 		}
 	}
