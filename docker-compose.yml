@@ -1,7 +1,7 @@
 services:
 
   postgres:
-    image: postgres:16.9-alpine3.22
+    image: postgres:16.8-alpine3.21
     restart: always
     # No external port binding — accessed only by internal services
     environment:
@@ -268,7 +268,7 @@ services:
       - internal
 
   redis:
-    image: redis:7.4-alpine3.22
+    image: redis:7.4-alpine3.21
     restart: always
     command: [ "redis-server", "--requirepass", "${REDIS_PASSWORD}" ]
     networks:
