@@ -17,7 +17,7 @@
 
 	color-scheme: dark;
 	color: var(--text-primary, hsla(0, 0%, 100%, 1));
-	background-color: hsla(228, 45%, 4%, 1);
+	background-color: var(--bg-body);
 
 	font-synthesis: none;
 	text-rendering: optimizeLegibility;
@@ -64,8 +64,8 @@
 	--color-success-light: hsla(142, 69%, 58%, 1);
 	--color-warning: hsla(45, 93%, 47%, 1);
 	--color-warning-rgb: 234, 179, 8;
-	--color-danger: hsla(0, 84%, 60%, 1);
-	--color-danger-rgb: 239, 68, 68;
+	--color-danger: hsla(0, 84%, 63%, 1);
+	--color-danger-rgb: 240, 81, 81;
 	--color-danger-light: hsla(0, 91%, 71%, 1);
 	--color-info: hsla(217, 91%, 60%, 1);
 	--color-info-rgb: 59, 130, 246;
