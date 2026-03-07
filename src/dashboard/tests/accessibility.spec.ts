@@ -135,12 +135,16 @@ test('Color contrast: all text passes WCAG AA 4.5:1 in light theme', async ({ pa
 	// axe scans. CSS custom property cascade into open shadow roots is async
 	// after attribute/media changes; calling getComputedStyle on a shadow DOM
 	// element acts as a synchronisation barrier that commits the cascade.
+	// We must flush ALL custom elements, not just z-personality, because each
+	// shadow root maintains its own resolved custom-property cache.
 	await page.evaluate(() => {
-		const hostEl = document.querySelector('z-personality');
-		if (hostEl?.shadowRoot) {
-			const btn = hostEl.shadowRoot.querySelector('button');
-			if (btn) getComputedStyle(btn).color;
-		}
+		document.querySelectorAll('*').forEach((el) => {
+			const sr = (el as Element & { shadowRoot: ShadowRoot | null }).shadowRoot;
+			if (sr) {
+				const e = sr.querySelector('div, button, h1, h2, h3, span, p, a');
+				if (e) { void getComputedStyle(e).color; }
+			}
+		});
 	});
 
 	const results = await new AxeBuilder({ page })
