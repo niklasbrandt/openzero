@@ -580,8 +580,15 @@ async def build_system_prompt(user_name: str, user_profile: dict) -> tuple[str, 
 	personality_directive = await get_agent_personality()
 
 	# Inject personal context as the highest-priority block (zero overhead when empty)
-	from app.services.personal_context import get_personal_context_for_prompt
+	from app.services.personal_context import get_personal_context_for_prompt, refresh_personal_context
 	personal_ctx = get_personal_context_for_prompt()
+	if not personal_ctx:
+		# Cache miss — lazily trigger load in case background startup hasn't completed yet
+		try:
+			await refresh_personal_context()
+			personal_ctx = get_personal_context_for_prompt()
+		except Exception:
+			pass
 	personal_block = ("\n\n" + personal_ctx) if personal_ctx else ""
 
 	formatted_system_prompt = SYSTEM_PROMPT_CHAT.format(

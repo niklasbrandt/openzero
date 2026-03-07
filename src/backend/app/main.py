@@ -76,6 +76,16 @@ async def lifespan(app: FastAPI):
     try:
         logging.info("Starting scheduler...")
         await start_scheduler()
+
+        # Load personal context before the bot starts polling so Z has full
+        # context for any messages that arrive immediately after a restart.
+        try:
+            from app.services.personal_context import refresh_personal_context
+            await refresh_personal_context()
+            logging.info("✓ Personal context pre-loaded before bot start.")
+        except Exception as _pc_err:
+            logging.warning("⚠ Warning: Personal context pre-load failed: %s", _pc_err)
+
         logging.info("Starting Telegram bot...")
         await start_telegram_bot()
         logging.info("Background tasks & bot started.")
