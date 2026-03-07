@@ -1669,9 +1669,9 @@ async def server_info():
 
 			# Thread detection from env (the actual configured value)
 			env_thread_map = {
-				"instant": os.environ.get("LLM_INSTANT_THREADS", "4"),
-				"standard": os.environ.get("LLM_STANDARD_THREADS", "4"),
-				"deep": os.environ.get("LLM_DEEP_THREADS", "6"),
+				"instant": os.environ.get("LLM_INSTANT_THREADS", "7"),
+				"standard": os.environ.get("LLM_STANDARD_THREADS", "7"),
+				"deep": os.environ.get("LLM_DEEP_THREADS", "7"),
 			}
 			configured_threads = int(env_thread_map.get(tier_name, "4"))
 			tier_info["threads"] = configured_threads
