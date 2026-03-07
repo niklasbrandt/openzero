@@ -1698,23 +1698,30 @@ async def server_info():
 @router.get("/llm-config")
 async def get_llm_config():
 	"""Return the configured LLM tier setup for the dashboard."""
+	def _model_display(file_env: str, fallback: str) -> str:
+		"""Derive a human-readable name from the GGUF filename, falling back to the legacy label."""
+		fname = os.environ.get(file_env, "").strip()
+		if fname:
+			return fname.removesuffix(".gguf")
+		return fallback
+
 	return {
 		"tiers": [
 			{
 				"tier": "instant",
-				"model": settings.LLM_MODEL_INSTANT,
+				"model": _model_display("LLM_INSTANT_MODEL_FILE", settings.LLM_MODEL_INSTANT),
 				"use_case": "Greetings, confirmations, trivial Q&A, memory distillation",
 				"threads": int(os.environ.get("LLM_INSTANT_THREADS", "0")),
 			},
 			{
 				"tier": "standard",
-				"model": settings.LLM_MODEL_STANDARD,
+				"model": _model_display("LLM_STANDARD_MODEL_FILE", settings.LLM_MODEL_STANDARD),
 				"use_case": "Normal conversation, moderate reasoning, tool-intent",
 				"threads": int(os.environ.get("LLM_STANDARD_THREADS", "0")),
 			},
 			{
 				"tier": "deep",
-				"model": settings.LLM_MODEL_DEEP,
+				"model": _model_display("LLM_DEEP_MODEL_FILE", settings.LLM_MODEL_DEEP),
 				"use_case": "Complex reasoning, briefings, creative, strategic analysis",
 				"threads": int(os.environ.get("LLM_DEEP_THREADS", "0")),
 			},
