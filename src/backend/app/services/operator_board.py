@@ -82,7 +82,7 @@ class OperatorBoardService:
 				if resp.status_code == 200:
 					return self._project_id, self._board_id
 			except Exception:
-				pass
+				logger.debug("Planka project cache stale, falling through to search")
 			# Cache stale -- fall through to search
 
 		# 1. Get/Create Project -- match against ALL translated project names

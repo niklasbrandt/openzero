@@ -296,7 +296,7 @@ async def load_custom_tasks():
 									if v_int >= 1:
 										kwargs[k.strip()] = v_int
 								except ValueError:
-									pass
+									pass  # non-integer spec value -- skip this key
 					if not kwargs:
 						logger.warning("Skipping custom task '%s': invalid interval spec '%s'", t.name, t.spec)
 						continue
