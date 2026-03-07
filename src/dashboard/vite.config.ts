@@ -38,12 +38,29 @@ function fontPreloadPlugin(): Plugin {
 	}
 }
 
+const LAZY_COMPONENTS = [
+	'ProjectTree', 'MemorySearch', 'BriefingHistory', 'EmailRules',
+	'CircleManager', 'CreateProject', 'CalendarAgenda', 'CalendarManager',
+	'WelcomeOnboarding', 'HardwareMonitor', 'SoftwareStatus',
+	'SystemBenchmark', 'ZPersonality',
+]
+
 export default defineConfig({
 	root: '.',
 	build: {
 		outDir: 'dist',
 		assetsDir: 'dashboard-assets',
 		emptyOutDir: true,
+		rollupOptions: {
+			output: {
+				manualChunks(id: string) {
+					if (id.includes('node_modules')) return 'vendor'
+					if (LAZY_COMPONENTS.some((c) => id.includes(`/components/${c}`))) {
+						return 'lazy-components'
+					}
+				},
+			},
+		},
 	},
 	plugins: [fontPreloadPlugin()],
 	server: {
