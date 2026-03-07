@@ -241,7 +241,21 @@ The dashboard is protected by a bearer token. You must set one before the backen
 > [!IMPORTANT]
 > If the backend returns HTTP 500 on every dashboard request, the `DASHBOARD_TOKEN` env var is missing or empty. Set it and restart the backend container: `docker compose up -d --no-deps backend`.
 
-### 5c. Set Up Personal Context Folder
+### 5c. Cloud LLM PII Sanitization (Optional)
+
+When routing requests to cloud providers (Groq, OpenAI), openZero can automatically strip named entities (people, emails, phone numbers, locations, organisations) from outbound prompts using a fully offline spaCy NER model. Responses are re-hydrated with the real values before being returned.
+
+- **No manual setup required.** The `en_core_web_sm` spaCy model (~12 MB) is downloaded and baked into the Docker image at build time. It adds approximately 30 seconds to the first `docker build`.
+- **Enabled by default** for all cloud provider calls when `LLM_PROVIDER=groq` or `LLM_PROVIDER=openai`.
+- To **disable globally**, add the following to your `.env`:
+
+    ```env
+    CLOUD_LLM_SANITIZE=false
+    ```
+
+- Callers can also opt out per-call by passing `sanitize=False` to `chat()` or `chat_with_context()` directly in code (e.g. for code-generation payloads where no PII is present).
+
+### 5d. Set Up Personal Context Folder
 
 The `personal/` folder is the highest-authority context source for Z. Files here are injected into every system prompt and refreshed every hour.
 

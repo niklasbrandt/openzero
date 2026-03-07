@@ -78,6 +78,9 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: Optional[str] = None
     DEEP_THINK_PROVIDER: Optional[str] = None
     DEEP_THINK_MODEL: Optional[str] = None
+    # PII sanitization for outbound cloud LLM calls (Groq, OpenAI)
+    # Set to false to disable for all cloud providers globally.
+    CLOUD_LLM_SANITIZE: bool = True
     
     # Scheduling
     TASK_BOARD_SYNC_INTERVAL_MINUTES: int = 5
