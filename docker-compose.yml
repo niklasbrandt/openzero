@@ -57,7 +57,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '4.0'
+          cpus: '7.0'
     networks:
       - llm
 
@@ -85,7 +85,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '6.0'
+          cpus: '7.0'
     networks:
       - llm
 
@@ -113,7 +113,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '6.0'
+          cpus: '7.0'
     networks:
       - llm
 
