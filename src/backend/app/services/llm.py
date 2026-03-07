@@ -767,6 +767,13 @@ async def chat_stream(
 		# deep tier can think — CoT improves briefing quality, blocks get stripped.
 		request_thinking = tier_name == "deep"
 
+		# Qwen3 /no_think injection: the API-level "thinking: false" flag is not
+		# reliably honoured by all llama.cpp builds.  Appending /no_think to the
+		# system message is the authoritative way to suppress the reasoning phase
+		# for instant and standard tiers so content tokens are not eaten by CoT.
+		if not request_thinking:
+			messages[0]["content"] = messages[0]["content"] + "\n/no_think"
+
 		# Tier-aware read timeout — instant must fail fast, not hang for minutes.
 		read_timeout = TIER_TIMEOUTS.get(tier_name, 90.0)
 		# Instant tier: single attempt then fall back to standard (CPU may be loaded).
