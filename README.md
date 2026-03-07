@@ -32,11 +32,11 @@ A 3-tier **llama.cpp** architecture runs optimized GGUF models directly on your 
 
 | Tier         | Model                        | Purpose                                                    | Typical Speed |
 | :----------- | :--------------------------- | :--------------------------------------------------------- | :------------ |
-| **Instant**  | Phi-4-mini-instruct (Q4_K_M) | Greetings, confirmations, trivial Q&A, memory distillation | 5-12 tok/s    |
+| **Instant**  | Qwen3-1.7B (Q4_K_M)          | Greetings, confirmations, trivial Q&A, memory distillation | 8-18 tok/s    |
 | **Standard** | Qwen3-8B (Q4_K_M)           | Conversation, creative tasks, planning, agent actions      | 2-5 tok/s     |
 | **Deep**     | Qwen3-14B (Q4_K_M)          | Complex analysis, briefings, strategic reasoning           | 1-3 tok/s     |
 
-Qwen3-8B benchmarks on-par with Qwen2.5-14B; Qwen3-14B on-par with Qwen2.5-32B — at the same RAM footprint as their predecessors. Qwen3-14B also supports hybrid thinking mode (CoT blocks are stripped from user-facing output automatically).
+All three tiers use the Qwen3 generation (Apache 2.0). Qwen3-8B benchmarks on-par with Qwen2.5-14B; Qwen3-14B on-par with Qwen2.5-32B — at the same RAM footprint as their predecessors. Qwen3-14B also supports hybrid thinking mode (CoT blocks are stripped from user-facing output automatically).
 
 Cloud reasoning is only engaged via a "Disclosure Proposal" workflow for shared memories -- never silently.
 
@@ -332,7 +332,7 @@ Edit both files with your real personal details, then start the stack.
 First-time builds and model downloads incur significant durations:
 
 - **Cold Builds:** Using `--no-cache` or major dependency updates can take 45-60 minutes for pip resolution.
-- **Model Downloads:** The 3-tier LLM models total approximately 12GB (phi-4-mini ~2.5GB, Llama 8B ~4.5GB, Qwen 14B ~8.5GB). Download time depends on your server's bandwidth.
+- **Model Downloads:** The 3-tier LLM models total approximately 15GB (Qwen3-1.7B ~1.1GB, Qwen3-8B ~5GB, Qwen3-14B ~9GB). Download time depends on your server's bandwidth.
 - **Media Engines:** Pulling the voice engines (Whisper and Coqui TTS) requires approximately 6GB of model data. Depending on network speed, this may total 2-3 hours for a complete first-time setup.
 - **Subsequent Starts:** Once images and models are cached, the stack starts in seconds.
 
