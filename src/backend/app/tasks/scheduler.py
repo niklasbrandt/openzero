@@ -332,8 +332,9 @@ async def check_pihole_dns():
 
 	try:
 		result = subprocess.run(
-			["dig", "@host.docker.internal", "open.zero", "+short", "+time=3", "+tries=1"],
-			capture_output=True, text=True, timeout=8
+			["docker", "exec", "openzero-pihole-1", "dig",
+			 "@127.0.0.1", "open.zero", "+short", "+time=3", "+tries=1"],
+			capture_output=True, text=True, timeout=10
 		)
 		dns_ok = result.returncode == 0 and result.stdout.strip() != ""
 	except Exception as e:

@@ -208,6 +208,8 @@ services:
       - gmail_tokens:/app/tokens
       - /var/run/docker.sock:/var/run/docker.sock
       - ./personal:/app/personal:ro
+    group_add:
+      - "988"  # docker socket GID on VPS host (getent group docker | cut -d: -f3)
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
