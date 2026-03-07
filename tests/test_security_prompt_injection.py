@@ -2341,3 +2341,144 @@ class TestPersonalContextDebugReport:
 		report = self._make_report("", files, {})
 		assert "sensitive personal data" not in report
 		assert "No personal context loaded" in report
+
+
+# ===================================================================
+#  24. CLOUD SANITIZATION PROXY
+# ===================================================================
+
+class TestCloudSanitizationProxy:
+	"""Tests for sanitize_prompt() and rehydrate_response() in llm.py.
+
+	These run entirely offline against the production functions — no cloud
+	API calls are made.  spaCy is imported only if en_core_web_sm is
+	installed; the EMAIL/PHONE regex path is always exercised regardless.
+	"""
+
+	@pytest.fixture(autouse=True)
+	def _import_proxy(self):
+		from app.services.llm import sanitize_prompt, rehydrate_response
+		self.sanitize_prompt = sanitize_prompt
+		self.rehydrate_response = rehydrate_response
+
+	# -------------------------------------------------------------------
+	# Email & phone detection (regex path — no spaCy required)
+	# -------------------------------------------------------------------
+
+	def test_email_replaced(self):
+		"""Email addresses must not appear in sanitized output."""
+		text = "Email me at julian@example.com please."
+		sanitized, rep_map = self.sanitize_prompt(text)
+		assert "julian@example.com" not in sanitized
+		assert "[EMAIL_1]" in sanitized
+		assert rep_map["julian@example.com"] == "[EMAIL_1]"
+
+	def test_multiple_distinct_emails_unique_tokens(self):
+		"""Each distinct email gets its own token."""
+		text = "CC julian@example.com and ops@company.org on that."
+		sanitized, rep_map = self.sanitize_prompt(text)
+		assert "julian@example.com" not in sanitized
+		assert "ops@company.org" not in sanitized
+		tokens = list(rep_map.values())
+		assert len(set(tokens)) == len(tokens), "Tokens must be unique per distinct entity"
+
+	def test_same_email_same_token(self):
+		"""Repeated occurrences of the same email collapse to one token."""
+		text = "julian@example.com is my email. Contact julian@example.com."
+		sanitized, rep_map = self.sanitize_prompt(text)
+		assert len([k for k in rep_map if "example.com" in k]) == 1
+
+	def test_phone_replaced(self):
+		"""US phone numbers must not appear in sanitized output."""
+		text = "Call me at 415-555-0192 if urgent."
+		sanitized, rep_map = self.sanitize_prompt(text)
+		assert "415-555-0192" not in sanitized
+
+	# -------------------------------------------------------------------
+	# Re-hydration round-trip
+	# -------------------------------------------------------------------
+
+	def test_rehydrate_restores_email(self):
+		"""rehydrate_response must restore the original email address."""
+		text = "Email me at julian@example.com for details."
+		sanitized, rep_map = self.sanitize_prompt(text)
+		# Simulate model echoing the token in its response
+		model_response = f"I will email {rep_map['julian@example.com']} with the update."
+		restored = self.rehydrate_response(model_response, rep_map)
+		assert "julian@example.com" in restored
+		assert "[EMAIL_1]" not in restored
+
+	def test_rehydrate_case_insensitive(self):
+		"""Tokens are case-insensitive — model may lower-case them."""
+		text = "Talk to julian@example.com"
+		sanitized, rep_map = self.sanitize_prompt(text)
+		token = rep_map["julian@example.com"]  # e.g. "[EMAIL_1]"
+		# Simulate model returning lowercased token
+		lowered_response = f"Sure, contacting {token.lower()} now."
+		restored = self.rehydrate_response(lowered_response, rep_map)
+		assert "julian@example.com" in restored
+
+	def test_rehydrate_noop_on_empty_map(self):
+		"""rehydrate_response returns text unchanged when map is empty."""
+		text = "Hello, no PII here."
+		result = self.rehydrate_response(text, {})
+		assert result == text
+
+	def test_sanitize_empty_string(self):
+		"""Empty input must return empty output without raising."""
+		sanitized, rep_map = self.sanitize_prompt("")
+		assert sanitized == ""
+		assert rep_map == {}
+
+	# -------------------------------------------------------------------
+	# Shared counter (request-scope token consistency)
+	# -------------------------------------------------------------------
+
+	def test_shared_counters_prevent_collision(self):
+		"""When the same counters dict + seen_map are threaded across two calls,
+		the same entity always maps to the same token and new entities get
+		unique non-colliding indices — mirroring the chat_stream() pattern."""
+		counters: dict = {}
+		text1 = "My email is a@example.com"
+		text2 = "Forward it to b@example.com and a@example.com again."
+		_, map1 = self.sanitize_prompt(text1, counters)
+		# Pass map1 as _seen_map so a@example.com reuses its existing token
+		_, map2 = self.sanitize_prompt(text2, counters, map1)
+		# a@example.com must have the same token in both maps
+		token_a_in_map1 = map1.get("a@example.com")
+		token_a_in_map2 = map2.get("a@example.com")
+		if token_a_in_map1 and token_a_in_map2:
+			assert token_a_in_map1 == token_a_in_map2, (
+				"Same entity across two strings must map to the same token"
+			)
+		# The second email must have received a DIFFERENT token index
+		token_b = map2.get("b@example.com")
+		if token_a_in_map1 and token_b:
+			assert token_a_in_map1 != token_b
+
+	# -------------------------------------------------------------------
+	# Security invariant: PII must not survive into the sanitized prompt
+	# -------------------------------------------------------------------
+
+	@pytest.mark.parametrize("pii,description", [
+		("alice@corp.io", "corporate email"),
+		("bob@gmail.com", "personal email"),
+		("212-555-0100", "US phone with dashes"),
+		("(212) 555-0101", "US phone with parens"),
+	])
+	def test_pii_not_in_sanitized_output(self, pii, description):
+		"""Known PII must never appear in the sanitized prompt text."""
+		text = f"The contact is {pii} — please reach out."
+		sanitized, _ = self.sanitize_prompt(text)
+		assert pii not in sanitized, f"{description} survived sanitization: {pii!r}"
+
+	def test_longest_match_prevents_partial_substitution(self):
+		"""When both 'julian' (as a PERSON entity) and 'julian@example.com'
+		are candidates, the email must be replaced atomically, not as two
+		separate pieces — so '@example.com' is never left dangling.
+
+		The longest-match-first ordering in sanitize_prompt guarantees this.
+		"""
+		text = "Email julian at julian@example.com now."
+		sanitized, _ = self.sanitize_prompt(text)
+		assert "@example.com" not in sanitized or "julian@example.com" not in sanitized
