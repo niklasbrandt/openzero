@@ -234,7 +234,7 @@ def _get_nlp():
 		try:
 			import spacy  # noqa: PLC0415
 			_nlp = spacy.load("en_core_web_sm")
-		except OSError:
+		except (OSError, ImportError):
 			logger.warning(
 				"cloud_sanitize: en_core_web_sm not found — run "
 				"`python -m spacy download en_core_web_sm`. "
@@ -269,15 +269,23 @@ _PHONE_RE = re.compile(
 )
 
 
-def sanitize_prompt(text: str, _counters: dict | None = None) -> tuple[str, dict[str, str]]:
+def sanitize_prompt(
+	text: str,
+	_counters: dict | None = None,
+	_seen_map: dict | None = None,
+) -> tuple[str, dict[str, str]]:
 	"""Strip PII entities from *text* using regex + offline spaCy NER.
 
 	Returns a ``(sanitized_text, replacement_map)`` tuple where
 	``replacement_map`` maps original strings → opaque tokens.
 
-	The caller may pass an existing *_counters* dict so that entity counters
-	are shared across multiple strings (e.g. user_message + system_prompt)
-	within one request, which ensures tokens are consistent and do not collide.
+	*_counters*: shared dict of ``{"EMAIL": int, ...}`` so index numbers do
+	not repeat when the same caller sanitizes multiple strings per request
+	(e.g. user_message then system_prompt).
+
+	*_seen_map*: a previously built replacement_map.  When provided, entities
+	already mapped there get the SAME token instead of a new one, guaranteeing
+	that the final merged map is consistent and every token re-hydrates correctly.
 
 	The replacement map lives in function-call scope only — it is never logged
 	(with real values) or persisted anywhere.
@@ -289,22 +297,27 @@ def sanitize_prompt(text: str, _counters: dict | None = None) -> tuple[str, dict
 	if _counters is None:
 		_counters = {}
 
+	_seen_map = _seen_map or {}
 	replacement_map: dict[str, str] = {}
+
+	def _get_or_create_token(original: str, category: str) -> str:
+		"""Return an existing token from _seen_map or mint a new one."""
+		if original in _seen_map:
+			return _seen_map[original]
+		idx = _counters.get(category, 0) + 1
+		_counters[category] = idx
+		return f"[{category}_{idx}]"
 
 	# --- Step 1: Regex scan (EMAIL, PHONE) ---
 	for match in _EMAIL_RE.finditer(text):
 		original = match.group(0)
 		if original not in replacement_map:
-			idx = _counters.get("EMAIL", 0) + 1
-			_counters["EMAIL"] = idx
-			replacement_map[original] = f"[EMAIL_{idx}]"
+			replacement_map[original] = _get_or_create_token(original, "EMAIL")
 
 	for match in _PHONE_RE.finditer(text):
 		original = match.group(0).strip()
 		if original and original not in replacement_map:
-			idx = _counters.get("PHONE", 0) + 1
-			_counters["PHONE"] = idx
-			replacement_map[original] = f"[PHONE_{idx}]"
+			replacement_map[original] = _get_or_create_token(original, "PHONE")
 
 	# --- Step 2: spaCy NER scan ---
 	nlp = _get_nlp()
@@ -318,9 +331,7 @@ def sanitize_prompt(text: str, _counters: dict | None = None) -> tuple[str, dict
 			if original in replacement_map:
 				continue  # already covered by regex or earlier NER hit
 			prefix = _LABEL_PREFIX[label]
-			idx = _counters.get(prefix, 0) + 1
-			_counters[prefix] = idx
-			replacement_map[original] = f"[{prefix}_{idx}]"
+			replacement_map[original] = _get_or_create_token(original, prefix)
 
 	if not replacement_map:
 		return text, {}
@@ -788,7 +799,7 @@ async def chat_stream(
 		if sanitize and settings.CLOUD_LLM_SANITIZE:
 			_counters: dict = {}
 			outbound_message, _m1 = sanitize_prompt(user_message, _counters)
-			outbound_system, _m2 = sanitize_prompt(system_prompt, _counters)
+			outbound_system, _m2 = sanitize_prompt(system_prompt, _counters, _seen_map=_m1)
 			rep_map = {**_m1, **_m2}
 			logger.debug("cloud_sanitize[groq]: %d entities replaced in outbound prompt", len(rep_map))
 		try:
@@ -823,7 +834,7 @@ async def chat_stream(
 		if sanitize and settings.CLOUD_LLM_SANITIZE:
 			_counters = {}
 			outbound_message, _m1 = sanitize_prompt(user_message, _counters)
-			outbound_system, _m2 = sanitize_prompt(system_prompt, _counters)
+			outbound_system, _m2 = sanitize_prompt(system_prompt, _counters, _seen_map=_m1)
 			rep_map = {**_m1, **_m2}
 			logger.debug("cloud_sanitize[openai]: %d entities replaced in outbound prompt", len(rep_map))
 		try:

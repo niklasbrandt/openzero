@@ -329,7 +329,8 @@ First-time builds and model downloads incur significant durations:
 
 The build follows a strict privacy-first model:
 
-- **All AI processing remains local** by default. No data leaves your server unless you explicitly use Gmail/Google Calendar APIs.
+- **All AI processing remains local** by default. No data leaves your server unless you explicitly use Gmail/Google Calendar APIs or a cloud LLM provider.
+- **Cloud LLM PII sanitization** strips all named entities (people, emails, phone numbers, locations, organisations) from outbound prompts using an offline spaCy NER model before they reach cloud APIs (Groq, OpenAI). Responses are re-hydrated with real values before returning to the caller. The replacement map is request-scoped only — never logged or persisted.
 - **Tailscale + UFW** enforce a closed perimeter. Port 80 is restricted to the Tailscale interface via `ufw allow in on tailscale0`. The public internet has no reachable entry point.
 - **Pi-hole** blocks telemetry from all containers, ensuring no Docker image phones home.
 - **Backups** remain local and under physical control. No cloud backup service is used.
