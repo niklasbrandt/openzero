@@ -1791,13 +1791,21 @@ async def benchmark_llm(tier: str = "instant"):
 		first_token_time = None
 		token_count = 0
 
+		# Qwen3 models consume all tokens in the reasoning phase if thinking is
+		# not suppressed — inject /no_think for instant/standard so the tokens
+		# budget goes to actual output, not CoT.
+		bench_messages: list[dict] = []
+		if tier != "deep":
+			bench_messages.append({"role": "system", "content": "/no_think"})
+		bench_messages.append({"role": "user", "content": prompt})
+
 		async with httpx.AsyncClient(timeout=120) as client:
 			async with client.stream(
 				"POST",
 				f"{base_url}/v1/chat/completions",
 				json={
 					"model": "local",
-					"messages": [{"role": "user", "content": prompt}],
+					"messages": bench_messages,
 					"stream": True,
 					"max_tokens": 60,
 					"temperature": 0.0,
