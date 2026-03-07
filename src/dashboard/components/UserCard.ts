@@ -319,7 +319,7 @@ export class UserCard extends HTMLElement {
 				.edit-btn {
 					background: var(--surface-card, hsla(0,0%,100%,0.05));
 					border: 1px solid var(--border-subtle, hsla(0,0%,100%,0.1));
-					color: var(--accent-primary, hsla(173, 80%, 40%, 1));
+					color: var(--accent-text, var(--accent-primary, hsla(173, 80%, 40%, 1)));
 					padding: 6px 12px;
 					font-size: 0.7rem;
 					cursor: pointer;
@@ -419,7 +419,7 @@ export class UserCard extends HTMLElement {
 
 				.goals-section h3 { 
 					font-size: 0.7rem; 
-					color: var(--accent-primary, hsla(173, 80%, 40%, 1)); 
+					color: var(--accent-text, var(--accent-primary, hsla(173, 80%, 40%, 1))); 
 					text-transform: uppercase; 
 					margin: 1rem 0 0.5rem 0;
 					display: flex;
