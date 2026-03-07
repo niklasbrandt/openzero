@@ -43,7 +43,8 @@ _CONTROL_TOKEN_PATTERNS: list[str] = [
 # Qwen3 thinking-mode block regex: strip <think>...</think> from LLM output.
 # Qwen3 models emit a CoT block before the answer when thinking is enabled.
 # We strip it so users only see the final response, regardless of tier.
-_THINK_BLOCK_RE = re.compile(r"<think>.*?</think>", re.DOTALL | re.IGNORECASE)
+# Use [\s\S]*? instead of .* with DOTALL to avoid backtracking on adversarial input.
+_THINK_BLOCK_RE = re.compile(r"<think>[\s\S]*?</think>", re.IGNORECASE)
 
 # Regex that matches any of the control tokens (escaped for literal matching).
 _CONTROL_TOKEN_RE = re.compile(
@@ -1002,7 +1003,7 @@ async def chat_with_context(
 			if result and "No memories found" not in result and "Memory system" not in result:
 				# Strip any action tags that may have been poisoned into memory
 				# (Finding 3 -- action tags must only come from assistant responses)
-				result = re.sub(r'\[ACTION:.*?\]', '', result, flags=re.IGNORECASE | re.DOTALL)
+				result = re.sub(r'\[ACTION:[^\]]*\]', '', result, flags=re.IGNORECASE)
 				result = result.strip()
 				if result:
 					return f"RELEVANT MEMORIES:\n{result}"
@@ -1242,7 +1243,7 @@ async def chat_stream_with_context(
 					logger.warning("llm: adversarial pattern in retrieved memory — blocked from chat_with_context")
 					return ""
 				# Strip any action tags that may have been poisoned into memory
-				result = re.sub(r'\[ACTION:.*?\]', '', result, flags=re.IGNORECASE | re.DOTALL)
+				result = re.sub(r'\[ACTION:[^\]]*\]', '', result, flags=re.IGNORECASE)
 				result = result.strip()
 				if result:
 					return f"RELEVANT MEMORIES:\n{result}"

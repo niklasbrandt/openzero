@@ -52,9 +52,9 @@ async def run_backup():
 		if result.returncode == 0:
 			logger.info("Backup completed successfully.")
 		else:
-			logger.error(f"Backup script failed with exit code {result.returncode}: {result.stderr}")
+			logger.error("Backup script failed with exit code %s: %s", result.returncode, result.stderr)
 	except Exception as e:
-		logger.error(f"Automated backup failed: {e}")
+		logger.error("Automated backup failed: %s", e)
 
 async def start_scheduler():
 	# 1. Identify user's actual timezone and preferred briefing time
@@ -66,9 +66,9 @@ async def start_scheduler():
 	try:
 		# Configure scheduler with correct timezone to respect DST
 		scheduler.configure(timezone=pytz.timezone(user_tz_str))
-		logger.info(f"Scheduler initialized with timezone: {user_tz_str}")
+		logger.info("Scheduler initialized with timezone: %s", user_tz_str)
 	except Exception:
-		logger.error(f"Invalid timezone configuration: {user_tz_str}. Falling back to UTC.")
+		logger.error("Invalid timezone configuration: %s. Falling back to UTC.", user_tz_str)
 		scheduler.configure(timezone=pytz.utc)
 
 	brief_hour, brief_min = 7, 30 # Default
@@ -82,12 +82,12 @@ async def start_scheduler():
 				if len(parts) == 2:
 					brief_hour, brief_min = int(parts[0]), int(parts[1])
 	except Exception as e:
-		logger.warning(f"Failed to fetch dynamic briefing time: {e}")
+		logger.warning("Failed to fetch dynamic briefing time: %s", e)
 
 	# Log the precise next triggers for debugging
 	tz = pytz.timezone(user_tz_str)
 	now = datetime.now(tz)
-	logger.info(f"System Time Check: {now.strftime('%Y-%m-%d %H:%M:%S %Z')} (Offset: {now.utcoffset()})")
+	logger.info("System Time Check: %s (Offset: %s)", now.strftime('%Y-%m-%d %H:%M:%S %Z'), now.utcoffset())
 
 	# Morning Briefing — Every day at Configured Time
 	scheduler.add_job(
@@ -218,7 +218,7 @@ async def start_scheduler():
 	)
 
 	scheduler.start()
-	logger.info(f"Z: Missions scheduled. Morning Briefing set to {brief_hour:02d}:{brief_min:02d} {user_tz_str}")
+	logger.info("Z: Missions scheduled. Morning Briefing set to %02d:%02d %s", brief_hour, brief_min, user_tz_str)
 
 async def cleanup_pending_thoughts():
 	"""Delete PendingThought rows older than 24 hours."""

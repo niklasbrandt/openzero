@@ -163,7 +163,7 @@ async def _extract_text(path: Path) -> Optional[str]:
 
 _BLANK_LINE_RE = re.compile(r'\n{3,}')
 _HR_RE = re.compile(r'^[-=*]{3,}\s*$', re.MULTILINE)
-_HTML_COMMENT_RE = re.compile(r'<!--.*?-->', re.DOTALL)
+_HTML_COMMENT_RE = re.compile(r'<!--[\s\S]*?-->')
 _BOILERPLATE_RE = re.compile(
 	r'^>?\s*This file (gives|provides|contains) the agent.*$', re.MULTILINE | re.IGNORECASE
 )
