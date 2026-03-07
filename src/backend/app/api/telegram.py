@@ -25,11 +25,14 @@ bot_app: Application | None = None
 async def _get_stats_footer() -> str:
 	"""Consolidated stats/footer for Z's messages (no links)."""
 	from app.services.memory import get_memory_stats
+	from app.services.llm import last_model_used
 	stats = await get_memory_stats()
 	lang = await get_user_lang()
 	t = get_translations(lang)
-	
-	stats_text = f"{t.get('memories_found', 'Memories')}: {stats['points']}" if stats['status'] != 'error' else f"{t.get('memory_search', 'Memory')}: Offline"
+
+	model_name = last_model_used.get() or "local"
+	model_tag = f" · {model_name}"
+	stats_text = f"{t.get('memories_found', 'Memories')}: {stats['points']}{model_tag}" if stats['status'] != 'error' else f"{t.get('memory_search', 'Memory')}: Offline"
 	return f"\n\n<i>{stats_text}</i>"
 
 def get_nav_markup(t: Optional[dict] = None, token: str = "") -> InlineKeyboardMarkup:
