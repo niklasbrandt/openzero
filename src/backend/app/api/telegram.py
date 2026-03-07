@@ -285,7 +285,7 @@ async def start_telegram_bot():
 			await _recover_unanswered_messages()
 
 		except Exception as e:
-			logging.error(f"FAILED to send Telegram startup greeting: {e}")
+			logging.error("FAILED to send Telegram startup greeting: %s", e)
 
 	# Launch greeting in background
 	asyncio.create_task(send_startup_greeting())
@@ -347,7 +347,7 @@ async def _recover_unanswered_messages():
 		)
 		logger.info("Restart recovery: response delivered.")
 	except Exception as e:
-		logging.error(f"Restart recovery failed: {e}")
+		logging.error("Restart recovery failed: %s", e)
 
 async def stop_telegram_bot():
 	"""Gracefully stop the bot."""
@@ -360,7 +360,7 @@ async def stop_telegram_bot():
 				await bot_app.stop()
 			await bot_app.shutdown()
 		except Exception as e:
-			logging.warning(f"Telegram shutdown warning (non-fatal): {e}")
+			logging.warning("Telegram shutdown warning (non-fatal): %s", e)
 
 async def send_notification(text: str, reply_markup=None):
 	"""Send a message to the owner wrapped in an HTML blockquote island."""

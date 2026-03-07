@@ -18,6 +18,9 @@ Python (using ast module):
 	py/mixed-returns            function has both `return` and `return <value>`
 	py/stack-trace-exposure     exception variable interpolated into a value
 	                            that is returned or appended to a list
+	py/log-injection            logger.* call whose first argument is an f-string
+	py/polynomial-redos         re.* call with DOTALL flag that contains `.*`
+	py/variable-defined-multiple-times  same name assigned twice at module level
 
 TypeScript (regex-based heuristic):
 	js/useless-assignment-to-local  local variable assigned a non-trivial
@@ -472,3 +475,155 @@ class TestTypeScriptUselessAssignment:
 			"(CodeQL js/useless-assignment-to-local):\n"
 			+ "\n".join(f"  {h}" for h in hits)
 		)
+
+
+# ---------------------------------------------------------------------------
+# New Python security checks
+# ---------------------------------------------------------------------------
+
+class TestPythonLogFStringInjection:
+	"""
+	py/log-injection -- logger calls that use an f-string as the first argument
+	are vulnerable to log injection because the formatted string is evaluated
+	before the logger can apply its safe `%`-style interpolation.
+
+	Correct pattern:  logger.warning("msg: %s", variable)
+	Bad pattern:      logger.warning(f"msg: {variable}")
+	"""
+
+	_LOGGER_METHODS = frozenset({"debug", "info", "warning", "error", "critical", "exception"})
+
+	def _collect(self) -> List[str]:
+		hits: List[str] = []
+		for path in PY_SOURCES:
+			tree = _parse(path)
+			if tree is None:
+				continue
+			for node in ast.walk(tree):
+				if not isinstance(node, ast.Call):
+					continue
+				# Detect logger.<method>(f"...", ...) or log.<method>(f"...", ...)
+				func = node.func
+				if not (
+					isinstance(func, ast.Attribute)
+					and func.attr in self._LOGGER_METHODS
+					and node.args
+					and isinstance(node.args[0], ast.JoinedStr)
+				):
+					continue
+				hits.append(
+					f"{_loc(path, node.lineno)}  "
+					f"logger.{func.attr}(f\"...\") -- use %s format instead"
+				)
+		return hits
+
+	def test_no_log_fstring(self) -> None:
+		hits = self._collect()
+		assert not hits, (
+			"Logger calls using f-strings are vulnerable to log injection "
+			"(CodeQL py/log-injection):\n"
+			+ "\n".join(f"  {h}" for h in hits)
+		)
+
+
+class TestPythonPolynomialRegex:
+	"""
+	py/polynomial-redos -- re.* calls that combine DOTALL flag with `.*` or `.*?`
+	are at risk of polynomial backtracking on adversarial input.
+
+	The safe alternative is to use character-class negation: `[^\n]*` or `[^]]*`.
+	"""
+
+	_RE_FUNCS = frozenset({"compile", "sub", "search", "match", "fullmatch", "findall", "finditer"})
+	_DOTALL_NAMES = frozenset({"DOTALL", "S"})
+
+	def _has_dotall_flag(self, node: ast.Call) -> bool:
+		"""Return True if the call references re.DOTALL or re.S anywhere in its args/kwargs."""
+		for arg in list(node.args) + [kw.value for kw in node.keywords]:
+			for subnode in ast.walk(arg):
+				if isinstance(subnode, ast.Attribute) and subnode.attr in self._DOTALL_NAMES:
+					return True
+				if isinstance(subnode, ast.Name) and subnode.id in self._DOTALL_NAMES:
+					return True
+		return False
+
+	def _first_arg_has_dotstar(self, node: ast.Call) -> bool:
+		"""Return True if the first positional argument (pattern) contains .* or .*?"""
+		if not node.args:
+			return False
+		first = node.args[0]
+		# Handle re.compile("...", flags) and re.sub("...", ...)
+		if isinstance(first, ast.Constant) and isinstance(first.value, str):
+			return bool(re.search(r"\.\*", first.value))
+		return False
+
+	def _collect(self) -> List[str]:
+		hits: List[str] = []
+		for path in PY_SOURCES:
+			tree = _parse(path)
+			if tree is None:
+				continue
+			for node in ast.walk(tree):
+				if not isinstance(node, ast.Call):
+					continue
+				func = node.func
+				if not (
+					isinstance(func, ast.Attribute)
+					and func.attr in self._RE_FUNCS
+				):
+					continue
+				if self._has_dotall_flag(node) and self._first_arg_has_dotstar(node):
+					hits.append(
+						f"{_loc(path, node.lineno)}  "
+						f"re.{func.attr}() with DOTALL + .* pattern -- use [^\\n]* or [^\\]]*"
+					)
+		return hits
+
+	def test_no_polynomial_regex(self) -> None:
+		hits = self._collect()
+		assert not hits, (
+			"re.* calls combining DOTALL with .* may cause polynomial backtracking "
+			"(CodeQL py/polynomial-redos):\n"
+			+ "\n".join(f"  {h}" for h in hits)
+		)
+
+
+class TestDuplicateModuleLevelVar:
+	"""
+	py/variable-defined-multiple-times -- the same name assigned more than once
+	at module scope (top-level ast.Assign statements). The second definition
+	silently shadows the first, which usually indicates a copy-paste error or
+	accidental duplication of large data structures like translation dicts.
+	"""
+
+	def _collect(self) -> List[str]:
+		hits: List[str] = []
+		for path in PY_SOURCES:
+			tree = _parse(path)
+			if tree is None:
+				continue
+			seen: dict[str, int] = {}
+			for node in ast.iter_child_nodes(tree):
+				if not isinstance(node, ast.Assign):
+					continue
+				for target in node.targets:
+					if not isinstance(target, ast.Name):
+						continue
+					name = target.id
+					if name in seen:
+						hits.append(
+							f"{_loc(path, node.lineno)}  "
+							f"{name!r} first defined at line {seen[name]}, redefined here"
+						)
+					else:
+						seen[name] = node.lineno
+		return hits
+
+	def test_no_duplicate_module_var(self) -> None:
+		hits = self._collect()
+		assert not hits, (
+			"Module-level variable assigned more than once "
+			"(CodeQL py/variable-defined-multiple-times):\n"
+			+ "\n".join(f"  {h}" for h in hits)
+		)
+

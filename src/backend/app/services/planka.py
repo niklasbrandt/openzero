@@ -157,7 +157,7 @@ async def get_project_tree(as_html: bool = True) -> str:
 			_tree_cache[cache_key] = (time.time(), result)
 			return result
 	except Exception as e:
-		logger.error(f"Planka project tree error: {e}")
+		logger.error("Planka project tree error: %s", e)
 		return "Planka connection issue."
 
 async def create_task(board_name: str, list_name: str, title: str, description: str = "") -> bool:

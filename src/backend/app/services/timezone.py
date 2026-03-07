@@ -27,9 +27,9 @@ async def refresh_user_settings():
 				if identity.town and identity.town.strip():
 					cc = (identity.country or "").strip()
 					_cached_location = f"{identity.town.strip()}, {cc}" if cc else identity.town.strip()
-			logger.info(f"User settings refreshed: tz={_cached_timezone or 'Europe/Berlin'}, loc={_cached_location or 'N/A'}")
+			logger.info("User settings refreshed: tz=%s, loc=%s", _cached_timezone or 'Europe/Berlin', _cached_location or 'N/A')
 	except Exception as e:
-		logger.error(f"Failed to refresh user settings from DB: {e}")
+		logger.error("Failed to refresh user settings from DB: %s", e)
 
 def get_user_timezone() -> str:
 	"""Returns the user's timezone from DB identity record, defaults to Europe/Berlin."""
@@ -74,7 +74,7 @@ async def update_detected_timezone():
 		try:
 			pytz.timezone(tz_suggestion)
 		except pytz.UnknownTimeZoneError:
-			logger.warning(f"LLM suggested unknown timezone: {tz_suggestion}")
+			logger.warning("LLM suggested unknown timezone: %s", tz_suggestion)
 			return
 
 		# 3. Store in DB
@@ -87,13 +87,13 @@ async def update_detected_timezone():
 				pref = Preference(key="detected_timezone", value=tz_suggestion)
 				session.add(pref)
 			elif pref.value != tz_suggestion:
-				logger.info(f"Timezone change detected: {pref.value} -> {tz_suggestion}")
+				logger.info("Timezone change detected: %s -> %s", pref.value, tz_suggestion)
 				pref.value = tz_suggestion
 			
 			await session.commit()
 			
 	except Exception as e:
-		logger.error(f"Error detecting timezone: {e}")
+		logger.error("Error detecting timezone: %s", e)
 
 async def get_current_timezone() -> str:
 	"""Returns the configured or detected timezone."""
