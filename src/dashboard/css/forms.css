@@ -17,21 +17,15 @@
 	color: var(--text-primary, hsla(0, 0%, 100%, 1));
 	text-decoration: none;
 	font-size: 0.9rem;
+	font-weight: 500;
+	font-family: inherit;
+	cursor: pointer;
 	transition: all 0.2s ease;
-}
-
-.planka-btn.operator-btn {
-	background: rgba(0, 163, 255, 0.1);
-	border-color: rgba(0, 163, 255, 0.3);
 }
 
 .planka-btn:hover {
 	background: rgba(255, 255, 255, 0.1);
 	transform: translateY(-1px);
-}
-
-.planka-btn.operator-btn:hover {
-	background: rgba(0, 163, 255, 0.2);
 }
 
 /* -- Base button -- */
