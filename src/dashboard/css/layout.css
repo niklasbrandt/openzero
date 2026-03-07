@@ -1,8 +1,8 @@
 /*
  * openZero Layout
  * ---------------
- * #app two-column CSS grid, dashboard-card glassmorphism, dashboard-header,
- * full-width span overrides, and responsive breakpoints (tablet / mobile).
+ * #app masonry grid, dashboard-card glassmorphism, dashboard-header,
+ * column-span overrides, and responsive breakpoints (tablet / mobile).
  */
 
 /* -- Main app container -- */
@@ -13,16 +13,14 @@
 	   (sidebar width) so margin:0 auto centers within the remaining viewport. */
 	margin: 0 auto;
 	padding: 2rem 2rem 6rem 2rem;
-	/* Two-column CSS grid: deterministic sizing, correct sidebar positioning. */
-	display: grid;
-	grid-template-columns: 1fr 1fr;
-	gap: 2rem;
-	align-items: start;
+	/* Masonry: two-column flow packs widgets vertically without row gaps. */
+	column-count: 2;
+	column-gap: 2rem;
 	min-width: 0;
 	/* overflow-x: hidden removed -- body already clips at page level;
 	   removing lets tooltips escape card boundaries. */
 	box-sizing: border-box;
-	/* Ensure container handles overflowing children for tooltips */
+	/* Ensure masonry container handles overflowing children for tooltips */
 	overflow: visible;
 }
 
@@ -36,6 +34,10 @@
 		0 8px 32px rgba(0, 0, 0, 0.4),
 		inset 0 1px 0 rgba(255, 255, 255, 0.04);
 	transition: border-color 0.4s ease, box-shadow 0.4s ease;
+	/* Prevent masonry column breaks inside cards */
+	break-inside: avoid;
+	/* Vertical spacing between cards in masonry flow */
+	margin-bottom: 2rem;
 	/* Skip rendering for off-screen cards -- reduces initial paint work. */
 	content-visibility: auto;
 	contain-intrinsic-size: auto 300px;
@@ -58,8 +60,8 @@
 
 /* -- Dashboard header (spans full width) -- */
 .dashboard-header {
-	/* Span both grid columns */
-	grid-column: 1 / -1;
+	/* Span both masonry columns */
+	column-span: all;
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
@@ -73,12 +75,12 @@
 	flex-wrap: wrap;
 }
 
-/* -- Full-width cards -- */
+/* -- Wide-span cards -- */
 .chat-card,
 .life-overview-card,
 welcome-onboarding {
-	/* Span both grid columns */
-	grid-column: 1 / -1;
+	/* Span both masonry columns */
+	column-span: all;
 }
 
 .dashboard-header h1 {
@@ -95,14 +97,16 @@ welcome-onboarding {
 	font-weight: 800;
 }
 
-/* -- Tablet (700px - 1099px): two-column grid below the marquee nav -- */
+/* -- Tablet (700px - 1099px): two-column masonry below the marquee nav -- */
 @media (min-width: 700px) and (max-width: 1099px) {
 	#app {
-		gap: 1.5rem;
+		column-count: 2;
+		column-gap: 1.5rem;
 		padding: 1.5rem 1.5rem 5rem 1.5rem;
 	}
 
 	.dashboard-card {
+		margin-bottom: 1.5rem;
 		/* Phase 2 optimization: skip painting for off-screen cards */
 		content-visibility: auto;
 		contain-intrinsic-size: 1px 400px;
@@ -112,9 +116,13 @@ welcome-onboarding {
 /* -- Mobile (<= 699px): single column -- */
 @media (max-width: 699px) {
 	#app {
-		grid-template-columns: 1fr;
-		gap: 1rem;
+		column-count: 1;
+		column-gap: 0;
 		padding: 0.75rem;
+	}
+
+	.dashboard-card {
+		margin-bottom: 1rem;
 	}
 
 	.dashboard-header {
