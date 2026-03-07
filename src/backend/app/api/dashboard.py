@@ -476,7 +476,7 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		}
 	except Exception as e:
 		logger.error("dashboard_chat error: %s", e)
-		raise HTTPException(status_code=500, detail="Internal server error")
+		raise HTTPException(status_code=500, detail="Internal server error") from None
 
 @router.post("/regression-cleanup")
 async def regression_cleanup(request: Request, db: AsyncSession = Depends(get_db)):
@@ -1173,7 +1173,7 @@ async def create_project(project: ProjectCreate):
         return {"status": "created", "name": project.name, "id": result.get("id")}
     except Exception as e:
         logger.error("Failed to create project in Planka: %s", e)
-        raise HTTPException(status_code=500, detail="Failed to create project")
+        raise HTTPException(status_code=500, detail="Failed to create project") from None
 
 # --- Memory ---
 @router.get("/memory/search")
@@ -1548,8 +1548,8 @@ async def delete_local_event(event_id: str, db: AsyncSession = Depends(get_db)):
 		await db.execute(delete(LocalEvent).where(LocalEvent.id == id_int))
 		await db.commit()
 		return {"status": "deleted"}
-	except ValueError as exc:
-		raise HTTPException(status_code=400, detail="Invalid event ID")
+	except ValueError:
+		raise HTTPException(status_code=400, detail="Invalid event ID") from None
 
 # --- Server Info (RAM, uptime, LLM tier health) ---
 @router.get("/server-info")
