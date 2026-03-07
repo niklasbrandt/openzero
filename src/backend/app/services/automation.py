@@ -29,7 +29,7 @@ async def run_contextual_automation(people: list[Person]):
 			if e["summary"].startswith(prefix)
 		]
 		
-		for event, person in events_to_process:
+		for event, p in events_to_process:
 			summary = event["summary"].lower()
 			is_priority = any(kw in summary for kw in PRIORITY_KEYWORDS)
 			
@@ -42,16 +42,16 @@ async def run_contextual_automation(people: list[Person]):
 				if 0 <= days_until <= 3:
 					# Clean the name from summary if it's prefixed
 					display_summary = event["summary"]
-					if display_summary.startswith(f"{person.name}:"):
-						display_summary = display_summary[len(f"{person.name}:"):].strip()
+					if display_summary.startswith(f"{p.name}:"):
+						display_summary = display_summary[len(f"{p.name}:"):].strip()
 
-					task_title = f"Alert: {person.name}'s {display_summary} ({start_date})"
+					task_title = f"Alert: {p.name}'s {display_summary} ({start_date})"
 					
 					success = await create_task(board_name="Family", list_name="Inbox", title=task_title)
 					
 					if success:
-						actions.append(f"Created priority task for {person.name}: {display_summary} (in {days_until} days)")
+						actions.append(f"Created priority task for {p.name}: {display_summary} (in {days_until} days)")
 					else:
-						actions.append(f"Priority detected for {person.name}: {display_summary} (in {days_until} days)")
+						actions.append(f"Priority detected for {p.name}: {display_summary} (in {days_until} days)")
 	
 	return actions
