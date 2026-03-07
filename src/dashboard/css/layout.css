@@ -17,7 +17,7 @@
 	display: flex;
 	flex-wrap: wrap;
 	gap: 2rem;
-	align-items: flex-start;
+	align-items: center;
 	min-width: 0;
 	box-sizing: border-box;
 	overflow: visible;
