@@ -26,9 +26,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
 
 COPY src/backend/requirements.txt .
+# Upgrade pip to fix CVE symbolic-link and path-traversal issues (pip <25.1).
 # Upgrade setuptools AFTER requirements to prevent pip downgrading it.
 # Patches CVE-2025-47273 (path traversal, HIGH); python:3.12-slim ships 70.2.0.
-RUN pip install --no-cache-dir -r requirements.txt \
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -r requirements.txt \
     && pip install --no-cache-dir "setuptools>=78.1.1" \
     && python -m spacy download en_core_web_sm
 
