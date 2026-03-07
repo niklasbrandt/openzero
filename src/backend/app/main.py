@@ -26,11 +26,27 @@ async def lifespan(app: FastAPI):
             res = await conn.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='email_rules' AND column_name='badge'"))
             if not res.fetchone():
                 await conn.execute(text("ALTER TABLE email_rules ADD COLUMN badge VARCHAR"))
-            
+
             # 2. Add 'badge' column to 'email_summaries' if not exists
             res = await conn.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='email_summaries' AND column_name='badge'"))
             if not res.fetchone():
                 await conn.execute(text("ALTER TABLE email_summaries ADD COLUMN badge VARCHAR"))
+
+            # 3. Add theme color columns to 'people' if not exists
+            #    (added after initial release; UserCard writes these, personality endpoint reads them)
+            for col in ("color_primary", "color_secondary", "color_tertiary"):
+                res = await conn.execute(text(
+                    "SELECT column_name FROM information_schema.columns "
+                    f"WHERE table_name='people' AND column_name='{col}'"
+                ))
+                if not res.fetchone():
+                    await conn.execute(text(f"ALTER TABLE people ADD COLUMN {col} VARCHAR"))
+
+            # 4. Add 'model' column to 'global_messages' if not exists
+            #    (records which LLM tier/model produced each Z response)
+            res = await conn.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='global_messages' AND column_name='model'"))
+            if not res.fetchone():
+                await conn.execute(text("ALTER TABLE global_messages ADD COLUMN model VARCHAR"))
 
         logging.info("✓ Postgres tables initialized and migrated.")
     except Exception as e:
