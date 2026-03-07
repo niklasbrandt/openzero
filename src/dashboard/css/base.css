@@ -52,12 +52,19 @@ html {
 	overflow-x: clip;
 }
 
-/* -- Body -- */
-body {
-	margin: 0;
-	display: flex;
-	min-width: 320px;
-	min-height: 100vh;
+/* -- Fixed gradient background layer --
+   Gradient on body with background-attachment:fixed forces a full repaint on
+   every scroll frame because the browser cannot determine what changed.
+   Moving it into a position:fixed pseudo-element on <html> lets the GPU
+   compositor hoist it into its own layer once and never repaint on scroll.
+   Custom properties (--accent-primary-h, etc.) are inherited from <html>
+   and still update correctly when the theme changes. */
+html::before {
+	content: '';
+	position: fixed;
+	inset: 0;
+	z-index: -1;
+	pointer-events: none;
 	background-color: var(--bg-body, hsla(228, 45%, 4%, 1));
 	background-image:
 		radial-gradient(circle at 30% 20%,
@@ -67,7 +74,18 @@ body {
 			hsla(var(--accent-secondary-h, 216), var(--accent-secondary-s, 100%), var(--accent-secondary-l, 50%), 0.08) 0%,
 			transparent 50%),
 		linear-gradient(135deg, var(--bg-body, hsla(228, 45%, 4%, 1)) 0%, var(--bg-body-end, hsla(228, 45%, 8%, 1)) 100%);
-	background-attachment: fixed;
+	/* Smooth the background-color leg of theme changes (gradient legs are
+	   not individually transitionable but the base fill is). */
+	transition: background-color var(--duration-base, 0.3s);
+}
+
+/* -- Body -- */
+body {
+	margin: 0;
+	display: flex;
+	min-width: 320px;
+	min-height: 100vh;
+	background-color: transparent; /* gradient served by html::before fixed layer */
 	transition: background-color var(--duration-base);
 	flex-wrap: wrap;
 	scroll-padding: 2rem;
@@ -178,4 +196,10 @@ project-tree:defined {
 .no-transition *::after {
 	transition: none !important;
 	animation: none !important;
+}
+
+/* html::before is NOT a descendant of html, so the rule above does not
+   suppress its transition. This rule targets it explicitly. */
+html.no-transition::before {
+	transition: none !important;
 }
