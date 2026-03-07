@@ -105,7 +105,7 @@ export class LifeOverview extends HTMLElement {
 			this.toggleProjectForm(false);
 			this.fetchData();
 			window.dispatchEvent(new CustomEvent('refresh-data'));
-		} catch (e) {
+		} catch (_e) {
 			const feedback = this.shadowRoot?.querySelector('#project-feedback');
 			if (feedback) {
 				feedback.textContent = this.tr('project_create_error', 'Failed to create project.');

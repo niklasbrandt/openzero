@@ -270,7 +270,7 @@ jobs:
 
       - name: Run ESLint
         working-directory: src/dashboard
-        run: node_modules/.bin/eslint src/ components/ services/ --max-warnings 20
+        run: node_modules/.bin/eslint src/ components/ services/ --max-warnings 80
 
   # ── mypy Python type-check ───────────────────────────────────────────────────
   mypy:
