@@ -26,6 +26,9 @@
 	background: var(--nav-bg);
 	backdrop-filter: blur(8px);
 	-webkit-backdrop-filter: blur(8px);
+	/* Promote to own compositor layer so backdrop-filter is pre-composited
+	   and the browser does not re-read every scroll-frame pixel underneath. */
+	will-change: transform;
 	border-right: 1px solid var(--border-color);
 	border-radius: 0 12px 12px 0;
 	width: 36px;
@@ -138,6 +141,8 @@
 	background: var(--nav-bg-hover);
 	backdrop-filter: blur(10px);
 	-webkit-backdrop-filter: blur(10px);
+	/* Own compositor layer so sticky backdrop does not force scroll-frame repaints */
+	will-change: transform;
 	border-bottom: 1px solid var(--border-color);
 	flex-wrap: nowrap;
 	align-items: center;

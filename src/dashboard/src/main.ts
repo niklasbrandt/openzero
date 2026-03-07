@@ -449,6 +449,7 @@ function initScrollSpy() {
 		.filter(Boolean) as HTMLElement[];
 
 	// Mark the active link in ALL nav containers simultaneously
+	let marqueeScrollTimer: ReturnType<typeof setTimeout> | null = null;
 	function setActive(sectionId: string) {
 		allNavContainers.forEach(sel => {
 			const container = document.querySelector(sel);
@@ -458,11 +459,23 @@ function initScrollSpy() {
 			});
 		});
 
-		// Auto-scroll the marquee nav pill into view so the active item is visible
-		const marqueeLink = document.querySelector<HTMLAnchorElement>(
-			`.top-marquee-nav a[data-section="${sectionId}"]`
-		);
-		marqueeLink?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+		// Defer marquee scrollIntoView so it never runs during the user's active
+		// scroll — triggering scrollIntoView mid-scroll fights the browser's
+		// momentum and causes visible jank. Fire 150 ms after the last section
+		// change so it only runs once the scroll has likely settled.
+		if (marqueeScrollTimer !== null) clearTimeout(marqueeScrollTimer);
+		marqueeScrollTimer = setTimeout(() => {
+			const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+			const marqueeLink = document.querySelector<HTMLAnchorElement>(
+				`.top-marquee-nav a[data-section="${sectionId}"]`
+			);
+			marqueeLink?.scrollIntoView({
+				behavior: prefersReducedMotion ? 'instant' : 'smooth',
+				block: 'nearest',
+				inline: 'center',
+			});
+			marqueeScrollTimer = null;
+		}, 150);
 	}
 
 	// Scroll-spy: pick the section whose visual centre is closest to
