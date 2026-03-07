@@ -158,7 +158,7 @@ async def get_project_tree(as_html: bool = True) -> str:
 			return result
 	except Exception as e:
 		logger.error(f"Planka project tree error: {e}")
-		return f"Planka connection issue: {str(e)}"
+		return "Planka connection issue."
 
 async def create_task(board_name: str, list_name: str, title: str, description: str = "") -> bool:
 	"""Creates a card on the specified board and list."""

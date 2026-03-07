@@ -129,7 +129,6 @@ class CustomTask(Base):
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 # Utility functions
 async def get_email_rules() -> list[EmailRule]:
