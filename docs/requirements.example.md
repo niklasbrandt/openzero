@@ -1,7 +1,7 @@
 # My Requirements
 
 > Personal configuration for the AI Operating System.
-> These define what matters to you, how you organize your life, and what the
+> These define what the
 > system should prioritize.
 >
 > **Copy this file to `personal/requirements.md` and fill in your details.**
@@ -9,13 +9,16 @@
 
 ---
 
-## Career Goals
+## Communication Preferences
 
-- Target role:
-- Key differentiators:
-- Tone:
-- The AI should connect daily actions to this goal where relevant
+| Preference              | Value                                      |
+| :---------------------- | :----------------------------------------- |
+| **Language with agent** | <!-- e.g., English -->                     |
+| **Briefing style**      | <!-- e.g., Short, actionable, no fluff --> |
+| **Feedback style**      | <!-- e.g., Direct and honest -->           |
+| **Best time to focus**  | <!-- e.g., mornings, evenings -->          |
+| **Worst time**          | <!-- e.g., after lunch -->                 |
 
 ---
 
-Add everything you want to tell about yourself!
+Add everything here what you want the system to prioritize or implement as rules!

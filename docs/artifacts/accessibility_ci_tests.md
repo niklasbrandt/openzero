@@ -14,14 +14,14 @@ The purpose of CI accessibility testing is therefore **regression prevention** -
 
 ### Why axe-core + Playwright (not Lighthouse CI or pa11y)
 
-| Criterion | axe-core + Playwright | Lighthouse CI | pa11y |
-|:---|:---|:---|:---|
-| Shadow DOM piercing | Full (open mode natively) | Partial (outer + some rules) | None |
-| WCAG 2.1 AA coverage | ~57% of WCAG SCs automatically | ~35% | ~30% |
-| GitHub Actions support | Official action available | Official action available | Manual |
-| False-positive control | Per-rule disable flags | Limited | Limited |
-| Failure details | Node HTML + fix summary | Category score | Rule code only |
-| Headless browser | Playwright (Chromium) | puppeteer | jsdom / real browser |
+| Criterion              | axe-core + Playwright          | Lighthouse CI                | pa11y                |
+| :--------------------- | :----------------------------- | :--------------------------- | :------------------- |
+| Shadow DOM piercing    | Full (open mode natively)      | Partial (outer + some rules) | None                 |
+| WCAG 2.1 AA coverage   | ~57% of WCAG SCs automatically | ~35%                         | ~30%                 |
+| GitHub Actions support | Official action available      | Official action available    | Manual               |
+| False-positive control | Per-rule disable flags         | Limited                      | Limited              |
+| Failure details        | Node HTML + fix summary        | Category score               | Rule code only       |
+| Headless browser       | Playwright (Chromium)          | puppeteer                    | jsdom / real browser |
 
 **The critical deciding factor**: all 16 openZero components use `attachShadow({ mode: 'open' })`. pa11y's HTMLCodeSniffer engine cannot inspect Shadow DOM at all -- it would only audit the 14 `<section>` elements in the outer shell, missing every button, form input, heading, ARIA region, and focus indicator living inside the components. Lighthouse CI audits Shadow DOM partially (it runs axe-core internally but with limited rule propagation across boundaries). Only `@axe-core/playwright` queries the DOM via a recursive tree-walk that descends into each `shadowRoot` natively.
 
@@ -50,17 +50,17 @@ src/dashboard/
 
 ```yaml
 accessibility:
-  name: Accessibility audit (WCAG 2.1 AA)
-  runs-on: ubuntu-latest
-  needs: [frontend]              # Type-check must pass first
-  steps:
-    - checkout
-    - setup Node 20 (npm cache)
-    - npm ci
-    - npx playwright install --with-deps chromium
-    - npm run build              # Vite production bundle to dist/
-    - npx playwright test tests/accessibility.spec.ts
-    - upload playwright-report as artifact on failure (7-day retention)
+    name: Accessibility audit (WCAG 2.1 AA)
+    runs-on: ubuntu-latest
+    needs: [frontend] # Type-check must pass first
+    steps:
+        - checkout
+        - setup Node 20 (npm cache)
+        - npm ci
+        - npx playwright install --with-deps chromium
+        - npm run build # Vite production bundle to dist/
+        - npx playwright test tests/accessibility.spec.ts
+        - upload playwright-report as artifact on failure (7-day retention)
 ```
 
 **Why `needs: [frontend]` and not `needs: [frontend, backend]`?**: The accessibility audit runs against the static Vite bundle; it does not need the Docker build. Running it in parallel with `backend` and `build` keeps total CI wall time under 4 minutes.
@@ -138,6 +138,7 @@ This section describes every category of accessibility violation that the test s
 **Why axe-core catches it**: axe-core reads computed CSS color values from the rendered CSSOM and calculates relative luminance per WCAG formula. It pierces Shadow DOM to audit tokens resolved inside components.
 
 **Common causes in this codebase**:
+
 - A new accent hue introduced via theme presets that reduces lightness values below the computed minimum.
 - A `disabled` state styled with reduced opacity where the resulting contrast drops below threshold.
 - `var(--token)` used without a sufficient fallback value.
@@ -149,25 +150,32 @@ _Step 1_: Identify the failing element from the axe violation output. The `nodes
 _Step 2_: In `src/dashboard/css/tokens.css`, locate the token governing the element's color. For light-theme text, check `[data-theme="light"]` block. For dark-theme, check the `:root` block.
 
 _Step 3_: Adjust the lightness channel of the HSL value. The formula for minimum lightness on a dark surface is:
+
 ```
 L_min = 1 - (1 / (ratio * (L_bg + 0.05))) + 0.05
 ```
+
 For ratio=4.5 against a near-black surface (L_bg ≈ 0.05), L_min ≈ 0.52 (52%). Text must be at 52% lightness or brighter.
 
 _Step 4_: If the token controls both a surface and text color, split it into two tokens: `--token-surface` and `--token-text` with independent lightness values.
 
 _Step 5_: For the accent-tinted surface system (recently introduced), always test every theme preset combination. Add a `--accent-min-contrast-text` token that clamps the computed tinted foreground to a safe minimum:
+
 ```css
---surface-text: hsl(var(--accent-primary-h) 10% max(55%, var(--surface-text-l)));
+--surface-text: hsl(
+	var(--accent-primary-h) 10% max(55%, var(--surface-text-l))
+);
 ```
 
 _Step 6_: For `disabled` states, never use `opacity: 0.4` alone. Instead use a dedicated token:
+
 ```css
 .btn:disabled {
-    color: var(--text-disabled, hsl(0 0% 45%));
-    background: var(--surface-disabled, hsl(0 0% 18%));
+	color: var(--text-disabled, hsl(0 0% 45%));
+	background: var(--surface-disabled, hsl(0 0% 18%));
 }
 ```
+
 Verify the disabled token pair achieves 4.5:1.
 
 _Step 7_: Re-run `npm run test:a11y` and confirm the test passes before committing.
@@ -181,7 +189,9 @@ _Step 7_: Re-run `npm run test:a11y` and confirm the test passes before committi
 **How to fix by sub-type**:
 
 #### `aria-allowed-attr`
+
 An attribute is not permitted on the element's role. Example: `aria-checked` on an element with `role="button"`.
+
 ```html
 <!-- WRONG -->
 <div role="button" aria-checked="true">Sort ascending</div>
@@ -191,7 +201,9 @@ An attribute is not permitted on the element's role. Example: `aria-checked` on 
 ```
 
 #### `aria-required-attr`
+
 A required attribute is missing. Example: `role="checkbox"` without `aria-checked`.
+
 ```html
 <!-- WRONG -->
 <span role="checkbox">Remember me</span>
@@ -201,39 +213,48 @@ A required attribute is missing. Example: `role="checkbox"` without `aria-checke
 ```
 
 #### `aria-required-children`
+
 A parent role is missing required children. Example: `role="listbox"` containing `<div>` instead of `role="option"` elements.
+
 ```html
 <!-- WRONG -->
 <ul role="listbox">
-    <li>Item 1</li>
+	<li>Item 1</li>
 </ul>
 
 <!-- CORRECT -->
 <ul role="listbox">
-    <li role="option" aria-selected="false">Item 1</li>
+	<li role="option" aria-selected="false">Item 1</li>
 </ul>
 ```
 
 #### `aria-required-parent`
+
 A child role appears outside its required container. Example: `role="option"` outside a `role="listbox"`.
 Fix: always wrap child-role elements inside the correct container role.
 
 #### `aria-roles`
+
 An invalid (non-existent or misspelled) role value is used.
+
 ```html
 <!-- WRONG -->
-<div role="modal">...</div>      <!-- "modal" is not an ARIA role -->
+<div role="modal">...</div>
+<!-- "modal" is not an ARIA role -->
 
 <!-- CORRECT -->
 <div role="dialog" aria-modal="true" aria-label="Settings">...</div>
 ```
 
 #### `aria-deprecated-role`
+
 A role has been removed from the ARIA spec. Example: `role="directory"`.
 Remove the deprecated role attribute or replace with the modern equivalent.
 
 #### `aria-prohibited-attr`
+
 An attribute is explicitly prohibited on a role. Example: `aria-label` on `role="presentation"`.
+
 ```html
 <!-- WRONG -->
 <div role="presentation" aria-label="decorative">...</div>
@@ -244,13 +265,15 @@ An attribute is explicitly prohibited on a role. Example: `aria-label` on `role=
 
 **Pattern for all ARIA fixes in Shadow DOM components**:
 All ARIA attributes in openZero components must use `this.tr('key', 'English fallback')` for localizable strings. Never hardcode English directly:
+
 ```typescript
 // WRONG
 this.shadowRoot.innerHTML = `<button aria-label="Close">X</button>`;
 
 // CORRECT
-this.shadowRoot.innerHTML = `<button aria-label="${this.tr('close_btn', 'Close')}">X</button>`;
+this.shadowRoot.innerHTML = `<button aria-label="${this.tr("close_btn", "Close")}">X</button>`;
 ```
+
 Then add the key to both `_EN` and `_DE` in `src/backend/app/services/translations.py` under the `Accessibility / ARIA labels` section.
 
 ---
@@ -262,6 +285,7 @@ Then add the key to both `_EN` and `_DE` in `src/backend/app/services/translatio
 **How to fix**:
 
 _Option A_ (preferred for visible labels):
+
 ```html
 <!-- Associate via for/id pair -->
 <label for="search-input">Search memories</label>
@@ -269,15 +293,17 @@ _Option A_ (preferred for visible labels):
 ```
 
 _Option B_ (for inputs where a visible label is not desired for design reasons):
+
 ```html
 <input
-    type="text"
-    aria-label="${this.tr('memory_search_placeholder', 'Search memories')}"
-    placeholder="${this.tr('memory_search_placeholder', 'Search memories')}"
+	type="text"
+	aria-label="${this.tr('memory_search_placeholder', 'Search memories')}"
+	placeholder="${this.tr('memory_search_placeholder', 'Search memories')}"
 />
 ```
 
 _Option C_ (for inputs where another visible element describes the field):
+
 ```html
 <h3 id="filter-heading">Filter by date</h3>
 <input type="date" aria-labelledby="filter-heading" />
@@ -286,13 +312,14 @@ _Option C_ (for inputs where another visible element describes the field):
 **Rule**: `placeholder` alone is NEVER sufficient as an accessible label. `placeholder` text disappears when the user starts typing, and many screen reader + browser combinations do not announce it at all. Always pair it with `aria-label` or a `<label>`.
 
 **For icon buttons** (buttons that contain only an SVG icon):
+
 ```html
 <!-- WRONG -->
 <button><svg>...</svg></button>
 
 <!-- CORRECT -->
 <button aria-label="${this.tr('delete_event', 'Delete event')}">
-    <svg aria-hidden="true" focusable="false">...</svg>
+	<svg aria-hidden="true" focusable="false">...</svg>
 </button>
 ```
 
@@ -305,6 +332,7 @@ _Option C_ (for inputs where another visible element describes the field):
 **How to fix**:
 
 #### Non-native interactive elements missing tabindex
+
 ```typescript
 // WRONG: div with click handler is invisible to keyboard users
 this.shadowRoot.innerHTML = `<div class="card" @click="...">Click me</div>`;
@@ -313,11 +341,13 @@ this.shadowRoot.innerHTML = `<div class="card" @click="...">Click me</div>`;
 this.shadowRoot.innerHTML = `<button class="card">Click me</button>`;
 // If a div is required for layout reasons:
 this.shadowRoot.innerHTML = `<div class="card" tabindex="0" role="button" 
-    aria-label="${this.tr('card_action', 'Open item')}">...</div>`;
+    aria-label="${this.tr("card_action", "Open item")}">...</div>`;
 ```
 
 #### Focus trap in modal/dialog components
+
 When a component renders a dialog/drawer, focus must be trapped INSIDE the dialog while it is open, and returned to the trigger element when it closes.
+
 ```typescript
 // Minimal focus trap implementation
 private trapFocus(dialogEl: HTMLElement, triggerEl: HTMLElement) {
@@ -344,7 +374,9 @@ private trapFocus(dialogEl: HTMLElement, triggerEl: HTMLElement) {
 ```
 
 #### Invisible elements receiving focus
+
 Elements with `visibility: hidden`, `display: none`, or `opacity: 0` must also have `tabindex="-1"` or be removed from the DOM while hidden. Use `inert` attribute for entire regions:
+
 ```html
 <div class="drawer" id="mobile-nav-drawer" inert>...</div>
 <!-- Remove 'inert' attribute when opening the drawer -->
@@ -361,16 +393,21 @@ Elements with `visibility: hidden`, `display: none`, or `opacity: 0` must also h
 **How to verify manually**: Use Tab on a freshly loaded dashboard. Every button, link, and input must show a 2px solid accent-colored ring on keyboard focus; it must disappear on mouse click (`:focus:not(:focus-visible)` suppresses it for pointer users).
 
 **How to fix if a component overrides focus styles**:
+
 ```css
 /* WRONG: removes all focus indicators */
-:host *:focus { outline: none; }
+:host *:focus {
+	outline: none;
+}
 
 /* CORRECT: only suppress for pointer users */
-:host *:focus:not(:focus-visible) { outline: none; }
+:host *:focus:not(:focus-visible) {
+	outline: none;
+}
 :host *:focus-visible {
-    outline: 2px solid var(--accent-primary, #14B8A6);
-    outline-offset: 3px;
-    border-radius: 3px;
+	outline: 2px solid var(--accent-primary, #14b8a6);
+	outline-offset: 3px;
+	border-radius: 3px;
 }
 ```
 
@@ -385,6 +422,7 @@ Never add `outline: none` or `outline: 0` to a component without pairing it with
 **How to fix**:
 
 #### Missing main landmark
+
 ```html
 <!-- WRONG: content floats outside landmarks -->
 <div id="main-content">...</div>
@@ -394,17 +432,20 @@ Never add `outline: none` or `outline: 0` to a component without pairing it with
 ```
 
 #### Duplicate `<header>` or `<footer>` at page level
+
 Sectioning elements (`<header>`, `<footer>`) are implicit landmarks only when they are top-level (not nested inside `<article>`, `<section>`, etc.). If a component includes its own `<header>`, it must be inside a sectioning element to prevent it mapping to `banner` role:
+
 ```html
 <!-- Inside a Shadow DOM component -- OK: <header> inside <section> is not banner -->
 <section>
-    <header>
-        <h2>Hardware Monitor</h2>
-    </header>
+	<header>
+		<h2>Hardware Monitor</h2>
+	</header>
 </section>
 ```
 
 #### All content must be inside a landmark
+
 Every text node and interactive element must be contained within at least one of: `<main>`, `<nav>`, `<header>`, `<footer>`, `<aside>`, `<section>` (with accessible name), or `role="region"` (with `aria-label`).
 
 ---
@@ -414,6 +455,7 @@ Every text node and interactive element must be contained within at least one of
 **What fails**: Heading levels are skipped (e.g., `<h1>` followed directly by `<h3>`) or an `<h1>` is absent.
 
 **The openZero heading hierarchy**:
+
 ```
 h1 -- Page title (index.html header: "Z" wordmark, or the active section route)
   h2 -- Widget/section titles (e.g., "Hardware Monitor", "Memory Search")
@@ -425,14 +467,15 @@ h1 -- Page title (index.html header: "Z" wordmark, or the active section route)
 Never use `<h3>` inside a component that is the first heading in that component's shadow tree. The shadow tree's first heading visible to the heading-order audit should always be `<h2>` (the widget title, rendered via `${SECTION_HEADER_STYLES}` pattern).
 
 If a component needs a lower heading for a subplot, use `<h3>`:
+
 ```typescript
 // CORRECT heading structure inside a Shadow DOM component
 `<section>
-    <h2>${this.tr('section_title', 'Memory Search')}</h2>
+    <h2>${this.tr("section_title", "Memory Search")}</h2>
     <div class="results">
-        <h3>${this.tr('results_heading', 'Recent Results')}</h3>
+        <h3>${this.tr("results_heading", "Recent Results")}</h3>
     </div>
-</section>`
+</section>`;
 ```
 
 Do not use headings purely for visual styling. If you need large bold text that is not a structural heading, use `<p class="section-label">` with CSS, not an `<h>` tag.
@@ -446,26 +489,31 @@ Do not use headings purely for visual styling. If you need large bold text that 
 **The openZero rule** (verified in index.html): all decorative SVGs use `aria-hidden="true" focusable="false"`.
 
 **How to fix informative SVGs** (SVGs that convey meaning, e.g., charts, diagrams):
+
 ```html
 <!-- Option A: title element inside SVG -->
 <svg role="img" aria-labelledby="chart-title">
-    <title id="chart-title">CPU usage over the past hour: 42% average</title>
-    <!-- SVG paths ... -->
+	<title id="chart-title">CPU usage over the past hour: 42% average</title>
+	<!-- SVG paths ... -->
 </svg>
 
 <!-- Option B: aria-label on the svg element -->
 <svg role="img" aria-label="${this.tr('cpu_chart_alt', 'CPU usage chart')}">
-    <!-- SVG paths ... -->
+	<!-- SVG paths ... -->
 </svg>
 ```
 
 **How to fix `<img>` elements**:
+
 ```html
 <!-- Decorative image (pure visual) -->
 <img src="pattern.svg" alt="" role="presentation" />
 
 <!-- Informative image -->
-<img src="avatar.png" alt="${this.tr('user_avatar_alt', 'User profile picture')}" />
+<img
+	src="avatar.png"
+	alt="${this.tr('user_avatar_alt', 'User profile picture')}"
+/>
 ```
 
 ---
@@ -477,23 +525,27 @@ Do not use headings purely for visual styling. If you need large bold text that 
 **How to fix**:
 
 The skip link must:
+
 1. Be the first element in the `<body>` tab order.
 2. Link to `#main-content`.
 3. Target `<main id="main-content">` -- `<main>` is inherently focusable as a landmark but adding `tabindex="-1"` to the target is a safe fallback:
+
 ```html
 <main id="main-content" tabindex="-1">...</main>
 ```
+
 4. Be visually hidden by default but become visible on `:focus`:
+
 ```css
 .skip-link {
-    position: absolute;
-    top: -40px;
-    left: 0;
-    z-index: 9999;
-    transition: top 0.2s;
+	position: absolute;
+	top: -40px;
+	left: 0;
+	z-index: 9999;
+	transition: top 0.2s;
 }
 .skip-link:focus {
-    top: 0;
+	top: 0;
 }
 ```
 
@@ -504,16 +556,24 @@ The skip link must:
 **What fails**: `<html>` has no `lang` attribute, or the value is not a valid BCP 47 language tag.
 
 **How to fix**:
+
 ```html
 <!-- Correct -->
-<html lang="en">        <!-- English -->
-<html lang="de">        <!-- German -->
-<html lang="en-GB">     <!-- British English -->
+<html lang="en">
+	<!-- English -->
+	<html lang="de">
+		<!-- German -->
+		<html lang="en-GB">
+			<!-- British English -->
+		</html>
+	</html>
+</html>
 ```
 
 The openZero dashboard uses `<html lang="en">` (verified in index.html). If multi-language support is expanded to serve a German user interface by default, the `lang` attribute must be updated server-side or via the theme-init script to reflect the user's configured language.
 
 For inline content in a different language from the page language, use `lang` on the element:
+
 ```html
 <span lang="de">Guten Morgen</span>
 ```
@@ -527,20 +587,23 @@ For inline content in a different language from the page language, use `lang` on
 **How to fix**:
 
 Use `aria-live="polite"` for non-urgent updates (most cases):
+
 ```html
 <div aria-live="polite" role="status" aria-atomic="false">
-    <!-- Content inserted here is announced after the user stops typing -->
+	<!-- Content inserted here is announced after the user stops typing -->
 </div>
 ```
 
 Use `aria-live="assertive"` only for urgent alerts that must interrupt:
+
 ```html
 <div aria-live="assertive" role="alert" aria-atomic="true">
-    <!-- Content here interrupts screen reader immediately -->
+	<!-- Content here interrupts screen reader immediately -->
 </div>
 ```
 
 **Rules**:
+
 - `aria-atomic="true"` means the whole region is re-read when any part changes. Use for short, complete messages.
 - `aria-atomic="false"` (default) means only the changed nodes are announced. Use for append-only lists.
 - The region must exist in the DOM BEFORE the dynamic content is inserted. Do not create the live region and insert content simultaneously -- screen readers will not announce it.
@@ -568,21 +631,25 @@ updateStatus(message: string) {
 axe-core does not automatically check target size, but the CI keyboard navigation test validates that elements are focusable (invisible 1x1px elements fail this). Visual target size is validated by Lighthouse's "target-size" audit.
 
 **How to fix**:
+
 ```css
 /* Ensure minimum touch target via padding */
 .icon-button {
-    min-width: 2.75rem;    /* 44px at 16px base */
-    min-height: 2.75rem;
-    padding: 0.625rem;     /* Creates target area around smaller visual icon */
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+	min-width: 2.75rem; /* 44px at 16px base */
+	min-height: 2.75rem;
+	padding: 0.625rem; /* Creates target area around smaller visual icon */
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
 }
 ```
 
 For very small UI elements that cannot be enlarged (e.g., calendar date cells), use `touch-action: manipulation` to prevent double-tap zoom delay, and add spacing between targets:
+
 ```css
-.calendar-day { margin: 0.125rem; }     /* Ensures 44px total including margin */
+.calendar-day {
+	margin: 0.125rem;
+} /* Ensures 44px total including margin */
 ```
 
 ---
@@ -597,20 +664,24 @@ For very small UI elements that cannot be enlarged (e.g., calendar date cells), 
 
 Step 1: Add the animation or transition as normal.
 Step 2: Add a targeted override in the component's style block AFTER `${ACCESSIBILITY_STYLES}`:
+
 ```css
 @media (prefers-reduced-motion: reduce) {
-    .my-animated-element {
-        animation: none;
-        transition: none;
-    }
+	.my-animated-element {
+		animation: none;
+		transition: none;
+	}
 }
 ```
 
 Never suppress the global reduced-motion block from `ACCESSIBILITY_STYLES`. Never include long `transition-duration` values that are not caught by the global override (e.g., GSAP JS animations must check the media query in JS):
+
 ```typescript
-const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const prefersReducedMotion = window.matchMedia(
+	"(prefers-reduced-motion: reduce)",
+).matches;
 if (!prefersReducedMotion) {
-    gsap.from(el, { duration: 0.6, y: 20, ease: 'expo.out' });
+	gsap.from(el, { duration: 0.6, y: 20, ease: "expo.out" });
 }
 ```
 
@@ -625,12 +696,21 @@ if (!prefersReducedMotion) {
 **How to fix new components**:
 
 Every Shadow DOM component must include this block (already in `ACCESSIBILITY_STYLES` -- do not remove):
+
 ```css
 @media (forced-colors: active) {
-    :host { forced-color-adjust: auto; }
-    :focus-visible { outline: 3px solid ButtonText; }
-    /* Custom-colored buttons use system ButtonFace/ButtonText */
-    .btn-primary { background: ButtonFace; color: ButtonText; border: 1px solid ButtonText; }
+	:host {
+		forced-color-adjust: auto;
+	}
+	:focus-visible {
+		outline: 3px solid ButtonText;
+	}
+	/* Custom-colored buttons use system ButtonFace/ButtonText */
+	.btn-primary {
+		background: ButtonFace;
+		color: ButtonText;
+		border: 1px solid ButtonText;
+	}
 }
 ```
 
@@ -641,12 +721,15 @@ For elements using `background-image` or `background-color` to convey state (e.g
 ## 7. Regression Prevention Strategy
 
 ### Automated gate
+
 The `accessibility` CI job runs on every push and pull request to `main`. A single axe-core violation at critical or serious impact level fails the build. Violations at moderate or minor impact are reported but do not fail (via the `disableRules` configuration).
 
 ### Monthly Lighthouse a11y re-run
+
 The existing Lighthouse perf audit workflow (manual) should be extended to add `--only-categories=accessibility` at least once per month to track the score timeseries in [docs/artifacts/lighthouse_results.md](docs/artifacts/lighthouse_results.md). The current streak of 100/100 is the baseline.
 
 ### Pre-commit checklist for new components
+
 Before merging a PR that adds or modifies a component:
 
 1. Does the component import `${ACCESSIBILITY_STYLES}`?
@@ -658,6 +741,7 @@ Before merging a PR that adds or modifies a component:
 7. Does `npm run test:a11y` pass locally with zero violations?
 
 ### Failure investigation workflow
+
 When the `accessibility` CI job fails:
 
 1. Download the `playwright-a11y-report` artifact from the failed GitHub Actions run.
@@ -713,34 +797,34 @@ Running 10 tests using 1 worker
 
 ## 9. Coverage Assessment Against WCAG 2.1 AA
 
-| WCAG SC | Description | Covered by | Note |
-|:---|:---|:---|:---|
-| 1.1.1 | Non-text Content | Test 9 | img-alt, svg-img-alt |
-| 1.3.1 | Info and Relationships | Tests 1, 10 | label, semantic structure |
-| 1.3.2 | Meaningful Sequence | Test 5 | DOM order |
-| 1.3.3 | Sensory Characteristics | Test 1 (wcag2a) | Not color-only |
-| 1.3.4 | Orientation | Test 1 (wcag21aa) | |
-| 1.3.5 | Identify Input Purpose | Test 10 | autocomplete |
-| 1.4.1 | Use of Color | Test 1 | |
-| 1.4.3 | Contrast (Minimum) | Tests 2, 3 | Dark + light themes |
-| 1.4.4 | Resize Text | Manual only | Not automatable |
-| 1.4.5 | Images of Text | Test 9 | |
-| 1.4.10 | Reflow | Manual only | Not automatable |
-| 1.4.11 | Non-text Contrast | Tests 2, 3 | UI components |
-| 1.4.12 | Text Spacing | Manual only | |
-| 1.4.13 | Content on Hover or Focus | Manual only | |
-| 2.1.1 | Keyboard | Tests 1, 6 | |
-| 2.1.2 | No Keyboard Trap | Test 6 | Focus trap detection |
-| 2.4.1 | Bypass Blocks | Tests 5, 7 | Skip link + landmarks |
-| 2.4.2 | Page Titled | Test 1 | document-title |
-| 2.4.3 | Focus Order | Test 6 | Tab order simulation |
-| 2.4.4 | Link Purpose | Test 1 | link-name |
-| 2.4.6 | Headings and Labels | Tests 1, 5 | |
-| 2.4.7 | Focus Visible | Test 6 (structural) | Visual requires manual check |
-| 3.1.1 | Language of Page | Test 8 | html-has-lang |
-| 3.1.2 | Language of Parts | Test 1 (wcag2aa) | valid-lang |
-| 3.3.1 | Error Identification | Test 10 | form error patterns |
-| 3.3.2 | Labels or Instructions | Test 10 | |
-| 4.1.1 | Parsing | Test 1 | duplicate-id |
-| 4.1.2 | Name, Role, Value | Tests 1, 4, 10 | |
-| 4.1.3 | Status Messages | Test 1 | aria-live regions |
+| WCAG SC | Description               | Covered by          | Note                         |
+| :------ | :------------------------ | :------------------ | :--------------------------- |
+| 1.1.1   | Non-text Content          | Test 9              | img-alt, svg-img-alt         |
+| 1.3.1   | Info and Relationships    | Tests 1, 10         | label, semantic structure    |
+| 1.3.2   | Meaningful Sequence       | Test 5              | DOM order                    |
+| 1.3.3   | Sensory Characteristics   | Test 1 (wcag2a)     | Not color-only               |
+| 1.3.4   | Orientation               | Test 1 (wcag21aa)   |                              |
+| 1.3.5   | Identify Input Purpose    | Test 10             | autocomplete                 |
+| 1.4.1   | Use of Color              | Test 1              |                              |
+| 1.4.3   | Contrast (Minimum)        | Tests 2, 3          | Dark + light themes          |
+| 1.4.4   | Resize Text               | Manual only         | Not automatable              |
+| 1.4.5   | Images of Text            | Test 9              |                              |
+| 1.4.10  | Reflow                    | Manual only         | Not automatable              |
+| 1.4.11  | Non-text Contrast         | Tests 2, 3          | UI components                |
+| 1.4.12  | Text Spacing              | Manual only         |                              |
+| 1.4.13  | Content on Hover or Focus | Manual only         |                              |
+| 2.1.1   | Keyboard                  | Tests 1, 6          |                              |
+| 2.1.2   | No Keyboard Trap          | Test 6              | Focus trap detection         |
+| 2.4.1   | Bypass Blocks             | Tests 5, 7          | Skip link + landmarks        |
+| 2.4.2   | Page Titled               | Test 1              | document-title               |
+| 2.4.3   | Focus Order               | Test 6              | Tab order simulation         |
+| 2.4.4   | Link Purpose              | Test 1              | link-name                    |
+| 2.4.6   | Headings and Labels       | Tests 1, 5          |                              |
+| 2.4.7   | Focus Visible             | Test 6 (structural) | Visual requires manual check |
+| 3.1.1   | Language of Page          | Test 8              | html-has-lang                |
+| 3.1.2   | Language of Parts         | Test 1 (wcag2aa)    | valid-lang                   |
+| 3.3.1   | Error Identification      | Test 10             | form error patterns          |
+| 3.3.2   | Labels or Instructions    | Test 10             |                              |
+| 4.1.1   | Parsing                   | Test 1              | duplicate-id                 |
+| 4.1.2   | Name, Role, Value         | Tests 1, 4, 10      |                              |
+| 4.1.3   | Status Messages           | Test 1              | aria-live regions            |
