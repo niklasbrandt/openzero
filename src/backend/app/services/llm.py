@@ -661,6 +661,15 @@ TIER_MAX_TOKENS = {
 	"deep": 800,
 }
 
+# Per-tier read timeouts (seconds). Instant must fail fast so the UI never
+# hangs for minutes when the CPU is under load.  Deep is generous because
+# briefings and CoT blocks can legitimately take 3+ minutes on a single-board.
+TIER_TIMEOUTS = {
+	"instant": 25.0,
+	"standard": 90.0,
+	"deep": 180.0,
+}
+
 def select_tier(user_message: str, tier_override: Optional[str] = None) -> tuple[str, str, str]:
 	"""Select the appropriate LLM tier. Returns (tier_name, base_url, display_name)."""
 	if tier_override:
@@ -758,10 +767,16 @@ async def chat_stream(
 		# deep tier can think — CoT improves briefing quality, blocks get stripped.
 		request_thinking = tier_name == "deep"
 
+		# Tier-aware read timeout — instant must fail fast, not hang for minutes.
+		read_timeout = TIER_TIMEOUTS.get(tier_name, 90.0)
+		# Instant tier: single attempt then fall back to standard (CPU may be loaded).
+		# Standard/deep tiers: up to 3 retries as before.
+		max_attempts = 1 if tier_name == "instant" else 3
+
 		last_err = None
-		for attempt in range(3):
+		for attempt in range(max_attempts):
 			try:
-				async with httpx.AsyncClient(timeout=httpx.Timeout(180.0, connect=10.0)) as client:
+				async with httpx.AsyncClient(timeout=httpx.Timeout(read_timeout, connect=10.0)) as client:
 					async with client.stream(
 						"POST",
 						f"{base_url}/v1/chat/completions",
@@ -813,11 +828,53 @@ async def chat_stream(
 								continue
 						return
 			except httpx.ReadTimeout:
-				last_err = "I'm still warming up my local intelligence. One moment."
-				if attempt < 2:
-					logger.debug("LLM timeout (attempt %d/3, %s). Retrying in 3s...", attempt + 1, tier_name)
-					await asyncio.sleep(3)
-				continue
+				if tier_name == "instant":
+					# Instant model is overloaded — fall back to standard silently.
+					logger.warning("LLM instant timeout after %.0fs — falling back to standard", read_timeout)
+					_, fallback_url, fallback_name = select_tier(user_message, "standard")
+					last_model_used.set(f"Standard: {settings.LLM_MODEL_STANDARD} (fallback)")
+					fall_messages = messages
+					fall_max_tok = TIER_MAX_TOKENS["standard"]
+					fall_timeout = TIER_TIMEOUTS["standard"]
+					try:
+						async with httpx.AsyncClient(timeout=httpx.Timeout(fall_timeout, connect=10.0)) as fc:
+							async with fc.stream(
+								"POST",
+								f"{fallback_url}/v1/chat/completions",
+								json={
+									"messages": fall_messages,
+									"stream": True,
+									"temperature": 0.2,
+									"top_p": 0.9,
+									"max_tokens": fall_max_tok,
+									"thinking": False,
+								},
+							) as fr:
+								fr.raise_for_status()
+								async for line in fr.aiter_lines():
+									if not line.startswith("data: "):
+										continue
+									ds = line[6:]
+									if ds.strip() == "[DONE]":
+										return
+									try:
+										d = json.loads(ds)
+										ch = d.get("choices", [{}])[0].get("delta", {}).get("content")
+										if ch:
+											yield ch
+									except json.JSONDecodeError:
+										continue
+								return
+					except Exception as fb_err:
+						logger.error("Instant fallback (standard) also failed: %s", fb_err)
+						yield "I'm still waking up. Try again in a moment."
+					return
+				else:
+					last_err = "I'm still warming up my local intelligence. One moment."
+					if attempt < max_attempts - 1:
+						logger.debug("LLM timeout (attempt %d/%d, %s). Retrying in 3s...", attempt + 1, max_attempts, tier_name)
+						await asyncio.sleep(3)
+					continue
 			except Exception as e:
 				logger.error("Local LLM connection error: %s", e)
 				yield "I'm having trouble reaching the local model. Please try again."
