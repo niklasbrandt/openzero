@@ -98,13 +98,13 @@ class OperatorBoardService:
 		)
 		
 		if not project:
-			logger.info(f"Creating project {self.project_name}")
+			logger.info("Creating project %s", self.project_name)
 			try:
 				resp = await client.post("/api/projects", json={"name": self.project_name, "type": "private"})
 				resp.raise_for_status()
 				project = resp.json()["item"]
 			except Exception as e:
-				logger.warning(f"Failed to create project with 'type', retrying with 'isPublic': {e}")
+				logger.warning("Failed to create project with 'type', retrying with 'isPublic': %s", e)
 				resp = await client.post("/api/projects", json={"name": self.project_name, "isPublic": False})
 				resp.raise_for_status()
 				project = resp.json().get("item") or resp.json()
@@ -119,7 +119,7 @@ class OperatorBoardService:
 		board = next((b for b in boards if b["name"] in all_board_names), None)
 		
 		if not board:
-			logger.info(f"Creating board {self.board_name}")
+			logger.info("Creating board %s", self.board_name)
 			resp = await client.post(f"/api/projects/{project['id']}/boards", json={
 				"name": self.board_name,
 				"position": 65535
@@ -147,7 +147,7 @@ class OperatorBoardService:
 				None,
 			)
 			if not existing:
-				logger.info(f"Creating list {translated_name}")
+				logger.info("Creating list %s", translated_name)
 				pos = list(self._list_key_map.keys()).index(key)
 				await client.post(f"/api/boards/{board['id']}/lists", json={
 					"name": translated_name,
@@ -227,7 +227,7 @@ class OperatorBoardService:
 								clean_name = title.replace("!!", "").replace("!", "").strip()
 								new_name = f"[{source_board_name}] {clean_name}"
 								
-								logger.info(f"Moving card {title} to Operator Board")
+								logger.info("Moving card %s to Operator Board", title)
 								await client.patch(f"/api/cards/{card['id']}", json={
 									"boardId": target_board_id,
 									"listId": new_list_id,
@@ -237,7 +237,7 @@ class OperatorBoardService:
 				
 				return f"Synchronized {moved_count} tasks to Operator Board."
 		except Exception as e:
-			logger.error(f"Sync failed: {e}")
+			logger.error("Sync failed: %s", e)
 			return f"Sync failed."
 
 	async def rename_planka_entities(self, old_lang: str, new_lang: str) -> str:
@@ -324,7 +324,7 @@ class OperatorBoardService:
 					return f"Renamed: {', '.join(renamed)}"
 				return "No entities needed renaming."
 		except Exception as e:
-			logger.error(f"Planka rename failed: {e}")
+			logger.error("Planka rename failed: %s", e)
 			return "Rename failed."
 
 # Singleton

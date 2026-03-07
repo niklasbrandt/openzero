@@ -123,5 +123,5 @@ async def get_weather_forecast(location_name: Optional[str] = None) -> str:
 			return "\n".join(lines)
 
 	except Exception as e:
-		logger.error(f"Weather fetch error: {e}")
+		logger.error("Weather fetch error: %s", e)
 		return f"Weather service temporarily unavailable for {location}."
