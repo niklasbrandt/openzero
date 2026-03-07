@@ -54,6 +54,10 @@ services:
       timeout: 10s
       retries: 3
       start_period: 120s
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
     networks:
       - llm
 
@@ -78,6 +82,10 @@ services:
       timeout: 10s
       retries: 3
       start_period: 180s
+    deploy:
+      resources:
+        limits:
+          cpus: '6.0'
     networks:
       - llm
 
@@ -102,6 +110,10 @@ services:
       timeout: 10s
       retries: 3
       start_period: 240s
+    deploy:
+      resources:
+        limits:
+          cpus: '6.0'
     networks:
       - llm
 
