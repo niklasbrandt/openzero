@@ -740,10 +740,12 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		)
 	await safe_reply(update, help_text, reply_markup=get_nav_markup(t))
 
+@owner_only
 async def handle_memories_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	await update.callback_query.answer()
 	await cmd_memories(update, context)
 
+@owner_only
 async def handle_help_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	await update.callback_query.answer()
 	await cmd_help(update, context)
@@ -1103,7 +1105,7 @@ async def handle_calendar_approval(update: Update, context: ContextTypes.DEFAULT
 		await query.edit_message_text(f"<blockquote>🚀 <b>Added to Calendar:</b> {event_data['summary']}</blockquote>", parse_mode="HTML")
 	except Exception as e:
 		logger.warning("Calendar approval failed: %s", e)
-		await query.edit_message_text(f"❌ Failed to add event: {str(e)}")
+		await query.edit_message_text("❌ Failed to add event. Check logs.")
 
 
 @owner_only
@@ -1139,4 +1141,4 @@ async def handle_draft_approval(update: Update, context: ContextTypes.DEFAULT_TY
 			await query.edit_message_text("❌ Failed to create draft. Check Gmail credentials.")
 	except Exception as e:
 		logger.warning("Draft approval failed: %s", e)
-		await query.edit_message_text(f"❌ Error creating draft: {str(e)}")
+		await query.edit_message_text("❌ Error creating draft. Check logs.")
