@@ -332,7 +332,7 @@ async def check_pihole_dns():
 
 	try:
 		result = subprocess.run(
-			["dig", f"@{settings.SERVER_IP}", "open.zero", "+short", "+time=3", "+tries=1"],
+			["dig", "@host.docker.internal", "open.zero", "+short", "+time=3", "+tries=1"],
 			capture_output=True, text=True, timeout=8
 		)
 		dns_ok = result.returncode == 0 and result.stdout.strip() != ""
@@ -357,7 +357,7 @@ async def check_pihole_dns():
 
 	# DNS failed
 	_dns_fail_count += 1
-	logger.warning("dns_watchdog: DNS failure #%d — %s:53 not answering for open.zero", _dns_fail_count, settings.SERVER_IP)
+	logger.warning("dns_watchdog: DNS failure #%d — host.docker.internal:53 not answering for open.zero", _dns_fail_count)
 
 	# Inspect FTL log for gravity DB corruption signature
 	gravity_broken = False

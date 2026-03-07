@@ -1921,11 +1921,14 @@ async def get_system_status(db: AsyncSession = Depends(get_db)):
     identity_set = res_people.scalar_one_or_none() is not None
 
     # DNS Health — test Pi-hole can resolve open.zero
+    # Pi-hole runs network_mode:host so it's unreachable via its Tailscale IP
+    # from inside a Docker bridge container. Use host.docker.internal (mapped
+    # to the Docker host gateway via extra_hosts in docker-compose.yml) instead.
     dns_ok = False
     dns_detail = "untested"
     try:
         dig = subprocess.run(
-            ["dig", f"@{settings.SERVER_IP}", "open.zero", "+short", "+time=2", "+tries=1"],
+            ["dig", "@host.docker.internal", "open.zero", "+short", "+time=2", "+tries=1"],
             capture_output=True, text=True, timeout=5
         )
         if dig.returncode == 0 and dig.stdout.strip():
