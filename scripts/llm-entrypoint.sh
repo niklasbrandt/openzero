@@ -38,20 +38,29 @@ fi
 # Default 512 is a good balance. Set via BATCH_SIZE env var.
 BATCH="${BATCH_SIZE:-512}"
 
+# Parallel slots — 1 for a single-user personal assistant.
+# Increasing this multiplies KV cache memory by N. Set via PARALLEL env var.
+PARALLEL="${PARALLEL:-1}"
+
 echo "Starting llama-server on port ${PORT}..."
 echo "  Threads: ${THREADS}"
 echo "  Context: ${CTX_SIZE}"
 echo "  Max predict: ${N_PREDICT}"
 echo "  Batch size: ${BATCH}"
+echo "  Parallel slots: ${PARALLEL}"
+echo "  Extra args: ${EXTRA_ARGS}"
 
 exec /app/llama-server \
 	--model "$MODEL_PATH" \
 	--host 0.0.0.0 \
 	--port "${PORT}" \
 	--threads "${THREADS}" \
+	--threads-batch "${THREADS}" \
 	--ctx-size "${CTX_SIZE}" \
 	--n-predict "${N_PREDICT}" \
 	--batch-size "${BATCH}" \
+	--parallel "${PARALLEL}" \
+	--no-mmap \
 	--mlock \
 	--cont-batching \
 	${EXTRA_ARGS}
