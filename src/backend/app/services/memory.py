@@ -8,6 +8,17 @@ import datetime
 
 logger = logging.getLogger(__name__)
 
+
+def _log_safe(text: str, max_len: int = 80) -> str:
+	"""Strip newlines from user-controlled strings before they reach the log.
+
+	Prevents log-injection attacks where an attacker embeds CRLF sequences
+	to forge additional log lines (CWE-117).
+	"""
+	clean = text[:max_len].replace('\r', ' ').replace('\n', ' ')
+	return clean
+
+
 # Patterns that indicate adversarial prompt injection in memory text.
 # If any of these appear in content destined for the vault, the text is
 # stripped of the offending segment (or rejected entirely).
@@ -90,7 +101,7 @@ async def store_memory(text: str, metadata: Optional[dict] = None):
 	# Adversarial content filter -- reject text containing known injection
 	# phrases that could poison future prompt contexts.
 	if _ADVERSARIAL_PATTERNS.search(distilled_text):
-		logger.warning("Memory rejected (adversarial pattern detected): %s", distilled_text[:80])
+		logger.warning("Memory rejected (adversarial pattern detected): %s", _log_safe(distilled_text))
 		return
 
 	is_user_input = metadata and metadata.get("type") == "user_input"
@@ -123,7 +134,7 @@ async def store_memory(text: str, metadata: Optional[dict] = None):
 			limit=1
 		)
 		if dupes.points and dupes.points[0].score > 0.98:
-			logger.info("Memory Deduplicator: Ignored existing fact: %.80s", distilled_text)
+			logger.info("Memory Deduplicator: Ignored existing fact: %s", _log_safe(distilled_text))
 			return
 	except Exception:
 		pass  # dedup check optional; proceed with upsert if it fails
@@ -190,7 +201,7 @@ async def extract_and_store_facts(user_message: str):
 
 		# Parse result
 		if not result or 'NONE' in result.upper():
-			logger.debug("Memory extraction: no facts in '%.50s...' ", clean_input)
+			logger.debug("Memory extraction: no facts in '%s...' ", _log_safe(clean_input, 50))
 			return
 
 		# Store each extracted fact
@@ -206,7 +217,7 @@ async def extract_and_store_facts(user_message: str):
 			stored_count += 1
 
 		if stored_count > 0:
-			logger.info("Memory extraction: stored %d fact(s) from '%.60s...'", stored_count, clean_input)
+			logger.info("Memory extraction: stored %d fact(s) from '%s...'", stored_count, _log_safe(clean_input, 60))
 
 	except Exception as e:
 		logger.warning("Memory extraction failed (non-blocking): %s", e)

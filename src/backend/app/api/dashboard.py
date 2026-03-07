@@ -97,8 +97,10 @@ async def auth_activate(token: str, redirect: str = "/home"):
     # Use urlparse to reject any scheme or netloc (e.g. //evil.com, http://...).
     _parsed = urllib.parse.urlparse(redirect)
     if _parsed.scheme or _parsed.netloc or not redirect.startswith("/") or redirect.startswith("//"):
-        redirect = "/home"
-    response = RedirectResponse(url=redirect, status_code=302)
+        safe_redirect = "/home"
+    else:
+        safe_redirect = redirect
+    response = RedirectResponse(url=safe_redirect, status_code=302)
     response.set_cookie(
         key="z_auth_token",
         value=settings.DASHBOARD_TOKEN,  # use server-side constant, not user-supplied param
@@ -231,6 +233,10 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 	elif msg == "/year":
 		from app.tasks.yearly import yearly_review
 		report = await yearly_review()
+		return {"reply": report}
+	elif msg == "/quarter":
+		from app.tasks.quarterly import quarterly_review
+		report = await quarterly_review()
 		return {"reply": report}
 	elif msg == "/tree":
 		# Life Tree Overview - combines projects, inner circle, and status
@@ -367,26 +373,6 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		text = point.payload.get('text', '[No Text]')
 		await delete_memory(point.id)
 		return {"reply": f"✅ Unlearned: \"{text}\". Z has evolved past this specific context."}
-	elif msg == "/day":
-		from app.tasks.morning import morning_briefing
-		res = await morning_briefing()
-		return {"reply": res}
-	elif msg == "/week":
-		from app.tasks.weekly import weekly_review
-		res = await weekly_review()
-		return {"reply": res}
-	elif msg == "/month":
-		from app.tasks.monthly import monthly_review
-		res = await monthly_review()
-		return {"reply": res}
-	elif msg == "/quarter":
-		from app.tasks.quarterly import quarterly_review
-		res = await quarterly_review()
-		return {"reply": res}
-	elif msg == "/year":
-		from app.tasks.yearly import yearly_review
-		res = await yearly_review()
-		return {"reply": res}
 	elif msg.startswith("/add "):
 		topic = msg.replace("/add", "").strip()
 		from app.services.memory import store_memory
@@ -488,7 +474,7 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		}
 	except Exception as e:
 		logger.error("dashboard_chat error: %s", e)
-		raise HTTPException(status_code=500, detail="Internal server error") from e
+		raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.post("/regression-cleanup")
 async def regression_cleanup(request: Request, db: AsyncSession = Depends(get_db)):
@@ -1185,7 +1171,7 @@ async def create_project(project: ProjectCreate):
         return {"status": "created", "name": project.name, "id": result.get("id")}
     except Exception as e:
         logger.error("Failed to create project in Planka: %s", e)
-        raise HTTPException(status_code=500, detail="Failed to create project") from e
+        raise HTTPException(status_code=500, detail="Failed to create project")
 
 # --- Memory ---
 @router.get("/memory/search")
@@ -1561,7 +1547,7 @@ async def delete_local_event(event_id: str, db: AsyncSession = Depends(get_db)):
 		await db.commit()
 		return {"status": "deleted"}
 	except ValueError as exc:
-		raise HTTPException(status_code=400, detail="Invalid event ID") from exc
+		raise HTTPException(status_code=400, detail="Invalid event ID")
 
 # --- Server Info (RAM, uptime, LLM tier health) ---
 @router.get("/server-info")
@@ -1791,7 +1777,7 @@ async def benchmark_llm(tier: str = "instant"):
 		"deep": (settings.LLM_DEEP_URL, settings.LLM_MODEL_DEEP),
 	}
 	if tier not in tier_map:
-		raise HTTPException(status_code=400, detail=f"Unknown tier: {tier}")
+		raise HTTPException(status_code=400, detail="Invalid tier")
 
 	base_url, model_name = tier_map[tier]
 	# Short, deterministic prompt -- produces ~30-50 tokens for reliable measurement
@@ -1872,7 +1858,7 @@ async def benchmark_llm(tier: str = "instant"):
 		return {"tier": tier, "model": model_name, "error": "Timeout (120s)"}
 	except Exception as e:
 		# tier is validated against tier_map allow-list above; safe to log
-		logger.error("LLM benchmark failed (tier=%s): %s", tier, e)  # noqa: S001
+		logger.error("LLM benchmark failed (tier=%s): %s", tier.replace('\n', ' ').replace('\r', ' '), e)
 		return {"tier": tier, "model": model_name, "error": "Benchmark failed"}
 
 
@@ -1916,7 +1902,6 @@ async def get_system_status(db: AsyncSession = Depends(get_db)):
     # subnets (Tailscale-only). Run dig inside the pihole container via docker
     # exec, which the backend can do via its mounted Docker socket.
     dns_ok = False
-    dns_detail = "untested"
     try:
         dig = subprocess.run(
             ["docker", "exec", "openzero-pihole-1", "dig",

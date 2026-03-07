@@ -238,7 +238,7 @@ class OperatorBoardService:
 				return f"Synchronized {moved_count} tasks to Operator Board."
 		except Exception as e:
 			logger.error("Sync failed: %s", e)
-            return "Sync failed."
+			return "Sync failed."
 	async def rename_planka_entities(self, old_lang: str, new_lang: str) -> str:
 		"""Rename the Operations project, Operator Board, and its lists
 		from old_lang names to new_lang names via Planka PATCH API."""
