@@ -1,21 +1,35 @@
 import 'normalize.css'
 import '../style.css'
-import '../components/ProjectTree'
-import '../components/MemorySearch'
-import '../components/BriefingHistory'
-import '../components/EmailRules'
-import '../components/CircleManager'
+
+// ── Critical components: loaded synchronously so the above-fold UI paints
+//    without a flash of unregistered custom elements.
 import '../components/ChatPrompt'
-import '../components/CreateProject'
-import '../components/CalendarAgenda'
-import '../components/CalendarManager'
 import '../components/LifeOverview'
-import '../components/WelcomeOnboarding'
 import '../components/UserCard'
-import '../components/HardwareMonitor'
-import '../components/SoftwareStatus'
-import '../components/SystemBenchmark'
-import '../components/ZPersonality'
+
+// ── Lazy components: deferred until the browser is idle so the main thread
+//    is free for first paint (reduces TBT / long-tasks significantly).
+function loadLazyComponents(): void {
+	import('../components/ProjectTree')
+	import('../components/MemorySearch')
+	import('../components/BriefingHistory')
+	import('../components/EmailRules')
+	import('../components/CircleManager')
+	import('../components/CreateProject')
+	import('../components/CalendarAgenda')
+	import('../components/CalendarManager')
+	import('../components/WelcomeOnboarding')
+	import('../components/HardwareMonitor')
+	import('../components/SoftwareStatus')
+	import('../components/SystemBenchmark')
+	import('../components/ZPersonality')
+}
+
+if ('requestIdleCallback' in window) {
+	(window as Window & typeof globalThis).requestIdleCallback(loadLazyComponents, { timeout: 3000 })
+} else {
+	setTimeout(loadLazyComponents, 200)
+}
 
 console.log('openZero Dashboard Initialized');
 
