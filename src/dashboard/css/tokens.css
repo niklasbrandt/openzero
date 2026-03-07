@@ -118,6 +118,10 @@
 	/* -- Typography -- */
 	--font-mono: 'Fira Code', 'SF Mono', 'Cascadia Code', monospace;
 
+	/* -- Navigation surfaces -- */
+	--nav-bg: hsla(228, 45%, 6%, 0.72);
+	--nav-bg-hover: hsla(228, 45%, 5%, 0.96);
+
 	/* -- Tooltip tokens -- */
 	--tooltip-bg: rgba(10, 15, 25, 0.7);
 	--tooltip-blur: 24px;
@@ -152,6 +156,8 @@
 		--border-color: hsla(228, 45%, 4%, 0.08);
 		--border-subtle: hsla(228, 45%, 4%, 0.12);
 		--border-medium: hsla(228, 45%, 4%, 0.16);
+		--nav-bg: hsla(228, 20%, 97%, 0.85);
+		--nav-bg-hover: hsla(228, 20%, 97%, 0.97);
 		--tooltip-bg: hsla(228, 20%, 98%, 0.9);
 		--tooltip-border: hsla(228, 45%, 4%, 0.1);
 		--tooltip-text: hsla(228, 45%, 4%, 1);
@@ -190,6 +196,10 @@
 	--border-color: hsla(228, 45%, 4%, 0.08);
 	--border-subtle: hsla(228, 45%, 4%, 0.12);
 	--border-medium: hsla(228, 45%, 4%, 0.16);
+
+	/* Navigation Flip */
+	--nav-bg: hsla(228, 20%, 97%, 0.85);
+	--nav-bg-hover: hsla(228, 20%, 97%, 0.97);
 
 	/* Tooltip Flip */
 	--tooltip-bg: hsla(228, 20%, 98%, 0.9);
