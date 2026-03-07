@@ -36,6 +36,7 @@ import psutil
 import platform
 import subprocess
 import os
+import urllib.parse
 
 import logging
 
@@ -92,8 +93,10 @@ async def auth_activate(token: str, redirect: str = "/home"):
     """Validate dashboard token, set a persistent cookie, redirect to destination."""
     if not settings.DASHBOARD_TOKEN or not hmac.compare_digest(token, settings.DASHBOARD_TOKEN):
         raise HTTPException(status_code=401, detail="Invalid token")
-    # Sanitise redirect -- only allow relative paths and prevent open-redirect via protocol-relative URLs
-    if not redirect.startswith("/") or redirect.startswith("//"):
+    # Sanitise redirect -- only allow relative paths and prevent open-redirect.
+    # Use urlparse to reject any scheme or netloc (e.g. //evil.com, http://...).
+    _parsed = urllib.parse.urlparse(redirect)
+    if _parsed.scheme or _parsed.netloc or not redirect.startswith("/") or redirect.startswith("//"):
         redirect = "/home"
     response = RedirectResponse(url=redirect, status_code=302)
     response.set_cookie(
@@ -258,9 +261,9 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 						"sort_key": dt
 					})
 				except Exception:
-					pass
+					pass  # malformed event date -- non-fatal
 		except Exception:
-			pass
+			pass  # calendar fetch failed -- non-fatal
 		
 		# B. Local Events
 		res_local = await db.execute(select(LocalEvent).where(LocalEvent.start_time >= today, LocalEvent.start_time <= end_limit))
@@ -289,7 +292,7 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 							"sort_key": bday_this_year
 						})
 				except Exception:
-					pass
+					pass  # malformed birthday -- skip silently
 
 		timeline_events.sort(key=lambda x: x["sort_key"])
 		event_list = "\n".join([f"• {e['summary']} ({e['time']})" for e in timeline_events[:5]])
@@ -618,56 +621,44 @@ async def get_personality(db: AsyncSession = Depends(get_db)):
 			{"id": "values", "label": "Core Values & Principles", "type": "textarea", "placeholder": "What drives your decision making? (e.g. Efficiency above all, or Ethics first)"},
 			{"id": "behavior", "label": "Linguistic & Behavioral Style", "type": "textarea", "placeholder": "Specific quirks, metaphors, or formal/informal speech patterns."},
 			{"id": "theme", "label": "Dashboard Theme", "type": "select", "options": [
-				{"value": "fusion", "label": "Default Fusion", "colors": {"primary": "#14B8A6", "secondary": "#0066FF", "tertiary": "#6366F1"}},
-				{"value": "cyberpunk", "label": "Cyberpunk Neon", "colors": {"primary": "#FF00FF", "secondary": "#00FFFF", "tertiary": "#FFFF00"}},
-				{"value": "night_city", "label": "Night City", "colors": {"primary": "#F700FF", "secondary": "#2100A3", "tertiary": "#FED900"}},
-				{"value": "forest", "label": "Deep Forest", "colors": {"primary": "#22C55E", "secondary": "#15803D", "tertiary": "#84CC16"}},
-				{"value": "deep_sea", "label": "Deep Sea", "colors": {"primary": "#0066FF", "secondary": "#000080", "tertiary": "#00CED1"}},
-				{"value": "ember", "label": "Ember Glass", "colors": {"primary": "#F97316", "secondary": "#EF4444", "tertiary": "#F59E0B"}},
-				{"value": "aurora", "label": "Aurora Borealis", "colors": {"primary": "#A855F7", "secondary": "#EC4899", "tertiary": "#06B6D4"}},
-				{"value": "midnight", "label": "Midnight Blue", "colors": {"primary": "#3B82F6", "secondary": "#1D4ED8", "tertiary": "#60A5FA"}},
-				{"value": "void", "label": "The Void", "colors": {"primary": "#7C3AED", "secondary": "#4F46E5", "tertiary": "#2D1B69"}},
-				{"value": "matrix", "label": "Digital Matrix", "colors": {"primary": "#00FF41", "secondary": "#008F11", "tertiary": "#003B00"}},
-				{"value": "outrun", "label": "Outrun 84", "colors": {"primary": "#FF2E63", "secondary": "#08D9D6", "tertiary": "#EAEAEA"}},
-				{"value": "synthwave", "label": "Synthwave Glow", "colors": {"primary": "#FF71CE", "secondary": "#01CDFE", "tertiary": "#05FFA1"}},
-				{"value": "plasma", "label": "Plasma Strike", "colors": {"primary": "#9D50BB", "secondary": "#6E48AA", "tertiary": "#FF4B2B"}},
-				{"value": "volcanic", "label": "Volcanic Flow", "colors": {"primary": "#FF416C", "secondary": "#FF4B2B", "tertiary": "#42275A"}},
-				{"value": "frost", "label": "Glacier Frost", "colors": {"primary": "#00B4DB", "secondary": "#0083B0", "tertiary": "#FFFFFF"}},
-				{"value": "sakura", "label": "Sakura Petals", "colors": {"primary": "#F9A8D4", "secondary": "#EC4899", "tertiary": "#DB2777"}},
-				{"value": "copper", "label": "Antique Copper", "colors": {"primary": "#FB923C", "secondary": "#D97706", "tertiary": "#92400E"}},
-				{"value": "carbon", "label": "Carbon Fiber", "colors": {"primary": "#E5E7EB", "secondary": "#374151", "tertiary": "#6B7280"}},
-				{"value": "jade", "label": "Imperial Jade", "colors": {"primary": "#10B981", "secondary": "#059669", "tertiary": "#6EE7B7"}},
-				{"value": "sunset", "label": "Venice Sunset", "colors": {"primary": "#FF512F", "secondary": "#DD2476", "tertiary": "#F09819"}},
-				{"value": "oceanic", "label": "Oceanic Depth", "colors": {"primary": "#2193b0", "secondary": "#6dd5ed", "tertiary": "#2C3E50"}},
-				{"value": "nebula", "label": "Deep Nebula", "colors": {"primary": "#4e54c8", "secondary": "#8f94fb", "tertiary": "#243B55"}},
-				{"value": "royal", "label": "Royal Gold", "colors": {"primary": "#f9ca24", "secondary": "#f0932b", "tertiary": "#4834d4"}},
-				{"value": "lava", "label": "Molten Lava", "colors": {"primary": "#eb4d4b", "secondary": "#ff7979", "tertiary": "#130f40"}},
-				{"value": "emerald", "label": "Emerald City", "colors": {"primary": "#2ecc71", "secondary": "#27ae60", "tertiary": "#f1c40f"}},
-				{"value": "amethyst", "label": "Amethyst Spark", "colors": {"primary": "#9b59b6", "secondary": "#8e44ad", "tertiary": "#34495e"}},
-				{"value": "sunflower", "label": "Sunflower Field", "colors": {"primary": "#f1c40f", "secondary": "#f39c12", "tertiary": "#27ae60"}},
-				{"value": "asphalt", "label": "Wet Asphalt", "colors": {"primary": "#34495e", "secondary": "#2c3e50", "tertiary": "#7f8c8d"}},
-				{"value": "clouds", "label": "Silver Clouds", "colors": {"primary": "#ecf0f1", "secondary": "#bdc3c7", "tertiary": "#95a5a6"}},
-				{"value": "concrete", "label": "Polished Concrete", "colors": {"primary": "#95a5a6", "secondary": "#7f8c8d", "tertiary": "#2c3e50"}},
-				{"value": "pumpkin", "label": "Pumpkin Spice", "colors": {"primary": "#e67e22", "secondary": "#d35400", "tertiary": "#2c3e50"}},
-				{"value": "alizarin", "label": "Alizarin Crimson", "colors": {"primary": "#e74c3c", "secondary": "#c0392b", "tertiary": "#8e44ad"}},
-				{"value": "turquoise", "label": "Turquoise Dream", "colors": {"primary": "#1abc9c", "secondary": "#16a085", "tertiary": "#2980b9"}},
-				{"value": "belize", "label": "Belize Hole", "colors": {"primary": "#2980b9", "secondary": "#3498db", "tertiary": "#8e44ad"}},
-				{"value": "wisteria", "label": "Blooming Wisteria", "colors": {"primary": "#8e44ad", "secondary": "#9b59b6", "tertiary": "#2c3e50"}},
-				{"value": "orange", "label": "Zesty Orange", "colors": {"primary": "#f39c12", "secondary": "#e67e22", "tertiary": "#d35400"}},
-				{"value": "grenadier", "label": "Grenadier Fire", "colors": {"primary": "#d35400", "secondary": "#e67e22", "tertiary": "#c0392b"}},
-				{"value": "midnight_bloom", "label": "Midnight Bloom", "colors": {"primary": "#a29bfe", "secondary": "#6c5ce7", "tertiary": "#fd79a8"}},
-				{"value": "mint", "label": "Fresh Mint", "colors": {"primary": "#55efc4", "secondary": "#00b894", "tertiary": "#81ecec"}},
-				{"value": "robins_egg", "label": "Robins Egg", "colors": {"primary": "#81ecec", "secondary": "#00cec9", "tertiary": "#74b9ff"}},
-				{"value": "sour_lemon", "label": "Sour Lemon", "colors": {"primary": "#ffeaa7", "secondary": "#fdcb6e", "tertiary": "#fab1a0"}},
-				{"value": "peach", "label": "First Peach", "colors": {"primary": "#fab1a0", "secondary": "#ff7675", "tertiary": "#d63031"}},
-				{"value": "chi_gong", "label": "Chi-Gong", "colors": {"primary": "#d63031", "secondary": "#ff7675", "tertiary": "#6c5ce7"}},
-				{"value": "pristine", "label": "Pristine White", "colors": {"primary": "#dfe6e9", "secondary": "#b2bec3", "tertiary": "#636e72"}},
-				{"value": "shale", "label": "Shale Gray", "colors": {"primary": "#636e72", "secondary": "#2d3436", "tertiary": "#00b894"}},
-				{"value": "dracula", "label": "Dracula Castle", "colors": {"primary": "#bd93f9", "secondary": "#ff79c6", "tertiary": "#8be9fd"}},
-				{"value": "gruvbox", "label": "Retro Gruvbox", "colors": {"primary": "#fabd2f", "secondary": "#fe8019", "tertiary": "#b8bb26"}},
-				{"value": "nord", "label": "Arctic Nord", "colors": {"primary": "#88c0d0", "secondary": "#81a1c1", "tertiary": "#5e81ac"}},
-				{"value": "monokai_pro", "label": "Monokai Pro", "colors": {"primary": "#ffd866", "secondary": "#fc9867", "tertiary": "#ff6188"}},
-				{"value": "solarized", "label": "Solarized Fire", "colors": {"primary": "#cb4b16", "secondary": "#dc322f", "tertiary": "#268bd2"}}
+				{"value": "fusion", "label": "Default Fusion", "group": "default", "colors": {"primary": "#14B8A6", "secondary": "#0066FF", "tertiary": "#6366F1"}},
+				{"value": "wind", "label": "Wind", "group": "elements", "colors": {"primary": "#7DB8C9", "secondary": "#A8D4E0", "tertiary": "#5B8FA3"}},
+				{"value": "water", "label": "Water", "group": "elements", "colors": {"primary": "#0077B6", "secondary": "#00B4D8", "tertiary": "#023E8A"}},
+				{"value": "fire", "label": "Fire", "group": "elements", "colors": {"primary": "#E85D04", "secondary": "#DC2F02", "tertiary": "#F48C06"}},
+				{"value": "earth", "label": "Earth", "group": "elements", "colors": {"primary": "#8B6914", "secondary": "#606C38", "tertiary": "#BC6C25"}},
+				{"value": "polar", "label": "Polar", "group": "environments", "colors": {"primary": "#A8DADC", "secondary": "#457B9D", "tertiary": "#1D3557"}},
+				{"value": "mountain", "label": "Mountain", "group": "environments", "colors": {"primary": "#6C757D", "secondary": "#495057", "tertiary": "#8D99AE"}},
+				{"value": "forest", "label": "Forest", "group": "environments", "colors": {"primary": "#2D6A4F", "secondary": "#40916C", "tertiary": "#52B788"}},
+				{"value": "desert", "label": "Desert", "group": "environments", "colors": {"primary": "#C2956B", "secondary": "#D4A373", "tertiary": "#9C6644"}},
+				{"value": "coast", "label": "Coast", "group": "environments", "colors": {"primary": "#0096C7", "secondary": "#48CAE4", "tertiary": "#F4A261"}},
+				{"value": "sky", "label": "Sky", "group": "environments", "colors": {"primary": "#4895EF", "secondary": "#4CC9F0", "tertiary": "#F9C74F"}},
+				{"value": "aurora", "label": "Aurora", "group": "phenomena", "colors": {"primary": "#22C55E", "secondary": "#A855F7", "tertiary": "#06B6D4"}},
+				{"value": "storm", "label": "Storm", "group": "phenomena", "colors": {"primary": "#475569", "secondary": "#38BDF8", "tertiary": "#E2E8F0"}},
+				{"value": "jungle", "label": "Jungle", "group": "phenomena", "colors": {"primary": "#15803D", "secondary": "#A3E635", "tertiary": "#CA8A04"}},
+				{"value": "solarized", "label": "Solarized", "group": "ide", "colors": {"primary": "#CB4B16", "secondary": "#268BD2", "tertiary": "#2AA198"}},
+				{"value": "monokai", "label": "Monokai", "group": "ide", "colors": {"primary": "#F92672", "secondary": "#FD971F", "tertiary": "#A6E22E"}},
+				{"value": "dracula", "label": "Dracula", "group": "ide", "colors": {"primary": "#BD93F9", "secondary": "#FF79C6", "tertiary": "#8BE9FD"}},
+				{"value": "gruvbox", "label": "Gruvbox", "group": "ide", "colors": {"primary": "#FABD2F", "secondary": "#FE8019", "tertiary": "#B8BB26"}},
+				{"value": "nord", "label": "Nord", "group": "ide", "colors": {"primary": "#88C0D0", "secondary": "#81A1C1", "tertiary": "#5E81AC"}},
+				{"value": "catppuccin", "label": "Catppuccin", "group": "ide", "colors": {"primary": "#CBA6F7", "secondary": "#89B4FA", "tertiary": "#A6E3A1"}},
+				{"value": "tokyo_night", "label": "Tokyo Night", "group": "ide", "colors": {"primary": "#7AA2F7", "secondary": "#BB9AF7", "tertiary": "#7DCFFF"}},
+				{"value": "mono_silver", "label": "Monochrome Silver", "group": "mono", "colors": {"primary": "#ADB5BD", "secondary": "#6C757D", "tertiary": "#CED4DA"}},
+				{"value": "mono_teal", "label": "Monochrome Teal", "group": "mono", "colors": {"primary": "#14B8A6", "secondary": "#0D9488", "tertiary": "#2DD4BF"}},
+				{"value": "mono_violet", "label": "Monochrome Violet", "group": "mono", "colors": {"primary": "#8B5CF6", "secondary": "#7C3AED", "tertiary": "#A78BFA"}},
+				{"value": "color_red", "label": "Red", "group": "colors", "colors": {"primary": "#E53E3E", "secondary": "#B91C1C", "tertiary": "#F87171"}},
+				{"value": "color_blue", "label": "Blue", "group": "colors", "colors": {"primary": "#3B82F6", "secondary": "#2563EB", "tertiary": "#60A5FA"}},
+				{"value": "color_green", "label": "Green", "group": "colors", "colors": {"primary": "#22C55E", "secondary": "#16A34A", "tertiary": "#4ADE80"}},
+				{"value": "color_purple", "label": "Purple", "group": "colors", "colors": {"primary": "#A855F7", "secondary": "#9333EA", "tertiary": "#C084FC"}},
+				{"value": "color_orange", "label": "Orange", "group": "colors", "colors": {"primary": "#F97316", "secondary": "#EA580C", "tertiary": "#FB923C"}},
+				{"value": "color_cyan", "label": "Cyan", "group": "colors", "colors": {"primary": "#22D3EE", "secondary": "#0891B2", "tertiary": "#A5F3FC"}},
+				{"value": "color_gold", "label": "Gold", "group": "colors", "colors": {"primary": "#EAB308", "secondary": "#CA8A04", "tertiary": "#FACC15"}},
+				{"value": "color_indigo", "label": "Indigo", "group": "colors", "colors": {"primary": "#6366F1", "secondary": "#4F46E5", "tertiary": "#818CF8"}},
+				{"value": "glass_frost", "label": "Glass Frost", "group": "glass", "colors": {"primary": "#67E8F9", "secondary": "#A5F3FC", "tertiary": "#22D3EE"}},
+				{"value": "glass_ember", "label": "Glass Ember", "group": "glass", "colors": {"primary": "#FB923C", "secondary": "#FDBA74", "tertiary": "#F97316"}},
+				{"value": "neon", "label": "Neon", "group": "style", "colors": {"primary": "#FF00FF", "secondary": "#00FFFF", "tertiary": "#FFFF00"}},
+				{"value": "hc_1", "label": "High Contrast I", "group": "hc", "colors": {"primary": "#38BDF8", "secondary": "#FB923C", "tertiary": "#A78BFA"}},
+				{"value": "hc_2", "label": "High Contrast II", "group": "hc", "colors": {"primary": "#FACC15", "secondary": "#F472B6", "tertiary": "#34D399"}},
+				{"value": "hc_3", "label": "High Contrast III", "group": "hc", "colors": {"primary": "#FFFFFF", "secondary": "#FFFF00", "tertiary": "#00FFFF"}}
 			]}
 		]
 	}
@@ -1021,7 +1012,7 @@ async def planka_redirect(request: Request, target: str = "", background: bool =
 							proj_id = projects[0]["id"]
 							PLANKA_ID_CACHE["oz_project_id"] = proj_id
 					except Exception:
-						pass
+						pass  # project lookup optional -- continue with redirect fallback
 
 				if proj_id:
 					redirect_url = f"{public_base}/projects/{proj_id}"
