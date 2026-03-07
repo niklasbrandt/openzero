@@ -185,8 +185,18 @@ export class ChatPrompt extends HTMLElement {
 			} catch (_) { }
 
 			if (data.actions && data.actions.length > 0) {
+				// Map human-readable action strings to widget refresh keys.
+				// parse_and_execute_actions returns strings like "Event 'X' scheduled."
+				// but CalendarAgenda listens for the keyword 'calendar'.
+				const actionTypes: string[] = [];
+				for (const act of data.actions as string[]) {
+					if (/event|scheduled|calendar/i.test(act)) actionTypes.push('calendar');
+					if (/task/i.test(act)) actionTypes.push('task');
+					if (/project/i.test(act)) actionTypes.push('projects');
+					if (/memory|learned/i.test(act)) actionTypes.push('memory');
+				}
 				window.dispatchEvent(new CustomEvent('refresh-data', {
-					detail: { actions: data.actions }
+					detail: { actions: actionTypes.length ? actionTypes : data.actions }
 				}));
 			}
 		} catch (_e) {
@@ -209,9 +219,11 @@ export class ChatPrompt extends HTMLElement {
 			this.scrollToBottom();
 			input?.focus();
 
-			// Attach retry click handler if there's a pending message
+			// Attach retry click handler if there's a pending message.
+			// In column-reverse layout the newest message is the FIRST DOM child,
+			// so :first-child is the correct selector (not :last-child).
 			if (this.pendingRetry) {
-				const lastBubble = this.shadowRoot?.querySelector('.message.assistant:last-child .bubble');
+				const lastBubble = this.shadowRoot?.querySelector('.message.assistant:first-child .bubble');
 				if (lastBubble) {
 					(lastBubble as HTMLElement).style.cursor = 'pointer';
 					lastBubble.addEventListener('click', () => this.retryPending(), { once: true });
