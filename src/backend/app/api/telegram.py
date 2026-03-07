@@ -1094,8 +1094,8 @@ async def handle_calendar_approval(update: Update, context: ContextTypes.DEFAULT
 			new_event = LocalEvent(
 				summary=event_data["summary"],
 				description=event_data.get("description", ""),
-				start_time=datetime.datetime.fromisoformat(event_data["start"].replace(" ", "T")),
-				end_time=datetime.datetime.fromisoformat(event_data["end"].replace(" ", "T"))
+				start_time=datetime.fromisoformat(event_data["start"].replace(" ", "T")),
+				end_time=datetime.fromisoformat(event_data["end"].replace(" ", "T"))
 			)
 			db.add(new_event)
 			await db.commit()
