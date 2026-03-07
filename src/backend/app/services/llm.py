@@ -216,6 +216,145 @@ def sanitise_output(text: str) -> str:
 	return text.strip()
 
 
+# ---------------------------------------------------------------------------
+# Cloud LLM PII Sanitization (CloudSanitizationProxy)
+# ---------------------------------------------------------------------------
+# spaCy is loaded lazily on the first cloud API call so it never adds startup
+# cost when only local llama-server is in use.
+# ---------------------------------------------------------------------------
+
+_nlp = None  # spaCy language model — loaded once, reused across requests
+
+
+def _get_nlp():
+	"""Lazily load the spaCy en_core_web_sm model.  Thread-safe: asyncio is
+	single-threaded, so there is no race condition on this global assignment."""
+	global _nlp
+	if _nlp is None:
+		try:
+			import spacy  # noqa: PLC0415
+			_nlp = spacy.load("en_core_web_sm")
+		except OSError:
+			logger.warning(
+				"cloud_sanitize: en_core_web_sm not found — run "
+				"`python -m spacy download en_core_web_sm`. "
+				"Cloud PII sanitization disabled for this session."
+			)
+			_nlp = False  # sentinel: model unavailable, do not retry
+	return _nlp if _nlp is not False else None
+
+
+# Entity category → token prefix used in replacement map.
+_LABEL_PREFIX: dict[str, str] = {
+	"PERSON":   "PERSON",
+	"GPE":      "CITY",
+	"LOC":      "CITY",
+	"ORG":      "ORG",
+	"DATE":     "DATE",
+	"CARDINAL": "ID",
+}
+
+# Regex patterns for entity types spaCy en_core_web_sm does not detect natively.
+_EMAIL_RE = re.compile(
+	r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}",
+	re.ASCII,
+)
+_PHONE_RE = re.compile(
+	r"(?<!\w)"
+	r"(?:\+?1[\s\-.]?)?"           # optional country code
+	r"(?:\(?\d{3}\)?[\s\-.]?)"    # area code
+	r"(?:\d{3}[\s\-.]?)"          # exchange
+	r"(?:\d{4})"                  # subscriber
+	r"(?!\w)",
+)
+
+
+def sanitize_prompt(text: str, _counters: dict | None = None) -> tuple[str, dict[str, str]]:
+	"""Strip PII entities from *text* using regex + offline spaCy NER.
+
+	Returns a ``(sanitized_text, replacement_map)`` tuple where
+	``replacement_map`` maps original strings → opaque tokens.
+
+	The caller may pass an existing *_counters* dict so that entity counters
+	are shared across multiple strings (e.g. user_message + system_prompt)
+	within one request, which ensures tokens are consistent and do not collide.
+
+	The replacement map lives in function-call scope only — it is never logged
+	(with real values) or persisted anywhere.
+	"""
+	if not text:
+		return text, {}
+
+	# Shared counter state so callers can merge replacements across strings
+	if _counters is None:
+		_counters = {}
+
+	replacement_map: dict[str, str] = {}
+
+	# --- Step 1: Regex scan (EMAIL, PHONE) ---
+	for match in _EMAIL_RE.finditer(text):
+		original = match.group(0)
+		if original not in replacement_map:
+			idx = _counters.get("EMAIL", 0) + 1
+			_counters["EMAIL"] = idx
+			replacement_map[original] = f"[EMAIL_{idx}]"
+
+	for match in _PHONE_RE.finditer(text):
+		original = match.group(0).strip()
+		if original and original not in replacement_map:
+			idx = _counters.get("PHONE", 0) + 1
+			_counters["PHONE"] = idx
+			replacement_map[original] = f"[PHONE_{idx}]"
+
+	# --- Step 2: spaCy NER scan ---
+	nlp = _get_nlp()
+	if nlp is not None:
+		doc = nlp(text)
+		for ent in doc.ents:
+			label = ent.label_
+			original = ent.text.strip()
+			if not original or label not in _LABEL_PREFIX:
+				continue
+			if original in replacement_map:
+				continue  # already covered by regex or earlier NER hit
+			prefix = _LABEL_PREFIX[label]
+			idx = _counters.get(prefix, 0) + 1
+			_counters[prefix] = idx
+			replacement_map[original] = f"[{prefix}_{idx}]"
+
+	if not replacement_map:
+		return text, {}
+
+	# --- Step 3: Apply replacements (longest key first to avoid partial overlap) ---
+	# Sort by length descending so "julian@example.com" is replaced before "julian"
+	for original in sorted(replacement_map, key=len, reverse=True):
+		text = text.replace(original, replacement_map[original])
+
+	return text, replacement_map
+
+
+def rehydrate_response(text: str, replacement_map: dict[str, str]) -> str:
+	"""Reverse the token substitutions made by *sanitize_prompt*.
+
+	Inverts *replacement_map* and applies it to *text*, restoring the
+	original values.  Re-hydration is case-insensitive on the token side so
+	that models that lower-case tokens (e.g. ``[person_a]``) are handled.
+	"""
+	if not text or not replacement_map:
+		return text
+
+	# Invert: token → original
+	inverted = {token: original for original, token in replacement_map.items()}
+
+	# Sort by token length descending to avoid partial matches
+	for token in sorted(inverted, key=len, reverse=True):
+		original = inverted[token]
+		# Case-insensitive replacement for the token itself
+		text = re.sub(re.escape(token), original, text, flags=re.IGNORECASE)
+
+	return text
+
+
 from app.config import settings
 from app.services.agent_actions import AVAILABLE_TOOLS
 from langchain_openai import ChatOpenAI
@@ -439,6 +578,7 @@ async def chat(
 	provider: Optional[str] = None,
 	model: Optional[str] = None,
 	tier: Optional[str] = None,
+	sanitize: bool = True,
 	**kwargs
 ) -> str:
 	"""Blocking chat — collects all tokens from chat_stream() into a single string.
@@ -450,6 +590,7 @@ async def chat(
 		provider=provider,
 		model=model,
 		tier=tier,
+		sanitize=sanitize,
 		**kwargs
 	):
 		chunks.append(chunk)
@@ -536,10 +677,15 @@ async def chat_stream(
 	provider: Optional[str] = None,
 	model: Optional[str] = None,
 	tier: Optional[str] = None,
+	sanitize: bool = True,
 	**kwargs
 ) -> AsyncGenerator[str, None]:
 	"""Stream tokens from the LLM as an async generator.
-	This is the core function — chat() wraps this for blocking use."""
+	This is the core function — chat() wraps this for blocking use.
+
+	``sanitize`` controls cloud PII masking.  Set to False for non-personal
+	payloads (e.g. code generation, system diagnostics) where the overhead
+	and token substitution are not needed."""
 	# Sanitise user input before anything else
 	user_message = sanitise_input(user_message)
 	user_name = kwargs.get("user_name", "User")
@@ -635,6 +781,16 @@ async def chat_stream(
 	elif provider == "groq":
 		target_model = model or "llama-3.1-70b-versatile"
 		last_model_used.set(f"Groq: {target_model}")
+		# PII sanitization — strip named entities before they leave the VPS
+		outbound_message = user_message
+		outbound_system = system_prompt
+		rep_map: dict[str, str] = {}
+		if sanitize and settings.CLOUD_LLM_SANITIZE:
+			_counters: dict = {}
+			outbound_message, _m1 = sanitize_prompt(user_message, _counters)
+			outbound_system, _m2 = sanitize_prompt(system_prompt, _counters)
+			rep_map = {**_m1, **_m2}
+			logger.debug("cloud_sanitize[groq]: %d entities replaced in outbound prompt", len(rep_map))
 		try:
 			async with httpx.AsyncClient(timeout=130.0) as client:
 				response = await client.post(
@@ -643,14 +799,15 @@ async def chat_stream(
 					json={
 						"model": target_model,
 						"messages": [
-							{"role": "system", "content": system_prompt},
-							{"role": "user", "content": user_message},
+							{"role": "system", "content": outbound_system},
+							{"role": "user", "content": outbound_message},
 						],
 					},
 				)
 				response.raise_for_status()
 				data = response.json()
-				yield data.get("choices", [{}])[0].get("message", {}).get("content", "No response from Groq.")
+				raw = data.get("choices", [{}])[0].get("message", {}).get("content", "No response from Groq.")
+				yield rehydrate_response(raw, rep_map) if rep_map else raw
 		except Exception as e:
 			yield f"Error connecting to Groq: {str(e)}"
 		return
@@ -659,6 +816,16 @@ async def chat_stream(
 	elif provider == "openai":
 		target_model = model or "gpt-4o"
 		last_model_used.set(f"OpenAI: {target_model}")
+		# PII sanitization — strip named entities before they leave the VPS
+		outbound_message = user_message
+		outbound_system = system_prompt
+		rep_map = {}
+		if sanitize and settings.CLOUD_LLM_SANITIZE:
+			_counters = {}
+			outbound_message, _m1 = sanitize_prompt(user_message, _counters)
+			outbound_system, _m2 = sanitize_prompt(system_prompt, _counters)
+			rep_map = {**_m1, **_m2}
+			logger.debug("cloud_sanitize[openai]: %d entities replaced in outbound prompt", len(rep_map))
 		try:
 			async with httpx.AsyncClient(timeout=130.0) as client:
 				response = await client.post(
@@ -667,14 +834,15 @@ async def chat_stream(
 					json={
 						"model": target_model,
 						"messages": [
-							{"role": "system", "content": system_prompt},
-							{"role": "user", "content": user_message},
+							{"role": "system", "content": outbound_system},
+							{"role": "user", "content": outbound_message},
 						],
 					},
 				)
 				response.raise_for_status()
 				data = response.json()
-				yield data.get("choices", [{}])[0].get("message", {}).get("content", "No response from OpenAI.")
+				raw = data.get("choices", [{}])[0].get("message", {}).get("content", "No response from OpenAI.")
+				yield rehydrate_response(raw, rep_map) if rep_map else raw
 		except Exception as e:
 			yield f"Error connecting to OpenAI: {str(e)}"
 		return
@@ -688,7 +856,8 @@ async def chat_with_context(
 	history: Optional[list] = None,
 	include_projects: bool = False,
 	include_people: bool = True,
-	tier_override: Optional[str] = None
+	tier_override: Optional[str] = None,
+	sanitize: bool = True,
 ) -> str:
 	"""
 	Wraps the standard chat with a rich snapshot of the user's world.
@@ -896,6 +1065,7 @@ async def chat_with_context(
 					user_message,
 					system_override=system_with_context,
 					tier="standard",
+					sanitize=sanitize,
 					user_name=user_name,
 					user_profile=user_profile,
 				))
@@ -914,6 +1084,7 @@ async def chat_with_context(
 			user_message,
 			system_override=system_with_context,
 			tier=tier_name,
+			sanitize=sanitize,
 			user_name=user_name,
 			user_profile=user_profile,
 		))
@@ -923,6 +1094,7 @@ async def chat_with_context(
 			user_message,
 			system_override=formatted_system_prompt if 'formatted_system_prompt' in locals() else None,
 			tier="standard",
+			sanitize=sanitize,
 			user_name=user_name if 'user_name' in locals() else "User",
 			user_profile=user_profile if 'user_profile' in locals() else {},
 		))
@@ -933,7 +1105,8 @@ async def chat_stream_with_context(
 	history: Optional[list] = None,
 	include_projects: bool = False,
 	include_people: bool = True,
-	tier_override: Optional[str] = None
+	tier_override: Optional[str] = None,
+	sanitize: bool = True,
 ) -> AsyncGenerator[str, None]:
 	"""Streaming version of chat_with_context() for real-time token delivery.
 	Used by Telegram and Dashboard streaming endpoints."""
@@ -1054,6 +1227,7 @@ async def chat_stream_with_context(
 					user_message,
 					system_override=system_with_context,
 					tier="deep",
+					sanitize=sanitize,
 					user_name=user_name,
 					user_profile=user_profile,
 				)
@@ -1075,6 +1249,7 @@ async def chat_stream_with_context(
 			user_message,
 			system_override=system_with_context,
 			tier=tier_name,
+			sanitize=sanitize,
 			user_name=user_name,
 			user_profile=user_profile,
 		):
