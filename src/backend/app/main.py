@@ -34,13 +34,18 @@ async def lifespan(app: FastAPI):
 
             # 3. Add theme color columns to 'people' if not exists
             #    (added after initial release; UserCard writes these, personality endpoint reads them)
-            for col in ("color_primary", "color_secondary", "color_tertiary"):
+            _people_color_cols = {
+                "color_primary":   "ALTER TABLE people ADD COLUMN color_primary VARCHAR",
+                "color_secondary": "ALTER TABLE people ADD COLUMN color_secondary VARCHAR",
+                "color_tertiary":  "ALTER TABLE people ADD COLUMN color_tertiary VARCHAR",
+            }
+            for col, alter_sql in _people_color_cols.items():
                 res = await conn.execute(text(
                     "SELECT column_name FROM information_schema.columns "
-                    f"WHERE table_name='people' AND column_name='{col}'"
-                ))
+                    "WHERE table_name='people' AND column_name=:col"
+                ), {"col": col})
                 if not res.fetchone():
-                    await conn.execute(text(f"ALTER TABLE people ADD COLUMN {col} VARCHAR"))
+                    await conn.execute(text(alter_sql))
 
             # 4. Add 'model' column to 'global_messages' if not exists
             #    (records which LLM tier/model produced each Z response)
