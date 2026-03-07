@@ -1602,10 +1602,21 @@ async def server_info():
 					val = parts[1].strip().split()[0]  # kB
 					mem[key] = int(val)
 			total_kb = mem.get("MemTotal", 0)
-			avail_kb = mem.get("MemAvailable", mem.get("MemFree", 0))
+			free_kb = mem.get("MemFree", 0)
+			avail_kb = mem.get("MemAvailable", free_kb)
+			buffers_kb = mem.get("Buffers", 0)
+			# Cached in /proc/meminfo excludes SReclaimable on Linux 3.14+;
+			# add SReclaimable to match what `free` shows as buff/cache.
+			cached_kb = mem.get("Cached", 0) + mem.get("SReclaimable", 0)
+			apps_kb = max(total_kb - free_kb - buffers_kb - cached_kb, 0)
+			bufcache_kb = buffers_kb + cached_kb
 			info["ram_total_gb"] = round(total_kb / 1048576, 1)
 			info["ram_available_gb"] = round(avail_kb / 1048576, 1)
+			info["ram_free_gb"] = round(free_kb / 1048576, 1)
+			info["ram_apps_gb"] = round(apps_kb / 1048576, 1)
+			info["ram_bufcache_gb"] = round(bufcache_kb / 1048576, 1)
 			info["ram_used_pct"] = round((1 - avail_kb / max(total_kb, 1)) * 100, 1)
+			info["ram_apps_pct"] = round(apps_kb / max(total_kb, 1) * 100, 1)
 		elif platform.system() == "Darwin":
 			import subprocess
 			total = int(subprocess.check_output(["sysctl", "-n", "hw.memsize"], text=True, timeout=5).strip())

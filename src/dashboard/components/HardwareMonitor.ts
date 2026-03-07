@@ -135,17 +135,45 @@ export class HardwareMonitor extends HTMLElement {
 
 		// RAM section
 		const ramPct = s.ram_used_pct || 0;
+		const hasBreakdown = s.ram_apps_gb !== undefined && s.ram_bufcache_gb !== undefined;
+		const appsPct = hasBreakdown ? Math.min(s.ram_apps_pct || 0, 100) : Math.min(ramPct, 100);
+		const cachePct = hasBreakdown
+			? Math.min((s.ram_bufcache_gb / Math.max(s.ram_total_gb, 0.1)) * 100, 100 - appsPct)
+			: 0;
 		const ramBarClass = ramPct > 90 ? 'critical' : ramPct > 75 ? 'warning' : 'healthy';
+		const appsGb = hasBreakdown ? (s.ram_apps_gb as number).toFixed(1) : '';
+		const cacheGb = hasBreakdown ? (s.ram_bufcache_gb as number).toFixed(1) : '';
+		const freeGb = hasBreakdown
+			? (s.ram_free_gb !== undefined ? (s.ram_free_gb as number) : (s.ram_available_gb as number)).toFixed(1)
+			: '';
+		const breakdownHtml = hasBreakdown ? `
+			<div class="ram-legend" role="list">
+				<span class="ram-legend-item ${ramBarClass}" role="listitem">
+					<span class="ram-legend-swatch apps ${ramBarClass}" aria-hidden="true"></span>
+					<span class="ram-legend-label has-tip" data-tip="${this.tr('tip_ram_apps', 'Memory actively used by processes and LLM models (mlock). Cannot be reclaimed without stopping services.')}">${appsGb} GB ${this.tr('ram_apps', 'apps')}</span>
+				</span>
+				<span class="ram-legend-item" role="listitem">
+					<span class="ram-legend-swatch cache" aria-hidden="true"></span>
+					<span class="ram-legend-label has-tip" data-tip="${this.tr('tip_ram_cache', 'Linux buffers and page cache. Automatically reclaimed by the kernel when apps need more memory.')}">${cacheGb} GB ${this.tr('ram_cache', 'cache')}</span>
+				</span>
+				<span class="ram-legend-item" role="listitem">
+					<span class="ram-legend-swatch free" aria-hidden="true"></span>
+					<span class="ram-legend-label has-tip" data-tip="${this.tr('tip_ram_free', 'Completely unallocated RAM.')}">${freeGb} GB ${this.tr('ram_free', 'free')}</span>
+				</span>
+			</div>
+		` : '';
 		const ramHtml = s.ram_total_gb ? `
 			<div class="ram-section">
 				<div class="ram-header">
 					<span class="spec-label">${this.tr('ram', 'RAM')}</span>
-					<span class="ram-values">${(s.ram_total_gb - s.ram_available_gb).toFixed(1)} / ${s.ram_total_gb} GB</span>
+					<span class="ram-values">${s.ram_total_gb} GB ${this.tr('total', 'total')}</span>
 				</div>
-				<div class="ram-bar-track has-tip" data-tip="${this.tr('tip_ram_usage', 'Total system RAM usage. LLM models are memory-mapped (mlock) so they consume significant RAM. If usage exceeds ~90%, swapping will severely degrade performance.')}" role="presentation">
-					<div class="ram-bar-fill ${ramBarClass}" role="progressbar" aria-valuenow="${ramPct}" aria-valuemin="0" aria-valuemax="100" aria-label="${this.tr('ram_usage_label', 'RAM usage')}: ${ramPct}%" style="width: ${Math.min(ramPct, 100)}%"></div>
+				<div class="ram-bar-track" role="presentation" aria-label="${this.tr('ram_usage_label', 'RAM usage')}: ${ramPct}%">
+					<div class="ram-seg ram-seg-apps ${ramBarClass}" role="progressbar" aria-valuenow="${appsPct}" aria-valuemin="0" aria-valuemax="100" aria-label="${this.tr('ram_apps', 'apps')}: ${appsPct}%" style="width: ${appsPct}%"></div>
+					<div class="ram-seg ram-seg-cache has-tip" data-tip="${this.tr('tip_ram_cache', 'Linux buffers and page cache. Automatically reclaimed by the kernel when apps need more memory.')}" aria-hidden="true" style="width: ${cachePct}%"></div>
 				</div>
 				<span class="ram-pct ${ramBarClass}" aria-hidden="true">${ramPct}% ${this.tr('used', 'used')}</span>
+				${breakdownHtml}
 			</div>
 		` : '';
 
@@ -379,20 +407,21 @@ export class HardwareMonitor extends HTMLElement {
 					font-family: var(--font-mono, 'Fira Code', monospace);
 				}
 				.ram-bar-track {
+					display: flex;
 					height: 8px;
 					background: var(--surface-card, hsla(0, 0%, 100%, 0.05));
 					border-radius: 4px;
 					overflow: hidden;
-					cursor: help;
 				}
-				.ram-bar-fill {
+				.ram-seg {
 					height: 100%;
-					border-radius: 4px;
+					flex-shrink: 0;
 					transition: width var(--duration-slow, 0.5s);
 				}
-				.ram-bar-fill.healthy { background: var(--accent-primary, hsla(173, 80%, 40%, 1)); }
-				.ram-bar-fill.warning { background: var(--status-warning, hsla(45, 93%, 47%, 1)); }
-				.ram-bar-fill.critical { background: var(--status-danger, hsla(0, 84%, 60%, 1)); }
+				.ram-seg-apps.healthy { background: var(--accent-primary, hsla(173, 80%, 40%, 1)); }
+				.ram-seg-apps.warning { background: var(--status-warning, hsla(45, 93%, 47%, 1)); }
+				.ram-seg-apps.critical { background: var(--status-danger, hsla(0, 84%, 60%, 1)); }
+				.ram-seg-cache { background: var(--accent-primary, hsla(173, 80%, 40%, 0.25)); }
 				.ram-pct {
 					font-size: 0.65rem;
 					font-weight: 500;
@@ -402,6 +431,33 @@ export class HardwareMonitor extends HTMLElement {
 				.ram-pct.healthy { color: var(--accent-primary, hsla(173, 80%, 40%, 0.8)); }
 				.ram-pct.warning { color: var(--status-warning, hsla(45, 93%, 47%, 0.8)); }
 				.ram-pct.critical { color: var(--status-danger, hsla(0, 84%, 60%, 0.85)); }
+				.ram-legend {
+					display: flex;
+					gap: 0.75rem;
+					margin-top: 0.45rem;
+					flex-wrap: wrap;
+				}
+				.ram-legend-item {
+					display: flex;
+					align-items: center;
+					gap: 0.3rem;
+				}
+				.ram-legend-swatch {
+					width: 8px;
+					height: 8px;
+					border-radius: 2px;
+					flex-shrink: 0;
+				}
+				.ram-legend-swatch.apps.healthy { background: var(--accent-primary, hsla(173, 80%, 40%, 1)); }
+				.ram-legend-swatch.apps.warning { background: var(--status-warning, hsla(45, 93%, 47%, 1)); }
+				.ram-legend-swatch.apps.critical { background: var(--status-danger, hsla(0, 84%, 60%, 1)); }
+				.ram-legend-swatch.cache { background: var(--accent-primary, hsla(173, 80%, 40%, 0.35)); }
+				.ram-legend-swatch.free { background: var(--surface-card, hsla(0, 0%, 100%, 0.07)); border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.1)); }
+				.ram-legend-label {
+					font-size: 0.65rem;
+					color: var(--text-secondary, hsla(0, 0%, 100%, 0.6));
+					cursor: help;
+				}
 
 				/* ── LLM Tier Grid ── */
 				.tier-section {
@@ -461,8 +517,12 @@ export class HardwareMonitor extends HTMLElement {
 					.status-dot { background: ButtonText; }
 					.capability-summary.excellent { border-color: Highlight; }
 					.capability-summary.limited { border-color: LinkText; }
-					.ram-bar-fill { background: Highlight; }
-					.ram-bar-fill.critical { background: LinkText; }
+					.ram-seg-apps { background: Highlight; }
+					.ram-seg-apps.critical { background: LinkText; }
+					.ram-seg-cache { background: ButtonFace; border: 1px solid ButtonText; }
+					.ram-legend-swatch.apps { background: Highlight; }
+					.ram-legend-swatch.apps.critical { background: LinkText; }
+					.ram-legend-swatch.cache, .ram-legend-swatch.free { background: ButtonFace; border: 1px solid ButtonText; }
 					.tier-status.online { color: ButtonText; }
 					.tier-status.offline { color: LinkText; }
 				}
