@@ -128,6 +128,25 @@ jobs:
           path: src/dashboard/playwright-report/
           retention-days: 7
 
+  # ── Static analysis gate (AST-based CodeQL pre-flight) ─────────────────────
+  static-analysis:
+    name: Static analysis — CodeQL pre-flight (8 checks)
+    runs-on: ubuntu-latest
+    needs: [backend]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install pytest
+        run: pip install --quiet pytest
+
+      - name: Run static analysis gate
+        run: python -m pytest tests/test_static_analysis.py -v --tb=short
+
   # ── Security — prompt injection tests ───────────────────────────────────────
   security:
     name: Security — prompt injection (268 tests)

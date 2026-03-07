@@ -231,7 +231,6 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		return {"reply": report}
 	elif msg == "/tree":
 		# Life Tree Overview - combines projects, inner circle, and status
-		from app.services.planka import get_project_tree
 		tree = await get_project_tree(as_html=False)
 		
 		# 1. Inner Circle
@@ -240,7 +239,6 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		circle_text = "\n".join([f"• {p.name} ({p.relationship})" for p in inner_circle]) if inner_circle else "No direct connections added yet."
 		
 		# 2. Upcoming Timeline (Calendar + Birthdays + Local Events)
-		from app.services.calendar import fetch_calendar_events
 		from app.models.db import LocalEvent
 		
 		timeline_events = []
@@ -354,7 +352,7 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		return {"reply": f"🧠 **Semantic Vault: Core Knowledge Vault**\n\n{memory_list}"}
 	elif msg.startswith("/unlearn "):
 		query = msg.replace("/unlearn", "").strip()
-		from app.services.memory import get_qdrant, COLLECTION_NAME, get_embedder, delete_memory
+		from app.services.memory import get_qdrant, COLLECTION_NAME, get_embedder
 		client = get_qdrant()
 		query_vector = get_embedder().encode(query).tolist()
 		results = client.query_points(collection_name=COLLECTION_NAME, query=query_vector, limit=1)
@@ -772,7 +770,6 @@ async def dashboard_chat_stream(req: ChatRequest, request: Request, _rl: None = 
 @router.get("/life-tree")
 async def get_life_tree(db: AsyncSession = Depends(get_db)):
 	"""Fetch the rich Life Tree overview for the dashboard widget."""
-	from app.services.planka import get_project_tree
 	tree = await get_project_tree(as_html=True)
 	
 	# 1. Social Circles
@@ -1463,7 +1460,6 @@ async def get_calendar(year: Optional[int] = None, month: Optional[int] = None, 
 		all_events = []
 	
 	# 2. Add Virtual Birthdays (Not yet in unified fetcher as they are generated)
-	from app.models.db import Person
 	result = await db.execute(select(Person))
 	people = result.scalars().all()
 	birthday_events = []
