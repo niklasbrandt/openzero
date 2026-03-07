@@ -51,10 +51,10 @@ async def run_proactive_follow_up():
             
             # 5. Send Notification
             await send_notification(f"🎯 *Mission Check:*\n\n{nudge}{footer}")
-            logger.info(f"Follow-up: Sent nudge for {len(today_cards)} tasks.")
+            logger.info("Follow-up: Sent nudge for %s tasks.", len(today_cards))
 
     except Exception as e:
-        logger.error(f"Proactive Follow-up failed: {e}")
+        logger.error("Proactive Follow-up failed: %s", e)
 
 async def check_active_tracking_sessions():
     """
@@ -81,7 +81,7 @@ async def check_active_tracking_sessions():
                 for m in milestones:
                     due_dt = datetime.datetime.fromisoformat(m["due_at"])
                     if now >= due_dt and not m.get("sent"):
-                        logger.info(f"Proximity: Milestone check for '{m['task']}' (Session {session.id})")
+                        logger.info("Proximity: Milestone check for '%s' (Session %s)", m['task'], session.id)
                         prompt = (
                             f"Target Zero: The allocated duration for this mission item has passed: '{m['task']}'. "
                             "Do a technical progress check. Ask if this segment is complete or if unexpected friction occurred. "
@@ -95,7 +95,7 @@ async def check_active_tracking_sessions():
                 
                 # 2. Final Session Wrap-up
                 if now >= session.end_time and not session.final_nudge_sent:
-                    logger.info(f"Proximity: Final check for Session {session.id}")
+                    logger.info("Proximity: Final check for Session %s", session.id)
                     prompt = (
                         f"Target Zero: The full mission timeframe is complete for: {session.tasks}. "
                         "Ask for final confirmation on which blocks reached 100% completion. "
@@ -113,4 +113,4 @@ async def check_active_tracking_sessions():
                     await db.commit()
                     
     except Exception as e:
-        logger.error(f"Tracking Session Check failed: {e}")
+        logger.error("Tracking Session Check failed: %s", e)

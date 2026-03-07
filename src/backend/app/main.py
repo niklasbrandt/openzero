@@ -55,7 +55,7 @@ async def lifespan(app: FastAPI):
 
         logging.info("✓ Postgres tables initialized and migrated.")
     except Exception as e:
-        logging.warning(f"⚠ Warning: Could not connect to Postgres: {e}")
+        logging.warning("⚠ Warning: Could not connect to Postgres: %s", e)
     
     # 2. Initialize Qdrant collection
     if settings.IS_DOCKER and not settings.QDRANT_API_KEY:
@@ -68,9 +68,9 @@ async def lifespan(app: FastAPI):
         stats = await get_memory_stats()
         if stats['status'] == 'error':
             raise Exception("Stats check failed")
-        logging.info(f"✓ Qdrant collection ready ({stats['points']} points).")
+        logging.info("✓ Qdrant collection ready (%s points).", stats['points'])
     except Exception as e:
-        logging.warning(f"⚠ Warning: Could not connect to Qdrant: {e}")
+        logging.warning("⚠ Warning: Could not connect to Qdrant: %s", e)
     
     # 3. Start background tasks & bot
     try:
@@ -114,14 +114,14 @@ async def lifespan(app: FastAPI):
                 # 4. Initial Operator Board Sync
                 from app.services.operator_board import operator_service
                 sync_res = await operator_service.sync_operator_tasks()
-                logging.info(f"✓ {sync_res}")
+                logging.info("✓ %s", sync_res)
             except Exception as e:
-                logging.warning(f"⚠ Warning: Background startup tasks failed: {e}")
+                logging.warning("⚠ Warning: Background startup tasks failed: %s", e)
 
         asyncio.create_task(run_background_startup())
 
     except Exception as e:
-        logging.warning(f"⚠ Warning: Core startup failed: {e}")
+        logging.warning("⚠ Warning: Core startup failed: %s", e)
         
     yield
     # --- SHUTDOWN ---

@@ -123,8 +123,7 @@ def _parse_caldav_multistatus(xml_text: str) -> list[dict]:
 	events: list[dict] = []
 	# Extract all calendar-data CDATA from the multistatus response
 	pattern = re.compile(
-		r"<(?:[A-Za-z0-9_-]+:)?calendar-data[^>]*>(.*?)</(?:[A-Za-z0-9_-]+:)?calendar-data>",
-		re.DOTALL,
+		r"<(?:[A-Za-z0-9_-]+:)?calendar-data[^>]*>([\s\S]*?)</(?:[A-Za-z0-9_-]+:)?calendar-data>",
 	)
 	for match in pattern.finditer(xml_text):
 		ics_text = match.group(1).strip()
