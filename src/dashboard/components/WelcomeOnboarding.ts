@@ -39,7 +39,7 @@ export class WelcomeOnboarding extends HTMLElement {
 			} else {
 				this.style.display = 'none';
 			}
-		} catch (e) {
+		} catch (_e) {
 			console.warn('Could not check onboarding status');
 		}
 	}

@@ -46,7 +46,7 @@ export class EmailRules extends HTMLElement {
       const data = await response.json();
       this.currentRules = data;
       this.displayRules(data);
-    } catch (e) {
+    } catch (_e) {
       const list = this.shadowRoot?.querySelector('#rules-list');
       if (list) list.textContent = 'No rules defined.';
     }

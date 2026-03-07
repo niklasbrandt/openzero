@@ -98,7 +98,7 @@ export class ZPersonality extends HTMLElement {
 				this.render();
 				window.location.reload();
 			}
-		} catch (e) {
+		} catch (_e) {
 			alert('Failed to save personality.');
 		}
 	}
@@ -404,11 +404,12 @@ export class ZPersonality extends HTMLElement {
 					};
 					const hexToHsl = (hex: string) => {
 						const h = hex.replace('#', '');
-						let r = parseInt(h.slice(0, 2), 16) / 255;
-						let g = parseInt(h.slice(2, 4), 16) / 255;
-						let b = parseInt(h.slice(4, 6), 16) / 255;
+						const r = parseInt(h.slice(0, 2), 16) / 255;
+						const g = parseInt(h.slice(2, 4), 16) / 255;
+						const b = parseInt(h.slice(4, 6), 16) / 255;
 						const max = Math.max(r, g, b), min = Math.min(r, g, b);
-						let _h = 0, s = 0, l = (max + min) / 2;
+						let _h = 0, s = 0;
+						const l = (max + min) / 2;
 						if (max !== min) {
 							const d = max - min;
 							s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
