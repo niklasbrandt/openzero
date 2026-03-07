@@ -68,7 +68,7 @@ export class ChatPrompt extends HTMLElement {
 			// Render immediately. With flex-direction: column-reverse, 
 			// it will show at the bottom without any scrolling movement.
 			this.renderMessages(true); // pass true to skip animations for history
-		} catch (e) {
+		} catch (_e) {
 			// Silent fail -- chat still works without history
 		}
 	}
@@ -189,7 +189,7 @@ export class ChatPrompt extends HTMLElement {
 					detail: { actions: data.actions }
 				}));
 			}
-		} catch (e) {
+		} catch (_e) {
 			this.pendingRequests--;
 			if (this.pendingRequests <= 0) this.hideTypingIndicator();
 

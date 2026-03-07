@@ -175,7 +175,8 @@ function hexToHsl(hex: string): { h: number, s: number, l: number } {
 	b = parseInt(h.slice(4, 6), 16) / 255;
 
 	const max = Math.max(r, g, b), min = Math.min(r, g, b);
-	let _h = 0, s = 0, l = (max + min) / 2;
+	let _h = 0, s = 0;
+	const l = (max + min) / 2;
 
 	if (max !== min) {
 		const d = max - min;
@@ -201,7 +202,6 @@ function hexToRgb(hex: string) {
 
 // Resolved once the palette API call settles (success or failure).
 // Used to gate the page-loader so content is never revealed mid-flash.
-let themeReady: Promise<void>;
 
 async function initTheme() {
 	try {
@@ -267,7 +267,7 @@ async function initTheme() {
 		console.warn('Theme initialization failed:', e);
 	}
 }
-themeReady = initTheme();
+const themeReady = initTheme();
 
 // ── Centralized Translation Fetch ──
 // Fetches translations ONCE and exposes them to all components via

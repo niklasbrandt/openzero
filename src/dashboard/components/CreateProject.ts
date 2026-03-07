@@ -92,7 +92,7 @@ export class CreateProject extends HTMLElement {
 			window.dispatchEvent(new CustomEvent('refresh-data', {
 				detail: { actions: ['project', 'board'] }
 			}));
-		} catch (e) {
+		} catch (_e) {
 			this.showFeedback(this.tr('board_create_failed', 'Failed to create board. Please try again.'), 'error');
 		} finally {
 			this.isSubmitting = false;
