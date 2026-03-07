@@ -175,7 +175,7 @@ export class SoftwareStatus extends HTMLElement {
 				name: 'DNS',
 				model: '',
 				status: d.dns_ok === true ? 'online' : d.dns_ok === false ? 'offline' : 'warning',
-				detail: d.dns_ok ? (d.dns_detail || 'ok') : (d.dns_detail || 'no answer'),
+				detail: d.dns_ok ? 'online' : 'offline',
 				tip: this.tr('tip_dns', 'Pi-hole DNS resolver. Resolves open.zero for all Tailscale peers. Offline = mobile dashboard unreachable.'),
 				isLlm: false,
 			},
