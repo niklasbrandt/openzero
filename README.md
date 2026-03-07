@@ -276,6 +276,17 @@ Typical throughput on a 4-core EPYC VPS: 5-12 tok/s (instant tier), 2-5 tok/s (s
 2. **Secure:** Link the server to the Tailscale network. Configure Pi-hole Split DNS for your vanity domain.
 3. **Configure:** Open the dashboard, complete the onboarding wizard, connect calendars, and set your language and briefing time.
 
+> [!WARNING]
+> **Ubuntu / Debian: Port 53 is blocked by default.** `systemd-resolved` binds a stub DNS listener on `127.0.0.53:53`, preventing Pi-hole from starting. If `docker compose logs pihole` shows "address already in use" on port 53, run these three commands on the VPS once before starting the stack:
+>
+> ```bash
+> sudo sed -r -i.orig 's/#?DNSStubListener=yes/DNSStubListener=no/g' /etc/systemd/resolved.conf
+> sudo sh -c 'rm /etc/resolv.conf && ln -s /run/systemd/resolve/resolv.conf /etc/resolv.conf'
+> sudo systemctl restart systemd-resolved
+> ```
+>
+> Then restart Pi-hole: `docker compose restart pihole`. Full details in [BUILD.md](BUILD.md).
+
 ### Private Calendar Setup (CalDAV)
 
 openZero keeps your schedule private. To sync with your existing self-hosted calendar:
