@@ -9,7 +9,7 @@ This guide is designed for anyone—even if you've never used a server before. F
 We recommend a VPS with **Ubuntu 24.04**. For best performance with Llama 8B, aim for at least **8 Cores** and **16GB RAM**.
 
 > [!IMPORTANT]
-> **Z uses a 3-tier LLM architecture** (phi-4-mini instant + llama3.1:8b standard + qwen2.5:14b deep). With 24GB RAM this runs comfortably. With 16GB, disable the deep tier. **Swap space is still recommended as a safety buffer.**
+> **Z uses a 3-tier LLM architecture** (phi-4-mini instant + Qwen3-8B standard + Qwen3-14B deep). With 24GB RAM this runs comfortably. With 16GB, disable the deep tier. **Swap space is still recommended as a safety buffer.**
 
 ### 0. Add Swap Space (MANDATORY first step)
 
