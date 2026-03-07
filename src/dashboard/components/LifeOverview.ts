@@ -8,8 +8,6 @@ import { FEEDBACK_STYLES } from '../services/feedbackStyles';
 
 export class LifeOverview extends HTMLElement {
 	private t: Record<string, string> = {};
-	private projectFormOpen = false;
-
 	constructor() {
 		super();
 		this.attachShadow({ mode: 'open' });
@@ -50,74 +48,23 @@ export class LifeOverview extends HTMLElement {
 	}
 
 	private setupListeners() {
-		const newProjectBtn = this.shadowRoot?.querySelector('#new-project-btn');
-		newProjectBtn?.addEventListener('click', () => this.toggleProjectForm());
-
 		const newBoardBtn = this.shadowRoot?.querySelector('#new-board-btn');
 		newBoardBtn?.addEventListener('click', () => {
 			const createProject = document.querySelector('create-project') as any;
 			if (createProject && typeof createProject.toggle === 'function') {
 				createProject.toggle();
+				const isOpen = createProject.getAttribute('data-open') === 'true';
+				if (newBoardBtn) {
+					(newBoardBtn as HTMLElement).textContent = isOpen
+						? `\u2212 ${this.tr('cancel', 'Cancel')}`
+						: this.tr('new_board', '+ New Board');
+					newBoardBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+					newBoardBtn.setAttribute('aria-label', isOpen
+						? this.tr('cancel_add_board', 'Cancel adding new board')
+						: this.tr('aria_add_project', 'Add a new project board'));
+				}
 			}
 		});
-
-		const projectForm = this.shadowRoot?.querySelector('#inline-project-form');
-		projectForm?.addEventListener('submit', (e) => {
-			e.preventDefault();
-			this.handleCreateProject();
-		});
-
-		const cancelBtn = this.shadowRoot?.querySelector('#cancel-project-btn');
-		cancelBtn?.addEventListener('click', () => this.toggleProjectForm(false));
-	}
-
-	private toggleProjectForm(forceState?: boolean) {
-		this.projectFormOpen = forceState !== undefined ? forceState : !this.projectFormOpen;
-		const formWrap = this.shadowRoot?.querySelector('.project-form-wrap') as HTMLElement;
-		if (formWrap) {
-			formWrap.classList.toggle('open', this.projectFormOpen);
-		}
-		if (!this.projectFormOpen) {
-			const nameInput = this.shadowRoot?.querySelector<HTMLInputElement>('#new-project-name');
-			if (nameInput) nameInput.value = '';
-		}
-	}
-
-	private async handleCreateProject() {
-		const nameInput = this.shadowRoot?.querySelector<HTMLInputElement>('#new-project-name');
-		const name = nameInput?.value.trim();
-		if (!name) return;
-
-		const submitBtn = this.shadowRoot?.querySelector<HTMLButtonElement>('#submit-project-btn');
-		if (submitBtn) {
-			submitBtn.disabled = true;
-			submitBtn.textContent = this.tr('creating', 'Creating...');
-		}
-
-		try {
-			const resp = await fetch('/api/dashboard/projects', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ name }),
-			});
-			if (!resp.ok) throw new Error('Failed');
-
-			this.toggleProjectForm(false);
-			this.fetchData();
-			window.dispatchEvent(new CustomEvent('refresh-data'));
-		} catch (_e) {
-			const feedback = this.shadowRoot?.querySelector('#project-feedback');
-			if (feedback) {
-				feedback.textContent = this.tr('project_create_error', 'Failed to create project.');
-				feedback.className = 'feedback error visible';
-				setTimeout(() => feedback.className = 'feedback error', 4000);
-			}
-		} finally {
-			if (submitBtn) {
-				submitBtn.disabled = false;
-				submitBtn.textContent = this.tr('create', 'Create');
-			}
-		}
 	}
 
 	async fetchData() {
@@ -169,20 +116,7 @@ export class LifeOverview extends HTMLElement {
 				<section class="mission-control" aria-label="${this.tr('aria_boards_section', 'Project boards')}">
 					<div class="section-header">
 						<h3>${this.tr('boards_heading', 'Boards')}</h3>
-						<div class="header-actions">
-							<button class="action-btn" id="new-project-btn" aria-label="${this.tr('aria_new_project', 'Create new project')}">${this.tr('new_project', '+ New Project')}</button>
-							<button class="action-btn" id="new-board-btn">${this.tr('new_board', '+ New Board')}</button>
-						</div>
-					</div>
-					<div class="project-form-wrap${this.projectFormOpen ? ' open' : ''}">
-						<form id="inline-project-form">
-							<div class="form-row">
-								<input type="text" id="new-project-name" placeholder="${this.tr('project_name_placeholder', 'Project name...')}" autocomplete="off" />
-								<button type="submit" id="submit-project-btn" class="btn-primary btn-sm">${this.tr('create', 'Create')}</button>
-								<button type="button" id="cancel-project-btn" class="btn-ghost btn-sm">${this.tr('cancel', 'Cancel')}</button>
-							</div>
-							<div id="project-feedback" class="feedback" role="status" aria-live="polite"></div>
-						</form>
+						<button id="new-board-btn" aria-expanded="false" aria-label="${this.tr('aria_add_project', 'Add a new project board')}">${this.tr('new_board', '+ New Board')}</button>
 					</div>
 					<div class="tree-content">${data.projects_tree || this.tr('initializing_projects', 'Initializing projects...')}</div>
 				</section>
@@ -298,51 +232,24 @@ export class LifeOverview extends HTMLElement {
 						margin-bottom: 1rem;
 					}
 
-					.header-actions {
-						display: flex;
-						gap: 0.5rem;
-						align-items: center;
-					}
 
-					.action-btn {
-						padding: 0.25rem 0.75rem;
-						font-size: 0.75rem;
-						min-height: 32px;
-						display: flex;
-						align-items: center;
-						background: var(--surface-card, hsla(0, 0%, 100%, 0.05));
-						border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.1));
-						color: var(--text-secondary, hsla(0, 0%, 100%, 0.8));
-						border-radius: 0.3rem;
+					#new-board-btn {
+						background: var(--surface-accent-subtle, hsla(173, 80%, 40%, 0.12));
+						color: var(--accent-color, hsla(173, 80%, 40%, 1));
+						border: 1px solid var(--border-accent, hsla(173, 80%, 40%, 0.2));
+						padding: 0.4rem 1rem;
+						border-radius: var(--radius-md, 0.6rem);
+						font-size: 0.8rem;
+						font-weight: 600;
+						font-family: var(--font-sans, 'Inter', system-ui, sans-serif);
 						cursor: pointer;
-						transition: background var(--duration-fast), transform var(--duration-fast);
+						transition: all var(--duration-base, 0.25s) ease;
+						letter-spacing: 0.02em;
+						min-height: 44px;
 					}
-					.action-btn:hover { background: var(--surface-card-hover, hsla(0, 0%, 100%, 0.1)); }
-					.action-btn:active { transform: scale(0.98); }
-
-					.project-form-wrap {
-						max-height: 0;
-						overflow: hidden;
-						opacity: 0;
-						transition: max-height 0.35s var(--ease-out), opacity 0.25s var(--ease-out), margin-bottom 0.25s var(--ease-out);
-						margin-bottom: 0;
-					}
-
-					.project-form-wrap.open {
-						max-height: 120px;
-						opacity: 1;
-						margin-bottom: 1.25rem;
-					}
-
-					.form-row {
-						display: flex;
-						gap: 0.5rem;
-						align-items: center;
-					}
-
-					.form-row input {
-						flex: 1;
-						margin-bottom: 0;
+					#new-board-btn:hover {
+						background: var(--surface-accent-hover, hsla(173, 80%, 40%, 0.22));
+						border-color: var(--border-accent-focus, hsla(173, 80%, 40%, 0.4));
 					}
 
 					.side-panel { display: flex; flex-direction: column; gap: 2rem; }
@@ -385,13 +292,14 @@ export class LifeOverview extends HTMLElement {
 
 
 					.error { color: var(--color-danger, hsla(0, 84%, 42%, 1)); text-align: center; padding: 2rem; }
-				.action-btn:focus-visible { outline: 2px solid var(--accent-primary, hsla(173, 80%, 40%, 1)); outline-offset: 3px; }
+				#new-board-btn:focus-visible { outline: 2px solid var(--accent-primary, hsla(173, 80%, 40%, 1)); outline-offset: 2px; }
 				.tree-content a:focus-visible { outline: 2px solid var(--accent-primary, hsla(173, 80%, 40%, 1)); outline-offset: 2px; }
 				@media (forced-colors: active) {
 					.h-icon { background: ButtonFace; border: 1px solid ButtonText; }
 					.time { color: LinkText; }
 					.google-tag { color: LinkText; }
 					.birthday-tag { border: 1px solid ButtonText; }
+					#new-board-btn { border: 1px solid ButtonText; }
 				}
 				</style>
 				<div class="card">
