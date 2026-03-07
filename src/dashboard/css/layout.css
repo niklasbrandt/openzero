@@ -1,8 +1,8 @@
 /*
  * openZero Layout
  * ---------------
- * #app masonry grid, dashboard-card glassmorphism, dashboard-header,
- * column-span overrides, and responsive breakpoints (tablet / mobile).
+ * #app flex-wrap two-column layout, dashboard-card glassmorphism,
+ * dashboard-header, full-width overrides, and responsive breakpoints.
  */
 
 /* -- Main app container -- */
@@ -13,14 +13,13 @@
 	   (sidebar width) so margin:0 auto centers within the remaining viewport. */
 	margin: 0 auto;
 	padding: 2rem 2rem 6rem 2rem;
-	/* Masonry: two-column flow packs widgets vertically without row gaps. */
-	column-count: 2;
-	column-gap: 2rem;
+	/* Flex-wrap: DOM order preserved so sidebar nav matches visual order. */
+	display: flex;
+	flex-wrap: wrap;
+	gap: 2rem;
+	align-items: flex-start;
 	min-width: 0;
-	/* overflow-x: hidden removed -- body already clips at page level;
-	   removing lets tooltips escape card boundaries. */
 	box-sizing: border-box;
-	/* Ensure masonry container handles overflowing children for tooltips */
 	overflow: visible;
 }
 
@@ -34,10 +33,12 @@
 		0 8px 32px rgba(0, 0, 0, 0.4),
 		inset 0 1px 0 rgba(255, 255, 255, 0.04);
 	transition: border-color 0.4s ease, box-shadow 0.4s ease;
-	/* Prevent masonry column breaks inside cards */
-	break-inside: avoid;
-	/* Vertical spacing between cards in masonry flow */
-	margin-bottom: 2rem;
+	/* box-sizing:border-box so flex-basis percentage includes padding.
+	   Without it, padding:1.5rem is additive and the card overflows 50%,
+	   causing each card to wrap to its own row. */
+	box-sizing: border-box;
+	/* Two columns: each card takes exactly half the container minus half the gap. */
+	flex: 0 0 calc(50% - 1rem);
 	/* Skip rendering for off-screen cards -- reduces initial paint work. */
 	content-visibility: auto;
 	contain-intrinsic-size: auto 300px;
@@ -58,10 +59,9 @@
 		inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
-/* -- Dashboard header (spans full width) -- */
+/* -- Dashboard header (spans full row) -- */
 .dashboard-header {
-	/* Span both masonry columns */
-	column-span: all;
+	flex: 0 0 100%;
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
@@ -75,12 +75,12 @@
 	flex-wrap: wrap;
 }
 
-/* -- Wide-span cards -- */
+/* -- Full-width cards -- */
 .chat-card,
 .life-overview-card,
 welcome-onboarding {
-	/* Span both masonry columns */
-	column-span: all;
+	/* Span the full row */
+	flex: 0 0 100%;
 }
 
 .dashboard-header h1 {
@@ -97,16 +97,15 @@ welcome-onboarding {
 	font-weight: 800;
 }
 
-/* -- Tablet (700px - 1099px): two-column masonry below the marquee nav -- */
+/* -- Tablet (700px - 1099px): two-column flex wrap below the marquee nav -- */
 @media (min-width: 700px) and (max-width: 1099px) {
 	#app {
-		column-count: 2;
-		column-gap: 1.5rem;
+		gap: 1.5rem;
 		padding: 1.5rem 1.5rem 5rem 1.5rem;
 	}
 
 	.dashboard-card {
-		margin-bottom: 1.5rem;
+		flex: 0 0 calc(50% - 0.75rem);
 		/* Phase 2 optimization: skip painting for off-screen cards */
 		content-visibility: auto;
 		contain-intrinsic-size: 1px 400px;
@@ -116,13 +115,12 @@ welcome-onboarding {
 /* -- Mobile (<= 699px): single column -- */
 @media (max-width: 699px) {
 	#app {
-		column-count: 1;
-		column-gap: 0;
+		gap: 1rem;
 		padding: 0.75rem;
 	}
 
 	.dashboard-card {
-		margin-bottom: 1rem;
+		flex: 0 0 100%;
 	}
 
 	.dashboard-header {

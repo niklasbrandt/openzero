@@ -110,11 +110,11 @@
 @media (min-width: 1600px) {
 	#app {
 		padding: 2.5rem 3rem 6rem 3rem;
-		column-gap: 2.5rem;
+		gap: 2.5rem;
 	}
 
 	.dashboard-card {
-		margin-bottom: 2.5rem;
+		flex: 0 0 calc(50% - 1.25rem);
 	}
 }
 
