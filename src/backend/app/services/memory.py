@@ -79,8 +79,9 @@ async def store_memory(text: str, metadata: Optional[dict] = None):
 	
 	# AGGRESSIVE HYGIENE: Strip internal protocols and conversational markers
 	# This prevents "leaking" actions or chat boilerplate into the vault.
-	distilled_text = re.sub(r'\[?ACTION:\s*.*?\]', '', distilled_text, flags=re.IGNORECASE | re.DOTALL)
-	distilled_text = re.sub(r'(User:|Z:|Conversation:).*?$', '', distilled_text, flags=re.IGNORECASE | re.MULTILINE)
+	# Use [^\]] instead of .*? to avoid polynomial backtracking on untrusted input.
+	distilled_text = re.sub(r'\[?ACTION:[^\]]*\]?', '', distilled_text, flags=re.IGNORECASE)
+	distilled_text = re.sub(r'(?:User:|Z:|Conversation:)[^\n]*', '', distilled_text, flags=re.IGNORECASE)
 	distilled_text = distilled_text.strip()
 
 	if not distilled_text or len(distilled_text) < 5:
@@ -108,7 +109,7 @@ async def store_memory(text: str, metadata: Optional[dict] = None):
 				return
 			distilled_text = decision.strip().replace('"', '').replace("Fact: ", "")
 		except Exception as e:
-			logger.warning(f"Memory distillation failed, using raw (cleaned): {e}")
+			logger.warning("Memory distillation failed, using raw (cleaned): %s", e)
 
 	# 3. Semantic Deduplication
 	client = get_qdrant()
@@ -122,7 +123,7 @@ async def store_memory(text: str, metadata: Optional[dict] = None):
 			limit=1
 		)
 		if dupes.points and dupes.points[0].score > 0.98:
-			logger.info(f"Memory Deduplicator: Ignored existing fact: {distilled_text}")
+			logger.info("Memory Deduplicator: Ignored existing fact: %.80s", distilled_text)
 			return
 	except Exception:
 		pass  # dedup check optional; proceed with upsert if it fails
@@ -189,7 +190,7 @@ async def extract_and_store_facts(user_message: str):
 
 		# Parse result
 		if not result or 'NONE' in result.upper():
-			logger.debug(f"Memory extraction: no facts in '{clean_input[:50]}...'")
+			logger.debug("Memory extraction: no facts in '%.50s...' ", clean_input)
 			return
 
 		# Store each extracted fact
@@ -205,10 +206,10 @@ async def extract_and_store_facts(user_message: str):
 			stored_count += 1
 
 		if stored_count > 0:
-			logger.info(f"Memory extraction: stored {stored_count} fact(s) from '{clean_input[:60]}...'")
+			logger.info("Memory extraction: stored %d fact(s) from '%.60s...'", stored_count, clean_input)
 
 	except Exception as e:
-		logger.warning(f"Memory extraction failed (non-blocking): {e}")
+		logger.warning("Memory extraction failed (non-blocking): %s", e)
 
 
 async def semantic_search(query: str, top_k: int = 5) -> str:
@@ -224,7 +225,7 @@ async def semantic_search(query: str, top_k: int = 5) -> str:
 		)
 		points = response.points
 	except Exception as e:
-		logger.error(f"Memory semantic search failed: {e}")
+		logger.error("Memory semantic search failed: %s", e)
 		return "Memory system not initialized or unreachable."
 
 	if not points:
@@ -266,7 +267,7 @@ async def delete_memory(point_id: str):
 		)
 		return True
 	except Exception as e:
-		logger.error(f"Failed to delete memory: {e}")
+		logger.error("Failed to delete memory: %s", e)
 		return False
 
 async def semantic_search_raw(query: str, top_k: int = 10) -> list[dict]:
@@ -281,7 +282,7 @@ async def semantic_search_raw(query: str, top_k: int = 10) -> list[dict]:
 		)
 		points = response.points
 	except Exception as e:
-		logger.error(f"Memory semantic search failed: {e}")
+		logger.error("Memory semantic search failed: %s", e)
 		return []
 	return [
 		{
@@ -324,7 +325,7 @@ async def list_memories(offset: int = 0, limit: int = 50) -> dict:
 		]
 		return {"items": items, "total": total, "next_offset": next_page_offset}
 	except Exception as e:
-		logger.error(f"list_memories failed: {e}")
+		logger.error("list_memories failed: %s", e)
 		return {"items": [], "total": total, "next_offset": None}
 
 
@@ -360,5 +361,5 @@ async def get_recent_memories(hours: int = 24) -> list[dict]:
 		)
 		return [{"id": str(p.id), "text": p.payload.get("text", "")} for p in results]
 	except Exception as e:
-		logger.warning(f"get_recent_memories failed: {e}")
+		logger.warning("get_recent_memories failed: %s", e)
 		return []

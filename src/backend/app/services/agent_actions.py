@@ -202,7 +202,7 @@ async def parse_and_execute_actions(reply: str, db=None):
                 await planka_create_board(project_id=proj_id, name=board_name.strip())
                 executed_cmds.append(f"Board '{board_name.strip()}' created in '{proj_name.strip()}'.")
             else:
-                logger.warning(f"Project '{proj_name.strip()}' not found for CREATE_BOARD")
+                logger.warning("Project %r not found for CREATE_BOARD", proj_name.strip())
         clean_reply = strip_tag(clean_reply, raw_tag)
 
     # 2c. Create List (Column) Tag
@@ -242,7 +242,7 @@ async def parse_and_execute_actions(reply: str, db=None):
             })
             executed_cmds.append(res)
         except Exception as e:
-            logger.error(f"Failed to schedule reminder: {e}")
+            logger.error("Failed to schedule reminder: %s", e)
         clean_reply = strip_tag(clean_reply, raw_tag)
 
     # 6. Persistent Custom Tag
@@ -260,7 +260,7 @@ async def parse_and_execute_actions(reply: str, db=None):
             })
             executed_cmds.append(res)
         except Exception as e:
-            logger.error(f"Failed to schedule persistent custom task: {e}")
+            logger.error("Failed to schedule persistent custom task: %s", e)
         clean_reply = strip_tag(clean_reply, raw_tag)
 
     # 7. Add Person Tag
@@ -345,7 +345,8 @@ async def parse_and_execute_actions(reply: str, db=None):
     # This prevents 'leaking' of internal agent thoughts or malformed tags to the user.
     
     # 1. First Pass: Strip known bracketed action tags
-    clean_reply = re.sub(r'\[?ACTION:\s*.*?\]', '', clean_reply, flags=re.IGNORECASE | re.DOTALL)
+    # Use [^\]] to avoid polynomial backtracking on adversarial input.
+    clean_reply = re.sub(r'\[?ACTION:[^\]]*\]?', '', clean_reply, flags=re.IGNORECASE)
     
     # 2. Second Pass: Split into lines and filter out anything that looks like internal metadata
     lines = clean_reply.split('\n')

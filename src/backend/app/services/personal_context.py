@@ -44,8 +44,9 @@ TOKEN_BUDGET_PER_FILE = 300   # ~1 200 chars — trigger LLM compression above t
 TOKEN_BUDGET_TOTAL = 800      # ~3 200 chars — hard cap for the whole block
 
 # Action-tag pattern — strip from personal files before injection
+# Use [^\]] instead of nested quantifiers to avoid polynomial backtracking.
 _ACTION_TAG_RE = re.compile(
-	r'\[ACTION:\s*\w+(?:\s*\|\s*\w+:[^\]]+)*\]', re.IGNORECASE
+	r'\[ACTION:[^\]]*\]', re.IGNORECASE
 )
 
 # Executor for blocking I/O

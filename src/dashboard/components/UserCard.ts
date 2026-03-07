@@ -33,60 +33,55 @@ export class UserCard extends HTMLElement {
 		ro: { native: 'Română', eng: 'Romanian' },
 	};
 
-	private themeOptions: Record<string, { label: string, colors: string[], mode?: string }> = {
+	private themeOptions: Record<string, { label: string, colors: string[] }> = {
+		// Default
 		fusion: { label: 'Default Fusion', colors: ["hsla(173, 80%, 40%, 1)", "hsla(216, 100%, 50%, 1)", "hsla(239, 84%, 67%, 1)"] },
-		cyberpunk: { label: 'Cyberpunk Neon', colors: ["#FF00FF", "#00FFFF", "#FFFF00"] },
-		night_city: { label: 'Night City', colors: ["#F700FF", "#2100A3", "#FEDD00"] },
-		forest: { label: 'Deep Forest', colors: ["#22C55E", "#15803D", "#84CC16"] },
-		deep_sea: { label: 'Deep Sea', colors: ["hsla(216, 100%, 50%, 1)", "#000080", "#00CED1"] },
-		ember: { label: 'Ember Glass', colors: ["#F97316", "#EF4444", "#F59E0B"] },
-		aurora: { label: 'Aurora Borealis', colors: ["#A855F7", "#EC4899", "#06B6D4"] },
-		midnight: { label: 'Midnight Blue', colors: ["#3B82F6", "#1D4ED8", "#60A5FA"] },
-		void: { label: 'The Void', colors: ["#7C3AED", "#4F46E5", "#2D1B69"] },
-		matrix: { label: 'Digital Matrix', colors: ["#00FF41", "#008F11", "#003B00"] },
-		outrun: { label: 'Outrun 84', colors: ["#FF2E63", "#08D9D6", "#EAEAEA"] },
-		synthwave: { label: 'Synthwave Glow', colors: ["#FF71CE", "#01CDFE", "#05FFA1"] },
-		plasma: { label: 'Plasma Strike', colors: ["#9D50BB", "#6E48AA", "#FF4B2B"] },
-		volcanic: { label: 'Volcanic Flow', colors: ["#FF416C", "#FF4B2B", "#42275A"] },
-		frost: { label: 'Glacier Frost', colors: ["#00B4DB", "#0083B0", "#FFFFFF"] },
-		sakura: { label: 'Sakura Petals', colors: ["#F9A8D4", "#EC4899", "#DB2777"] },
-		copper: { label: 'Antique Copper', colors: ["#FB923C", "#D97706", "#92400E"] },
-		carbon: { label: 'Carbon Fiber', colors: ["#E5E7EB", "#374151", "#6B7280"] },
-		jade: { label: 'Imperial Jade', colors: ["#10B981", "#059669", "#6EE7B7"] },
-		sunset: { label: 'Venice Sunset', colors: ["#FF512F", "#DD2476", "#F09819"] },
-		oceanic: { label: 'Oceanic Depth', colors: ["#2193b0", "#6dd5ed", "#2C3E50"] },
-		nebula: { label: 'Deep Nebula', colors: ["#4e54c8", "#8f94fb", "#243B55"] },
-		royal: { label: 'Royal Gold', colors: ["#f9ca24", "#f0932b", "#4834d4"] },
-		lava: { label: 'Molten Lava', colors: ["#eb4d4b", "#ff7979", "#130f40"] },
-		emerald: { label: 'Emerald City', colors: ["#2ecc71", "#27ae60", "#f1c40f"] },
-		amethyst: { label: 'Amethyst Spark', colors: ["#9b59b6", "#8e44ad", "#34495e"] },
-		sunflower: { label: 'Sunflower Field', colors: ["#f1c40f", "#f39c12", "#27ae60"] },
-		asphalt: { label: 'Wet Asphalt', colors: ["#34495e", "#2c3e50", "#7f8c8d"] },
-		clouds: { label: 'Silver Clouds', colors: ["#ecf0f1", "#bdc3c7", "#95a5a6"] },
-		concrete: { label: 'Polished Concrete', colors: ["#95a5a6", "#7f8c8d", "#2c3e50"] },
-		pumpkin: { label: 'Pumpkin Spice', colors: ["#e67e22", "#d35400", "#2c3e50"] },
-		alizarin: { label: 'Alizarin Crimson', colors: ["#e74c3c", "#c0392b", "#8e44ad"] },
-		turquoise: { label: 'Turquoise Dream', colors: ["#1abc9c", "#16a085", "#2980b9"] },
-		belize: { label: 'Belize Hole', colors: ["#2980b9", "#3498db", "#8e44ad"] },
-		wisteria: { label: 'Blooming Wisteria', colors: ["#8e44ad", "#9b59b6", "#2c3e50"] },
-		orange: { label: 'Zesty Orange', colors: ["#f39c12", "#e67e22", "#d35400"] },
-		grenadier: { label: 'Grenadier Fire', colors: ["#d35400", "#e67e22", "#c0392b"] },
-		midnight_bloom: { label: 'Midnight Bloom', colors: ["#a29bfe", "#6c5ce7", "#fd79a8"] },
-		mint: { label: 'Fresh Mint', colors: ["#55efc4", "#00b894", "#81ecec"] },
-		robins_egg: { label: 'Robins Egg', colors: ["#81ecec", "#00cec9", "#74b9ff"] },
-		sour_lemon: { label: 'Sour Lemon', colors: ["#ffeaa7", "#fdcb6e", "#fab1a0"] },
-		peach: { label: 'First Peach', colors: ["#fab1a0", "#ff7675", "#d63031"] },
-		chi_gong: { label: 'Chi-Gong', colors: ["#d63031", "#ff7675", "#6c5ce7"] },
-		pristine: { label: 'Pristine White', colors: ["#dfe6e9", "#b2bec3", "#636e72"] },
-		shale: { label: 'Shale Gray', colors: ["#636e72", "#2d3436", "#00b894"] },
-		dracula: { label: 'Dracula Castle', colors: ["#bd93f9", "#ff79c6", "#8be9fd"] },
-		gruvbox: { label: 'Retro Gruvbox', colors: ["#fabd2f", "#fe8019", "#b8bb26"] },
-		nord: { label: 'Arctic Nord', colors: ["#88c0d0", "#81a1c1", "#5e81ac"] },
-		monokai_pro: { label: 'Monokai Pro', colors: ["#ffd866", "#fc9867", "#ff6188"] },
-		solarized: { label: 'Solarized Fire', colors: ["#cb4b16", "#dc322f", "#268bd2"] },
-		paper: { label: 'Light Paper', colors: ["#14B8A6", "#0066FF", "#3B82F6"], mode: 'light' },
-		snow: { label: 'Highland Snow', colors: ["#059669", "#2563EB", "#4F46E5"], mode: 'light' },
-		latte: { label: 'Morning Latte', colors: ["#D97706", "#2563EB", "#059669"], mode: 'light' },
+		// Natural Elements
+		wind: { label: 'Wind', colors: ["hsla(200, 40%, 58%, 1)", "hsla(195, 45%, 66%, 1)", "hsla(208, 35%, 48%, 1)"] },
+		water: { label: 'Water', colors: ["hsla(207, 90%, 35%, 1)", "hsla(195, 85%, 43%, 1)", "hsla(215, 96%, 28%, 1)"] },
+		fire: { label: 'Fire', colors: ["hsla(20, 94%, 48%, 1)", "hsla(5, 86%, 45%, 1)", "hsla(38, 91%, 49%, 1)"] },
+		earth: { label: 'Earth', colors: ["hsla(36, 70%, 30%, 1)", "hsla(82, 27%, 38%, 1)", "hsla(25, 58%, 43%, 1)"] },
+		// Natural Environments
+		polar: { label: 'Polar', colors: ["hsla(183, 37%, 75%, 1)", "hsla(207, 36%, 44%, 1)", "hsla(215, 52%, 22%, 1)"] },
+		mountain: { label: 'Mountain', colors: ["hsla(208, 7%, 43%, 1)", "hsla(209, 7%, 34%, 1)", "hsla(218, 10%, 59%, 1)"] },
+		forest: { label: 'Forest', colors: ["hsla(154, 40%, 28%, 1)", "hsla(153, 37%, 37%, 1)", "hsla(143, 46%, 51%, 1)"] },
+		desert: { label: 'Desert', colors: ["hsla(30, 41%, 56%, 1)", "hsla(34, 46%, 63%, 1)", "hsla(22, 36%, 49%, 1)"] },
+		coast: { label: 'Coast', colors: ["hsla(199, 99%, 38%, 1)", "hsla(193, 89%, 61%, 1)", "hsla(27, 87%, 65%, 1)"] },
+		sky: { label: 'Sky', colors: ["hsla(213, 83%, 61%, 1)", "hsla(192, 95%, 60%, 1)", "hsla(45, 95%, 69%, 1)"] },
+		// Natural Phenomena
+		aurora: { label: 'Aurora', colors: ["hsla(142, 71%, 45%, 1)", "hsla(271, 80%, 62%, 1)", "hsla(187, 93%, 42%, 1)"] },
+		storm: { label: 'Storm', colors: ["hsla(209, 16%, 37%, 1)", "hsla(198, 92%, 59%, 1)", "hsla(0, 0%, 90%, 1)"] },
+		jungle: { label: 'Jungle', colors: ["hsla(138, 68%, 29%, 1)", "hsla(77, 81%, 54%, 1)", "hsla(44, 92%, 43%, 1)"] },
+		// IDE Palettes
+		solarized: { label: 'Solarized', colors: ["hsla(18, 80%, 44%, 1)", "hsla(205, 69%, 49%, 1)", "hsla(175, 60%, 41%, 1)"] },
+		monokai: { label: 'Monokai', colors: ["hsla(338, 95%, 56%, 1)", "hsla(32, 98%, 56%, 1)", "hsla(80, 75%, 55%, 1)"] },
+		dracula: { label: 'Dracula', colors: ["hsla(265, 89%, 78%, 1)", "hsla(320, 100%, 73%, 1)", "hsla(191, 97%, 77%, 1)"] },
+		gruvbox: { label: 'Gruvbox', colors: ["hsla(40, 94%, 57%, 1)", "hsla(25, 98%, 55%, 1)", "hsla(75, 40%, 53%, 1)"] },
+		nord: { label: 'Nord', colors: ["hsla(193, 43%, 67%, 1)", "hsla(210, 34%, 63%, 1)", "hsla(213, 32%, 52%, 1)"] },
+		catppuccin: { label: 'Catppuccin', colors: ["hsla(267, 84%, 81%, 1)", "hsla(217, 92%, 76%, 1)", "hsla(115, 54%, 76%, 1)"] },
+		tokyo_night: { label: 'Tokyo Night', colors: ["hsla(217, 92%, 76%, 1)", "hsla(267, 84%, 81%, 1)", "hsla(199, 97%, 74%, 1)"] },
+		// Monochromatic
+		mono_silver: { label: 'Monochrome Silver', colors: ["hsla(210, 11%, 71%, 1)", "hsla(208, 7%, 44%, 1)", "hsla(210, 15%, 82%, 1)"] },
+		mono_teal: { label: 'Monochrome Teal', colors: ["hsla(173, 80%, 40%, 1)", "hsla(174, 76%, 33%, 1)", "hsla(172, 66%, 63%, 1)"] },
+		mono_violet: { label: 'Monochrome Violet', colors: ["hsla(262, 83%, 58%, 1)", "hsla(263, 70%, 50%, 1)", "hsla(263, 89%, 66%, 1)"] },
+		// Pure Colors
+		color_red: { label: 'Red', colors: ["hsla(0, 72%, 51%, 1)", "hsla(0, 64%, 39%, 1)", "hsla(0, 91%, 71%, 1)"] },
+		color_blue: { label: 'Blue', colors: ["hsla(217, 91%, 60%, 1)", "hsla(221, 83%, 53%, 1)", "hsla(213, 94%, 68%, 1)"] },
+		color_green: { label: 'Green', colors: ["hsla(142, 71%, 45%, 1)", "hsla(142, 76%, 36%, 1)", "hsla(142, 69%, 58%, 1)"] },
+		color_purple: { label: 'Purple', colors: ["hsla(271, 91%, 65%, 1)", "hsla(271, 81%, 56%, 1)", "hsla(270, 95%, 75%, 1)"] },
+		color_orange: { label: 'Orange', colors: ["hsla(25, 95%, 53%, 1)", "hsla(21, 90%, 48%, 1)", "hsla(27, 96%, 61%, 1)"] },
+		color_cyan: { label: 'Cyan', colors: ["hsla(187, 85%, 53%, 1)", "hsla(189, 94%, 43%, 1)", "hsla(186, 94%, 82%, 1)"] },
+		color_gold: { label: 'Gold', colors: ["hsla(45, 93%, 47%, 1)", "hsla(40, 96%, 40%, 1)", "hsla(48, 96%, 53%, 1)"] },
+		color_indigo: { label: 'Indigo', colors: ["hsla(239, 84%, 67%, 1)", "hsla(243, 75%, 59%, 1)", "hsla(234, 89%, 74%, 1)"] },
+		// Glassmorphism
+		glass_frost: { label: 'Glass Frost', colors: ["hsla(187, 97%, 72%, 1)", "hsla(186, 100%, 80%, 1)", "hsla(196, 94%, 66%, 1)"] },
+		glass_ember: { label: 'Glass Ember', colors: ["hsla(28, 96%, 61%, 1)", "hsla(38, 96%, 72%, 1)", "hsla(24, 94%, 53%, 1)"] },
+		// Style
+		neon: { label: 'Neon', colors: ["hsla(300, 100%, 50%, 1)", "hsla(180, 100%, 50%, 1)", "hsla(60, 100%, 50%, 1)"] },
+		// High Contrast
+		hc_1: { label: 'High Contrast I', colors: ["hsla(198, 93%, 60%, 1)", "hsla(28, 96%, 61%, 1)", "hsla(267, 84%, 81%, 1)"] },
+		hc_2: { label: 'High Contrast II', colors: ["hsla(48, 96%, 53%, 1)", "hsla(322, 91%, 68%, 1)", "hsla(152, 68%, 52%, 1)"] },
+		hc_3: { label: 'High Contrast III', colors: ["hsla(0, 0%, 100%, 1)", "hsla(60, 100%, 50%, 1)", "hsla(180, 100%, 50%, 1)"] },
 	};
 
 	private gooMode: boolean = false;
@@ -213,51 +208,57 @@ export class UserCard extends HTMLElement {
 		}
 	}
 
-	private applyToRoot(cp: string, cs: string, ct: string) {
-		const hexToRgb = (hex: string) => {
-			const h = hex.replace('#', '');
-			return `${parseInt(h.slice(0, 2), 16)}, ${parseInt(h.slice(2, 4), 16)}, ${parseInt(h.slice(4, 6), 16)}`;
-		};
-		const hexToHsl = (hex: string) => {
-			const h = hex.replace('#', '');
-			const r = parseInt(h.slice(0, 2), 16) / 255;
-			const g = parseInt(h.slice(2, 4), 16) / 255;
-			const b = parseInt(h.slice(4, 6), 16) / 255;
-			const max = Math.max(r, g, b), min = Math.min(r, g, b);
-			let _h = 0, s = 0;
-			const l = (max + min) / 2;
-			if (max !== min) {
-				const d = max - min;
-				s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-				switch (max) {
-					case r: _h = (g - b) / d + (g < b ? 6 : 0); break;
-					case g: _h = (b - r) / d + 2; break;
-					case b: _h = (r - g) / d + 4; break;
-				}
-				_h /= 6;
+	private parseColor(color: string): { h: number, s: number, l: number, a: number } {
+		const m = /hsla?\(\s*([\d.]+)\s*,\s*([\d.]+)%\s*,\s*([\d.]+)%(?:\s*,\s*([\d.]+))?\s*\)/.exec(color);
+		if (m) return { h: Math.round(+m[1]), s: Math.round(+m[2]), l: Math.round(+m[3]), a: m[4] !== undefined ? +m[4] : 1 };
+		const h = color.replace('#', '');
+		const r = parseInt(h.slice(0, 2), 16) / 255, g = parseInt(h.slice(2, 4), 16) / 255, b = parseInt(h.slice(4, 6), 16) / 255;
+		const max = Math.max(r, g, b), min = Math.min(r, g, b);
+		let _h = 0, s = 0;
+		const l = (max + min) / 2;
+		if (max !== min) {
+			const d = max - min;
+			s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+			switch (max) {
+				case r: _h = (g - b) / d + (g < b ? 6 : 0); break;
+				case g: _h = (b - r) / d + 2; break;
+				case b: _h = (r - g) / d + 4; break;
 			}
-			return { h: Math.round(_h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
-		};
+			_h /= 6;
+		}
+		return { h: Math.round(_h * 360), s: Math.round(s * 100), l: Math.round(l * 100), a: 1 };
+	}
+
+	private hslToRgb(h: number, s: number, l: number): string {
+		s /= 100; l /= 100;
+		const k = (n: number) => (n + h / 30) % 12;
+		const a = s * Math.min(l, 1 - l);
+		const f = (n: number) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+		return `${Math.round(f(0) * 255)}, ${Math.round(f(8) * 255)}, ${Math.round(f(4) * 255)}`;
+	}
+
+	private applyToRoot(cp: string, cs: string, ct: string) {
 		const root = document.documentElement;
 		root.classList.add('no-transition');
 
-		const applyColor = (prefix: string, hex: string) => {
-			const hsl = hexToHsl(hex);
-			root.style.setProperty(`--${prefix}-h`, hsl.h.toString());
-			root.style.setProperty(`--${prefix}-s`, `${hsl.s}%`);
-			root.style.setProperty(`--${prefix}-l`, `${hsl.l}%`);
-			root.style.setProperty(`--${prefix}-rgb`, hexToRgb(hex));
-			root.style.setProperty(`--${prefix}`, `hsla(${hsl.h}, ${hsl.s}%, ${hsl.l}%, 1)`);
+		const applyColor = (prefix: string, color: string) => {
+			const { h, s, l, a } = this.parseColor(color);
+			const rgb = this.hslToRgb(h, s, l);
+			root.style.setProperty(`--${prefix}-h`, h.toString());
+			root.style.setProperty(`--${prefix}-s`, `${s}%`);
+			root.style.setProperty(`--${prefix}-l`, `${l}%`);
+			root.style.setProperty(`--${prefix}-rgb`, rgb);
+			root.style.setProperty(`--${prefix}`, `hsla(${h}, ${s}%, ${l}%, ${a})`);
 
 			if (prefix === 'accent-primary') {
-				root.style.setProperty('--accent-color', hex);
-				root.style.setProperty('--accent-color-rgb', hexToRgb(hex));
-				root.style.setProperty('--accent-glow', `rgba(${hexToRgb(hex)}, 0.4)`);
+				root.style.setProperty('--accent-color', `hsla(${h}, ${s}%, ${l}%, ${a})`);
+				root.style.setProperty('--accent-color-rgb', rgb);
+				root.style.setProperty('--accent-glow', `rgba(${rgb}, 0.4)`);
 			} else if (prefix === 'accent-secondary') {
-				root.style.setProperty('--accent-secondary', hex);
-				root.style.setProperty('--accent-secondary-rgb', hexToRgb(hex));
+				root.style.setProperty('--accent-secondary', `hsla(${h}, ${s}%, ${l}%, ${a})`);
+				root.style.setProperty('--accent-secondary-rgb', rgb);
 			} else if (prefix === 'accent-tertiary') {
-				root.style.setProperty('--accent-tertiary', hex);
+				root.style.setProperty('--accent-tertiary', `hsla(${h}, ${s}%, ${l}%, ${a})`);
 			}
 		};
 
@@ -499,11 +500,84 @@ export class UserCard extends HTMLElement {
 					outline-offset: 3px; 
 				}
 
+				/* Color swatch buttons */
+				.color-swatches { display: flex; gap: 0.5rem; }
+				.color-swatch {
+					flex: 1;
+					display: flex;
+					align-items: center;
+					gap: 0.5rem;
+					background: var(--surface-card, hsla(0,0%,100%,0.05));
+					border: 1px solid var(--border-subtle, hsla(0,0%,100%,0.1));
+					border-radius: 0.5rem;
+					padding: 8px 10px;
+					cursor: pointer;
+					transition: all 0.2s ease;
+					color: var(--text-secondary, hsla(0,0%,100%,0.7));
+					font-size: 0.7rem;
+					font-weight: 600;
+					text-transform: uppercase;
+					letter-spacing: 0.04em;
+					min-height: 44px;
+				}
+				.color-swatch:hover {
+					background: var(--surface-card-hover, hsla(0,0%,100%,0.1));
+					border-color: var(--accent-primary, hsla(173,80%,40%,1));
+				}
+				.swatch-dot {
+					width: 18px; height: 18px;
+					border-radius: 50%;
+					flex-shrink: 0;
+					border: 2px solid hsla(0,0%,100%,0.2);
+					display: inline-block;
+				}
+				/* HSLA picker overlay */
+				.picker-wrap { position: relative; grid-column: span 2; }
+				.hsla-picker {
+					position: absolute;
+					z-index: 100;
+					top: 0; left: 0; right: 0;
+					background: var(--surface-overlay, hsla(240,28%,10%,0.97));
+					border: 1px solid var(--border-subtle, hsla(0,0%,100%,0.15));
+					border-radius: 0.75rem;
+					padding: 1rem;
+					box-shadow: 0 16px 48px hsla(0,0%,0%,0.5);
+					backdrop-filter: blur(20px);
+					display: flex;
+					flex-direction: column;
+					gap: 0.75rem;
+				}
+				.hsla-picker[hidden] { display: none; }
+				.picker-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.25rem; }
+				.picker-title { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted, hsla(0,0%,100%,0.4)); }
+				.picker-preview { width: 32px; height: 32px; border-radius: 50%; border: 2px solid hsla(0,0%,100%,0.3); flex-shrink: 0; }
+				.picker-row { display: flex; align-items: center; gap: 0.5rem; }
+				.picker-row-label { font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted, hsla(0,0%,100%,0.4)); width: 72px; flex-shrink: 0; }
+				.picker-range {
+					flex: 1; height: 6px; border-radius: 3px; cursor: pointer;
+					min-height: auto; padding: 0; border: none;
+					-webkit-appearance: none; appearance: none; width: auto;
+				}
+				.picker-range::-webkit-slider-thumb {
+					-webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%;
+					background: #fff; cursor: pointer; border: 2px solid hsla(0,0%,0%,0.3); box-shadow: 0 1px 4px hsla(0,0%,0%,0.4);
+				}
+				.picker-range-h { background: linear-gradient(to right, hsl(0,100%,50%), hsl(60,100%,50%), hsl(120,100%,50%), hsl(180,100%,50%), hsl(240,100%,50%), hsl(300,100%,50%), hsl(360,100%,50%)); }
+				.picker-range-s { background: linear-gradient(to right, hsl(0,0%,50%), hsl(180,100%,50%)); }
+				.picker-range-l { background: linear-gradient(to right, #000, hsl(180,100%,50%), #fff); }
+				.picker-range-a { background: linear-gradient(to right, transparent, currentColor); }
+				.picker-num { width: 52px; min-height: auto; padding: 4px 6px; font-size: 0.75rem; text-align: center; flex-shrink: 0; }
+				.picker-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
+
+				@media (prefers-reduced-motion: reduce) { .color-swatch { transition: none; } }
+
 				@media (forced-colors: active) {
 					.avatar { background: ButtonFace; border: 2px solid ButtonText; }
 					.edit-btn { color: LinkText; }
 					.theme-cycle-btn { border: 1px solid ButtonText; }
 					li::before { color: Highlight; }
+					.color-swatch { border: 1px solid ButtonText; }
+					.hsla-picker { border: 1px solid ButtonText; }
 				}
 			</style>
 
@@ -586,19 +660,61 @@ export class UserCard extends HTMLElement {
 								<select id="theme-preset-select" style="flex: 1;">
 									<option value="">${this.tr('select_preset', 'Select Preset...')}</option>
 									${Object.entries(this.themeOptions).map(([key, opt]) => `
-										<option value="${key}">${opt.label}</option>
+										<option value="${key}">${this.tr('theme_' + key, opt.label)}</option>
 									`).join('')}
 								</select>
 								<button class="theme-cycle-btn" id="theme-next" title="${this.tr('next_theme', 'Next Theme')}" style="width: 32px; height: 44px; font-size: 0.8rem;">▶</button>
 							</div>
 						</div>
 
-						<div class="field" style="grid-column: span 2;">
+						<div class="field picker-wrap" style="grid-column: span 2;">
 							<label class="label">${this.tr('accent_colors', 'Accent Colors')}</label>
-							<div style="display: flex; gap: 0.5rem;">
-								<input type="text" id="color-primary-input" value="${me.color_primary || 'hsla(173, 80%, 40%, 1)'}" title="Primary Accent" style="flex: 1;">
-								<input type="text" id="color-secondary-input" value="${me.color_secondary || 'hsla(216, 100%, 50%, 1)'}" title="Secondary Accent" style="flex: 1;">
-								<input type="text" id="color-tertiary-input" value="${me.color_tertiary || 'hsla(239, 84%, 67%, 1)'}" title="Tertiary Accent" style="flex: 1;">
+							<input type="hidden" id="color-primary-input" value="${me.color_primary || 'hsla(173, 80%, 40%, 1)'}">
+							<input type="hidden" id="color-secondary-input" value="${me.color_secondary || 'hsla(216, 100%, 50%, 1)'}">
+							<input type="hidden" id="color-tertiary-input" value="${me.color_tertiary || 'hsla(239, 84%, 67%, 1)'}">
+							<div class="color-swatches">
+								<button class="color-swatch" id="swatch-primary" data-target="color-primary-input" aria-label="${this.tr('primary_label', 'Primary Accent')}">
+									<span class="swatch-dot" id="swatch-dot-primary" style="background:${me.color_primary || 'hsla(173,80%,40%,1)'}"></span>
+									<span>${this.tr('primary_label', 'Primary')}</span>
+								</button>
+								<button class="color-swatch" id="swatch-secondary" data-target="color-secondary-input" aria-label="${this.tr('secondary_label', 'Secondary Accent')}">
+									<span class="swatch-dot" id="swatch-dot-secondary" style="background:${me.color_secondary || 'hsla(216,100%,50%,1)'}"></span>
+									<span>${this.tr('secondary_label', 'Secondary')}</span>
+								</button>
+								<button class="color-swatch" id="swatch-tertiary" data-target="color-tertiary-input" aria-label="${this.tr('tertiary_label', 'Tertiary Accent')}">
+									<span class="swatch-dot" id="swatch-dot-tertiary" style="background:${me.color_tertiary || 'hsla(239,84%,67%,1)'}"></span>
+									<span>${this.tr('tertiary_label', 'Tertiary')}</span>
+								</button>
+							</div>
+							<div class="hsla-picker" id="hsla-picker" role="dialog" aria-modal="true" aria-label="${this.tr('picker_title', 'HSLA Color Picker')}" hidden>
+								<div class="picker-header">
+									<span class="picker-title">${this.tr('picker_title', 'HSLA Color Picker')}</span>
+									<span class="picker-preview" id="picker-preview" aria-hidden="true"></span>
+								</div>
+								<div class="picker-row">
+									<span class="picker-row-label">${this.tr('color_hue', 'Hue')}</span>
+									<input type="range" id="picker-h" min="0" max="360" step="1" class="picker-range picker-range-h" aria-label="${this.tr('color_hue', 'Hue')}">
+									<input type="number" id="picker-h-num" min="0" max="360" step="1" class="picker-num" aria-label="${this.tr('color_hue', 'Hue')} value">
+								</div>
+								<div class="picker-row">
+									<span class="picker-row-label">${this.tr('color_saturation', 'Saturation')}</span>
+									<input type="range" id="picker-s" min="0" max="100" step="1" class="picker-range picker-range-s" aria-label="${this.tr('color_saturation', 'Saturation')}">
+									<input type="number" id="picker-s-num" min="0" max="100" step="1" class="picker-num" aria-label="${this.tr('color_saturation', 'Saturation')} value">
+								</div>
+								<div class="picker-row">
+									<span class="picker-row-label">${this.tr('color_lightness', 'Lightness')}</span>
+									<input type="range" id="picker-l" min="0" max="100" step="1" class="picker-range picker-range-l" aria-label="${this.tr('color_lightness', 'Lightness')}">
+									<input type="number" id="picker-l-num" min="0" max="100" step="1" class="picker-num" aria-label="${this.tr('color_lightness', 'Lightness')} value">
+								</div>
+								<div class="picker-row">
+									<span class="picker-row-label">${this.tr('color_opacity', 'Opacity')}</span>
+									<input type="range" id="picker-a" min="0" max="1" step="0.01" class="picker-range picker-range-a" aria-label="${this.tr('color_opacity', 'Opacity')}">
+									<input type="number" id="picker-a-num" min="0" max="1" step="0.01" class="picker-num" aria-label="${this.tr('color_opacity', 'Opacity')} value">
+								</div>
+								<div class="picker-actions">
+									<button class="oz-btn oz-btn-secondary" id="picker-cancel">${this.tr('color_cancel', 'Cancel')}</button>
+									<button class="oz-btn oz-btn-primary" id="picker-apply">${this.tr('color_apply', 'Apply')}</button>
+								</div>
 							</div>
 						</div>
 
@@ -697,17 +813,7 @@ export class UserCard extends HTMLElement {
 					(this.shadowRoot?.querySelector('#color-primary-input') as HTMLInputElement).value = theme.colors[0];
 					(this.shadowRoot?.querySelector('#color-secondary-input') as HTMLInputElement).value = theme.colors[1];
 					(this.shadowRoot?.querySelector('#color-tertiary-input') as HTMLInputElement).value = theme.colors[2];
-					
-					if (theme.mode === 'light') {
-						this.themeMode = 'light';
-						localStorage.setItem('theme-mode', 'light');
-						this.applyThemeMode();
-					} else {
-						this.themeMode = 'dark';
-						localStorage.setItem('theme-mode', 'dark');
-						this.applyThemeMode();
-					}
-					
+
 					applyColors();
 				}
 			};
@@ -729,19 +835,84 @@ export class UserCard extends HTMLElement {
 					(this.shadowRoot?.querySelector('#color-primary-input') as HTMLInputElement).value = theme.colors[0];
 					(this.shadowRoot?.querySelector('#color-secondary-input') as HTMLInputElement).value = theme.colors[1];
 					(this.shadowRoot?.querySelector('#color-tertiary-input') as HTMLInputElement).value = theme.colors[2];
-					
-					if (theme.mode === 'light') {
-						document.documentElement.setAttribute('data-theme', 'light');
-					} else {
-						document.documentElement.removeAttribute('data-theme');
-					}
-					
+
 					applyColors();
 				}
 			});
 
-			['#color-primary-input', '#color-secondary-input', '#color-tertiary-input'].forEach(id => {
-				this.shadowRoot?.querySelector(id)?.addEventListener('input', applyColors);
+			// HSLA picker setup
+			let _pickerTarget: string | null = null;
+			const picker = this.shadowRoot?.querySelector('#hsla-picker') as HTMLElement;
+			const preview = this.shadowRoot?.querySelector('#picker-preview') as HTMLElement;
+			const pH = this.shadowRoot?.querySelector('#picker-h') as HTMLInputElement;
+			const pS = this.shadowRoot?.querySelector('#picker-s') as HTMLInputElement;
+			const pL = this.shadowRoot?.querySelector('#picker-l') as HTMLInputElement;
+			const pA = this.shadowRoot?.querySelector('#picker-a') as HTMLInputElement;
+			const pHn = this.shadowRoot?.querySelector('#picker-h-num') as HTMLInputElement;
+			const pSn = this.shadowRoot?.querySelector('#picker-s-num') as HTMLInputElement;
+			const pLn = this.shadowRoot?.querySelector('#picker-l-num') as HTMLInputElement;
+			const pAn = this.shadowRoot?.querySelector('#picker-a-num') as HTMLInputElement;
+
+			const updatePickerPreview = () => {
+				const h = pH.value, s = pS.value, l = pL.value, a = pA.value;
+				const col = `hsla(${h}, ${s}%, ${l}%, ${a})`;
+				if (preview) preview.style.background = col;
+			};
+
+			const syncSliderNum = (slider: HTMLInputElement, num: HTMLInputElement) => {
+				slider.addEventListener('input', () => { num.value = slider.value; updatePickerPreview(); });
+				num.addEventListener('input', () => { slider.value = num.value; updatePickerPreview(); });
+			};
+			syncSliderNum(pH, pHn);
+			syncSliderNum(pS, pSn);
+			syncSliderNum(pL, pLn);
+			syncSliderNum(pA, pAn);
+
+			const openPicker = (targetId: string) => {
+				_pickerTarget = targetId;
+				const hidden = this.shadowRoot?.querySelector(`#${targetId}`) as HTMLInputElement;
+				const val = hidden?.value || 'hsla(173, 80%, 40%, 1)';
+				const parsed = this.parseColor(val);
+				pH.value = pHn.value = String(parsed.h);
+				pS.value = pSn.value = String(parsed.s);
+				pL.value = pLn.value = String(parsed.l);
+				pA.value = pAn.value = String(parsed.a);
+				updatePickerPreview();
+				picker?.removeAttribute('hidden');
+				pH.focus();
+			};
+
+			['swatch-primary', 'swatch-secondary', 'swatch-tertiary'].forEach(id => {
+				const btn = this.shadowRoot?.querySelector(`#${id}`) as HTMLButtonElement;
+				btn?.addEventListener('click', (e) => {
+					e.preventDefault();
+					const targetId = btn.getAttribute('data-target') || '';
+					openPicker(targetId);
+				});
+			});
+
+			this.shadowRoot?.querySelector('#picker-apply')?.addEventListener('click', () => {
+				if (!_pickerTarget) return;
+				const h = pH.value, s = pS.value, l = pL.value, a = pA.value;
+				const col = `hsla(${h}, ${s}%, ${l}%, ${a})`;
+				const hidden = this.shadowRoot?.querySelector(`#${_pickerTarget}`) as HTMLInputElement;
+				if (hidden) hidden.value = col;
+				// Update swatch dot
+				const dotMap: Record<string, string> = {
+					'color-primary-input': 'swatch-dot-primary',
+					'color-secondary-input': 'swatch-dot-secondary',
+					'color-tertiary-input': 'swatch-dot-tertiary',
+				};
+				const dot = this.shadowRoot?.querySelector(`#${dotMap[_pickerTarget]}`) as HTMLElement;
+				if (dot) dot.style.background = col;
+				picker?.setAttribute('hidden', '');
+				_pickerTarget = null;
+				applyColors();
+			});
+
+			this.shadowRoot?.querySelector('#picker-cancel')?.addEventListener('click', () => {
+				picker?.setAttribute('hidden', '');
+				_pickerTarget = null;
 			});
 		}
 

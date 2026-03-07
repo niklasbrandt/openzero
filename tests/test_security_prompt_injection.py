@@ -40,7 +40,6 @@ import base64
 import codecs
 import unicodedata
 import os
-from typing import Optional
 
 
 # ---------------------------------------------------------------------------
@@ -87,7 +86,6 @@ class PromptBuilder:
 		self.user_name = user_name
 		self.system_prompt = SYSTEM_PROMPT_CHAT.format(
 			user_name=user_name,
-			current_time="2026-03-04 10:00",
 		)
 		self.conversation_history: list[dict] = []
 
@@ -1324,7 +1322,6 @@ class TestAPIEndpoints:
 		"""Path traversal attempts in API endpoints."""
 		from urllib.parse import unquote
 		decoded = unquote(path)
-		normalised = os.path.normpath(decoded)
 		# After URL-decoding, all traversal payloads contain '..'
 		assert ".." in decoded
 
@@ -1348,6 +1345,7 @@ class TestAPIEndpoints:
 			# Token should be alphanumeric, bounded length
 			is_valid = bool(re.match(r"^[a-zA-Z0-9_-]{8,128}$", token))
 			assert not is_valid, f"Malicious token accepted: {token!r}"
+		assert re.match(r"^[a-zA-Z0-9_-]{8,128}$", valid_token), "Valid token must pass format check"
 
 	def test_chat_endpoint_history_injection(self):
 		"""
@@ -1972,8 +1970,6 @@ class TestOutputGuardrails:
 
 	def _make_sanitise_output(self):
 		"""Build a minimal sanitise_output that mirrors the real implementation."""
-		import re
-
 		SENSITIVE_RE = re.compile(
 			r'(?:AKIA|ASIA|AIDA)[A-Z0-9]{16}|sk-[A-Za-z0-9]{32,}', re.IGNORECASE
 		)
@@ -2044,8 +2040,6 @@ class TestInputGuardrailsExtended:
 
 	def _sanitise_input_extended(self, text: str, max_length: int = 4096) -> str:
 		"""Mirror of the real sanitise_input for unit testing."""
-		import re, unicodedata, base64
-
 		if not text:
 			return ""
 
@@ -2116,7 +2110,7 @@ class TestPersonalContextSecurity:
 	"""Tests for personal_context.py injection defences."""
 
 	_ACTION_TAG_RE = re.compile(
-		r'\[ACTION:\s*\w+(?:\s*\|\s*\w+:[^\]]+)*\]', re.IGNORECASE
+		r'\[ACTION:[^\]]*\]', re.IGNORECASE
 	)
 
 	def _strip_action_tags(self, text: str) -> str:
@@ -2262,7 +2256,7 @@ class TestPersonalContextDebugReport:
 	"""Tests for get_personal_context_debug_report() — the /personal slash command output."""
 
 	_ACTION_TAG_RE = re.compile(
-		r'\[ACTION:\s*\w+(?:\s*\|\s*\w+:[^\]]+)*\]', re.IGNORECASE
+		r'\[ACTION:[^\]]*\]', re.IGNORECASE
 	)
 
 	def _make_report(self, prompt_block: str, compressed: dict, cache: dict) -> str:
@@ -2386,7 +2380,7 @@ class TestCloudSanitizationProxy:
 		"""Repeated occurrences of the same email collapse to one token."""
 		text = "julian@example.com is my email. Contact julian@example.com."
 		sanitized, rep_map = self.sanitize_prompt(text)
-		assert len([k for k in rep_map if "example.com" in k]) == 1
+		assert len([k for k in rep_map if k.endswith("@example.com")]) == 1
 
 	def test_phone_replaced(self):
 		"""US phone numbers must not appear in sanitized output."""

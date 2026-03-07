@@ -167,17 +167,14 @@ if (document.readyState === 'complete') {
 }
 
 // ── Theme Management ──
-function hexToHsl(hex: string): { h: number, s: number, l: number } {
-	let r = 0, g = 0, b = 0;
-	const h = hex.replace('#', '');
-	r = parseInt(h.slice(0, 2), 16) / 255;
-	g = parseInt(h.slice(2, 4), 16) / 255;
-	b = parseInt(h.slice(4, 6), 16) / 255;
-
+function parseColor(color: string): { h: number, s: number, l: number, a: number } {
+	const m = /hsla?\(\s*([\d.]+)\s*,\s*([\d.]+)%\s*,\s*([\d.]+)%(?:\s*,\s*([\d.]+))?\s*\)/.exec(color);
+	if (m) return { h: Math.round(+m[1]), s: Math.round(+m[2]), l: Math.round(+m[3]), a: m[4] !== undefined ? +m[4] : 1 };
+	const h = color.replace('#', '');
+	const r = parseInt(h.slice(0, 2), 16) / 255, g = parseInt(h.slice(2, 4), 16) / 255, b = parseInt(h.slice(4, 6), 16) / 255;
 	const max = Math.max(r, g, b), min = Math.min(r, g, b);
 	let _h = 0, s = 0;
 	const l = (max + min) / 2;
-
 	if (max !== min) {
 		const d = max - min;
 		s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
@@ -188,16 +185,15 @@ function hexToHsl(hex: string): { h: number, s: number, l: number } {
 		}
 		_h /= 6;
 	}
-
-	return { h: Math.round(_h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
+	return { h: Math.round(_h * 360), s: Math.round(s * 100), l: Math.round(l * 100), a: 1 };
 }
 
-function hexToRgb(hex: string) {
-	const h = hex.replace('#', '');
-	const r = parseInt(h.slice(0, 2), 16);
-	const g = parseInt(h.slice(2, 4), 16);
-	const b = parseInt(h.slice(4, 6), 16);
-	return `${r}, ${g}, ${b}`;
+function hslToRgb(h: number, s: number, l: number): string {
+	s /= 100; l /= 100;
+	const k = (n: number) => (n + h / 30) % 12;
+	const a = s * Math.min(l, 1 - l);
+	const f = (n: number) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+	return `${Math.round(f(0) * 255)}, ${Math.round(f(8) * 255)}, ${Math.round(f(4) * 255)}`;
 }
 
 // Resolved once the palette API call settles (success or failure).
@@ -215,27 +211,25 @@ async function initTheme() {
 			root.classList.add('no-transition');
 			const cache: Record<string, string> = {};
 			
-			const applyColor = (prefix: string, hex: string) => {
-				const hsl = hexToHsl(hex);
-				root.style.setProperty(`--${prefix}-h`, hsl.h.toString());
-				root.style.setProperty(`--${prefix}-s`, `${hsl.s}%`);
-				// Only set L if it's NOT light mode (let CSS handles light mode adjust) or override regardless?
-				// To keep user preference but allow light mode to dim, we set the BASE L.
-				root.style.setProperty(`--${prefix}-l`, `${hsl.l}%`);
-				// Composite tokens for rgba(var(...), alpha) and var(--accent-*) patterns
-				root.style.setProperty(`--${prefix}-rgb`, hexToRgb(hex));
-				root.style.setProperty(`--${prefix}`, `hsla(${hsl.h}, ${hsl.s}%, ${hsl.l}%, 1)`);
-				
+			const applyColor = (prefix: string, color: string) => {
+				const { h, s, l, a } = parseColor(color);
+				const rgb = hslToRgb(h, s, l);
+				root.style.setProperty(`--${prefix}-h`, h.toString());
+				root.style.setProperty(`--${prefix}-s`, `${s}%`);
+				root.style.setProperty(`--${prefix}-l`, `${l}%`);
+				root.style.setProperty(`--${prefix}-rgb`, rgb);
+				root.style.setProperty(`--${prefix}`, `hsla(${h}, ${s}%, ${l}%, ${a})`);
+
 				// Legacy/Direct mappings
 				if (prefix === 'accent-primary') {
-					root.style.setProperty('--accent-color', hex);
-					root.style.setProperty('--accent-color-rgb', hexToRgb(hex));
-					root.style.setProperty('--accent-glow', `rgba(${hexToRgb(hex)}, 0.4)`);
+					root.style.setProperty('--accent-color', `hsla(${h}, ${s}%, ${l}%, ${a})`);
+					root.style.setProperty('--accent-color-rgb', rgb);
+					root.style.setProperty('--accent-glow', `rgba(${rgb}, 0.4)`);
 				} else if (prefix === 'accent-secondary') {
-					root.style.setProperty('--accent-secondary', hex);
-					root.style.setProperty('--accent-secondary-rgb', hexToRgb(hex));
+					root.style.setProperty('--accent-secondary', `hsla(${h}, ${s}%, ${l}%, ${a})`);
+					root.style.setProperty('--accent-secondary-rgb', rgb);
 				} else if (prefix === 'accent-tertiary') {
-					root.style.setProperty('--accent-tertiary', hex);
+					root.style.setProperty('--accent-tertiary', `hsla(${h}, ${s}%, ${l}%, ${a})`);
 				}
 			};
 
