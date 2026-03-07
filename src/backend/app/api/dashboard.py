@@ -1872,7 +1872,8 @@ async def benchmark_llm(tier: str = "instant"):
 	except httpx.TimeoutException:
 		return {"tier": tier, "model": model_name, "error": "Timeout (120s)"}
 	except Exception as e:
-		return {"tier": tier, "model": model_name, "error": str(e)}
+		logger.error("LLM benchmark failed (tier=%s): %s", tier, e)
+		return {"tier": tier, "model": model_name, "error": "Benchmark failed"}
 
 
 # --- Translations ---
@@ -1927,7 +1928,8 @@ async def get_system_status(db: AsyncSession = Depends(get_db)):
     except FileNotFoundError:
         dns_detail = "dig not found"
     except Exception as e:
-        dns_detail = str(e)[:80]
+        logger.warning("DNS health check failed: %s", e)
+        dns_detail = "check failed"
 
     return {
         "status": "online",
