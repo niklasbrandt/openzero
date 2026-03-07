@@ -550,7 +550,7 @@ export class CalendarManager extends HTMLElement {
 			}).map(e => new Date(e.start).getDate())
 		);
 
-		let displayedEvents = this.events;
+		let displayedEvents: typeof this.events;
 		if (this.selectedDate) {
 			displayedEvents = this.events.filter(e => {
 				if (!e.start) return false;
