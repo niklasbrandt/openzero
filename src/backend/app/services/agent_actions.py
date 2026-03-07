@@ -323,12 +323,12 @@ async def parse_and_execute_actions(reply: str, db=None):
                         # Handle next-day rollover if needed (rare for short tracks)
                         if due_dt < now: due_dt += datetime.timedelta(days=1)
                         milestones.append({"task": task_name.strip(), "due_at": due_dt.isoformat(), "sent": False})
-                except: continue
+                except (ValueError, AttributeError): continue  # malformed HH:MM -- skip milestone
 
             try:
                 # Handle YYYY-MM-DD HH:MM for overall END
                 end_dt = datetime.datetime.strptime(end_val.strip(), "%Y-%m-%d %H:%M")
-            except:
+            except ValueError:
                 # Fallback
                 end_dt = datetime.datetime.utcnow() + datetime.timedelta(hours=2)
                 
