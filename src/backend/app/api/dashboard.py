@@ -1920,16 +1920,17 @@ async def get_system_status(db: AsyncSession = Depends(get_db)):
     res_people = await db.execute(select(Person).where(Person.circle_type == "identity"))
     identity_set = res_people.scalar_one_or_none() is not None
 
-    # DNS Health — test Pi-hole can resolve open.zero
-    # Pi-hole runs network_mode:host so it's unreachable via its Tailscale IP
-    # from inside a Docker bridge container. Use host.docker.internal (mapped
-    # to the Docker host gateway via extra_hosts in docker-compose.yml) instead.
+    # DNS Health — test Pi-hole can resolve open.zero.
+    # Pi-hole runs network_mode:host; UFW blocks port 53 from Docker bridge
+    # subnets (Tailscale-only). Run dig inside the pihole container via docker
+    # exec, which the backend can do via its mounted Docker socket.
     dns_ok = False
     dns_detail = "untested"
     try:
         dig = subprocess.run(
-            ["dig", "@host.docker.internal", "open.zero", "+short", "+time=2", "+tries=1"],
-            capture_output=True, text=True, timeout=5
+            ["docker", "exec", "openzero-pihole-1", "dig",
+             "@127.0.0.1", "open.zero", "+short", "+time=2", "+tries=1"],
+            capture_output=True, text=True, timeout=8
         )
         if dig.returncode == 0 and dig.stdout.strip():
             dns_ok = True
@@ -1937,7 +1938,7 @@ async def get_system_status(db: AsyncSession = Depends(get_db)):
         else:
             dns_detail = "no answer"
     except FileNotFoundError:
-        dns_detail = "dig not found"
+        dns_detail = "docker not found"
     except Exception as e:
         logger.warning("DNS health check failed: %s", e)
         dns_detail = "check failed"
