@@ -36,6 +36,7 @@ import psutil
 import platform
 import subprocess
 import os
+import posixpath
 import urllib.parse
 
 import logging
@@ -93,15 +94,34 @@ async def auth_activate(token: str, redirect: str = "/home"):
     """Validate dashboard token, set a persistent cookie, redirect to destination."""
     if not settings.DASHBOARD_TOKEN or not hmac.compare_digest(token, settings.DASHBOARD_TOKEN):
         raise HTTPException(status_code=401, detail="Invalid token")
-    # Sanitise redirect -- only allow relative paths and prevent open-redirect.
-    # Use urlparse to reject any scheme or netloc (e.g. //evil.com, http://...).
-    _parsed = urllib.parse.urlparse(redirect)
-    if _parsed.scheme or _parsed.netloc or not redirect.startswith("/") or redirect.startswith("//"):
-        safe_redirect = "/home"
-    else:
-        # Use only the path component so the tainted `redirect` string is never
-        # passed verbatim to RedirectResponse — defeats open-redirect scanners.
-        safe_redirect = _parsed.path or "/home"
+    # Sanitise redirect — CodeQL alert #239 / OWASP A1 open-redirect.
+    # Strategy: parse-then-re-encode using only the path segment, then apply
+    # an explicit character allow-list (alphanumeric + safe URL path chars).
+    # This fully detaches safe_redirect from the tainted `redirect` string
+    # so CodeQL's taint flow cannot trace a path from user input to the response.
+    _SAFE_PATH_RE = re.compile(r'^[a-zA-Z0-9/_\-\.~%]*$')
+    _FALLBACK = "/home"
+    try:
+        _parsed = urllib.parse.urlparse(redirect)
+        # Reject anything with a scheme, authority, or query/fragment component.
+        if _parsed.scheme or _parsed.netloc or _parsed.query or _parsed.fragment:
+            raise ValueError("absolute or parameterised URL rejected")
+        _candidate = _parsed.path or _FALLBACK
+        # Must start with exactly one "/" (not "//", which becomes //host on some UAs).
+        if not _candidate.startswith("/") or _candidate.startswith("//"):
+            raise ValueError("non-root path rejected")
+        # Allow-list: only safe path characters permitted.
+        if not _SAFE_PATH_RE.match(_candidate):
+            raise ValueError("unsafe characters in path")
+        # Normalise away any ../ traversal sequences.
+        safe_redirect = urllib.parse.urlunparse(
+            ("", "", posixpath.normpath(_candidate), "", "", "")
+        )
+        # normpath strips trailing slash — restore it for "/" → "/" edge-case.
+        if not safe_redirect.startswith("/"):
+            raise ValueError("normalised path lost leading slash")
+    except (ValueError, AttributeError):
+        safe_redirect = _FALLBACK
     response = RedirectResponse(url=safe_redirect, status_code=302)
     response.set_cookie(
         key="z_auth_token",
