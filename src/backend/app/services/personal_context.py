@@ -293,7 +293,7 @@ def _compute_hash(files: list[Path]) -> str:
 			st = p.stat()
 			h.update(f"{p.name}:{st.st_mtime}:{st.st_size}".encode())
 		except OSError:
-			pass
+				pass  # file disappeared between listing and stat -- skip it
 	return h.hexdigest()
 
 

@@ -153,8 +153,8 @@ async def start_telegram_bot():
 					if changes:
 						release_info = f"DEPLOYMENT UPDATE - TECHNICAL DIFF SUMMARY:\n{changes[:2000]}\n"
 					os.remove(notes_file)
-				except: pass
-
+				except Exception:
+					pass  # notes file missing or unreadable -- non-fatal
 			# Unified Context gathering
 			event_summary_parts = []
 
@@ -423,7 +423,7 @@ async def send_voice_message(audio_bytes: bytes, caption: Optional[str] = None):
 def owner_only(func):
 	async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		if str(update.effective_user.id) != settings.TELEGRAM_ALLOWED_USER_ID:
-			return	# Silently ignore strangers
+			return None  # Silently ignore strangers
 		return await func(update, context)
 	return wrapper
 
@@ -445,8 +445,8 @@ async def safe_edit(message, text: str, parse_mode="HTML", reply_markup=None):
 		logger.debug("HTML edit failed, falling back to plain: %s", e)
 		try:
 			await message.edit_text(text)
-		except: pass
-
+		except Exception:
+			pass  # plain-text fallback also failed -- drop silently
 @owner_only
 async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	"""Deep status check of all integrations."""
@@ -463,15 +463,15 @@ async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		try:
 			token = await get_planka_auth_token()
 			if token: p_text = "🟢 Connected"
-		except: pass
-		
+		except Exception:
+			pass  # Planka offline
 		# 3. LLM
 		try:
 			from app.services.llm import chat
 			await chat("hi", tier="instant")
 			l_text = "🟢 Ready"
-		except: l_text = "🔴 Error"
-
+		except Exception:
+			l_text = "🔴 Error"
 		lang = await get_user_lang()
 		t = get_translations(lang)
 		
@@ -859,8 +859,8 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		logger.error("handle_freetext failed: %s", e)
 		try:
 			await safe_reply(update, "I encountered friction while processing that request. My local core is still active, but that specific thread was dropped.")
-		except: pass
-
+		except Exception:
+			pass  # safe_reply itself failed -- nothing more to do
 
 async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, user_text: str, is_followup: bool = False):
 	"""Core freetext processing logic with streaming progressive updates."""

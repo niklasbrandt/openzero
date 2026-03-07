@@ -90,9 +90,6 @@ _EN = {
     "tip_arch": "CPU instruction set architecture. x86_64 supports the widest range of SIMD extensions for llama.cpp.",
     "tip_platform": "Host operating system running the Docker containers.",
     "tip_simd": "SIMD (Single Instruction, Multiple Data) extensions allow the CPU to process multiple values in parallel. Higher SIMD = faster LLM inference.",
-    "tip_sse42": "Baseline SIMD. Used by all modern llama.cpp builds for basic vectorized math.",
-    "tip_avx2": "Advanced Vector Extensions 2. Doubles throughput for quantized matrix ops. Critical for good tok/s on CPU.",
-    "tip_avx512": "Widest SIMD. Up to 2x faster than AVX2 for large quantized models. Rare on consumer CPUs, common on EPYC/Xeon.",
 
     # ── SystemBenchmark ──
     "llm_benchmark": "Benchmark",
@@ -137,8 +134,6 @@ _EN = {
     "work_times": "Typical Work Times",
     "favorite_colors": "Favorite Colors / Theme",
     "select_preset": "Select Preset...",
-    "not_set": "Not set",
-    "name_label": "Name",
     "life_goals": "Life Goals & Core Values",
     "no_goals": "No goals set.",
     "not_set": "Not set",
@@ -182,7 +177,6 @@ _EN = {
     "show_more": "Show More History",
     "no_rules": "No rules defined.",
     "new_rule": "+ New Rule",
-    "cancel": "Cancel",
 
     # ── ZPersonality ──
     "agent_config": "Config",
@@ -288,7 +282,6 @@ _EN = {
     "status_active": "Active",
     "llm_engine": "LLM Engine",
     "memory_db": "Memory DB",
-    "all_day": "All day",
     "all": "All",
     "delete": "Delete",
     "loading_events": "Loading events...",
@@ -660,10 +653,6 @@ _DE = {
     "tip_arch": "CPU-Befehlssatzarchitektur. x86_64 unterstuetzt die meisten SIMD-Erweiterungen fuer llama.cpp.",
     "tip_platform": "Host-Betriebssystem, auf dem die Docker-Container laufen.",
     "tip_simd": "SIMD (Single Instruction, Multiple Data) erlaubt parallele Verarbeitung mehrerer Werte. Mehr SIMD = schnellere LLM-Inferenz.",
-    "tip_sse42": "Basis-SIMD. Wird von allen modernen llama.cpp-Builds fuer grundlegende vektorisierte Mathematik verwendet.",
-    "tip_avx2": "Advanced Vector Extensions 2. Verdoppelt den Durchsatz fuer quantisierte Matrix-Operationen. Kritisch fuer gute tok/s auf CPU.",
-    "tip_avx512": "Breitestes SIMD. Bis zu 2x schneller als AVX2 fuer grosse quantisierte Modelle. Selten bei Consumer-CPUs, haeufig bei EPYC/Xeon.",
-
     # ── SystemBenchmark ──
     "llm_benchmark": "Benchmark",
     "bench_subtitle": "Durchsatz & Leistungsbewertung",
@@ -707,8 +696,6 @@ _DE = {
     "work_times": "Typische Arbeitszeiten",
     "favorite_colors": "Lieblingsfarben / Layout",
     "select_preset": "Vorlage wählen...",
-    "not_set": "Nicht festgelegt",
-    "name_label": "Name",
     "life_goals": "Lebensziele & Grundwerte",
     "no_goals": "Keine Ziele gesetzt.",
     "not_set": "Nicht gesetzt",
@@ -750,7 +737,6 @@ _DE = {
     "show_more": "Mehr anzeigen",
     "no_rules": "Keine Regeln definiert.",
     "new_rule": "+ Neue Regel",
-    "cancel": "Abbrechen",
 
     # ── ZPersonality ──
     "agent_config": "Konfiguration",
@@ -851,7 +837,6 @@ _DE = {
     "llm_engine": "LLM Engine",
     "memory_db": "Speicher-DB",
     "task_board": "Aufgabenboard",
-    "all_day": "Ganztägig",
     "all": "Alle",
     "delete": "Löschen",
     "loading_events": "Lade Termine...",
@@ -1238,7 +1223,6 @@ _ES = {
     "show_more": "Mostrar Mas",
     "no_rules": "Sin reglas definidas.",
     "new_rule": "+ Nueva Regla",
-    "cancel": "Cancelar",
 }
 
 _FR = {
@@ -1322,7 +1306,6 @@ _FR = {
     "show_more": "Afficher Plus",
     "no_rules": "Aucune regle definie.",
     "new_rule": "+ Nouvelle Regle",
-    "cancel": "Annuler",
 }
 
 _JA = {
@@ -1463,7 +1446,6 @@ _JA = {
     "retry_on_return": "復帰時に自動再試行します。",
     "tap_to_retry": "今すぐ再試行するにはここをタップ。",
     "confirm_remove": "この人物をサークルから削除してよろしいですか？",
-    "help_msg_full": "🤖 *Z -- オペレーターコントロール*\n\n/day -- 日次報告\n/week -- 週次分析\n/tree -- ミッションツリー\n/search -- 記憶検索\n/memories -- 記憶一覧\n/add -- 記憶追加\n/status -- システム状態",
     "help_msg_full": "🤖 *Z -- オペレーターコントロール*\n\n/day -- 日次報告\n/week -- 週次報告\n/tree -- ミッションツリー\n/search -- 記憶検索\n/memories -- 記憶一覧\n/add -- 記憶追加\n/status -- システム状態",
 }
 
@@ -1554,7 +1536,6 @@ _ZH = {
     "ask_z_placeholder": "向 Z 提问...",
     "start_chat_with_z": "开始与 Z 聊天",
     "chat_hint": "询问任何问题，例如任务、记忆、简报等。",
-    "thinking": "思考中...",
     "memories_found": "找到的记忆",
     "no_memories_found": "未找到与此查询相关的记忆。",
     "dashboard": "仪表板",
@@ -1687,7 +1668,6 @@ _HI = {
     "show_more": "\u0914\u0930 \u0926\u093f\u0916\u093e\u090f\u0902",
     "no_rules": "\u0915\u094b\u0908 \u0928\u093f\u092f\u092e \u092a\u0930\u093f\u092d\u093e\u0937\u093f\u0924 \u0928\u0939\u0940\u0902\u0964",
     "new_rule": "+ \u0928\u092f\u093e \u0928\u093f\u092f\u092e",
-    "cancel": "\u0930\u0926\u094d\u0926 \u0915\u0930\u0947\u0902",
 }
 
 _AR = {
@@ -2390,5 +2370,5 @@ async def get_user_lang() -> str:
             res = await session.execute(select(Person).where(Person.circle_type == "identity"))
             ident = res.scalar_one_or_none()
             return ident.language if ident and ident.language else "en"
-    except:
-        return "en"
+    except Exception:
+        return "en"  # DB unavailable -- fall back to English

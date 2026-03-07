@@ -124,8 +124,8 @@ async def store_memory(text: str, metadata: Optional[dict] = None):
 		if dupes.points and dupes.points[0].score > 0.98:
 			logger.info(f"Memory Deduplicator: Ignored existing fact: {distilled_text}")
 			return
-	except:
-		pass
+	except Exception:
+		pass  # dedup check optional; proceed with upsert if it fails
 
 	# 4. Final Upsert
 	final_metadata = {**(metadata or {}), "text": distilled_text, "stored_at": datetime.datetime.utcnow().isoformat()}

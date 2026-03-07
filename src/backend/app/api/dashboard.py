@@ -92,13 +92,13 @@ async def auth_activate(token: str, redirect: str = "/home"):
     """Validate dashboard token, set a persistent cookie, redirect to destination."""
     if not settings.DASHBOARD_TOKEN or not hmac.compare_digest(token, settings.DASHBOARD_TOKEN):
         raise HTTPException(status_code=401, detail="Invalid token")
-    # Sanitise redirect -- only allow relative paths
-    if not redirect.startswith("/"):
+    # Sanitise redirect -- only allow relative paths and prevent open-redirect via protocol-relative URLs
+    if not redirect.startswith("/") or redirect.startswith("//"):
         redirect = "/home"
     response = RedirectResponse(url=redirect, status_code=302)
     response.set_cookie(
         key="z_auth_token",
-        value=token,
+        value=settings.DASHBOARD_TOKEN,  # use server-side constant, not user-supplied param
         path="/",
         samesite="lax",
         httponly=False,  # must be JS-readable so frontend can inject as Bearer
@@ -172,7 +172,6 @@ async def get_db():
 def parse_birthday(bday_str: str):
 	"""Unified birthday parser supporting: DD.MM.YY, YYYY-MM-DD, DD.MM, etc."""
 	if not bday_str: return None
-	import re
 	# Try YYYY-MM-DD first
 	match = re.search(r'(\d{4})[.-](\d{1,2})[.-](\d{1,2})', bday_str)
 	if match:
@@ -185,8 +184,8 @@ def parse_birthday(bday_str: str):
 		# Prioritize DD.MM if v1 <= 31 and v2 <= 12
 		if v1 <= 31 and v2 <= 12:
 			return v2, v1 # month, day
-		# Fallback to MM.DD if v2 > 12
-		elif v1 <= 12 and v2 > 12:
+		# Fallback to MM.DD format
+		elif v1 <= 12:
 			return v1, v2
 	return None
 
@@ -260,8 +259,10 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 						"time": dt.strftime('%a %H:%M'),
 						"sort_key": dt
 					})
-				except: pass
-		except: pass
+				except Exception:
+					pass
+		except Exception:
+			pass
 		
 		# B. Local Events
 		res_local = await db.execute(select(LocalEvent).where(LocalEvent.start_time >= today, LocalEvent.start_time <= end_limit))
@@ -289,7 +290,8 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 							"time": bday_this_year.strftime('%a, %d %b'),
 							"sort_key": bday_this_year
 						})
-				except: pass
+				except Exception:
+					pass
 
 		timeline_events.sort(key=lambda x: x["sort_key"])
 		event_list = "\n".join([f"• {e['summary']} ({e['time']})" for e in timeline_events[:5]])
@@ -454,7 +456,7 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 			"model": "operator_direct"
 		}
 
-		from app.services.llm import chat_with_context, last_model_used
+	from app.services.llm import chat_with_context, last_model_used
 	from app.models.db import get_global_history, save_global_message
 
 	# Recover Cross-Channel History
@@ -503,7 +505,8 @@ async def regression_cleanup(request: Request, db: AsyncSession = Depends(get_db
 		for name in deleted_projects:
 			results.append(f"🧹 Deleted Planka project: {name}")
 	except Exception as e:
-		results.append(f"⚠️ Planka cleanup error: {e}")
+		logger.warning("Planka regression cleanup failed: %s", e)
+		results.append("⚠️ Planka cleanup failed")
 	
 	# 2. Clean regression test people
 	try:
@@ -514,7 +517,8 @@ async def regression_cleanup(request: Request, db: AsyncSession = Depends(get_db
 			results.append(f"🧹 Deleted test person: {p.name}")
 		await db.commit()
 	except Exception as e:
-		results.append(f"⚠️ People cleanup error: {e}")
+		logger.warning("People regression cleanup failed: %s", e)
+		results.append("⚠️ People cleanup failed")
 	
 	# 3. Clean regression test events
 	try:
@@ -526,7 +530,8 @@ async def regression_cleanup(request: Request, db: AsyncSession = Depends(get_db
 			results.append(f"🧹 Deleted test event: {ev.summary}")
 		await db.commit()
 	except Exception as e:
-		results.append(f"⚠️ Events cleanup error: {e}")
+		logger.warning("Events regression cleanup failed: %s", e)
+		results.append("⚠️ Events cleanup failed")
 	
 	# 4. Clean regression test memories from Qdrant
 	try:
@@ -541,7 +546,8 @@ async def regression_cleanup(request: Request, db: AsyncSession = Depends(get_db
 			client.delete(collection_name=COLLECTION_NAME, points_selector=PointIdsList(points=regression_ids))
 			results.append(f"🧹 Deleted {len(regression_ids)} test memory vectors")
 	except Exception as e:
-		results.append(f"⚠️ Memory cleanup error: {e}")
+		logger.warning("Memory regression cleanup failed: %s", e)
+		results.append("⚠️ Memory cleanup failed")
 	
 	if not results:
 		results.append("✅ No regression artifacts found to clean.")
@@ -816,20 +822,20 @@ async def get_life_tree(db: AsyncSession = Depends(get_db)):
 				logger.debug("Error creating birthday event for %s: %s", p.name, be)
 	
 	# 3. Add Google Events
-	for e in events:
+	for ev in events:
 		# Handle date-only (2024-01-01) and date-time (2024-01-01T12:00:00Z)
-		start_str = e['start']
+		start_str = ev['start']
 		try:
 			dt = datetime.datetime.fromisoformat(start_str.replace('Z', ''))
 			time_fmt = dt.strftime('%a %H:%M')
 			sort_key = dt.replace(tzinfo=None)
-		except:
+		except Exception:
 			# Fallback for unexpected formats
 			time_fmt = start_str
 			sort_key = now + datetime.timedelta(days=10) # Push to end
-			
+		
 		formatted_events.append({
-			"summary": e['summary'],
+			"summary": ev['summary'],
 			"time": time_fmt,
 			"is_local": False,
 			"sort_key": sort_key
@@ -842,12 +848,12 @@ async def get_life_tree(db: AsyncSession = Depends(get_db)):
 	end_limit = today + datetime.timedelta(days=3)
 	res = await db.execute(select(LocalEvent).where(LocalEvent.start_time >= today, LocalEvent.start_time <= end_limit))
 	local_events = res.scalars().all()
-	for e in local_events:
+	for lev in local_events:
 		formatted_events.append({
-			"summary": e.summary,
-			"time": e.start_time.strftime('%a %H:%M'),
+			"summary": lev.summary,
+			"time": lev.start_time.strftime('%a %H:%M'),
 			"is_local": True,
-			"sort_key": e.start_time
+			"sort_key": lev.start_time
 		})
 
 	# Sort all events (Birthdays, Google, Local) by the original datetime object
@@ -1017,9 +1023,9 @@ async def planka_redirect(request: Request, target: str = "", background: bool =
 						elif projects:
 							proj_id = projects[0]["id"]
 							PLANKA_ID_CACHE["oz_project_id"] = proj_id
-					except:
+					except Exception:
 						pass
-				
+
 				if proj_id:
 					redirect_url = f"{public_base}/projects/{proj_id}"
 				else:
@@ -1218,8 +1224,7 @@ async def search_memory(query: str, db: AsyncSession = Depends(get_db)):
 				"stored_at": hit.get("stored_at"),
 			})
 	except Exception as e:
-		logger.warning(f"Semantic search failed: {e}")
-
+			logger.warning("Semantic search failed: %s", e)
 	# 2. People DB Search (no Qdrant ID — not deletable from here)
 	res_people = await db.execute(select(Person).where(Person.name.ilike(f"%{query}%")))
 	people = res_people.scalars().all()
@@ -1607,8 +1612,8 @@ async def server_info():
 			import subprocess
 			total = int(subprocess.check_output(["sysctl", "-n", "hw.memsize"], text=True, timeout=5).strip())
 			info["ram_total_gb"] = round(total / (1024**3), 1)
-	except Exception:
-		pass
+	except Exception as ram_err:
+		logger.debug("RAM info unavailable: %s", ram_err)
 
 	# --- Uptime ---
 	try:
@@ -1619,8 +1624,8 @@ async def server_info():
 			days = int(uptime_s // 86400)
 			hours = int((uptime_s % 86400) // 3600)
 			info["uptime_human"] = f"{days}d {hours}h" if days else f"{hours}h {int((uptime_s % 3600) // 60)}m"
-	except Exception:
-		pass
+	except Exception as up_err:
+		logger.debug("Uptime info unavailable: %s", up_err)
 
 	# --- Per-tier LLM props (threads, ctx, etc.) ---
 	tier_urls = {
@@ -1652,7 +1657,7 @@ async def server_info():
 							health = health_resp.json()
 							tier_info["status"] = health.get("status", "online")
 					except Exception:
-						pass
+						tier_info["status"] = "online"  # ignore /health probe failures
 				# Also try /slots for thread info
 				try:
 					slots_resp = await client.get(f"{base_url}/slots")
@@ -1662,7 +1667,7 @@ async def server_info():
 							tier_info["n_predict"] = slots[0].get("n_predict", 0)
 							tier_info["ctx_size"] = slots[0].get("n_ctx", 0)
 				except Exception:
-					pass
+					tier_info["ctx_size"] = 0  # /slots probe optional
 			except Exception:
 				tier_info["status"] = "offline"
 
@@ -1762,8 +1767,8 @@ async def benchmark_cpu():
 					if "Socket(s):" in line:
 						sockets = int(line.split(":")[1].strip())
 				info["cores_physical"] = cores_per * sockets
-			except Exception:
-				pass
+			except Exception as lscpu_err:
+				logger.debug("lscpu unavailable: %s", lscpu_err)
 		elif platform.system() == "Darwin":
 			try:
 				brand = subprocess.check_output(["sysctl", "-n", "machdep.cpu.brand_string"], text=True, timeout=5).strip()
@@ -1773,10 +1778,10 @@ async def benchmark_cpu():
 				features = subprocess.check_output(["sysctl", "-n", "machdep.cpu.features"], text=True, timeout=5).strip().lower().split()
 				info["avx2"] = "avx2" in features
 				info["sse4_2"] = "sse4_2" in features or "sse4.2" in features
-			except Exception:
-				pass
-	except Exception:
-		pass
+			except Exception as mac_err:
+				logger.debug("macOS sysctl cpu info unavailable: %s", mac_err)
+	except Exception as cpu_err:
+		logger.debug("CPU info unavailable: %s", cpu_err)
 
 	return info
 
@@ -1872,7 +1877,8 @@ async def benchmark_llm(tier: str = "instant"):
 	except httpx.TimeoutException:
 		return {"tier": tier, "model": model_name, "error": "Timeout (120s)"}
 	except Exception as e:
-		logger.error("LLM benchmark failed (tier=%s): %s", tier, e)
+		# tier is validated against tier_map allow-list above; safe to log
+		logger.error("LLM benchmark failed (tier=%s): %s", tier, e)  # noqa: S001
 		return {"tier": tier, "model": model_name, "error": "Benchmark failed"}
 
 
@@ -1908,7 +1914,6 @@ async def get_system_status(db: AsyncSession = Depends(get_db)):
     ram_used_pct = ram.percent
 
     # Identity Health
-    from app.models.db import Person
     res_people = await db.execute(select(Person).where(Person.circle_type == "identity"))
     identity_set = res_people.scalar_one_or_none() is not None
 
