@@ -40,6 +40,11 @@ _CONTROL_TOKEN_PATTERNS: list[str] = [
 	"</s>", "<s>",
 ]
 
+# Qwen3 thinking-mode block regex: strip <think>...</think> from LLM output.
+# Qwen3 models emit a CoT block before the answer when thinking is enabled.
+# We strip it so users only see the final response, regardless of tier.
+_THINK_BLOCK_RE = re.compile(r"<think>.*?</think>", re.DOTALL | re.IGNORECASE)
+
 # Regex that matches any of the control tokens (escaped for literal matching).
 _CONTROL_TOKEN_RE = re.compile(
 	"|".join(re.escape(tok) for tok in _CONTROL_TOKEN_PATTERNS),
@@ -743,6 +748,10 @@ async def chat_stream(
 		# Request-level token cap prevents runaway generation
 		max_tok = kwargs.get("max_tokens") or TIER_MAX_TOKENS.get(tier_name, 400)
 
+		# Qwen3: disable thinking for instant/standard (latency critical);
+		# deep tier can think — CoT improves briefing quality, blocks get stripped.
+		request_thinking = tier_name == "deep"
+
 		last_err = None
 		for attempt in range(3):
 			try:
@@ -756,9 +765,14 @@ async def chat_stream(
 							"temperature": 0.2,
 							"top_p": 0.9,
 							"max_tokens": max_tok,
+							# Qwen3 thinking mode control (ignored by non-Qwen3 models)
+							"thinking": request_thinking,
 						},
 					) as response:
 						response.raise_for_status()
+						# Qwen3 think-block filter: buffer content to strip <think>…</think>
+						_think_buf = ""
+						_in_think = False
 						async for line in response.aiter_lines():
 							if not line.startswith("data: "):
 								continue
@@ -769,8 +783,26 @@ async def chat_stream(
 								data = json.loads(data_str)
 								delta = data.get("choices", [{}])[0].get("delta", {})
 								content = delta.get("content")
-								if content:
-									yield content
+								if not content:
+									continue
+								# Filter Qwen3 <think> blocks from the stream
+								if _in_think:
+									_think_buf += content
+									if "</think>" in _think_buf:
+										_, after = _think_buf.split("</think>", 1)
+										_in_think = False
+										_think_buf = ""
+										if after.lstrip("\n"):
+											yield after.lstrip("\n")
+								else:
+									if "<think>" in content:
+										before, rest = content.split("<think>", 1)
+										if before:
+											yield before
+										_in_think = True
+										_think_buf = rest
+									else:
+										yield content
 							except json.JSONDecodeError:
 								continue
 						return

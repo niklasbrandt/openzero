@@ -38,8 +38,8 @@ class Settings(BaseSettings):
     LLM_STANDARD_URL: str = "http://llm-standard:8082"
     LLM_DEEP_URL: str = "http://llm-deep:8083"
     LLM_MODEL_INSTANT: str = "phi-4-mini"
-    LLM_MODEL_STANDARD: str = "llama3.1:8b"
-    LLM_MODEL_DEEP: str = "qwen2.5:14b"
+    LLM_MODEL_STANDARD: str = "Qwen3-8B"
+    LLM_MODEL_DEEP: str = "Qwen3-14B"
     DEEP_MODEL_TIMEOUT_S: int = 45
     SMART_MODEL_INTERACTIVE: bool = True
 
