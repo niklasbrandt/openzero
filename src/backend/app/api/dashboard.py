@@ -77,8 +77,11 @@ async def require_auth(
     if not provided:
         provided = request.cookies.get("z_auth_token")
 
+    if not provided:
+        raise HTTPException(status_code=401, detail="Unauthorized") from None
+
     if not hmac.compare_digest(provided, token):
-        raise HTTPException(status_code=401, detail="Unauthorized")
+        raise HTTPException(status_code=401, detail="Unauthorized") from None
 
 
 # ---------------------------------------------------------------------------
