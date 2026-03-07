@@ -819,7 +819,8 @@ async def chat_stream(
 					await asyncio.sleep(3)
 				continue
 			except Exception as e:
-				yield f"Error connecting to local LLM: {str(e)}"
+				logger.error("Local LLM connection error: %s", e)
+				yield "I'm having trouble reaching the local model. Please try again."
 				return
 
 		if last_err:
@@ -858,7 +859,8 @@ async def chat_stream(
 				raw = data.get("choices", [{}])[0].get("message", {}).get("content", "No response from Groq.")
 				yield rehydrate_response(raw, rep_map) if rep_map else raw
 		except Exception as e:
-			yield f"Error connecting to Groq: {str(e)}"
+			logger.error("Groq connection error: %s", e)
+			yield "I'm having trouble reaching the cloud model. Please try again."
 		return
 
 	# --- Option C: OpenAI ---
@@ -893,7 +895,8 @@ async def chat_stream(
 				raw = data.get("choices", [{}])[0].get("message", {}).get("content", "No response from OpenAI.")
 				yield rehydrate_response(raw, rep_map) if rep_map else raw
 		except Exception as e:
-			yield f"Error connecting to OpenAI: {str(e)}"
+			logger.error("OpenAI connection error: %s", e)
+			yield "I'm having trouble reaching the cloud model. Please try again."
 		return
 
 	else:

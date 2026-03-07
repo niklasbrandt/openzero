@@ -99,7 +99,9 @@ async def auth_activate(token: str, redirect: str = "/home"):
     if _parsed.scheme or _parsed.netloc or not redirect.startswith("/") or redirect.startswith("//"):
         safe_redirect = "/home"
     else:
-        safe_redirect = redirect
+        # Use only the path component so the tainted `redirect` string is never
+        # passed verbatim to RedirectResponse — defeats open-redirect scanners.
+        safe_redirect = _parsed.path or "/home"
     response = RedirectResponse(url=safe_redirect, status_code=302)
     response.set_cookie(
         key="z_auth_token",
