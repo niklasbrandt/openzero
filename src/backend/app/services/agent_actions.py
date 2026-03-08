@@ -501,16 +501,18 @@ async def parse_and_execute_actions(reply: str, db=None):
     clean_reply = re.sub(r'\]\s*$', '', clean_reply, flags=re.MULTILINE)
     clean_reply = re.sub(r'^\s*\|\s*', '', clean_reply, flags=re.MULTILINE)
     clean_reply = re.sub(r'\n{3,}', '\n\n', clean_reply).strip()
-    
-    # If the LLM response contained ONLY tags, and we successfully executed them, 
-    # we don't want to reply with an empty string which looks broken.
-    if not clean_reply and executed_cmds:
-        clean_reply = "\n".join(executed_cmds)
 
     # If execution produced any failure notices (⚠), surface them even when the
     # LLM already wrote a success-sounding reply (prevents silent false-confirms).
+    # This must run BEFORE the empty-reply fallback so failures aren't duplicated.
     failure_notices = [c for c in executed_cmds if c.startswith("\u26a0")]
     if failure_notices and clean_reply:
         clean_reply = clean_reply.rstrip() + "\n\n" + "\n".join(failure_notices)
-    
+
+    # If the LLM response contained ONLY tags (all stripped → empty), fall back to
+    # a summary of what was executed.  Because executed_cmds already contains the
+    # ⚠ notices we must NOT append them again — just join everything once.
+    if not clean_reply and executed_cmds:
+        clean_reply = "\n".join(executed_cmds)
+
     return clean_reply, executed_cmds
