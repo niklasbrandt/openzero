@@ -24,8 +24,14 @@ async def create_task(title: str, description: str = "", board_name: str = "Oper
 @tool
 async def create_project(name: str, description: str = "") -> str:
     """Create a new project."""
-    await planka_create_project(name=name, description=description)
-    return f"Project '{name}' created."
+    try:
+        result = await planka_create_project(name=name, description=description)
+        if result:
+            return f"Project '{name}' created."
+        return f"Failed to create project '{name}'."
+    except Exception as _e:
+        logger.error("create_project tool failed: %s", _e)
+        return f"Failed to create project '{name}'."
 
 @tool
 async def create_event(title: str, start_time: str, end_time: Optional[str] = None) -> str:
@@ -191,8 +197,15 @@ async def parse_and_execute_actions(reply: str, db=None):
     for match in re.finditer(proj_pattern, reply):
         raw_tag = match.group(0)
         name, desc = match.groups()
-        await planka_create_project(name=name.strip(), description=desc.strip())
-        executed_cmds.append(f"Project '{name.strip()}' created.")
+        try:
+            result = await planka_create_project(name=name.strip(), description=desc.strip())
+            if result:
+                executed_cmds.append(f"Project '{name.strip()}' created.")
+            else:
+                executed_cmds.append(f"\u26a0 Failed to create project '{name.strip()}'. Check Planka connection.")
+        except Exception as _e:
+            logger.error("CREATE_PROJECT failed: %s", _e)
+            executed_cmds.append(f"\u26a0 Failed to create project '{name.strip()}'. Check Planka connection.")
         clean_reply = strip_tag(clean_reply, raw_tag)
 
     # 2b. Create Board Tag
@@ -201,24 +214,31 @@ async def parse_and_execute_actions(reply: str, db=None):
     for match in re.finditer(board_pattern, reply):
         raw_tag = match.group(0)
         proj_name, board_name = match.groups()
-        # Find project ID by name
-        from app.services.planka import get_planka_auth_token
-        import httpx
-        from app.config import settings
-        token = await get_planka_auth_token()
-        async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, headers={"Authorization": f"Bearer {token}"}) as client:
-            resp = await client.get("/api/projects")
-            projects = resp.json().get("items", [])
-            proj_id = None
-            for p in projects:
-                if p["name"].lower() == proj_name.strip().lower():
-                    proj_id = p["id"]
-                    break
-            if proj_id:
-                await planka_create_board(project_id=proj_id, name=board_name.strip())
-                executed_cmds.append(f"Board '{board_name.strip()}' created in '{proj_name.strip()}'.")
-            else:
-                logger.warning("Project %r not found for CREATE_BOARD", proj_name.strip())
+        try:
+            from app.services.planka import get_planka_auth_token
+            import httpx
+            from app.config import settings
+            token = await get_planka_auth_token()
+            async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, headers={"Authorization": f"Bearer {token}"}) as client:
+                resp = await client.get("/api/projects")
+                projects = resp.json().get("items", [])
+                proj_id = None
+                for p in projects:
+                    if p["name"].lower() == proj_name.strip().lower():
+                        proj_id = p["id"]
+                        break
+                if proj_id:
+                    board_result = await planka_create_board(project_id=proj_id, name=board_name.strip())
+                    if board_result:
+                        executed_cmds.append(f"Board '{board_name.strip()}' created in '{proj_name.strip()}'.")
+                    else:
+                        executed_cmds.append(f"\u26a0 Failed to create board '{board_name.strip()}'. Check Planka.")
+                else:
+                    logger.warning("Project %r not found for CREATE_BOARD", proj_name.strip())
+                    executed_cmds.append(f"\u26a0 Project '{proj_name.strip()}' not found. Board not created.")
+        except Exception as _e:
+            logger.error("CREATE_BOARD failed: %s", _e)
+            executed_cmds.append(f"\u26a0 Failed to create board '{board_name.strip()}'. Check Planka connection.")
         clean_reply = strip_tag(clean_reply, raw_tag)
 
     # 2c. Create List (Column) Tag
@@ -227,9 +247,15 @@ async def parse_and_execute_actions(reply: str, db=None):
     for match in re.finditer(list_pattern, reply):
         raw_tag = match.group(0)
         board_name, list_name = match.groups()
-        result = await planka_create_list(board_name=board_name.strip(), list_name=list_name.strip())
-        if result:
-            executed_cmds.append(f"List '{list_name.strip()}' created in '{board_name.strip()}'.")
+        try:
+            result = await planka_create_list(board_name=board_name.strip(), list_name=list_name.strip())
+            if result:
+                executed_cmds.append(f"List '{list_name.strip()}' created in '{board_name.strip()}'.")
+            else:
+                executed_cmds.append(f"\u26a0 Failed to create list '{list_name.strip()}' — board '{board_name.strip()}' not found or Planka error.")
+        except Exception as _e:
+            logger.error("CREATE_LIST failed: %s", _e)
+            executed_cmds.append(f"\u26a0 Failed to create list '{list_name.strip()}'. Check Planka connection.")
         clean_reply = strip_tag(clean_reply, raw_tag)
 
     # 3. Create Event Tag
@@ -240,8 +266,16 @@ async def parse_and_execute_actions(reply: str, db=None):
         title, start, end = match.groups()
         # Clean potential quotes from model output
         title = title.strip().strip('"').strip("'")
-        await create_event.ainvoke({"title": title, "start_time": start.strip(), "end_time": end.strip()})
-        executed_cmds.append(f"Event '{title}' scheduled.")
+        try:
+            event_result = await create_event.ainvoke({"title": title, "start_time": start.strip(), "end_time": end.strip()})
+            # The tool returns an error string starting with "Error:" on failure
+            if isinstance(event_result, str) and event_result.lower().startswith("error"):
+                executed_cmds.append(f"\u26a0 Event '{title}' not created: {event_result}")
+            else:
+                executed_cmds.append(f"Event '{title}' scheduled.")
+        except Exception as _e:
+            logger.error("CREATE_EVENT failed: %s", _e)
+            executed_cmds.append(f"\u26a0 Failed to create event '{title}'. Check calendar configuration.")
         clean_reply = strip_tag(clean_reply, raw_tag)
 
     # 5. Remind Tag
@@ -256,9 +290,13 @@ async def parse_and_execute_actions(reply: str, db=None):
                 "interval_minutes": int(interval.strip()),
                 "duration_hours": int(duration.strip())
             })
-            executed_cmds.append(res)
-        except Exception as e:
-            logger.error("Failed to schedule reminder: %s", e)
+            if isinstance(res, str) and res.lower().startswith("error"):
+                executed_cmds.append(f"\u26a0 Reminder not set: {res}")
+            else:
+                executed_cmds.append(res)
+        except Exception as _e:
+            logger.error("REMIND failed: %s", _e)
+            executed_cmds.append(f"\u26a0 Failed to schedule reminder '{message.strip()[:60]}'. Check scheduler.")
         clean_reply = strip_tag(clean_reply, raw_tag)
 
     # 6. Persistent Custom Tag
@@ -274,9 +312,13 @@ async def parse_and_execute_actions(reply: str, db=None):
                 "job_type": ttype.strip().lower(),
                 "spec": spec.strip()
             })
-            executed_cmds.append(res)
-        except Exception as e:
-            logger.error("Failed to schedule persistent custom task: %s", e)
+            if isinstance(res, str) and res.lower().startswith("error"):
+                executed_cmds.append(f"\u26a0 Custom task not scheduled: {res}")
+            else:
+                executed_cmds.append(res)
+        except Exception as _e:
+            logger.error("SCHEDULE_CUSTOM failed: %s", _e)
+            executed_cmds.append(f"\u26a0 Failed to schedule custom task '{name.strip()[:60]}'. Check scheduler.")
         clean_reply = strip_tag(clean_reply, raw_tag)
 
     # 7. Add Person Tag
@@ -285,19 +327,23 @@ async def parse_and_execute_actions(reply: str, db=None):
     for match in re.finditer(person_pattern, reply):
         raw_tag = match.group(0)
         name, rel, ctx, circle = match.groups()
-        from app.models.db import Person, AsyncSessionLocal
-        # --- Input validation (M-A2) ---
-        circle_clean = circle.strip().lower()
-        if circle_clean not in {"inner", "close", "outer", "identity"}:
-            circle_clean = "outer"
-        name_clean = name.strip()[:100]
-        rel_clean = rel.strip()[:100]
-        ctx_clean = ctx.strip()[:1000]
-        async with AsyncSessionLocal() as session:
-            p = Person(name=name_clean, relationship=rel_clean, context=ctx_clean, circle_type=circle_clean)
-            session.add(p)
-            await session.commit()
-        executed_cmds.append(f"Added {name_clean} to your circle.")
+        try:
+            from app.models.db import Person, AsyncSessionLocal
+            # --- Input validation (M-A2) ---
+            circle_clean = circle.strip().lower()
+            if circle_clean not in {"inner", "close", "outer", "identity"}:
+                circle_clean = "outer"
+            name_clean = name.strip()[:100]
+            rel_clean = rel.strip()[:100]
+            ctx_clean = ctx.strip()[:1000]
+            async with AsyncSessionLocal() as session:
+                p = Person(name=name_clean, relationship=rel_clean, context=ctx_clean, circle_type=circle_clean)
+                session.add(p)
+                await session.commit()
+            executed_cmds.append(f"Added {name_clean} to your circle.")
+        except Exception as _e:
+            logger.error("ADD_PERSON failed: %s", _e)
+            executed_cmds.append(f"\u26a0 Failed to add '{name.strip()[:60]}' to circle. Check database.")
         clean_reply = strip_tag(clean_reply, raw_tag)
 
     # 5. Learn Memory Tag
@@ -306,9 +352,15 @@ async def parse_and_execute_actions(reply: str, db=None):
     for match in re.finditer(learn_pattern, reply):
         raw_tag = match.group(0)
         text = match.group(1)
-        from app.services.memory import store_memory
-        await store_memory(text.strip())
-        executed_cmds.append("Memory updated.")
+        try:
+            from app.services.memory import store_memory
+            await store_memory(text.strip())
+            # store_memory returns None; it only raises on Qdrant/embed failure
+            # (noise-filtered inputs are silently dropped — that is expected behaviour)
+            executed_cmds.append("Memory updated.")
+        except Exception as _e:
+            logger.error("LEARN failed: %s", _e)
+            executed_cmds.append("\u26a0 Failed to store memory. Check Qdrant connection.")
         clean_reply = strip_tag(clean_reply, raw_tag)
 
     # 6. Proximity Track Tag
@@ -317,44 +369,48 @@ async def parse_and_execute_actions(reply: str, db=None):
     for match in re.finditer(prox_pattern, reply):
         raw_tag = match.group(0)
         tasks, breakdown, end_val = match.groups()
-        from app.models.db import TrackingSession, AsyncSessionLocal
-        import datetime
-        import json
-        async with AsyncSessionLocal() as session:
-            # 1. Parse milestones
-            milestones = []
-            now = datetime.datetime.now()
-            
-            # Simple splitter for "task name [ends HH:MM]"
-            items = [it.strip() for it in breakdown.split(';') if it.strip()]
-            for it in items:
-                try:
-                    # Extract "task name" and "HH:MM"
-                    parts = re.split(r'\s*\[ends\s+([^\]]+)\]', it)
-                    if len(parts) >= 2:
-                        task_name, due_val = parts[0], parts[1]
-                        # Fix up HH:MM to absolute
-                        h, m = map(int, due_val.strip().split(':'))
-                        due_dt = now.replace(hour=h, minute=m, second=0, microsecond=0)
-                        # Handle next-day rollover if needed (rare for short tracks)
-                        if due_dt < now: due_dt += datetime.timedelta(days=1)
-                        milestones.append({"task": task_name.strip(), "due_at": due_dt.isoformat(), "sent": False})
-                except (ValueError, AttributeError): continue  # malformed HH:MM -- skip milestone
+        try:
+            from app.models.db import TrackingSession, AsyncSessionLocal
+            import datetime
+            import json
+            async with AsyncSessionLocal() as session:
+                # 1. Parse milestones
+                milestones = []
+                now = datetime.datetime.now()
 
-            try:
-                # Handle YYYY-MM-DD HH:MM for overall END
-                end_dt = datetime.datetime.strptime(end_val.strip(), "%Y-%m-%d %H:%M")
-            except ValueError:
-                # Fallback
-                end_dt = datetime.datetime.utcnow() + datetime.timedelta(hours=2)
-                
-            session.add(TrackingSession(
-                tasks=tasks.strip(), 
-                milestones_json=json.dumps(milestones),
-                end_time=end_dt
-            ))
-            await session.commit()
-        executed_cmds.append("Precision Tracking initiated.")
+                # Simple splitter for "task name [ends HH:MM]"
+                items = [it.strip() for it in breakdown.split(';') if it.strip()]
+                for it in items:
+                    try:
+                        # Extract "task name" and "HH:MM"
+                        parts = re.split(r'\s*\[ends\s+([^\]]+)\]', it)
+                        if len(parts) >= 2:
+                            task_name, due_val = parts[0], parts[1]
+                            # Fix up HH:MM to absolute
+                            h, m = map(int, due_val.strip().split(':'))
+                            due_dt = now.replace(hour=h, minute=m, second=0, microsecond=0)
+                            # Handle next-day rollover if needed (rare for short tracks)
+                            if due_dt < now: due_dt += datetime.timedelta(days=1)
+                            milestones.append({"task": task_name.strip(), "due_at": due_dt.isoformat(), "sent": False})
+                    except (ValueError, AttributeError): continue  # malformed HH:MM -- skip milestone
+
+                try:
+                    # Handle YYYY-MM-DD HH:MM for overall END
+                    end_dt = datetime.datetime.strptime(end_val.strip(), "%Y-%m-%d %H:%M")
+                except ValueError:
+                    # Fallback
+                    end_dt = datetime.datetime.utcnow() + datetime.timedelta(hours=2)
+
+                session.add(TrackingSession(
+                    tasks=tasks.strip(),
+                    milestones_json=json.dumps(milestones),
+                    end_time=end_dt
+                ))
+                await session.commit()
+            executed_cmds.append("Precision Tracking initiated.")
+        except Exception as _e:
+            logger.error("PROXIMITY_TRACK failed: %s", _e)
+            executed_cmds.append("\u26a0 Failed to initiate Precision Tracking. Check database.")
         clean_reply = strip_tag(clean_reply, raw_tag)
 
     # 9. Move Card Tag
@@ -398,8 +454,12 @@ async def parse_and_execute_actions(reply: str, db=None):
             from app.services.follow_up import set_nudge_override
             set_nudge_override(task_fragment.strip(), minutes)
             executed_cmds.append(f"Nudge interval for '{task_fragment.strip()}' set to {minutes} min.")
-        except (ValueError, AttributeError) as err:
-            logger.warning("SET_NUDGE_INTERVAL parse error: %s", err)
+        except ValueError as _ve:
+            logger.warning("SET_NUDGE_INTERVAL parse error: %s", _ve)
+            executed_cmds.append(f"\u26a0 Could not set nudge interval: {_ve}")
+        except Exception as _e:
+            logger.error("SET_NUDGE_INTERVAL failed: %s", _e)
+            executed_cmds.append(f"\u26a0 Failed to set nudge interval for '{task_fragment.strip()[:60]}'. Check scheduler.")
         clean_reply = strip_tag(clean_reply, raw_tag)
 
     # --- FINAL AGGRESSIVE HYGIENE ---
