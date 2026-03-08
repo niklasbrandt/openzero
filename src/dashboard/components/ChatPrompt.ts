@@ -15,6 +15,7 @@ export class ChatPrompt extends HTMLElement {
 	private pendingRetry: string | null = null;
 	private t: Record<string, string> = {};
 	private draft = '';
+	private _pollTimer: ReturnType<typeof setInterval> | null = null;
 
 	constructor() {
 		super();
@@ -33,6 +34,14 @@ export class ChatPrompt extends HTMLElement {
 		window.addEventListener('identity-updated', () => {
 			this.loadTranslations().then(() => this.render());
 		});
+
+		// Poll every 20 s while the tab is visible so Telegram messages appear
+		// in the dashboard without needing the user to re-focus the window.
+		this._pollTimer = setInterval(() => {
+			if (document.visibilityState === 'visible' && this.pendingRequests === 0) {
+				this.loadHistory();
+			}
+		}, 20_000);
 	}
 
 	private async loadTranslations() {
@@ -72,6 +81,13 @@ export class ChatPrompt extends HTMLElement {
 			this.renderMessages(true); // pass true to skip animations for history
 		} catch (_e) {
 			// Silent fail -- chat still works without history
+		}
+	}
+
+	disconnectedCallback() {
+		if (this._pollTimer !== null) {
+			clearInterval(this._pollTimer);
+			this._pollTimer = null;
 		}
 	}
 
