@@ -964,7 +964,6 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		# 3. Process as text
 		from app.services.llm import chat_with_context, last_model_used
 		from app.models.db import get_global_history, save_global_message, AsyncSessionLocal
-		chat_id = update.effective_chat.id
 
 		# Persist transcript so the dashboard and future LLM calls see this voice message.
 		await save_global_message("telegram", "user", transcript)
