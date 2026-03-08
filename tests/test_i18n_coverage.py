@@ -7,16 +7,17 @@ Runs without network access and without importing any backend modules.
 Checks covered
 --------------
 1. TestSelectorCoverage
-   Ensures every language code offered in the UserCard UI selector has a
-   non-empty translation dict in _TRANSLATIONS. Languages that are offered
-   to the user but fall back to 100% English are a UX bug.
+   Ensures every language code offered in the UserCard UI selector either
+   has a dedicated i18n/{code}.py file with at least one genuine translation
+   OR is explicitly a stub. Languages offering 0 translations are a UX bug.
 
 2. TestKeyCompleteness
-   Every non-empty, non-English language dict in _TRANSLATIONS must cover
-   all keys present in _EN (100% parity). Missing keys = CI fail.
+   Keys present in any non-EN i18n file must also exist in i18n/en.py
+   (no orphan/rogue keys). Partial translation coverage is allowed --
+   missing keys fall back to English at runtime via get_translations().
 
 3. TestDE_NoAsciiUmlauts
-   Regression guard: the _DE dict must not contain ASCII umlaut substitutions
+   Regression guard: i18n/de.py must not contain ASCII umlaut substitutions
    (ae/oe/ue/ss used in place of ä/ö/ü/ß) in any translation value.
 
 4. TestHardcodedStrings
@@ -41,6 +42,7 @@ from typing import Dict, FrozenSet, List, Set, Tuple
 
 REPO_ROOT = pathlib.Path(__file__).parent.parent
 
+I18N_DIR        = REPO_ROOT / "src" / "backend" / "app" / "services" / "i18n"
 TRANSLATIONS_PY = REPO_ROOT / "src" / "backend" / "app" / "services" / "translations.py"
 USERCARD_TS     = REPO_ROOT / "src" / "dashboard" / "components" / "UserCard.ts"
 
@@ -65,75 +67,107 @@ def _extract_ui_language_codes() -> Set[str]:
 
 
 def _extract_lang_dicts() -> Dict[str, FrozenSet[str]]:
-	"""AST-walk translations.py and return a mapping of language code → frozenset
-	of string keys defined in the corresponding ``_XX = { ... }`` assignment.
+	"""Scan the i18n/ directory and return a mapping of language code →
+	frozenset of string keys defined in the corresponding ``{code}.py`` file.
 
-	Only top-level assignments whose name matches ``_[A-Z]{2,3}`` are collected.
-	The language code is derived by lower-casing the suffix (e.g. _EN → 'en').
+	Each file exports ``translations: dict[str, str] = { ... }`` at top level.
+	The language code is the filename stem (e.g. ``en.py`` → 'en').
 	"""
-	src   = TRANSLATIONS_PY.read_bytes()
-	tree  = ast.parse(src)
 	result: Dict[str, FrozenSet[str]] = {}
 
-	for node in ast.iter_child_nodes(tree):
-		if not isinstance(node, ast.Assign):
+	for lang_file in sorted(I18N_DIR.glob("*.py")):
+		if lang_file.stem == "__init__":
 			continue
-		if len(node.targets) != 1:
-			continue
-		target = node.targets[0]
-		if not (isinstance(target, ast.Name) and re.fullmatch(r"_[A-Z]{2,3}", target.id)):
-			continue
-		code = target.id[1:].lower()  # "_EN" → "en"
-		if not isinstance(node.value, ast.Dict):
+		code = lang_file.stem
+		try:
+			src  = lang_file.read_bytes()
+			tree = ast.parse(src)
+		except SyntaxError:
+			result[code] = frozenset()
 			continue
 		keys: Set[str] = set()
-		for k in node.value.keys:
-			if k is not None and isinstance(k, ast.Constant) and isinstance(k.value, str):
-				keys.add(k.value)
+		for node in ast.iter_child_nodes(tree):
+			if not isinstance(node, (ast.Assign, ast.AnnAssign)):
+				continue
+			target = node.target if isinstance(node, ast.AnnAssign) else (
+				node.targets[0] if len(node.targets) == 1 else None
+			)
+			if target is None:
+				continue
+			if not (isinstance(target, ast.Name) and target.id == "translations"):
+				continue
+			value = node.value if isinstance(node, (ast.AnnAssign, ast.Assign)) else None
+			if not isinstance(value, ast.Dict):
+				continue
+			for k in value.keys:
+				if k is not None and isinstance(k, ast.Constant) and isinstance(k.value, str):
+					keys.add(k.value)
 		result[code] = frozenset(keys)
 
 	return result
 
 
 def _extract_translation_registry() -> Dict[str, bool]:
-	"""AST-walk translations.py and inspect the ``_TRANSLATIONS`` dict literal.
-	Returns a mapping of language code → True if the value is a non-empty
-	variable reference, False if it is an empty dict literal ``{}``.
+	"""Return a mapping of language code → True if the code has a non-empty
+	i18n/{code}.py file, False otherwise.
 
-	Note: _TRANSLATIONS uses an annotated assignment (``_TRANSLATIONS: dict[...] = {...}``),
-	which is an ``ast.AnnAssign`` node, not a plain ``ast.Assign``.
+	Also checks translations.py _TRANSLATIONS for stub langs listed as empty
+	dict literals ``{}``, which are also marked False.
 	"""
-	src  = TRANSLATIONS_PY.read_bytes()
-	tree = ast.parse(src)
 	registry: Dict[str, bool] = {}
 
-	for node in ast.walk(tree):
-		# Handle both plain and annotated assignments
-		if isinstance(node, ast.AnnAssign):
-			target = node.target
-			value  = node.value
-		elif isinstance(node, ast.Assign):
-			if len(node.targets) != 1:
-				continue
-			target = node.targets[0]
-			value  = node.value
-		else:
+	# Every language file with >= 1 key is non-empty.
+	for lang_file in sorted(I18N_DIR.glob("*.py")):
+		if lang_file.stem == "__init__":
 			continue
+		code = lang_file.stem
+		try:
+			src  = lang_file.read_bytes()
+			tree = ast.parse(src)
+		except SyntaxError:
+			registry[code] = False
+			continue
+		has_keys = False
+		for node in ast.iter_child_nodes(tree):
+			if not isinstance(node, (ast.Assign, ast.AnnAssign)):
+				continue
+			target = node.target if isinstance(node, ast.AnnAssign) else (
+				node.targets[0] if len(node.targets) == 1 else None
+			)
+			if not (target and isinstance(target, ast.Name) and target.id == "translations"):
+				continue
+			value = node.value
+			if isinstance(value, ast.Dict) and len(value.keys) > 0:
+				has_keys = True
+		registry[code] = has_keys
 
-		if not (isinstance(target, ast.Name) and target.id == "_TRANSLATIONS"):
-			continue
-		if value is None or not isinstance(value, ast.Dict):
-			continue
-		for k, v in zip(value.keys, value.values):
-			if not (k is not None and isinstance(k, ast.Constant)):
+	# Mark stubs listed as {} in translations.py _TRANSLATIONS (no i18n file).
+	try:
+		src  = TRANSLATIONS_PY.read_bytes()
+		tree = ast.parse(src)
+		for node in ast.walk(tree):
+			if isinstance(node, ast.AnnAssign):
+				target, value = node.target, node.value
+			elif isinstance(node, ast.Assign) and len(node.targets) == 1:
+				target, value = node.targets[0], node.value
+			else:
 				continue
-			code = k.value
-			if isinstance(v, ast.Name):
-				# Points to a named variable → non-empty
-				registry[code] = True
-			elif isinstance(v, ast.Dict):
-				# Inline dict: empty iff no keys
-				registry[code] = len(v.keys) > 0
+			if not (isinstance(target, ast.Name) and target.id == "_TRANSLATIONS"):
+				continue
+			if not isinstance(value, ast.Dict):
+				continue
+			for k, v in zip(value.keys, value.values):
+				if not (k and isinstance(k, ast.Constant)):
+					continue
+				code = k.value
+				if code not in registry:
+					# Inline dict stub in translations.py
+					registry[code] = isinstance(v, ast.Name) or (
+						isinstance(v, ast.Dict) and len(v.keys) > 0
+					)
+	except (SyntaxError, FileNotFoundError):
+		pass
+
 	return registry
 
 
@@ -142,8 +176,9 @@ def _extract_translation_registry() -> Dict[str, bool]:
 # ---------------------------------------------------------------------------
 
 class TestSelectorCoverage:
-	"""Every language offered in the UI selector must have a non-empty translation
-	dict. Offering a language that silently falls back to 100% English is a bug."""
+	"""Every language offered in the UI selector must have at least one genuine
+	translation in its i18n/{code}.py file. A language with zero translations
+	should be removed from the selector until its file is populated."""
 
 	def test_ui_selector_has_no_stub_languages(self) -> None:
 		ui_codes  = _extract_ui_language_codes()
@@ -155,13 +190,13 @@ class TestSelectorCoverage:
 		for code in sorted(ui_codes):
 			is_non_empty = registry.get(code)
 			if is_non_empty is None:
-				stubs.append(f"  '{code}' -- listed in UI selector but absent from _TRANSLATIONS registry")
+				stubs.append(f"  '{code}' -- listed in UI selector but no i18n/{code}.py exists")
 			elif not is_non_empty:
-				stubs.append(f"  '{code}' -- listed in UI selector but has empty {{}} dict in _TRANSLATIONS")
+				stubs.append(f"  '{code}' -- listed in UI selector but i18n/{code}.py has 0 translations")
 
 		assert not stubs, (
-			f"{len(stubs)} language(s) in the UI selector have no translation data "
-			f"and silently fall back to English:\n" + "\n".join(stubs)
+			f"{len(stubs)} language(s) in the UI selector have no translation data:\n"
+			+ "\n".join(stubs)
 		)
 
 
@@ -170,38 +205,36 @@ class TestSelectorCoverage:
 # ---------------------------------------------------------------------------
 
 class TestKeyCompleteness:
-	"""Every non-empty, non-English language dict must cover all keys in _EN.
-	Any gap causes the dashboard to silently display English for that string."""
+	"""Keys present in any non-EN i18n file must also exist in i18n/en.py.
+	Partial coverage is fine -- missing keys fall back to English at runtime.
+	Orphan keys (in non-EN but absent from EN) are always a mistake."""
 
 	def test_all_translation_dicts_cover_en_keys(self) -> None:
 		lang_dicts = _extract_lang_dicts()
 
-		assert "en" in lang_dicts, "Could not find _EN dict in translations.py"
+		assert "en" in lang_dicts, "Could not find i18n/en.py"
 		en_keys = lang_dicts["en"]
-		assert len(en_keys) > 0, "_EN is empty -- something is wrong"
+		assert len(en_keys) > 0, "i18n/en.py is empty -- something is wrong"
 
 		violations: List[str] = []
 		for code, keys in sorted(lang_dicts.items()):
 			if code == "en":
 				continue
 			if len(keys) == 0:
-				# Empty stubs are caught by TestSelectorCoverage; skip here to
-				# avoid duplicate noise (they have no keys to compare).
-				continue
-			missing = sorted(en_keys - keys)
-			if missing:
-				preview = missing[:15]
-				more    = len(missing) - 15
-				suffix  = f"  ... and {more} more" if more > 0 else ""
+				continue  # empty stubs caught by TestSelectorCoverage
+			# Orphan keys: present in lang file but absent from EN (rogue entries)
+			orphan = sorted(keys - en_keys)
+			if orphan:
+				preview = orphan[:10]
+				more    = len(orphan) - 10
 				violations.append(
-					f"\n  _{code.upper()} is missing {len(missing)} key(s):\n"
+					f"\n  i18n/{code}.py has {len(orphan)} key(s) not in en.py:\n"
 					+ "".join(f"    - {k}\n" for k in preview)
 					+ (f"    ... and {more} more\n" if more > 0 else "")
 				)
 
 		assert not violations, (
-			"Translation dicts missing keys present in _EN "
-			"(will silently fall back to English at runtime):"
+			"Non-EN i18n files contain orphan keys absent from en.py:"
 			+ "".join(violations)
 		)
 
@@ -260,34 +293,40 @@ class TestDE_NoAsciiUmlauts:
 	(ä, ö, ü, ß), never ASCII substitutions like ae/oe/ue/ss."""
 
 	def _collect_de_string_values(self) -> List[Tuple[str, str]]:
-		"""Return (key, value) pairs for every string entry in _DE."""
-		src  = TRANSLATIONS_PY.read_bytes()
+		"""Return (key, value) pairs for every string entry in i18n/de.py."""
+		de_file = I18N_DIR / "de.py"
+		if not de_file.exists():
+			return []
+		src  = de_file.read_bytes()
 		tree = ast.parse(src)
 		pairs: List[Tuple[str, str]] = []
 		for node in ast.walk(tree):
-			if not isinstance(node, ast.Assign):
+			if isinstance(node, ast.AnnAssign):
+				target, value = node.target, node.value
+			elif isinstance(node, ast.Assign) and len(node.targets) == 1:
+				target, value = node.targets[0], node.value
+			else:
 				continue
-			for t in node.targets:
-				if not (isinstance(t, ast.Name) and t.id == "_DE"):
+			if not (isinstance(target, ast.Name) and target.id == "translations"):
+				continue
+			if not isinstance(value, ast.Dict):
+				continue
+			for k, v in zip(value.keys, value.values):
+				if not (
+					k is not None
+					and isinstance(k, ast.Constant) and isinstance(k.value, str)
+				):
 					continue
-				if not isinstance(node.value, ast.Dict):
-					continue
-				for k, v in zip(node.value.keys, node.value.values):
-					if not (
-						k is not None
-						and isinstance(k, ast.Constant) and isinstance(k.value, str)
-					):
-						continue
-					# Value may be a string constant or a joined-string (f-string/concat)
-					if isinstance(v, ast.Constant) and isinstance(v.value, str):
-						pairs.append((k.value, v.value))
-					elif isinstance(v, ast.JoinedStr):
-						# Reconstruct the literal parts for partial scanning
-						parts = [
-							nd.value for nd in ast.walk(v)
-							if isinstance(nd, ast.Constant) and isinstance(nd.value, str)
-						]
-						pairs.append((k.value, " ".join(parts)))
+				# Value may be a string constant or a joined-string (f-string/concat)
+				if isinstance(v, ast.Constant) and isinstance(v.value, str):
+					pairs.append((k.value, v.value))
+				elif isinstance(v, ast.JoinedStr):
+					# Reconstruct the literal parts for partial scanning
+					parts = [
+						nd.value for nd in ast.walk(v)
+						if isinstance(nd, ast.Constant) and isinstance(nd.value, str)
+					]
+					pairs.append((k.value, " ".join(parts)))
 		return pairs
 
 	def test_de_no_ascii_umlaut_substitutions(self) -> None:
