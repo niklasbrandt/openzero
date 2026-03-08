@@ -105,6 +105,7 @@ async def start_telegram_bot():
 	bot_app.add_handler(CommandHandler("remind", cmd_remind))
 	bot_app.add_handler(CommandHandler("custom", cmd_custom))
 	bot_app.add_handler(CommandHandler("think", cmd_think))
+	bot_app.add_handler(CommandHandler("personal", cmd_personal))
 	bot_app.add_handler(CallbackQueryHandler(handle_approval, pattern="^think_"))
 	bot_app.add_handler(CallbackQueryHandler(handle_unlearn_approval, pattern="^unlearn_"))
 	bot_app.add_handler(CallbackQueryHandler(handle_wipe_confirm, pattern="^wipe_"))
@@ -508,12 +509,17 @@ async def cmd_tree(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 @owner_only
 async def cmd_review(update: Update, context: ContextTypes.DEFAULT_TYPE):
+	"""Alias for /week."""
+	await cmd_week(update, context)
+
+@owner_only
+async def cmd_personal(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	try:
-		from app.tasks.weekly import weekly_review
-		report = await weekly_review()
+		from app.services.personal_context import get_personal_context_debug_report
+		report = get_personal_context_debug_report()
 		await safe_reply(update, report)
 	except Exception as e:
-		await safe_reply(update, f"Review generation failed: {e}")
+		await safe_reply(update, f"Personal context report failed: {e}")
 
 @owner_only
 async def cmd_week(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -732,7 +738,9 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 			"/unlearn -- Evolve past points in the vault\n"
 			"/protocols -- Inspect Z's agentic tools\n\n"
 			"*System*\n"
+			"/personal -- Show personal context Z loaded from /personal\n"
 			"/status -- Deep integration health check\n"
+			"/review -- Alias for /week\n"
 			"/purge -- Permanently delete all memories\n\n"
 			"_Tap any command to execute it directly._"
 		)
