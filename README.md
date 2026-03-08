@@ -20,11 +20,52 @@ Every weekday morning, Z delivers a **multi-modal briefing** -- a structured tex
 
 The system runs 24/7 on a remote VPS or local homelab. It links email, calendars, project boards, weather, and semantic memory without corporate oversight.
 
+### Telegram Bot
+
+Z's primary interface is a **Telegram bot** with long-polling (no webhooks required). Send natural language messages, voice notes, or slash commands from any device -- Z responds using full memory, calendar, and project context.
+
+- **Natural conversation** -- Discuss tasks, plans, and questions in plain language. Z creates tasks, events, and memories directly from chat.
+- **Voice notes** -- Send audio messages; Whisper transcribes them locally before Z processes them.
+- **Inline keyboards** -- Calendar event approvals, email triage decisions, and proximity tracking confirmations appear as tappable buttons in chat.
+- **All slash commands** -- Every command (`/day`, `/tree`, `/search`, etc.) is available in Telegram.
+- **Proactive alerts** -- Urgent emails, follow-up nudges, and tracking milestones are delivered as direct messages.
+
 ### Zero Trust Network
 
 openZero avoids opening public ports. Instead, it creates a private **Tailscale** mesh network. Your phone and laptop connect as if they were in the same room as your server. This provides end-to-end encryption and eliminates the need for managing TLS certificates for internal names.
 
 To support vanity domains like `http://open.zero`, the system uses an internal **Pi-hole** instance. By configuring Tailscale's Split DNS to use the VPS as a nameserver for the `open.zero` domain, your devices resolve the server without any global DNS record leakage.
+
+### Calendar and Scheduling
+
+openZero features a unified schedule that merges **Google Calendar**, private **CalDAV** servers (Nextcloud, Fastmail, Baikal, Radicale), and local database events into a single, deduplicated view. Z creates events via voice or text commands, and the system syncs bidirectionally with your CalDAV server.
+
+The calendar engine also performs **proactive event detection**: when an incoming email contains date/time references, Z extracts them and presents approval buttons via Telegram ("Add to Calendar" / "Ignore") before committing.
+
+### Project Management
+
+Planka provides the **Kanban engine**, accessible as a mobile-first PWA. Z creates and manages tasks, boards, and lists directly from conversation using Semantic Action Tags. A background SSO bridge keeps the app always authenticated without manual login.
+
+A centralized **Operator Board** pulls high-priority tasks from all project boards into a single "Today" view. The board auto-syncs on a configurable interval and Z sends **proactive follow-up nudges** every 3 hours during work hours for any uncompleted items.
+
+### Dashboard
+
+A **TypeScript** web application built with native Web Components (Shadow DOM) and served via Vite. The dashboard is the visual control layer -- it provides full visibility into Z's state and allows direct manual edits to all data outside of the Telegram conversation.
+
+- **Chat Interface** -- Direct conversation with Z, with streaming responses and full command support.
+- **Life Overview** -- Real-time project tree, social circle summary, and 3-day timeline in a unified grid.
+- **Calendar Agenda** -- Merged view of Google Calendar, CalDAV, and local events with inline event creation.
+- **Memory Search** -- Semantic search across the knowledge vault with result previewing.
+- **Briefing History** -- Archive of all daily, weekly, monthly, quarterly, and yearly briefings.
+- **Circle Manager** -- Manage Inner Circle (family) and Close Circle (friends) with birthday tracking, relationship context, and per-person notes.
+- **Email Rules** -- Pattern-based email triage engine: mark senders as Urgent (instant Telegram alert + auto-draft reply), Summarize (daily briefing digest), or Ignore.
+- **User Profile** -- Identity editor with language selector, briefing time, timezone, and personal context.
+- **Personality & Protocols** -- Edit Z's active personality configuration and browse all available Semantic Action Tag protocols.
+- **Hardware Monitor** -- Live CPU metrics and server resource usage, auto-refreshed while the panel is visible.
+- **Software Status** -- Live container and service health dashboard with per-service status indicators.
+- **Hardware Benchmark** -- CPU identification, SIMD instruction badges, and per-tier LLM throughput measurement with color-coded tok/s results.
+- **Onboarding Wizard** -- Step-by-step setup tracker for profile, inner circle, and calendar integration. Dismissable once complete.
+- **Planka SSO** -- Background auto-login bridge to the Kanban app via hidden iframe redirect, so Planka is always authenticated.
 
 ### Local Intelligence
 
@@ -41,26 +82,6 @@ The default profile targets a 24 GB VPS with all three tiers active. On 8-16 GB 
 All three tiers use the Qwen3 generation (Apache 2.0). Qwen3-8B benchmarks on-par with Qwen2.5-14B; Qwen3-14B on-par with Qwen2.5-32B — at the same RAM footprint as their predecessors. Qwen3-14B also supports hybrid thinking mode (CoT blocks are stripped from user-facing output automatically).
 
 Cloud reasoning is only engaged via a "Disclosure Proposal" workflow for shared memories -- never silently.
-
-### Dashboard
-
-A **TypeScript** web application built with native Web Components (Shadow DOM) and served via Vite:
-
-- **Chat Interface** -- Direct conversation with Z, with streaming responses and full command support.
-- **Life Overview** -- Real-time project tree, social circle summary, and 3-day timeline in a unified grid.
-- **Calendar Agenda** -- Merged view of Google Calendar, CalDAV, and local events with inline event creation.
-- **Memory Search** -- Semantic search across the knowledge vault with result previewing.
-- **Briefing History** -- Archive of all daily, weekly, monthly, quarterly, and yearly briefings.
-- **Circle Manager** -- Manage Inner Circle (family) and Close Circle (friends) with birthday tracking, relationship context, and per-person notes.
-- **Email Rules** -- Pattern-based email triage engine: mark senders as Urgent (instant Telegram alert + auto-draft reply), Summarize (daily briefing digest), or Ignore.
-- **User Profile** -- Identity editor with language selector, briefing time, timezone, and personal context.
-- **Hardware Benchmark** -- CPU identification, SIMD instruction badges, and per-tier LLM throughput measurement with color-coded tok/s results.
-- **Onboarding Wizard** -- Step-by-step setup tracker for profile, inner circle, and calendar integration. Dismissable once complete.
-- **Planka SSO** -- Background auto-login bridge to the Kanban app via hidden iframe redirect, so Planka is always authenticated.
-
-### Operator Board
-
-A centralized **hub board** that pulls high-priority tasks from all project boards into a single view. The board auto-syncs on a configurable interval, so the "Today" list always reflects what needs attention right now. Z monitors this board and sends **proactive follow-up nudges** every 3 hours during work hours for any uncompleted items.
 
 ### Proactive Automation
 
@@ -92,27 +113,21 @@ Z uses a custom **Semantic Action Tag** system for agent actions. When the user 
 
 Tags are invisible to the user. Z never mentions them unless explicitly asked via `/protocols`.
 
+### Voice and Text
+
+- **Speech-to-Text:** Local transcription via Whisper. Voice notes sent to the Telegram bot are transcribed and processed as regular messages.
+- **Text-to-Speech:** openedai-speech generates high-quality audio briefings delivered as voice messages alongside the text version.
+
+### Weather Intelligence
+
+Hourly forecasts from **Open-Meteo** (no API key required) are segmented into morning, afternoon, and evening blocks with precipitation probability and wind data. The system auto-detects **travel context** from calendar events containing keywords like "flight to" or "trip to" and fetches weather for the destination city instead of the home location.
+
 ### Multi-Language Support
 
 Z speaks your language. The dashboard includes a language selector supporting **16 languages** across global and regional coverage. The chosen language propagates to all AI responses, briefings, and notifications with zero performance overhead for the default English path.
 
 **Global/Major:** English, Mandarin Chinese, Hindi, Spanish, French, Arabic, Portuguese, Russian, Japanese, German.
 **Regional:** Korean, Vietnamese, Bengali, Indonesian, Italian, Turkish.
-
-### Calendar and Scheduling
-
-openZero features a unified schedule that merges **Google Calendar**, private **CalDAV** servers (Nextcloud, Fastmail, Baikal, Radicale), and local database events into a single, deduplicated view. Z creates events via voice or text commands, and the system syncs bidirectionally with your CalDAV server.
-
-The calendar engine also performs **proactive event detection**: when an incoming email contains date/time references, Z extracts them and presents approval buttons via Telegram ("Add to Calendar" / "Ignore") before committing.
-
-### Weather Intelligence
-
-Hourly forecasts from **Open-Meteo** (no API key required) are segmented into morning, afternoon, and evening blocks with precipitation probability and wind data. The system auto-detects **travel context** from calendar events containing keywords like "flight to" or "trip to" and fetches weather for the destination city instead of the home location.
-
-### Voice and Text
-
-- **Speech-to-Text:** Local transcription via Whisper. Voice notes sent to the Telegram bot are transcribed and processed as regular messages.
-- **Text-to-Speech:** openedai-speech generates high-quality audio briefings delivered as voice messages alongside the text version.
 
 ## Architecture
 
