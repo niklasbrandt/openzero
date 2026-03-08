@@ -2,8 +2,6 @@ import re
 import datetime
 import logging
 from app.services.operator_board import operator_service
-from app.api.telegram import send_notification, _get_stats_footer
-from app.services.llm import chat
 
 logger = logging.getLogger(__name__)
 
@@ -222,6 +220,8 @@ async def run_proactive_follow_up():
                 "Ask them warmly and directly for a progress update on these specific missions. "
                 "Keep it concise (1-2 sentences). No filler. Just the mission check."
             )
+            from app.services.llm import chat
+            from app.api.telegram import send_notification, _get_stats_footer
             nudge = await chat(prompt)
             footer = await _get_stats_footer()
             await send_notification(f"🎯 *Mission Check:*\n\n{nudge}{footer}")
@@ -261,6 +261,8 @@ async def check_active_tracking_sessions():
                             "Do a technical progress check. Ask if this segment is complete or if unexpected friction occurred. "
                             "Keep it direct and professional."
                         )
+                        from app.services.llm import chat
+                        from app.api.telegram import send_notification, _get_stats_footer
                         nudge = await chat(prompt)
                         footer = await _get_stats_footer()
                         await send_notification(f"⚖️ *Segment Check:* \n\n{nudge}{footer}")
@@ -275,6 +277,8 @@ async def check_active_tracking_sessions():
                         "Ask for final confirmation on which blocks reached 100% completion. "
                         "Be direct. This is the final mission-wrap-up."
                     )
+                    from app.services.llm import chat
+                    from app.api.telegram import send_notification, _get_stats_footer
                     nudge = await chat(prompt)
                     footer = await _get_stats_footer()
                     await send_notification(f"🏁 *Final Mission Wrap-up:* \n\n{nudge}{footer}")

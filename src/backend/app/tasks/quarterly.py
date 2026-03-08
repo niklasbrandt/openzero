@@ -1,7 +1,6 @@
 from app.services.llm import chat, last_model_used
 from app.services.planka import get_project_tree
 from app.models.db import AsyncSessionLocal, Briefing
-from app.api.telegram import send_notification
 
 async def quarterly_review():
 	"""Generate and store the quarterly strategic review."""
@@ -28,6 +27,7 @@ async def quarterly_review():
 		await session.commit()
 	
 	# Send Telegram Notification
+	from app.api.telegram import send_notification
 	await send_notification(f"📊 *Quarterly Strategic Review*\n\n{content}")
 	
 	return content
