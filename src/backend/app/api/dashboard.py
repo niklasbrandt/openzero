@@ -367,6 +367,7 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 				"• `/unlearn <query>` — Remove a fact from the vault\n\n"
 				f"**{ss}:**\n"
 				"• `/personal` — Show compressed personal context Z loaded from /personal\n"
+				"• `/skills` — Show agent skill modules loaded from /agent\n"
 				"• `/status` — Deep integration health check\n"
 				"• `/purge` — Permanently wipe all semantic memory\n\n"
 				"Type any message to chat with Z directly."
@@ -449,6 +450,10 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 	elif msg == "/personal":
 		from app.services.personal_context import get_personal_context_debug_report
 		report = get_personal_context_debug_report()
+		return {"reply": report}
+	elif msg == "/skills":
+		from app.services.agent_context import get_agent_skills_debug_report
+		report = get_agent_skills_debug_report()
 		return {"reply": report}
 	elif msg == "/purge":
 		from app.services.translations import get_user_lang, get_translations

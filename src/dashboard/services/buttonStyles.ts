@@ -96,7 +96,7 @@ export const BUTTON_STYLES = `
 
 	/* ── Goo Mode: elastic buttons ──
 	 * Activates when the host element carries .oz-goo (set via initGoo()).
-	 * Uses elastic.out easing -- permitted only in goo-scoped rules (DESIGN.md S6.3).
+	 * Uses elastic.out easing -- permitted only in goo-scoped rules (docs/artifacts/DESIGN.md S6.3).
 	 */
 	:host(.oz-goo) button {
 		transition:

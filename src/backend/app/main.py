@@ -98,6 +98,13 @@ async def lifespan(app: FastAPI):
         except Exception as _pc_err:
             logging.warning("⚠ Warning: Personal context pre-load failed: %s", _pc_err)
 
+        try:
+            from app.services.agent_context import refresh_agent_context
+            await refresh_agent_context()
+            logging.info("✓ Agent skills pre-loaded before bot start.")
+        except Exception as _ac_err:
+            logging.warning("⚠ Warning: Agent skills pre-load failed: %s", _ac_err)
+
         logging.info("Starting Telegram bot...")
         await start_telegram_bot()
         logging.info("Background tasks & bot started.")
@@ -133,6 +140,10 @@ async def lifespan(app: FastAPI):
                 from app.services.personal_context import refresh_personal_context
                 await refresh_personal_context()
                 logging.info("\u2713 Personal context loaded from /personal folder.")
+                # 3d. Load agent skills folder into system prompt
+                from app.services.agent_context import refresh_agent_context
+                await refresh_agent_context()
+                logging.info("\u2713 Agent skills loaded from /agent folder.")
                 # 4. Initial Operator Board Sync
                 from app.services.operator_board import operator_service
                 sync_res = await operator_service.sync_operator_tasks()
