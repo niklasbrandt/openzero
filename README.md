@@ -56,12 +56,12 @@ Planka provides the **Kanban engine**, accessible as a mobile-first PWA. Z creat
 
 A centralized **Operator Board** pulls high-priority tasks from all project boards into a single "Today" view. The board auto-syncs on a configurable interval and Z sends **proactive follow-up nudges** during work hours (09:00-21:50) for any uncompleted items. Nudge frequency adapts to task urgency -- Z estimates each task's urgency using keyword heuristics and LLM reasoning, then selects an appropriate cadence:
 
-| Urgency | Examples | Nudge interval |
-| :------ | :------- | :------------- |
-| Urgent | deadline, asap, outage, critical, blocker | every 10 minutes |
-| Medium | general tasks without urgency signals | every 60 minutes |
-| Low | backlog, someday, wishlist, nice to have | every 3 hours |
-| Custom | user-specified (e.g. "remind me every 20 min") | as requested |
+| Urgency | Examples                                       | Nudge interval   |
+| :------ | :--------------------------------------------- | :--------------- |
+| Urgent  | deadline, asap, outage, critical, blocker      | every 10 minutes |
+| Medium  | general tasks without urgency signals          | every 60 minutes |
+| Low     | backlog, someday, wishlist, nice to have       | every 3 hours    |
+| Custom  | user-specified (e.g. "remind me every 20 min") | as requested     |
 
 A custom interval can also be set directly from chat -- just tell Z "nudge me about the deploy task every 15 minutes" and it will emit a `SET_NUDGE_INTERVAL` action tag that overrides the automatic estimate. Task names can embed intervals inline using patterns like `[nudge:30m]` or `[2h]`.
 
@@ -87,11 +87,11 @@ A **TypeScript** web application built with native Web Components (Shadow DOM) a
 
 A 3-tier **llama.cpp** architecture runs optimized GGUF models directly on your CPU:
 
-| Tier         | Model                        | Purpose                                                    | Typical Speed |
-| :----------- | :--------------------------- | :--------------------------------------------------------- | :------------ |
-| **Instant**  | Qwen3-1.7B (Q4_K_M)          | Greetings, confirmations, trivial Q&A, memory distillation | 8-18 tok/s    |
-| **Standard** | Qwen3-8B (Q4_K_M)           | Conversation, creative tasks, planning, agent actions      | 2-5 tok/s     |
-| **Deep**     | Qwen3-14B (Q4_K_M)          | Complex analysis, briefings, strategic reasoning           | 1-3 tok/s     |
+| Tier         | Model               | Purpose                                                    | Typical Speed |
+| :----------- | :------------------ | :--------------------------------------------------------- | :------------ |
+| **Instant**  | Qwen3-1.7B (Q4_K_M) | Greetings, confirmations, trivial Q&A, memory distillation | 8-18 tok/s    |
+| **Standard** | Qwen3-8B (Q4_K_M)   | Conversation, creative tasks, planning, agent actions      | 2-5 tok/s     |
+| **Deep**     | Qwen3-14B (Q4_K_M)  | Complex analysis, briefings, strategic reasoning           | 1-3 tok/s     |
 
 The default profile targets a 24 GB VPS with all three tiers active. On 8-16 GB systems, the deep tier routes to standard. On Apple Silicon homelab, the deep tier can run Qwen3-32B. See `.env.example` for hardware profiles.
 
@@ -170,7 +170,7 @@ The stack is optimized for single-server CPU-only deployment with full privacy:
 | **Networking**   | ![Traefik](https://img.shields.io/badge/Traefik-2496ED?style=flat&logo=traefik&logoColor=white) ![Tailscale](https://img.shields.io/badge/Tailscale-4A23B6?style=flat&logo=tailscale&logoColor=white)                                                                                  | Zero Trust perimeter with automated internal routing.                                               |
 | **DNS**          | ![Pi-hole](https://img.shields.io/badge/Pi--hole-96060C?style=flat&logo=pi-hole&logoColor=white)                                                                                                                                                                                       | DNS sinkhole blocking container telemetry and enabling vanity domains.                              |
 | **Tasking**      | ![Planka](https://img.shields.io/badge/Planka-blue?style=flat)                                                                                                                                                                                                                         | Self-hosted Kanban engine accessible as a mobile PWA.                                               |
-| **Voice**        | ![Whisper](https://img.shields.io/badge/Whisper-black?style=flat) ![TTS](https://img.shields.io/badge/openedai--speech-green?style=flat)                                                                                                                                                      | Local speech-to-text and high-quality audio generation.                                             |
+| **Voice**        | ![Whisper](https://img.shields.io/badge/Whisper-black?style=flat) ![TTS](https://img.shields.io/badge/openedai--speech-green?style=flat)                                                                                                                                               | Local speech-to-text and high-quality audio generation.                                             |
 | **Weather**      | ![Open-Meteo](https://img.shields.io/badge/Open--Meteo-blue?style=flat)                                                                                                                                                                                                                | Hourly forecasts with travel-aware location detection. No API key needed.                           |
 
 ```
@@ -290,13 +290,13 @@ Run it manually at any time via: `python3 tests/test_live_regression.py --url ht
 
 Two dedicated offline test suites validate security and structural integrity without any running infrastructure -- no LLM, no database, no network required.
 
-**Prompt injection suite** (`tests/test_security_prompt_injection.py`): **295 tests across 27 categories** validating the prompt construction pipeline.
+**Prompt injection suite** (`tests/test_security_prompt_injection.py`): tests across 27+ categories validating the prompt construction pipeline.
 
 Categories include: direct prompt injection, indirect injection via memory/calendar/documents, jailbreak attempts (DAN, developer mode, grandma exploit), context manipulation (ChatML/LLaMA/Phi/Qwen token injection), memory poisoning, identity hijacking, data exfiltration, privilege escalation, encoding-based evasion (base64, ROT13, homoglyphs, Zalgo, leetspeak), multi-turn manipulation, structured data injection (JSON, YAML, SQL, SSTI), Telegram-specific attacks, dashboard XSS/CSS injection, API endpoint attacks (CRLF, path traversal), combined advanced attacks, production integration tests that import and validate the actual `sanitise_input()` and `_ADVERSARIAL_PATTERNS` implementations, and action tag exception leakage (CWE-209 regression).
 
-**Static analysis gate** (`tests/test_static_analysis.py`): **12 tests** using AST-based analysis to enforce backend security invariants -- including a check that no `raise HTTPException` leaks an exception cause chain to callers.
+**Static analysis gate** (`tests/test_static_analysis.py`): AST-based analysis to enforce backend security invariants -- including a check that no `raise HTTPException` leaks an exception cause chain to callers.
 
-Combined: **307 tests**, all expected to pass with 0 failures.
+All tests expected to pass with 0 failures.
 
 The production code implements 6 hardening measures identified by the test findings: input sanitisation with model control token stripping (`sanitise_input()` in `llm.py`), adversarial content filtering in memory storage (`memory.py`), action tag stripping from retrieved memory context, history role filtering (system-role messages dropped from client-provided chat history), and exception object stripping from `executed_cmds` responses (CWE-209 / CodeQL #23/#24/#29/#211/#258). Full results and architecture details are in [`docs/artifacts/prompt_injection_tests.md`](docs/artifacts/prompt_injection_tests.md).
 
