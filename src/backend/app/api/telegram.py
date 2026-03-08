@@ -11,6 +11,7 @@ from telegram.ext import (
 from app.config import settings
 from app.services.timezone import format_time, get_user_timezone
 import asyncio
+import html as _html
 import pytz
 import re
 from datetime import datetime
@@ -388,9 +389,16 @@ async def send_notification_html(text: str, reply_markup=None):
 	)
 
 def _md_to_html(text: str) -> str:
-	"""Minimal Markdown-to-HTML conversion for Telegram."""
+	"""Minimal Markdown-to-HTML conversion for Telegram.
+
+	Escapes raw HTML special characters first so that LLM-generated text
+	containing '<', '>', or '&' cannot break Telegram's HTML parser.
+	Intentional <b>, <i>, <a> tags are injected by the substitutions below.
+	"""
+	# Escape raw HTML chars BEFORE injecting intentional tags.
+	safe = _html.escape(text)
 	# Bold: **text** or *text* -> <b>text</b>
-	html = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', text)
+	html = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', safe)
 	html = re.sub(r'\*(.+?)\*', r'<b>\1</b>', html)
 	# Italic: _text_ -> <i>text</i>
 	html = re.sub(r'(?<!\w)_(.+?)_(?!\w)', r'<i>\1</i>', html)
