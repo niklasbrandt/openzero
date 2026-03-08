@@ -1182,7 +1182,11 @@ async def chat_with_context(
 			"create project", "new project", "add person", "remember that",
 			"note that", "learn that", "store this", "track this",
 			"i like", "i love", "my favorite", "my favourite", "into music",
-			"i live in", "i am into", "fact: "
+			"i live in", "i am into", "fact: ",
+			# MARK_DONE / MOVE_CARD triggers — user reporting completion
+			" sent", "i sent", "application sent", "email sent", "it's done", "it is done",
+			"i finished", "i completed", "i submitted", "finished the", "completed the",
+			"submitted the", "order done", "done with", "all done"
 		]
 		needs_agent = any(kw in user_message.lower() for kw in TOOL_INTENT_KEYWORDS)
 
@@ -1233,8 +1237,17 @@ async def chat_with_context(
 
 		# --- Direct chat path --- conversational messages and agent fallback
 		# When action intent was detected but the LangGraph agent called no tools,
-		# inject ACTION_TAG_DOCS so the model can emit text action tags instead.
-		_action_docs_block = f"\n{ACTION_TAG_DOCS}" if needs_agent else ""
+		# inject ACTION_TAG_DOCS with a MANDATORY instruction to emit the tags.
+		if needs_agent:
+			_action_docs_block = (
+				f"\n{ACTION_TAG_DOCS}"
+				"\nCRITICAL: You MUST emit the appropriate action tag(s) at the END of your reply. "
+				"Do NOT just describe what you will do — actually emit the tag. "
+				"If the user says something was sent/done/finished/submitted, emit MARK_DONE. "
+				"If the user says remind me, emit CREATE_TASK."
+			)
+		else:
+			_action_docs_block = ""
 
 		# Timeout-racing for deep tier: try deep first, fall back to standard
 		if tier_name == "deep" and settings.SMART_MODEL_INTERACTIVE:
