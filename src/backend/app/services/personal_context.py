@@ -58,6 +58,7 @@ _executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="personal_ctx")
 _raw_cache:     dict[str, str] = {}   # filename -> raw extracted text
 _cache:         dict[str, str] = {}   # filename -> post-deterministic text
 _compressed:    dict[str, str] = {}   # filename -> post-LLM text (if triggered)
+_final:         dict[str, str] = {}   # filename -> budget-capped text actually injected
 _combined_hash: str            = ""   # MD5 of all file mtimes+sizes
 _prompt_block:  str            = ""   # final assembled block
 
@@ -304,7 +305,7 @@ def _compute_hash(files: list[Path]) -> str:
 
 async def refresh_personal_context() -> None:
 	"""Compare hash, re-read files if changed, rebuild _prompt_block."""
-	global _raw_cache, _cache, _compressed, _combined_hash, _prompt_block
+	global _raw_cache, _cache, _compressed, _final, _combined_hash, _prompt_block
 
 	files = _discover_files()
 	new_hash = _compute_hash(files)
@@ -379,6 +380,7 @@ async def refresh_personal_context() -> None:
 	_raw_cache = new_raw
 	_cache = new_cache
 	_compressed = new_compressed
+	_final = final
 	_prompt_block = _assemble_block(final)
 
 	if _prompt_block:
@@ -396,18 +398,15 @@ def get_personal_context_for_prompt() -> str:
 
 
 def get_personal_context_debug_report() -> str:
-	"""Return a human-readable summary of the compressed personal context for display."""
+	"""Return the exact content Z injects as personal context, per file."""
 	if not _prompt_block:
-		return "No personal context loaded. Check that the /personal folder contains .md, .pdf, or .docx files."
+		return "No personal context loaded. Check that /personal/ contains .md, .pdf, or .docx files."
 
-	files = _compressed if _compressed else _cache
-	if not files:
+	source = _final if _final else (_compressed if _compressed else _cache)
+	if not source:
 		return "Personal context cache is empty."
 
-	lines = [f"**Personal Context** — {len(files)} file(s) loaded\n"]
-	for fname, text in files.items():
-		preview = text.strip()
-		lines.append(f"**{fname}** ({len(text)} chars)\n{preview}")
-
-	lines.append(f"\n*Prompt block total: {len(_prompt_block)} chars*")
-	return "\n\n".join(lines)
+	lines = [f"Personal Context — {len(source)} file(s) active ({len(_prompt_block)} chars total)"]
+	for fname, text in source.items():
+		lines.append(f"\n--- {fname} ---\n{text.strip()}")
+	return "\n".join(lines)
