@@ -262,7 +262,7 @@ The `personal/` folder is the highest-authority context source for Z. Files here
 1. Create your personal files from the examples:
 
     ```bash
-    cp -r docs/personal.example personal
+    cp -r personal.example personal
     ```
 
 2. Edit the files in `personal/` with your real personal details.
