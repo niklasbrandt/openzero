@@ -664,10 +664,11 @@ SMART_KEYWORDS = [
 
 # Per-tier max_tokens caps — prevents runaway generation on CPU.
 # These are request-level caps; server-side N_PREDICT acts as a hard ceiling.
+# Server defaults: instant=256, standard=1024, deep=2048 — stay below those.
 TIER_MAX_TOKENS = {
-	"instant": 200,
-	"standard": 400,
-	"deep": 800,
+	"instant": 250,
+	"standard": 1000,
+	"deep": 2000,
 }
 
 # Per-tier read timeouts (seconds). Instant must fail fast so the UI never
