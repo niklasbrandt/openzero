@@ -51,7 +51,8 @@ export class ChatPrompt extends HTMLElement {
 
 	private async loadHistory() {
 		try {
-			const res = await fetch('/api/dashboard/chat/history?limit=20');
+			const limit = Math.max(30, this.messages.length + 5);
+			const res = await fetch(`/api/dashboard/chat/history?limit=${limit}`);
 			if (!res.ok) return;
 			const data = await res.json();
 			if (!data.messages?.length) return;
@@ -176,6 +177,10 @@ export class ChatPrompt extends HTMLElement {
 				timestamp: new Date(),
 				model: data.model,
 			});
+
+			// Re-sync with DB so any interleaved Telegram messages appear in correct order.
+			// Non-blocking: fires in background while notification + refresh-data continue.
+			this.loadHistory();
 
 			// Notification sound
 			try {
