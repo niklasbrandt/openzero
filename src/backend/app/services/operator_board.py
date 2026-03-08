@@ -20,7 +20,6 @@ the user every morning.
 import httpx
 import logging
 from app.config import settings
-from app.services.planka import get_planka_auth_token
 from app.services.translations import (
 	get_planka_entity_names,
 	get_all_values,
@@ -59,6 +58,7 @@ class OperatorBoardService:
 
 	async def _get_auth_token(self) -> str:
 		"""Retrieves or refreshes the authentication token using the central Planka service."""
+		from app.services.planka import get_planka_auth_token
 		if self._token:
 			return self._token
 		self._token = await get_planka_auth_token()

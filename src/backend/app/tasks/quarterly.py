@@ -1,11 +1,9 @@
-from app.services.llm import chat, last_model_used
-from app.services.planka import get_project_tree
 from app.models.db import AsyncSessionLocal, Briefing
 
 async def quarterly_review():
 	"""Generate and store the quarterly strategic review."""
-	
-	tree = await get_project_tree(as_html=False)
+	from app.services.llm import chat, last_model_used
+	from app.services.planka import get_project_tree
 	
 	prompt = (
 		"Z, QUARTERLY STRATEGIC REVIEW. \n\n"
