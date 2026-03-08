@@ -462,6 +462,8 @@ Semantic Action Tags (Exact Format Required):
 - Add Person: `[ACTION: ADD_PERSON | NAME: text | RELATIONSHIP: text | CONTEXT: text | CIRCLE: inner/close]`
 - Learn Information: `[ACTION: LEARN | TEXT: factual statement]`
 - High Proximity Tracking: `[ACTION: PROXIMITY_TRACK | TASKS: item1; item2 | BREAKDOWN: task1 [ends HH:MM]; task2 [ends HH:MM] | END: YYYY-MM-DD HH:MM]`
+- Set Nudge Interval: `[ACTION: SET_NUDGE_INTERVAL | TASK: task name fragment | INTERVAL: minutes]`
+  (Use when the user requests a specific nudge frequency for a task, e.g. "remind me about the deploy every 20 minutes")
 
 Bulk scaffolding: You can emit MULTIPLE action tags in one response to scaffold entire project structures.
 Example flow: CREATE_PROJECT -> CREATE_BOARD -> CREATE_LIST (x3) -> CREATE_TASK (x5)
