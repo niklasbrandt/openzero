@@ -196,7 +196,7 @@ class CacheHeaderMiddleware(BaseHTTPMiddleware):
         path = request.url.path
         if path.startswith("/dashboard-assets/"):
             response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
-        elif path in ("/home", "/"):
+        elif path in ("/dashboard", "/"):
             response.headers["Cache-Control"] = "no-cache"
         return response
 
@@ -252,7 +252,7 @@ app.include_router(health_router)
 
 @app.get("/calendar", include_in_schema=False)
 async def calendar_redirect():
-    return RedirectResponse(url="/home?open=calendar")
+    return RedirectResponse(url="/dashboard?open=calendar")
 
 @app.get("/boards", include_in_schema=False)
 async def boards_redirect():
@@ -263,7 +263,7 @@ async def projects_redirect():
     return RedirectResponse(url="/api/dashboard/planka-redirect")
 
 # Serve the Dashboard
-@app.get("/home", include_in_schema=False)
+@app.get("/dashboard", include_in_schema=False)
 async def serve_dashboard():
     if os.path.exists("static/index.html"):
         return FileResponse("static/index.html")
@@ -271,7 +271,7 @@ async def serve_dashboard():
 
 @app.get("/", include_in_schema=False)
 async def root_redirect():
-    return RedirectResponse(url="/home")
+    return RedirectResponse(url="/dashboard")
 
 if os.path.exists("static/dashboard-assets"):
     app.mount("/dashboard-assets", StaticFiles(directory="static/dashboard-assets"), name="dashboard-assets")

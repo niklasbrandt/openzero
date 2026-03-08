@@ -233,7 +233,7 @@ The dashboard is protected by a bearer token. You must set one before the backen
     **Mobile shortcut:** Append the token directly to the URL once, open it in mobile Safari/Chrome, and bookmark it. The token is automatically saved and stripped from the URL:
 
     ```
-    http://open.zero/home?token=your_generated_token_here
+    http://open.zero/dashboard?token=your_generated_token_here
     ```
 
     Subsequent visits via the bookmark work without the token in the URL.
@@ -406,7 +406,7 @@ Since you cannot safely edit `/etc/hosts` on a mobile phone, and normal Wi-Fi DN
 
 Tailscale will now magically route _only_ queries for `open.zero` to your OpenZero server, allowing your phone to connect!
 
-Now you can reach your dashboard at `http://open.zero/home`.
+Now you can reach your dashboard at `http://open.zero/dashboard`.
 
 ---
 
