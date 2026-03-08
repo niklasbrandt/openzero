@@ -1,5 +1,5 @@
 from typing import Optional
-from telegram import Update, Bot, InlineKeyboardButton, InlineKeyboardMarkup  # type: ignore[attr-defined]
+from telegram import Update, Bot, InlineKeyboardButton, InlineKeyboardMarkup, LinkPreviewOptions  # type: ignore[attr-defined]
 from telegram.ext import (
 	Application,
 	CommandHandler,
@@ -10,7 +10,6 @@ from telegram.ext import (
 )
 from app.config import settings
 from app.services.timezone import format_time, get_user_timezone
-from app.services.agent_actions import parse_and_execute_actions
 import asyncio
 import pytz
 import re
@@ -69,7 +68,6 @@ chat_histories: dict[int, list[dict[str, str]]] = {} # chat_id -> list of dicts 
 # messages arrive, they are buffered and processed as a follow-up batch.
 _thinking_locks: dict[int, asyncio.Lock] = {}  # chat_id -> Lock
 _pending_messages: dict[int, list[str]] = {}   # chat_id -> buffered texts
-_pending_tg_messages: dict[int, list] = {}     # chat_id -> buffered Update.message objects
 
 async def start_telegram_bot():
 	"""Start the Telegram bot in polling mode within the FastAPI event loop."""
@@ -255,6 +253,7 @@ async def start_telegram_bot():
 				raw_greeting = f"{time_str}\nBack online. {stats_text}.{changes_note}{events_note}"
 
 			# Clean action tags from output
+			from app.services.agent_actions import parse_and_execute_actions
 			greeting, _ = await parse_and_execute_actions(raw_greeting)
 			logger.debug("Greeting Seq - OK")
 
@@ -328,6 +327,7 @@ async def _recover_unanswered_messages():
 		)
 
 		async with AsyncSessionLocal() as db:
+			from app.services.agent_actions import parse_and_execute_actions
 			clean_reply, _ = await parse_and_execute_actions(response, db=db)
 
 		from app.services.llm import last_model_used
@@ -378,7 +378,6 @@ async def send_notification_html(text: str, reply_markup=None):
 	"""Send an HTML-formatted message to the owner (already formatted)."""
 	if not settings.TELEGRAM_BOT_TOKEN or not settings.TELEGRAM_ALLOWED_USER_ID:
 		return
-	from telegram import LinkPreviewOptions  # type: ignore[attr-defined]
 	bot = Bot(token=settings.TELEGRAM_BOT_TOKEN)
 	await bot.send_message(
 		chat_id=int(settings.TELEGRAM_ALLOWED_USER_ID),
@@ -611,7 +610,7 @@ async def cmd_remind(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	)
 	
 	response = await chat(prompt)
-	clean_reply, executed = await parse_and_execute_actions(response)
+	from app.services.agent_actions import parse_and_execute_actions
 	
 	if executed:
 		await safe_reply(update, "\n".join(executed))
@@ -636,7 +635,7 @@ async def cmd_custom(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	)
 	
 	response = await chat(prompt)
-	clean_reply, executed = await parse_and_execute_actions(response)
+	from app.services.agent_actions import parse_and_execute_actions
 	
 	if executed:
 		await safe_reply(update, "\n".join(executed))
@@ -967,6 +966,7 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 	response = sanitise_output(response)
 
 	async with AsyncSessionLocal() as db:
+		from app.services.agent_actions import parse_and_execute_actions
 		clean_reply, _ = await parse_and_execute_actions(response, db=db)
 
 	# Save Z's reply to global history
@@ -974,7 +974,6 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 	await save_global_message("telegram", "z", clean_reply, model=last_model_used.get())
 
 	# Background memory extraction -- learn from user message without blocking reply
-	import asyncio
 	from app.services.memory import extract_and_store_facts
 	asyncio.create_task(extract_and_store_facts(user_text))
 
@@ -1023,6 +1022,7 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		)
 		
 		async with AsyncSessionLocal() as db:
+			from app.services.agent_actions import parse_and_execute_actions
 			clean_reply, _ = await parse_and_execute_actions(response, db=db)
 
 		await save_global_message("telegram", "z", clean_reply, model=last_model_used.get())
