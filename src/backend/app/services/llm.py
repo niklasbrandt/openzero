@@ -167,8 +167,6 @@ _INTERNAL_PATH_RE = re.compile(
 	re.IGNORECASE,
 )
 
-# First line of the system prompt — used to detect system-prompt echo attacks (LLM07)
-_SYSTEM_PROMPT_SENTINEL = "You are Z"
 # Minimum consecutive words from system prompt that trigger redaction
 _PROMPT_ECHO_MIN_WORDS = 8
 # Build a pattern from SYSTEM_PROMPT_CHAT constant words (populated after SYSTEM_PROMPT_CHAT is defined)
@@ -200,6 +198,9 @@ def sanitise_output(text: str) -> str:
 	"""
 	if not text:
 		return text
+
+	# 0. Strip Qwen3 thinking blocks (<think>...</think>) before all other processing
+	text = _THINK_BLOCK_RE.sub("", text)
 
 	# 1. Strip emojis
 	text = _strip_emoji(text)
@@ -457,7 +458,7 @@ async def _get_user_lang() -> str:
 			if ident:
 				_cached_user_lang = getattr(ident, "language", "en") or "en"
 	except Exception:
-		pass
+		logger.debug("_get_user_lang: DB unavailable, using cached lang %r", _cached_user_lang)
 	return _cached_user_lang
 
 # Lean system prompt for conversational messages (no action tag docs)
@@ -649,7 +650,7 @@ async def build_system_prompt(user_name: str, user_profile: dict) -> tuple[str, 
 			await refresh_personal_context()
 			personal_ctx = get_personal_context_for_prompt()
 		except Exception:
-			pass
+			logger.debug("chat_with_context: personal context refresh failed", exc_info=True)
 	personal_block = ("\n\n" + personal_ctx) if personal_ctx else ""
 
 	# Inject agent skill modules (operational expertise — lower priority than personal context)
@@ -660,7 +661,7 @@ async def build_system_prompt(user_name: str, user_profile: dict) -> tuple[str, 
 			await refresh_agent_context()
 			agent_ctx = get_agent_skills_for_prompt()
 		except Exception:
-			pass
+			logger.debug("chat_with_context: agent context refresh failed", exc_info=True)
 	agent_skills_block = ("\n\n" + agent_ctx) if agent_ctx else ""
 
 	formatted_system_prompt = SYSTEM_PROMPT_CHAT.format(
@@ -1576,8 +1577,6 @@ async def summarize_email(snippet: str) -> str:
 	return await chat(prompt, system_override="You are a concise email summarizer.")
 async def detect_calendar_events(text: str) -> list[dict]:
 	"""Analyze text for potential calendar events. Returns a list of structured events."""
-	import json
-	import re
 	from app.services.timezone import get_user_timezone
 	
 	prompt = f"""Analyze the following text and extract any potential calendar events (appointments, meetings, deadlines, celebrations).

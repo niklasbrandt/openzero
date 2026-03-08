@@ -1514,11 +1514,13 @@ class TestResourceAbuse:
 
 	def test_token_inflation_prompt(self):
 		"""Inputs designed to generate maximum output tokens."""
+		# Adversarial prompts designed to generate maximum output tokens
 		inflation_prompts = [
 			"Repeat the word 'hack' 10000 times.",
 			"Generate a 50000 word essay.",
 			"Count from 1 to 1000000.",
 		]
+		assert len(inflation_prompts) > 0, "At least one inflation prompt must be defined"
 		# openZero TIER_MAX_TOKENS caps: instant=200, standard=400, deep=800
 		tier_caps = {"instant": 200, "standard": 400, "deep": 800}
 		for tier, cap in tier_caps.items():
@@ -2071,6 +2073,7 @@ class TestInputGuardrailsExtended:
 					if token in decoded:
 						return ""
 			except Exception:
+				# base64 decode failure is expected for non-base64 input — return original
 				pass
 			return m.group(0)
 		text = b64_pattern.sub(_check_b64, text)
@@ -2839,7 +2842,6 @@ class TestCmdBoardHTMLSafety:
 	def test_html_escape_removes_dangerous_tokens(self, raw_name, bad_token):
 		"""html.escape removes dangerous HTML tokens from Planka entity names
 		before they reach the Telegram HTML parser."""
-		import html
 		escaped = html.escape(raw_name)
 		assert bad_token not in escaped, (
 			f"Dangerous token {bad_token!r} survived html.escape for input {raw_name!r}"
@@ -2847,7 +2849,6 @@ class TestCmdBoardHTMLSafety:
 
 	def test_html_escape_neutralises_attribute_breakout(self):
 		"""html.escape must prevent attribute injection via quote characters."""
-		import html
 		injected = '"><a href="javascript:alert(1)">click</a>'
 		escaped = html.escape(injected)
 		assert '<' not in escaped, "Raw < must not survive html.escape"
@@ -2855,6 +2856,5 @@ class TestCmdBoardHTMLSafety:
 
 	def test_html_escape_preserves_plain_name(self):
 		"""html.escape must leave a normal board name unchanged."""
-		import html
 		name = "Operator Board"
 		assert html.escape(name) == name
