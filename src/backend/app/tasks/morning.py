@@ -1,10 +1,3 @@
-from app.services.automation import run_contextual_automation
-from app.services.llm import chat, last_model_used
-from app.services.planka import get_project_tree
-from app.services.gmail import fetch_unread_emails
-from app.services.calendar import fetch_calendar_events
-from app.services.weather import get_weather_forecast
-from app.services.tts import generate_speech
 from app.models.db import AsyncSessionLocal, Briefing, Person
 from app.config import settings
 from sqlalchemy import select
@@ -16,8 +9,13 @@ logger = logging.getLogger(__name__)
 
 async def morning_briefing():
 	"""Generate and store the daily morning briefing."""
-	
-	# 1. Zero-Noise Mode (Facts Only)
+	from app.services.automation import run_contextual_automation
+	from app.services.llm import chat, last_model_used
+	from app.services.planka import get_project_tree
+	from app.services.gmail import fetch_unread_emails
+	from app.services.calendar import fetch_calendar_events
+	from app.services.weather import get_weather_forecast
+	from app.services.tts import generate_speech
 	
 	# 2. Gather context
 	async with AsyncSessionLocal() as session:
