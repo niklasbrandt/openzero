@@ -1,5 +1,5 @@
 from app.services.automation import run_contextual_automation
-from app.services.llm import chat
+from app.services.llm import chat, last_model_used
 from app.services.planka import get_project_tree
 from app.services.gmail import fetch_unread_emails
 from app.services.calendar import fetch_calendar_events
@@ -177,7 +177,7 @@ async def morning_briefing():
 
 	# 4. Store in Database for Dashboard
 	async with AsyncSessionLocal() as session:
-		briefing = Briefing(type="day", content=content)
+		briefing = Briefing(type="day", content=content, model=last_model_used.get())
 		session.add(briefing)
 		await session.commit()
 
