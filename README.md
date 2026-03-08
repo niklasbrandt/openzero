@@ -94,10 +94,10 @@ Tags are invisible to the user. Z never mentions them unless explicitly asked vi
 
 ### Multi-Language Support
 
-Z speaks your language. The dashboard includes a language selector supporting **20 languages** across global and Western regions. The chosen language propagates to all AI responses, briefings, and notifications with zero performance overhead for the default English path.
+Z speaks your language. The dashboard includes a language selector supporting **16 languages** across global and regional coverage. The chosen language propagates to all AI responses, briefings, and notifications with zero performance overhead for the default English path.
 
-**Global:** English, Mandarin Chinese, Hindi, Spanish, French, Arabic, Portuguese, Russian, Japanese, German.
-**Western:** Italian, Dutch, Polish, Swedish, Greek, Romanian, Turkish, Czech, Danish, Norwegian.
+**Global/Major:** English, Mandarin Chinese, Hindi, Spanish, French, Arabic, Portuguese, Russian, Japanese, German.
+**Regional:** Korean, Vietnamese, Bengali, Indonesian, Italian, Turkish.
 
 ### Calendar and Scheduling
 
@@ -177,8 +177,8 @@ The stack is optimized for single-server CPU-only deployment with full privacy:
 │   └───────────┘  └─────────┘  └──────────────┘  │
 │                                                  │
 │   ┌───────────┐  ┌─────────┐  ┌──────────────┐  │
-│   │  Whisper  │  │  openedai  │  │   Planka     │  │
-│   │  (STT)    │  │  (TTS)     │  │  (Kanban)    │  │
+│   │  Whisper  │  │   TTS   │  │   Planka     │  │
+│   │  (STT)    │  │ (speech)│  │  (Kanban)    │  │
 │   └───────────┘  └─────────┘  └──────────────┘  │
 │                                                  │
 │   ┌───────────┐  ┌─────────┐                     │
