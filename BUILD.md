@@ -477,19 +477,19 @@ This suite runs automatically at the end of every `scripts/sync.sh` deployment.
 
 The GitHub Actions pipeline runs 11 jobs on every push to `main`.
 
-| Job | Tool | Blocks deploy? |
-| --- | ---- | :---: |
-| `frontend` | tsc --noEmit + npm audit | yes |
-| `backend` | py_compile + translation key check | yes |
-| `accessibility` | axe-core + Playwright WCAG 2.1 AA | yes |
-| `security` | pytest prompt-injection (268 tests) + coverage | yes |
-| `lint` | ruff | yes |
-| `sast` | bandit | yes |
-| `eslint` | ESLint 9 + typescript-eslint | yes |
-| `mypy` | mypy Python type-check | yes |
-| `dep-audit` | pip-audit (torch/pymupdf exempted) | no |
-| `lighthouse` | @lhci/cli perf + a11y budget | warn only |
-| `build` | Docker build + Trivy CRITICAL/HIGH scan | yes |
+| Job             | Tool                                           | Blocks deploy? |
+| --------------- | ---------------------------------------------- | :------------: |
+| `frontend`      | tsc --noEmit + npm audit                       |      yes       |
+| `backend`       | py_compile + translation key check             |      yes       |
+| `accessibility` | axe-core + Playwright WCAG 2.1 AA              |      yes       |
+| `security`      | pytest prompt-injection (268 tests) + coverage |      yes       |
+| `lint`          | ruff                                           |      yes       |
+| `sast`          | bandit                                         |      yes       |
+| `eslint`        | ESLint 9 + typescript-eslint                   |      yes       |
+| `mypy`          | mypy Python type-check                         |      yes       |
+| `dep-audit`     | pip-audit (torch/pymupdf exempted)             |       no       |
+| `lighthouse`    | @lhci/cli perf + a11y budget                   |   warn only    |
+| `build`         | Docker build + Trivy CRITICAL/HIGH scan        |      yes       |
 
 To run the frontend linter locally:
 

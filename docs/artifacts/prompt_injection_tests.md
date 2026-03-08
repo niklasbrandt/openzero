@@ -51,7 +51,7 @@ Runtime: ~1.6 seconds (no network, no LLM, no database required).
 | 19  | Known Vulnerability Regressions |     9 | High     | ChatML token injection, LLaMA [INST]/<<SYS>> injection, function calling format injection, Phi-4-mini special tokens, Qwen 2.5 special tokens                                                                                                                                                                                          |
 | 20  | Security Invariants             |    12 | Critical | System prompt never in user messages, system prompt always first, user input never becomes system role, no code execution, identity persistence, no secrets in prompt structure, context isolation                                                                                                                                     |
 
-| 27  | Action Tag Exception Leakage    |    13 | High     | Static analysis that no `executed_cmds.append()` interpolates exception objects; SET_NUDGE_INTERVAL handler simulation (invalid/negative/zero/adversarial interval values all produce safe hardcoded messages); long task fragment truncation (CWE-209 regression) |
+| 27 | Action Tag Exception Leakage | 13 | High | Static analysis that no `executed_cmds.append()` interpolates exception objects; SET_NUDGE_INTERVAL handler simulation (invalid/negative/zero/adversarial interval values all produce safe hardcoded messages); long task fragment truncation (CWE-209 regression) |
 
 **Total: 295 tests across 21 categories + 31 production integration tests + 13 CWE-209 regressions.**
 

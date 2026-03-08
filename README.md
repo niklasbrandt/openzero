@@ -18,7 +18,7 @@ The platform is personified as **Z**, an autonomous operator who builds, organiz
 
 Z directly manages your **unified schedule** by integrating with existing **CalDAV** servers (Nextcloud, Fastmail, Baikal) or your Google account. Z proactively blocks time for deep work, identifies scheduling conflicts, detects events embedded in emails, and remembers family milestones like birthdays -- automatically creating tasks when they approach. Your sensitive temporal data never leaves servers you control.
 
-Every weekday morning, Z delivers a **multi-modal briefing** -- a structured text summary plus a high-quality voice note -- covering priority tasks, calendar events, weather, email digests, and social circle updates.
+Every morning, Z delivers a **multi-modal briefing** -- a structured text summary plus a high-quality voice note -- covering priority tasks, calendar events, weather, email digests, and social circle updates.
 
 Project work lives in **Planka**, an open-source Kanban board that serves as the shared operating surface for both Z and the user. For Z, Planka is a structured, machine-readable workspace: it creates tasks from conversation, moves cards through workflow stages, and reads board state to prioritize follow-ups and briefings. For the user, Planka is a mobile-first PWA accessible from any device -- a tactile overview of everything in flight, always in sync with what Z knows. Neither side operates blind: every task Z creates is immediately visible to the user, and every card the user moves is immediately legible to Z.
 
