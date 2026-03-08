@@ -36,6 +36,8 @@ A 3-tier **llama.cpp** architecture runs optimized GGUF models directly on your 
 | **Standard** | Qwen3-8B (Q4_K_M)           | Conversation, creative tasks, planning, agent actions      | 2-5 tok/s     |
 | **Deep**     | Qwen3-14B (Q4_K_M)          | Complex analysis, briefings, strategic reasoning           | 1-3 tok/s     |
 
+The default profile targets a 24 GB VPS with all three tiers active. On 8-16 GB systems, the deep tier routes to standard. On Apple Silicon homelab, the deep tier can run Qwen3-32B. See `.env.example` for hardware profiles.
+
 All three tiers use the Qwen3 generation (Apache 2.0). Qwen3-8B benchmarks on-par with Qwen2.5-14B; Qwen3-14B on-par with Qwen2.5-32B — at the same RAM footprint as their predecessors. Qwen3-14B also supports hybrid thinking mode (CoT blocks are stripped from user-facing output automatically).
 
 Cloud reasoning is only engaged via a "Disclosure Proposal" workflow for shared memories -- never silently.
@@ -110,7 +112,7 @@ Hourly forecasts from **Open-Meteo** (no API key required) are segmented into mo
 ### Voice and Text
 
 - **Speech-to-Text:** Local transcription via Whisper. Voice notes sent to the Telegram bot are transcribed and processed as regular messages.
-- **Text-to-Speech:** Coqui TTS generates high-quality audio briefings delivered as voice messages alongside the text version.
+- **Text-to-Speech:** openedai-speech generates high-quality audio briefings delivered as voice messages alongside the text version.
 
 ## Architecture
 
@@ -137,7 +139,7 @@ The stack is optimized for single-server CPU-only deployment with full privacy:
 | **Networking**   | ![Traefik](https://img.shields.io/badge/Traefik-2496ED?style=flat&logo=traefik&logoColor=white) ![Tailscale](https://img.shields.io/badge/Tailscale-4A23B6?style=flat&logo=tailscale&logoColor=white)                                                                                  | Zero Trust perimeter with automated internal routing.                                               |
 | **DNS**          | ![Pi-hole](https://img.shields.io/badge/Pi--hole-96060C?style=flat&logo=pi-hole&logoColor=white)                                                                                                                                                                                       | DNS sinkhole blocking container telemetry and enabling vanity domains.                              |
 | **Tasking**      | ![Planka](https://img.shields.io/badge/Planka-blue?style=flat)                                                                                                                                                                                                                         | Self-hosted Kanban engine accessible as a mobile PWA.                                               |
-| **Voice**        | ![Whisper](https://img.shields.io/badge/Whisper-black?style=flat) ![TTS](https://img.shields.io/badge/Coqui_TTS-green?style=flat)                                                                                                                                                      | Local speech-to-text and high-quality audio generation.                                             |
+| **Voice**        | ![Whisper](https://img.shields.io/badge/Whisper-black?style=flat) ![TTS](https://img.shields.io/badge/openedai--speech-green?style=flat)                                                                                                                                                      | Local speech-to-text and high-quality audio generation.                                             |
 | **Weather**      | ![Open-Meteo](https://img.shields.io/badge/Open--Meteo-blue?style=flat)                                                                                                                                                                                                                | Hourly forecasts with travel-aware location detection. No API key needed.                           |
 
 ```
@@ -254,7 +256,7 @@ Run it manually at any time via: `python3 tests/test_live_regression.py --url ht
 
 ### Prompt Injection Test Suite
 
-A dedicated offline test suite (`tests/test_security_prompt_injection.py`) validates the structural integrity of the prompt construction pipeline against **239 tests across 23 categories** (208 attack vector tests + 31 production integration tests). The suite runs without any infrastructure -- no LLM, no database, no network required.
+A dedicated offline test suite (`tests/test_security_prompt_injection.py`) validates the structural integrity of the prompt construction pipeline against **282 tests across 23 categories**. The suite runs without any infrastructure -- no LLM, no database, no network required.
 
 Categories include: direct prompt injection, indirect injection via memory/calendar/documents, jailbreak attempts (DAN, developer mode, grandma exploit), context manipulation (ChatML/LLaMA/Phi/Qwen token injection), memory poisoning, identity hijacking, data exfiltration, privilege escalation, encoding-based evasion (base64, ROT13, homoglyphs, Zalgo, leetspeak), multi-turn manipulation, structured data injection (JSON, YAML, SQL, SSTI), Telegram-specific attacks, dashboard XSS/CSS injection, API endpoint attacks (CRLF, path traversal), combined advanced attacks, and production integration tests that import and validate the actual `sanitise_input()` and `_ADVERSARIAL_PATTERNS` implementations.
 
