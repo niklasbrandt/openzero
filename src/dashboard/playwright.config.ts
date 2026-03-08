@@ -27,7 +27,13 @@ export default defineConfig({
 	projects: [
 		{
 			name: 'chromium',
-			use: { ...devices['Desktop Chrome'] },
+			use: {
+				...devices['Desktop Chrome'],
+				// Force empty storage state per context so the index.html
+				// instant-theme script doesn't restore a stale cached palette
+				// (z_theme in localStorage) from a previous developer session.
+				storageState: { cookies: [], origins: [] },
+			},
 		},
 	],
 

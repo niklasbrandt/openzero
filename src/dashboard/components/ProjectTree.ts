@@ -57,7 +57,11 @@ export class ProjectTree extends HTMLElement {
 				if (btn) {
 					btn.textContent = isOpen ? `\u2212 ${this.tr('cancel', 'Cancel')}` : this.tr('new_board', '+ New Board');
 					btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-					btn.setAttribute('aria-label', isOpen ? this.tr('cancel_add_board', 'Cancel adding new board') : this.tr('aria_add_project', 'Add a new project board'));
+					if (isOpen) {
+						btn.setAttribute('aria-label', this.tr('cancel_add_board', 'Cancel adding new board'));
+					} else {
+						btn.removeAttribute('aria-label');
+					}
 				}
 			}
 		});
@@ -172,7 +176,7 @@ export class ProjectTree extends HTMLElement {
 							<span class="h-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>
 							${this.tr('boards_heading', 'Boards')}
 						</h2>
-						<button id="new-project-btn" aria-expanded="false" aria-label="${this.tr('aria_add_project', 'Add a new project board')}">${this.tr('new_board', '+ New Board')}</button>
+						<button id="new-project-btn" aria-expanded="false">${this.tr('new_board', '+ New Board')}</button>
 					</div>
 					<pre tabindex="0" aria-label="${this.tr('aria_project_tree', 'Project board structure tree')}">${this.tr('loading_tree', 'Loading tree...')}</pre>
 				</div>

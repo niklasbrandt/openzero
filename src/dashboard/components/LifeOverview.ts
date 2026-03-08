@@ -60,13 +60,16 @@ export class LifeOverview extends HTMLElement {
 			const isOpen = formWrapper.classList.contains('open');
 			formWrapper.classList.toggle('open');
 			formWrapper.setAttribute('aria-hidden', isOpen ? 'true' : 'false');
+			if (isOpen) { formWrapper.setAttribute('inert', ''); } else { formWrapper.removeAttribute('inert'); }
 			btn.textContent = isOpen
 				? this.tr('new_board', '+ New Board')
 				: `\u2212 ${this.tr('cancel', 'Cancel')}`;
 			btn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
-			btn.setAttribute('aria-label', isOpen
-				? this.tr('aria_add_project', 'Add a new project board')
-				: this.tr('cancel_add_board', 'Cancel adding new board'));
+				if (isOpen) {
+					btn.removeAttribute('aria-label');
+				} else {
+					btn.setAttribute('aria-label', this.tr('cancel_add_board', 'Cancel adding new board'));
+				}
 			if (!isOpen) {
 				setTimeout(() => this.shadowRoot?.querySelector<HTMLInputElement>('#board-name')?.focus(), 50);
 			}
@@ -105,11 +108,10 @@ export class LifeOverview extends HTMLElement {
 			const fw = this.shadowRoot?.querySelector<HTMLDivElement>('#create-board-form');
 			const b = this.shadowRoot?.querySelector<HTMLButtonElement>('#new-board-btn');
 			fw?.classList.remove('open');
-			fw?.setAttribute('aria-hidden', 'true');
-			if (b) {
+			fw?.setAttribute('aria-hidden', 'true');				fw?.setAttribute('inert', '');			if (b) {
 				b.textContent = this.tr('new_board', '+ New Board');
 				b.setAttribute('aria-expanded', 'false');
-				b.setAttribute('aria-label', this.tr('aria_add_project', 'Add a new project board'));
+							b.removeAttribute('aria-label');
 			}
 			window.dispatchEvent(new CustomEvent('refresh-data', { detail: { actions: ['project', 'board'] } }));
 		} catch (_e) {
@@ -311,7 +313,7 @@ export class LifeOverview extends HTMLElement {
 
 				#new-board-btn {
 					background: var(--surface-accent-subtle, hsla(173, 80%, 40%, 0.12));
-					color: var(--accent-color, hsla(173, 80%, 40%, 1));
+					color: var(--accent-text, hsl(196, 78%, 52%));
 					border: 1px solid var(--border-accent, hsla(173, 80%, 40%, 0.2));
 					padding: 0.4rem 1rem;
 					border-radius: var(--radius-md, 0.6rem);
@@ -453,9 +455,9 @@ export class LifeOverview extends HTMLElement {
 							</span>
 							${this.tr('life_overview', 'Life')}
 						</h2>
-						<button id="new-board-btn" aria-expanded="false" aria-label="${this.tr('aria_add_project', 'Add a new project board')}">${this.tr('new_board', '+ New Board')}</button>
+						<button id="new-board-btn" aria-expanded="false">${this.tr('new_board', '+ New Board')}</button>
 					</div>
-					<div id="create-board-form" class="create-form" aria-hidden="true">
+					<div id="create-board-form" class="create-form" aria-hidden="true" inert>
 						<form id="board-form" novalidate>
 							<label for="board-name">${this.tr('name_label', 'Name')}</label>
 							<input type="text" id="board-name" placeholder="${this.tr('project_placeholder', 'E.g. Daily Missions')}" autocomplete="off" required aria-required="true" />
