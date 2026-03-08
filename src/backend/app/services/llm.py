@@ -6,7 +6,7 @@ of different LLM providers (local llama-server, Groq, OpenAI) and manages the
 system persona 'Z'.
 
 Architecture: 3-Tier Local Intelligence
-- Instant (Qwen3-1.7B): greetings, confirmations, trivial Q&A, memory distillation
+- Instant (Qwen3-0.6B): greetings, confirmations, trivial Q&A, memory distillation
 - Standard (8B): normal conversation, moderate reasoning, tool-intent
 - Deep (14B+): complex analysis, briefings, planning, creative writing
 
@@ -629,8 +629,8 @@ async def chat(
 
 
 # --- 3-Tier Model Selection ---
-# Instant: greetings, trivial, memory distillation (<2s)
-# Standard: normal conversation, tool-intent (3-8s streaming)
+# Instant: greetings, trivial, memory distillation (<1s)
+# Standard: normal conversation, tool-intent (2-5s streaming)
 # Deep: complex reasoning, briefings, creative (10-30s streaming)
 
 TRIVIAL_PATTERNS = {
@@ -668,7 +668,7 @@ SMART_KEYWORDS = [
 TIER_MAX_TOKENS = {
 	"instant": 250,
 	"standard": 1000,
-	"deep": 2000,
+	"deep": 4000,
 }
 
 # Per-tier read timeouts (seconds). Instant must fail fast so the UI never
