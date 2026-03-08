@@ -379,7 +379,6 @@ def rehydrate_response(text: str, replacement_map: dict[str, str]) -> str:
 
 
 from app.config import settings
-from app.services.agent_actions import AVAILABLE_TOOLS
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from langgraph.prebuilt import create_react_agent
@@ -1253,6 +1252,7 @@ async def chat_with_context(
 				timeout=90,
 				temperature=0.2,
 			)
+			from app.services.agent_actions import AVAILABLE_TOOLS  # lazy — avoids cyclic import with task modules
 			agent_executor = create_react_agent(llm, AVAILABLE_TOOLS)
 			# Include action tag docs only for agent path
 			rich_system_prompt = f"{formatted_system_prompt}\n{ACTION_TAG_DOCS}\n\n{full_prompt}"

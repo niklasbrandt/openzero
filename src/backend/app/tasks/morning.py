@@ -5,7 +5,6 @@ from app.services.gmail import fetch_unread_emails
 from app.services.calendar import fetch_calendar_events
 from app.services.weather import get_weather_forecast
 from app.services.tts import generate_speech
-from app.api.telegram import send_notification, send_voice_message, get_nav_markup
 from app.models.db import AsyncSessionLocal, Briefing, Person
 from app.config import settings
 from sqlalchemy import select
@@ -182,6 +181,7 @@ async def morning_briefing():
 		await session.commit()
 
 	# 5. Send text notification to Telegram immediately (does not wait for TTS)
+	from app.api.telegram import send_notification, send_voice_message, get_nav_markup
 	from app.services.translations import get_translations
 	lang = "en"
 	async with AsyncSessionLocal() as session:

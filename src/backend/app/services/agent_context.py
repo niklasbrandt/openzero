@@ -56,7 +56,6 @@ _executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="agent_ctx")
 # ---------------------------------------------------------------------------
 # In-memory cache
 # ---------------------------------------------------------------------------
-_raw_cache:     dict[str, str] = {}   # filename -> raw extracted text
 _cache:         dict[str, str] = {}   # filename -> post-deterministic text
 _compressed:    dict[str, str] = {}   # filename -> post-LLM text (if triggered)
 _final:         dict[str, str] = {}   # filename -> budget-capped text actually injected
@@ -293,7 +292,7 @@ def _compute_hash(files: list[Path]) -> str:
 
 async def refresh_agent_context() -> None:
 	"""Compare hash, re-read files if changed, rebuild _prompt_block."""
-	global _raw_cache, _cache, _compressed, _final, _combined_hash, _prompt_block
+	global _cache, _compressed, _final, _combined_hash, _prompt_block
 
 	files = _discover_files()
 	new_hash = _compute_hash(files)
@@ -303,7 +302,6 @@ async def refresh_agent_context() -> None:
 		return
 
 	_combined_hash = new_hash
-	new_raw: dict[str, str] = {}
 	new_cache: dict[str, str] = {}
 	new_compressed: dict[str, str] = {}
 
@@ -332,7 +330,6 @@ async def refresh_agent_context() -> None:
 
 		# Security sanitisation (action tags + control tokens)
 		raw = _security_sanitise(raw)
-		new_raw[path.name] = raw
 
 		# Stage 1: deterministic compression
 		det = _deterministic_compress(raw)
@@ -365,7 +362,6 @@ async def refresh_agent_context() -> None:
 		if last_key:
 			final[last_key] += f"\n\n[truncated — {omitted} file(s) omitted due to context budget]"
 
-	_raw_cache = new_raw
 	_cache = new_cache
 	_compressed = new_compressed
 	_final = final
