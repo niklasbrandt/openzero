@@ -34,9 +34,7 @@ Run:
 import ast
 import pathlib
 import re
-from typing import Iterator, List, Tuple
-
-import pytest
+from typing import List, Tuple
 
 # ---------------------------------------------------------------------------
 # Source file discovery
