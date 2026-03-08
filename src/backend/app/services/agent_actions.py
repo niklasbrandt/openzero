@@ -6,6 +6,7 @@ from app.services.planka import create_task as planka_create_task
 from app.services.planka import create_project as planka_create_project
 from app.services.planka import create_board as planka_create_board
 from app.services.planka import create_list as planka_create_list
+from app.services.planka import move_card as planka_move_card
 
 logger = logging.getLogger(__name__)
 
@@ -144,7 +145,19 @@ async def schedule_persistent_custom(name: str, message: str, job_type: str, spe
     await load_custom_tasks()
     return f"Persistent custom task '{name}' created and scheduled."
 
-AVAILABLE_TOOLS = [create_task, create_project, create_event, learn_memory, schedule_reminder, schedule_persistent_custom]
+@tool
+async def move_card(card_title_fragment: str, destination_list: str, board_name: str = "") -> str:
+	"""Move a Planka card to a different list/column by searching for it by name fragment."""
+	success = await planka_move_card(
+		card_title_fragment=card_title_fragment,
+		destination_list=destination_list,
+		board_name=board_name
+	)
+	if success:
+		return f"Card '{card_title_fragment}' moved to '{destination_list}'."
+	return f"Could not find card matching '{card_title_fragment}' to move."
+
+AVAILABLE_TOOLS = [create_task, create_project, create_event, learn_memory, schedule_reminder, schedule_persistent_custom, move_card]
 
 async def parse_and_execute_actions(reply: str, db=None):
     """
@@ -166,7 +179,10 @@ async def parse_and_execute_actions(reply: str, db=None):
         raw_tag = match.group(0)
         board, llist, title = match.groups()
         success = await planka_create_task(board_name=board.strip(), list_name=llist.strip(), title=title.strip())
-        if success: executed_cmds.append(f"Task '{title.strip()}' created.")
+        if success:
+            executed_cmds.append(f"Task '{title.strip()}' created.")
+        else:
+            executed_cmds.append(f"\u26a0 Failed to create task '{title.strip()}'. Check Planka connection.")
         clean_reply = strip_tag(clean_reply, raw_tag)
 
     # 2. Create Project Tag
@@ -341,6 +357,34 @@ async def parse_and_execute_actions(reply: str, db=None):
         executed_cmds.append("Precision Tracking initiated.")
         clean_reply = strip_tag(clean_reply, raw_tag)
 
+    # 9. Move Card Tag
+    # [ACTION: MOVE_CARD | CARD: title fragment | LIST: destination list | BOARD: board name (optional)]
+    move_card_pattern = r"\[?ACTION: MOVE_CARD \| CARD: ([^\|\]]+) \| LIST: ([^\|\]]+)(?: \| BOARD: ([^\|\]]+))?\]?"
+    for match in re.finditer(move_card_pattern, reply):
+        raw_tag = match.group(0)
+        card_frag = match.group(1).strip()
+        dest_list = match.group(2).strip()
+        board = (match.group(3) or "").strip()
+        success = await planka_move_card(card_title_fragment=card_frag, destination_list=dest_list, board_name=board)
+        if success:
+            executed_cmds.append(f"Card '{card_frag}' moved to '{dest_list}'.")
+        else:
+            executed_cmds.append(f"\u26a0 Could not find card matching '{card_frag}'. Check Planka board.")
+        clean_reply = strip_tag(clean_reply, raw_tag)
+
+    # 10. Mark Done Tag (shortcut: moves card to Done list)
+    # [ACTION: MARK_DONE | CARD: title fragment]
+    mark_done_pattern = r"\[?ACTION: MARK_DONE \| CARD: ([^\|\]]+)\]?"
+    for match in re.finditer(mark_done_pattern, reply):
+        raw_tag = match.group(0)
+        card_frag = match.group(1).strip()
+        success = await planka_move_card(card_title_fragment=card_frag, destination_list="Done", board_name="")
+        if success:
+            executed_cmds.append(f"Card '{card_frag}' marked done.")
+        else:
+            executed_cmds.append(f"\u26a0 Could not find card matching '{card_frag}'. Check Planka board.")
+        clean_reply = strip_tag(clean_reply, raw_tag)
+
     # 8. Set Nudge Interval Tag
     # [ACTION: SET_NUDGE_INTERVAL | TASK: text | INTERVAL: minutes]
     nudge_interval_pattern = r"\[?ACTION: SET_NUDGE_INTERVAL \| TASK: ([^\|\]]+) \| INTERVAL: ([^\|\]]+)\]?"
@@ -400,5 +444,11 @@ async def parse_and_execute_actions(reply: str, db=None):
     # we don't want to reply with an empty string which looks broken.
     if not clean_reply and executed_cmds:
         clean_reply = "\n".join(executed_cmds)
+
+    # If execution produced any failure notices (⚠), surface them even when the
+    # LLM already wrote a success-sounding reply (prevents silent false-confirms).
+    failure_notices = [c for c in executed_cmds if c.startswith("\u26a0")]
+    if failure_notices and clean_reply:
+        clean_reply = clean_reply.rstrip() + "\n\n" + "\n".join(failure_notices)
     
     return clean_reply, executed_cmds
