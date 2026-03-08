@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     LLM_INSTANT_URL: str = "http://llm-instant:8081"
     LLM_STANDARD_URL: str = "http://llm-standard:8082"
     LLM_DEEP_URL: str = "http://llm-deep:8083"
-    LLM_MODEL_INSTANT: str = "Qwen3-1.7B"
+    LLM_MODEL_INSTANT: str = "Qwen3-0.6B"
     LLM_MODEL_STANDARD: str = "Qwen3-8B"
     LLM_MODEL_DEEP: str = "Qwen3-14B"
     DEEP_MODEL_TIMEOUT_S: int = 45
