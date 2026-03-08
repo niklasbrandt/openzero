@@ -15,13 +15,6 @@ export class UserCard extends HTMLElement {
 		fr: { native: 'Français', eng: 'French' },
 		es: { native: 'Español', eng: 'Spanish' },
 		it: { native: 'Italiano', eng: 'Italian' },
-		nl: { native: 'Nederlands', eng: 'Dutch' },
-		sv: { native: 'Svenska', eng: 'Swedish' },
-		da: { native: 'Dansk', eng: 'Danish' },
-		no: { native: 'Norsk', eng: 'Norwegian' },
-		pl: { native: 'Polski', eng: 'Polish' },
-		cs: { native: 'Čeština', eng: 'Czech' },
-		el: { native: 'Ελληνικά', eng: 'Greek' },
 		tr: { native: 'Türkçe', eng: 'Turkish' },
 		ru: { native: 'Русский', eng: 'Russian' },
 		pt: { native: 'Português', eng: 'Portuguese' },
@@ -30,7 +23,6 @@ export class UserCard extends HTMLElement {
 		bn: { native: 'বাংলা', eng: 'Bengali' },
 		id: { native: 'Bahasa Indonesia', eng: 'Indonesian' },
 		vi: { native: 'Tiếng Việt', eng: 'Vietnamese' },
-		ro: { native: 'Română', eng: 'Romanian' },
 	};
 
 	private themeOptions: Record<string, { label: string, colors: string[] }> = {
