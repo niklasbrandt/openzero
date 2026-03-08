@@ -87,7 +87,6 @@ class Settings(BaseSettings):
 
     # Briefing
     BRIEFING_CALIBRATION: bool = True
-    BRIEFING_CLOSING_REFLECTION: bool = True
 
 
     model_config = SettingsConfigDict(

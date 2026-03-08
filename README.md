@@ -99,7 +99,7 @@ Cloud reasoning is only engaged via a "Disclosure Proposal" workflow for shared 
 
 Z does not wait to be asked. The system runs scheduled automation cycles that act on your data:
 
-- **Morning Briefing** (daily, configurable time) -- Gathers projects, calendar, weather, emails, social circle birthdays, and recent memories into a structured prompt. Generates a text briefing and a TTS voice note. Includes a rotating **mental calibration exercise** (gratitude, breathing, visualization, journaling) and a **closing literary reflection** from authors like Frost, Camus, Rumi, and Aurelius.
+- **Morning Briefing** (daily, configurable time) -- Gathers projects, calendar, weather, emails, social circle birthdays, and recent memories into a structured prompt. Generates a text briefing and a TTS voice note. Includes a rotating **mental calibration exercise** (gratitude, breathing, visualization, journaling).
 - **Contextual Automation** -- Scans circle calendars for upcoming birthdays, deadlines, and priority events within 3 days and auto-creates Kanban tasks.
 - **Email Polling** (every 10 minutes) -- Fetches unread emails via Gmail API, applies user-defined rules, detects embedded calendar events (with approval buttons), and auto-drafts replies for urgent senders.
 - **Proactive Follow-ups** (every 3 hours, 9AM-9PM) -- Checks the Operator Board "Today" list and sends warm, direct mission-check nudges via Telegram.
