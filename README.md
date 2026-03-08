@@ -302,9 +302,9 @@ python -m pytest tests/test_security_prompt_injection.py -v --tb=short
 
 ## Setting it up
 
-A VPS with **24GB RAM** or a local Mac Mini/homelab is recommended. The entire stack is optimized for **CPU-only inference** using quantized GGUF models with llama.cpp. No GPU required -- the system auto-detects AVX2/AVX-512 SIMD capabilities and configures thread counts per tier. Use the built-in benchmark widget to measure actual throughput on your hardware.
+A VPS with **24GB RAM** or a local Mac Mini/homelab is recommended. The entire stack is optimized for **CPU-only inference** using quantized GGUF models with llama.cpp. No GPU required -- all three tiers run with 8 threads and a 16384-token context window. Since tiers run sequentially (one request at a time, no parallelism), each active model gets full access to all CPU cores with no contention. Use the built-in benchmark widget to measure actual throughput on your hardware.
 
-Typical throughput on a 4-core EPYC VPS: 5-12 tok/s (instant tier), 2-5 tok/s (standard tier), 1-3 tok/s (deep tier).
+Typical throughput on an 8-core EPYC VPS: 10-20 tok/s (instant tier), 3-7 tok/s (standard tier), 1-3 tok/s (deep tier).
 
 1. **Deploy:** Run `docker compose up -d`. First-time model downloads happen automatically per tier.
 2. **Secure:** Link the server to the Tailscale network. Configure Pi-hole Split DNS for your vanity domain.
