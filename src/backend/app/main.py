@@ -53,6 +53,12 @@ async def lifespan(app: FastAPI):
             if not res.fetchone():
                 await conn.execute(text("ALTER TABLE global_messages ADD COLUMN model VARCHAR"))
 
+            # 5. Add 'model' column to 'briefings' if not exists
+            #    (records which LLM tier/model generated each briefing)
+            res = await conn.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='briefings' AND column_name='model'"))
+            if not res.fetchone():
+                await conn.execute(text("ALTER TABLE briefings ADD COLUMN model VARCHAR"))
+
         logging.info("✓ Postgres tables initialized and migrated.")
     except Exception as e:
         logging.warning("⚠ Warning: Could not connect to Postgres: %s", e)

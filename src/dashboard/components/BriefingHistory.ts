@@ -76,6 +76,7 @@ export class BriefingHistory extends HTMLElement {
 						<div class="meta-left">
 							<span class="type">${b.type.toUpperCase()}</span>
 							<span class="date">${new Date(b.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+							${b.model ? `<span class="model-tag" aria-label="${this.tr('aria_briefing_model', 'Model used')}: ${b.model}">${b.model}</span>` : ''}
 						</div>
 						<div class="chevron" aria-hidden="true">
 							<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" class="oz-goo-blob">
@@ -163,6 +164,13 @@ export class BriefingHistory extends HTMLElement {
 						font-family: inherit;
 						color: inherit;
 					}
+					.meta-left {
+						display: flex;
+						align-items: center;
+						gap: 0.5rem;
+						flex-wrap: wrap;
+						min-width: 0;
+					}
 					.meta:focus-visible {
 						outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1));
 						outline-offset: 2px;
@@ -183,6 +191,20 @@ export class BriefingHistory extends HTMLElement {
 						font-size: 0.8rem; 
 						color: var(--text-muted, hsla(0, 0%, 100%, 0.4)); 
 						font-weight: 500;
+					}
+					.model-tag {
+						font-size: 0.6rem;
+						color: var(--text-faint, hsla(0, 0%, 100%, 0.3));
+						background: hsla(0, 0%, 100%, 0.05);
+						border: 1px solid hsla(0, 0%, 100%, 0.08);
+						border-radius: var(--radius-pill, 9999px);
+						padding: 0.15rem 0.5rem;
+						font-weight: 500;
+						letter-spacing: 0.02em;
+						white-space: nowrap;
+						max-width: 12rem;
+						overflow: hidden;
+						text-overflow: ellipsis;
 					}
 					.chevron { 
 						transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); 

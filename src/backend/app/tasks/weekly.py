@@ -1,4 +1,4 @@
-from app.services.llm import chat
+from app.services.llm import chat, last_model_used
 from app.services.planka import get_project_tree
 from app.models.db import AsyncSessionLocal, Briefing, Project
 from sqlalchemy import select
@@ -39,7 +39,7 @@ async def weekly_review():
 	
 	# Store in Database
 	async with AsyncSessionLocal() as session:
-		briefing = Briefing(type="week", content=content)
+		briefing = Briefing(type="week", content=content, model=last_model_used.get())
 		session.add(briefing)
 		await session.commit()
 	

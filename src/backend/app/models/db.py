@@ -64,6 +64,7 @@ class Briefing(Base):
     id = Column(Integer, primary_key=True)
     type = Column(String, nullable=False)  # day, week, month, year
     content = Column(Text, nullable=False)
+    model = Column(String, nullable=True)  # LLM tier/model that generated this briefing
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
 class Person(Base):

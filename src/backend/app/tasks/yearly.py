@@ -1,4 +1,4 @@
-from app.services.llm import chat
+from app.services.llm import chat, last_model_used
 from app.services.planka import get_project_tree
 from app.models.db import AsyncSessionLocal, Briefing
 
@@ -17,7 +17,7 @@ async def yearly_review():
 	
 	# Store in Database
 	async with AsyncSessionLocal() as session:
-		briefing = Briefing(type="yearly", content=content)
+		briefing = Briefing(type="yearly", content=content, model=last_model_used.get())
 		session.add(briefing)
 		await session.commit()
 	
