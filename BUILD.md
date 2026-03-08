@@ -435,24 +435,28 @@ The openZero dashboard features a high-performance mission-control interface. Yo
 
 openZero includes two independent test suites.
 
-### Prompt Injection Risk Tests (Offline)
+### Security Tests (Offline)
 
-Validates the prompt construction pipeline against 268 adversarial attack vectors across 25 categories. No running services required -- this tests the structural integrity of how user input is assembled into LLM prompts.
+Two offline suites covering 307 tests total. No running services required.
+
+**Prompt injection suite** (`tests/test_security_prompt_injection.py`): 295 tests across 27 categories validating the prompt construction pipeline against adversarial attack vectors.
+
+**Static analysis gate** (`tests/test_static_analysis.py`): 12 AST-based tests enforcing backend security invariants (no exception cause leakage via HTTPException, no interpolation of exception objects into HTTP responses, etc.).
 
 ```bash
 # Install pytest + coverage (once)
 pip install pytest pytest-cov
 
-# Run all 268 tests
-python -m pytest tests/test_security_prompt_injection.py -v --tb=short
+# Run both suites (307 tests total)
+python -m pytest tests/test_security_prompt_injection.py tests/test_static_analysis.py -v --tb=short
 
 # Run with coverage report
-python -m pytest tests/test_security_prompt_injection.py -v --tb=short --cov=tests
+python -m pytest tests/test_security_prompt_injection.py tests/test_static_analysis.py -v --tb=short --cov=tests
 
 # Run a specific category
 python -m pytest tests/test_security_prompt_injection.py -v -k "MemoryPoisoning"
 python -m pytest tests/test_security_prompt_injection.py -v -k "TelegramSpecific"
-python -m pytest tests/test_security_prompt_injection.py -v -k "SecurityInvariants"
+python -m pytest tests/test_security_prompt_injection.py -v -k "ActionTagExceptionLeakage"
 ```
 
 All tests should pass with 0 failures. See [`docs/artifacts/prompt_injection_tests.md`](docs/artifacts/prompt_injection_tests.md) for full category breakdown and findings.
