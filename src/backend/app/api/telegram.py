@@ -962,25 +962,26 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		await safe_edit(status_msg, f"<blockquote>📝 <b>Transcript:</b>\n<i>{transcript}</i>\n\n<i>Thinking...</i></blockquote>", parse_mode="HTML")
 		
 		# 3. Process as text
-		from app.services.llm import chat_with_context
+		from app.services.llm import chat_with_context, last_model_used
+		from app.models.db import get_global_history, save_global_message, AsyncSessionLocal
 		chat_id = update.effective_chat.id
-		if chat_id not in chat_histories:
-			chat_histories[chat_id] = []
+
+		# Persist transcript so the dashboard and future LLM calls see this voice message.
+		await save_global_message("telegram", "user", transcript)
+
+		merged_history = await get_global_history(limit=10)
 
 		response = await chat_with_context(
 			transcript,
-			history=chat_histories[chat_id],
+			history=merged_history,
 			include_projects=True,
 			include_people=True
 		)
 		
-		from app.models.db import AsyncSessionLocal
-		
 		async with AsyncSessionLocal() as db:
 			clean_reply, _ = await parse_and_execute_actions(response, db=db)
-		
-		chat_histories[chat_id].append({"role": "user", "content": transcript})
-		chat_histories[chat_id].append({"role": "z", "content": response})
+
+		await save_global_message("telegram", "z", clean_reply, model=last_model_used.get())
 		
 		clean_reply = strip_llm_time_header(clean_reply)
 		html_reply = _md_to_html(clean_reply)
