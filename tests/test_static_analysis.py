@@ -627,3 +627,62 @@ class TestDuplicateModuleLevelVar:
 			+ "\n".join(f"  {h}" for h in hits)
 		)
 
+
+# ---------------------------------------------------------------------------
+# HTTPException cause-chain leakage (CWE-209)
+# ---------------------------------------------------------------------------
+
+class TestHTTPExceptionFromException:
+	"""
+	Detect `raise HTTPException(...) from <name>` where <name> is not None.
+
+	`raise HTTPException(...) from e` sets __cause__ on the exception.
+	FastAPI / Starlette may propagate __cause__ to the response body in some
+	configurations, and CodeQL's taint analysis treats it as an info-exposure
+	path (CWE-209). The safe form is either `raise HTTPException(...)` (no
+	chaining) or `raise HTTPException(...) from None` (explicitly suppress).
+
+	AGENT_LOG rule: never use `raise HTTPException(...) from e`.
+	"""
+
+	def _collect(self) -> List[str]:
+		hits: List[str] = []
+		for path in PY_SOURCES:
+			tree = _parse(path)
+			if tree is None:
+				continue
+			for node in ast.walk(tree):
+				# ast.Raise has .exc and .cause
+				if not isinstance(node, ast.Raise):
+					continue
+				if node.cause is None:
+					continue
+				# cause is `None` literal -> safe (`from None`)
+				if isinstance(node.cause, ast.Constant) and node.cause.value is None:
+					continue
+				# Any other cause (Name, Call, Attribute …) is a live exception reference
+				exc_node = node.exc
+				if exc_node is None:
+					continue
+				# Only flag when the raised expression is an HTTPException call
+				is_http_exc = False
+				if isinstance(exc_node, ast.Call):
+					func = exc_node.func
+					if isinstance(func, ast.Name) and func.id == "HTTPException":
+						is_http_exc = True
+					elif isinstance(func, ast.Attribute) and func.attr == "HTTPException":
+						is_http_exc = True
+				if is_http_exc:
+					hits.append(
+						f"{_loc(path, node.lineno)}  "
+						f"raise HTTPException(...) from <exception> — use `from None` or no chaining"
+					)
+		return hits
+
+	def test_no_http_exception_from_exception(self) -> None:
+		hits = self._collect()
+		assert not hits, (
+			"HTTPException raised with a live exception cause (CWE-209 / AGENT_LOG rule):\n"
+			+ "\n".join(f"  {h}" for h in hits)
+		)
+
