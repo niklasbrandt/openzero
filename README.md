@@ -64,7 +64,6 @@ A **TypeScript** web application built with native Web Components (Shadow DOM) a
 - **Hardware Monitor** -- Live CPU metrics and server resource usage, auto-refreshed while the panel is visible.
 - **Software Status** -- Live container and service health dashboard with per-service status indicators.
 - **Hardware Benchmark** -- CPU identification, SIMD instruction badges, and per-tier LLM throughput measurement with color-coded tok/s results.
-- **Onboarding Wizard** -- Step-by-step setup tracker for profile, inner circle, and calendar integration. Dismissable once complete.
 - **Planka SSO** -- Background auto-login bridge to the Kanban app via hidden iframe redirect, so Planka is always authenticated.
 
 ### Local Intelligence
