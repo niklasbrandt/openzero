@@ -932,7 +932,9 @@ async def planka_redirect(request: Request, target: str = "", background: bool =
 		return RedirectResponse(url=new_url)
 
 	# 2. Authenticate Backend-to-Backend
-	login_url = f"{settings.PLANKA_BASE_URL}/api/access-tokens?withHttpOnlyToken=true"
+	# Use standard session (no withHttpOnlyToken) — session.httpOnlyToken will be
+	# null, so the auth middleware only needs the Bearer JWT, no matching cookie.
+	login_url = f"{settings.PLANKA_BASE_URL}/api/access-tokens"
 	payload = {
 		"emailOrUsername": settings.PLANKA_ADMIN_EMAIL,
 		"password": settings.PLANKA_ADMIN_PASSWORD
@@ -957,22 +959,20 @@ async def planka_redirect(request: Request, target: str = "", background: bool =
 			resp.raise_for_status()
 			token_data = resp.json()
 			access_token = token_data.get("item")
-			cookie_val = resp.cookies.get("httpOnlyToken")
-			
+
 			if not access_token:
 				raise Exception("Failed to retrieve access token from Planka")
 
-			# 3. Fetch User ID for LocalStorage enrichment
-			user_id = "None"
+			# 3. Verify the token works (sanity check)
 			try:
 				me_resp = await client.get(
 					f"{settings.PLANKA_BASE_URL}/api/users/me",
 					headers={"Authorization": f"Bearer {access_token}"}
 				)
-				if me_resp.status_code == 200:
-					user_id = me_resp.json().get("id", "None")
+				if me_resp.status_code != 200:
+					logger.warning("Planka token sanity-check failed: %s", me_resp.status_code)
 			except Exception as e:
-				logger.debug("Could not fetch userId: %s", e)
+				logger.debug("Could not verify token: %s", e)
 
 			# 4. Determine Target Redirect URL
 			target_board_id = request.query_params.get("target_board_id") or request.query_params.get("targetboardid")
@@ -1044,69 +1044,27 @@ async def planka_redirect(request: Request, target: str = "", background: bool =
 			<head>
 				<title>openZero SSO</title>
 				<script>
-					async function setupSession() {{
+					function setupSession() {{
 						try {{
 							const token = "{access_token}";
-							const userId = "{user_id}";
 
-							// Seed localStorage immediately with the backend-obtained token.
-							// Planka reads 'accessToken' on boot to restore the session.
+							// Planka 2.x stores the JWT in browser cookies (not localStorage).
+							// The React app reads api$2.get("accessToken") on boot, which
+							// is js-cookie reading document.cookie["accessToken"].
+							// It also validates that "accessTokenVersion" === "1" before
+							// trusting the token — if missing, it wipes the token.
 							if (token) {{
-								localStorage.setItem('accessToken', token);
-								localStorage.setItem('token', token);
-							}}
-							if (userId && userId !== "None") {{
-								localStorage.setItem('userId', userId);
-							}}
-
-							// Establish a browser-native Planka session so the httpOnly
-							// cookie is set for THIS browser (not the backend HTTP client).
-							// Traefik routes /api/* (except /api/dashboard) → Planka.
-							try {{
-								const authResp = await fetch('/api/access-tokens?withHttpOnlyToken=true', {{
-									method: 'POST',
-									headers: {{'Content-Type': 'application/json'}},
-									body: JSON.stringify({{
-										emailOrUsername: "{settings.PLANKA_ADMIN_EMAIL}",
-										password: "{settings.PLANKA_ADMIN_PASSWORD}"
-									}}),
-									credentials: 'include'
-								}});
-
-								if (authResp.status === 403) {{
-									// ToS acceptance required — accept and retry.
-									const d403 = await authResp.json();
-									if (d403.pendingToken) {{
-										await fetch('/api/access-tokens/' + d403.pendingToken + '/actions/accept', {{
-											method: 'POST', credentials: 'include'
-										}});
-										const retryResp = await fetch('/api/access-tokens?withHttpOnlyToken=true', {{
-											method: 'POST',
-											headers: {{'Content-Type': 'application/json'}},
-											body: JSON.stringify({{
-												emailOrUsername: "{settings.PLANKA_ADMIN_EMAIL}",
-												password: "{settings.PLANKA_ADMIN_PASSWORD}"
-											}}),
-											credentials: 'include'
-										}});
-										if (retryResp.ok) {{
-											const retryData = await retryResp.json();
-											if (retryData.item) {{
-												localStorage.setItem('accessToken', retryData.item);
-												localStorage.setItem('token', retryData.item);
-											}}
-										}}
-									}}
-								}} else if (authResp.ok) {{
-									const data = await authResp.json();
-									if (data.item) {{
-										localStorage.setItem('accessToken', data.item);
-										localStorage.setItem('token', data.item);
-									}}
+								try {{
+									const parts = token.split('.');
+									const payload = JSON.parse(atob(parts[1]));
+									const expiry = new Date(payload.exp * 1000).toUTCString();
+									document.cookie = 'accessToken=' + encodeURIComponent(token) + '; path=/; expires=' + expiry + '; SameSite=Strict';
+									document.cookie = 'accessTokenVersion=1; path=/; expires=' + expiry + '; SameSite=Strict';
+								}} catch (cookieErr) {{
+									console.warn('Failed to parse JWT for cookie expiry, using session cookie:', cookieErr);
+									document.cookie = 'accessToken=' + encodeURIComponent(token) + '; path=/; SameSite=Strict';
+									document.cookie = 'accessTokenVersion=1; path=/; SameSite=Strict';
 								}}
-							}} catch (fetchErr) {{
-								// Non-fatal: localStorage token set above is the fallback.
-								console.warn('SSO direct fetch failed, token pre-seeded:', fetchErr);
 							}}
 
 							window.location.replace('{redirect_url}');
@@ -1128,12 +1086,6 @@ async def planka_redirect(request: Request, target: str = "", background: bool =
 			"""
 			
 			response = HTMLResponse(content=html_content)
-			if cookie_val:
-				response.set_cookie(
-					"httpOnlyToken", cookie_val, 
-					httponly=True, samesite="lax", path="/", 
-					max_age=31536000, secure=False
-				)
 			return response
 
 		except Exception as e:
