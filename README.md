@@ -348,7 +348,7 @@ The `personal/` folder is a local-only, git-ignored directory that gives Z deep 
 **Setup:**
 
 ```
-cp -r docs/personal.example personal
+cp -r personal.example personal
 ```
 
 Edit the files in `personal/` with your real personal details, then start the stack.
