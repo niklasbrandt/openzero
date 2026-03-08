@@ -46,7 +46,7 @@ def get_nav_markup(t: Optional[dict] = None, token: str = "") -> InlineKeyboardM
 	auth_qs = f"/api/dashboard/auth?token={token}" if token else ""
 	keyboard = [
 		[
-			InlineKeyboardButton(f"🏠 {t.get('dashboard', 'Dashboard')}", url=f"{base_url}{auth_qs + '&redirect=/home' if auth_qs else '/home'}"),
+			InlineKeyboardButton(f"🏠 {t.get('dashboard', 'Dashboard')}", url=f"{base_url}{auth_qs + '&redirect=/dashboard' if auth_qs else '/dashboard'}"),
 			InlineKeyboardButton(f"📅 {t.get('calendar', 'Calendar')}", url=f"{base_url}{auth_qs + '&redirect=/calendar' if auth_qs else '/calendar'}")
 		],
 		[

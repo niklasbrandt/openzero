@@ -93,7 +93,7 @@ async def require_auth(
 auth_router = APIRouter()
 
 @auth_router.get("/api/dashboard/auth", include_in_schema=False)
-async def auth_activate(token: str, redirect: str = "/home"):
+async def auth_activate(token: str, redirect: str = "/dashboard"):
     """Validate dashboard token, set a persistent cookie, redirect to destination."""
     if not settings.DASHBOARD_TOKEN or not hmac.compare_digest(token, settings.DASHBOARD_TOKEN):
         raise HTTPException(status_code=401, detail="Invalid token")
@@ -103,7 +103,7 @@ async def auth_activate(token: str, redirect: str = "/home"):
     # This fully detaches safe_redirect from the tainted `redirect` string
     # so CodeQL's taint flow cannot trace a path from user input to the response.
     _SAFE_PATH_RE = re.compile(r'^[a-zA-Z0-9/_\-\.~%]*$')
-    _FALLBACK = "/home"
+    _FALLBACK = "/dashboard"
     try:
         _parsed = urllib.parse.urlparse(redirect)
         # Reject anything with a scheme, authority, or query/fragment component.
