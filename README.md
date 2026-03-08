@@ -298,7 +298,7 @@ Categories include: direct prompt injection, indirect injection via memory/calen
 
 All tests expected to pass with 0 failures.
 
-The production code implements 6 hardening measures identified by the test findings: input sanitisation with model control token stripping (`sanitise_input()` in `llm.py`), adversarial content filtering in memory storage (`memory.py`), action tag stripping from retrieved memory context, history role filtering (system-role messages dropped from client-provided chat history), and exception object stripping from `executed_cmds` responses (CWE-209 / CodeQL #23/#24/#29/#211/#258). Full results and architecture details are in [`docs/artifacts/prompt_injection_tests.md`](docs/artifacts/prompt_injection_tests.md).
+The production code implements 6 hardening measures identified by the test findings: input sanitisation with model control token stripping (`sanitise_input()` in `llm.py`), adversarial content filtering in memory storage (`memory.py`), action tag stripping from retrieved memory context, history role filtering (system-role messages dropped from client-provided chat history), and exception object stripping from `executed_cmds` responses (CWE-209 / CodeQL #23/#24/#29/#211/#258). Full results and architecture details are in `tests/test_security_prompt_injection.py`.
 
 Run both suites with:
 
