@@ -611,6 +611,7 @@ async def cmd_remind(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	
 	response = await chat(prompt)
 	from app.services.agent_actions import parse_and_execute_actions
+	_, executed = await parse_and_execute_actions(response)
 	
 	if executed:
 		await safe_reply(update, "\n".join(executed))
@@ -636,6 +637,7 @@ async def cmd_custom(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	
 	response = await chat(prompt)
 	from app.services.agent_actions import parse_and_execute_actions
+	_, executed = await parse_and_execute_actions(response)
 	
 	if executed:
 		await safe_reply(update, "\n".join(executed))
