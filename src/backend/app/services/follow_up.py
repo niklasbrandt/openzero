@@ -1,7 +1,6 @@
 import re
 import datetime
 import logging
-from app.services.operator_board import operator_service
 
 logger = logging.getLogger(__name__)
 
@@ -133,6 +132,7 @@ async def run_proactive_follow_up():
     State is kept in the module-level _nudge_state dict so cards are only nudged
     when their individual interval has elapsed.
     """
+    from app.services.operator_board import operator_service
     try:
         logger.info("Proactive Follow-up: Checking mission status...")
         async with await operator_service._get_client() as client:

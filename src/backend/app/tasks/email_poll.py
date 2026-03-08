@@ -1,8 +1,3 @@
-from app.services.gmail import fetch_unread_emails
-from app.services.llm import summarize_email, detect_calendar_events
-from app.api.telegram import send_notification
-from app.models.db import get_email_rules, store_pending_thought
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 import json
 import logging
 
@@ -10,6 +5,11 @@ logger = logging.getLogger(__name__)
 
 async def poll_gmail():
 	"""Check for new emails, apply rules, notify if urgent or detect events."""
+	from app.services.gmail import fetch_unread_emails
+	from app.services.llm import detect_calendar_events
+	from app.api.telegram import send_notification
+	from app.models.db import get_email_rules, store_pending_thought
+	from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 	rules = await get_email_rules()
 	emails = await fetch_unread_emails(max_results=20)
 
@@ -73,7 +73,8 @@ async def poll_gmail():
 
 async def store_email_summary(email, is_urgent=False, badge=None):
 	from app.models.db import AsyncSessionLocal, EmailSummary
-	
+	from app.services.llm import summarize_email
+
 	async with AsyncSessionLocal() as db:
 		summary = await summarize_email(email["snippet"])
 		db_summary = EmailSummary(
@@ -89,6 +90,9 @@ async def store_email_summary(email, is_urgent=False, badge=None):
 async def prepare_draft_reply(email: dict):
 	"""Generates a draft reply via LLM and queues it for user approval via Telegram."""
 	from app.services.llm import chat
+	from app.api.telegram import send_notification
+	from app.models.db import store_pending_thought
+	from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 	prompt = (
 		"You are Z, the user's AI assistant. Draft a professional, warm, and helpful reply "
