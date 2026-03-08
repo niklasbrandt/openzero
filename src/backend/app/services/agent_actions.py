@@ -2,17 +2,13 @@ import re
 import logging
 from langchain_core.tools import tool
 from typing import Optional
-from app.services.planka import create_task as planka_create_task
-from app.services.planka import create_project as planka_create_project
-from app.services.planka import create_board as planka_create_board
-from app.services.planka import create_list as planka_create_list
-from app.services.planka import move_card as planka_move_card
 
 logger = logging.getLogger(__name__)
 
 @tool
 async def create_task(title: str, description: str = "", board_name: str = "Operator Board", list_name: str = "Today") -> str:
     """Create a task in a specific board and list."""
+    from app.services.planka import create_task as planka_create_task
     path = await planka_create_task(
         board_name=board_name,
         list_name=list_name,
@@ -26,6 +22,7 @@ async def create_task(title: str, description: str = "", board_name: str = "Oper
 @tool
 async def create_project(name: str, description: str = "") -> str:
     """Create a new project."""
+    from app.services.planka import create_project as planka_create_project
     try:
         result = await planka_create_project(name=name, description=description)
         if result:
@@ -156,6 +153,7 @@ async def schedule_persistent_custom(name: str, message: str, job_type: str, spe
 @tool
 async def move_card(card_title_fragment: str, destination_list: str, board_name: str = "") -> str:
 	"""Move a Planka card to a different list/column by searching for it by name fragment."""
+	from app.services.planka import move_card as planka_move_card
 	success = await planka_move_card(
 		card_title_fragment=card_title_fragment,
 		destination_list=destination_list,
@@ -172,6 +170,11 @@ async def parse_and_execute_actions(reply: str, db=None):
     Parses Semantic Action Tags from the AI reply and executes them.
     Robust fallback for both legacy [ACTION: ...] and modern tool-like strings.
     """
+    from app.services.planka import create_task as planka_create_task
+    from app.services.planka import create_project as planka_create_project
+    from app.services.planka import create_board as planka_create_board
+    from app.services.planka import create_list as planka_create_list
+    from app.services.planka import move_card as planka_move_card
     executed_cmds = []
     clean_reply = reply
     
