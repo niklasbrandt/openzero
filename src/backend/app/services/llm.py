@@ -464,6 +464,10 @@ Semantic Action Tags (Exact Format Required):
 - High Proximity Tracking: `[ACTION: PROXIMITY_TRACK | TASKS: item1; item2 | BREAKDOWN: task1 [ends HH:MM]; task2 [ends HH:MM] | END: YYYY-MM-DD HH:MM]`
 - Set Nudge Interval: `[ACTION: SET_NUDGE_INTERVAL | TASK: task name fragment | INTERVAL: minutes]`
   (Use when the user requests a specific nudge frequency for a task, e.g. "remind me about the deploy every 20 minutes")
+- Move Card: `[ACTION: MOVE_CARD | CARD: title fragment | LIST: destination list | BOARD: board name (optional)]`
+  (Use when the user wants to move a task to a specific column, e.g. "move X to In Progress")
+- Mark Done: `[ACTION: MARK_DONE | CARD: title fragment]`
+  (Use when the user says a task is done/completed/sent/finished/submitted — moves the card to the "Done" column. Examples: "job application sent", "fixed the bug", "email sent")
 
 Bulk scaffolding: You can emit MULTIPLE action tags in one response to scaffold entire project structures.
 Example flow: CREATE_PROJECT -> CREATE_BOARD -> CREATE_LIST (x3) -> CREATE_TASK (x5)
@@ -593,10 +597,21 @@ async def build_system_prompt(user_name: str, user_profile: dict) -> tuple[str, 
 			pass
 	personal_block = ("\n\n" + personal_ctx) if personal_ctx else ""
 
+	# Inject agent skill modules (operational expertise — lower priority than personal context)
+	from app.services.agent_context import get_agent_skills_for_prompt, refresh_agent_context
+	agent_ctx = get_agent_skills_for_prompt()
+	if not agent_ctx:
+		try:
+			await refresh_agent_context()
+			agent_ctx = get_agent_skills_for_prompt()
+		except Exception:
+			pass
+	agent_skills_block = ("\n\n" + agent_ctx) if agent_ctx else ""
+
 	formatted_system_prompt = SYSTEM_PROMPT_CHAT.format(
 		current_time=simplified_time,
 		user_name=user_name
-	) + personal_block + user_id_context + lang_directive + personality_directive
+	) + personal_block + agent_skills_block + user_id_context + lang_directive + personality_directive
 
 	context_header = f"Current Local Time (Raw): {format_date_full(now)}\n"
 	context_header += f"Current Formatted Time (Use This): {simplified_time}\n\n"

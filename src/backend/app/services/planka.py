@@ -348,6 +348,68 @@ async def create_board(project_id: str, name: str) -> dict:
 		
 		return board
 
+async def move_card(card_title_fragment: str, destination_list: str, board_name: str = "") -> bool:
+	"""Find a card by name fragment (case-insensitive) and move it to the target list column.
+
+	Searches all projects/boards unless board_name is specified. Returns True on success.
+	"""
+	card_title_fragment = card_title_fragment.strip().strip('"\'').lower()
+	destination_list = destination_list.strip().strip('"\'')
+	board_name = board_name.strip().strip('"\'')
+	logger.debug("move_card: fragment=%s, dest=%s, board=%s", card_title_fragment, destination_list, board_name)
+	try:
+		token = await get_planka_auth_token()
+		headers = {"Authorization": f"Bearer {token}"}
+		async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, timeout=10.0, headers=headers) as client:
+			projects_resp = await client.get("/api/projects")
+			projects_resp.raise_for_status()
+			projects = projects_resp.json().get("items", [])
+
+			found_card = None
+			dest_list_id = None
+
+			for p in projects:
+				p_det = await client.get(f"/api/projects/{p['id']}")
+				boards = p_det.json().get("included", {}).get("boards", [])
+				for b in boards:
+					if board_name and b["name"].lower() != board_name.lower():
+						continue
+					b_det = await client.get(f"/api/boards/{b['id']}", params={"included": "lists,cards"})
+					b_data = b_det.json()
+					lists = b_data.get("included", {}).get("lists", [])
+					cards = b_data.get("included", {}).get("cards", [])
+					for c in cards:
+						if card_title_fragment in c["name"].lower():
+							found_card = c
+							dest_list = next(
+								(l for l in lists if l["name"].lower() == destination_list.lower()), None
+							)
+							if dest_list:
+								dest_list_id = dest_list["id"]
+							break
+					if found_card:
+						break
+				if found_card:
+					break
+
+			if not found_card:
+				logger.debug("move_card: no card matching %r found", card_title_fragment)
+				return False
+			if not dest_list_id:
+				logger.debug("move_card: list %r not found on the card's board", destination_list)
+				return False
+
+			patch_resp = await client.patch(f"/api/cards/{found_card['id']}", json={
+				"listId": dest_list_id,
+				"position": 65535
+			})
+			patch_resp.raise_for_status()
+			logger.debug("move_card: %r moved to %r", found_card["name"], destination_list)
+			return True
+	except Exception as e:
+		logger.debug("move_card failed: %s", e)
+		return False
+
 async def create_list(board_name: str, list_name: str, project_name: Optional[str] = None) -> Optional[dict]:
 	"""Create a new list (column) in a board."""
 	token = await get_planka_auth_token()

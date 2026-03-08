@@ -262,11 +262,10 @@ The `personal/` folder is the highest-authority context source for Z. Files here
 1. Create your personal files from the examples:
 
     ```bash
-    cp docs/about-me.example.md personal/about-me.md
-    cp docs/requirements.example.md personal/requirements.md
+    cp -r docs/personal.example personal
     ```
 
-2. Edit both files with your real personal details. You can also add any `.txt`, `.docx`, or `.pdf` files (CVs, certificates, diaries) to the folder.
+2. Edit the files in `personal/` with your real personal details.
 
 3. The folder is bind-mounted read-only into the backend container. It is excluded from all git commits and VPS syncs — it never leaves your local machine.
 
@@ -277,6 +276,32 @@ The `personal/` folder is the highest-authority context source for Z. Files here
     ```
 
     Then copy your personal files to the server over your Tailscale connection if you want Z to have access to them there.
+
+### 5e. Set Up Agent Skills Folder
+
+The `agent/` folder lets you drop in skill modules — methodology files, tool guides, and hard-coded behavioural rules — that are injected into every system prompt as operational expertise.
+
+1. Create your agent skills folder from the example template:
+
+    ```bash
+    cp -r agent.example agent
+    ```
+
+2. Edit the files in `agent/` as needed:
+    - `kanban.md` — Kanban/Scrum methodology knowledge (pre-filled, edit or leave as-is).
+    - `planka.md` — Planka board operational directives (pre-filled, edit or leave as-is).
+    - `agent-rules.md` — Hard-coded behavioural rules (empty template, fill in your own rules).
+    - You can add any additional `.md`, `.txt`, `.docx`, or `.pdf` skill files.
+
+3. The folder is bind-mounted read-only into the backend container and excluded from all git commits and VPS syncs.
+
+4. On the VPS, create the folder manually before starting the stack:
+
+    ```bash
+    mkdir -p ~/openzero/agent
+    ```
+
+    Then copy your skill files to the server over your Tailscale connection.
 
 ### 5b. Restrict Dashboard to Tailscale Only (Optional, Recommended)
 

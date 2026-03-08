@@ -241,6 +241,7 @@ All commands are available via the Telegram bot and the dashboard chat interface
 | `/search`    | Semantic search of the knowledge vault -- finds by meaning, not keywords.                                                                                       |
 | `/memories`  | List all core knowledge currently in permanent memory.                                                                                                          |
 | `/personal`  | Display the personal context files currently loaded from the `personal/` folder (about-me, requirements and more).                                              |
+| `/skills`    | Display the agent skill modules currently loaded from the `agent/` folder (kanban, planka, agent-rules and more).                                               |
 | `/unlearn`   | Refine Z's memory by evolving or removing specific points in the vault.                                                                                         |
 | `/add`       | Commit specific facts to Z's permanent knowledge vault (bypasses the noise filter).                                                                             |
 | `/remind`    | Set a temporary recurring reminder with interval and expiry (e.g., every 30 min for 4h).                                                                        |
@@ -341,11 +342,10 @@ The `personal/` folder is a local-only, git-ignored directory that gives Z deep 
 **Setup:**
 
 ```
-cp docs/about-me.example.md personal/about-me.md
-cp docs/requirements.example.md personal/requirements.md
+cp -r docs/personal.example personal
 ```
 
-Edit both files with your real personal details, then start the stack.
+Edit the files in `personal/` with your real personal details, then start the stack.
 
 **How it works:**
 
@@ -359,6 +359,29 @@ Edit both files with your real personal details, then start the stack.
 - Action tags (`[ACTION: ...]`) are stripped before injection to prevent personal files from inadvertently triggering Z's agentic tool system.
 - Symlink traversal and archive-bomb attacks are blocked (PDF page cap 50, DOCX paragraph cap 500, file size gate 512 KB, parse timeout 30 s).
 - File magic bytes are validated against declared extensions -- a renamed binary is skipped with a warning.
+
+### Agent Skills Folder
+
+The `agent/` folder is a local-only, git-ignored directory for Z's operational skill modules. Files placed here are loaded on startup, refreshed every hour, and injected into every system prompt as persistent expertise extensions.
+
+Use this folder to give Z deep operational knowledge about specific tools, methodologies, or workflows -- and to hard-code behavioural rules that apply regardless of the personality widget settings.
+
+**Supported file types:** `.md`, `.txt`, `.docx`, `.pdf`
+
+**Setup:**
+
+```
+cp -r agent.example agent
+```
+
+Edit the files in `agent/` to tailor Z's expertise and rules to your workflow. The example folder contains three starter skill modules: `kanban.md` (Kanban/Scrum methodology), `planka.md` (Planka board operational guide), and `agent-rules.md` (a template for hard-coded behavioural rules -- leave empty until needed).
+
+**How it works:**
+
+- Skill files are injected after the personal context block in each system prompt, with a higher token budget (1,800 tokens vs 800 for personal context) to accommodate detailed methodology knowledge.
+- Files are compressed in two stages (deterministic, then LLM-assisted) to fit within the budget. The LLM compressor is instructed to preserve all technical terms, WIP limits, column names, and operational directives.
+- The folder is bind-mounted read-only (`./agent:/app/agent:ro`). The backend cannot write to it.
+- Use `/skills` in the dashboard chat to inspect exactly what Z has loaded from the folder.
 
 ### Deployment Expectations
 

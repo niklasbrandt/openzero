@@ -6,8 +6,9 @@
 
 ## 0. Mandatory Initial Step
 
-- **CRITICAL:** At the beginning of EVERY interaction or whenever you are prompted for a new task, you MUST read and analyze **agents.md**, **AGENT_LOG.md**, **docs/DESIGN.md** and **README.md**.
+- **CRITICAL:** At the beginning of EVERY interaction or whenever you are prompted for a new task, you MUST read and analyze **agents.md**, **AGENT_LOG.md**, **docs/artifacts/DESIGN.md** and **README.md**.
 - You must use the context from these files to ensure your behavior aligns with the project's specific boundaries and that you do not repeat errors recorded in the log.
+- **Artifact Scan:** List the `docs/artifacts/` directory and read the first 20 lines of each artifact file to understand available context before starting work. Do not read entire artifacts unless the task directly requires their content.
 
 ## 10. Build Documentation Maintenance
 
@@ -118,7 +119,7 @@ All code written for the openZero dashboard **MUST** conform to **WCAG 2.1 Level
 
 ## 18. Design System & CSS Architecture
 
-- **Canonical Reference:** All visual decisions are documented in `docs/DESIGN.md`. Read it before modifying any component styling.
+- **Canonical Reference:** All visual decisions are documented in `docs/artifacts/DESIGN.md`. Read it before modifying any component styling.
 - **Design Tokens:** Never use hardcoded hex colors in component CSS. Always reference `:root` custom properties via `var(--token, fallback)`. The fallback value ensures standalone functionality.
 - **Shared Style Modules:** Reusable CSS lives in `src/dashboard/services/*Styles.ts` as exported template string constants. Components interpolate them via `${MODULE_NAME}` inside `<style>` blocks. Do not duplicate sr-only, reduced-motion, scrollbar, or section-header CSS.
 - **rem Not em:** Use `rem` for all spacing (margin, padding, gap, width, height). The only acceptable use of `em` is `letter-spacing`.

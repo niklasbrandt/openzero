@@ -226,8 +226,7 @@ Add "Personal Context Folder" section under "Setting it up". Cover:
 ### BUILD.md
 Add a numbered step in the configuration phase:
 ```
-cp docs/about-me.example.md personal/about-me.md
-cp docs/requirements.example.md personal/requirements.md
+cp -r docs/personal.example personal
 ```
 Then edit both files with real personal details before starting the stack.
 
