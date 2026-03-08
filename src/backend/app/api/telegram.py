@@ -509,8 +509,11 @@ async def cmd_tree(update: Update, context: ContextTypes.DEFAULT_TYPE):
 @owner_only
 async def cmd_personal(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	try:
-		from app.services.personal_context import get_personal_context_debug_report
+		from app.services.personal_context import refresh_personal_context, get_personal_context_debug_report
+		await refresh_personal_context()
 		report = get_personal_context_debug_report()
+		if len(report) > 3500:
+			report = report[:3500] + "\n... (truncated — use dashboard to view full context)"
 		await safe_reply(update, report)
 	except Exception as e:
 		await safe_reply(update, f"Personal context report failed: {e}")
