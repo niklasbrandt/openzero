@@ -288,16 +288,22 @@ Run it manually at any time via: `python3 tests/test_live_regression.py --url ht
 
 ### Prompt Injection Test Suite
 
-A dedicated offline test suite (`tests/test_security_prompt_injection.py`) validates the structural integrity of the prompt construction pipeline against **282 tests across 23 categories**. The suite runs without any infrastructure -- no LLM, no database, no network required.
+Two dedicated offline test suites validate security and structural integrity without any running infrastructure -- no LLM, no database, no network required.
 
-Categories include: direct prompt injection, indirect injection via memory/calendar/documents, jailbreak attempts (DAN, developer mode, grandma exploit), context manipulation (ChatML/LLaMA/Phi/Qwen token injection), memory poisoning, identity hijacking, data exfiltration, privilege escalation, encoding-based evasion (base64, ROT13, homoglyphs, Zalgo, leetspeak), multi-turn manipulation, structured data injection (JSON, YAML, SQL, SSTI), Telegram-specific attacks, dashboard XSS/CSS injection, API endpoint attacks (CRLF, path traversal), combined advanced attacks, and production integration tests that import and validate the actual `sanitise_input()` and `_ADVERSARIAL_PATTERNS` implementations.
+**Prompt injection suite** (`tests/test_security_prompt_injection.py`): **295 tests across 27 categories** validating the prompt construction pipeline.
 
-The production code implements 5 hardening measures identified by the test findings: input sanitisation with model control token stripping (`sanitise_input()` in `llm.py`), adversarial content filtering in memory storage (`memory.py`), action tag stripping from retrieved memory context, and history role filtering (system-role messages dropped from client-provided chat history). Full results and architecture details are in [`docs/artifacts/prompt_injection_tests.md`](docs/artifacts/prompt_injection_tests.md).
+Categories include: direct prompt injection, indirect injection via memory/calendar/documents, jailbreak attempts (DAN, developer mode, grandma exploit), context manipulation (ChatML/LLaMA/Phi/Qwen token injection), memory poisoning, identity hijacking, data exfiltration, privilege escalation, encoding-based evasion (base64, ROT13, homoglyphs, Zalgo, leetspeak), multi-turn manipulation, structured data injection (JSON, YAML, SQL, SSTI), Telegram-specific attacks, dashboard XSS/CSS injection, API endpoint attacks (CRLF, path traversal), combined advanced attacks, production integration tests that import and validate the actual `sanitise_input()` and `_ADVERSARIAL_PATTERNS` implementations, and action tag exception leakage (CWE-209 regression).
 
-Run it with:
+**Static analysis gate** (`tests/test_static_analysis.py`): **12 tests** using AST-based analysis to enforce backend security invariants -- including a check that no `raise HTTPException` leaks an exception cause chain to callers.
+
+Combined: **307 tests**, all expected to pass with 0 failures.
+
+The production code implements 6 hardening measures identified by the test findings: input sanitisation with model control token stripping (`sanitise_input()` in `llm.py`), adversarial content filtering in memory storage (`memory.py`), action tag stripping from retrieved memory context, history role filtering (system-role messages dropped from client-provided chat history), and exception object stripping from `executed_cmds` responses (CWE-209 / CodeQL #23/#24/#29/#211/#258). Full results and architecture details are in [`docs/artifacts/prompt_injection_tests.md`](docs/artifacts/prompt_injection_tests.md).
+
+Run both suites with:
 
 ```bash
-python -m pytest tests/test_security_prompt_injection.py -v --tb=short
+python -m pytest tests/test_security_prompt_injection.py tests/test_static_analysis.py -v --tb=short
 ```
 
 ## Setting it up
