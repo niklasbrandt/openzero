@@ -90,7 +90,6 @@ async def start_telegram_bot():
 	logger.debug("start_telegram_bot - step 2: Registering handlers")
 	bot_app.add_handler(CommandHandler("start", cmd_start))
 	bot_app.add_handler(CommandHandler("tree", cmd_tree))
-	bot_app.add_handler(CommandHandler("review", cmd_review))
 	bot_app.add_handler(CommandHandler("search", cmd_search))
 	bot_app.add_handler(CommandHandler("memories", cmd_memories))
 	bot_app.add_handler(CommandHandler("unlearn", cmd_unlearn))
@@ -508,11 +507,6 @@ async def cmd_tree(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		await safe_reply(update, f"Failed to fetch mission tree: {e}")
 
 @owner_only
-async def cmd_review(update: Update, context: ContextTypes.DEFAULT_TYPE):
-	"""Alias for /week."""
-	await cmd_week(update, context)
-
-@owner_only
 async def cmd_personal(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	try:
 		from app.services.personal_context import get_personal_context_debug_report
@@ -740,7 +734,6 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 			"*System*\n"
 			"/personal -- Show personal context Z loaded from /personal\n"
 			"/status -- Deep integration health check\n"
-			"/review -- Alias for /week\n"
 			"/purge -- Permanently delete all memories\n\n"
 			"_Tap any command to execute it directly._"
 		)
