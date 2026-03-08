@@ -341,6 +341,23 @@ async def parse_and_execute_actions(reply: str, db=None):
         executed_cmds.append("Precision Tracking initiated.")
         clean_reply = strip_tag(clean_reply, raw_tag)
 
+    # 8. Set Nudge Interval Tag
+    # [ACTION: SET_NUDGE_INTERVAL | TASK: text | INTERVAL: minutes]
+    nudge_interval_pattern = r"\[?ACTION: SET_NUDGE_INTERVAL \| TASK: ([^\|\]]+) \| INTERVAL: ([^\|\]]+)\]?"
+    for match in re.finditer(nudge_interval_pattern, reply):
+        raw_tag = match.group(0)
+        task_fragment, interval_raw = match.groups()
+        try:
+            minutes = int(interval_raw.strip())
+            if minutes < 1:
+                raise ValueError("interval must be >= 1")
+            from app.services.follow_up import set_nudge_override
+            set_nudge_override(task_fragment.strip(), minutes)
+            executed_cmds.append(f"Nudge interval for '{task_fragment.strip()}' set to {minutes} min.")
+        except (ValueError, AttributeError) as err:
+            logger.warning("SET_NUDGE_INTERVAL parse error: %s", err)
+        clean_reply = strip_tag(clean_reply, raw_tag)
+
     # --- FINAL AGGRESSIVE HYGIENE ---
     # This prevents 'leaking' of internal agent thoughts or malformed tags to the user.
     
