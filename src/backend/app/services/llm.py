@@ -1279,6 +1279,22 @@ async def chat_with_context(
 			if tools_were_called:
 				_AGENT_ERROR_MARKERS = ["encountered friction", "thread was dropped", "local core is still active", "warming up"]
 				if not any(m in reply.lower() for m in _AGENT_ERROR_MARKERS):
+					# Collect any ToolMessage failure reports and surface them.
+					# The local LLM often ignores tool failures and hallucinates success,
+					# so we append failure strings directly so parse_and_execute_actions
+					# can surface ⚠ notices to the user.
+					tool_msgs = [m for m in result["messages"] if isinstance(m, _ToolMessage)]
+					tool_failures = [
+						m.content for m in tool_msgs
+						if m.content and (
+							m.content.lower().startswith("failed") or
+							m.content.lower().startswith("could not") or
+							"error" in m.content.lower()[:80]
+						)
+					]
+					if tool_failures:
+						failure_block = "\n\n" + "\n".join(f"⚠ {f}" for f in tool_failures)
+						return sanitise_output(reply + failure_block)
 					return sanitise_output(reply)
 				logger.debug("Agent returned error string, falling back to direct chat")
 			else:

@@ -78,12 +78,17 @@ class OperatorBoardService:
 		# If we already have cached IDs, verify they still exist
 		if self._project_id and self._board_id:
 			try:
-				resp = await client.get(f"/api/projects/{self._project_id}")
-				if resp.status_code == 200:
+				proj_resp = await client.get(f"/api/projects/{self._project_id}")
+				board_resp = await client.get(f"/api/boards/{self._board_id}")
+				if proj_resp.status_code == 200 and board_resp.status_code == 200:
 					return self._project_id, self._board_id
+				logger.debug("Planka cache stale (proj=%s board=%s), falling through to search",
+							proj_resp.status_code, board_resp.status_code)
 			except Exception:
-				logger.debug("Planka project cache stale, falling through to search")
-			# Cache stale -- fall through to search
+				logger.debug("Planka cache validation failed, falling through to search")
+			# Cache stale -- clear and fall through to search
+			self._project_id = None
+			self._board_id = None
 
 		# 1. Get/Create Project -- match against ALL translated project names
 		all_project_names = get_all_values("project_name")
@@ -149,11 +154,19 @@ class OperatorBoardService:
 			if not existing:
 				logger.info("Creating list %s", translated_name)
 				pos = list(self._list_key_map.keys()).index(key)
-				await client.post(f"/api/boards/{board['id']}/lists", json={
-					"name": translated_name,
-					"type": "active",
-					"position": (pos + 1) * 65535
-				})
+				try:
+					create_resp = await client.post(f"/api/boards/{board['id']}/lists", json={
+						"name": translated_name,
+						"type": "active",
+						"position": (pos + 1) * 65535
+					})
+					if create_resp.status_code not in (200, 201):
+						logger.warning("Failed to create list '%s': HTTP %s %s",
+									translated_name, create_resp.status_code, create_resp.text[:200])
+					else:
+						logger.info("List '%s' created successfully.", translated_name)
+				except Exception as _le:
+					logger.warning("Exception creating list '%s': %s", translated_name, _le)
 
 		# Cache IDs for fast lookup
 		self._project_id = project["id"]

@@ -13,13 +13,15 @@ logger = logging.getLogger(__name__)
 @tool
 async def create_task(title: str, description: str = "", board_name: str = "Operator Board", list_name: str = "Today") -> str:
     """Create a task in a specific board and list."""
-    success = await planka_create_task(
+    path = await planka_create_task(
         board_name=board_name,
         list_name=list_name,
         title=title,
         description=description
     )
-    return f"Task '{title}' created successfully." if success else f"Failed to create task '{title}'"
+    if path:
+        return f"Task '{title}' created in {path}."
+    return f"Failed to create task '{title}'. Check Planka connection."
 
 @tool
 async def create_project(name: str, description: str = "") -> str:
@@ -184,9 +186,9 @@ async def parse_and_execute_actions(reply: str, db=None):
     for match in re.finditer(task_pattern, reply):
         raw_tag = match.group(0)
         board, llist, title = match.groups()
-        success = await planka_create_task(board_name=board.strip(), list_name=llist.strip(), title=title.strip())
-        if success:
-            executed_cmds.append(f"Task '{title.strip()}' created.")
+        path = await planka_create_task(board_name=board.strip(), list_name=llist.strip(), title=title.strip())
+        if path:
+            executed_cmds.append(f"Task '{title.strip()}' created in {path}.")
         else:
             executed_cmds.append(f"\u26a0 Failed to create task '{title.strip()}'. Check Planka connection.")
         clean_reply = strip_tag(clean_reply, raw_tag)

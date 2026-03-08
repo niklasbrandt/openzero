@@ -912,6 +912,47 @@ async def get_projects():
 	tree = await get_project_tree()
 	return {"tree": tree}
 
+@router.get("/debug-planka")
+async def debug_planka(_: None = Depends(require_auth)):
+	"""Return the exact project → board → lists that operator_service targets.
+
+	Use this to diagnose 'tasks created but not visible' issues.
+	Resets the in-memory cache so the response always reflects the live Planka state.
+	"""
+	try:
+		from app.services.planka import get_planka_auth_token
+		from app.services.operator_board import operator_service
+		import httpx as _httpx
+		from app.config import settings as _s
+
+		token = await get_planka_auth_token()
+		async with _httpx.AsyncClient(base_url=_s.PLANKA_BASE_URL, timeout=10.0,
+									  headers={"Authorization": f"Bearer {token}"}) as client:
+			# Force full re-resolve (bypass cache)
+			operator_service._project_id = None
+			operator_service._board_id = None
+			project_id, board_id = await operator_service.initialize_board(client)
+
+			proj_resp = await client.get(f"/api/projects/{project_id}")
+			proj_name = proj_resp.json().get("item", {}).get("name", "Unknown")
+
+			b_resp = await client.get(f"/api/boards/{board_id}", params={"included": "lists"})
+			b_data = b_resp.json()
+			board_name = b_data.get("item", {}).get("name", "Unknown")
+			lists = b_data.get("included", {}).get("lists", [])
+
+		base_url = _s.BASE_URL.rstrip('/')
+		board_link = f"{base_url}/api/dashboard/planka-redirect?target_board_id={board_id}"
+		return {
+			"project": {"name": proj_name, "id": project_id},
+			"board": {"name": board_name, "id": board_id, "link": board_link},
+			"lists": [{"name": l["name"], "id": l["id"]} for l in lists],
+		}
+	except Exception as e:
+		logger.error("debug-planka failed: %s", e)
+		raise HTTPException(status_code=500, detail="Planka diagnostic failed") from None
+
+
 @router.get("/planka-redirect")
 async def planka_redirect(request: Request, target: str = "", background: bool = False):
 	"""
