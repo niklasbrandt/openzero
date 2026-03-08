@@ -386,6 +386,50 @@ from langgraph.prebuilt import create_react_agent
 # Track the model used for the current request context
 last_model_used: ContextVar[str] = ContextVar("last_model_used", default="local")
 
+# ---------------------------------------------------------------------------
+# Tool-intent keyword lists — one set per supported language.
+# The keyword check is a fast short-circuit before the LangGraph agent.
+# Add new languages by extending this dict with the matching ISO code.
+# ---------------------------------------------------------------------------
+_TOOL_INTENT_KEYWORDS: dict[str, list[str]] = {
+	"en": [
+		"create task", "add task", "new task", "make a task",
+		"create event", "schedule", "set a reminder", "remind me",
+		"create project", "new project", "add person", "remember that",
+		"note that", "learn that", "store this", "track this",
+		"i like", "i love", "my favorite", "my favourite", "into music",
+		"i live in", "i am into", "fact: ",
+		# MARK_DONE / MOVE_CARD triggers
+		" sent", "i sent", "application sent", "email sent",
+		"it's done", "it is done", "i finished", "i completed",
+		"i submitted", "finished the", "completed the", "submitted the",
+		"order done", "done with", "all done",
+	],
+	"de": [
+		# Task / event creation
+		"aufgabe erstellen", "aufgabe hinzufügen", "neue aufgabe", "aufgabe anlegen",
+		"termin erstellen", "termin anlegen", "termin planen", "planen",
+		"erinnerung setzen", "erinnere mich", "erinner mich", "erinnere mich daran",
+		"projekt erstellen", "neues projekt", "person hinzufügen",
+		# Memory / learning
+		"merk dir", "merke dir", "notiere das", "notiere dir", "speichere das",
+		"merken dass", "lerne das", "track das", "verfolge das",
+		# Personal facts
+		"ich mag", "ich liebe", "mein liebling", "mein favorit",
+		"ich wohne in", "ich lebe in", "ich stehe auf", "fakt: ",
+		# MARK_DONE / MOVE_CARD triggers
+		"gesendet", "abgeschickt",
+		"hab geschickt", "habe geschickt", "ich habe geschickt",
+		"bewerbung geschickt", "bewerbung abgeschickt", "bewerbung gesendet",
+		"mail gesendet", "mail geschickt",
+		"fertig", "erledigt", "alles erledigt", "alles fertig",
+		"ich habe fertiggestellt", "hab fertiggestellt",
+		"abgeschlossen", "habe abgeschlossen", "hab abgeschlossen",
+		"eingereicht", "habe eingereicht", "hab eingereicht",
+		"fertig mit", "fertig damit",
+	],
+}
+
 # Lightweight cache for the user's preferred language.
 # Avoids a DB round-trip on every LLM call while ensuring language is
 # always respected even in paths that don't pass a full user_profile.
@@ -1176,19 +1220,9 @@ async def chat_with_context(
 		last_model_used.set(display_name)
 
 		# Only use the LangGraph ReAct agent when the user is explicitly requesting a tool action.
-		TOOL_INTENT_KEYWORDS = [
-			"create task", "add task", "new task", "make a task",
-			"create event", "schedule", "set a reminder", "remind me",
-			"create project", "new project", "add person", "remember that",
-			"note that", "learn that", "store this", "track this",
-			"i like", "i love", "my favorite", "my favourite", "into music",
-			"i live in", "i am into", "fact: ",
-			# MARK_DONE / MOVE_CARD triggers — user reporting completion
-			" sent", "i sent", "application sent", "email sent", "it's done", "it is done",
-			"i finished", "i completed", "i submitted", "finished the", "completed the",
-			"submitted the", "order done", "done with", "all done"
-		]
-		needs_agent = any(kw in user_message.lower() for kw in TOOL_INTENT_KEYWORDS)
+		# Select the keyword list for the user's language; fall back to English.
+		_kw_list = _TOOL_INTENT_KEYWORDS.get(_cached_user_lang, _TOOL_INTENT_KEYWORDS["en"])
+		needs_agent = any(kw in user_message.lower() for kw in _kw_list)
 
 		if needs_agent:
 			# Agent path uses standard tier (tool calling doesn't need 14B)
