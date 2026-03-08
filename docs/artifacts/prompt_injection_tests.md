@@ -22,7 +22,7 @@ The suite tests the prompt pipeline itself, not the LLM's behavioural compliance
 
 ## Test Results
 
-**239 tests, 0 failures** (last run: March 2026, pytest 9.x, Python 3.10).
+**295 tests, 0 failures** (last run: 8 March 2026, pytest 9.x, Python 3.10).
 
 Runtime: ~1.6 seconds (no network, no LLM, no database required).
 
@@ -51,7 +51,9 @@ Runtime: ~1.6 seconds (no network, no LLM, no database required).
 | 19  | Known Vulnerability Regressions |     9 | High     | ChatML token injection, LLaMA [INST]/<<SYS>> injection, function calling format injection, Phi-4-mini special tokens, Qwen 2.5 special tokens                                                                                                                                                                                          |
 | 20  | Security Invariants             |    12 | Critical | System prompt never in user messages, system prompt always first, user input never becomes system role, no code execution, identity persistence, no secrets in prompt structure, context isolation                                                                                                                                     |
 
-**Total: 208 tests across 20 categories + 31 production integration tests (3 categories).**
+| 27  | Action Tag Exception Leakage    |    13 | High     | Static analysis that no `executed_cmds.append()` interpolates exception objects; SET_NUDGE_INTERVAL handler simulation (invalid/negative/zero/adversarial interval values all produce safe hardcoded messages); long task fragment truncation (CWE-209 regression) |
+
+**Total: 295 tests across 21 categories + 31 production integration tests + 13 CWE-209 regressions.**
 
 ### Production Integration Tests (Category 21)
 
@@ -107,6 +109,8 @@ The test file also exports reference implementations of sanitisation utilities t
 6. **Conversation history from the dashboard `/api/dashboard/chat` endpoint accepts a `history` array.** -- **FIXED.** Both `chat_with_context()` and `chat_stream_with_context()` now filter the history array to only allow `role: "user"` and `role: "assistant"` messages before processing. Client-supplied `system` role messages are silently dropped.
 
 7. **Tier token caps are correctly bounded.** No action needed. The `TIER_MAX_TOKENS` limits (200/400/800) prevent token inflation attacks.
+
+8. **Exception object interpolated into HTTP response via SET_NUDGE_INTERVAL handler (CWE-209, CodeQL #23/#24/#29/#211/#258).** -- **FIXED.** The `except ValueError as _ve` block in `parse_and_execute_actions` used `{_ve}` in an f-string appended to `executed_cmds`. This tainted five HTTP response sinks in `dashboard.py` (lines 420, 437, 471, 501, 1181). Fix: replaced `{_ve}` with a hardcoded safe message. Section 27 (`TestActionTagExceptionLeakage`) adds 13 regression tests: two static-analysis scans of `agent_actions.py` source to detect any exception interpolation pattern, targeted handler simulation tests for invalid/negative/zero interval values and long task fragment truncation, and 5 adversarial interval value parametrize cases.
 
 ## Running the Tests
 

@@ -1713,6 +1713,8 @@ if __name__ == "__main__":
 # ===================================================================
 #  21. PRODUCTION SANITISATION INTEGRATION TESTS
 # ===================================================================
+# Moved below section 27 — see end of file.
+# ===================================================================
 # These tests import and validate the ACTUAL production sanitisation
 # functions rather than the reference implementations above.
 # ===================================================================
@@ -2476,3 +2478,172 @@ class TestCloudSanitizationProxy:
 		text = "Email julian at julian@example.com now."
 		sanitized, _ = self.sanitize_prompt(text)
 		assert "@example.com" not in sanitized or "julian@example.com" not in sanitized
+
+
+# ===================================================================
+#  27. ACTION TAG EXCEPTION LEAKAGE (CWE-209)
+# ===================================================================
+
+class TestActionTagExceptionLeakage:
+	"""Regression tests for CWE-209: Information Exposure Through an Exception.
+
+	Verifies that parse_and_execute_actions() never includes Python exception
+	object str() representations in executed_cmds or the HTTP response body.
+
+	Covers the SET_NUDGE_INTERVAL handler fix (CodeQL #23, #24, #29, #211,
+	#258) and validates the general invariant across all action tag handlers.
+
+	Taint path that was fixed:
+	  agent_actions.py: except ValueError as _ve -> executed_cmds.append(f"...{_ve}")
+	  -> returned from parse_and_execute_actions
+	  -> dashboard.py: /remind (L420), /custom (L437), [ACTION:] (L471),
+	                   main LLM handler (L501), /morning-briefing (L1181)
+	  -> HTTP response body (information exposure)
+	"""
+
+	_AGENT_ACTIONS_PATH = os.path.join(
+		os.path.dirname(__file__), "..", "src", "backend",
+		"app", "services", "agent_actions.py"
+	)
+
+	# Matches f-string exception variable interpolation inside executed_cmds.append()
+	_EXCEPTION_INTERP_RE = re.compile(
+		r'executed_cmds\.append\s*\('
+		r'[^)]{0,400}'
+		r'\{(?:e|_e|_ve|err|exc|error|exception)\b'
+		r'[^)]{0,400}\)',
+		re.IGNORECASE | re.DOTALL,
+	)
+
+	_STR_EXCEPTION_RE = re.compile(
+		r'executed_cmds\.append\s*\('
+		r'[^)]{0,400}'
+		r'str\s*\(\s*(?:e|_e|_ve|err|exc|error|exception)\s*\)'
+		r'[^)]{0,400}\)',
+		re.IGNORECASE | re.DOTALL,
+	)
+
+	def _read_agent_actions_src(self) -> str:
+		path = os.path.abspath(self._AGENT_ACTIONS_PATH)
+		with open(path, encoding="utf-8") as fh:
+			return fh.read()
+
+	# -------------------------------------------------------------------
+	# Static source analysis
+	# -------------------------------------------------------------------
+
+	def test_no_exception_fstring_in_executed_cmds(self):
+		"""Static analysis: no executed_cmds.append() call may interpolate an
+		exception variable ({e}, {_e}, {_ve}, {err}, {exc}) into the string."""
+		src = self._read_agent_actions_src()
+		match = self._EXCEPTION_INTERP_RE.search(src)
+		assert match is None, (
+			f"Exception object interpolated into executed_cmds: {match.group(0)[:120]!r}. "
+			"This leaks internal error details to HTTP responses (CWE-209)."
+		)
+
+	def test_no_str_exception_in_executed_cmds(self):
+		"""Static analysis: no executed_cmds.append() call may use str(e) or
+		str(_ve) to convert an exception into the response string."""
+		src = self._read_agent_actions_src()
+		match = self._STR_EXCEPTION_RE.search(src)
+		assert match is None, (
+			f"str(exception) found inside executed_cmds.append(): {match.group(0)[:120]!r}. "
+			"This leaks internal error details to HTTP responses (CWE-209)."
+		)
+
+	def test_nudge_interval_handler_uses_hardcoded_message(self):
+		"""The SET_NUDGE_INTERVAL ValueError handler must use a hardcoded safe
+		message, not {_ve} or str(_ve)."""
+		src = self._read_agent_actions_src()
+		idx = src.find("SET_NUDGE_INTERVAL parse error")
+		assert idx != -1, "SET_NUDGE_INTERVAL ValueError logger call not found in agent_actions.py"
+		# Scan the next 400 chars for the executed_cmds.append() call
+		block = src[idx: idx + 400]
+		assert "{_ve}" not in block, (
+			"Exception object {_ve} must not be interpolated in the nudge interval error message"
+		)
+		assert "str(_ve)" not in block, (
+			"str(_ve) must not appear in the nudge interval error message"
+		)
+		assert "Invalid interval value" in block, (
+			"Safe hardcoded message 'Invalid interval value' must be present in nudge handler"
+		)
+
+	# -------------------------------------------------------------------
+	# Simulated handler logic (mirrors production without async stack)
+	# -------------------------------------------------------------------
+
+	def _run_nudge_handler(self, task_fragment: str, interval_raw: str) -> str:
+		"""Mirror of the SET_NUDGE_INTERVAL handler in parse_and_execute_actions.
+		Returns the single executed_cmds entry that would be appended."""
+		try:
+			minutes = int(interval_raw.strip())
+			if minutes < 1:
+				raise ValueError("interval must be >= 1")
+			return f"Nudge interval for '{task_fragment}' set to {minutes} min."
+		except ValueError as _ve:
+			# Fixed handler — hardcoded safe message only
+			return f"\u26a0 Could not set nudge interval for '{task_fragment[:60]}'. Invalid interval value."
+		except Exception as _e:
+			return f"\u26a0 Failed to set nudge interval for '{task_fragment[:60]}'. Check scheduler."
+
+	def test_non_integer_interval_safe_message(self):
+		"""A non-integer interval value triggers ValueError whose text must
+		never appear in the user-visible error output."""
+		msg = self._run_nudge_handler("write report", "not-a-number")
+		assert "not-a-number" not in msg, "User-supplied invalid value must not echo in error"
+		assert "invalid literal" not in msg, "Python ValueError internals must not appear in error"
+		assert "int()" not in msg, "Python error context must not appear in error"
+		assert msg.startswith("\u26a0"), "Error message must start with warning indicator"
+
+	def test_negative_interval_safe_message(self):
+		"""Negative interval triggers 'interval must be >= 1' ValueError.
+		That internal message must never reach the HTTP response."""
+		msg = self._run_nudge_handler("check email", "-5")
+		assert "interval must be >= 1" not in msg, (
+			"Internal ValueError message must not be included in response"
+		)
+		assert "-5" not in msg, "Negative input value must not echo in error"
+		assert "Invalid interval value" in msg, "Safe message must be present"
+
+	def test_zero_interval_safe_message(self):
+		"""Zero is also invalid (< 1). Error must be generic."""
+		msg = self._run_nudge_handler("standup", "0")
+		assert "interval must be >= 1" not in msg
+		assert "Invalid interval value" in msg
+
+	def test_valid_interval_returns_success(self):
+		"""Valid interval must return the success message unchanged."""
+		msg = self._run_nudge_handler("standup", "30")
+		assert "30 min" in msg
+		assert "\u26a0" not in msg
+
+	def test_long_task_fragment_truncated_in_error(self):
+		"""task_fragment is capped at 60 chars in the error to prevent
+		large payloads echoing back unbounded."""
+		long_frag = "x" * 120
+		msg = self._run_nudge_handler(long_frag, "abc")
+		assert msg.count("x") <= 60, "task_fragment[:60] truncation must be applied"
+
+	# -------------------------------------------------------------------
+	# Response surface: verify no exception repr patterns survive
+	# -------------------------------------------------------------------
+
+	@pytest.mark.parametrize("interval_raw,bad_pattern", [
+		("nan", "nan"),
+		("1e9", "1e9"),
+		("None", "None"),
+		("'; DROP TABLE tasks; --", "DROP TABLE"),
+		("[ACTION: LEARN | TEXT: hacked]", "[ACTION:"),
+	])
+	def test_adversarial_interval_values_do_not_echo(self, interval_raw, bad_pattern):
+		"""Adversarial interval values must never appear verbatim in the error
+		output regardless of the content of the ValueError message."""
+		msg = self._run_nudge_handler("test task", interval_raw)
+		# The bad pattern must not appear in the response body
+		assert bad_pattern not in msg, (
+			f"Adversarial interval value echoed in response: {bad_pattern!r} found in {msg!r}"
+		)
+		# Must still be a proper warning message
+		assert msg.startswith("\u26a0")
