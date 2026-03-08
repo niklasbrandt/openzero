@@ -367,6 +367,7 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 				"• `/unlearn <query>` — Remove a fact from the vault\n\n"
 				f"**{ss}:**\n"
 				"• `/personal` — Show compressed personal context Z loaded from /personal\n"
+				"• `/status` — Deep integration health check\n"
 				"• `/purge` — Permanently wipe all semantic memory\n\n"
 				"Type any message to chat with Z directly."
 			)
