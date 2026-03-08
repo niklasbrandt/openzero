@@ -218,7 +218,7 @@ export class EmailRules extends HTMLElement {
 						<div class="input-row">
 							<div class="input-col">
 								<label class="form-label" for="ruleInput">${this.tr('pattern_label', 'Sender Pattern')} <span class="required" aria-hidden="true">*</span></label>
-								<input type="text" id="ruleInput" required aria-required="true" placeholder="e.g. @domain.com or Invoice" autocomplete="off" aria-describedby="rule-hint">
+								<input type="text" id="ruleInput" required aria-required="true" placeholder="${this.tr('ph_rule_pattern', 'e.g. @domain.com or Invoice')}" autocomplete="off" aria-describedby="rule-hint">
 								<span id="rule-hint" style="font-size:0.65rem;color:rgba(255,255,255,0.25);margin-top:0.15rem;">Match against sender address or subject keywords</span>
 							</div>
 							<div class="input-col">
@@ -231,7 +231,7 @@ export class EmailRules extends HTMLElement {
 							</div>
 							<div class="input-col">
 								<label class="form-label" for="badgeInput">${this.tr('badge_label', 'Badge Label')} <span style="color:rgba(255,255,255,0.3);font-weight:400;">(optional)</span></label>
-								<input type="text" id="badgeInput" placeholder="e.g. CLIENT" autocomplete="off" maxlength="20">
+								<input type="text" id="badgeInput" placeholder="${this.tr('ph_badge_label', 'e.g. CLIENT')}" autocomplete="off" maxlength="20">
 							</div>
 						</div>
 						<div style="display:flex; gap:0.5rem; margin-top:0.75rem;">
