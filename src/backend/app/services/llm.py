@@ -907,6 +907,52 @@ async def chat_stream(
 						logger.debug("LLM timeout (attempt %d/%d, %s). Retrying in 3s...", attempt + 1, max_attempts, tier_name)
 						await asyncio.sleep(3)
 					continue
+			except httpx.HTTPStatusError as http_err:
+				if http_err.response.status_code == 400 and tier_name == "instant":
+					# Context overflow on instant tier — fall back to standard silently.
+					logger.warning("LLM instant 400 (context overflow) — falling back to standard")
+					_, fallback_url, _ = select_tier(user_message, "standard")
+					last_model_used.set(f"Standard: {settings.LLM_MODEL_STANDARD} (fallback)")
+					fall_messages = messages
+					fall_max_tok = TIER_MAX_TOKENS["standard"]
+					fall_timeout = TIER_TIMEOUTS["standard"]
+					try:
+						async with httpx.AsyncClient(timeout=httpx.Timeout(fall_timeout, connect=10.0)) as fc:
+							async with fc.stream(
+								"POST",
+								f"{fallback_url}/v1/chat/completions",
+								json={
+									"messages": fall_messages,
+									"stream": True,
+									"temperature": 0.2,
+									"top_p": 0.9,
+									"max_tokens": fall_max_tok,
+									"thinking": False,
+								},
+							) as fr:
+								fr.raise_for_status()
+								async for line in fr.aiter_lines():
+									if not line.startswith("data: "):
+										continue
+									ds = line[6:]
+									if ds.strip() == "[DONE]":
+										return
+									try:
+										d = json.loads(ds)
+										ch = d.get("choices", [{}])[0].get("delta", {}).get("content")
+										if ch:
+											yield ch
+									except json.JSONDecodeError:
+										continue
+								return
+					except Exception as fb_err:
+						logger.error("Instant fallback (standard) also failed after 400: %s", fb_err)
+						yield "I'm still waking up. Try again in a moment."
+					return
+				else:
+					logger.error("Local LLM HTTP %d error: %s", http_err.response.status_code, http_err)
+					yield "I'm having trouble reaching the local model. Please try again."
+					return
 			except Exception as e:
 				logger.error("Local LLM connection error: %s", e)
 				yield "I'm having trouble reaching the local model. Please try again."
