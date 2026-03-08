@@ -90,9 +90,12 @@ async def start_scheduler():
 	logger.info("System Time Check: %s (Offset: %s)", now.strftime('%Y-%m-%d %H:%M:%S %Z'), now.utcoffset())
 
 	# Morning Briefing — Every day at Configured Time
+	# Explicitly pass timezone so APScheduler never falls back to the VPS system
+	# timezone (typically UTC). Without this, CronTrigger(hour=6) fires at
+	# 06:00 UTC rather than 06:00 local, causing a 1-hour-late briefing in UTC+1.
 	scheduler.add_job(
 		morning_briefing,
-		CronTrigger(hour=brief_hour, minute=brief_min),
+		CronTrigger(hour=brief_hour, minute=brief_min, timezone=tz),
 		id="morning_briefing",
 		replace_existing=True,
 	)
@@ -100,7 +103,7 @@ async def start_scheduler():
 	# Weekly Review — Sunday at 10:00 (or slightly after briefing)
 	scheduler.add_job(
 		weekly_review,
-		CronTrigger(day_of_week="sun", hour=10, minute=0),
+		CronTrigger(day_of_week="sun", hour=10, minute=0, timezone=tz),
 		id="weekly_review",
 		replace_existing=True,
 	)
@@ -109,7 +112,7 @@ async def start_scheduler():
 	from app.tasks.monthly import monthly_review
 	scheduler.add_job(
 		monthly_review,
-		CronTrigger(day=1, hour=9, minute=0),
+		CronTrigger(day=1, hour=9, minute=0, timezone=tz),
 		id="monthly_review",
 		replace_existing=True,
 	)
@@ -118,7 +121,7 @@ async def start_scheduler():
 	from app.tasks.quarterly import quarterly_review
 	scheduler.add_job(
 		quarterly_review,
-		CronTrigger(month="1,4,7,10", day=1, hour=10, minute=30),
+		CronTrigger(month="1,4,7,10", day=1, hour=10, minute=30, timezone=tz),
 		id="quarter_review",
 		replace_existing=True,
 	)
@@ -127,7 +130,7 @@ async def start_scheduler():
 	from app.tasks.yearly import yearly_review
 	scheduler.add_job(
 		yearly_review,
-		CronTrigger(month=1, day=2, hour=11, minute=0),
+		CronTrigger(month=1, day=2, hour=11, minute=0, timezone=tz),
 		id="yearly_review",
 		replace_existing=True,
 	)
