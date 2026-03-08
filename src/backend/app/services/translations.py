@@ -251,6 +251,8 @@ _EN = {
         "/unlearn \u2014 Remove a fact from the vault\n"
         "/protocols \u2014 Inspect Z\u2019s agentic tools\n\n"
         "*System*\n"
+        "/personal \u2014 Show personal context Z has loaded\n"
+        "/status \u2014 Deep integration health check\n"
         "/purge \u2014 Permanently delete all memories\n\n"
         "_Tap any command to execute it directly._"
     ),
@@ -820,6 +822,8 @@ _DE = {
         "/unlearn \u2014 Fakten aus dem Speicher entfernen\n"
         "/protocols \u2014 Z\u2019s agentische Werkzeuge einsehen\n\n"
         "*System*\n"
+        "/personal \u2014 Pers\u00f6nlichen Kontext anzeigen\n"
+        "/status \u2014 Integrations-Gesundheitscheck\n"
         "/purge \u2014 Alle Erinnerungen dauerhaft l\u00f6schen\n\n"
         "_Tippe einen Befehl um ihn direkt auszuf\u00fchren._"
     ),
