@@ -127,3 +127,15 @@ All code written for the openZero dashboard **MUST** conform to **WCAG 2.1 Level
 - **Shadow DOM Encapsulation:** Component styles stay inside their `.ts` template wrappers. Never extract into separate CSS files.
 - **Easing Rules:** Standard GSAP easing: `expo.out` (entrance), `expo.inOut` (transition), `power2.in` (exit), `power2.out` (micro). `elastic.out` and `bounce.out` are only permitted in goo mode (`oz-goo-*` scoped).
 - **Accessibility per Component:** Every Shadow DOM component must include `${ACCESSIBILITY_STYLES}` (providing `.sr-only`, `@media(prefers-reduced-motion)`, and `@media(forced-colors:active)`). Component-specific animation suppression goes in a separate reduced-motion block after the module.
+
+## 19. Localization Hygiene
+
+- **Never Hardcode English:** Every user-visible string in TypeScript components — including `aria-label`, `placeholder`, `title`, and visible text between HTML tags — MUST go through `this.tr('key', 'English fallback')`. The fallback argument is the only permitted place for a raw English string.
+- **Synchronise on Every Change:** When adding, renaming, or removing a UI string, immediately update `src/backend/app/services/translations.py`:
+  - Adding a string: add the key to `_EN` and `_DE` at minimum.
+  - Renaming a key: update it everywhere it is used in TS components AND in all language dicts.
+  - Removing a feature: remove the orphaned keys from `_EN`, `_DE`, and every other language dict to prevent drift and bloat.
+- **No Stub Languages in Selector:** If a language code is listed in the UserCard selector it MUST have a non-empty dict in `_TRANSLATIONS`. Do not add a language to the selector until its dict is populated. This is enforced by `TestSelectorCoverage` in `tests/test_i18n_coverage.py`.
+- **Key Parity is Required:** Every key in `_EN` must exist in every non-empty language dict. Partial dicts are CI-blocked by `TestKeyCompleteness`. When filling out a language, use `_EN` as the canonical reference — never add keys to a language dict that do not exist in `_EN`.
+- **Umlaut / Unicode Correctness:** Language-specific characters (ä, ö, ü, ß, accents, non-Latin scripts) must be stored as literal Unicode in the source file, not as ASCII transliterations (`ae`, `oe`, `ue`) or escape sequences (`\u00e4`). This is enforced for `_DE` by `TestDE_NoAsciiUmlauts`; apply the same standard to any other language dict you write.
+- **Run the i18n Gate:** After any translation-related change, run `pytest tests/test_i18n_coverage.py -v` locally before committing. All six tests must pass (or intentional known-gap failures for partially translated languages must be explicitly documented).
