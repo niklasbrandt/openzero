@@ -6,7 +6,7 @@ of different LLM providers (local llama-server, Groq, OpenAI) and manages the
 system persona 'Z'.
 
 Architecture: 3-Tier Local Intelligence
-- Instant (phi-4-mini): greetings, confirmations, trivial Q&A, memory distillation
+- Instant (Qwen3-1.7B): greetings, confirmations, trivial Q&A, memory distillation
 - Standard (8B): normal conversation, moderate reasoning, tool-intent
 - Deep (14B+): complex analysis, briefings, planning, creative writing
 
