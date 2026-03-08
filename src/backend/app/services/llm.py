@@ -1270,8 +1270,10 @@ async def chat_with_context(
 				logger.debug("Agent called no tools — falling back to direct chat with action tags")
 
 		# --- Direct chat path --- conversational messages and agent fallback
-		# When action intent was detected but the LangGraph agent called no tools,
-		# inject ACTION_TAG_DOCS with a MANDATORY instruction to emit the tags.
+		# ACTION_TAG_DOCS is always injected so any language triggers tags correctly.
+		# The model's own rules prevent spurious emission on casual messages.
+		# When the LangGraph agent was attempted but called no tools, add an extra
+		# imperative so the fallback path still emits the expected tag.
 		if needs_agent:
 			_action_docs_block = (
 				f"\n{ACTION_TAG_DOCS}"
@@ -1281,7 +1283,8 @@ async def chat_with_context(
 				"If the user says remind me, emit CREATE_TASK."
 			)
 		else:
-			_action_docs_block = ""
+			# Always include docs — the model emits tags only when appropriate.
+			_action_docs_block = f"\n{ACTION_TAG_DOCS}"
 
 		# Timeout-racing for deep tier: try deep first, fall back to standard
 		if tier_name == "deep" and settings.SMART_MODEL_INTERACTIVE:
