@@ -35,8 +35,6 @@ import pathlib
 import re
 from typing import Dict, FrozenSet, List, Set, Tuple
 
-import pytest
-
 # ---------------------------------------------------------------------------
 # Source discovery
 # ---------------------------------------------------------------------------
