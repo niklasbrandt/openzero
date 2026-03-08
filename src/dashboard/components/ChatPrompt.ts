@@ -51,7 +51,8 @@ export class ChatPrompt extends HTMLElement {
 
 	private async loadHistory() {
 		try {
-			const limit = Math.max(30, this.messages.length + 5);
+			// Clamp to the backend's enforced cap of 100.
+			const limit = Math.min(100, Math.max(30, this.messages.length + 5));
 			const res = await fetch(`/api/dashboard/chat/history?limit=${limit}`);
 			if (!res.ok) return;
 			const data = await res.json();
