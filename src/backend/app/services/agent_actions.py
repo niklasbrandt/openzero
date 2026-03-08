@@ -456,7 +456,7 @@ async def parse_and_execute_actions(reply: str, db=None):
             executed_cmds.append(f"Nudge interval for '{task_fragment.strip()}' set to {minutes} min.")
         except ValueError as _ve:
             logger.warning("SET_NUDGE_INTERVAL parse error: %s", _ve)
-            executed_cmds.append(f"\u26a0 Could not set nudge interval: {_ve}")
+            executed_cmds.append(f"\u26a0 Could not set nudge interval for '{task_fragment.strip()[:60]}'. Invalid interval value.")
         except Exception as _e:
             logger.error("SET_NUDGE_INTERVAL failed: %s", _e)
             executed_cmds.append(f"\u26a0 Failed to set nudge interval for '{task_fragment.strip()[:60]}'. Check scheduler.")
