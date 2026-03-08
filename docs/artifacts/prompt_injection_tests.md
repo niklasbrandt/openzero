@@ -22,7 +22,7 @@ The suite tests the prompt pipeline itself, not the LLM's behavioural compliance
 
 ## Test Results
 
-**295 tests, 0 failures** (last run: 8 March 2026, pytest 9.x, Python 3.10).
+**295 tests, 0 failures** (last run: 8 March 2026, pytest 9.x, Python 3.10). Static analysis suite (`test_static_analysis.py`): **12 tests** including `TestHTTPExceptionFromException` (enforces no `raise HTTPException(...) from e`).
 
 Runtime: ~1.6 seconds (no network, no LLM, no database required).
 
