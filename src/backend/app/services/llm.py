@@ -387,48 +387,58 @@ from langgraph.prebuilt import create_react_agent
 last_model_used: ContextVar[str] = ContextVar("last_model_used", default="local")
 
 # ---------------------------------------------------------------------------
-# Tool-intent keyword lists — one set per supported language.
-# The keyword check is a fast short-circuit before the LangGraph agent.
-# Add new languages by extending this dict with the matching ISO code.
+# Minimal fast-path keyword list (EN only, obvious triggers).
+# Used as a zero-latency short-circuit BEFORE calling the LLM classifier so
+# that unmistakably-actionable messages never wait for the classifier round-trip.
+# Everything else — including all non-English messages — goes through
+# _classify_intent() below which is language-agnostic.
 # ---------------------------------------------------------------------------
-_TOOL_INTENT_KEYWORDS: dict[str, list[str]] = {
-	"en": [
-		"create task", "add task", "new task", "make a task",
-		"create event", "schedule", "set a reminder", "remind me",
-		"create project", "new project", "add person", "remember that",
-		"note that", "learn that", "store this", "track this",
-		"i like", "i love", "my favorite", "my favourite", "into music",
-		"i live in", "i am into", "fact: ",
-		# MARK_DONE / MOVE_CARD triggers
-		" sent", "i sent", "application sent", "email sent",
-		"it's done", "it is done", "i finished", "i completed",
-		"i submitted", "finished the", "completed the", "submitted the",
-		"order done", "done with", "all done",
-	],
-	"de": [
-		# Task / event creation
-		"aufgabe erstellen", "aufgabe hinzufügen", "neue aufgabe", "aufgabe anlegen",
-		"termin erstellen", "termin anlegen", "termin planen", "planen",
-		"erinnerung setzen", "erinnere mich", "erinner mich", "erinnere mich daran",
-		"projekt erstellen", "neues projekt", "person hinzufügen",
-		# Memory / learning
-		"merk dir", "merke dir", "notiere das", "notiere dir", "speichere das",
-		"merken dass", "lerne das", "track das", "verfolge das",
-		# Personal facts
-		"ich mag", "ich liebe", "mein liebling", "mein favorit",
-		"ich wohne in", "ich lebe in", "ich stehe auf", "fakt: ",
-		# MARK_DONE / MOVE_CARD triggers
-		"gesendet", "abgeschickt",
-		"hab geschickt", "habe geschickt", "ich habe geschickt",
-		"bewerbung geschickt", "bewerbung abgeschickt", "bewerbung gesendet",
-		"mail gesendet", "mail geschickt",
-		"fertig", "erledigt", "alles erledigt", "alles fertig",
-		"ich habe fertiggestellt", "hab fertiggestellt",
-		"abgeschlossen", "habe abgeschlossen", "hab abgeschlossen",
-		"eingereicht", "habe eingereicht", "hab eingereicht",
-		"fertig mit", "fertig damit",
-	],
-}
+_FAST_PATH_KEYWORDS: list[str] = [
+	"create task", "add task", "new task", "remind me",
+	"create event", "create project", "add person",
+	"[action:", "fact: ",
+]
+
+# ---------------------------------------------------------------------------
+# LLM-based intent classifier — language-agnostic, ~3-token output.
+# Returns True when the user's message requires a tool action (task / event
+# creation, MARK_DONE, LEARN, etc.).  Falls back to False on timeout or error
+# so the direct-chat path still runs with ACTION_TAG_DOCS injected.
+# ---------------------------------------------------------------------------
+async def _classify_intent(user_message: str) -> bool:
+	"""Ask the instant model whether the message requires a tool action."""
+	classifier_system = (
+		"You are an intent classifier. "
+		"Reply with exactly the word 'yes' if the user's message requires ANY of: "
+		"creating a task/reminder/event/project, marking something as done/sent/finished/submitted, "
+		"moving a card, storing a personal fact or preference, or adding a person. "
+		"Reply with exactly the word 'no' for casual chat, greetings, questions, "
+		"status checks, or anything purely conversational. "
+		"Output ONLY 'yes' or 'no'. No explanation.\n/no_think"
+	)
+	try:
+		async with httpx.AsyncClient(timeout=httpx.Timeout(8.0, connect=5.0)) as client:
+			resp = await client.post(
+				f"{settings.LLM_INSTANT_URL}/v1/chat/completions",
+				json={
+					"messages": [
+						{"role": "system", "content": classifier_system},
+						{"role": "user", "content": user_message},
+					],
+					"stream": False,
+					"temperature": 0,
+					"max_tokens": 3,
+					"thinking": False,
+				},
+			)
+			resp.raise_for_status()
+			token = resp.json()["choices"][0]["message"]["content"].strip().lower()
+			result = token.startswith("yes")
+			logger.debug("Intent classifier: %r -> needs_agent=%s", token, result)
+			return result
+	except Exception as exc:
+		logger.warning("Intent classifier failed (%s) — defaulting to False", exc)
+		return False
 
 # Lightweight cache for the user's preferred language.
 # Avoids a DB round-trip on every LLM call while ensuring language is
@@ -1219,10 +1229,15 @@ async def chat_with_context(
 		tier_name, base_url, display_name = select_tier(user_message, tier_override)
 		last_model_used.set(display_name)
 
-		# Only use the LangGraph ReAct agent when the user is explicitly requesting a tool action.
-		# Select the keyword list for the user's language; fall back to English.
-		_kw_list = _TOOL_INTENT_KEYWORDS.get(_cached_user_lang, _TOOL_INTENT_KEYWORDS["en"])
-		needs_agent = any(kw in user_message.lower() for kw in _kw_list)
+		# Route through the LangGraph agent only when the message requires a tool action.
+		# 1. Zero-latency fast-path for unmistakably EN actionable phrases.
+		# 2. LLM-based classifier for everything else — language-agnostic.
+		_msg_lower = user_message.lower()
+		if any(kw in _msg_lower for kw in _FAST_PATH_KEYWORDS):
+			needs_agent = True
+			logger.debug("Intent: fast-path keyword match")
+		else:
+			needs_agent = await _classify_intent(user_message)
 
 		if needs_agent:
 			# Agent path uses standard tier (tool calling doesn't need 14B)
