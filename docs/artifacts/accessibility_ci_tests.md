@@ -2,7 +2,7 @@
 
 ## 1. Context and Standards
 
-openZero's dashboard **must conform to WCAG 2.1 Level AA and EN 301 549** (agents.md rule 12, DESIGN.md section 9). These standards overlap almost completely: EN 301 549 clause 9 _is_ WCAG 2.1 AA, making a single test suite sufficient for both mandates.
+openZero's dashboard **must conform to WCAG 2.1 Level AA and EN 301 549** (agents.md rule 12, docs/artifacts/DESIGN.md section 9). These standards overlap almost completely: EN 301 549 clause 9 _is_ WCAG 2.1 AA, making a single test suite sufficient for both mandates.
 
 Current Lighthouse accessibility score: **100/100** (5 consecutive runs; docs/artifacts/lighthouse_results.md Run 8).
 
@@ -95,7 +95,7 @@ Covers all axe-core ARIA rules: valid roles, required attributes, allowed attrib
 
 Rules: `landmark-one-main`, `landmark-unique`, `landmark-no-duplicate-banner`, `landmark-no-duplicate-contentinfo`, `landmark-no-duplicate-main`, `region`, `heading-order`, `page-has-heading-one`, `bypass`
 
-Verifies the document's navigational skeleton: exactly one `<main>`, no duplicate banners, no skipped heading levels (h1 -> h3 max per DESIGN.md section 9.1), and a bypass mechanism (skip link). Screen reader users navigate entirely via landmarks and headings -- losing any of these is a critical regression.
+Verifies the document's navigational skeleton: exactly one `<main>`, no duplicate banners, no skipped heading levels (h1 -> h3 max per docs/artifacts/DESIGN.md section 9.1), and a bypass mechanism (skip link). Screen reader users navigate entirely via landmarks and headings -- losing any of these is a critical regression.
 
 ### Test 6 -- Keyboard navigation focus traversal
 

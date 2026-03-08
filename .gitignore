@@ -7,6 +7,7 @@
 # Personal data (NEVER commit)
 # ===========================
 personal/
+agent/
 
 # ===========================
 # Secrets & environment files

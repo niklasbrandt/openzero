@@ -2,7 +2,7 @@
  * openZero Design Tokens
  * ----------------------
  * Canonical CSS custom properties for the entire dashboard.
- * All color values use HSLA per DESIGN.md SS2.
+ * All color values use HSLA per docs/artifacts/DESIGN.md SS2.
  *
  * NOTE: Do not use raw hex here. Every color must be an hsla() or rgba()
  * expression so forced-colors / high-contrast overrides remain predictable.

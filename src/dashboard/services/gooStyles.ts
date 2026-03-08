@@ -14,7 +14,7 @@
  * - will-change is scoped to active animations only.
  * - prefers-reduced-motion disables everything.
  *
- * Easing conventions (DESIGN.md S6.3):
+ * Easing conventions (docs/artifacts/DESIGN.md S6.3):
  *   elastic.out  ~  cubic-bezier(0.175, 0.885, 0.32, 1.275)
  *   bounce.out   ~  multi-step keyframe with overshoot
  *   These easings are ONLY permitted inside goo-scoped rules.
