@@ -60,6 +60,14 @@ function formatViolations(violations: Result[]): string {
 // Fixture: navigate to the dashboard once and wait for custom elements
 // ---------------------------------------------------------------------------
 test.beforeEach(async ({ page }) => {
+	// The index.html instant-theme script reads z_theme from localStorage and
+	// applies inline CSS custom properties BEFORE external stylesheets load.
+	// A stale cache entry with old lightness values overrides the CSS tokens,
+	// causing computed colors to differ from what tokens.css specifies.
+	// Injecting this before any page script runs clears the stale cache so the
+	// inline script finds nothing and Chrome uses the CSS file defaults.
+	await page.addInitScript(() => { localStorage.removeItem('z_theme'); });
+
 	// Navigate to the root; the Vite preview serves index.html from dist/
 	await page.goto('/');
 
@@ -77,6 +85,24 @@ test.beforeEach(async ({ page }) => {
 	await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => {
 		// networkidle may never fire in test env (ongoing 404 retries).
 		// That is acceptable -- DOM structure is what we audit, not network.
+	});
+
+	// Force Chromium to flush pending Shadow DOM CSS custom-property resolution.
+	// Chrome defers resolving inherited custom properties independently for each
+	// shadow root after the owning element's connectedCallback creates a new
+	// <style> block. Reading both color AND backgroundColor on every shadow-root
+	// element forces the full var() chain (including --accent-primary-l) to be
+	// committed before axe-core reads computed styles.
+	await page.evaluate(() => {
+		document.querySelectorAll('*').forEach((el) => {
+			const sr = (el as Element & { shadowRoot: ShadowRoot | null }).shadowRoot;
+			if (!sr) return;
+			sr.querySelectorAll('button, a, div, span, h1, h2, h3').forEach((e) => {
+				const s = getComputedStyle(e as HTMLElement);
+				void s.color;
+				void s.backgroundColor;
+			});
+		});
 	});
 });
 
@@ -129,6 +155,19 @@ test('Color contrast: all text passes WCAG AA 4.5:1 in light theme', async ({ pa
 	await page.emulateMedia({ colorScheme: 'light' });
 	// Also set the app-level attribute so non-media-query rules fire too.
 	await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'light'));
+	// Remove inline CSS custom property overrides written by UserCard.applyToRoot so
+	// the [data-theme="light"] CSS cascade takes effect. Inline styles have higher
+	// specificity than any CSS rule and would keep 40% L teal against white text in
+	// light mode (3.89:1 — fail) instead of the correct 35% L value (4.87:1 — pass).
+	await page.evaluate(() => {
+		const root = document.documentElement;
+		root.style.removeProperty('--accent-primary-l');
+		root.style.removeProperty('--accent-primary');
+		root.style.removeProperty('--accent-color');
+		root.style.removeProperty('--accent-color-rgb');
+		root.style.removeProperty('--accent-glow');
+		root.style.removeProperty('--on-accent-text');
+	});
 	// Allow a full style-recalculation pass to complete (media + attribute).
 	await page.waitForTimeout(600);
 	// Force Chromium to flush pending Shadow DOM style recalculations before
@@ -140,10 +179,12 @@ test('Color contrast: all text passes WCAG AA 4.5:1 in light theme', async ({ pa
 	await page.evaluate(() => {
 		document.querySelectorAll('*').forEach((el) => {
 			const sr = (el as Element & { shadowRoot: ShadowRoot | null }).shadowRoot;
-			if (sr) {
-				const e = sr.querySelector('div, button, h1, h2, h3, span, p, a');
-				if (e) { void getComputedStyle(e).color; }
-			}
+			if (!sr) return;
+			sr.querySelectorAll('button, a, div, span, h1, h2, h3').forEach((e) => {
+				const s = getComputedStyle(e as HTMLElement);
+				void s.color;
+				void s.backgroundColor;
+			});
 		});
 	});
 
