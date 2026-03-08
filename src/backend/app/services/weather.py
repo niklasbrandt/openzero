@@ -1,7 +1,6 @@
 from typing import Optional
 import httpx
 import logging
-from app.services.timezone import get_user_location
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +29,7 @@ async def get_weather_forecast(location_name: Optional[str] = None) -> str:
 	morning / afternoon / evening segments with precipitation and wind.
 	If no location is provided, uses settings.USER_LOCATION.
 	"""
+	from app.services.timezone import get_user_location
 	location = location_name or get_user_location()
 	if not location:
 		return "Weather location not configured."

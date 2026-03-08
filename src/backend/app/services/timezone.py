@@ -2,8 +2,6 @@ from typing import Optional
 import datetime
 import pytz
 import logging
-from app.services.calendar import fetch_calendar_events
-from app.services.llm import chat
 from app.models.db import AsyncSessionLocal, Preference, Person
 from sqlalchemy import select
 
@@ -49,6 +47,7 @@ async def update_detected_timezone():
 
 	try:
 		# 1. Fetch upcoming events (next 14 days)
+		from app.services.calendar import fetch_calendar_events
 		events = await fetch_calendar_events(max_results=20, days_ahead=14)
 		if not events:
 			return
@@ -56,6 +55,7 @@ async def update_detected_timezone():
 		event_data = "\n".join([f"- {e['summary']} ({e['start']})" for e in events])
 		
 		# 2. Use LLM to deduce location/timezone
+		from app.services.llm import chat
 		prompt = (
 			"Based on these calendar events, deduce the user's likely current or upcoming location/city. "
 			"Look for travel keywords like 'Flight to', 'Trip to', 'Stay in'. "
