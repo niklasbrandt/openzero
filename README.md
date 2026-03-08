@@ -20,14 +20,14 @@ Every weekday morning, Z delivers a **multi-modal briefing** -- a structured tex
 
 The system runs 24/7 on a remote VPS or local homelab. It links email, calendars, project boards, weather, and semantic memory without corporate oversight.
 
-### Telegram Bot
+### Messenger Interface
 
-Z's primary interface is a **Telegram bot** with long-polling (no webhooks required). Send natural language messages, voice notes, or slash commands from any device -- Z responds using full memory, calendar, and project context.
+Z's primary interface is a **mobile messenger** -- the architecture is designed for any chat platform, with **Telegram** as the current implementation (long-polling, no webhooks required). Send natural language messages, voice notes, or slash commands from any device -- Z responds using full memory, calendar, and project context.
 
 - **Natural conversation** -- Discuss tasks, plans, and questions in plain language. Z creates tasks, events, and memories directly from chat.
 - **Voice notes** -- Send audio messages; Whisper transcribes them locally before Z processes them.
 - **Inline keyboards** -- Calendar event approvals, email triage decisions, and proximity tracking confirmations appear as tappable buttons in chat.
-- **All slash commands** -- Every command (`/day`, `/tree`, `/search`, etc.) is available in Telegram.
+- **All slash commands** -- Every command (`/day`, `/tree`, `/search`, etc.) is available via the messenger.
 - **Proactive alerts** -- Urgent emails, follow-up nudges, and tracking milestones are delivered as direct messages.
 
 ### Zero Trust Network
@@ -146,7 +146,7 @@ The stack is optimized for single-server CPU-only deployment with full privacy:
 | **Core OS**      | ![Ubuntu](https://img.shields.io/badge/Ubuntu-E9433F?style=flat&logo=ubuntu&logoColor=white) ![Python](https://img.shields.io/badge/Python-3776AB?style=flat&logo=python&logoColor=white) ![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white) | Containerized foundation on Linux with Python backend.                                              |
 | **Intelligence** | ![llama.cpp](https://img.shields.io/badge/llama.cpp-black?style=flat)                                                                                                                                                                                                                  | 3-tier local LLM (instant/standard/deep) via llama-server with streaming. CPU-only, SIMD-optimized. |
 | **Dashboard**    | ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white) ![Vite](https://img.shields.io/badge/Vite-646CFF?style=flat&logo=vite&logoColor=white)                                                                                        | Native Web Components (Shadow DOM) with hot-reload development.                                     |
-| **Mobile**       | ![Telegram](https://img.shields.io/badge/Telegram-2CA5E0?style=flat&logo=telegram&logoColor=white)                                                                                                                                                                                     | Primary mobile interface via long-polling bot with inline keyboards.                                |
+| **Messenger**    | ![Telegram](https://img.shields.io/badge/Telegram-2CA5E0?style=flat&logo=telegram&logoColor=white)                                                                                                                                                                                     | Messenger interface (Telegram implemented); architecture supports additional platforms.             |
 | **Storage**      | ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=flat&logo=postgresql&logoColor=white) ![Qdrant](https://img.shields.io/badge/Qdrant-red?style=flat)                                                                                                                 | Relational data paired with high-dimensional semantic vector memory.                                |
 | **Execution**    | ![Redis](https://img.shields.io/badge/Redis-DC382D?style=flat&logo=redis&logoColor=white) ![Celery](https://img.shields.io/badge/Celery-37814A?style=flat&logo=celery&logoColor=white)                                                                                                 | Asynchronous task delegation and high-speed message brokering.                                      |
 | **Scheduling**   | ![APScheduler](https://img.shields.io/badge/APScheduler-green?style=flat)                                                                                                                                                                                                              | Timezone-aware cron/interval job scheduler with DST handling.                                       |
