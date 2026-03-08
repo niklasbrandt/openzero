@@ -1048,88 +1048,69 @@ async def planka_redirect(request: Request, target: str = "", background: bool =
 						try {{
 							const token = "{access_token}";
 							const userId = "{user_id}";
-							const email = "{settings.PLANKA_ADMIN_EMAIL}";
-							const password = "{settings.PLANKA_ADMIN_PASSWORD}";
-							console.log("SSO: Initiating autologin for " + email);
-							
-							// 1. Sync Storage
-							localStorage.setItem('accessToken', token);
-							localStorage.setItem('token', token);
+
+							// Seed localStorage immediately with the backend-obtained token.
+							// Planka reads 'accessToken' on boot to restore the session.
+							if (token) {{
+								localStorage.setItem('accessToken', token);
+								localStorage.setItem('token', token);
+							}}
 							if (userId && userId !== "None") {{
 								localStorage.setItem('userId', userId);
 							}}
-							
-							// 2. The "Mask Submitter" (User Requested)
-							// Deep-Sim filling for React-based forms
-							const iframe = document.createElement('iframe');
-							iframe.src = '/login';
-							iframe.style.width = '1px';
-							iframe.style.height = '1px';
-							iframe.style.border = 'none';
-							iframe.style.position = 'absolute';
-							iframe.style.visibility = 'hidden';
-							document.body.appendChild(iframe);
-							
-							let attempt = 0;
-							const maxAttempts = 100; // Try for 2 seconds at 20ms intervals
-							
-							const checkIframe = setInterval(() => {{
-								attempt++;
-								try {{
-									const doc = iframe.contentDocument || iframe.contentWindow.document;
-									if (!doc) return;
-									
-									const emailField = doc.querySelector('input[name="emailOrUsername"]');
-									const passField = doc.querySelector('input[name="password"]');
-									const btn = doc.querySelector('button.ui.primary.button');
-									
-									if (emailField && passField && btn) {{
-										clearInterval(checkIframe);
-										console.log("SSO: Mask detected. Simulating human input...");
-										
-										// Native Setter Bypass for React
-										const setReactValue = (el, val) => {{
-											const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
-											setter.call(el, val);
-											el.dispatchEvent(new Event('input', {{ bubbles: true }}));
-											el.dispatchEvent(new Event('change', {{ bubbles: true }}));
-											el.dispatchEvent(new Event('blur', {{ bubbles: true }}));
-										}};
 
-										setReactValue(emailField, email);
-										setReactValue(passField, password);
-										
-										// Extremely short delay to let React process events
-										setTimeout(() => {{
-											console.log("SSO: Triggering submission...");
-											btn.click();
-											// Monitor for redirect
-											setTimeout(() => {{ window.location.replace('{redirect_url}'); }}, 75);
-										}}, 10);
-										
-									}} else if (doc.location.pathname.includes('/projects') || doc.location.pathname.includes('/boards')) {{
-										clearInterval(checkIframe);
-										console.log("SSO: Session already active in bridge. Redirecting...");
-										window.location.replace('{redirect_url}');
-									}} else if (attempt > maxAttempts) {{
-										clearInterval(checkIframe);
-										console.log("SSO: Polling timeout. Proceeding to destination...");
-										window.location.replace('{redirect_url}');
+							// Establish a browser-native Planka session so the httpOnly
+							// cookie is set for THIS browser (not the backend HTTP client).
+							// Traefik routes /api/* (except /api/dashboard) → Planka.
+							try {{
+								const authResp = await fetch('/api/access-tokens?withHttpOnlyToken=true', {{
+									method: 'POST',
+									headers: {{'Content-Type': 'application/json'}},
+									body: JSON.stringify({{
+										emailOrUsername: "{settings.PLANKA_ADMIN_EMAIL}",
+										password: "{settings.PLANKA_ADMIN_PASSWORD}"
+									}}),
+									credentials: 'include'
+								}});
+
+								if (authResp.status === 403) {{
+									// ToS acceptance required — accept and retry.
+									const d403 = await authResp.json();
+									if (d403.pendingToken) {{
+										await fetch('/api/access-tokens/' + d403.pendingToken + '/actions/accept', {{
+											method: 'POST', credentials: 'include'
+										}});
+										const retryResp = await fetch('/api/access-tokens?withHttpOnlyToken=true', {{
+											method: 'POST',
+											headers: {{'Content-Type': 'application/json'}},
+											body: JSON.stringify({{
+												emailOrUsername: "{settings.PLANKA_ADMIN_EMAIL}",
+												password: "{settings.PLANKA_ADMIN_PASSWORD}"
+											}}),
+											credentials: 'include'
+										}});
+										if (retryResp.ok) {{
+											const retryData = await retryResp.json();
+											if (retryData.item) {{
+												localStorage.setItem('accessToken', retryData.item);
+												localStorage.setItem('token', retryData.item);
+											}}
+										}}
 									}}
-								}} catch (err) {{
-									if (attempt > maxAttempts) {{
-										clearInterval(checkIframe);
-										window.location.replace('{redirect_url}');
+								}} else if (authResp.ok) {{
+									const data = await authResp.json();
+									if (data.item) {{
+										localStorage.setItem('accessToken', data.item);
+										localStorage.setItem('token', data.item);
 									}}
 								}}
-							}}, 20);
-							
-							// 3. Cookie Synchronization (Legacy/Redundancy)
-							const expiry = "; max-age=31536000; path=/; SameSite=Lax";
-							document.cookie = "accessToken=" + token + expiry;
-							document.cookie = "token=" + token + expiry;
-							
-						}} catch (e) {{ 
+							}} catch (fetchErr) {{
+								// Non-fatal: localStorage token set above is the fallback.
+								console.warn('SSO direct fetch failed, token pre-seeded:', fetchErr);
+							}}
+
+							window.location.replace('{redirect_url}');
+						}} catch (e) {{
 							console.error('SSO Error:', e);
 							window.location.replace('{redirect_url}');
 						}}
