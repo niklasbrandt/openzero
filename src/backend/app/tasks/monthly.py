@@ -1,11 +1,9 @@
-from app.services.llm import chat, last_model_used
-from app.services.planka import get_project_tree
 from app.models.db import AsyncSessionLocal, Briefing
 
 async def monthly_review():
 	"""Generate and store the monthly review."""
-	
-	tree = await get_project_tree(as_html=False)
+	from app.services.llm import chat, last_model_used
+	from app.services.planka import get_project_tree
 	
 	prompt = (
 		"Z, monthly review. Summarize 30-day progress, stalled initiatives, and 3 major goals for next month. "
