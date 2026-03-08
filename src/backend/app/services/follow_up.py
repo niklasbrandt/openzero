@@ -99,6 +99,7 @@ async def _llm_classify_urgency(task_titles: list[str]) -> dict[str, str]:
         "No explanation, no preamble."
     )
     try:
+        from app.services.llm import chat
         result = await chat(prompt, tier="instant")
         mapping: dict[str, str] = {}
         for line in result.strip().splitlines():

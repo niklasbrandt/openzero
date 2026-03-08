@@ -4,7 +4,9 @@ async def quarterly_review():
 	"""Generate and store the quarterly strategic review."""
 	from app.services.llm import chat, last_model_used
 	from app.services.planka import get_project_tree
-	
+
+	tree = await get_project_tree(as_html=False)
+
 	prompt = (
 		"Z, QUARTERLY STRATEGIC REVIEW. \n\n"
 		"Analyze the past 90 days. Focus on:\n"
