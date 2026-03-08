@@ -46,7 +46,16 @@ The calendar engine also performs **proactive event detection**: when an incomin
 
 Planka provides the **Kanban engine**, accessible as a mobile-first PWA. Z creates and manages tasks, boards, and lists directly from conversation using Semantic Action Tags. A background SSO bridge keeps the app always authenticated without manual login.
 
-A centralized **Operator Board** pulls high-priority tasks from all project boards into a single "Today" view. The board auto-syncs on a configurable interval and Z sends **proactive follow-up nudges** every 3 hours during work hours for any uncompleted items.
+A centralized **Operator Board** pulls high-priority tasks from all project boards into a single "Today" view. The board auto-syncs on a configurable interval and Z sends **proactive follow-up nudges** during work hours (09:00-21:50) for any uncompleted items. Nudge frequency adapts to task urgency -- Z estimates each task's urgency using keyword heuristics and LLM reasoning, then selects an appropriate cadence:
+
+| Urgency | Examples | Nudge interval |
+| :------ | :------- | :------------- |
+| Urgent | deadline, asap, outage, critical, blocker | every 10 minutes |
+| Medium | general tasks without urgency signals | every 60 minutes |
+| Low | backlog, someday, wishlist, nice to have | every 3 hours |
+| Custom | user-specified (e.g. "remind me every 20 min") | as requested |
+
+A custom interval can also be set directly from chat -- just tell Z "nudge me about the deploy task every 15 minutes" and it will emit a `SET_NUDGE_INTERVAL` action tag that overrides the automatic estimate. Task names can embed intervals inline using patterns like `[nudge:30m]` or `[2h]`.
 
 ### Dashboard
 
