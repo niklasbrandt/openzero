@@ -22,6 +22,6 @@ async def monthly_review():
 	# Send Telegram Notification
 	from app.api.telegram import send_notification
 	from app.config import settings
-	await send_notification(f"🗓️ *Monthly Mission Review*\n\n{content}\n\n🔗 [Dashboard]({settings.BASE_URL}/home)")
+	await send_notification(f"🗓️ *Monthly Mission Review*\n\n{content}\n\n🔗 [Dashboard]({settings.BASE_URL}/dashboard)")
 	
 	return content
