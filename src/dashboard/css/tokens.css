@@ -25,11 +25,11 @@
 	-moz-osx-font-smoothing: grayscale;
 
 	/* -- Accent palette -- */
-	--accent-primary-h: 173;
-	--accent-primary-s: 80%;
-	--accent-primary-l: 40%;
+	--accent-primary-h: 196;
+	--accent-primary-s: 78%;
+	--accent-primary-l: 38%;
 	--accent-primary: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 1);
-	--accent-primary-rgb: 20, 184, 166;
+	--accent-primary-rgb: 21, 153, 179;
 	
 	--accent-secondary-h: 216;
 	--accent-secondary-s: 100%;

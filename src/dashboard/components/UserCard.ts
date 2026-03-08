@@ -35,11 +35,11 @@ export class UserCard extends HTMLElement {
 
 	private themeOptions: Record<string, { label: string, colors: string[] }> = {
 		// Default
-		fusion: { label: 'Default Fusion', colors: ["hsla(173, 80%, 40%, 1)", "hsla(216, 100%, 50%, 1)", "hsla(239, 84%, 67%, 1)"] },
+		fusion: { label: 'Default Fusion', colors: ["hsla(196, 78%, 38%, 1)", "hsla(216, 100%, 50%, 1)", "hsla(239, 84%, 67%, 1)"] },
 		// Natural Elements
 		wind: { label: 'Wind', colors: ["hsla(200, 40%, 58%, 1)", "hsla(195, 45%, 66%, 1)", "hsla(208, 35%, 48%, 1)"] },
 		water: { label: 'Water', colors: ["hsla(207, 90%, 35%, 1)", "hsla(195, 85%, 43%, 1)", "hsla(215, 96%, 28%, 1)"] },
-		fire: { label: 'Fire', colors: ["hsla(20, 94%, 48%, 1)", "hsla(5, 86%, 45%, 1)", "hsla(38, 91%, 49%, 1)"] },
+		fire: { label: 'Fire', colors: ["hsla(5, 94%, 47%, 1)", "hsla(0, 86%, 43%, 1)", "hsla(20, 92%, 50%, 1)"] },
 		earth: { label: 'Earth', colors: ["hsla(36, 70%, 30%, 1)", "hsla(82, 27%, 38%, 1)", "hsla(25, 58%, 43%, 1)"] },
 		// Natural Environments
 		polar: { label: 'Polar', colors: ["hsla(183, 37%, 75%, 1)", "hsla(207, 36%, 44%, 1)", "hsla(215, 52%, 22%, 1)"] },
@@ -768,7 +768,7 @@ export class UserCard extends HTMLElement {
 		this.shadowRoot.querySelector('#save-trigger')?.addEventListener('click', () => this.saveIdentity());
 
 		const applyColors = () => {
-			const cp = (this.shadowRoot?.querySelector('#color-primary-input') as HTMLInputElement)?.value || me.color_primary || 'hsla(173, 80%, 40%, 1)';
+			const cp = (this.shadowRoot?.querySelector('#color-primary-input') as HTMLInputElement)?.value || me.color_primary || 'hsla(196, 78%, 38%, 1)';
 			const cs = (this.shadowRoot?.querySelector('#color-secondary-input') as HTMLInputElement)?.value || me.color_secondary || 'hsla(216, 100%, 50%, 1)';
 			const ct = (this.shadowRoot?.querySelector('#color-tertiary-input') as HTMLInputElement)?.value || me.color_tertiary || 'hsla(239, 84%, 67%, 1)';
 			this.applyToRoot(cp, cs, ct);
