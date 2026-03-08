@@ -160,8 +160,12 @@ async def get_project_tree(as_html: bool = True) -> str:
 		logger.error("Planka project tree error: %s", e)
 		return "Planka connection issue."
 
-async def create_task(board_name: str, list_name: str, title: str, description: str = "") -> bool:
-	"""Creates a card on the specified board and list."""
+async def create_task(board_name: str, list_name: str, title: str, description: str = "") -> Optional[str]:
+	"""Creates a card on the specified board and list.
+
+	Returns the human-readable path "ProjectName → BoardName → ListName" on success,
+	or None on failure, so callers can surface WHERE the card landed.
+	"""
 	# Clean LLM inputs (sometimes they pass literal quotes like '"Test Board"')
 	board_name = (board_name or "Operator Board").strip().strip('"\'')
 	list_name = (list_name or "Inbox").strip().strip('"\'')
@@ -214,16 +218,22 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 			# 2. Find List
 			board_id = target_board["id"]
 			b_detail_resp = await client.get(f"/api/boards/{board_id}", params={"included": "lists"})
+			b_detail_resp.raise_for_status()
 			b_detail = b_detail_resp.json()
 			lists = b_detail.get("included", {}).get("lists", []) or b_detail.get("lists", [])
 			target_list = next((l for l in lists if l["name"].lower() == list_name.lower()), None)
-			
+
 			if not target_list:
+				# Fall back to first available list, or create 'Inbox' if board is empty
 				if lists:
 					target_list = lists[0]
 				else:
 					l_resp = await client.post(f"/api/boards/{board_id}/lists", json={"name": "Inbox", "position": 65535})
+					l_resp.raise_for_status()
 					target_list = l_resp.json().get("item")
+
+			if not target_list:
+				raise ValueError(f"List '{list_name}' not found and could not be created on board '{target_board['name']}'")
 
 			# 3. Create Card
 			res = await client.post(f"/api/boards/{board_id}/cards", json={
@@ -234,11 +244,19 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 				"position": 65535
 			})
 			res.raise_for_status()
-			logger.debug("Card created successfully in %s -> %s", target_board['name'], target_list['name'])
-			return True
+			# Resolve the project name for the path string
+			project_name = "Operations"
+			try:
+				from app.services.operator_board import operator_service
+				project_name = operator_service.project_name
+			except Exception:
+				pass
+			path = f"{project_name} → {target_board['name']} → {target_list['name']}"
+			logger.debug("Card created successfully: %s", path)
+			return path
 	except Exception as e:
-		logger.debug("create_task failed: %s", e)
-		return False
+		logger.warning("create_task failed: %s", e)
+		return None
 
 async def create_project(name: str, description: str = "") -> dict:
 	"""Create a new project in Planka."""

@@ -115,6 +115,7 @@ async def start_telegram_bot():
 	bot_app.add_handler(CommandHandler("help", cmd_help))
 	bot_app.add_handler(CommandHandler("commands", cmd_help))
 	bot_app.add_handler(CommandHandler("status", cmd_status))
+	bot_app.add_handler(CommandHandler("board", cmd_board))
 	bot_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_freetext))
 	bot_app.add_handler(MessageHandler(filters.VOICE, handle_voice))
 
@@ -445,6 +446,50 @@ async def safe_edit(message, text: str, parse_mode="HTML", reply_markup=None):
 			await message.edit_text(text)
 		except Exception:
 			pass  # plain-text fallback also failed -- drop silently
+@owner_only
+async def cmd_board(update: Update, context: ContextTypes.DEFAULT_TYPE):
+	"""Show the exact Planka project → board → lists that Z targets, with a clickable link."""
+	try:
+		from app.services.planka import get_planka_auth_token
+		from app.services.operator_board import operator_service
+		import httpx
+		from app.config import settings
+
+		token = await get_planka_auth_token()
+		async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, timeout=10.0,
+									  headers={"Authorization": f"Bearer {token}"}) as client:
+			# Force full re-resolve (bypass cache to get accurate IDs)
+			operator_service._project_id = None
+			operator_service._board_id = None
+			project_id, board_id = await operator_service.initialize_board(client)
+
+			# Fetch project details for name
+			proj_resp = await client.get(f"/api/projects/{project_id}")
+			proj_name = proj_resp.json().get("item", {}).get("name", "Unknown")
+
+			# Fetch board + lists
+			b_resp = await client.get(f"/api/boards/{board_id}", params={"included": "lists"})
+			b_data = b_resp.json()
+			board_name = b_data.get("item", {}).get("name", "Unknown")
+			lists = b_data.get("included", {}).get("lists", [])
+			list_names = [f"  • {l['name']} (id: {l['id']})" for l in lists]
+
+		base_url = settings.BASE_URL.rstrip('/')
+		link = f"{base_url}/api/dashboard/planka-redirect?target_board_id={board_id}"
+
+		msg = (
+			f"<b>Z's Operator Board target</b>\n\n"
+			f"Project: <code>{proj_name}</code> (id: <code>{project_id}</code>)\n"
+			f"Board: <code>{board_name}</code> (id: <code>{board_id}</code>)\n\n"
+			f"<b>Lists:</b>\n" + "\n".join(list_names) + "\n\n"
+			f'<a href="{link}">Open in Planka →</a>'
+		)
+		await safe_reply(update, msg)
+	except Exception as e:
+		logger.error("cmd_board failed: %s", e)
+		await safe_reply(update, f"Board diagnostic failed: {e}")
+
+
 @owner_only
 async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	"""Deep status check of all integrations."""
