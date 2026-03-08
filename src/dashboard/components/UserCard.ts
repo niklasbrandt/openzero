@@ -586,14 +586,14 @@ export class UserCard extends HTMLElement {
 					<div class="user-info">
 						<div class="avatar" aria-hidden="true">${(me.name || 'U')[0]}</div>
 						${this.isEditing
-							? `<div style="display:flex;flex-direction:column;gap:2px;"><label class="label" for="name-input" style="margin:0;">${this.tr('name_label', 'Name')}</label><input id="name-input" type="text" placeholder="Full Name" value="${me.name || ''}" aria-label="Your name" autocomplete="name"></div>`
+							? `<div style="display:flex;flex-direction:column;gap:2px;"><label class="label" for="name-input" style="margin:0;">${this.tr('name_label', 'Name')}</label><input id="name-input" type="text" placeholder="${this.tr('ph_full_name', 'Full Name')}" value="${me.name || ''}" aria-label="${this.tr('aria_name_input', 'Your name')}" autocomplete="name"></div>`
 							: `<div>
 									<h2>${me.name || 'User'}</h2>
 									<div class="label" style="text-transform: none; margin-top: 2px;">${me.residency || this.tr('resident', 'Resident')}</div>
 								</div>`}
 					</div>
 					<div style="display: flex; gap: 0.5rem;">
-						<button class="edit-btn" id="edit-trigger" aria-label="Edit personal profile">${this.tr('edit', 'Edit')}</button>
+						<button class="edit-btn" id="edit-trigger" aria-label="${this.tr('aria_edit_profile_btn', 'Edit personal profile')}">${this.tr('edit', 'Edit')}</button>
 					</div>
 				</div>
 
@@ -613,11 +613,11 @@ export class UserCard extends HTMLElement {
 						</div>
 						<div class="field">
 							<label class="label" for="gender-input">${this.tr('gender', 'Gender')}</label>
-							<input id="gender-input" type="text" placeholder="e.g. Non-binary" value="${me.gender || ''}" autocomplete="sex">
+							<input id="gender-input" type="text" placeholder="${this.tr('ph_gender', 'e.g. Non-binary')}" value="${me.gender || ''}" autocomplete="sex">
 						</div>
 						<div class="field">
 							<label class="label" for="residency-input">${this.tr('residency', 'Residency')}</label>
-							<input id="residency-input" type="text" placeholder="City, Country" value="${me.residency || ''}">
+							<input id="residency-input" type="text" placeholder="${this.tr('ph_city_country', 'City, Country')}" value="${me.residency || ''}">
 						</div>
 						<div class="field">
 							<label class="label" for="town-input">${this.tr('town', 'Town')}</label>
@@ -633,7 +633,7 @@ export class UserCard extends HTMLElement {
 						</div>
 						<div class="field">
 							<label class="label" for="work-input">${this.tr('work_times', 'Work Times')}</label>
-							<input id="work-input" type="text" placeholder="e.g. 09:00 - 17:00" value="${me.work_times || ''}">
+							<input id="work-input" type="text" placeholder="${this.tr('ph_work_times', 'e.g. 09:00 - 17:00')}" value="${me.work_times || ''}">
 						</div>
 						<div class="field">
 							<label class="label" for="brief-input">${this.tr('briefing', 'Briefing')}</label>
