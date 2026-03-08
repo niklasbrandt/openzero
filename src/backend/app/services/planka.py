@@ -250,7 +250,7 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 				from app.services.operator_board import operator_service
 				project_name = operator_service.project_name
 			except Exception:
-				pass
+				logger.debug("create_task: operator_service not ready, using default project name")
 			path = f"{project_name} → {target_board['name']} → {target_list['name']}"
 			logger.debug("Card created successfully: %s", path)
 			return path

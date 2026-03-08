@@ -21,6 +21,7 @@ scheduler = AsyncIOScheduler(timezone=pytz.utc)
 # Subprocess security allowlist
 # ---------------------------------------------------------------------------
 _ALLOWED_SUBPROCESSES = {"/bin/bash"}
+_BASH_EXEC = next(iter(_ALLOWED_SUBPROCESSES))  # "/bin/bash" — validated at module load
 _ALLOWED_SCRIPT_DIR = os.path.abspath(
 	os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../../scripts")
 )
@@ -48,7 +49,7 @@ async def run_backup():
 			logger.error("Backup script not found at: %s", script_path)
 			return
 
-		result = subprocess.run(["/bin/bash", script_path], capture_output=True, text=True)
+		result = subprocess.run([_BASH_EXEC, script_path], capture_output=True, text=True)
 		if result.returncode == 0:
 			logger.info("Backup completed successfully.")
 		else:

@@ -26,9 +26,9 @@ function loadLazyComponents(): void {
 }
 
 if ('requestIdleCallback' in window) {
-	(window as Window & typeof globalThis).requestIdleCallback(loadLazyComponents, { timeout: 3000 })
+	(window as Window & typeof globalThis).requestIdleCallback(loadLazyComponents, { timeout: 3000 });
 } else {
-	setTimeout(loadLazyComponents, 200)
+	setTimeout(loadLazyComponents, 200);
 }
 
 console.log('openZero Dashboard Initialized');
