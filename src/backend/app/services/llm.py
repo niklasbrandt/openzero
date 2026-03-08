@@ -1009,9 +1009,60 @@ async def chat_stream(
 					yield "I'm having trouble reaching the local model. Please try again."
 					return
 			except Exception as e:
-				logger.error("Local LLM connection error: %s", e)
-				yield "I'm having trouble reaching the local model. Please try again."
-				return
+				if tier_name == "instant":
+					logger.warning("LLM instant connection error (%s) — falling back to standard", type(e).__name__)
+					_, fallback_url, _ = select_tier(user_message, "standard")
+					last_model_used.set(f"Standard: {settings.LLM_MODEL_STANDARD} (fallback)")
+					fall_messages = messages
+					fall_max_tok = TIER_MAX_TOKENS["standard"]
+					fall_timeout = TIER_TIMEOUTS["standard"]
+					try:
+						async with httpx.AsyncClient(timeout=httpx.Timeout(fall_timeout, connect=10.0)) as fc:
+							async with fc.stream(
+								"POST",
+								f"{fallback_url}/v1/chat/completions",
+								json={
+									"messages": fall_messages,
+									"stream": True,
+									"temperature": 0.2,
+									"top_p": 0.9,
+									"max_tokens": fall_max_tok,
+									"thinking": False,
+								},
+							) as fr:
+								fr.raise_for_status()
+								async for line in fr.aiter_lines():
+									if not line.startswith("data: "):
+										continue
+									ds = line[6:]
+									if ds.strip() == "[DONE]":
+										return
+									try:
+										d = json.loads(ds)
+										ch = d.get("choices", [{}])[0].get("delta", {}).get("content")
+										if ch:
+											yield ch
+									except json.JSONDecodeError:
+										continue
+								return
+					except Exception as fb_err:
+						logger.error("Instant fallback (standard) also failed after ConnectError: %s", fb_err)
+						yield "I'm still waking up. Try again in a moment."
+					return
+				else:
+					# Standard / deep: retry with backoff (same pattern as ReadTimeout)
+					last_err = "I'm having trouble reaching the local model. Please try again."
+					if attempt < max_attempts - 1:
+						wait_secs = 5 * (attempt + 1)
+						logger.warning(
+							"LLM connection error (attempt %d/%d, %s tier, %s). Retrying in %ds.",
+							attempt + 1, max_attempts, tier_name, type(e).__name__, wait_secs,
+						)
+						await asyncio.sleep(wait_secs)
+						continue
+					logger.error("Local LLM connection error after %d attempt(s): %s", max_attempts, e)
+					yield last_err
+					return
 
 		if last_err:
 			yield last_err
