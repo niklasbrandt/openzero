@@ -177,8 +177,8 @@ The stack is optimized for single-server CPU-only deployment with full privacy:
 │   └───────────┘  └─────────┘  └──────────────┘  │
 │                                                  │
 │   ┌───────────┐  ┌─────────┐  ┌──────────────┐  │
-│   │  Whisper  │  │  Coqui  │  │   Planka     │  │
-│   │  (STT)    │  │  (TTS)  │  │  (Kanban)    │  │
+│   │  Whisper  │  │  openedai  │  │   Planka     │  │
+│   │  (STT)    │  │  (TTS)     │  │  (Kanban)    │  │
 │   └───────────┘  └─────────┘  └──────────────┘  │
 │                                                  │
 │   ┌───────────┐  ┌─────────┐                     │
@@ -335,7 +335,7 @@ First-time builds and model downloads incur significant durations:
 
 - **Cold Builds:** Using `--no-cache` or major dependency updates can take 45-60 minutes for pip resolution.
 - **Model Downloads:** The 3-tier LLM models total approximately 15GB (Qwen3-1.7B ~1.1GB, Qwen3-8B ~5GB, Qwen3-14B ~9GB). Download time depends on your server's bandwidth.
-- **Media Engines:** Pulling the voice engines (Whisper and Coqui TTS) requires approximately 6GB of model data. Depending on network speed, this may total 2-3 hours for a complete first-time setup.
+- **Media Engines:** Pulling the voice engines (Whisper and openedai-speech TTS) requires approximately 6GB of model data. Depending on network speed, this may total 2-3 hours for a complete first-time setup.
 - **Subsequent Starts:** Once images and models are cached, the stack starts in seconds.
 
 ## Security and Privacy
