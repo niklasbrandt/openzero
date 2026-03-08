@@ -1,11 +1,6 @@
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
-from app.tasks.morning import morning_briefing
-from app.tasks.weekly import weekly_review
-from app.tasks.email_poll import poll_gmail
-from app.tasks.operator_sync import run_operator_sync
-from app.services.timezone import update_detected_timezone, get_current_timezone
 from app.config import settings
 import pytz
 import logging
@@ -60,9 +55,14 @@ async def run_backup():
 async def start_scheduler():
 	# 1. Identify user's actual timezone and preferred briefing time
 	from app.models.db import AsyncSessionLocal, Person
+	from app.tasks.morning import morning_briefing
+	from app.tasks.weekly import weekly_review
+	from app.tasks.email_poll import poll_gmail
+	from app.tasks.operator_sync import run_operator_sync
+	from app.services.timezone import update_detected_timezone, get_current_timezone
 	from sqlalchemy import select
 	from datetime import datetime
-	
+
 	user_tz_str = await get_current_timezone()
 	try:
 		# Configure scheduler with correct timezone to respect DST
