@@ -1283,9 +1283,10 @@ async def chat_with_context(
 					# The local LLM often ignores tool failures and hallucinates success,
 					# so we append failure strings directly so parse_and_execute_actions
 					# can surface ⚠ notices to the user.
+					_action_tag_re = re.compile(r'\[ACTION:[^\]]*\]', re.IGNORECASE)
 					tool_msgs = [m for m in result["messages"] if isinstance(m, _ToolMessage)]
 					tool_failures = [
-						m.content for m in tool_msgs
+						_action_tag_re.sub("", m.content).strip() for m in tool_msgs
 						if m.content and (
 							m.content.lower().startswith("failed") or
 							m.content.lower().startswith("could not") or
