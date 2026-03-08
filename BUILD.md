@@ -459,7 +459,7 @@ python -m pytest tests/test_security_prompt_injection.py -v -k "TelegramSpecific
 python -m pytest tests/test_security_prompt_injection.py -v -k "ActionTagExceptionLeakage"
 ```
 
-All tests should pass with 0 failures. See [`docs/artifacts/prompt_injection_tests.md`](docs/artifacts/prompt_injection_tests.md) for full category breakdown and findings.
+All tests should pass with 0 failures. See `tests/test_security_prompt_injection.py` for full category breakdown.
 
 ### Live Protocol Regression Suite (Requires Running Stack)
 

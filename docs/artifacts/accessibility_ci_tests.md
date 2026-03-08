@@ -4,7 +4,7 @@
 
 openZero's dashboard **must conform to WCAG 2.1 Level AA and EN 301 549** (agents.md rule 12, docs/artifacts/DESIGN.md section 9). These standards overlap almost completely: EN 301 549 clause 9 _is_ WCAG 2.1 AA, making a single test suite sufficient for both mandates.
 
-Current Lighthouse accessibility score: **100/100** (5 consecutive runs; docs/artifacts/lighthouse_results.md Run 8).
+Current Lighthouse accessibility score: **100/100** (5 consecutive runs).
 
 The purpose of CI accessibility testing is therefore **regression prevention** -- ensuring no future change silently breaks the A11y 100 baseline without a CI failure surfacing it within minutes.
 
@@ -726,7 +726,7 @@ The `accessibility` CI job runs on every push and pull request to `main`. A sing
 
 ### Monthly Lighthouse a11y re-run
 
-The existing Lighthouse perf audit workflow (manual) should be extended to add `--only-categories=accessibility` at least once per month to track the score timeseries in [docs/artifacts/lighthouse_results.md](docs/artifacts/lighthouse_results.md). The current streak of 100/100 is the baseline.
+The existing Lighthouse perf audit workflow (manual) should be extended to add `--only-categories=accessibility` at least once per month. The current streak of 100/100 is the baseline.
 
 ### Pre-commit checklist for new components
 
