@@ -27,9 +27,9 @@
 	/* -- Accent palette -- */
 	--accent-primary-h: 196;
 	--accent-primary-s: 78%;
-	--accent-primary-l: 38%;
+	--accent-primary-l: 40%;
 	--accent-primary: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 1);
-	--accent-primary-rgb: 21, 153, 179;
+	--accent-primary-rgb: 22, 161, 188;
 	
 	--accent-secondary-h: 216;
 	--accent-secondary-s: 100%;
@@ -44,9 +44,10 @@
 	
 	--accent-glow: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.4);
 	/* Use as text color where the accent must contrast against the current surface.
-	   Dark mode: bright teal (40% L) is fine against dark surfaces.
-	   Light mode override (--accent-text below) darkens this for WCAG AA compliance. */
-	--accent-text: var(--accent-primary);
+	   Dark mode: 52% L gives ≥4.5:1 on the darkest expected tinted surface
+	   (hsl(196,30%,12%) at 0.88 alpha ≈ #133234), WCAG AA compliant.
+	   Light mode override (--accent-text below) darkens this to 22% L for near-white surfaces. */
+	--accent-text: hsl(var(--accent-primary-h), var(--accent-primary-s), 52%);
 	/* Use for text ON top of accent-colored button backgrounds (e.g. .btn-primary).
 	   Always dark navy so it contrasts on both teal and blue accent surfaces (≥6:1). */
 	--on-accent-text: hsla(228, 45%, 8%, 1);
@@ -54,9 +55,9 @@
 	   tinted surface (#241314), WCAG AA compliant. */
 	--accent-secondary-text: hsl(var(--accent-secondary-h), 100%, 65%);
 
-	/* -- Legacy Mapping (for compatibility) -- */
-	--accent-color: var(--accent-primary);
-	--accent-color-rgb: var(--accent-primary-rgb);
+	/* -- Legacy Mapping (flat literals so Shadow DOM inherits one level, not a 3-level var chain) -- */
+	--accent-color: hsla(196, 78%, 40%, 1);
+	--accent-color-rgb: 22, 139, 182;
 
 	/* -- Semantic status colors -- */
 	--color-success: hsla(142, 71%, 45%, 1);
@@ -169,6 +170,11 @@
 		--color-danger-light: hsla(0, 84%, 58%, 1);
 		--accent-text: hsl(var(--accent-primary-h), 80%, 22%);
 		--accent-secondary-text: hsl(var(--accent-secondary-h), 100%, 32%);
+		/* White text on 35% L teal btn-primary: 4.87:1 (WCAG AA). Dark text gives only 3.92:1. */
+		--on-accent-text: #ffffff;
+		/* Flat literal so Shadow DOM inherits one level, not a 3-level var chain. */
+		--accent-color: hsla(196, 78%, 35%, 1);
+		--accent-color-rgb: 20, 122, 159;
 	}
 }
 
@@ -222,4 +228,9 @@
 	--accent-text: hsl(var(--accent-primary-h), 80%, 22%);
 	/* 32% L blue achieves ≥8:1 on near-white tinted surfaces (WCAG AA+). */
 	--accent-secondary-text: hsl(var(--accent-secondary-h), 100%, 32%);
+	/* White text on 35% L teal btn-primary: 4.87:1 (WCAG AA). Dark text gives only 3.92:1. */
+	--on-accent-text: #ffffff;
+	/* Flat literal so Shadow DOM inherits one level, not a 3-level var chain. */
+	--accent-color: hsla(196, 78%, 35%, 1);
+	--accent-color-rgb: 20, 122, 159;
 }

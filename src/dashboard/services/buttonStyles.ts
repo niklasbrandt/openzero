@@ -42,8 +42,8 @@ export const BUTTON_STYLES = `
 	/* Primary / filled — save, submit, add-confirm */
 	.btn-primary, .save-btn {
 		background: var(--accent-color, hsla(173, 80%, 40%, 1));
-		/* --on-accent-text is always dark navy (hsla(228,45%,8%)) so it contrasts
-		   against the teal/blue accent bg in both dark AND light mode (≥6:1). */
+		/* Dark mode: dark navy on 40% L teal → 4.91:1 (WCAG AA).
+		   Light mode: --on-accent-text overridden to #fff; white on 35% L teal → 4.87:1. */
 		color: var(--on-accent-text, hsla(228, 45%, 8%, 1));
 		border-color: var(--accent-color, hsla(173, 80%, 40%, 1));
 		font-weight: 700;
