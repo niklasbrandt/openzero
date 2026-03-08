@@ -74,6 +74,12 @@ async def lifespan(app: FastAPI):
     
     # 3. Start background tasks & bot
     try:
+        # Load user timezone from DB BEFORE starting the scheduler so
+        # get_current_timezone() returns the correct value (not the
+        # hardcoded "Europe/Berlin" fallback) when CronTriggers are built.
+        from app.services.timezone import refresh_user_settings
+        await refresh_user_settings()
+
         logging.info("Starting scheduler...")
         await start_scheduler()
 
