@@ -224,6 +224,11 @@ async def run_proactive_follow_up():
             from app.services.llm import chat
             from app.api.telegram import send_notification, _get_stats_footer
             nudge = await chat(prompt)
+            # Guard: skip sending if the LLM returned an error string (e.g. still starting up)
+            _LLM_ERR = ("having trouble reaching", "still waking up", "warming up my local")
+            if any(err in nudge for err in _LLM_ERR):
+                logger.warning("Follow-up: LLM unavailable, skipping nudge this cycle")
+                return
             footer = await _get_stats_footer()
             await send_notification(f"🎯 *Mission Check:*\n\n{nudge}{footer}")
             logger.info("Follow-up: Sent nudge for %s tasks.", len(due_cards))
