@@ -28,6 +28,14 @@
 	transform: translateY(-1px);
 }
 
+/* Reset browser UA appearance on <button> so it matches <a>.planka-btn exactly */
+button.planka-btn {
+	appearance: none;
+	-webkit-appearance: none;
+	box-sizing: border-box;
+	line-height: 1.5;
+}
+
 /* -- Base button -- */
 button {
 	display: inline-flex;
