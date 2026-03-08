@@ -921,7 +921,6 @@ async def debug_planka(_: None = Depends(require_auth)):
 	"""
 	try:
 		from app.services.planka import get_planka_auth_token
-		from app.services.operator_board import operator_service
 		import httpx as _httpx
 		from app.config import settings as _s
 
