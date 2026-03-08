@@ -454,7 +454,8 @@ _PROMPT_ECHO_RE = _build_prompt_echo_re(SYSTEM_PROMPT_CHAT)
 ACTION_TAG_DOCS = """
 Semantic Action Tags (Exact Format Required):
 - Create Task: `[ACTION: CREATE_TASK | BOARD: name | LIST: name | TITLE: text]`
-  (Default board: "Boards", default list: "Today")
+  (Default board: "Operator Board", default list: "Today")
+  Always emit this tag when the user says "remind me today", "remind me later", "add this to my list", or mentions any item they need to do/buy/handle.
 - Create Project: `[ACTION: CREATE_PROJECT | NAME: text | DESCRIPTION: text]`
 - Create Board: `[ACTION: CREATE_BOARD | PROJECT: project_name | NAME: text]`
 - Create List (Column): `[ACTION: CREATE_LIST | BOARD: board_name | NAME: text]`
@@ -1216,19 +1217,31 @@ async def chat_with_context(
 			result = await agent_executor.ainvoke({"messages": messages}, config={"configurable": {"thread_id": str(uuid.uuid4())}})
 			reply = result["messages"][-1].content
 
-			# If agent returned an error string, fall through to direct chat
-			_AGENT_ERROR_MARKERS = ["encountered friction", "thread was dropped", "local core is still active", "warming up"]
-			if not any(m in reply.lower() for m in _AGENT_ERROR_MARKERS):
-				return sanitise_output(reply)
-			logger.debug("Agent returned error string, falling back to direct chat")
+			# Only trust the agent result if it actually called at least one tool.
+			# If no ToolMessages were produced the local model responded conversationally
+			# (tool-calling unsupported / refused) — fall through to the direct-chat path
+			# which injects ACTION_TAG_DOCS so text action tags are emitted instead.
+			from langchain_core.messages import ToolMessage as _ToolMessage
+			tools_were_called = any(isinstance(m, _ToolMessage) for m in result["messages"])
+			if tools_were_called:
+				_AGENT_ERROR_MARKERS = ["encountered friction", "thread was dropped", "local core is still active", "warming up"]
+				if not any(m in reply.lower() for m in _AGENT_ERROR_MARKERS):
+					return sanitise_output(reply)
+				logger.debug("Agent returned error string, falling back to direct chat")
+			else:
+				logger.debug("Agent called no tools — falling back to direct chat with action tags")
 
 		# --- Direct chat path --- conversational messages and agent fallback
+		# When action intent was detected but the LangGraph agent called no tools,
+		# inject ACTION_TAG_DOCS so the model can emit text action tags instead.
+		_action_docs_block = f"\n{ACTION_TAG_DOCS}" if needs_agent else ""
+
 		# Timeout-racing for deep tier: try deep first, fall back to standard
 		if tier_name == "deep" and settings.SMART_MODEL_INTERACTIVE:
 			logger.debug("Racing deep model with %ds timeout", settings.DEEP_MODEL_TIMEOUT_S)
 			history_text = _build_history_text(history)
 			context_injection = "\n\n".join(filter(None, [full_prompt, history_text]))
-			system_with_context = f"{formatted_system_prompt}\n\n{context_injection}" if context_injection else formatted_system_prompt
+			system_with_context = f"{formatted_system_prompt}{_action_docs_block}\n\n{context_injection}" if context_injection else f"{formatted_system_prompt}{_action_docs_block}"
 
 			try:
 				# Try to get first token from deep model within timeout
@@ -1261,7 +1274,7 @@ async def chat_with_context(
 		logger.debug("Direct chat [%s] -> %s", tier_name, display_name)
 		history_text = _build_history_text(history)
 		context_injection = "\n\n".join(filter(None, [full_prompt, history_text]))
-		system_with_context = f"{formatted_system_prompt}\n\n{context_injection}" if context_injection else formatted_system_prompt
+		system_with_context = f"{formatted_system_prompt}{_action_docs_block}\n\n{context_injection}" if context_injection else f"{formatted_system_prompt}{_action_docs_block}"
 
 		# Add brevity hint for short messages
 		if len(user_message.strip()) < 30:
