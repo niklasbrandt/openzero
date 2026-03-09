@@ -15,6 +15,8 @@ agent/
 .env
 .env.remote
 .env.planka
+remote_env.txt
+remote_env_planka.txt
 tokens/
 scripts/pass.txt
 scripts/*.log
