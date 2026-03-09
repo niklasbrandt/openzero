@@ -426,13 +426,15 @@
 
 			<welcome-onboarding></welcome-onboarding>
 
-			<section class="dashboard-card chat-card" id="section-chat" aria-label="Chat" data-tr-aria="nav_chat">
-				<chat-prompt></chat-prompt>
-			</section>
+			<div class="dashboard-row chat-calendar-row">
+				<section class="dashboard-card chat-card" id="section-chat" aria-label="Chat" data-tr-aria="nav_chat">
+					<chat-prompt></chat-prompt>
+				</section>
 
-			<section class="dashboard-card" id="section-calendar" aria-label="Calendar" data-tr-aria="nav_calendar">
-				<calendar-agenda></calendar-agenda>
-			</section>
+				<section class="dashboard-card" id="section-calendar" aria-label="Calendar" data-tr-aria="nav_calendar">
+					<calendar-agenda></calendar-agenda>
+				</section>
+			</div>
 
 			<section class="dashboard-card life-overview-card" id="section-life" aria-label="Life"
 				data-tr-aria="nav_life">
@@ -447,15 +449,17 @@
 				<briefing-history></briefing-history>
 			</section>
 
-			<section class="dashboard-card persona-row-card" id="section-personality" aria-label="Personality"
-				data-tr-aria="nav_personality">
-				<z-personality></z-personality>
-			</section>
+			<div class="dashboard-row persona-profile-row">
+				<section class="dashboard-card persona-row-card" id="section-personality" aria-label="Personality"
+					data-tr-aria="nav_personality">
+					<z-personality></z-personality>
+				</section>
 
-			<section class="dashboard-card persona-row-card" id="section-identity" aria-label="Profile"
-				data-tr-aria="nav_profile">
-				<user-card></user-card>
-			</section>
+				<section class="dashboard-card persona-row-card" id="section-identity" aria-label="Profile"
+					data-tr-aria="nav_profile">
+					<user-card></user-card>
+				</section>
+			</div>
 
 			<section class="dashboard-card full-width-card" id="section-circles" aria-label="Relationships"
 				data-tr-aria="nav_circles">
