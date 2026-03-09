@@ -174,7 +174,7 @@ export class DiagnosticsWidget extends HTMLElement {
             { id: 'sse4_2', label: 'SSE4.2' },
         ];
         const featGrid = cpuFeats.map(f => `
-            <div class="hw-feat ${cpu[f.id] ? 'active' : 'inactive'}">
+            <div class="hw-feat has-tip ${cpu[f.id] ? 'active' : 'inactive'}" data-tip="${f.label} hardware instruction set extension ${cpu[f.id] ? 'is available' : 'is not detected'}.">
                 <span class="feat-dot"></span>
                 <span class="feat-label">${f.label}</span>
             </div>
@@ -188,15 +188,23 @@ export class DiagnosticsWidget extends HTMLElement {
             { name: 'DNS', status: sys.dns_ok === true ? 'online' : 'warning', detail: sys.dns_detail || 'online' },
         ];
 
-        const swGrid = swServices.map(s => `
-			<div class="svc-item">
-				<div class="svc-main">
-					<span class="svc-dot ${s.status}"></span>
-					<span class="svc-name">${s.name}</span>
-				</div>
-				<span class="svc-detail">${this.esc(s.detail)}</span>
-			</div>
-		`).join('');
+        const swGrid = swServices.map(s => {
+            const tips: Record<string, string> = {
+                'Memory': 'Status of the semantic memory vector store (Qdrant).',
+                'Database': 'Relational data storage (Postgres) health and size.',
+                'Cache': 'Fast transient storage (Redis) for sessions and coordination.',
+                'DNS': 'Local privacy-focused DNS resolver (Pi-hole) status.'
+            };
+            return `
+                <div class="svc-item has-tip" data-tip="${tips[s.name] || ''}">
+                    <div class="svc-main">
+                        <span class="svc-dot ${s.status}"></span>
+                        <span class="svc-name">${s.name}</span>
+                    </div>
+                    <span class="svc-detail">${this.esc(s.detail)}</span>
+                </div>
+            `;
+        }).join('');
 
         const cfgTiers: any[] = (this.llmConfig || {}).tiers || [];
         const modelFor = (name: string) => {
@@ -216,8 +224,13 @@ export class DiagnosticsWidget extends HTMLElement {
             const model = modelFor(name);
             const dotClass = !isOnline ? 'offline' : isBusy ? 'processing' : 'online';
             const statusLabel = !isOnline ? 'OFFLINE' : isBusy ? 'BUSY' : 'IDLE';
+            const tierTips: Record<string, string> = {
+                'instant': 'Edge-optimized for near-zero latency intent detection.',
+                'standard': 'General-purpose reasoning and standard tool use.',
+                'deep': 'Chain-of-thought optimized for high-precision logic.'
+            };
             return `
-                <div class="llm-tier-status ${isBusy ? 'busy' : ''}">
+                <div class="llm-tier-status has-tip ${isBusy ? 'busy' : ''}" data-tip="${tierTips[name] || ''}">
                     <div class="llm-tier-main">
                         <span class="svc-dot ${dotClass}"></span>
                         <span class="llm-tier-label">${name}</span>
@@ -235,7 +248,7 @@ export class DiagnosticsWidget extends HTMLElement {
             this.benchResults.map(r => {
                 if (r.error) {
                     return `
-                        <div class="bench-res-item error">
+                        <div class="bench-res-item error has-tip" data-tip="Click a test button to retry.">
                             <span class="bench-tier">${r.tier}</span>
                             <span class="bench-error">${this.esc(r.error)}</span>
                         </div>
@@ -243,7 +256,7 @@ export class DiagnosticsWidget extends HTMLElement {
                 }
                 const rtg = this.getRating(r.tokens_per_second, r.tier);
                 return `
-					<div class="bench-res-item">
+					<div class="bench-res-item has-tip" data-tip="${rtg.hint}">
 						<span class="bench-tier">${r.tier}</span>
 						<span class="bench-val ${rtg.cls}">${r.tokens_per_second} <small>tok/s</small></span>
 						<span class="bench-label ${rtg.cls}">${rtg.label}</span>
@@ -254,7 +267,7 @@ export class DiagnosticsWidget extends HTMLElement {
 
         el.innerHTML = `
 			<div class="diag-layout">
-                <button id="btn-force-reload" class="reload-btn" title="Force Update">
+                <button id="btn-force-reload" class="reload-btn has-tip" data-tip="Force refresh of all diagnostic metrics.">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21 2v6h-6"></path><path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path><path d="M3 22v-6h6"></path><path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
                     </svg>
@@ -267,9 +280,9 @@ export class DiagnosticsWidget extends HTMLElement {
                         <span class="ram-value">${srv.ram_used_gb || (ramPct * srv.ram_total_gb / 100).toFixed(1)}GB / ${srv.ram_total_gb}GB</span>
                     </div>
                     <div class="ram-strip-bar">
-                        <div class="ram-segment apps" style="width:${appsPct}%" title="Applications & LLMs"></div>
-                        <div class="ram-segment cache" style="width:${cachePct}%" title="System Cache & Buffers"></div>
-                        <div class="ram-segment free" style="width:${100 - appsPct - cachePct}%" title="Free Memory"></div>
+                        <div class="ram-segment apps has-tip" style="width:${appsPct}%" data-tip="Applications & Models: Actively used memory."></div>
+                        <div class="ram-segment cache has-tip" style="width:${cachePct}%" data-tip="Cache & Buffers: Reclaimable system memory."></div>
+                        <div class="ram-segment free has-tip" style="width:${100 - appsPct - cachePct}%" data-tip="Free: Unused physical RAM available."></div>
                     </div>
                     <div class="ram-strip-legend">
                         <div class="leg-item"><span class="leg-dot apps"></span> Apps: ${srv.ram_apps_gb || 0}G</div>
@@ -283,9 +296,9 @@ export class DiagnosticsWidget extends HTMLElement {
 					<div class="diag-section-label">Processor Info</div>
 					<div class="cpu-info">${cpu.cpu_model}</div>
 					<div class="hw-specs">
-						<div class="hw-spec"><span>Cores</span><strong>${cpu.cores_physical}P/${cpu.cores_logical}L</strong></div>
-						<div class="hw-spec"><span>Arch</span><strong>${cpu.architecture}</strong></div>
-						<div class="hw-spec"><span>Uptime</span><strong>${srv.uptime_human || '?'}</strong></div>
+						<div class="hw-spec has-tip" data-tip="${cpu.cores_physical} physical cores / ${cpu.cores_logical} logical threads."><span>Cores</span><strong>${cpu.cores_physical}P/${cpu.cores_logical}L</strong></div>
+						<div class="hw-spec has-tip" data-tip="System instruction set architecture."><span>Arch</span><strong>${cpu.architecture}</strong></div>
+						<div class="hw-spec has-tip" data-tip="Time since the last system boot."><span>Uptime</span><strong>${srv.uptime_human || '?'}</strong></div>
 					</div>
                     <div class="diag-section-label" style="margin-top: 0.5rem">CPU Features</div>
                     <div class="hw-feat-grid">${featGrid}</div>
@@ -301,11 +314,11 @@ export class DiagnosticsWidget extends HTMLElement {
 				<div class="diag-col benchmarks">
 					<div class="diag-section-label">Benchmark</div>
 					<div class="bench-actions" style="margin-top: 0">
-						<button class="b-btn main ${this.isBenchRunning ? 'running' : ''}" data-tier="all">Benchmark all LLMs</button>
+						<button class="b-btn main has-tip ${this.isBenchRunning ? 'running' : ''}" data-tier="all" data-tip="Run performance tests across all active tiers.">Benchmark all LLMs</button>
 						<div class="b-row">
-							<button class="b-btn sm" data-tier="instant">Instant</button>
-							<button class="b-btn sm" data-tier="standard">Standard</button>
-							<button class="b-btn sm" data-tier="deep">Deep</button>
+							<button class="b-btn sm has-tip" data-tier="instant" data-tip="Test latency of the instant tier.">Instant</button>
+							<button class="b-btn sm has-tip" data-tier="standard" data-tip="Test speed of the standard tier.">Standard</button>
+							<button class="b-btn sm has-tip" data-tier="deep" data-tip="Test throughput of the deep tier.">Deep</button>
 						</div>
 					</div>
 					<div class="bench-results-list" style="margin-top: 0.5rem">${benchHtml}</div>
