@@ -165,8 +165,9 @@ def _extract_translation_registry() -> Dict[str, bool]:
 					registry[code] = isinstance(v, ast.Name) or (
 						isinstance(v, ast.Dict) and len(v.keys) > 0
 					)
-	except (SyntaxError, FileNotFoundError):
-		pass  # translations.py absent or unparseable in isolated test envs — return empty registry
+	except (SyntaxError, FileNotFoundError) as exc:
+		import logging
+		logging.getLogger(__name__).debug("translations.py absent or unparseable: %s", exc)
 
 	return registry
 
