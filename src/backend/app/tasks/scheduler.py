@@ -266,7 +266,7 @@ async def load_custom_tasks():
 	"""Loads persistent custom tasks from the database into the scheduler."""
 	from app.models.db import AsyncSessionLocal, CustomTask
 	from sqlalchemy import select
-	from app.api.telegram import send_notification
+	from app.services.notifier import send_notification
 
 	try:
 		async with AsyncSessionLocal() as session:
@@ -351,7 +351,7 @@ async def check_pihole_dns():
 			logger.info("dns_watchdog: DNS recovered after %d failed checks.", _dns_fail_count)
 			if _dns_alert_sent:
 				try:
-					from app.api.telegram import send_notification_html
+					from app.services.notifier import send_notification_html
 					await send_notification_html(
 						"<b>✅ DNS recovered</b> — Pi-hole is resolving <code>open.zero</code> again."
 					)
@@ -408,7 +408,7 @@ async def check_pihole_dns():
 	if _dns_fail_count >= 2 and not _dns_alert_sent:
 		_dns_alert_sent = True
 		try:
-			from app.api.telegram import send_notification_html
+			from app.services.notifier import send_notification_html
 			fix_line = f"\n<b>Auto-fix:</b> <code>{auto_fix_result}</code>" if gravity_broken else ""
 			gravity_line = "\n<b>Cause:</b> gravity DB corruption detected in FTL.log" if gravity_broken else "\n<b>Cause:</b> unknown — check FTL.log manually"
 			await send_notification_html(

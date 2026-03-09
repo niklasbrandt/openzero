@@ -179,7 +179,7 @@ async def morning_briefing():
 		await session.commit()
 
 	# 5. Send text notification to Telegram immediately (does not wait for TTS)
-	from app.api.telegram import send_notification, send_voice_message, get_nav_markup
+	from app.services.notifier import send_notification, send_voice_message, get_nav_markup
 	from app.services.translations import get_translations
 	lang = "en"
 	async with AsyncSessionLocal() as session:
