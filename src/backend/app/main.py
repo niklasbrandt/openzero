@@ -4,7 +4,7 @@ from app.models.db import engine, Base, AsyncSessionLocal, Person
 from sqlalchemy import select
 from app.services.memory import ensure_collection
 from app.tasks.scheduler import start_scheduler, stop_scheduler
-from app.api.telegram import start_telegram_bot, stop_telegram_bot
+from app.api.telegram_bot import start_telegram_bot, stop_telegram_bot
 import os
 import asyncio
 from sqlalchemy import text

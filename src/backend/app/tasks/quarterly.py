@@ -27,7 +27,7 @@ async def quarterly_review():
 		await session.commit()
 	
 	# Send Telegram Notification
-	from app.api.telegram import send_notification
+	from app.services.notifier import send_notification
 	await send_notification(f"📊 *Quarterly Strategic Review*\n\n{content}")
 	
 	return content
