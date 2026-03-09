@@ -203,13 +203,17 @@ export class DiagnosticsWidget extends HTMLElement {
             const isBusy = td.activity === 'processing';
             const model = modelFor(name);
             const dotClass = !isOnline ? 'offline' : isBusy ? 'processing' : 'online';
+            const statusLabel = !isOnline ? 'OFFLINE' : isBusy ? 'BUSY' : 'IDLE';
             return `
                 <div class="llm-tier-status ${isBusy ? 'busy' : ''}">
                     <div class="llm-tier-main">
                         <span class="svc-dot ${dotClass}"></span>
                         <span class="llm-tier-label">${name}</span>
                     </div>
-                    <span class="llm-tier-info">${this.esc(model)}</span>
+                    <div class="llm-tier-meta">
+                        <span class="llm-status-text ${dotClass}">${statusLabel}</span>
+                        <span class="llm-tier-info">${this.esc(model)}</span>
+                    </div>
                 </div>
             `;
         }).join('');
@@ -276,18 +280,18 @@ export class DiagnosticsWidget extends HTMLElement {
 					<div class="svc-grid">${swGrid}</div>
 				</div>
 
-				<!-- Right Column: Benchmarks -->
+				<!-- Right Column: Benchmark -->
 				<div class="diag-col benchmarks">
-					<div class="diag-section-label">Performance Ratings</div>
-					<div class="bench-results-list">${benchHtml}</div>
-					<div class="bench-actions">
-						<button class="b-btn main ${this.isBenchRunning ? 'running' : ''}" data-tier="all">Full Suite Test</button>
+					<div class="diag-section-label">Benchmark</div>
+					<div class="bench-actions" style="margin-top: 0">
+						<button class="b-btn main ${this.isBenchRunning ? 'running' : ''}" data-tier="all">Benchmark all LLMs</button>
 						<div class="b-row">
 							<button class="b-btn sm" data-tier="instant">Instant</button>
 							<button class="b-btn sm" data-tier="standard">Standard</button>
 							<button class="b-btn sm" data-tier="deep">Deep</button>
 						</div>
 					</div>
+					<div class="bench-results-list" style="margin-top: 0.5rem">${benchHtml}</div>
 				</div>
 			</div>
 		`;
@@ -394,8 +398,13 @@ export class DiagnosticsWidget extends HTMLElement {
                 .llm-tier-status { display: flex; justify-content: space-between; align-items: center; padding: 0.4rem 0.6rem; background: hsla(0, 0%, 100%, 0.02); border-radius: 0.4rem; border: 1px solid hsla(0, 0%, 100%, 0.04); transition: all 0.3s; }
                 .llm-tier-status.busy { background: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.05); border-color: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.2); animation: diag-pulse 2s infinite; }
                 .llm-tier-main { display: flex; align-items: center; gap: 0.5rem; }
-                .llm-tier-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--text-secondary); }
-                .llm-tier-info { font-size: 0.65rem; font-family: var(--font-mono); color: var(--text-muted); }
+                .llm-tier-label { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.05em; }
+                .llm-tier-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+                .llm-status-text { font-size: 0.55rem; font-weight: 900; letter-spacing: 0.05em; }
+                .llm-status-text.online { color: var(--accent-primary); }
+                .llm-status-text.processing { color: var(--accent-primary); animation: diag-pulse 1s infinite; }
+                .llm-status-text.offline { color: var(--status-danger); opacity: 0.7; }
+                .llm-tier-info { font-size: 0.6rem; font-family: var(--font-mono); color: var(--text-muted); opacity: 0.8; }
                 .svc-dot.processing { background: var(--accent-primary); box-shadow: 0 0 10px var(--accent-primary); animation: diag-pulse 1s infinite; }
 
 				/* Benchmark Styles */
