@@ -127,6 +127,7 @@ export class SoftwareStatus extends HTMLElement {
 				name: 'Instant',
 				model: modelFor('instant'),
 				status: (tiers.instant || {}).status === 'ok' || (tiers.instant || {}).status === 'online' || (tiers.instant || {}).status === 'no slot available' ? 'online' : 'offline',
+				activity: (tiers.instant || {}).activity || 'idle',
 				detail: d.llm_provider === 'local' ? `${(tiers.instant || {}).threads || '?'}T` : 'cloud',
 				tip: this.tr('tip_instant', 'Fast, trivial queries. Greetings, confirmations, memory distillation.'),
 				isLlm: true,
@@ -135,6 +136,7 @@ export class SoftwareStatus extends HTMLElement {
 				name: 'Standard',
 				model: modelFor('standard'),
 				status: (tiers.standard || {}).status === 'ok' || (tiers.standard || {}).status === 'online' || (tiers.standard || {}).status === 'no slot available' ? 'online' : 'offline',
+				activity: (tiers.standard || {}).activity || 'idle',
 				detail: d.llm_provider === 'local' ? `${(tiers.standard || {}).threads || '?'}T` : 'cloud',
 				tip: this.tr('tip_standard', 'Normal conversation, moderate reasoning, tool-intent. The workhorse tier.'),
 				isLlm: true,
@@ -143,6 +145,7 @@ export class SoftwareStatus extends HTMLElement {
 				name: 'Deep',
 				model: modelFor('deep'),
 				status: (tiers.deep || {}).status === 'ok' || (tiers.deep || {}).status === 'online' || (tiers.deep || {}).status === 'no slot available' ? 'online' : 'offline',
+				activity: (tiers.deep || {}).activity || 'idle',
 				detail: d.llm_provider === 'local' ? `${(tiers.deep || {}).threads || '?'}T` : 'cloud',
 				tip: this.tr('tip_deep', 'Complex reasoning, briefings, planning, strategic analysis.'),
 				isLlm: true,
@@ -184,8 +187,8 @@ export class SoftwareStatus extends HTMLElement {
 		const serviceGrid = services.map(s => s.isLlm ? `
 			<div class="svc-item svc-llm has-tip" role="listitem" data-tip="${s.tip}" tabindex="0" aria-label="${s.name}: ${s.status}">
 				<div class="svc-row">
-					<span class="svc-dot ${s.status}" aria-hidden="true"></span>
-					<span class="sr-only">${s.status}</span>
+					<span class="svc-dot ${s.status} ${s.activity}" aria-hidden="true"></span>
+					<span class="sr-only">${s.status} ${s.activity}</span>
 					<span class="svc-name">${s.name}</span>
 					<span class="svc-detail">${s.detail}</span>
 				</div>
@@ -296,6 +299,16 @@ export class SoftwareStatus extends HTMLElement {
 				.svc-dot.online { 
 					background: var(--accent-primary, hsla(173, 80%, 40%, 1)); 
 					box-shadow: 0 0 8px var(--surface-accent-subtle, hsla(173, 80%, 40%, 0.2)); 
+				}
+				.svc-dot.online.processing {
+					background: var(--accent-secondary, hsla(210, 100%, 60%, 1));
+					box-shadow: 0 0 8px var(--surface-accent-subtle, hsla(210, 100%, 60%, 0.4));
+					animation: svc-pulse 1.5s infinite;
+				}
+				@keyframes svc-pulse {
+					0% { box-shadow: 0 0 0 0 hsla(210, 100%, 60%, 0.4); }
+					70% { box-shadow: 0 0 0 6px hsla(210, 100%, 60%, 0); }
+					100% { box-shadow: 0 0 0 0 hsla(210, 100%, 60%, 0); }
 				}
 				.svc-dot.offline { 
 					background: var(--status-danger, hsla(0, 84%, 60%, 1)); 

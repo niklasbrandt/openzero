@@ -185,34 +185,7 @@ export class HardwareMonitor extends HTMLElement {
 			</div>
 		` : '';
 
-		// Per-tier LLM thread allocation
-		const tiers = s.tiers || {};
-		const tierNames = ['instant', 'standard', 'deep'];
-		const totalConfiguredThreads = tierNames.reduce((sum, t) => sum + ((tiers[t] || {}).threads || 0), 0);
-		const tierRows = tierNames.map(t => {
-			const tier = tiers[t] || {};
-			const statusCls = tier.status === 'ok' || tier.status === 'online' || tier.status === 'no slot available' ? 'online' : 'offline';
-			const statusLabelKey = statusCls === 'online' ? 'status_online' : 'status_offline';
-			const statusLabel = this.tr(statusLabelKey, statusCls === 'online' ? 'Online' : 'Offline');
-			const warningHtml = tier.thread_warning
-				? `<span class="tier-warning has-tip" data-tip="${tier.thread_warning}">\u26A0</span>`
-				: '';
-			return `
-				<div class="tier-row">
-					<span class="tier-name">${t}</span>
-					<span class="tier-status ${statusCls}" aria-label="${t} ${this.tr('tier_is', 'tier is')} ${statusLabel}">${statusLabel}</span>
-					<span class="tier-threads has-tip" data-tip="${this.tr('tip_threads_assigned', 'Threads assigned to this tier\'s llama-server instance.')}">${tier.threads || '?'}T</span>
-					${warningHtml}
-				</div>
-			`;
-		}).join('');
 
-		const tierHtml = Object.keys(tiers).length > 0 ? `
-			<div class="tier-section">
-				<span class="spec-label has-tip" data-tip="${this.tr('tip_llm_tiers', 'Thread allocation across the 3 LLM tiers. Total should not exceed physical cores to avoid contention.')}">${this.tr('llm_tiers', 'LLM Tiers')} (${totalConfiguredThreads}T / ${d.cores_physical || s.physical_cores || '?'}C)</span>
-				<div class="tier-grid">${tierRows}</div>
-			</div>
-		` : '';
 
 		el.innerHTML = `
 			<div class="cpu-model has-tip" data-tip="${this.tr('tip_cpu_model', 'CPU model string as reported by the kernel')}">${d.cpu_model}</div>
@@ -236,7 +209,6 @@ export class HardwareMonitor extends HTMLElement {
 				<span class="spec-label">${this.tr('simd', 'SIMD')}</span>
 				<div class="simd-badges">${badgesHtml}</div>
 			</div>
-			${tierHtml}
 			<div class="capability-summary ${capabilityClass}" role="status" aria-label="${this.tr('aria_hw_capability', 'Hardware capability')}: ${capabilityText}">
 				<span class="status-dot" aria-hidden="true"></span>
 				<span class="capability-text">${capabilityText}</span>
@@ -459,55 +431,7 @@ export class HardwareMonitor extends HTMLElement {
 					cursor: help;
 				}
 
-				/* ── LLM Tier Grid ── */
-				.tier-section {
-					margin-bottom: 1rem;
-				}
-				.tier-grid {
-					display: flex;
-					gap: 0.5rem;
-					margin-top: 0.4rem;
-				}
-				.tier-row {
-					display: flex;
-					align-items: center;
-					gap: 0.4rem;
-					padding: 0.35rem 0.65rem;
-					background: var(--surface-card, hsla(0, 0%, 100%, 0.03));
-					border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.06));
-					border-radius: 0.4rem;
-					flex: 1;
-					min-height: 44px;
-				}
-				.tier-name {
-					font-size: 0.65rem;
-					font-weight: 700;
-					text-transform: uppercase;
-					letter-spacing: 0.08em;
-					color: var(--accent-secondary, hsla(216, 100%, 50%, 1));
-					font-family: var(--font-mono, 'Fira Code', monospace);
-				}
-				.tier-status {
-					font-size: 0.6rem;
-					font-weight: 600;
-					text-transform: uppercase;
-					letter-spacing: 0.05em;
-				}
-				.tier-status.online { color: var(--accent-primary, hsla(173, 80%, 40%, 1)); }
-				.tier-status.offline { color: var(--status-danger, hsla(0, 84%, 60%, 1)); }
-				.tier-threads {
-					font-size: 0.7rem;
-					color: var(--text-muted, hsla(0, 0%, 100%, 0.5));
-					font-family: var(--font-mono, 'Fira Code', monospace);
-					margin-left: auto;
-				}
-				.tier-warning {
-					color: var(--status-warning, hsla(45, 93%, 47%, 1));
-					font-size: 0.75rem;
-					cursor: help;
-				}
-
-				.simd-badge:focus-visible, .tier-row:focus-visible { 
+				.simd-badge:focus-visible { 
 					outline: 2px solid var(--accent-primary, hsla(173, 80%, 40%, 1)); 
 					outline-offset: 2px; 
 				}
@@ -523,8 +447,6 @@ export class HardwareMonitor extends HTMLElement {
 					.ram-legend-swatch.apps { background: Highlight; }
 					.ram-legend-swatch.apps.critical { background: LinkText; }
 					.ram-legend-swatch.cache, .ram-legend-swatch.free { background: ButtonFace; border: 1px solid ButtonText; }
-					.tier-status.online { color: ButtonText; }
-					.tier-status.offline { color: LinkText; }
 				}
 			</style>
 
