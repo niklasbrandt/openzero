@@ -76,11 +76,18 @@
 }
 
 /* -- Full-width cards -- */
-.chat-card,
 .life-overview-card,
+.full-width-card,
 welcome-onboarding {
 	/* Span the full row */
 	flex: 0 0 100%;
+}
+
+/* Side-by-side on desktop (50%) */
+.chat-card,
+#section-calendar,
+.persona-row-card {
+	flex: 0 0 calc(50% - 1rem);
 }
 
 .dashboard-header h1 {
@@ -109,6 +116,13 @@ welcome-onboarding {
 		/* Phase 2 optimization: skip painting for off-screen cards */
 		content-visibility: auto;
 		contain-intrinsic-size: 1px 400px;
+	}
+
+	.chat-card,
+	.life-overview-card,
+	.full-width-card,
+	welcome-onboarding {
+		flex: 0 0 100%;
 	}
 }
 
