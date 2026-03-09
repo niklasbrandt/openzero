@@ -106,43 +106,14 @@
             }
         }
 
-        .logo-box {
-            margin-bottom: 48px;
-            position: relative;
-            display: inline-block;
-        }
-
-        .logo-circle {
-            width: 90px;
-            height: 90px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #1e293b, #0f172a);
-            border: 2px solid var(--accent-blue);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 36px;
-            font-weight: 600;
-            color: var(--accent-blue);
-            box-shadow: 0 0 30px var(--accent-glow);
-            animation: pulse-logo 4s infinite ease-in-out;
-        }
-
-        @keyframes pulse-logo {
-            0% {
-                box-shadow: 0 0 20px var(--accent-glow);
-                transform: scale(1);
-            }
-
-            50% {
-                box-shadow: 0 0 50px var(--accent-glow);
-                transform: scale(1.05);
-            }
-
-            100% {
-                box-shadow: 0 0 20px var(--accent-glow);
-                transform: scale(1);
-            }
+        h1 {
+            font-size: 40px;
+            font-weight: 200;
+            letter-spacing: -0.04em;
+            color: var(--text-primary);
+            margin-bottom: 56px;
+            text-shadow: 0 0 20px var(--accent-glow);
+            animation: fadeIn 1.2s ease-out;
         }
 
         .status-grid {
@@ -219,9 +190,7 @@
 <body>
     <div class="border-glow">
         <div class="container">
-            <div class="logo-box">
-                <div class="logo-circle">Z</div>
-            </div>
+            <h1>openZero</h1>
 
             <div class="status-grid">
                 <!-- Core Services Node -->
