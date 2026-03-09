@@ -19,9 +19,7 @@ function loadLazyComponents(): void {
 	import('../components/CalendarAgenda')
 	import('../components/CalendarManager')
 	import('../components/WelcomeOnboarding')
-	import('../components/HardwareMonitor')
-	import('../components/SoftwareStatus')
-	import('../components/SystemBenchmark')
+	import('../components/DiagnosticsWidget')
 	import('../components/ZPersonality')
 }
 
@@ -224,7 +222,7 @@ async function initTheme() {
 			// partially visible behind a fading loader.
 			root.classList.add('no-transition');
 			const cache: Record<string, string> = {};
-			
+
 			const applyColor = (prefix: string, color: string) => {
 				const { h, s, l, a } = parseColor(color);
 				const rgb = hslToRgb(h, s, l);
@@ -259,7 +257,7 @@ async function initTheme() {
 				applyColor('accent-tertiary', data.color_tertiary);
 				cache.tertiary = data.color_tertiary;
 			}
-			
+
 			// Persist so the next page load applies the palette instantly
 			if (Object.keys(cache).length) {
 				localStorage.setItem('z_theme', JSON.stringify(cache));

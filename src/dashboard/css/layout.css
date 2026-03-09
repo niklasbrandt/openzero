@@ -83,9 +83,15 @@ welcome-onboarding {
 	flex: 0 0 100%;
 }
 
-/* Side-by-side on desktop (50%) */
-.chat-card,
-#section-calendar,
+/* Side-by-side on desktop (Uneven layout) */
+.chat-card {
+	flex: 0 0 calc(66.666% - 1rem);
+}
+
+#section-calendar {
+	flex: 0 0 calc(33.333% - 1rem);
+}
+
 .persona-row-card {
 	flex: 0 0 calc(50% - 1rem);
 }
@@ -122,7 +128,7 @@ welcome-onboarding {
 	.life-overview-card,
 	.full-width-card,
 	welcome-onboarding {
-		flex: 0 0 100%;
+		flex: 0 0 100% !important;
 	}
 }
 
@@ -152,7 +158,8 @@ welcome-onboarding {
 		width: 100%;
 		overflow-x: auto;
 		-webkit-overflow-scrolling: touch;
-		padding-bottom: 2px; /* prevent clipping focus ring */
+		padding-bottom: 2px;
+		/* prevent clipping focus ring */
 		scrollbar-width: none;
 		gap: 0.5rem;
 	}
