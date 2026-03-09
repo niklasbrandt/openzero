@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>openZero — Initializing</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #05070a;
+            --accent-blue: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.4);
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --text-primary: #f8f9fa;
+            --text-secondary: #94a3b8;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Ambient Background Glow */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 20%;
+            left: 20%;
+            width: 40vw;
+            height: 40vw;
+            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+            filter: blur(80px);
+            z-index: 0;
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .container {
+            z-index: 10;
+            text-align: center;
+            max-width: 500px;
+            padding: 40px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 32px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            animation: fadeIn 1s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .logo-box {
+            margin-bottom: 32px;
+            position: relative;
+            display: inline-block;
+        }
+
+        .logo-circle {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+            border: 2px solid var(--accent-blue);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            font-weight: 600;
+            color: var(--accent-blue);
+            box-shadow: 0 0 30px var(--accent-glow);
+            animation: pulse-logo 3s infinite ease-in-out;
+        }
+
+        @keyframes pulse-logo {
+            0% { box-shadow: 0 0 20px var(--accent-glow); transform: scale(1); }
+            50% { box-shadow: 0 0 40px var(--accent-glow); transform: scale(1.05); }
+            100% { box-shadow: 0 0 20px var(--accent-glow); transform: scale(1); }
+        }
+
+        h1 {
+            font-size: 28px;
+            letter-spacing: -0.5px;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        p {
+            color: var(--text-secondary);
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+
+        .status-list {
+            text-align: left;
+            margin-top: 24px;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-secondary);
+            position: relative;
+        }
+
+        .dot.active {
+            background: var(--accent-blue);
+        }
+
+        .dot.active::after {
+            content: '';
+            position: absolute;
+            top: -4px;
+            left: -4px;
+            right: -4px;
+            bottom: -4px;
+            border-radius: 50%;
+            border: 2px solid var(--accent-blue);
+            animation: ripple 1.5s infinite;
+        }
+
+        @keyframes ripple {
+            0% { transform: scale(0.5); opacity: 1; }
+            100% { transform: scale(2.5); opacity: 0; }
+        }
+
+        .status-text {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .status-item.starting .status-text {
+            color: var(--text-primary);
+        }
+
+        .loader-bar {
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 2px;
+            margin-top: 32px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .loader-progress {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 30%;
+            background: var(--accent-blue);
+            box-shadow: 0 0 10px var(--accent-blue);
+            animation: slide 2s infinite ease-in-out;
+            border-radius: 2px;
+        }
+
+        @keyframes slide {
+            0% { left: -30%; width: 30%; }
+            50% { left: 30%; width: 50%; }
+            100% { left: 100%; width: 30%; }
+        }
+
+        .retry-text {
+            margin-top: 24px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo-box">
+            <div class="logo-circle">Z</div>
+        </div>
+        <h1>Initializing openZero</h1>
+        <p>Your Personal AI Environment is waking up. This typically takes 30-60 seconds while models are loaded into RAM.</p>
+        
+        <div class="status-list">
+            <div class="status-item starting">
+                <div class="dot active"></div>
+                <div class="status-text">Connecting to core services...</div>
+            </div>
+            <div class="status-item">
+                <div class="dot"></div>
+                <div class="status-text">Waking up semantic memory vault</div>
+            </div>
+            <div class="status-item">
+                <div class="dot"></div>
+                <div class="status-text">Calibrating LLM tiers (Qwen3-8B)</div>
+            </div>
+        </div>
+
+        <div class="loader-bar">
+            <div class="loader-progress"></div>
+        </div>
+        
+        <div class="retry-text">Auto-refreshing in 5s...</div>
+    </div>
+
+    <script>
+        // Automatic reconnection attempt
+        async function checkStatus() {
+            try {
+                // Try to ping the backend
+                const response = await fetch('/api/dashboard/system', {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json' }
+                });
+                
+                // If we get an OK or 401 (Unauthorized), it means the backend is ALIVE
+                if (response.ok || response.status === 401) {
+                    window.location.href = '/';
+                }
+            } catch (err) {
+                console.log('Backend still initializing...');
+            }
+        }
+
+        // Check every 3 seconds
+        setInterval(checkStatus, 3000);
+    </script>
+</body>
+</html>

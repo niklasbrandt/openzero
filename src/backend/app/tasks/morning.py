@@ -142,7 +142,7 @@ async def morning_briefing():
 	
 	# 3.2 Post-Processing & Cleanup
 	from app.services.agent_actions import parse_and_execute_actions
-	content, _ = await parse_and_execute_actions(raw_content)
+	content, executed, pending = await parse_and_execute_actions(raw_content, require_hitl=True)
 	
 	# 3.3 Append Memory Review (raw, not via LLM — user sees exactly what was stored)
 	if memory_review:
