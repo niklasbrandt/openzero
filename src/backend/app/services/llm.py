@@ -159,12 +159,43 @@ _MODEL_SLASH_CMD_RE = re.compile(
 _SENSITIVE_OUTPUT_PATTERNS = re.compile(
 	r'(?:AKIA|ASIA|AIDA)[A-Z0-9]{16}'             # AWS access key
 	r'|sk-[A-Za-z0-9]{32,}'                         # OpenAI-style API key
-	r'|ghp_[A-Za-z0-9]{20,40}'                      # GitHub PAT (classic, more flexible length)
-	r'|github_pat_[A-Za-z0-9_]{70,100}'             # GitHub PAT (fine-grained, more flexible length)
-	r'|ssh-(?:rsa|ed25519|dss|ecdsa) AAAA[A-Za-z0-9+/]+' # SSH Public Key
-	r'|-----BEGIN [A-Z ]+ PRIVATE KEY-----[\s\S]*?-----END [A-Z ]+ PRIVATE KEY-----', # SSH/Generic Private Keys
+	r'|ghp_[A-Za-z0-9]{20,80}'                      # GitHub PAT (classic, wide length range)
+	r'|github_pat_[A-Za-z0-9_]{70,120}'             # GitHub PAT (fine-grained, wide length range)
+	r'|ssh-(?:rsa|ed25519|dss|ecdsa)\s+[A-Za-z0-9+/=]{12,}' # SSH Public Key (min length to avoid false positives)
+	r'|-----BEGIN [A-Z ]+ PRIVATE KEY-----[\s\S]*?-----END [A-Z ]+ PRIVATE KEY-----', # Private Keys
 	re.IGNORECASE,
 )
+
+class StreamSanitizer:
+	"""Stateful sanitizer for LLM streams to redact secrets in real-time.
+	
+	Buffers incoming tokens until enough context exists to reliably match
+	sensitive patterns (e.g. ghp_ followed by 20+ chars).
+	"""
+	def __init__(self, pattern: re.Pattern, redaction: str = "[REDACTED]"):
+		self.pattern = pattern
+		self.redaction = redaction
+		self.buffer = ""
+		self.safety_margin = 150 # Buffer size to catch long secrets
+		
+	def feed(self, chunk: str) -> str:
+		if not chunk: return ""
+		self.buffer += chunk
+		
+		# If buffer is short, keep waiting for context
+		if len(self.buffer) < self.safety_margin:
+			return ""
+			
+		# Keep a margin for cross-token matches, yield the rest cleaned
+		to_process = self.buffer[:-self.safety_margin]
+		self.buffer = self.buffer[-self.safety_margin:]
+		
+		return self.pattern.sub(self.redaction, to_process)
+		
+	def flush(self) -> str:
+		res = self.pattern.sub(self.redaction, self.buffer)
+		self.buffer = ""
+		return res
 
 # Internal path patterns that should never appear in output
 _INTERNAL_PATH_RE = re.compile(
@@ -1561,31 +1592,49 @@ async def chat_stream_with_context(
 					user_name=user_name,
 					user_profile=user_profile,
 				)
+				sanitizer = StreamSanitizer(_SENSITIVE_OUTPUT_PATTERNS) if sanitize else None
 				first_chunk = await asyncio.wait_for(stream.__anext__(), timeout=settings.DEEP_MODEL_TIMEOUT_S)
-				cleaned = _strip_emoji(first_chunk)
-				if cleaned:
-					yield cleaned
+				
+				if sanitizer:
+					clean = sanitizer.feed(first_chunk)
+					if clean: yield _strip_emoji(clean)
+				else:
+					yield _strip_emoji(first_chunk)
+
 				async for chunk in stream:
-					cleaned = _strip_emoji(chunk)
-					if cleaned:
-						yield cleaned
+					if sanitizer:
+						clean = sanitizer.feed(chunk)
+						if clean: yield _strip_emoji(clean)
+					else:
+						yield _strip_emoji(chunk)
+				
+				if sanitizer:
+					last = sanitizer.flush()
+					if last: yield _strip_emoji(last)
 				return
 			except (asyncio.TimeoutError, StopAsyncIteration):
 				logger.debug("Deep stream timeout -- falling back to standard")
 				last_model_used.set(f"Standard: {settings.LLM_MODEL_STANDARD}")
 				tier_name = "standard"
 
+		sanitizer = StreamSanitizer(_SENSITIVE_OUTPUT_PATTERNS) if sanitize else None
 		async for chunk in chat_stream(
 			user_message,
 			system_override=system_with_context,
 			tier=tier_name,
-			sanitize=sanitize,
+			sanitize=False, # Handled in this loop
 			user_name=user_name,
 			user_profile=user_profile,
 		):
-			cleaned = _strip_emoji(chunk)
-			if cleaned:
-				yield cleaned
+			if sanitizer:
+				clean = sanitizer.feed(chunk)
+				if clean: yield _strip_emoji(clean)
+			else:
+				yield _strip_emoji(chunk)
+				
+		if sanitizer:
+			last = sanitizer.flush()
+			if last: yield _strip_emoji(last)
 	except Exception as e:
 		logger.warning("chat_stream_with_context failed: %s", e)
 		yield "I encountered a temporary issue. Please try again."
