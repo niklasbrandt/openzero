@@ -109,6 +109,7 @@ async def start_telegram_bot():
 	bot_app.add_handler(CallbackQueryHandler(handle_wipe_confirm, pattern="^wipe_"))
 	bot_app.add_handler(CallbackQueryHandler(handle_calendar_approval, pattern="^cal_"))
 	bot_app.add_handler(CallbackQueryHandler(handle_draft_approval, pattern="^draft_"))
+	bot_app.add_handler(CallbackQueryHandler(handle_action_approval, pattern="^action_confirm_"))
 	bot_app.add_handler(CallbackQueryHandler(handle_memories_callback, pattern="^call_memories$"))
 	bot_app.add_handler(CallbackQueryHandler(handle_help_callback, pattern="^call_help$"))
 	bot_app.add_handler(CommandHandler("help", cmd_help))
@@ -255,7 +256,7 @@ async def start_telegram_bot():
 
 			# Clean action tags from output
 			from app.services.agent_actions import parse_and_execute_actions
-			greeting, _ = await parse_and_execute_actions(raw_greeting)
+			greeting, _, _ = await parse_and_execute_actions(raw_greeting, require_hitl=True)
 			logger.debug("Greeting Seq - OK")
 
 			# Prepend real current time (don't trust LLM for timestamps)
@@ -340,7 +341,7 @@ async def _recover_unanswered_messages():
 
 		async with AsyncSessionLocal() as db:
 			from app.services.agent_actions import parse_and_execute_actions
-			clean_reply, _ = await parse_and_execute_actions(response, db=db)
+			clean_reply, _, _ = await parse_and_execute_actions(response, db=db, require_hitl=True)
 
 		from app.services.llm import last_model_used
 		await save_global_message("telegram", "z", clean_reply, model=last_model_used.get())
@@ -629,7 +630,7 @@ async def cmd_remind(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	
 	response = await chat(prompt)
 	from app.services.agent_actions import parse_and_execute_actions
-	_, executed = await parse_and_execute_actions(response)
+	_, executed, _ = await parse_and_execute_actions(response, require_hitl=True)
 	
 	if executed:
 		await safe_reply(update, "\n".join(executed))
@@ -655,7 +656,7 @@ async def cmd_custom(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	
 	response = await chat(prompt)
 	from app.services.agent_actions import parse_and_execute_actions
-	_, executed = await parse_and_execute_actions(response)
+	_, executed, _ = await parse_and_execute_actions(response, require_hitl=True)
 	
 	if executed:
 		await safe_reply(update, "\n".join(executed))
@@ -987,7 +988,7 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 
 	async with AsyncSessionLocal() as db:
 		from app.services.agent_actions import parse_and_execute_actions
-		clean_reply, _ = await parse_and_execute_actions(response, db=db)
+		clean_reply, executed, pending = await parse_and_execute_actions(response, db=db, require_hitl=True)
 
 	# Save Z's reply to global history
 	from app.services.llm import last_model_used
@@ -1003,7 +1004,21 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 	display_reply = f"<b>{format_time()}</b>\n\n{html_reply}"
 
 	footer = await _get_stats_footer()
-	await safe_edit(thinking_msg, f"<blockquote>{display_reply}{footer}</blockquote>", parse_mode="HTML", reply_markup=get_nav_markup(t))
+	markup = get_nav_markup(t)
+	if pending:
+		from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+		# Add a button for each pending action
+		extra_buttons = []
+		for p in pending:
+			extra_buttons.append([InlineKeyboardButton(f"✅ Approve: {p['description'][:30]}...", callback_data=f"action_confirm_{p['id']}")])
+		if extra_buttons:
+			import json
+			# Merge with existing markup
+			current_keyboard = markup.inline_keyboard
+			new_keyboard = extra_buttons + list(current_keyboard)
+			markup = InlineKeyboardMarkup(new_keyboard)
+
+	await safe_edit(thinking_msg, f"<blockquote>{display_reply}{footer}</blockquote>", parse_mode="HTML", reply_markup=markup)
 
 @owner_only
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1043,7 +1058,7 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		
 		async with AsyncSessionLocal() as db:
 			from app.services.agent_actions import parse_and_execute_actions
-			clean_reply, _ = await parse_and_execute_actions(response, db=db)
+			clean_reply, executed, pending = await parse_and_execute_actions(response, db=db, require_hitl=True)
 
 		await save_global_message("telegram", "z", clean_reply, model=last_model_used.get())
 		
@@ -1052,7 +1067,17 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		display_reply = f"📝 <b>Transcript:</b>\n<i>{transcript}</i>\n\n<b>{format_time()}</b>\n\n{html_reply}"
 		
 		footer = await _get_stats_footer()
-		await safe_edit(status_msg, f"<blockquote>{display_reply}{footer}</blockquote>", parse_mode="HTML", reply_markup=get_nav_markup())
+		markup = get_nav_markup()
+		if pending:
+			from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+			extra_buttons = []
+			for p in pending:
+				extra_buttons.append([InlineKeyboardButton(f"✅ Approve: {p['description'][:30]}...", callback_data=f"action_confirm_{p['id']}")])
+			if extra_buttons:
+				new_keyboard = extra_buttons + list(markup.inline_keyboard)
+				markup = InlineKeyboardMarkup(new_keyboard)
+
+		await safe_edit(status_msg, f"<blockquote>{display_reply}{footer}</blockquote>", parse_mode="HTML", reply_markup=markup)
 	except Exception as e:
 		logger.error("handle_voice failed: %s", e)
 		await safe_reply(update, "Voice processing failed. There might be an issue with the transcription or intelligence layer.")
@@ -1209,3 +1234,37 @@ async def handle_draft_approval(update: Update, context: ContextTypes.DEFAULT_TY
 	except Exception as e:
 		logger.warning("Draft approval failed: %s", e)
 		await query.edit_message_text("❌ Error creating draft. Check logs.")
+
+@owner_only
+async def handle_action_approval(update: Update, context: ContextTypes.DEFAULT_TYPE):
+	"""Handle user approving a pending semantic action."""
+	query = update.callback_query
+	await query.answer()
+
+	data = query.data
+	action_id = data.split("_")[-1]
+
+	from app.models.db import get_pending_thought, AsyncSessionLocal
+	thought = await get_pending_thought(action_id)
+	if not thought:
+		await query.edit_message_text("❌ Error: Action expired or not found.")
+		return
+
+	try:
+		import json as _json
+		action_data = _json.loads(thought["context_data"])
+		tag = action_data["tag"]
+		description = action_data.get("description", "Action")
+		
+		from app.services.agent_actions import parse_and_execute_actions
+		async with AsyncSessionLocal() as db:
+			# Execute without HITL
+			clean_reply, executed, pending = await parse_and_execute_actions(tag, db=db, require_hitl=False)
+		
+		if executed:
+			await query.edit_message_text(f"✅ <b>Action executed:</b> {description}\n<i>{executed[0]}</i>", parse_mode="HTML")
+		else:
+			await query.edit_message_text(f"❌ Failed to execute action: {description}", parse_mode="HTML")
+	except Exception as e:
+		logger.error("Action approval failed: %s", e)
+		await query.edit_message_text(f"❌ Error executing action: {str(e)}")
