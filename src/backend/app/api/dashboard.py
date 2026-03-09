@@ -1636,18 +1636,23 @@ async def server_info():
 				"thread_warning": "",
 			}
 			try:
-				resp = await client.get(f"{base_url}/props")
-				if resp.status_code == 200:
-					tier_info["status"] = "online"
-					# Try /health for slot data
+				resp = await client.get(f"{base_url}/health")
+				if resp.status_code in (200, 503):
 					try:
-						health_resp = await client.get(f"{base_url}/health")
-						if health_resp.status_code == 200:
-							health = health_resp.json()
-							tier_info["status"] = health.get("status", "online")
+						health = resp.json()
+						health_status = health.get("status", "ok")
 					except Exception:
-						tier_info["status"] = "online"  # ignore /health probe failures
-				# Also try /slots for thread info
+						health_status = "ok" if resp.status_code == 200 else "offline"
+					tier_info["status"] = health_status
+					# llama-server returns HTTP 503 + {"status":"no slot available"}
+					# when actively processing a request — that IS the busy signal.
+					# HTTP 200 + "ok" = idle/available.
+					# HTTP 503 + "loading model" = still starting up (idle).
+					if health_status == "no slot available":
+						tier_info["activity"] = "processing"
+					else:
+						tier_info["activity"] = "idle"
+				# Also try /slots for ctx_size metadata (optional, no flags assumed)
 				try:
 					slots_resp = await client.get(f"{base_url}/slots")
 					if slots_resp.status_code == 200:
@@ -1655,13 +1660,8 @@ async def server_info():
 						if isinstance(slots, list) and len(slots) > 0:
 							tier_info["n_predict"] = slots[0].get("n_predict", 0)
 							tier_info["ctx_size"] = slots[0].get("n_ctx", 0)
-							if any(s.get("state", 0) == 1 for s in slots):
-								tier_info["activity"] = "processing"
-							else:
-								tier_info["activity"] = "idle"
 				except Exception:
 					tier_info["ctx_size"] = 0  # /slots probe optional
-					tier_info["activity"] = "idle"
 			except Exception:
 				tier_info["status"] = "offline"
 
@@ -1911,11 +1911,55 @@ async def get_system_status(db: AsyncSession = Depends(get_db)):
     """Deep health check of all OS subsystems."""
     from app.services.llm import last_model_used
     from app.services.memory import get_memory_stats
+    import os
+    import subprocess
+    import json
+    from sqlalchemy import text
 
     try:
         mem_stats = await get_memory_stats()
     except Exception:
         mem_stats = {"points": 0}
+
+    # Software Metrics: Postgres
+    db_size_human = "0 MB"
+    try:
+        size_res = await db.execute(text("SELECT pg_size_pretty(pg_database_size(current_database()))"))
+        db_size_human = size_res.scalar() or "0 MB"
+    except Exception as e:
+        logger.debug("Failed to get DB size: %s", e)
+
+    # Software Metrics: Redis
+    redis_detail = "0B / 0 keys"
+    try:
+        import redis
+        r = redis.Redis(host="redis", password=settings.REDIS_PASSWORD, decode_responses=True)
+        r_info = r.info()
+        redis_detail = f"{r_info.get('used_memory_human', '0B')} / {r.dbsize()} keys"
+    except Exception as e:
+        logger.debug("Failed to get Redis stats: %s", e)
+
+    # Software Metrics: Pi-hole (Blocked Stats)
+    pihole_stats = "0/0/0%"
+    try:
+        # Get pihole summary from its chronos DB or CLI
+        # Use docker exec to get JSON summary
+        ph_cmd = subprocess.run(
+            ["docker", "exec", "openzero-pihole-1", "pihole", "status", "web"],
+            capture_output=True, text=True, timeout=5
+        )
+        # pihole -c -j is better for JSON
+        ph_json_cmd = subprocess.run(
+            ["docker", "exec", "openzero-pihole-1", "php", "/var/www/html/admin/api.php", "summary"],
+            capture_output=True, text=True, timeout=5
+        )
+        if ph_json_cmd.returncode == 0:
+            ph_data = json.loads(ph_json_cmd.stdout)
+            blocked = ph_data.get("ads_blocked_today", 0)
+            percentage = ph_data.get("ads_percentage_today", 0)
+            pihole_stats = f"{blocked} blocked ({percentage}%)"
+    except Exception as e:
+        logger.debug("Failed to get Pi-hole stats: %s", e)
 
     # System RAM for health metrics
     ram = psutil.virtual_memory()
@@ -1951,12 +1995,15 @@ async def get_system_status(db: AsyncSession = Depends(get_db)):
     return {
         "status": "online",
         "llm_provider": settings.LLM_PROVIDER,
-        "llm_model": last_model_used.get() or settings.LLM_MODEL_STANDARD,
+        "llm_model_short": (last_model_used.get() or settings.LLM_MODEL_STANDARD).split("/")[-1].removesuffix(".gguf"),
+        "llm_model_full": last_model_used.get() or settings.LLM_MODEL_STANDARD,
         "memory_points": mem_stats.get("points", 0),
         "identity_active": identity_set,
         "dns_ok": dns_ok,
-        "dns_detail": dns_detail,
+        "dns_detail": pihole_stats if dns_ok else dns_detail,
         "ram_total_gb": ram_total_gb,
         "ram_used_pct": ram_used_pct,
+        "db_size": db_size_human,
+        "redis_stats": redis_detail,
         "timestamp": datetime.datetime.now().isoformat()
     }
