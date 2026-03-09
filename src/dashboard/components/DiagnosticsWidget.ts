@@ -152,11 +152,11 @@ export class DiagnosticsWidget extends HTMLElement {
 
     updatePanel() {
         const el = this.shadowRoot?.querySelector('#diag-panel');
-        if (!el || !this.cpuData || !this.systemData) return;
+        if (!el) return;
 
-        const cpu = this.cpuData;
+        const cpu = this.cpuData || { cpu_model: '...', cores_physical: '?', cores_logical: '?', architecture: '?' };
         const srv = this.serverData || {};
-        const sys = this.systemData;
+        const sys = this.systemData || {};
         const tiers = srv.tiers || {};
 
         // 1. Hardware Section
