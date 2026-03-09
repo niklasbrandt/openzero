@@ -3,20 +3,22 @@
 
 <head>
 	<meta charset="UTF-8" />
-	<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><circle cx='32' cy='32' r='30' fill='%230d1117'/><text x='32' y='44' font-size='36' font-family='system-ui' font-weight='700' fill='%2314b8a6' text-anchor='middle'>Z</text></svg>" />
+	<link rel="icon"
+		href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><circle cx='32' cy='32' r='30' fill='%230d1117'/><text x='32' y='44' font-size='36' font-family='system-ui' font-weight='700' fill='%2314b8a6' text-anchor='middle'>Z</text></svg>" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-	<meta name="description" content="openZero Dashboard — personal AI operating system for self-hosted task management, calendar, email triage, and semantic memory." />
+	<meta name="description"
+		content="openZero Dashboard — personal AI operating system for self-hosted task management, calendar, email triage, and semantic memory." />
 	<title>openZero Dashboard</title>
 	<!-- Instant theme paint: reads cached palette from localStorage before any
 	     JS bundle executes, eliminating the flash of default teal on load.
 	     Transitions are suppressed for one rAF so CSS var changes don't animate. -->
 	<script>
-		(function() {
+		(function () {
 			try {
 				var r = document.documentElement;
 				// Suppress all transitions so the var override paints instantly
 				r.classList.add('no-transition');
-				requestAnimationFrame(function() {
+				requestAnimationFrame(function () {
 					r.classList.remove('no-transition');
 				});
 				var t = localStorage.getItem('z_theme');
@@ -24,52 +26,54 @@
 				var d = JSON.parse(t);
 				function parseCol(c) {
 					var m = /hsla?\(\s*([\d.]+)\s*,\s*([\d.]+)%\s*,\s*([\d.]+)%(?:\s*,\s*([\d.]+))?\s*\)/.exec(c);
-					if (m) return {h:Math.round(+m[1]),s:Math.round(+m[2]),l:Math.round(+m[3]),a:m[4]!==undefined?+m[4]:1};
-					var h=c.replace('#','');
-					var R=parseInt(h.slice(0,2),16)/255, G=parseInt(h.slice(2,4),16)/255, B=parseInt(h.slice(4,6),16)/255;
-					var mx=Math.max(R,G,B), mn=Math.min(R,G,B), H=0, s=0, l=(mx+mn)/2;
-					if(mx!==mn){var dv=mx-mn;s=l>0.5?dv/(2-mx-mn):dv/(mx+mn);
-						switch(mx){case R:H=(G-B)/dv+(G<B?6:0);break;case G:H=(B-R)/dv+2;break;case B:H=(R-G)/dv+4;break;}H/=6;}
-					return{h:Math.round(H*360),s:Math.round(s*100),l:Math.round(l*100),a:1};
+					if (m) return { h: Math.round(+m[1]), s: Math.round(+m[2]), l: Math.round(+m[3]), a: m[4] !== undefined ? +m[4] : 1 };
+					var h = c.replace('#', '');
+					var R = parseInt(h.slice(0, 2), 16) / 255, G = parseInt(h.slice(2, 4), 16) / 255, B = parseInt(h.slice(4, 6), 16) / 255;
+					var mx = Math.max(R, G, B), mn = Math.min(R, G, B), H = 0, s = 0, l = (mx + mn) / 2;
+					if (mx !== mn) {
+						var dv = mx - mn; s = l > 0.5 ? dv / (2 - mx - mn) : dv / (mx + mn);
+						switch (mx) { case R: H = (G - B) / dv + (G < B ? 6 : 0); break; case G: H = (B - R) / dv + 2; break; case B: H = (R - G) / dv + 4; break; }H /= 6;
+					}
+					return { h: Math.round(H * 360), s: Math.round(s * 100), l: Math.round(l * 100), a: 1 };
 				}
-				function hslRgb(h,s,l) {
-					s/=100; l/=100;
-					var k=function(n){return(n+h/30)%12;};
-					var a=s*Math.min(l,1-l);
-					var f=function(n){return l-a*Math.max(-1,Math.min(k(n)-3,Math.min(9-k(n),1)));};
-					return Math.round(f(0)*255)+', '+Math.round(f(8)*255)+', '+Math.round(f(4)*255);
+				function hslRgb(h, s, l) {
+					s /= 100; l /= 100;
+					var k = function (n) { return (n + h / 30) % 12; };
+					var a = s * Math.min(l, 1 - l);
+					var f = function (n) { return l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1))); };
+					return Math.round(f(0) * 255) + ', ' + Math.round(f(8) * 255) + ', ' + Math.round(f(4) * 255);
 				}
 				if (d.accent) {
 					var p = parseCol(d.accent);
-					var pRgb = hslRgb(p.h,p.s,p.l);
+					var pRgb = hslRgb(p.h, p.s, p.l);
 					r.style.setProperty('--accent-primary-h', p.h);
-					r.style.setProperty('--accent-primary-s', p.s+'%');
-					r.style.setProperty('--accent-primary-l', p.l+'%');
+					r.style.setProperty('--accent-primary-s', p.s + '%');
+					r.style.setProperty('--accent-primary-l', p.l + '%');
 					r.style.setProperty('--accent-primary-rgb', pRgb);
-					r.style.setProperty('--accent-primary', 'hsla('+p.h+', '+p.s+'%, '+p.l+'%, '+p.a+')');
-					r.style.setProperty('--accent-color', 'hsla('+p.h+', '+p.s+'%, '+p.l+'%, '+p.a+')');
+					r.style.setProperty('--accent-primary', 'hsla(' + p.h + ', ' + p.s + '%, ' + p.l + '%, ' + p.a + ')');
+					r.style.setProperty('--accent-color', 'hsla(' + p.h + ', ' + p.s + '%, ' + p.l + '%, ' + p.a + ')');
 					r.style.setProperty('--accent-color-rgb', pRgb);
-					r.style.setProperty('--accent-glow', 'rgba('+pRgb+', 0.4)');
+					r.style.setProperty('--accent-glow', 'rgba(' + pRgb + ', 0.4)');
 				}
 				if (d.secondary) {
 					var s2 = parseCol(d.secondary);
-					var s2Rgb = hslRgb(s2.h,s2.s,s2.l);
+					var s2Rgb = hslRgb(s2.h, s2.s, s2.l);
 					r.style.setProperty('--accent-secondary-h', s2.h);
-					r.style.setProperty('--accent-secondary-s', s2.s+'%');
-					r.style.setProperty('--accent-secondary-l', s2.l+'%');
+					r.style.setProperty('--accent-secondary-s', s2.s + '%');
+					r.style.setProperty('--accent-secondary-l', s2.l + '%');
 					r.style.setProperty('--accent-secondary-rgb', s2Rgb);
-					r.style.setProperty('--accent-secondary', 'hsla('+s2.h+', '+s2.s+'%, '+s2.l+'%, '+s2.a+')');
+					r.style.setProperty('--accent-secondary', 'hsla(' + s2.h + ', ' + s2.s + '%, ' + s2.l + '%, ' + s2.a + ')');
 				}
 				if (d.tertiary) {
 					var tt = parseCol(d.tertiary);
-					var ttRgb = hslRgb(tt.h,tt.s,tt.l);
+					var ttRgb = hslRgb(tt.h, tt.s, tt.l);
 					r.style.setProperty('--accent-tertiary-h', tt.h);
-					r.style.setProperty('--accent-tertiary-s', tt.s+'%');
-					r.style.setProperty('--accent-tertiary-l', tt.l+'%');
+					r.style.setProperty('--accent-tertiary-s', tt.s + '%');
+					r.style.setProperty('--accent-tertiary-l', tt.l + '%');
 					r.style.setProperty('--accent-tertiary-rgb', ttRgb);
-					r.style.setProperty('--accent-tertiary', 'hsla('+tt.h+', '+tt.s+'%, '+tt.l+'%, '+tt.a+')');
+					r.style.setProperty('--accent-tertiary', 'hsla(' + tt.h + ', ' + tt.s + '%, ' + tt.l + '%, ' + tt.a + ')');
 				}
-			} catch(e) {}
+			} catch (e) { }
 		})();
 	</script>
 </head>
@@ -145,7 +149,7 @@
 			</svg>
 			<span data-tr="nav_personality">Personality</span>
 		</a>
-		<a href="#section-inner" data-section="section-inner" aria-label="Inner Circle">
+		<a href="#section-circles" data-section="section-circles" aria-label="Relationships">
 			<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
 				stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
 				<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -153,27 +157,7 @@
 				<path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
 				<path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
 			</svg>
-			<span data-tr="nav_inner_circle">Inner Circle</span>
-		</a>
-		<a href="#section-close" data-section="section-close" aria-label="Close Circle">
-			<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-				stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-				<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
-				<circle cx="9" cy="7" r="4"></circle>
-				<path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
-				<path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-			</svg>
-			<span data-tr="nav_close_circle">Close Circle</span>
-		</a>
-		<a href="#section-outer" data-section="section-outer" aria-label="Outer Circle">
-			<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-				stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-				<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-				<circle cx="9" cy="7" r="4"></circle>
-				<path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-				<path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-			</svg>
-			<span data-tr="nav_outer_circle">Outer Circle</span>
+			<span data-tr="nav_circles">Circles</span>
 		</a>
 		<a href="#section-email" data-section="section-email" aria-label="Email">
 			<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -183,171 +167,208 @@
 			</svg>
 			<span data-tr="nav_email">Email</span>
 		</a>
-		<a href="#section-hardware" data-section="section-hardware" aria-label="Hardware">
+		<a href="#section-diagnostics" data-section="section-diagnostics" aria-label="Diagnostics">
 			<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
 				stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-				<rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
-				<rect x="9" y="9" width="6" height="6"></rect>
-				<line x1="9" y1="1" x2="9" y2="4"></line>
-				<line x1="15" y1="1" x2="15" y2="4"></line>
-				<line x1="9" y1="20" x2="9" y2="23"></line>
-				<line x1="15" y1="20" x2="15" y2="23"></line>
-				<line x1="20" y1="9" x2="23" y2="9"></line>
-				<line x1="20" y1="14" x2="23" y2="14"></line>
-				<line x1="1" y1="9" x2="4" y2="9"></line>
-				<line x1="1" y1="14" x2="4" y2="14"></line>
+				<path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
 			</svg>
-			<span data-tr="nav_hardware">Hardware</span>
-		</a>
-		<a href="#section-software" data-section="section-software" aria-label="Software">
-			<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-				stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-				<polyline points="16 18 22 12 16 6"></polyline>
-				<polyline points="8 6 2 12 8 18"></polyline>
-			</svg>
-			<span data-tr="nav_software">Software</span>
-		</a>
-		<a href="#section-benchmark" data-section="section-benchmark" aria-label="Benchmark">
-			<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-				stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-				<line x1="18" y1="20" x2="18" y2="10"></line>
-				<line x1="12" y1="20" x2="12" y2="4"></line>
-				<line x1="6" y1="20" x2="6" y2="14"></line>
-			</svg>
-			<span data-tr="nav_benchmark">Benchmark</span>
+			<span data-tr="nav_diagnostics">Diagnostics</span>
 		</a>
 	</nav>
 
 	<main id="main-content">
 		<!-- ── Top sticky carousel-style anchor nav (visible 700–1099 px) ──
 		     Replaces sidebar at mid-viewports. WCAG 2.4.1 / EN 301 549 §9.2.4.1 -->
-		<nav class="top-marquee-nav" id="top-marquee-nav" aria-label="Dashboard section navigation" data-tr-aria="aria_nav_landmark">
+		<nav class="top-marquee-nav" id="top-marquee-nav" aria-label="Dashboard section navigation"
+			data-tr-aria="aria_nav_landmark">
 			<a href="#section-chat" data-section="section-chat" aria-label="Chat">
-				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+					stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+					<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+				</svg>
 				<span data-tr="nav_chat">Chat</span>
 			</a>
 			<a href="#section-life" data-section="section-life" aria-label="Life">
-				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+					stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+					<circle cx="12" cy="12" r="10"></circle>
+					<line x1="2" y1="12" x2="22" y2="12"></line>
+					<path
+						d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z">
+					</path>
+				</svg>
 				<span data-tr="nav_life">Life</span>
 			</a>
 			<a href="#section-calendar" data-section="section-calendar" aria-label="Calendar">
-				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+					stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+					<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+					<line x1="16" y1="2" x2="16" y2="6"></line>
+					<line x1="8" y1="2" x2="8" y2="6"></line>
+					<line x1="3" y1="10" x2="21" y2="10"></line>
+				</svg>
 				<span data-tr="nav_calendar">Calendar</span>
 			</a>
 			<a href="#section-identity" data-section="section-identity" aria-label="Profile">
-				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+					stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+					<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+					<circle cx="12" cy="7" r="4"></circle>
+				</svg>
 				<span data-tr="nav_profile">Profile</span>
 			</a>
 			<a href="#section-memory" data-section="section-memory" aria-label="Memory">
-				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+					stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+					<circle cx="11" cy="11" r="8"></circle>
+					<line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+				</svg>
 				<span data-tr="nav_memory">Memory</span>
 			</a>
 			<a href="#section-briefing" data-section="section-briefing" aria-label="Briefing">
-				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+					stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+					<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+					<polyline points="14 2 14 8 20 8"></polyline>
+				</svg>
 				<span data-tr="nav_briefing">Briefing</span>
 			</a>
 			<a href="#section-personality" data-section="section-personality" aria-label="Personality">
-				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 5a3 3 0 1 1-3 3 3 3 0 0 1 3-3zm0 13a8 8 0 0 1-6-2.68 3 3 0 0 1 2.84-2.32h6.32A3 3 0 0 1 18 17.32 8 8 0 0 1 12 20z"></path></svg>
+				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+					stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+					<path
+						d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 5a3 3 0 1 1-3 3 3 3 0 0 1 3-3zm0 13a8 8 0 0 1-6-2.68 3 3 0 0 1 2.84-2.32h6.32A3 3 0 0 1 18 17.32 8 8 0 0 1 12 20z">
+					</path>
+				</svg>
 				<span data-tr="nav_personality">Personality</span>
 			</a>
 			<span class="nav-sep" role="separator" aria-hidden="true"></span>
-			<a href="#section-inner" data-section="section-inner" aria-label="Inner Circle">
-				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-				<span data-tr="nav_inner_circle">Inner Circle</span>
-			</a>
-			<a href="#section-close" data-section="section-close" aria-label="Close Circle">
-				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-				<span data-tr="nav_close_circle">Close Circle</span>
-			</a>
-			<a href="#section-outer" data-section="section-outer" aria-label="Outer Circle">
-				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-				<span data-tr="nav_outer_circle">Outer Circle</span>
+			<a href="#section-circles" data-section="section-circles" aria-label="Circles">
+				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+					stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+					<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+					<circle cx="9" cy="7" r="4"></circle>
+				</svg>
+				<span data-tr="nav_circles">Circles</span>
 			</a>
 			<a href="#section-email" data-section="section-email" aria-label="Email">
-				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+					stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+					<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+					<polyline points="22,6 12,13 2,6"></polyline>
+				</svg>
 				<span data-tr="nav_email">Email</span>
 			</a>
 			<span class="nav-sep" role="separator" aria-hidden="true"></span>
-			<a href="#section-hardware" data-section="section-hardware" aria-label="Hardware">
-				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect></svg>
-				<span data-tr="nav_hardware">Hardware</span>
-			</a>
-			<a href="#section-software" data-section="section-software" aria-label="Software">
-				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
-				<span data-tr="nav_software">Software</span>
-			</a>
-			<a href="#section-benchmark" data-section="section-benchmark" aria-label="Benchmark">
-				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
-				<span data-tr="nav_benchmark">Benchmark</span>
+			<a href="#section-diagnostics" data-section="section-diagnostics" aria-label="Diagnostics">
+				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+					stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+					<path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+				</svg>
+				<span data-tr="nav_diagnostics">Diagnostics</span>
 			</a>
 		</nav>
 
 		<!-- ── Mobile full-screen nav drawer (hamburger, <700 px) ──
 		     WCAG 2.4.3 traversal order / EN 301 549 §9.2.4.3 -->
-		<div class="mobile-nav-drawer" id="mobile-nav-drawer" role="dialog" aria-modal="true" aria-label="Navigation menu" data-tr-aria="aria_nav_drawer">
+		<div class="mobile-nav-drawer" id="mobile-nav-drawer" role="dialog" aria-modal="true"
+			aria-label="Navigation menu" data-tr-aria="aria_nav_drawer">
 			<div class="mobile-nav-drawer-header">
 				<h2 data-tr-text="drawer_heading">Navigate</h2>
-				<button class="mobile-nav-drawer-close" id="mobile-nav-close" aria-label="Close navigation menu" data-tr-aria="aria_close_nav">
-					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+				<button class="mobile-nav-drawer-close" id="mobile-nav-close" aria-label="Close navigation menu"
+					data-tr-aria="aria_close_nav">
+					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+						stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+						<line x1="18" y1="6" x2="6" y2="18"></line>
+						<line x1="6" y1="6" x2="18" y2="18"></line>
+					</svg>
 				</button>
 			</div>
 			<a href="#section-chat" data-section="section-chat" aria-label="Chat">
-				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+					stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+					<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+				</svg>
 				<span data-tr="nav_chat">Chat</span>
 			</a>
 			<a href="#section-life" data-section="section-life" aria-label="Life">
-				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+					stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+					<circle cx="12" cy="12" r="10"></circle>
+					<line x1="2" y1="12" x2="22" y2="12"></line>
+					<path
+						d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z">
+					</path>
+				</svg>
 				<span data-tr="nav_life">Life</span>
 			</a>
 			<a href="#section-calendar" data-section="section-calendar" aria-label="Calendar">
-				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+					stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+					<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+					<line x1="16" y1="2" x2="16" y2="6"></line>
+					<line x1="8" y1="2" x2="8" y2="6"></line>
+					<line x1="3" y1="10" x2="21" y2="10"></line>
+				</svg>
 				<span data-tr="nav_calendar">Calendar</span>
 			</a>
 			<a href="#section-identity" data-section="section-identity" aria-label="Profile">
-				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+					stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+					<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+					<circle cx="12" cy="7" r="4"></circle>
+				</svg>
 				<span data-tr="nav_profile">Profile</span>
 			</a>
 			<a href="#section-memory" data-section="section-memory" aria-label="Memory">
-				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+					stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+					<circle cx="11" cy="11" r="8"></circle>
+					<line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+				</svg>
 				<span data-tr="nav_memory">Memory</span>
 			</a>
 			<a href="#section-briefing" data-section="section-briefing" aria-label="Briefing">
-				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+					stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+					<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+					<polyline points="14 2 14 8 20 8"></polyline>
+				</svg>
 				<span data-tr="nav_briefing">Briefing</span>
 			</a>
 			<a href="#section-personality" data-section="section-personality" aria-label="Personality">
-				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 5a3 3 0 1 1-3 3 3 3 0 0 1 3-3zm0 13a8 8 0 0 1-6-2.68 3 3 0 0 1 2.84-2.32h6.32A3 3 0 0 1 18 17.32 8 8 0 0 1 12 20z"></path></svg>
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+					stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+					<path
+						d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 5a3 3 0 1 1-3 3 3 3 0 0 1 3-3zm0 13a8 8 0 0 1-6-2.68 3 3 0 0 1 2.84-2.32h6.32A3 3 0 0 1 18 17.32 8 8 0 0 1 12 20z">
+					</path>
+				</svg>
 				<span data-tr="nav_personality">Personality</span>
 			</a>
 			<div class="drawer-divider" role="separator" aria-hidden="true"></div>
-			<a href="#section-inner" data-section="section-inner" aria-label="Inner Circle">
-				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-				<span data-tr="nav_inner_circle">Inner Circle</span>
-			</a>
-			<a href="#section-close" data-section="section-close" aria-label="Close Circle">
-				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-				<span data-tr="nav_close_circle">Close Circle</span>
-			</a>
-			<a href="#section-outer" data-section="section-outer" aria-label="Outer Circle">
-				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-				<span data-tr="nav_outer_circle">Outer Circle</span>
+			<a href="#section-circles" data-section="section-circles" aria-label="Circles">
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+					stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+					<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+					<circle cx="9" cy="7" r="4"></circle>
+				</svg>
+				<span data-tr="nav_circles">Circles</span>
 			</a>
 			<a href="#section-email" data-section="section-email" aria-label="Email">
-				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+					stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+					<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+					<polyline points="22,6 12,13 2,6"></polyline>
+				</svg>
 				<span data-tr="nav_email">Email</span>
 			</a>
 			<div class="drawer-divider" role="separator" aria-hidden="true"></div>
-			<a href="#section-hardware" data-section="section-hardware" aria-label="Hardware">
-				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect></svg>
-				<span data-tr="nav_hardware">Hardware</span>
-			</a>
-			<a href="#section-software" data-section="section-software" aria-label="Software">
-				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
-				<span data-tr="nav_software">Software</span>
-			</a>
-			<a href="#section-benchmark" data-section="section-benchmark" aria-label="Benchmark">
-				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
-				<span data-tr="nav_benchmark">Benchmark</span>
+			<a href="#section-diagnostics" data-section="section-diagnostics" aria-label="Diagnostics">
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+					stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+					<path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+				</svg>
+				<span data-tr="nav_diagnostics">Diagnostics</span>
 			</a>
 		</div>
 
@@ -355,16 +376,19 @@
 			<header class="dashboard-header">
 				<h1>openZero <span class="gradient-text">Dashboard</span></h1>
 				<div class="header-actions" role="toolbar" aria-label="Quick actions" data-tr-aria="aria_quick_actions">
-				<!-- Hamburger — opens mobile nav drawer at <700 px -->
-				<button class="mobile-nav-toggle" id="mobile-nav-open" aria-label="Open navigation menu" aria-expanded="false" aria-controls="mobile-nav-drawer" data-tr-aria="aria_open_nav">
-					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-						<line x1="3" y1="6" x2="21" y2="6"></line>
-						<line x1="3" y1="12" x2="21" y2="12"></line>
-						<line x1="3" y1="18" x2="21" y2="18"></line>
-					</svg>
-				</button>
-					<a id="header-operator-btn" href="/api/dashboard/planka-redirect?target=operator" target="_blank" rel="noopener noreferrer"
-						class="planka-btn operator-btn"
+					<!-- Hamburger — opens mobile nav drawer at <700 px -->
+					<button class="mobile-nav-toggle" id="mobile-nav-open" aria-label="Open navigation menu"
+						aria-expanded="false" aria-controls="mobile-nav-drawer" data-tr-aria="aria_open_nav">
+						<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+							stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"
+							focusable="false">
+							<line x1="3" y1="6" x2="21" y2="6"></line>
+							<line x1="3" y1="12" x2="21" y2="12"></line>
+							<line x1="3" y1="18" x2="21" y2="18"></line>
+						</svg>
+					</button>
+					<a id="header-operator-btn" href="/api/dashboard/planka-redirect?target=operator" target="_blank"
+						rel="noopener noreferrer" class="planka-btn operator-btn"
 						aria-label="Open Operator Board — centralized overview of tasks (opens in new tab)"
 						data-tooltip="Centralized overview of tasks across all your boards">
 						<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -374,8 +398,8 @@
 						</svg>
 						<span>Operator Board</span>
 					</a>
-					<a id="header-projects-btn" href="/api/dashboard/planka-redirect" target="_blank" rel="noopener noreferrer"
-						class="planka-btn" aria-label="Open Projects board (opens in new tab)"
+					<a id="header-projects-btn" href="/api/dashboard/planka-redirect" target="_blank"
+						rel="noopener noreferrer" class="planka-btn" aria-label="Open Projects board (opens in new tab)"
 						data-tooltip="Access individual project boards and spaces">
 						<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
 							stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"
@@ -406,16 +430,13 @@
 				<chat-prompt></chat-prompt>
 			</section>
 
-			<section class="dashboard-card life-overview-card" id="section-life" aria-label="Life" data-tr-aria="nav_life">
-				<life-overview></life-overview>
-			</section>
-
 			<section class="dashboard-card" id="section-calendar" aria-label="Calendar" data-tr-aria="nav_calendar">
 				<calendar-agenda></calendar-agenda>
 			</section>
 
-			<section class="dashboard-card" id="section-identity" aria-label="Profile" data-tr-aria="nav_profile">
-				<user-card></user-card>
+			<section class="dashboard-card life-overview-card" id="section-life" aria-label="Life"
+				data-tr-aria="nav_life">
+				<life-overview></life-overview>
 			</section>
 
 			<section class="dashboard-card" id="section-memory" aria-label="Memory" data-tr-aria="nav_memory">
@@ -426,36 +447,28 @@
 				<briefing-history></briefing-history>
 			</section>
 
-			<section class="dashboard-card" id="section-personality" aria-label="Personality" data-tr-aria="nav_personality">
+			<section class="dashboard-card persona-row-card" id="section-personality" aria-label="Personality"
+				data-tr-aria="nav_personality">
 				<z-personality></z-personality>
 			</section>
 
-			<section class="dashboard-card" id="section-inner" aria-label="Inner Circle" data-tr-aria="nav_inner_circle">
-				<circle-manager type="inner"></circle-manager>
+			<section class="dashboard-card persona-row-card" id="section-identity" aria-label="Profile"
+				data-tr-aria="nav_profile">
+				<user-card></user-card>
 			</section>
 
-			<section class="dashboard-card" id="section-close" aria-label="Close Circle" data-tr-aria="nav_close_circle">
-				<circle-manager type="close"></circle-manager>
-			</section>
-
-			<section class="dashboard-card" id="section-outer" aria-label="Outer Circle" data-tr-aria="nav_outer_circle">
-				<circle-manager type="outer"></circle-manager>
+			<section class="dashboard-card full-width-card" id="section-circles" aria-label="Relationships"
+				data-tr-aria="nav_circles">
+				<circle-manager type="unified"></circle-manager>
 			</section>
 
 			<section class="dashboard-card" id="section-email" aria-label="Email" data-tr-aria="nav_email">
 				<email-rules></email-rules>
 			</section>
 
-			<section class="dashboard-card" id="section-hardware" aria-label="Hardware" data-tr-aria="nav_hardware">
-				<hardware-monitor></hardware-monitor>
-			</section>
-
-			<section class="dashboard-card" id="section-software" aria-label="Software" data-tr-aria="nav_software">
-				<software-status></software-status>
-			</section>
-
-			<section class="dashboard-card" id="section-benchmark" aria-label="Benchmark" data-tr-aria="nav_benchmark">
-				<system-benchmark></system-benchmark>
+			<section class="dashboard-card full-width-card" id="section-diagnostics" aria-label="Diagnostics"
+				data-tr-aria="nav_diagnostics">
+				<diagnostics-widget></diagnostics-widget>
 			</section>
 		</div>
 
@@ -481,7 +494,8 @@
 		<defs>
 			<filter id="oz-goo">
 				<feGaussianBlur in="SourceGraphic" stdDeviation="15" result="blur" />
-				<feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 25 -10" result="oz-goo" />
+				<feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 25 -10"
+					result="oz-goo" />
 				<feComposite in="SourceGraphic" in2="oz-goo" operator="atop" />
 			</filter>
 		</defs>
