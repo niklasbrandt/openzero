@@ -159,8 +159,9 @@ _MODEL_SLASH_CMD_RE = re.compile(
 _SENSITIVE_OUTPUT_PATTERNS = re.compile(
 	r'(?:AKIA|ASIA|AIDA)[A-Z0-9]{16}'             # AWS access key
 	r'|sk-[A-Za-z0-9]{32,}'                         # OpenAI-style API key
-	r'|ghp_[A-Za-z0-9]{36}'                         # GitHub PAT (classic)
-	r'|github_pat_[A-Za-z0-9_]{82}'                 # GitHub PAT (fine-grained)
+	r'|ghp_[A-Za-z0-9]{20,40}'                      # GitHub PAT (classic, more flexible length)
+	r'|github_pat_[A-Za-z0-9_]{70,100}'             # GitHub PAT (fine-grained, more flexible length)
+	r'|ssh-(?:rsa|ed25519|dss|ecdsa) AAAA[A-Za-z0-9+/]+' # SSH Public Key
 	r'|-----BEGIN [A-Z ]+ PRIVATE KEY-----[\s\S]*?-----END [A-Z ]+ PRIVATE KEY-----', # SSH/Generic Private Keys
 	re.IGNORECASE,
 )
