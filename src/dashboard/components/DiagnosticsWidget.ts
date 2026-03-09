@@ -167,7 +167,6 @@ export class DiagnosticsWidget extends HTMLElement {
         const hasRamBreakdown = srv.ram_apps_gb !== undefined && srv.ram_bufcache_gb !== undefined;
         const appsPct = hasRamBreakdown ? Math.min(srv.ram_apps_pct || 0, 100) : ramPct;
         const cachePct = hasRamBreakdown ? Math.min((srv.ram_bufcache_gb / Math.max(srv.ram_total_gb, 0.1)) * 100, 100 - appsPct) : 0;
-        const ramBarClass = ramPct > 90 ? 'critical' : ramPct > 75 ? 'warning' : 'healthy';
 
         // 2. Software Section
         const swServices = [
@@ -190,8 +189,11 @@ export class DiagnosticsWidget extends HTMLElement {
         const cfgTiers: any[] = (this.llmConfig || {}).tiers || [];
         const modelFor = (name: string) => {
             const t = cfgTiers.find((x: any) => x.tier === name);
-            if (t && t.model) return t.model.split('/').pop().replace('.gguf', '');
-            return name;
+            if (t && t.model) {
+                const parts = t.model.split('/');
+                return parts[parts.length - 1].replace('.gguf', '');
+            }
+            return name === 'instant' ? 'Qwen3-0.6B' : name === 'standard' ? 'Qwen3-8B' : 'Qwen3-14B';
         };
 
         const tierNames = ['instant', 'standard', 'deep'];
@@ -215,6 +217,14 @@ export class DiagnosticsWidget extends HTMLElement {
         // 3. Benchmarks Section
         const benchHtml = this.benchResults.length === 0 ? `<div class="empty-state">No benchmark data. Run a test below.</div>` :
             this.benchResults.map(r => {
+                if (r.error) {
+                    return `
+                        <div class="bench-res-item error">
+                            <span class="bench-tier">${r.tier}</span>
+                            <span class="bench-error">${this.esc(r.error)}</span>
+                        </div>
+                    `;
+                }
                 const rtg = this.getRating(r.tokens_per_second, r.tier);
                 return `
 					<div class="bench-res-item">
@@ -228,36 +238,42 @@ export class DiagnosticsWidget extends HTMLElement {
 
         el.innerHTML = `
 			<div class="diag-layout">
+                <!-- Top Row: Prominent RAM -->
+                <div class="ram-strip">
+                    <div class="ram-strip-header">
+                        <span class="ram-title">System Memory (RAM)</span>
+                        <span class="ram-value">${srv.ram_used_gb || (ramPct * srv.ram_total_gb / 100).toFixed(1)}GB / ${srv.ram_total_gb}GB</span>
+                    </div>
+                    <div class="ram-strip-bar">
+                        <div class="ram-segment apps" style="width:${appsPct}%" title="Applications & LLMs"></div>
+                        <div class="ram-segment cache" style="width:${cachePct}%" title="System Cache & Buffers"></div>
+                        <div class="ram-segment free" style="width:${100 - appsPct - cachePct}%" title="Free Memory"></div>
+                    </div>
+                    <div class="ram-strip-legend">
+                        <div class="leg-item"><span class="leg-dot apps"></span> Apps: ${srv.ram_apps_gb || 0}G</div>
+                        <div class="leg-item"><span class="leg-dot cache"></span> Cache: ${srv.ram_bufcache_gb || 0}G</div>
+                        <div class="leg-item"><span class="leg-dot free"></span> Free: ${(srv.ram_free_gb || 0).toFixed(1)}G</div>
+                    </div>
+                </div>
+
 				<!-- Left Column: Hardware -->
 				<div class="diag-col hardware">
-					<div class="diag-section-label">Hardware</div>
+					<div class="diag-section-label">Processor Info</div>
 					<div class="cpu-info">${cpu.cpu_model}</div>
 					<div class="hw-specs">
 						<div class="hw-spec"><span>Cores</span><strong>${cpu.cores_physical}P/${cpu.cores_logical}L</strong></div>
 						<div class="hw-spec"><span>Arch</span><strong>${cpu.architecture}</strong></div>
 						<div class="hw-spec"><span>Uptime</span><strong>${srv.uptime_human || '?'}</strong></div>
 					</div>
-					<div class="ram-box">
-						<div class="ram-header"><span>RAM Usage</span><span>${srv.ram_total_gb}GB</span></div>
-						<div class="ram-bar">
-                            <div class="ram-fill ${ramBarClass}" style="width:${appsPct}%"></div>
-                            <div class="ram-fill cache" style="width:${cachePct}%"></div>
-                        </div>
-						<div class="ram-footer">
-                            <span>Apps: ${srv.ram_apps_gb || 0}G</span>
-                            <span>Cache: ${srv.ram_bufcache_gb || 0}G</span>
-                            <span>Free: ${(srv.ram_free_gb || 0).toFixed(1)}G</span>
-                        </div>
-					</div>
 				</div>
 
-				<!-- Middle Column: Software & Intelligence -->
+				<!-- Middle Column: LLM Tiers & Health -->
 				<div class="diag-col software">
-					<div class="diag-section-label">System Health</div>
-					<div class="svc-grid">${swGrid}</div>
-                    
-                    <div class="diag-section-label" style="margin-top: 0.8rem">Intelligence Tiers</div>
+                    <div class="diag-section-label">LLM Tiers</div>
 					<div class="llm-status-list">${llmStatusHtml}</div>
+
+					<div class="diag-section-label" style="margin-top: 0.8rem">Integration Health</div>
+					<div class="svc-grid">${swGrid}</div>
 				</div>
 
 				<!-- Right Column: Benchmarks -->
@@ -338,22 +354,30 @@ export class DiagnosticsWidget extends HTMLElement {
 					margin-bottom: 0.25rem;
 				}
 
+				.ram-strip { grid-column: 1 / -1; background: hsla(0, 0%, 100%, 0.03); padding: 1rem; border-radius: 0.6rem; border: 1px solid hsla(0, 0%, 100%, 0.06); margin-bottom: 0.5rem; }
+                .ram-strip-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.6rem; }
+                .ram-title { font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
+                .ram-value { font-size: 0.9rem; font-weight: 800; font-family: var(--font-mono); color: var(--accent-primary); }
+                .ram-strip-bar { height: 10px; background: hsla(0, 0%, 100%, 0.05); border-radius: 5px; overflow: hidden; display: flex; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); }
+                .ram-segment { height: 100%; transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+                .ram-segment.apps { background: linear-gradient(90deg, var(--accent-primary) 0%, var(--accent-secondary) 100%); box-shadow: 0 0 10px hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.3); }
+                .ram-segment.cache { background: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.25); }
+                .ram-segment.free { background: transparent; }
+                .ram-strip-legend { display: flex; gap: 1.5rem; margin-top: 0.6rem; }
+                .leg-item { display: flex; align-items: center; gap: 0.4rem; font-size: 0.65rem; color: var(--text-muted); font-weight: 600; }
+                .leg-dot { width: 8px; height: 8px; border-radius: 2px; }
+                .leg-dot.apps { background: var(--accent-primary); }
+                .leg-dot.cache { background: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.4); border: 1px solid hsla(0, 0%, 100%, 0.1); }
+                .leg-dot.free { background: transparent; border: 1px solid hsla(0, 0%, 100%, 0.2); }
+
 				/* Hardware Styles */
-				.cpu-info { font-size: 0.85rem; font-weight: 600; color: var(--text-primary); font-family: var(--font-mono); }
-				.hw-specs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+				.cpu-info { font-size: 0.85rem; font-weight: 600; color: var(--text-primary); font-family: var(--font-mono); margin-bottom: 0.4rem; }
+				.hw-specs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; background: hsla(0, 0%, 100%, 0.02); padding: 0.75rem; border-radius: 0.4rem; border: 1px solid hsla(0, 0%, 100%, 0.04); }
 				.hw-spec { display: flex; flex-direction: column; font-size: 0.7rem; }
 				.hw-spec span { color: var(--text-muted); font-size: 0.6rem; text-transform: uppercase; }
 				.hw-spec strong { color: var(--text-secondary); font-family: var(--font-mono); }
 
-				.ram-box { background: hsla(0, 0%, 100%, 0.02); padding: 0.75rem; border-radius: 0.5rem; border: 1px solid hsla(0, 0%, 100%, 0.05); }
-				.ram-header { display: flex; justify-content: space-between; font-size: 0.7rem; margin-bottom: 0.4rem; color: var(--text-secondary); }
-				.ram-bar { height: 6px; background: hsla(0, 0%, 100%, 0.05); border-radius: 3px; overflow: hidden; display: flex; }
-				.ram-fill { height: 100%; transition: width 0.5s; }
-				.ram-fill.healthy { background: var(--accent-primary); }
-				.ram-fill.warning { background: var(--status-warning); }
-				.ram-fill.critical { background: var(--status-danger); }
-				.ram-fill.cache { background: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.3); }
-				.ram-footer { font-size: 0.55rem; color: var(--text-muted); margin-top: 0.3rem; display: flex; justify-content: space-between; }
+				/* Removed old .ram-box, .ram-header, .ram-bar, .ram-fill, .ram-footer styles */
 
 				/* Software Styles */
 				.svc-grid { display: flex; flex-direction: column; gap: 0.4rem; }
@@ -386,6 +410,8 @@ export class DiagnosticsWidget extends HTMLElement {
 				.bench-val.moderate, .bench-label.moderate { color: var(--status-warning); }
 				.bench-val.slow, .bench-label.slow { color: var(--status-danger); }
 				.bench-rtg { font-size: 1rem; margin-left: 0.5rem; }
+                .bench-res-item.error { background: hsla(0, 90%, 60%, 0.05); border-color: hsla(0, 90%, 60%, 0.1); }
+                .bench-error { font-size: 0.65rem; color: var(--status-danger); font-family: var(--font-mono); flex: 1; text-align: right; }
 
 				.bench-actions { display: flex; flex-direction: column; gap: 0.5rem; margin-top: auto; }
 				.b-btn { background: hsla(0, 0%, 100%, 0.04); color: var(--text-primary); border: 1px solid hsla(0, 0%, 100%, 0.08); padding: 0.5rem; border-radius: 0.5rem; font-size: 0.65rem; font-weight: 700; cursor: pointer; transition: all 0.2s; text-transform: uppercase; letter-spacing: 0.05em; }
