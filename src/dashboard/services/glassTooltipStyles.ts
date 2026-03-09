@@ -34,17 +34,31 @@ export const GLASS_TOOLTIP_STYLES = `
 		border: 1px solid var(--tooltip-border, rgba(255, 255, 255, 0.18));
 		white-space: normal;
 		width: max-content;
-		max-width: 280px;
+		max-width: 250px;
 		pointer-events: none;
 		opacity: 0;
-		transition: all 0.24s var(--ease-snap, cubic-bezier(0.23, 1, 0.32, 1));
+		visibility: hidden;
+		transition: opacity 0.24s var(--ease-snap, cubic-bezier(0.23, 1, 0.32, 1)), transform 0.24s var(--ease-snap, cubic-bezier(0.23, 1, 0.32, 1));
+		transform: translateY(2px);
 		z-index: 1000;
 		box-shadow: var(--tooltip-shadow, 0 8px 32px rgba(0, 0, 0, 0.35));
+
+		/* Hard Resets: Prevent inheritance from parent CSS */
+		text-transform: none !important;
+		letter-spacing: normal !important;
+		font-weight: 500 !important;
+		text-align: left !important;
+		filter: none !important;
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
+		font-style: normal !important;
+		text-shadow: none !important;
 	}
 
 	.has-tip:hover > .glass-tooltip,
 	.has-tip:focus-visible > .glass-tooltip {
 		opacity: 1;
+		visibility: visible;
 		transform: translateY(-4px);
 	}
 
