@@ -64,7 +64,8 @@ export class SoftwareStatus extends HTMLElement {
 
 	private _startPolling() {
 		if (this._refreshTimer) return;
-		this._refreshTimer = setInterval(() => this.fetchStatus(), 10_000);
+		// 3 s so activity transitions (idle → busy → idle) are caught in near-real-time
+		this._refreshTimer = setInterval(() => this.fetchStatus(), 3_000);
 	}
 
 	private _stopPolling() {
@@ -113,102 +114,69 @@ export class SoftwareStatus extends HTMLElement {
 		const d = this.data;
 		const tiers = d.tiers || {};
 
-		// LLM tier config (fetch model names)
-		const llmCfg = d.llm_config || {};
-		const tierList: any[] = llmCfg.tiers || [];
-		const modelFor = (tier: string) => {
-			const t = tierList.find((x: any) => x.tier === tier);
-			return t ? t.model : '?';
-		};
-
 		// Service health grid
 		const services = [
 			{
-				name: 'Instant',
-				model: modelFor('instant'),
-				status: (tiers.instant || {}).status === 'ok' || (tiers.instant || {}).status === 'online' || (tiers.instant || {}).status === 'no slot available' ? 'online' : 'offline',
-				activity: (tiers.instant || {}).activity || 'idle',
-				detail: d.llm_provider === 'local' ? `${(tiers.instant || {}).threads || '?'}T` : 'cloud',
-				tip: this.tr('tip_instant', 'Fast, trivial queries. Greetings, confirmations, memory distillation.'),
-				isLlm: true,
-			},
-			{
-				name: 'Standard',
-				model: modelFor('standard'),
-				status: (tiers.standard || {}).status === 'ok' || (tiers.standard || {}).status === 'online' || (tiers.standard || {}).status === 'no slot available' ? 'online' : 'offline',
-				activity: (tiers.standard || {}).activity || 'idle',
-				detail: d.llm_provider === 'local' ? `${(tiers.standard || {}).threads || '?'}T` : 'cloud',
-				tip: this.tr('tip_standard', 'Normal conversation, moderate reasoning, tool-intent. The workhorse tier.'),
-				isLlm: true,
-			},
-			{
-				name: 'Deep',
-				model: modelFor('deep'),
-				status: (tiers.deep || {}).status === 'ok' || (tiers.deep || {}).status === 'online' || (tiers.deep || {}).status === 'no slot available' ? 'online' : 'offline',
-				activity: (tiers.deep || {}).activity || 'idle',
-				detail: d.llm_provider === 'local' ? `${(tiers.deep || {}).threads || '?'}T` : 'cloud',
-				tip: this.tr('tip_deep', 'Complex reasoning, briefings, planning, strategic analysis.'),
-				isLlm: true,
-			},
-			{
-				name: this.tr('backend', 'Backend'),
-				model: '',
-				status: d.status === 'online' ? 'online' : 'offline',
-				detail: `Provider: ${d.llm_provider || 'local'}`,
-				tip: this.tr('tip_backend', 'FastAPI backend serving dashboard, Telegram bot, scheduled tasks, and LLM routing.'),
-				isLlm: false,
+				name: 'Intelligence',
+				status: (tiers.instant || {}).status === 'online' || d.status === 'online' ? 'online' : 'offline',
+				detail: d.llm_model_short || 'Standard',
+				tip: `Active Provider: ${d.llm_provider}. Model: ${d.llm_model_full}`,
+				icon: 'brain'
 			},
 			{
 				name: this.tr('memory_search', 'Memory'),
-				model: '',
 				status: (d.memory_points || 0) >= 0 ? 'online' : 'offline',
 				detail: `${d.memory_points || 0} pts`,
 				tip: this.tr('tip_memory', 'Qdrant vector database storing semantic long-term memory.'),
-				isLlm: false,
+				icon: 'database'
 			},
 			{
-				name: this.tr('tab_identity', 'Identity'),
-				model: '',
-				status: d.identity_active ? 'online' : 'warning',
-				detail: d.identity_active ? this.tr('status_active', 'Active') : this.tr('not_set', 'Not set'),
-				tip: this.tr('tip_identity_svc', 'Subject Zero identity profile. Required for personalized responses.'),
-				isLlm: false,
+				name: 'Database',
+				status: d.db_size ? 'online' : 'warning',
+				detail: d.db_size || '0 MB',
+				tip: 'PostgreSQL storage used by projects, events, and core OS state.',
+				icon: 'server'
 			},
 			{
-				name: 'DNS',
-				model: '',
+				name: 'Cache / PubSub',
+				status: d.redis_stats ? 'online' : 'warning',
+				detail: d.redis_stats || 'offline',
+				tip: 'Redis memory usage and key count for background tasks.',
+				icon: 'zap'
+			},
+			{
+				name: 'DNS / Adblock',
 				status: d.dns_ok === true ? 'online' : d.dns_ok === false ? 'offline' : 'warning',
-				detail: d.dns_ok ? 'online' : 'offline',
-				tip: this.tr('tip_dns', 'Pi-hole DNS resolver. Resolves open.zero for all Tailscale peers. Offline = mobile dashboard unreachable.'),
-				isLlm: false,
+				detail: d.dns_detail || 'online',
+				tip: this.tr('tip_dns', 'Pi-hole DNS resolver. Resolves open.zero for all Tailscale peers.'),
+				icon: 'shield'
+			},
+			{
+				name: 'Project Board',
+				status: d.status === 'online' ? 'online' : 'offline',
+				detail: 'Planka OSS',
+				tip: 'Shared Kanban operating surface for task management.',
+				icon: 'trello'
 			},
 		];
 
-		const serviceGrid = services.map(s => s.isLlm ? `
-			<div class="svc-item svc-llm has-tip" role="listitem" data-tip="${s.tip}" tabindex="0" aria-label="${s.name}: ${s.status}">
-				<div class="svc-row">
-					<span class="svc-dot ${s.status} ${s.activity}" aria-hidden="true"></span>
-					<span class="sr-only">${s.status} ${s.activity}</span>
-					<span class="svc-name">${s.name}</span>
-					<span class="svc-detail">${s.detail}</span>
-				</div>
-				<span class="svc-model">${s.model}</span>
-			</div>
-		` : `
+		const serviceGrid = services.map(s => `
 			<div class="svc-item has-tip" role="listitem" data-tip="${s.tip}" tabindex="0" aria-label="${s.name}: ${s.status}">
-				<span class="svc-dot ${s.status}" aria-hidden="true"></span>
-				<span class="sr-only">${s.status}</span>
-				<span class="svc-name">${s.name}</span>
+				<div class="svc-main">
+					<span class="svc-dot ${s.status}" aria-hidden="true"></span>
+					<span class="sr-only">${s.status}</span>
+					<span class="svc-name">${s.name}</span>
+				</div>
 				<span class="svc-detail">${s.detail}</span>
 			</div>
 		`).join('');
 
-		// Stack summary
+		// Stack summary - adding more detailed stats
 		const stackItems = [
-			{ label: this.tr('llm_engine', 'LLM Engine'), value: 'llama.cpp', tip: this.tr('tip_llm_engine', 'Local inference engine running GGUF-quantized models via llama-server.') },
-			{ label: this.tr('model_active', 'Model Active'), value: d.llm_model || 'unknown', tip: this.tr('tip_model_active', 'The model used for the most recent LLM request.') },
-			{ label: this.tr('memory_db', 'Memory DB'), value: 'Qdrant', tip: this.tr('tip_memory_db', 'Vector similarity search for semantic long-term memory.') },
-			{ label: this.tr('task_board', 'Task Board'), value: 'Planka', tip: this.tr('tip_task_board', 'Kanban project management board for task tracking.') },
+			{ label: 'Uptime', value: d.uptime_human || '?', tip: 'Time since last system reboot.' },
+			{ label: 'Vector Vault', value: 'Qdrant', tip: 'Semantic memory storage engine.' },
+			{ label: 'Realtime Queue', value: 'Redis', tip: 'Asynchronous task queue handler.' },
+			{ label: 'Network', value: 'Traefik', tip: 'Reverse proxy and request router.' },
 		];
 
 		const stackHtml = stackItems.map(s => `
@@ -218,13 +186,33 @@ export class SoftwareStatus extends HTMLElement {
 			</div>
 		`).join('');
 
+		// 3-Tier summary
+		const intelHtml = `
+			<div class="intel-stats">
+				<div class="intel-stat">
+					<span class="intel-label">Instant</span>
+					<span class="intel-value">0.6B / ${(tiers.instant || {}).threads || 7}T</span>
+				</div>
+				<div class="intel-stat">
+					<span class="intel-label">Standard</span>
+					<span class="intel-value">8B-Q2 / ${(tiers.standard || {}).threads || 7}T</span>
+				</div>
+				<div class="intel-stat">
+					<span class="intel-label">Deep</span>
+					<span class="intel-value">8B-Q4 / ${(tiers.deep || {}).threads || 7}T</span>
+				</div>
+			</div>
+		`;
+
 		el.innerHTML = `
 			<div class="svc-grid" role="list" aria-label="${this.tr('aria_service_status', 'Service status overview')}">${serviceGrid}</div>
 			<div class="stack-section">
 				<span class="section-label">${this.tr('stack', 'Stack')}</span>
 				<div class="stack-grid">${stackHtml}</div>
+				${intelHtml}
 			</div>
 		`;
+
 		this.injectTooltips();
 	}
 
@@ -262,74 +250,58 @@ export class SoftwareStatus extends HTMLElement {
 				}
 				.svc-item {
 					display: flex;
-					align-items: center;
-					gap: 0.4rem;
+					flex-direction: column;
+					align-items: flex-start;
+					gap: 0.15rem;
 					padding: 0.5rem 0.65rem;
 					background: var(--surface-card, hsla(0, 0%, 100%, 0.03));
 					border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.06));
 					border-radius: 0.4rem;
 					cursor: help;
-					min-height: 44px; /* WCAG touch target */
+					min-height: 52px;
 				}
-				.svc-llm {
-					flex-direction: column;
-					align-items: stretch;
-					gap: 0.2rem;
-					padding: 0.55rem 0.65rem;
-					min-height: 56px;
-				}
-				.svc-llm .svc-row {
+				.svc-main {
 					display: flex;
 					align-items: center;
 					gap: 0.4rem;
-				}
-				.svc-model {
-					font-size: 0.82rem;
-					font-weight: 600;
-					color: var(--text-secondary, hsla(0, 0%, 100%, 0.85));
-					font-family: var(--font-mono, 'Fira Code', monospace);
-					letter-spacing: -0.01em;
+					width: 100%;
 				}
 				.svc-dot {
-					width: 8px;
-					height: 8px;
+					width: 10px;
+					height: 10px;
 					border-radius: 50%;
 					flex-shrink: 0;
+					transition: background 0.3s, box-shadow 0.3s;
 				}
 				.svc-dot.online { 
 					background: var(--accent-primary, hsla(173, 80%, 40%, 1)); 
-					box-shadow: 0 0 8px var(--surface-accent-subtle, hsla(173, 80%, 40%, 0.2)); 
-				}
-				.svc-dot.online.processing {
-					background: var(--accent-secondary, hsla(210, 100%, 60%, 1));
-					box-shadow: 0 0 8px var(--surface-accent-subtle, hsla(210, 100%, 60%, 0.4));
-					animation: svc-pulse 1.5s infinite;
-				}
-				@keyframes svc-pulse {
-					0% { box-shadow: 0 0 0 0 hsla(210, 100%, 60%, 0.4); }
-					70% { box-shadow: 0 0 0 6px hsla(210, 100%, 60%, 0); }
-					100% { box-shadow: 0 0 0 0 hsla(210, 100%, 60%, 0); }
+					box-shadow: 0 0 10px var(--surface-accent-subtle, hsla(173, 80%, 40%, 0.35)); 
 				}
 				.svc-dot.offline { 
 					background: var(--status-danger, hsla(0, 84%, 60%, 1)); 
-					box-shadow: 0 0 8px var(--surface-danger-subtle, hsla(0, 84%, 60%, 0.2)); 
+					box-shadow: 0 0 8px var(--surface-danger-subtle, hsla(0, 84%, 60%, 0.25)); 
 				}
 				.svc-dot.warning { 
 					background: var(--status-warning, hsla(45, 93%, 47%, 1)); 
-					box-shadow: 0 0 8px var(--surface-warning-subtle, hsla(45, 93%, 47%, 0.2)); 
+					box-shadow: 0 0 8px var(--surface-warning-subtle, hsla(45, 93%, 47%, 0.25)); 
 				}
 				.svc-name {
 					font-size: 0.7rem;
 					font-weight: 600;
 					color: var(--text-secondary, hsla(0, 0%, 100%, 0.8));
 					white-space: nowrap;
+					overflow: hidden;
+					text-overflow: ellipsis;
 				}
 				.svc-detail {
-					font-size: 0.65rem;
-					color: var(--text-secondary, hsla(0, 0%, 100%, 0.7));
+					font-size: 0.62rem;
+					color: var(--text-muted, hsla(0, 0%, 100%, 0.5));
 					font-family: var(--font-mono, 'Fira Code', monospace);
-					margin-left: auto;
 					white-space: nowrap;
+					overflow: hidden;
+					text-overflow: ellipsis;
+					width: 100%;
+					padding-left: 1.15rem; /* align with name text, past dot */
 				}
 
 				/* ── Stack Section ── */
@@ -346,6 +318,7 @@ export class SoftwareStatus extends HTMLElement {
 					display: grid;
 					grid-template-columns: repeat(2, 1fr);
 					gap: 0.4rem;
+					margin-bottom: 1.25rem;
 				}
 				.stack-item {
 					display: flex;
@@ -369,6 +342,31 @@ export class SoftwareStatus extends HTMLElement {
 					font-size: 0.82rem;
 					color: var(--text-secondary, hsla(0, 0%, 100%, 0.7));
 					font-family: var(--font-mono, 'Fira Code', monospace);
+				}
+
+				/* ── Intelligence Stats Footer ── */
+				.intel-stats {
+					display: flex;
+					justify-content: space-between;
+					padding-top: 0.75rem;
+					border-top: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.04));
+					gap: 0.5rem;
+				}
+				.intel-stat {
+					display: flex;
+					flex-direction: column;
+					gap: 0.1rem;
+				}
+				.intel-label {
+					font-size: 0.55rem;
+					text-transform: uppercase;
+					color: var(--text-muted, hsla(0, 0%, 100%, 0.3));
+					font-weight: 700;
+				}
+				.intel-value {
+					font-size: 0.7rem;
+					color: var(--text-muted, hsla(0, 0%, 100%, 0.5));
+					font-weight: 500;
 				}
 
 				.svc-item:focus-visible, .stack-item:focus-visible { 
