@@ -158,7 +158,10 @@ _MODEL_SLASH_CMD_RE = re.compile(
 # If any match, the matching segment is redacted before reaching the client.
 _SENSITIVE_OUTPUT_PATTERNS = re.compile(
 	r'(?:AKIA|ASIA|AIDA)[A-Z0-9]{16}'             # AWS access key
-	r'|sk-[A-Za-z0-9]{32,}',                       # OpenAI-style API key
+	r'|sk-[A-Za-z0-9]{32,}'                         # OpenAI-style API key
+	r'|ghp_[A-Za-z0-9]{36}'                         # GitHub PAT (classic)
+	r'|github_pat_[A-Za-z0-9_]{82}'                 # GitHub PAT (fine-grained)
+	r'|-----BEGIN [A-Z ]+ PRIVATE KEY-----[\s\S]*?-----END [A-Z ]+ PRIVATE KEY-----', # SSH/Generic Private Keys
 	re.IGNORECASE,
 )
 
