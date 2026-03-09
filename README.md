@@ -87,13 +87,13 @@ A **TypeScript** web application built with native Web Components (Shadow DOM) a
 
 A 3-tier **llama.cpp** architecture runs optimized GGUF models directly on your CPU:
 
-| Tier         | Model               | Purpose                                                    | Typical Speed |
-| :----------- | :------------------ | :--------------------------------------------------------- | :------------ |
-| **Instant**  | Qwen3-1.7B (Q4_K_M) | Greetings, confirmations, trivial Q&A, memory distillation | 8-18 tok/s    |
-| **Standard** | Qwen3-8B (Q4_K_M)   | Conversation, creative tasks, planning, agent actions      | 2-5 tok/s     |
-| **Deep**     | Qwen3-14B (Q4_K_M)  | Complex analysis, briefings, strategic reasoning           | 1-3 tok/s     |
+| Tier         | Model               | Purpose                                                    | Context | RAM  |
+| :----------- | :------------------ | :--------------------------------------------------------- | :------ | :--- |
+| **Instant**  | Qwen3-0.6B (Q4_K_M) | Greetings, confirmations, trivial Q&A, memory distillation | 4,096   | 0.4G |
+| **Standard** | Qwen3-8B (Q2_K)     | Conversation, creative tasks, planning, agent actions      | 4,096   | 3.3G |
+| **Deep**     | Qwen3-8B (Q4_K_M)   | Complex analysis, briefings, strategic reasoning           | 8,192   | 5.1G |
 
-The default profile targets a 24 GB VPS with all three tiers active. On 8-16 GB systems, the deep tier routes to standard. On Apple Silicon homelab, the deep tier can run Qwen3-32B. See `.env.example` for hardware profiles.
+The default profile targets a hardware envelope with **24 GB RAM** (all three tiers active). This specific mix (8B-Q4 for Deep) ensures stable headroom for Whisper (STT) and TTS (voice) services on single-server deployments. On 32-64 GB systems, the Deep tier can scale back to Qwen3-14B or 32B. See `.env.example` for detailed hardware profiles.
 
 All three tiers use the Qwen3 generation (Apache 2.0). Qwen3-8B benchmarks on-par with Qwen2.5-14B; Qwen3-14B on-par with Qwen2.5-32B — at the same RAM footprint as their predecessors. Qwen3-14B also supports hybrid thinking mode (CoT blocks are stripped from user-facing output automatically).
 
