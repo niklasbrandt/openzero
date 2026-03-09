@@ -53,29 +53,32 @@
             position: relative;
             padding: 2px;
             border-radius: 26px;
-            background: rgba(255, 255, 255, 0.05);
+            background: rgba(255, 255, 255, 0.03);
             display: flex;
             align-items: center;
             justify-content: center;
             overflow: hidden;
             animation: fadeIn 1s ease-out;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
         }
 
         @keyframes rotate {
             from {
-                transform: rotate(0deg);
+                transform: translate(-50%, -50%) rotate(0deg);
             }
 
             to {
-                transform: rotate(360deg);
+                transform: translate(-50%, -50%) rotate(360deg);
             }
         }
 
         .border-glow::before {
             content: '';
             position: absolute;
-            width: 150%;
-            height: 150%;
+            top: 50%;
+            left: 50%;
+            width: 800px;
+            height: 800px;
             background: conic-gradient(transparent,
                     transparent,
                     transparent,
@@ -91,7 +94,6 @@
             padding: 56px 48px;
             background: var(--bg-color);
             border-radius: 24px;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
         }
 
         @keyframes fadeIn {
