@@ -1980,15 +1980,9 @@ async def get_system_status(db: AsyncSession = Depends(get_db)):
         logger.debug("Failed to get Redis stats: %s", e)
 
     # Software Metrics: Pi-hole (Blocked Stats)
-    pihole_stats = "0/0/0%"
+    pihole_stats = "0 blocked (0%)"
     try:
-        # Get pihole summary from its chronos DB or CLI
-        # Use docker exec to get JSON summary
-        ph_cmd = subprocess.run(
-            ["docker", "exec", "openzero-pihole-1", "pihole", "status", "web"],
-            capture_output=True, text=True, timeout=5
-        )
-        # pihole -c -j is better for JSON
+        # Get pihole summary via its API
         ph_json_cmd = subprocess.run(
             ["docker", "exec", "openzero-pihole-1", "php", "/var/www/html/admin/api.php", "summary"],
             capture_output=True, text=True, timeout=5
