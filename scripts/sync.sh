@@ -71,7 +71,7 @@ if [ -d .git ]; then
 fi
 
 # Rebuild and restart using docker compose
-ssh $REMOTE_USER@$REMOTE_HOST "cd $REMOTE_DIR && docker compose build backend && docker compose up -d"
+ssh $REMOTE_USER@$REMOTE_HOST "cd $REMOTE_DIR && docker compose build backend && docker compose up -d && sync && echo 3 | sudo tee /proc/sys/vm/drop_caches"
 
 # Clean up local temporary file
 rm -f LATEST_CHANGES.txt
