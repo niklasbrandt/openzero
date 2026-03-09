@@ -59,12 +59,20 @@ export class CircleManager extends HTMLElement {
 
 	async fetchPeople() {
 		try {
-			const response = await fetch(`/api/dashboard/people?circle_type=${this.circleType}`);
-			if (!response.ok) throw new Error('API error');
-			const text = await response.text();
-			if (!text) throw new Error('Empty response');
-			const data = JSON.parse(text);
-			this.displayPeople(data);
+			if (this.circleType === 'unified') {
+				const [innerRes, closeRes] = await Promise.all([
+					fetch('/api/dashboard/people?circle_type=inner'),
+					fetch('/api/dashboard/people?circle_type=close')
+				]);
+				const inner = innerRes.ok ? await innerRes.json() : [];
+				const close = closeRes.ok ? await closeRes.json() : [];
+				this.displayUnified(inner, close);
+			} else {
+				const response = await fetch(`/api/dashboard/people?circle_type=${this.circleType}`);
+				if (!response.ok) throw new Error('API error');
+				const data = await response.json();
+				this.displayPeople(data);
+			}
 		} catch (_e) {
 			const list = this.shadowRoot?.querySelector('#people-list');
 			if (list) list.textContent = this.tr('no_people', 'No people added to this circle.');
@@ -115,49 +123,95 @@ export class CircleManager extends HTMLElement {
 
 	private currentPeople: any[] = [];
 
+	private esc(str: string): string {
+		if (!str) return '';
+		return str
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;')
+			.replace(/"/g, '&quot;')
+			.replace(/'/g, '&#39;');
+	}
+
+	displayUnified(inner: any[], close: any[]) {
+		this.currentPeople = [...inner, ...close];
+		const list = this.shadowRoot?.querySelector('#people-list');
+		if (list) {
+			list.innerHTML = `
+				<div class="unified-grid">
+					<div class="unified-col">
+						<h3 class="unified-h3">${this.tr('inner_circle', 'Inner Circle')}</h3>
+						<div class="people-sublist" data-type="inner">
+							${this.renderPeopleList(inner, 'inner')}
+						</div>
+					</div>
+					<div class="unified-sep"></div>
+					<div class="unified-col">
+						<h3 class="unified-h3">${this.tr('close_circle', 'Close Circle')}</h3>
+						<div class="people-sublist" data-type="close">
+							${this.renderPeopleList(close, 'close')}
+						</div>
+					</div>
+				</div>
+			`;
+			this.attachItemListeners(list);
+		}
+	}
+
 	displayPeople(people: any[]) {
 		this.currentPeople = people;
 		const list = this.shadowRoot?.querySelector('#people-list');
 		if (list) {
-			list.innerHTML = people.map(p => `
-				<div class="person-item">
-					<div class="info">
-						<span class="name">${p.name}</span>
-						<span class="rel">${p.relationship}</span>
-						${p.birthday ? `<span class="cal-badge" aria-label="${this.tr('aria_birthday_badge', 'Birthday')}: ${p.birthday}"><span aria-hidden="true">&#127874;</span> ${p.birthday}</span>` : ''}
-						<p class="ctx">${p.context || this.tr('no_focus', 'No specific focus set.')}</p>
-					</div>
-					<div class="item-actions" role="group" aria-label="${this.tr('aria_actions_for', 'Actions for')} ${p.name}">
-						<button class="edit-btn" data-id="${p.id}" aria-label="${this.tr('aria_edit_details', 'Edit details for')} ${p.name}">${this.tr('edit', 'Edit')}</button>
-						<button class="delete-btn" data-id="${p.id}" aria-label="${this.tr('aria_remove_from_circle', 'Remove from circle')}: ${p.name}">${this.tr('remove', 'Remove')}</button>
-					</div>
-				</div>
-			`).join('') || this.tr('no_people', 'No people added to this circle.');
-
-			list.querySelectorAll('.delete-btn').forEach(btn => {
-				btn.addEventListener('click', (e) => {
-					const id = (e.currentTarget as HTMLElement).getAttribute('data-id');
-					if (id) this.deletePerson(parseInt(id));
-				});
-			});
-
-			list.querySelectorAll('.edit-btn').forEach(btn => {
-				btn.addEventListener('click', (e) => {
-					const id = (e.currentTarget as HTMLElement).getAttribute('data-id');
-					const person = people.find(p => p.id === parseInt(id!));
-					if (person) {
-						this.editingId = person.id;
-						this.isAdding = true;
-						this.render();
-						// Populate fields
-						(this.shadowRoot?.querySelector('#nameInput') as HTMLInputElement).value = person.name;
-						(this.shadowRoot?.querySelector('#relInput') as HTMLInputElement).value = person.relationship;
-						(this.shadowRoot?.querySelector('#bdayInput') as HTMLInputElement).value = person.birthday || '';
-						(this.shadowRoot?.querySelector('#ctxInput') as HTMLTextAreaElement).value = person.context || '';
-					}
-				});
-			});
+			list.innerHTML = this.renderPeopleList(people, this.circleType);
+			this.attachItemListeners(list);
 		}
+	}
+
+	private renderPeopleList(people: any[], type: string): string {
+		if (people.length === 0) return `<div class="empty-state">${this.tr('no_people', 'No people added.')}</div>`;
+		return people.map(p => `
+			<div class="person-item" data-circle-type="${type}">
+				<div class="info">
+					<span class="name">${this.esc(p.name)}</span>
+					<span class="rel">${this.esc(p.relationship)}</span>
+					${p.birthday ? `<span class="cal-badge"><span aria-hidden="true">&#127874;</span> ${this.esc(p.birthday)}</span>` : ''}
+					<p class="ctx">${this.esc(p.context || '')}</p>
+				</div>
+				<div class="item-actions">
+					<button class="edit-btn" data-id="${p.id}">${this.tr('edit', 'Edit')}</button>
+					<button class="delete-btn" data-id="${p.id}">${this.tr('remove', 'Remove')}</button>
+				</div>
+			</div>
+		`).join('');
+	}
+
+	private attachItemListeners(container: Element) {
+		container.querySelectorAll('.delete-btn').forEach(btn => {
+			btn.addEventListener('click', (e) => {
+				const id = (e.currentTarget as HTMLElement).getAttribute('data-id');
+				if (id) this.deletePerson(parseInt(id));
+			});
+		});
+
+		container.querySelectorAll('.edit-btn').forEach(btn => {
+			btn.addEventListener('click', (e) => {
+				const id = (e.currentTarget as HTMLElement).getAttribute('data-id');
+				const p = this.currentPeople.find((px: any) => px.id === parseInt(id!));
+				if (p) {
+					this.editingId = p.id;
+					// Force circleType to the person's actual type during edit
+					this.setAttribute('type', p.circle_type);
+					this.isAdding = true;
+					this.render();
+					setTimeout(() => {
+						(this.shadowRoot?.querySelector('#nameInput') as HTMLInputElement).value = p.name;
+						(this.shadowRoot?.querySelector('#relInput') as HTMLInputElement).value = p.relationship;
+						(this.shadowRoot?.querySelector('#bdayInput') as HTMLInputElement).value = p.birthday || '';
+						(this.shadowRoot?.querySelector('#ctxInput') as HTMLTextAreaElement).value = p.context || '';
+					}, 50);
+				}
+			});
+		});
 	}
 
 	render() {
@@ -166,14 +220,16 @@ export class CircleManager extends HTMLElement {
 				inner: this.tr('inner_circle_full', 'Inner Circle'),
 				close: this.tr('close_circle_full', 'Close Circle'),
 				outer: this.tr('outer_circle_full', 'Outer Circle'),
+				unified: this.tr('relationships', 'Relationships'),
 			};
 			const accents: Record<string, string> = {
 				inner: 'hsla(217, 91%, 60%, 1)',
 				close: 'hsla(160, 84%, 39%, 1)',
 				outer: 'hsla(263, 90%, 76%, 1)',
+				unified: 'var(--accent-color)',
 			};
-			const title = titles[this.circleType] || titles['outer'];
-			const accent = accents[this.circleType] || accents['outer'];
+			const title = titles[this.circleType] || titles['unified'];
+			const accent = accents[this.circleType] || accents['unified'];
 
 			this.shadowRoot.innerHTML = `
 				<style>
@@ -309,27 +365,32 @@ export class CircleManager extends HTMLElement {
 						outline-offset: 2px;
 					}
 					@media (forced-colors: active) {
-						.h-icon { background: ButtonFace; border: 1px solid ButtonText; }
-						.rel { color: LinkText; }
-						.cal-badge { border: 1px solid ButtonText; }
-						.delete-btn { border-color: LinkText; color: LinkText; }
-						.person-card.deleting { border-color: LinkText; }
+						.h-icon svg { stroke: white; }
+					.unified-grid { display: grid; grid-template-columns: 1fr auto 1fr; gap: 1rem; align-items: stretch; }
+					.unified-col { display: flex; flex-direction: column; gap: 0.5rem; }
+					.unified-sep { width: 1px; background: var(--border-subtle, hsla(0, 0%, 100%, 0.1)); height: auto; margin: 0 0.5rem; }
+					.unified-h3 { font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); opacity: 0.8; letter-spacing: 0.1em; margin-bottom: 0.5rem; border-bottom: 1px solid hsla(0, 0%, 100%, 0.05); padding-bottom: 0.5rem; }
+					.people-sublist { display: flex; flex-direction: column; gap: 0.75rem; }
+					
+					[data-circle-type="inner"] .rel { color: hsla(217, 91%, 60%, 1); }
+					[data-circle-type="close"] .rel { color: hsla(160, 84%, 39%, 1); }
+
+					@media (max-width: 900px) {
+						.unified-grid { grid-template-columns: 1fr; }
+						.unified-sep { height: 1px; width: 100%; margin: 1rem 0; }
 					}
 				</style>
 				<div class="card">
 					<div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem;">
-						<h2>
-					<span class="h-icon" aria-hidden="true">
-							<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-									<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-									<circle cx="9" cy="7" r="4"></circle>
-									<path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-									<path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-								</svg>
-							</span>
-							${title}
 						</h2>
-						${!this.isAdding ? `<button id="showAddBtn" class="btn-primary" aria-label="${this.tr('aria_add_person', 'Add a new person to')} ${title}">${this.tr('new_person', '+ New Person')}</button>` : ''}
+						${!this.isAdding ? `
+						<div style="display: flex; gap: 0.5rem;">
+							${this.circleType === 'unified' ? `
+								<button id="addInnerBtn" class="btn-primary" style="background: hsla(217, 91%, 60%, 0.2); color: hsla(217, 91%, 60%, 1); border-color: hsla(217, 91%, 60%, 0.3);">+ Inner</button>
+								<button id="addCloseBtn" class="btn-primary" style="background: hsla(160, 84%, 39%, 0.2); color: hsla(160, 84%, 39%, 1); border-color: hsla(160, 84%, 39%, 0.3);">+ Close</button>
+							` : `<button id="showAddBtn" class="btn-primary" aria-label="${this.tr('aria_add_person', 'Add a new person to')} ${title}">${this.tr('new_person', '+ New Person')}</button>`}
+						</div>
+						` : ''}
 					</div>
 
 					${this.isAdding ? `
@@ -364,10 +425,19 @@ export class CircleManager extends HTMLElement {
 				this.shadowRoot.querySelector('#showAddBtn')?.addEventListener('click', () => {
 					this.isAdding = true;
 					this.render();
-					// Focus the first field for keyboard users
-					setTimeout(() => {
-						this.shadowRoot?.querySelector<HTMLInputElement>('#nameInput')?.focus();
-					}, 50);
+					setTimeout(() => this.shadowRoot?.querySelector<HTMLInputElement>('#nameInput')?.focus(), 50);
+				});
+				this.shadowRoot.querySelector('#addInnerBtn')?.addEventListener('click', () => {
+					this.circleType = 'inner';
+					this.isAdding = true;
+					this.render();
+					setTimeout(() => this.shadowRoot?.querySelector<HTMLInputElement>('#nameInput')?.focus(), 50);
+				});
+				this.shadowRoot.querySelector('#addCloseBtn')?.addEventListener('click', () => {
+					this.circleType = 'close';
+					this.isAdding = true;
+					this.render();
+					setTimeout(() => this.shadowRoot?.querySelector<HTMLInputElement>('#nameInput')?.focus(), 50);
 				});
 			}
 
@@ -399,7 +469,10 @@ export class CircleManager extends HTMLElement {
 			this.shadowRoot.querySelector('#cancelEditBtn')?.addEventListener('click', () => {
 				this.editingId = null;
 				this.isAdding = false;
+				const attrType = this.getAttribute('type');
+				if (attrType) this.circleType = attrType;
 				this.render();
+				this.fetchPeople();
 			});
 
 			// Accessibility: Submit on Enter from inputs (not textarea)
