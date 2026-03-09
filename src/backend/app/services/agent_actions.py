@@ -165,306 +165,370 @@ async def move_card(card_title_fragment: str, destination_list: str, board_name:
 
 AVAILABLE_TOOLS = [create_task, create_project, create_event, learn_memory, schedule_reminder, schedule_persistent_custom, move_card]
 
-async def parse_and_execute_actions(reply: str, db=None):
+SENSITIVE_ACTIONS = {"SCHEDULE_CUSTOM", "LEARN", "CREATE_PROJECT", "ADD_PERSON", "CREATE_BOARD", "CREATE_LIST", "PROXIMITY_TRACK"}
+
+async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = False):
     """
     Parses Semantic Action Tags from the AI reply and executes them.
-    Robust fallback for both legacy [ACTION: ...] and modern tool-like strings.
+    If require_hitl is True, sensitive actions are queued for approval instead of executed.
+    Returns: (clean_reply, executed_cmds, pending_actions)
     """
     from app.services.planka import create_task as planka_create_task
     from app.services.planka import create_project as planka_create_project
     from app.services.planka import create_board as planka_create_board
     from app.services.planka import create_list as planka_create_list
     from app.services.planka import move_card as planka_move_card
+    from app.models.db import store_pending_thought
+    import json
+    
     executed_cmds = []
+    pending_actions = []
     clean_reply = reply
     
     # helper to clean tag from reply
     def strip_tag(text, tag_match):
-        # Escape for literal replacement
         return text.replace(tag_match, "").strip()
 
+    async def handle_action(action_type, raw_tag, executor_coro, description):
+        if require_hitl and action_type in SENSITIVE_ACTIONS:
+            # Store in pending queue
+            action_id = await store_pending_thought(f"ACTION:{action_type}", json.dumps({
+                "tag": raw_tag,
+                "description": description
+            }))
+            pending_actions.append({
+                "id": action_id,
+                "type": action_type,
+                "description": description,
+                "tag": raw_tag
+            })
+            return True
+        else:
+            # Execute immediately
+            res = await executor_coro()
+            if res:
+                if isinstance(res, str):
+                    executed_cmds.append(res)
+                else:
+                    executed_cmds.append(f"{action_type} executed.")
+            return True
+
     # 1. Create Task Tag
-    # [ACTION: CREATE_TASK | BOARD: name | LIST: name | TITLE: text]
     task_pattern = r"\[?ACTION: CREATE_TASK \| BOARD: ([^\|\]]+) \| LIST: ([^\|\]]+) \| TITLE: ([^\|\]]+)\]?"
     for match in re.finditer(task_pattern, reply):
         raw_tag = match.group(0)
         board, llist, title = match.groups()
-        path = await planka_create_task(board_name=board.strip(), list_name=llist.strip(), title=title.strip())
-        if path:
-            executed_cmds.append(f"Task '{title.strip()}' created in {path}.")
-        else:
-            executed_cmds.append(f"\u26a0 Failed to create task '{title.strip()}'. Check Planka connection.")
+        board, llist, title = board.strip(), llist.strip(), title.strip()
+        
+        async def _exec():
+            path = await planka_create_task(board_name=board, list_name=llist, title=title)
+            if path:
+                return f"Task '{title}' created in {path}."
+            return f"\u26a0 Failed to create task '{title}'. Check Planka connection."
+
+        await handle_action("CREATE_TASK", raw_tag, _exec, f"Create task '{title}' on {board}")
         clean_reply = strip_tag(clean_reply, raw_tag)
 
     # 2. Create Project Tag
-    # [ACTION: CREATE_PROJECT | NAME: text | DESCRIPTION: text]
     proj_pattern = r"\[?ACTION: CREATE_PROJECT \| NAME: ([^\|\]]+) \| DESCRIPTION: ([^\|\]]+)\]?"
     for match in re.finditer(proj_pattern, reply):
         raw_tag = match.group(0)
         name, desc = match.groups()
-        try:
-            result = await planka_create_project(name=name.strip(), description=desc.strip())
-            if result:
-                executed_cmds.append(f"Project '{name.strip()}' created.")
-            else:
-                executed_cmds.append(f"\u26a0 Failed to create project '{name.strip()}'. Check Planka connection.")
-        except Exception as _e:
-            logger.error("CREATE_PROJECT failed: %s", _e)
-            executed_cmds.append(f"\u26a0 Failed to create project '{name.strip()}'. Check Planka connection.")
+        name, desc = name.strip(), desc.strip()
+
+        async def _exec():
+            try:
+                result = await planka_create_project(name=name, description=desc)
+                if result:
+                    return f"Project '{name}' created."
+                return f"\u26a0 Failed to create project '{name}'. Check Planka connection."
+            except Exception as _e:
+                logger.error("CREATE_PROJECT failed: %s", _e)
+                return f"\u26a0 Failed to create project '{name}'. Check Planka connection."
+
+        await handle_action("CREATE_PROJECT", raw_tag, _exec, f"Create project '{name}'")
         clean_reply = strip_tag(clean_reply, raw_tag)
 
     # 2b. Create Board Tag
-    # [ACTION: CREATE_BOARD | PROJECT: name | NAME: text]
     board_pattern = r"\[?ACTION: CREATE_BOARD \| PROJECT: ([^\|\]]+) \| NAME: ([^\|\]]+)\]?"
     for match in re.finditer(board_pattern, reply):
         raw_tag = match.group(0)
         proj_name, board_name = match.groups()
-        try:
-            from app.services.planka import get_planka_auth_token
-            import httpx
-            from app.config import settings
-            token = await get_planka_auth_token()
-            async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, headers={"Authorization": f"Bearer {token}"}) as client:
-                resp = await client.get("/api/projects")
-                projects = resp.json().get("items", [])
-                proj_id = None
-                for p in projects:
-                    if p["name"].lower() == proj_name.strip().lower():
-                        proj_id = p["id"]
-                        break
-                if proj_id:
-                    board_result = await planka_create_board(project_id=proj_id, name=board_name.strip())
-                    if board_result:
-                        executed_cmds.append(f"Board '{board_name.strip()}' created in '{proj_name.strip()}'.")
-                    else:
-                        executed_cmds.append(f"\u26a0 Failed to create board '{board_name.strip()}'. Check Planka.")
-                else:
-                    logger.warning("Project %r not found for CREATE_BOARD", proj_name.strip())
-                    executed_cmds.append(f"\u26a0 Project '{proj_name.strip()}' not found. Board not created.")
-        except Exception as _e:
-            logger.error("CREATE_BOARD failed: %s", _e)
-            executed_cmds.append(f"\u26a0 Failed to create board '{board_name.strip()}'. Check Planka connection.")
+        proj_name, board_name = proj_name.strip(), board_name.strip()
+
+        async def _exec():
+            try:
+                from app.services.planka import get_planka_auth_token
+                import httpx
+                from app.config import settings
+                token = await get_planka_auth_token()
+                async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, headers={"Authorization": f"Bearer {token}"}) as client:
+                    resp = await client.get("/api/projects")
+                    projects = resp.json().get("items", [])
+                    proj_id = None
+                    for p in projects:
+                        if p["name"].lower() == proj_name.lower():
+                            proj_id = p["id"]
+                            break
+                    if proj_id:
+                        board_result = await planka_create_board(project_id=proj_id, name=board_name)
+                        if board_result:
+                            return f"Board '{board_name}' created in '{proj_name}'."
+                        return f"\u26a0 Failed to create board '{board_name}'. Check Planka."
+                    return f"\u26a0 Project '{proj_name}' not found. Board not created."
+            except Exception as _e:
+                logger.error("CREATE_BOARD failed: %s", _e)
+                return f"\u26a0 Failed to create board '{board_name}'. Check Planka connection."
+
+        await handle_action("CREATE_BOARD", raw_tag, _exec, f"Create board '{board_name}' in project '{proj_name}'")
         clean_reply = strip_tag(clean_reply, raw_tag)
 
     # 2c. Create List (Column) Tag
-    # [ACTION: CREATE_LIST | BOARD: name | NAME: text]
     list_pattern = r"\[?ACTION: CREATE_LIST \| BOARD: ([^\|\]]+) \| NAME: ([^\|\]]+)\]?"
     for match in re.finditer(list_pattern, reply):
         raw_tag = match.group(0)
         board_name, list_name = match.groups()
-        try:
-            result = await planka_create_list(board_name=board_name.strip(), list_name=list_name.strip())
-            if result:
-                executed_cmds.append(f"List '{list_name.strip()}' created in '{board_name.strip()}'.")
-            else:
-                executed_cmds.append(f"\u26a0 Failed to create list '{list_name.strip()}' — board '{board_name.strip()}' not found or Planka error.")
-        except Exception as _e:
-            logger.error("CREATE_LIST failed: %s", _e)
-            executed_cmds.append(f"\u26a0 Failed to create list '{list_name.strip()}'. Check Planka connection.")
+        board_name, list_name = board_name.strip(), list_name.strip()
+
+        async def _exec():
+            try:
+                result = await planka_create_list(board_name=board_name, list_name=list_name)
+                if result:
+                    return f"List '{list_name}' created in '{board_name}'."
+                return f"\u26a0 Failed to create list '{list_name}' — board '{board_name}' not found or Planka error."
+            except Exception as _e:
+                logger.error("CREATE_LIST failed: %s", _e)
+                return f"\u26a0 Failed to create list '{list_name}'. Check Planka connection."
+
+        await handle_action("CREATE_LIST", raw_tag, _exec, f"Create list '{list_name}' on board '{board_name}'")
         clean_reply = strip_tag(clean_reply, raw_tag)
 
     # 3. Create Event Tag
-    # [ACTION: CREATE_EVENT | TITLE: text | START: YYYY-MM-DD HH:MM | END: YYYY-MM-DD HH:MM]
     event_pattern = r"\[?ACTION: CREATE_EVENT \| TITLE: ([^\|\]]+) \| START: ([^\|\]]+) \| END: ([^\|\]]+)\]?"
     for match in re.finditer(event_pattern, reply):
         raw_tag = match.group(0)
         title, start, end = match.groups()
         # Clean potential quotes from model output
         title = title.strip().strip('"').strip("'")
-        try:
-            event_result = await create_event.ainvoke({"title": title, "start_time": start.strip(), "end_time": end.strip()})
-            # The tool returns an error string starting with "Error:" on failure
-            if isinstance(event_result, str) and event_result.lower().startswith("error"):
-                executed_cmds.append(f"\u26a0 Event '{title}' not created: {event_result}")
-            else:
-                executed_cmds.append(f"Event '{title}' scheduled.")
-        except Exception as _e:
-            logger.error("CREATE_EVENT failed: %s", _e)
-            executed_cmds.append(f"\u26a0 Failed to create event '{title}'. Check calendar configuration.")
+        
+        async def _exec():
+            try:
+                event_result = await create_event.ainvoke({"title": title, "start_time": start.strip(), "end_time": end.strip()})
+                # The tool returns an error string starting with "Error:" on failure
+                if isinstance(event_result, str) and event_result.lower().startswith("error"):
+                    return f"\u26a0 Event '{title}' not created: {event_result}"
+                return f"Event '{title}' scheduled."
+            except Exception as _e:
+                logger.error("CREATE_EVENT failed: %s", _e)
+                return f"\u26a0 Failed to create event '{title}'. Check calendar configuration."
+
+        await handle_action("CREATE_EVENT", raw_tag, _exec, f"Schedule event: {title} ({start.strip()})")
         clean_reply = strip_tag(clean_reply, raw_tag)
 
     # 5. Remind Tag
-    # [ACTION: REMIND | MESSAGE: text | INTERVAL: minutes | DURATION: hours]
     remind_pattern = r"\[?ACTION: REMIND \| MESSAGE: ([^\|\]]+) \| INTERVAL: ([^\|\]]+) \| DURATION: ([^\|\]]+)\]?"
     for match in re.finditer(remind_pattern, reply):
         raw_tag = match.group(0)
         message, interval, duration = match.groups()
-        try:
-            res = await schedule_reminder.ainvoke({
-                "message": message.strip(),
-                "interval_minutes": int(interval.strip()),
-                "duration_hours": int(duration.strip())
-            })
-            if isinstance(res, str) and res.lower().startswith("error"):
-                executed_cmds.append(f"\u26a0 Reminder not set: {res}")
-            else:
-                executed_cmds.append(res)
-        except Exception as _e:
-            logger.error("REMIND failed: %s", _e)
-            executed_cmds.append(f"\u26a0 Failed to schedule reminder '{message.strip()[:60]}'. Check scheduler.")
+        message = message.strip()
+        
+        async def _exec():
+            try:
+                res = await schedule_reminder.ainvoke({
+                    "message": message,
+                    "interval_minutes": int(interval.strip()),
+                    "duration_hours": int(duration.strip())
+                })
+                if isinstance(res, str) and res.lower().startswith("error"):
+                    return f"\u26a0 Reminder not set: {res}"
+                return res
+            except Exception as _e:
+                logger.error("REMIND failed: %s", _e)
+                return f"\u26a0 Failed to schedule reminder '{message[:60]}'. Check scheduler."
+
+        await handle_action("REMIND", raw_tag, _exec, f"Set reminder: {message} every {interval.strip()}m")
         clean_reply = strip_tag(clean_reply, raw_tag)
 
     # 6. Persistent Custom Tag
-    # [ACTION: SCHEDULE_CUSTOM | NAME: text | MESSAGE: text | TYPE: cron/interval | SPEC: text]
     custom_pattern = r"\[?ACTION: SCHEDULE_CUSTOM \| NAME: ([^\|\]]+) \| MESSAGE: ([^\|\]]+) \| TYPE: ([^\|\]]+) \| SPEC: ([^\|\]]+)\]?"
     for match in re.finditer(custom_pattern, reply):
         raw_tag = match.group(0)
         name, msg, ttype, spec = match.groups()
-        try:
-            res = await schedule_persistent_custom.ainvoke({
-                "name": name.strip(),
-                "message": msg.strip(),
-                "job_type": ttype.strip().lower(),
-                "spec": spec.strip()
-            })
-            if isinstance(res, str) and res.lower().startswith("error"):
-                executed_cmds.append(f"\u26a0 Custom task not scheduled: {res}")
-            else:
-                executed_cmds.append(res)
-        except Exception as _e:
-            logger.error("SCHEDULE_CUSTOM failed: %s", _e)
-            executed_cmds.append(f"\u26a0 Failed to schedule custom task '{name.strip()[:60]}'. Check scheduler.")
+        name, msg, ttype, spec = name.strip(), msg.strip(), ttype.strip().lower(), spec.strip()
+
+        async def _exec():
+            try:
+                res = await schedule_persistent_custom.ainvoke({
+                    "name": name,
+                    "message": msg,
+                    "job_type": ttype,
+                    "spec": spec
+                })
+                if isinstance(res, str) and res.lower().startswith("error"):
+                    return f"\u26a0 Custom task not scheduled: {res}"
+                return res
+            except Exception as _e:
+                logger.error("SCHEDULE_CUSTOM failed: %s", _e)
+                return f"\u26a0 Failed to schedule custom task '{name[:60]}'. Check scheduler."
+
+        await handle_action("SCHEDULE_CUSTOM", raw_tag, _exec, f"Schedule persistent task '{name}' ({spec})")
         clean_reply = strip_tag(clean_reply, raw_tag)
 
     # 7. Add Person Tag
-    # [ACTION: ADD_PERSON | NAME: text | RELATIONSHIP: text | CONTEXT: text | CIRCLE: inner/close]
     person_pattern = r"\[?ACTION: ADD_PERSON \| NAME: ([^\|\]]+) \| RELATIONSHIP: ([^\|\]]+) \| CONTEXT: ([^\|\]]+) \| CIRCLE: ([^\|\]]+)\]?"
     for match in re.finditer(person_pattern, reply):
         raw_tag = match.group(0)
         name, rel, ctx, circle = match.groups()
-        try:
-            from app.models.db import Person, AsyncSessionLocal
-            # --- Input validation (M-A2) ---
-            circle_clean = circle.strip().lower()
-            if circle_clean not in {"inner", "close", "outer", "identity"}:
-                circle_clean = "outer"
-            name_clean = name.strip()[:100]
-            rel_clean = rel.strip()[:100]
-            ctx_clean = ctx.strip()[:1000]
-            async with AsyncSessionLocal() as session:
-                p = Person(name=name_clean, relationship=rel_clean, context=ctx_clean, circle_type=circle_clean)
-                session.add(p)
-                await session.commit()
-            executed_cmds.append(f"Added {name_clean} to your circle.")
-        except Exception as _e:
-            logger.error("ADD_PERSON failed: %s", _e)
-            executed_cmds.append(f"\u26a0 Failed to add '{name.strip()[:60]}' to circle. Check database.")
+        name, rel, ctx, circle = name.strip(), rel.strip(), ctx.strip(), circle.strip()
+
+        async def _exec():
+            try:
+                from app.models.db import Person, AsyncSessionLocal
+                # --- Input validation (M-A2) ---
+                circle_clean = circle.lower()
+                if circle_clean not in {"inner", "close", "outer", "identity"}:
+                    circle_clean = "outer"
+                async with AsyncSessionLocal() as session:
+                    p = Person(name=name[:100], relationship=rel[:100], context=ctx[:1000], circle_type=circle_clean)
+                    session.add(p)
+                    await session.commit()
+                return f"Added {name} to your circle."
+            except Exception as _e:
+                logger.error("ADD_PERSON failed: %s", _e)
+                return f"\u26a0 Failed to add '{name}' to circle. Check database."
+
+        await handle_action("ADD_PERSON", raw_tag, _exec, f"Add {name} ({rel}) to circle")
         clean_reply = strip_tag(clean_reply, raw_tag)
 
     # 5. Learn Memory Tag
-    # [ACTION: LEARN | TEXT: factual statement]
     learn_pattern = r"\[?ACTION: LEARN \| TEXT: ([^\]]+)\]?"
     for match in re.finditer(learn_pattern, reply):
         raw_tag = match.group(0)
-        text = match.group(1)
-        try:
-            from app.services.memory import store_memory
-            await store_memory(text.strip())
-            # store_memory returns None; it only raises on Qdrant/embed failure
-            # (noise-filtered inputs are silently dropped — that is expected behaviour)
-            executed_cmds.append("Memory updated.")
-        except Exception as _e:
-            logger.error("LEARN failed: %s", _e)
-            executed_cmds.append("\u26a0 Failed to store memory. Check Qdrant connection.")
+        text = match.group(1).strip()
+
+        async def _exec():
+            try:
+                from app.services.memory import store_memory
+                await store_memory(text)
+                # store_memory returns None; it only raises on Qdrant/embed failure
+                # (noise-filtered inputs are silently dropped — that is expected behaviour)
+                return "Memory updated."
+            except Exception as _e:
+                logger.error("LEARN failed: %s", _e)
+                return "\u26a0 Failed to store memory. Check Qdrant connection."
+
+        await handle_action("LEARN", raw_tag, _exec, f"Learn: {text}")
         clean_reply = strip_tag(clean_reply, raw_tag)
 
     # 6. Proximity Track Tag
-    # [ACTION: PROXIMITY_TRACK | TASKS: item1; item2 | BREAKDOWN: task1 [ends 08:30]; task2 [ends 09:15] | END: YYYY-MM-DD HH:MM]
     prox_pattern = r"\[?ACTION: PROXIMITY_TRACK \| TASKS: ([^\|\]]+) \| BREAKDOWN: ([^\|\]]+) \| END: ([^\|\]]+)\]?"
     for match in re.finditer(prox_pattern, reply):
         raw_tag = match.group(0)
         tasks, breakdown, end_val = match.groups()
-        try:
-            from app.models.db import TrackingSession, AsyncSessionLocal
-            import datetime
-            import json
-            async with AsyncSessionLocal() as session:
-                # 1. Parse milestones
-                milestones = []
-                now = datetime.datetime.now()
+        tasks, breakdown, end_val = tasks.strip(), breakdown.strip(), end_val.strip()
 
-                # Simple splitter for "task name [ends HH:MM]"
-                items = [it.strip() for it in breakdown.split(';') if it.strip()]
-                for it in items:
+        async def _exec():
+            try:
+                from app.models.db import TrackingSession, AsyncSessionLocal
+                import datetime
+                import json
+                async with AsyncSessionLocal() as session:
+                    # 1. Parse milestones
+                    milestones = []
+                    now = datetime.datetime.now()
+
+                    # Simple splitter for "task name [ends HH:MM]"
+                    items = [it.strip() for it in breakdown.split(';') if it.strip()]
+                    for it in items:
+                        try:
+                            # Extract "task name" and "HH:MM"
+                            parts = re.split(r'\s*\[ends\s+([^\]]+)\]', it)
+                            if len(parts) >= 2:
+                                task_name, due_val = parts[0], parts[1]
+                                # Fix up HH:MM to absolute
+                                h, m = map(int, due_val.strip().split(':'))
+                                due_dt = now.replace(hour=h, minute=m, second=0, microsecond=0)
+                                # Handle next-day rollover if needed (rare for short tracks)
+                                if due_dt < now: due_dt += datetime.timedelta(days=1)
+                                milestones.append({"task": task_name.strip(), "due_at": due_dt.isoformat(), "sent": False})
+                        except (ValueError, AttributeError): continue  # malformed HH:MM -- skip milestone
+
                     try:
-                        # Extract "task name" and "HH:MM"
-                        parts = re.split(r'\s*\[ends\s+([^\]]+)\]', it)
-                        if len(parts) >= 2:
-                            task_name, due_val = parts[0], parts[1]
-                            # Fix up HH:MM to absolute
-                            h, m = map(int, due_val.strip().split(':'))
-                            due_dt = now.replace(hour=h, minute=m, second=0, microsecond=0)
-                            # Handle next-day rollover if needed (rare for short tracks)
-                            if due_dt < now: due_dt += datetime.timedelta(days=1)
-                            milestones.append({"task": task_name.strip(), "due_at": due_dt.isoformat(), "sent": False})
-                    except (ValueError, AttributeError): continue  # malformed HH:MM -- skip milestone
+                        # Handle YYYY-MM-DD HH:MM for overall END
+                        end_dt = datetime.datetime.strptime(end_val, "%Y-%m-%d %H:%M")
+                    except ValueError:
+                        # Fallback
+                        end_dt = datetime.datetime.now() + datetime.timedelta(hours=2)
 
-                try:
-                    # Handle YYYY-MM-DD HH:MM for overall END
-                    end_dt = datetime.datetime.strptime(end_val.strip(), "%Y-%m-%d %H:%M")
-                except ValueError:
-                    # Fallback
-                    end_dt = datetime.datetime.utcnow() + datetime.timedelta(hours=2)
+                    session.add(TrackingSession(
+                        tasks=tasks,
+                        milestones_json=json.dumps(milestones),
+                        end_time=end_dt
+                    ))
+                    await session.commit()
+                return "Precision Tracking initiated."
+            except Exception as _e:
+                logger.error("PROXIMITY_TRACK failed: %s", _e)
+                return "\u26a0 Failed to initiate Precision Tracking. Check database."
 
-                session.add(TrackingSession(
-                    tasks=tasks.strip(),
-                    milestones_json=json.dumps(milestones),
-                    end_time=end_dt
-                ))
-                await session.commit()
-            executed_cmds.append("Precision Tracking initiated.")
-        except Exception as _e:
-            logger.error("PROXIMITY_TRACK failed: %s", _e)
-            executed_cmds.append("\u26a0 Failed to initiate Precision Tracking. Check database.")
+        await handle_action("PROXIMITY_TRACK", raw_tag, _exec, f"Initiate tracking: {tasks}")
         clean_reply = strip_tag(clean_reply, raw_tag)
 
     # 9. Move Card Tag
-    # [ACTION: MOVE_CARD | CARD: title fragment | LIST: destination list | BOARD: board name (optional)]
     move_card_pattern = r"\[?ACTION: MOVE_CARD \| CARD: ([^\|\]]+) \| LIST: ([^\|\]]+)(?: \| BOARD: ([^\|\]]+))?\]?"
     for match in re.finditer(move_card_pattern, reply):
         raw_tag = match.group(0)
         card_frag = match.group(1).strip()
         dest_list = match.group(2).strip()
         board = (match.group(3) or "").strip()
-        success = await planka_move_card(card_title_fragment=card_frag, destination_list=dest_list, board_name=board)
-        if success:
-            executed_cmds.append(f"Card '{card_frag}' moved to '{dest_list}'.")
-        else:
-            executed_cmds.append(f"\u26a0 Could not find card matching '{card_frag}'. Check Planka board.")
+        
+        async def _exec():
+            success = await planka_move_card(card_title_fragment=card_frag, destination_list=dest_list, board_name=board)
+            if success:
+                return f"Card '{card_frag}' moved to '{dest_list}'."
+            return f"\u26a0 Could not find card matching '{card_frag}'. Check Planka board."
+
+        await handle_action("MOVE_CARD", raw_tag, _exec, f"Move card '{card_frag}' to '{dest_list}'")
         clean_reply = strip_tag(clean_reply, raw_tag)
 
     # 10. Mark Done Tag (shortcut: moves card to Done list)
-    # [ACTION: MARK_DONE | CARD: title fragment]
     mark_done_pattern = r"\[?ACTION: MARK_DONE \| CARD: ([^\|\]]+)\]?"
     for match in re.finditer(mark_done_pattern, reply):
         raw_tag = match.group(0)
         card_frag = match.group(1).strip()
-        success = await planka_move_card(card_title_fragment=card_frag, destination_list="Done", board_name="")
-        if success:
-            executed_cmds.append(f"Card '{card_frag}' marked done.")
-        else:
-            executed_cmds.append(f"\u26a0 Could not find card matching '{card_frag}'. Check Planka board.")
+
+        async def _exec():
+            success = await planka_move_card(card_title_fragment=card_frag, destination_list="Done", board_name="")
+            if success:
+                return f"Card '{card_frag}' marked done."
+            return f"\u26a0 Could not find card matching '{card_frag}'. Check Planka board."
+
+        await handle_action("MARK_DONE", raw_tag, _exec, f"Mark card '{card_frag}' as done")
         clean_reply = strip_tag(clean_reply, raw_tag)
 
     # 8. Set Nudge Interval Tag
-    # [ACTION: SET_NUDGE_INTERVAL | TASK: text | INTERVAL: minutes]
     nudge_interval_pattern = r"\[?ACTION: SET_NUDGE_INTERVAL \| TASK: ([^\|\]]+) \| INTERVAL: ([^\|\]]+)\]?"
     for match in re.finditer(nudge_interval_pattern, reply):
         raw_tag = match.group(0)
-        task_fragment, interval_raw = match.groups()
-        try:
-            minutes = int(interval_raw.strip())
-            if minutes < 1:
-                raise ValueError("interval must be >= 1")
-            from app.services.follow_up import set_nudge_override
-            set_nudge_override(task_fragment.strip(), minutes)
-            executed_cmds.append(f"Nudge interval for '{task_fragment.strip()}' set to {minutes} min.")
-        except ValueError as _ve:
-            logger.warning("SET_NUDGE_INTERVAL parse error: %s", _ve)
-            executed_cmds.append(f"\u26a0 Could not set nudge interval for '{task_fragment.strip()[:60]}'. Invalid interval value.")
-        except Exception as _e:
-            logger.error("SET_NUDGE_INTERVAL failed: %s", _e)
-            executed_cmds.append(f"\u26a0 Failed to set nudge interval for '{task_fragment.strip()[:60]}'. Check scheduler.")
+        task_f, interval_raw = match.groups()
+        task_f = task_f.strip()
+
+        async def _exec():
+            try:
+                minutes = int(interval_raw.strip())
+                if minutes < 1:
+                    raise ValueError("interval must be >= 1")
+                from app.services.follow_up import set_nudge_override
+                set_nudge_override(task_f, minutes)
+                return f"Nudge interval for '{task_f}' set to {minutes} min."
+            except ValueError as _ve:
+                logger.warning("SET_NUDGE_INTERVAL parse error: %s", _ve)
+                return f"\u26a0 Could not set nudge interval for '{task_f}'. Invalid interval value."
+            except Exception as _e:
+                logger.error("SET_NUDGE_INTERVAL failed: %s", _e)
+                return f"\u26a0 Failed to set nudge interval for '{task_f}'. Check scheduler."
+
+        await handle_action("SET_NUDGE_INTERVAL", raw_tag, _exec, f"Set nudge interval for '{task_f}' to {interval_raw.strip()}m")
         clean_reply = strip_tag(clean_reply, raw_tag)
 
     # --- FINAL AGGRESSIVE HYGIENE ---
@@ -515,7 +579,8 @@ async def parse_and_execute_actions(reply: str, db=None):
     # If the LLM response contained ONLY tags (all stripped → empty), fall back to
     # a summary of what was executed.  Because executed_cmds already contains the
     # ⚠ notices we must NOT append them again — just join everything once.
-    if not clean_reply and executed_cmds:
-        clean_reply = "\n".join(executed_cmds)
+    if not clean_reply and (executed_cmds or pending_actions):
+        parts = executed_cmds + [f"⏳ Awaiting approval: {p['description']}" for p in pending_actions]
+        clean_reply = "\n".join(parts)
 
-    return clean_reply, executed_cmds
+    return clean_reply, executed_cmds, pending_actions

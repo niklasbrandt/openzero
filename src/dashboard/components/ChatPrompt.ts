@@ -7,6 +7,8 @@ interface ChatMessage {
 	content: string;
 	timestamp: Date;
 	model?: string;
+	channel?: string;
+	pending_actions?: any[];
 }
 
 export class ChatPrompt extends HTMLElement {
@@ -150,6 +152,41 @@ export class ChatPrompt extends HTMLElement {
 		});
 	}
 
+	private async confirmAction(actionId: string, msgIdx: number) {
+		try {
+			const res = await fetch(`/api/dashboard/actions/confirm/${actionId}`, { method: 'POST' });
+			if (res.ok) {
+				const data = await res.json();
+				// Remove the action from local state
+				if (this.messages[msgIdx]) {
+					this.messages[msgIdx].pending_actions = this.messages[msgIdx].pending_actions?.filter(a => a.id !== actionId);
+					if (data.executed && data.executed.length > 0) {
+						this.messages[msgIdx].content += `\n\n✅ Executed: ${data.executed[0]}`;
+					}
+				}
+				this.renderMessages(true);
+				window.dispatchEvent(new CustomEvent('refresh-data', { detail: { actions: ['task', 'calendar', 'projects'] } }));
+			}
+		} catch (e) {
+			console.error('Action confirmation failed', e);
+		}
+	}
+
+	private async cancelAction(actionId: string, msgIdx: number) {
+		try {
+			const res = await fetch(`/api/dashboard/actions/cancel/${actionId}`, { method: 'POST' });
+			if (res.ok) {
+				if (this.messages[msgIdx]) {
+					this.messages[msgIdx].pending_actions = this.messages[msgIdx].pending_actions?.filter(a => a.id !== actionId);
+					this.messages[msgIdx].content += `\n\n🚫 Action cancelled.`;
+				}
+				this.renderMessages(true);
+			}
+		} catch (e) {
+			console.error('Action cancellation failed', e);
+		}
+	}
+
 	private async handleSend() {
 		const input = this.shadowRoot?.querySelector<HTMLTextAreaElement>('#chat-input');
 		const message = input?.value.trim();
@@ -193,6 +230,7 @@ export class ChatPrompt extends HTMLElement {
 				content: data.reply || this.tr('no_response', 'No response received.'),
 				timestamp: new Date(),
 				model: data.model,
+				pending_actions: data.pending_actions,
 			});
 
 			// Re-sync with DB so any interleaved Telegram messages appear in correct order.
@@ -374,21 +412,51 @@ export class ChatPrompt extends HTMLElement {
 			return;
 		}
 
-		// Reverse rendering for column-reverse. Newest (last in array) is first child (bottom).
-		container.innerHTML = [...this.messages].reverse().map((msg) => `
+		container.innerHTML = [...this.messages].reverse().map((msg, idx) => {
+			const realIdx = this.messages.length - 1 - idx;
+			return `
 			<div class="message ${msg.role} ${skipAnimation ? '' : 'animate'}"
 				role="article"
 				aria-label="${msg.role === 'user' ? this.tr('aria_you', 'You') : 'Z'} ${this.tr('aria_at', 'at')} ${this.formatDateTime(msg.timestamp)}">
 				<div class="bubble">
 					<div class="bubble-content">${this.renderContent(msg.content)}</div>
+					
+					${msg.pending_actions && msg.pending_actions.length > 0 ? `
+						<div class="action-buttons">
+							${msg.pending_actions.map(action => `
+								<div class="action-group">
+									<p class="action-desc">${action.description}</p>
+									<div class="action-row">
+										<button class="action-btn confirm-btn" data-action-id="${action.id}" data-msg-idx="${realIdx}">Confirm</button>
+										<button class="action-btn cancel-btn" data-action-id="${action.id}" data-msg-idx="${realIdx}">Cancel</button>
+									</div>
+								</div>
+							`).join('')}
+						</div>
+					` : ''}
+
 					<div class="bubble-footer" aria-hidden="true">
 						${msg.model ? `<span class="model-tag">${msg.model}</span>` : ''}
-						${(msg as any).channel ? `<span class="channel-tag">${(msg as any).channel}</span>` : ''}
-				<span class="time">${this.formatDateTime(msg.timestamp)}</span>
+						${msg.channel ? `<span class="channel-tag">${msg.channel}</span>` : ''}
+						<span class="time">${this.formatDateTime(msg.timestamp)}</span>
 					</div>
 				</div>
 			</div>
-		`).join('');
+		`}).join('');
+
+		// Attach listeners to action buttons
+		this.shadowRoot?.querySelectorAll('.confirm-btn').forEach(btn => {
+			btn.addEventListener('click', (e) => {
+				const target = e.target as HTMLButtonElement;
+				this.confirmAction(target.dataset.actionId!, parseInt(target.dataset.msgIdx!));
+			});
+		});
+		this.shadowRoot?.querySelectorAll('.cancel-btn').forEach(btn => {
+			btn.addEventListener('click', (e) => {
+				const target = e.target as HTMLButtonElement;
+				this.cancelAction(target.dataset.actionId!, parseInt(target.dataset.msgIdx!));
+			});
+		});
 
 		// Restore typing indicator if it was there
 		if (typing) container.prepend(typing);
@@ -469,7 +537,7 @@ export class ChatPrompt extends HTMLElement {
 	 */
 	private contrastRatio(l1: number, l2: number): number {
 		const lighter = Math.max(l1, l2);
-		const darker  = Math.min(l1, l2);
+		const darker = Math.min(l1, l2);
 		return (lighter + 0.05) / (darker + 0.05);
 	}
 
@@ -483,8 +551,8 @@ export class ChatPrompt extends HTMLElement {
 	 */
 	private pickBubbleTextColor(): '#000000' | '#ffffff' {
 		const style = getComputedStyle(document.documentElement);
-		const hex1  = style.getPropertyValue('--accent-color').trim()    || 'hsla(173, 80%, 40%, 1)';
-		const hex2  = style.getPropertyValue('--accent-secondary').trim() || 'hsla(216, 100%, 50%, 1)';
+		const hex1 = style.getPropertyValue('--accent-color').trim() || 'hsla(173, 80%, 40%, 1)';
+		const hex2 = style.getPropertyValue('--accent-secondary').trim() || 'hsla(216, 100%, 50%, 1)';
 
 		const c1 = this.parseHex(hex1);
 		const c2 = this.parseHex(hex2);
@@ -797,6 +865,61 @@ export class ChatPrompt extends HTMLElement {
 			@keyframes typing {
 				0%, 60%, 100% { transform: translateY(0); opacity: 0.3; }
 				30% { transform: translateY(-4px); opacity: 1; }
+			}
+
+			.action-buttons {
+				margin-top: 1.25rem;
+				display: flex;
+				flex-direction: column;
+				gap: 1rem;
+				background: hsla(0, 0%, 0%, 0.15);
+				padding: 1rem;
+				border-radius: var(--radius-md, 0.5rem);
+				border: 1px solid hsla(0, 0%, 100%, 0.1);
+			}
+			.action-group {
+				display: flex;
+				flex-direction: column;
+				gap: 0.5rem;
+			}
+			.action-desc {
+				margin: 0;
+				font-size: 0.85rem;
+				font-weight: 500;
+				color: inherit;
+				opacity: 0.9;
+			}
+			.action-row {
+				display: flex;
+				gap: 0.5rem;
+			}
+			.action-btn {
+				flex: 1;
+				padding: 0.6rem;
+				border-radius: var(--radius-sm, 0.35rem);
+				border: 1px solid hsla(0, 0%, 100%, 0.2);
+				font-size: 0.8rem;
+				font-weight: 700;
+				cursor: pointer;
+				transition: all 0.2s;
+				text-transform: uppercase;
+				letter-spacing: 0.05em;
+			}
+			.confirm-btn {
+				background: hsla(0, 0%, 100%, 0.2);
+				color: inherit;
+			}
+			.confirm-btn:hover {
+				background: hsla(0, 0%, 100%, 0.3);
+			}
+			.cancel-btn {
+				background: transparent;
+				color: inherit;
+				opacity: 0.7;
+			}
+			.cancel-btn:hover {
+				opacity: 1;
+				background: hsla(0, 0%, 0%, 0.2);
 			}
 
 			/* ── Input area ── */
