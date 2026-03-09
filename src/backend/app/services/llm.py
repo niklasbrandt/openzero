@@ -161,7 +161,7 @@ _SENSITIVE_OUTPUT_PATTERNS = re.compile(
 	r'|sk-[A-Za-z0-9]{32,}'                         # OpenAI-style API key
 	r'|ghp_[A-Za-z0-9]{20,80}'                      # GitHub PAT (classic, wide length range)
 	r'|github_pat_[A-Za-z0-9_]{70,120}'             # GitHub PAT (fine-grained, wide length range)
-	r'|ssh-(?:rsa|ed25519|dss|ecdsa)\s+[A-Za-z0-9+/=]{12,}' # SSH Public Key (min length to avoid false positives)
+	r'|ssh-(?:rsa|ed25519|dss|ecdsa)\s+[A-Za-z0-9+/=]{8,}' # SSH Public Key (min length to avoid false positives)
 	r'|-----BEGIN [A-Z ]+ PRIVATE KEY-----[\s\S]*?-----END [A-Z ]+ PRIVATE KEY-----', # Private Keys
 	re.IGNORECASE,
 )
