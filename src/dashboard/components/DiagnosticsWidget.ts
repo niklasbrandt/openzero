@@ -168,6 +168,18 @@ export class DiagnosticsWidget extends HTMLElement {
         const appsPct = hasRamBreakdown ? Math.min(srv.ram_apps_pct || 0, 100) : ramPct;
         const cachePct = hasRamBreakdown ? Math.min((srv.ram_bufcache_gb / Math.max(srv.ram_total_gb, 0.1)) * 100, 100 - appsPct) : 0;
 
+        const cpuFeats = [
+            { id: 'avx2', label: 'AVX2' },
+            { id: 'avx512', label: 'AVX512' },
+            { id: 'sse4_2', label: 'SSE4.2' },
+        ];
+        const featGrid = cpuFeats.map(f => `
+            <div class="hw-feat ${cpu[f.id] ? 'active' : 'inactive'}">
+                <span class="feat-dot"></span>
+                <span class="feat-label">${f.label}</span>
+            </div>
+        `).join('');
+
         // 2. Software Section
         const swServices = [
             { name: 'Memory', status: (sys.memory_points || 0) >= 0 ? 'online' : 'offline', detail: `${sys.memory_points || 0} pts` },
@@ -242,6 +254,12 @@ export class DiagnosticsWidget extends HTMLElement {
 
         el.innerHTML = `
 			<div class="diag-layout">
+                <button id="btn-force-reload" class="reload-btn" title="Force Update">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 2v6h-6"></path><path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path><path d="M3 22v-6h6"></path><path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
+                    </svg>
+                </button>
+
                 <!-- Top Row: Prominent RAM -->
                 <div class="ram-strip">
                     <div class="ram-strip-header">
@@ -269,15 +287,14 @@ export class DiagnosticsWidget extends HTMLElement {
 						<div class="hw-spec"><span>Arch</span><strong>${cpu.architecture}</strong></div>
 						<div class="hw-spec"><span>Uptime</span><strong>${srv.uptime_human || '?'}</strong></div>
 					</div>
+                    <div class="diag-section-label" style="margin-top: 0.5rem">CPU Features</div>
+                    <div class="hw-feat-grid">${featGrid}</div>
 				</div>
 
-				<!-- Middle Column: LLM Tiers & Health -->
+				<!-- Middle Column: LLM Tiers -->
 				<div class="diag-col software">
                     <div class="diag-section-label">LLM Tiers</div>
 					<div class="llm-status-list">${llmStatusHtml}</div>
-
-					<div class="diag-section-label" style="margin-top: 0.8rem">Integration Health</div>
-					<div class="svc-grid">${swGrid}</div>
 				</div>
 
 				<!-- Right Column: Benchmark -->
@@ -293,8 +310,21 @@ export class DiagnosticsWidget extends HTMLElement {
 					</div>
 					<div class="bench-results-list" style="margin-top: 0.5rem">${benchHtml}</div>
 				</div>
+
+                <!-- Bottom Row: Integration -->
+                <div class="integration-row">
+                    <div class="diag-section-label">Integration</div>
+                    <div class="svc-horizontal-grid">${swGrid}</div>
+                </div>
 			</div>
 		`;
+
+        this.shadowRoot?.querySelector('#btn-force-reload')?.addEventListener('click', (e) => {
+            const btn = e.currentTarget as HTMLButtonElement;
+            if (btn.classList.contains('spinning')) return;
+            btn.classList.add('spinning');
+            this.fetchAll().finally(() => setTimeout(() => btn.classList.remove('spinning'), 600));
+        });
 
         this.shadowRoot?.querySelector('button[data-tier="all"]')?.addEventListener('click', () => this.runAllBenchmarks());
         this.shadowRoot?.querySelectorAll('button.sm').forEach(b => {
@@ -341,7 +371,14 @@ export class DiagnosticsWidget extends HTMLElement {
 					grid-template-columns: 1.2fr 1fr 1fr;
 					gap: 1.5rem;
 					min-height: 280px;
+                    position: relative;
 				}
+
+                .reload-btn { position: absolute; top: -38px; right: 0; background: hsla(0,0%,100%,0.05); border: 1px solid hsla(0,0%,100%,0.1); color: var(--text-muted); width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 10; padding: 0; }
+                .reload-btn:hover { background: hsla(0,0%,100%,0.1); border-color: var(--accent-primary); color: var(--accent-primary); transform: scale(1.1) rotate(15deg); box-shadow: 0 0 15px hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.2); }
+                .reload-btn:active { transform: scale(0.9); }
+                .reload-btn.spinning svg { animation: diag-rotate 0.8s infinite linear; }
+                @keyframes diag-rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
 				.diag-col {
 					display: flex;
@@ -374,18 +411,30 @@ export class DiagnosticsWidget extends HTMLElement {
                 .leg-dot.cache { background: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.4); border: 1px solid hsla(0, 0%, 100%, 0.1); }
                 .leg-dot.free { background: transparent; border: 1px solid hsla(0, 0%, 100%, 0.2); }
 
-				/* Hardware Styles */
+                .integration-row { grid-column: 1 / -1; background: hsla(0, 0%, 100%, 0.015); padding: 0.75rem 1rem; border-radius: 0.5rem; border: 1px solid hsla(0, 0%, 100%, 0.04); margin-top: 0.5rem; }
+                .svc-horizontal-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-top: 0.4rem; }
+				/* Software Styles */
 				.cpu-info { font-size: 0.85rem; font-weight: 600; color: var(--text-primary); font-family: var(--font-mono); margin-bottom: 0.4rem; }
 				.hw-specs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; background: hsla(0, 0%, 100%, 0.02); padding: 0.75rem; border-radius: 0.4rem; border: 1px solid hsla(0, 0%, 100%, 0.04); }
 				.hw-spec { display: flex; flex-direction: column; font-size: 0.7rem; }
 				.hw-spec span { color: var(--text-muted); font-size: 0.6rem; text-transform: uppercase; }
 				.hw-spec strong { color: var(--text-secondary); font-family: var(--font-mono); }
 
+                .hw-feat-grid { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.2rem; }
+                .hw-feat { display: flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.6rem; border-radius: 1rem; background: hsla(0, 0%, 100%, 0.02); border: 1px solid hsla(0, 0%, 100%, 0.04); }
+                .hw-feat.active { border-color: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.2); background: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.05); }
+                .hw-feat.inactive { opacity: 0.4; filter: grayscale(1); }
+                .feat-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--text-muted); }
+                .hw-feat.active .feat-dot { background: var(--accent-primary); box-shadow: 0 0 5px var(--accent-primary); }
+                .feat-label { font-size: 0.55rem; font-weight: 800; font-family: var(--font-mono); color: var(--text-muted); }
+                .hw-feat.active .feat-label { color: var(--text-secondary); }
+
 				/* Removed old .ram-box, .ram-header, .ram-bar, .ram-fill, .ram-footer styles */
 
 				/* Software Styles */
 				.svc-grid { display: flex; flex-direction: column; gap: 0.4rem; }
-				.svc-item { display: flex; justify-content: space-between; align-items: center; padding: 0.4rem 0.6rem; background: hsla(0, 0%, 100%, 0.02); border-radius: 0.4rem; border: 1px solid hsla(0, 0%, 100%, 0.04); }
+				.svc-item { display: flex; justify-content: space-between; align-items: center; padding: 0.4rem 0.6rem; background: hsla(0, 0%, 100%, 0.02); border-radius: 0.4rem; border: 1px solid hsla(0, 0%, 100%, 0.04); transition: transform 0.2s; }
+                .svc-item:hover { transform: translateY(-1px); background: hsla(0, 0%, 100%, 0.035); }
 				.svc-main { display: flex; align-items: center; gap: 0.5rem; }
 				.svc-dot { width: 8px; height: 8px; border-radius: 50%; }
 				.svc-dot.online { background: var(--accent-primary); box-shadow: 0 0 6px var(--accent-primary); }
