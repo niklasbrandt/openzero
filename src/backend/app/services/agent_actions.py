@@ -81,7 +81,7 @@ async def schedule_reminder(message: str, interval_minutes: int, duration_hours:
     message = message[:500]
 
     from app.tasks.scheduler import scheduler
-    from app.api.telegram import send_notification
+    from app.services.notifier import send_notification
     from apscheduler.triggers.interval import IntervalTrigger
     from datetime import datetime, timedelta
     import pytz

@@ -57,6 +57,8 @@ Thumbs.db
 # ===========================
 .idea/
 .vscode/
+.antigravity/
+.mcp.json
 *.swp
 *.swo
 

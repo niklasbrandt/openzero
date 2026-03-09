@@ -1,0 +1,14 @@
+{
+    "name": "openzero",
+    "description": "Personal AI Operating System and Agent Framework",
+    "version": "1.0.0",
+    "author": "niklasbrandt",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/niklasbrandt/openzero.git"
+    },
+    "agent": {
+        "default_name": "Z",
+        "persona": "agents.md"
+    }
+}

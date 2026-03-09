@@ -28,6 +28,10 @@ from typing import AsyncGenerator, Optional
 import pytz
 from contextvars import ContextVar
 import uuid
+import asyncio
+import time
+from sqlalchemy import select as sa_select
+from app.models.db import AsyncSessionLocal, Person
 
 logger = logging.getLogger(__name__)
 
@@ -449,8 +453,6 @@ async def _get_user_lang() -> str:
 	"""Return the user's language from the identity record, cached in memory."""
 	global _cached_user_lang
 	try:
-		from app.models.db import AsyncSessionLocal, Person
-		from sqlalchemy import select as sa_select
 		async with AsyncSessionLocal() as s:
 			res = await s.execute(sa_select(Person).where(Person.circle_type == "identity"))
 			ident = res.scalar_one_or_none()
@@ -550,8 +552,7 @@ LANGUAGE_NAMES = {
 async def get_agent_personality() -> str:
 	"""Fetch agent personality from DB preferences and format for system prompt."""
 	try:
-		from app.models.db import AsyncSessionLocal, Preference
-		from sqlalchemy import select
+		from app.models.db import Preference
 		async with AsyncSessionLocal() as session:
 			res = await session.execute(select(Preference).where(Preference.key == "agent_personality"))
 			pref = res.scalar_one_or_none()
@@ -830,7 +831,6 @@ async def chat_stream(
 
 	# --- Option A: Local llama-server (3-tier) ---
 	if provider == "local":
-		import asyncio
 		tier_name, base_url, display_name = select_tier(user_message, tier)
 		last_model_used.set(display_name)
 		logger.debug("LLM [%s] -> %s @ %s", tier_name, display_name, base_url)
@@ -1158,10 +1158,6 @@ async def chat_with_context(
 
 	Supports 3-tier intelligence scaling with timeout-racing for the deep tier.
 	"""
-	import asyncio
-	import time
-	from app.models.db import AsyncSessionLocal, Person
-	from sqlalchemy import select
 	from app.services.memory import semantic_search
 
 	# Sanitise user input before anything else
@@ -1444,10 +1440,6 @@ async def chat_stream_with_context(
 ) -> AsyncGenerator[str, None]:
 	"""Streaming version of chat_with_context() for real-time token delivery.
 	Used by Telegram and Dashboard streaming endpoints."""
-	import asyncio
-	import time
-	from app.models.db import AsyncSessionLocal, Person
-	from sqlalchemy import select
 	from app.services.memory import semantic_search
 
 	# Sanitise user input before anything else
