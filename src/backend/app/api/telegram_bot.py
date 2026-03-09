@@ -286,6 +286,17 @@ async def start_telegram_bot():
 		except Exception as e:
 			logging.error("FAILED to send Telegram startup greeting: %s", e)
 
+	# Register send functions with the notifier shim so task modules can use them
+	# without importing this module directly (breaks circular import cycles).
+	from app.services import notifier as _notifier
+	_notifier.register(
+		send=send_notification,
+		send_html=send_notification_html,
+		send_voice=send_voice_message,
+		stats_footer=_get_stats_footer,
+		nav_markup=get_nav_markup,
+	)
+
 	# Launch greeting in background
 	asyncio.create_task(send_startup_greeting())
 
@@ -456,7 +467,6 @@ async def safe_edit(message, text: str, parse_mode="HTML", reply_markup=None):
 @owner_only
 async def cmd_board(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	"""Show the exact Planka project → board → lists that Z targets, with a clickable link."""
-	import html as _html
 	try:
 		from app.services.planka import get_planka_auth_token
 		from app.services.operator_board import operator_service

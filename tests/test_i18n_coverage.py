@@ -166,7 +166,7 @@ def _extract_translation_registry() -> Dict[str, bool]:
 						isinstance(v, ast.Dict) and len(v.keys) > 0
 					)
 	except (SyntaxError, FileNotFoundError):
-		pass
+		pass  # translations.py absent or unparseable in isolated test envs — return empty registry
 
 	return registry
 

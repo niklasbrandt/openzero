@@ -222,7 +222,7 @@ async def run_proactive_follow_up():
                 "Keep it concise (1-2 sentences). No filler. Just the mission check."
             )
             from app.services.llm import chat
-            from app.api.telegram import send_notification, _get_stats_footer
+            from app.services.notifier import send_notification, get_stats_footer as _get_stats_footer
             nudge = await chat(prompt)
             # Guard: skip sending if the LLM returned an error string (e.g. still starting up)
             _LLM_ERR = ("having trouble reaching", "still waking up", "warming up my local")
@@ -268,7 +268,7 @@ async def check_active_tracking_sessions():
                             "Keep it direct and professional."
                         )
                         from app.services.llm import chat
-                        from app.api.telegram import send_notification, _get_stats_footer
+                        from app.services.notifier import send_notification, get_stats_footer as _get_stats_footer
                         nudge = await chat(prompt)
                         footer = await _get_stats_footer()
                         await send_notification(f"⚖️ *Segment Check:* \n\n{nudge}{footer}")
@@ -284,7 +284,7 @@ async def check_active_tracking_sessions():
                         "Be direct. This is the final mission-wrap-up."
                     )
                     from app.services.llm import chat
-                    from app.api.telegram import send_notification, _get_stats_footer
+                    from app.services.notifier import send_notification, get_stats_footer as _get_stats_footer
                     nudge = await chat(prompt)
                     footer = await _get_stats_footer()
                     await send_notification(f"🏁 *Final Mission Wrap-up:* \n\n{nudge}{footer}")
