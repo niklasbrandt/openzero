@@ -224,6 +224,38 @@ class ChatMessage(BaseModel):
 	role: str
 	content: str
 
+@router.post("/actions/confirm/{action_id}")
+async def confirm_action(action_id: str, db: AsyncSession = Depends(get_db), auth: None = Depends(require_auth)):
+	"""Confirm a pending action from the dashboard."""
+	from app.models.db import get_pending_thought
+	from app.services.agent_actions import parse_and_execute_actions
+	import json
+	
+	thought = await get_pending_thought(action_id)
+	if not thought:
+		raise HTTPException(status_code=404, detail="Action not found or expired")
+	
+	try:
+		data = json.loads(thought["context_data"])
+		tag = data["tag"]
+		# Execute without HITL
+		clean_reply, executed, pending = await parse_and_execute_actions(tag, db=db, require_hitl=False)
+		
+		# Cleanup (optional, but keep DB clean)
+		# await delete_pending_thought(action_id) 
+		
+		return {"status": "success", "executed": executed}
+	except Exception as e:
+		logger.error("Action confirmation failed: %s", e)
+		raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/actions/cancel/{action_id}")
+async def cancel_action(action_id: str, auth: None = Depends(require_auth)):
+	"""Cancel a pending action."""
+	# In this system, we just acknowledge it's cancelled. 
+	# The frontend removes it from the UI.
+	return {"status": "cancelled"}
+
 class ChatRequest(BaseModel):
 	message: str
 	history: List[ChatMessage] = []
@@ -415,9 +447,12 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 			f"Input: {remind_msg}"
 		)
 		response = await chat(prompt)
-		clean_reply, executed = await parse_and_execute_actions(response)
-		if executed:
-			return {"reply": f"✅ {' '.join(executed)}"}
+		clean_reply, executed, pending = await parse_and_execute_actions(response, require_hitl=True)
+		if executed or pending:
+			msg = " ".join(executed)
+			if pending:
+				msg += f" (Pending: {len(pending)} actions)"
+			return {"reply": f"✅ {msg}", "pending_actions": pending}
 		else:
 			return {"reply": "Could not parse reminder. Try: '/remind 30m for 2h drink water'"}
 	elif msg.startswith("/custom "):
@@ -432,9 +467,12 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 			f"Input: {custom_msg}"
 		)
 		response = await chat(prompt)
-		clean_reply, executed = await parse_and_execute_actions(response)
-		if executed:
-			return {"reply": f"✅ {' '.join(executed)}"}
+		clean_reply, executed, pending = await parse_and_execute_actions(response, require_hitl=True)
+		if executed or pending:
+			msg = " ".join(executed)
+			if pending:
+				msg += f" (Pending: {len(pending)} actions)"
+			return {"reply": f"✅ {msg}", "pending_actions": pending}
 		else:
 			return {"reply": "Could not parse custom turnus. Try: '/custom every Monday at 10am remind me...'"}
 	elif msg == "/protocols":
@@ -467,10 +505,11 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 			return {"reply": t.get("purge_failed", "\u274c Failed to wipe memory. Check backend logs.")}
 	elif msg.startswith("[ACTION:"):
 		from app.services.agent_actions import parse_and_execute_actions
-		clean_reply, executed_cmds = await parse_and_execute_actions(msg, db=db)
+		clean_reply, executed_cmds, pending_actions = await parse_and_execute_actions(msg, db=db, require_hitl=True)
 		return {
 			"reply": clean_reply or "Direct execution complete.",
 			"actions": executed_cmds,
+			"pending_actions": pending_actions,
 			"model": "operator_direct"
 		}
 
@@ -489,7 +528,7 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		)
 		
 		from app.services.agent_actions import parse_and_execute_actions
-		clean_reply, executed_cmds = await parse_and_execute_actions(reply, db=db)
+		clean_reply, executed_cmds, pending_actions = await parse_and_execute_actions(reply, db=db, require_hitl=True)
 
 		# Sync to Global Central Memory
 		if not req.skip_history:
@@ -501,6 +540,7 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		return {
 			"reply": _sanitise_reply_html(clean_reply),
 			"actions": executed_cmds,
+			"pending_actions": pending_actions,
 			"model": last_model_used.get()
 		}
 	except Exception as e:
@@ -749,7 +789,7 @@ async def dashboard_chat_stream(req: ChatRequest, request: Request, _rl: None = 
 		full_response = "".join(chunks)
 
 		async with AsyncSessionLocal() as db:
-			clean_reply, executed_cmds = await parse_and_execute_actions(full_response, db=db)
+			clean_reply, executed_cmds, pending_actions = await parse_and_execute_actions(full_response, db=db, require_hitl=True)
 
 		await save_global_message("dashboard", "user", msg)
 		model_label = last_model_used.get()
@@ -1818,7 +1858,7 @@ async def benchmark_llm(tier: str = "instant"):
 			bench_messages.append({"role": "system", "content": "/no_think"})
 		bench_messages.append({"role": "user", "content": prompt})
 
-		async with httpx.AsyncClient(timeout=120) as client:
+		async with httpx.AsyncClient(timeout=300) as client:
 			async with client.stream(
 				"POST",
 				f"{base_url}/v1/chat/completions",
