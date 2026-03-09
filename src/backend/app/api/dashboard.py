@@ -1627,6 +1627,7 @@ async def server_info():
 		for tier_name, base_url in tier_urls.items():
 			tier_info: dict = {
 				"status": "offline",
+				"activity": "offline",
 				"threads": 0,
 				"ctx_size": 0,
 				"n_predict": 0,
@@ -1654,8 +1655,13 @@ async def server_info():
 						if isinstance(slots, list) and len(slots) > 0:
 							tier_info["n_predict"] = slots[0].get("n_predict", 0)
 							tier_info["ctx_size"] = slots[0].get("n_ctx", 0)
+							if any(s.get("state", 0) == 1 for s in slots):
+								tier_info["activity"] = "processing"
+							else:
+								tier_info["activity"] = "idle"
 				except Exception:
 					tier_info["ctx_size"] = 0  # /slots probe optional
+					tier_info["activity"] = "idle"
 			except Exception:
 				tier_info["status"] = "offline"
 
