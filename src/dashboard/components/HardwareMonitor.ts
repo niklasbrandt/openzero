@@ -8,6 +8,7 @@ import { GOO_STYLES, initGoo } from '../services/gooStyles';
 export class HardwareMonitor extends HTMLElement {
 	private cpuData: any = null;
 	private serverData: any = null;
+	private llmConfig: any = null;
 	private t: Record<string, string> = {};
 	private _refreshTimer: ReturnType<typeof setInterval> | null = null;
 	private _observer: IntersectionObserver | null = null;
@@ -66,7 +67,8 @@ export class HardwareMonitor extends HTMLElement {
 
 	private _startPolling() {
 		if (this._refreshTimer) return;
-		this._refreshTimer = setInterval(() => this.fetchAll(), 10_000);
+		// 3 s to track LLM activity transitions in near-real-time
+		this._refreshTimer = setInterval(() => this.fetchAll(), 3_000);
 	}
 
 	private _stopPolling() {
@@ -92,12 +94,14 @@ export class HardwareMonitor extends HTMLElement {
 
 	async fetchAll() {
 		try {
-			const [cpuRes, serverRes] = await Promise.all([
+			const [cpuRes, serverRes, llmRes] = await Promise.all([
 				fetch('/api/dashboard/benchmark/cpu'),
 				fetch('/api/dashboard/server-info'),
+				fetch('/api/dashboard/llm-config'),
 			]);
 			if (cpuRes.ok) this.cpuData = await cpuRes.json();
 			if (serverRes.ok) this.serverData = await serverRes.json();
+			if (llmRes.ok) this.llmConfig = await llmRes.json();
 			this.updatePanel();
 		} catch (e) {
 			console.error('Failed to fetch hardware info:', e);
@@ -187,6 +191,48 @@ export class HardwareMonitor extends HTMLElement {
 
 
 
+		// LLM Load section
+		const tiers: any = (this.serverData || {}).tiers || {};
+		const cfgTiers: any[] = (this.llmConfig || {}).tiers || [];
+		const modelFor = (name: string) => {
+			const t = cfgTiers.find((x: any) => x.tier === name);
+			return t ? t.model : name;
+		};
+		const tierNames = ['instant', 'standard', 'deep'];
+		const anyTierData = tierNames.some(n => tiers[n]);
+
+		const llmLoadHtml = anyTierData ? `
+			<div class="llm-load-section">
+				<div class="llm-load-header">
+					<span class="spec-label">LLM Load</span>
+				</div>
+				<div class="llm-tiers">
+					${tierNames.map(name => {
+			const td = tiers[name] || {};
+			const activity = td.activity || 'offline';
+			const status = td.status || 'offline';
+			const isOnline = status !== 'offline';
+			const isBusy = activity === 'processing';
+			const ctx = td.ctx_size ? `${td.ctx_size.toLocaleString()} ctx` : '';
+			const threads = td.threads ? `${td.threads}T` : '';
+			const model = modelFor(name);
+			const pillClass = !isOnline ? 'offline' : isBusy ? 'busy' : 'idle';
+			const pillText = !isOnline ? 'OFFLINE' : isBusy ? 'BUSY' : 'IDLE';
+			const dotClass = !isOnline ? 'offline' : isBusy ? 'processing' : 'idle';
+			return `
+							<div class="llm-tier-row ${isBusy ? 'llm-tier-busy' : ''}">
+								<span class="llm-tier-dot ${dotClass}"></span>
+								<span class="llm-tier-name">${name.charAt(0).toUpperCase() + name.slice(1)}</span>
+								<span class="llm-tier-model" title="${model}">${model}</span>
+								<span class="llm-tier-meta">${[threads, ctx].filter(Boolean).join(' · ')}</span>
+								<span class="llm-activity-pill ${pillClass}">${pillText}</span>
+							</div>
+						`;
+		}).join('')}
+				</div>
+			</div>
+		` : '';
+
 		el.innerHTML = `
 			<div class="cpu-model has-tip" data-tip="${this.tr('tip_cpu_model', 'CPU model string as reported by the kernel')}">${d.cpu_model}</div>
 			<div class="cpu-specs">
@@ -205,6 +251,7 @@ export class HardwareMonitor extends HTMLElement {
 				</div>`}
 			</div>
 			${ramHtml}
+			${llmLoadHtml}
 			<div class="simd-row has-tip" data-tip="${this.tr('tip_simd', 'SIMD (Single Instruction, Multiple Data) extensions allow the CPU to process multiple values in parallel. Higher SIMD = faster LLM inference.')}">
 				<span class="spec-label">${this.tr('simd', 'SIMD')}</span>
 				<div class="simd-badges">${badgesHtml}</div>
@@ -434,6 +481,121 @@ export class HardwareMonitor extends HTMLElement {
 				.simd-badge:focus-visible { 
 					outline: 2px solid var(--accent-primary, hsla(173, 80%, 40%, 1)); 
 					outline-offset: 2px; 
+				}
+
+				/* ── LLM Load Section ── */
+				.llm-load-section {
+					margin-bottom: 1rem;
+				}
+				.llm-load-header {
+					margin-bottom: 0.4rem;
+				}
+				.llm-tiers {
+					display: flex;
+					flex-direction: column;
+					gap: 0.3rem;
+				}
+				.llm-tier-row {
+					display: flex;
+					align-items: center;
+					gap: 0.45rem;
+					padding: 0.35rem 0.55rem;
+					border-radius: 0.35rem;
+					background: var(--surface-card, hsla(0, 0%, 100%, 0.03));
+					border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.06));
+					transition: border-color 0.3s, background 0.3s, box-shadow 0.3s;
+				}
+				.llm-tier-busy {
+					border-color: hsla(210, 100%, 62%, 0.4) !important;
+					background: hsla(210, 100%, 62%, 0.05) !important;
+					animation: hw-card-glow 2s ease-in-out infinite;
+				}
+				@keyframes hw-card-glow {
+					0%, 100% { box-shadow: 0 0 0 0 hsla(210, 100%, 62%, 0); }
+					50% { box-shadow: 0 0 10px 2px hsla(210, 100%, 62%, 0.18); }
+				}
+				.llm-tier-dot {
+					width: 8px;
+					height: 8px;
+					border-radius: 50%;
+					flex-shrink: 0;
+					transition: background 0.3s, box-shadow 0.3s;
+				}
+				.llm-tier-dot.idle {
+					background: var(--accent-primary, hsla(173, 80%, 40%, 1));
+					box-shadow: 0 0 6px hsla(173, 80%, 40%, 0.35);
+				}
+				.llm-tier-dot.processing {
+					background: hsla(210, 100%, 62%, 1);
+					box-shadow: 0 0 10px hsla(210, 100%, 62%, 0.6);
+					animation: hw-dot-pulse 1.2s infinite;
+				}
+				@keyframes hw-dot-pulse {
+					0%   { box-shadow: 0 0 0 0   hsla(210, 100%, 62%, 0.7); }
+					60%  { box-shadow: 0 0 0 6px hsla(210, 100%, 62%, 0); }
+					100% { box-shadow: 0 0 0 0   hsla(210, 100%, 62%, 0); }
+				}
+				.llm-tier-dot.offline {
+					background: var(--status-danger, hsla(0, 84%, 60%, 0.5));
+				}
+				.llm-tier-name {
+					font-size: 0.65rem;
+					font-weight: 700;
+					text-transform: uppercase;
+					letter-spacing: 0.06em;
+					color: var(--text-secondary, hsla(0, 0%, 100%, 0.75));
+					min-width: 52px;
+					flex-shrink: 0;
+				}
+				.llm-tier-model {
+					font-size: 0.7rem;
+					font-weight: 600;
+					color: var(--text-secondary, hsla(0, 0%, 100%, 0.85));
+					font-family: var(--font-mono, 'Fira Code', monospace);
+					white-space: nowrap;
+					overflow: hidden;
+					text-overflow: ellipsis;
+					max-width: 140px;
+					flex: 1;
+					min-width: 0;
+				}
+				.llm-tier-meta {
+					font-size: 0.6rem;
+					color: var(--text-muted, hsla(0, 0%, 100%, 0.35));
+					font-family: var(--font-mono, 'Fira Code', monospace);
+					white-space: nowrap;
+					flex-shrink: 0;
+				}
+				.llm-activity-pill {
+					font-size: 0.55rem;
+					font-weight: 700;
+					letter-spacing: 0.08em;
+					padding: 0.1rem 0.4rem;
+					border-radius: 0.25rem;
+					line-height: 1.6;
+					flex-shrink: 0;
+					font-family: var(--font-mono, 'Fira Code', monospace);
+					transition: background 0.3s, color 0.3s;
+				}
+				.llm-activity-pill.busy {
+					background: hsla(210, 100%, 62%, 0.18);
+					color: hsla(210, 100%, 72%, 1);
+					border: 1px solid hsla(210, 100%, 62%, 0.4);
+					animation: pill-flash 1.2s infinite;
+				}
+				@keyframes pill-flash {
+					0%, 100% { opacity: 1; }
+					50% { opacity: 0.6; }
+				}
+				.llm-activity-pill.idle {
+					background: hsla(173, 80%, 40%, 0.1);
+					color: hsla(173, 80%, 55%, 0.7);
+					border: 1px solid hsla(173, 80%, 40%, 0.2);
+				}
+				.llm-activity-pill.offline {
+					background: hsla(0, 84%, 60%, 0.07);
+					color: hsla(0, 84%, 65%, 0.5);
+					border: 1px solid hsla(0, 84%, 60%, 0.15);
 				}
 				@media (forced-colors: active) {
 					.h-icon { background: ButtonFace; border: 1px solid ButtonText; }
