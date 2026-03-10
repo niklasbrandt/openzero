@@ -250,7 +250,7 @@ export class CalendarAgenda extends HTMLElement {
 					.filter-btn {
 						background: var(--surface-card, hsla(0, 0%, 100%, 0.03));
 						border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.08));
-						color: var(--text-muted, hsla(0, 0%, 100%, 0.4));
+						color: var(--text-muted, hsla(0, 0%, 100%, 0.7));
 						padding: 0.25rem 0.75rem;
 						border-radius: var(--radius-pill, 9999px);
 						font-size: 0.75rem;
@@ -279,7 +279,7 @@ export class CalendarAgenda extends HTMLElement {
 						font-size: 0.75rem;
 					}
 					.day { color: var(--accent-color, hsla(173, 80%, 40%, 1)); font-weight: 700; }
-					.time { color: var(--text-muted, hsla(0, 0%, 100%, 0.4)); }
+					.time { color: var(--text-muted, hsla(0, 0%, 100%, 0.7)); }
 					.details { display: flex; flex-direction: column; gap: 0.25rem; flex: 1; }
 					.summary { font-size: 0.9rem; color: var(--text-primary, hsla(0, 0%, 100%, 1)); font-weight: 500; }
 					.person-badge {

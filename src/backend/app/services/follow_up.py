@@ -1,6 +1,7 @@
 import re
 import datetime
 import logging
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -242,8 +243,6 @@ async def check_active_tracking_sessions() -> None:
     item-specific progress nudges as requested.
     """
     from app.models.db import TrackingSession, AsyncSessionLocal
-    import datetime
-    import json
     from sqlalchemy import select
     
     try:

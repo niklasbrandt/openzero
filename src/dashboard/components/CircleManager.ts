@@ -317,7 +317,7 @@ export class CircleManager extends HTMLElement {
 					overflow-wrap: break-word;
 				}
 				.name { font-weight: 700; color: var(--text-primary, hsla(0, 0%, 100%, 1)); display: block; overflow-wrap: break-word; }
-				.rel { font-size: 0.8rem; color: ${accent}; display: block; overflow-wrap: break-word; font-weight: 600; }
+				.rel { font-size: 0.8rem; color: ${accent}; display: block; overflow-wrap: break-word; font-weight: 600; text-shadow: 0 0 1px rgba(0,0,0,0.1); }
 				.ctx { font-size: 0.85rem; color: var(--text-muted, hsla(0, 0%, 100%, 0.7)); margin: 0.5rem 0 0 0; overflow-wrap: break-word; }
 				.edit-btn { margin-right: 0; }
 				.edit-btn:hover { background: var(--surface-card-hover, hsla(0, 0%, 100%, 0.06)); border-color: var(--border-subtle, hsla(0, 0%, 100%, 0.1)); }
