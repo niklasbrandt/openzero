@@ -3,6 +3,14 @@ import { initGoo } from '../services/gooStyles';
 import { ACCESSIBILITY_STYLES } from '../services/accessibilityStyles';
 import { SECTION_HEADER_STYLES } from '../services/sectionHeaderStyles';
 
+interface Briefing {
+	id: string;
+	created_at: string;
+	type: string;
+	content: string;
+	model?: string;
+}
+
 export class BriefingHistory extends HTMLElement {
 	private t: Record<string, string> = {};
 
@@ -57,7 +65,7 @@ export class BriefingHistory extends HTMLElement {
 		this.fetchBriefings();
 	}
 
-	displayBriefings(briefings: any[]) {
+	displayBriefings(briefings: Briefing[]) {
 		const list = this.shadowRoot?.querySelector('#briefing-list');
 		if (!list) return;
 

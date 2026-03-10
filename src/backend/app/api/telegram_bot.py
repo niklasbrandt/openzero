@@ -1012,7 +1012,6 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 		for p in pending:
 			extra_buttons.append([InlineKeyboardButton(f"✅ Approve: {p['description'][:30]}...", callback_data=f"action_confirm_{p['id']}")])
 		if extra_buttons:
-			import json
 			# Merge with existing markup
 			current_keyboard = markup.inline_keyboard
 			new_keyboard = extra_buttons + list(current_keyboard)
