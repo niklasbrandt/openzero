@@ -162,11 +162,11 @@ export class ZProtocols extends HTMLElement {
 
 				.prot-explanation {
 					font-size: 0.75rem; 
-					color: rgba(255,255,255,0.4); 
+					color: var(--text-muted); 
 					margin-bottom: 0.75rem; 
 					line-height: 1.4; 
 					padding: 0.6rem 0.75rem; 
-					background: rgba(var(--accent-primary-rgb), 0.05); 
+					background: var(--bg-hover, rgba(0, 0, 0, 0.05)); 
 					border-radius: 8px; 
 					border-left: 3px solid var(--accent-color, #14b8a6);
 				}
