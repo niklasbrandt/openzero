@@ -1743,6 +1743,41 @@ async def server_info() -> dict:
 
 # --- System Benchmark ---
 
+def _estimate_model_ram_gb(gguf_filename: str) -> float:
+	"""Estimate the mlock'd RAM a GGUF model occupies based on its filename conventions.
+
+	Uses parameter count (e.g. '8B', '0.6B') and quantization tier
+	(e.g. 'Q4_K_M', 'Q2_K', 'IQ3_XXS') to approximate weight-only RAM.
+	Result is intentionally a lower-bound estimate; KV-cache adds a small
+	additional overhead (typically 0.1–0.5 GB at ctx≤8192).
+	"""
+	import re as _re
+	name = gguf_filename.upper().removesuffix(".GGUF")
+
+	# --- Parameter count ---
+	param_match = _re.search(r'(\d+(?:\.\d+)?)\s*B\b', name)
+	params_b: float = float(param_match.group(1)) if param_match else 7.0
+
+	# --- Bits-per-weight by quantization label ---
+	quant_bpw: dict[str, float] = {
+		"Q2_K": 2.63, "Q3_K_S": 3.00, "Q3_K_M": 3.35, "Q3_K_L": 3.60,
+		"Q4_0": 4.34, "Q4_K_S": 4.37, "Q4_K_M": 4.58, "Q4_K": 4.58,
+		"Q5_0": 5.34, "Q5_K_M": 5.69, "Q6_K": 6.57,
+		"Q8_0": 8.50, "F16": 16.0, "BF16": 16.0,
+		"IQ2_XXS": 2.06, "IQ2_XS": 2.31, "IQ3_XXS": 3.07, "IQ3_XS": 3.43,
+		"IQ4_XS": 4.25, "IQ4_NL": 4.50,
+	}
+	bpw = 4.58  # default to Q4_K_M if unknown
+	for label, bits in quant_bpw.items():
+		if label in name:
+			bpw = bits
+			break
+
+	# weight bytes + ~5% overhead for tensors, kv-cache at typical ctx
+	weight_gb = params_b * 1e9 * bpw / 8 / (1024 ** 3)
+	return round(weight_gb * 1.05, 2)
+
+
 @router.get("/llm-config")
 async def get_llm_config() -> dict:
 	"""Return the configured LLM tier setup for the dashboard."""
@@ -1753,6 +1788,10 @@ async def get_llm_config() -> dict:
 			return fname.removesuffix(".gguf")
 		return fallback
 
+	def _ram_est(file_env: str, fallback: str) -> float:
+		fname = os.environ.get(file_env, "").strip() or fallback
+		return _estimate_model_ram_gb(fname)
+
 	return {
 		"tiers": [
 			{
@@ -1760,18 +1799,21 @@ async def get_llm_config() -> dict:
 				"model": _model_display("LLM_INSTANT_MODEL_FILE", settings.LLM_MODEL_INSTANT),
 				"use_case": "Greetings, confirmations, trivial Q&A, memory distillation",
 				"threads": int(os.environ.get("LLM_INSTANT_THREADS", "0")),
+				"ram_est_gb": _ram_est("LLM_INSTANT_MODEL_FILE", settings.LLM_MODEL_INSTANT),
 			},
 			{
 				"tier": "standard",
 				"model": _model_display("LLM_STANDARD_MODEL_FILE", settings.LLM_MODEL_STANDARD),
 				"use_case": "Normal conversation, moderate reasoning, tool-intent",
 				"threads": int(os.environ.get("LLM_STANDARD_THREADS", "0")),
+				"ram_est_gb": _ram_est("LLM_STANDARD_MODEL_FILE", settings.LLM_MODEL_STANDARD),
 			},
 			{
 				"tier": "deep",
 				"model": _model_display("LLM_DEEP_MODEL_FILE", settings.LLM_MODEL_DEEP),
 				"use_case": "Complex reasoning, briefings, creative, strategic analysis",
 				"threads": int(os.environ.get("LLM_DEEP_THREADS", "0")),
+				"ram_est_gb": _ram_est("LLM_DEEP_MODEL_FILE", settings.LLM_MODEL_DEEP),
 			},
 		],
 		"provider": settings.LLM_PROVIDER,
