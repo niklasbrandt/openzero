@@ -1006,7 +1006,6 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 	footer = await _get_stats_footer()
 	markup = get_nav_markup(t)
 	if pending:
-		from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 		# Add a button for each pending action
 		extra_buttons = []
 		for p in pending:
@@ -1068,7 +1067,6 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		footer = await _get_stats_footer()
 		markup = get_nav_markup()
 		if pending:
-			from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 			extra_buttons = []
 			for p in pending:
 				extra_buttons.append([InlineKeyboardButton(f"✅ Approve: {p['description'][:30]}...", callback_data=f"action_confirm_{p['id']}")])

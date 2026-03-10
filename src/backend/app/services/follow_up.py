@@ -119,7 +119,7 @@ async def _llm_classify_urgency(task_titles: list[str]) -> dict[str, str]:
         return {}
 
 
-async def run_proactive_follow_up():
+async def run_proactive_follow_up() -> None:
     """Scan the Operator Board's 'Today' list and send urgency-adapted nudges.
 
     Nudge cadence per urgency level:
@@ -236,7 +236,7 @@ async def run_proactive_follow_up():
     except Exception as e:
         logger.error("Proactive Follow-up failed: %s", e)
 
-async def check_active_tracking_sessions():
+async def check_active_tracking_sessions() -> None:
     """
     Monitors active TrackingSessions and delivers granular, 
     item-specific progress nudges as requested.
