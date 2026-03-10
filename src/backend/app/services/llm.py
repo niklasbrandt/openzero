@@ -158,44 +158,9 @@ _MODEL_SLASH_CMD_RE = re.compile(
 # If any match, the matching segment is redacted before reaching the client.
 _SENSITIVE_OUTPUT_PATTERNS = re.compile(
 	r'(?:AKIA|ASIA|AIDA)[A-Z0-9]{16}'             # AWS access key
-	r'|sk-[A-Za-z0-9]{32,}'                         # OpenAI-style API key
-	r'|ghp_[A-Za-z0-9]{20,80}'                      # GitHub PAT (classic, wide length range)
-	r'|github_pat_[A-Za-z0-9_]{70,120}'             # GitHub PAT (fine-grained, wide length range)
-	r'|ssh-(?:rsa|ed25519|dss|ecdsa)\s+[A-Za-z0-9+/=]{8,}' # SSH Public Key (min length to avoid false positives)
-	r'|-----BEGIN [A-Z ]+ PRIVATE KEY-----[\s\S]*?-----END [A-Z ]+ PRIVATE KEY-----', # Private Keys
+	r'|sk-[A-Za-z0-9]{32,}',                       # OpenAI-style API key
 	re.IGNORECASE,
 )
-
-class StreamSanitizer:
-	"""Stateful sanitizer for LLM streams to redact secrets in real-time.
-	
-	Buffers incoming tokens until enough context exists to reliably match
-	sensitive patterns (e.g. ghp_ followed by 20+ chars).
-	"""
-	def __init__(self, pattern: re.Pattern, redaction: str = "[REDACTED]"):
-		self.pattern = pattern
-		self.redaction = redaction
-		self.buffer = ""
-		self.safety_margin = 150 # Buffer size to catch long secrets
-		
-	def feed(self, chunk: str) -> str:
-		if not chunk: return ""
-		self.buffer += chunk
-		
-		# If buffer is short, keep waiting for context
-		if len(self.buffer) < self.safety_margin:
-			return ""
-			
-		# Keep a margin for cross-token matches, yield the rest cleaned
-		to_process = self.buffer[:-self.safety_margin]
-		self.buffer = self.buffer[-self.safety_margin:]
-		
-		return self.pattern.sub(self.redaction, to_process)
-		
-	def flush(self) -> str:
-		res = self.pattern.sub(self.redaction, self.buffer)
-		self.buffer = ""
-		return res
 
 # Internal path patterns that should never appear in output
 _INTERNAL_PATH_RE = re.compile(
@@ -211,11 +176,11 @@ _PROMPT_ECHO_MIN_WORDS = 8
 # Build a pattern from SYSTEM_PROMPT_CHAT constant words (populated after SYSTEM_PROMPT_CHAT is defined)
 _PROMPT_ECHO_RE: re.Pattern | None = None
 
-def _build_prompt_echo_re(system_prompt: str) -> Optional[re.Pattern]:
+def _build_prompt_echo_re(system_prompt: str) -> re.Pattern:
 	"""Build a regex that detects runs of 8+ consecutive words from the system prompt."""
 	words = re.findall(r'[A-Za-z]{4,}', system_prompt)[:60]  # first 60 meaningful words
 	if len(words) < _PROMPT_ECHO_MIN_WORDS:
-		return None  # never-match fallback
+		return re.compile(r'(?!x)x')  # never-match fallback
 	# Build overlapping sequences of 8 consecutive words
 	phrases = [
 		r'\b' + r'\s+'.join(re.escape(w) for w in words[i:i+_PROMPT_ECHO_MIN_WORDS]) + r'\b'
@@ -420,7 +385,6 @@ def rehydrate_response(text: str, replacement_map: dict[str, str]) -> str:
 from app.config import settings
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
-from app.common.strings import TRIVIAL_PATTERNS
 from langgraph.prebuilt import create_react_agent
 
 # Track the model used for the current request context
@@ -590,7 +554,7 @@ async def get_agent_personality() -> str:
 	try:
 		from app.models.db import Preference
 		async with AsyncSessionLocal() as session:
-			res = await session.execute(sa_select(Preference).where(Preference.key == "agent_personality"))
+			res = await session.execute(select(Preference).where(Preference.key == "agent_personality"))
 			pref = res.scalar_one_or_none()
 			if not pref:
 				return ""
@@ -689,21 +653,21 @@ async def build_system_prompt(user_name: str, user_profile: dict) -> tuple[str, 
 			logger.debug("chat_with_context: personal context refresh failed", exc_info=True)
 	personal_block = ("\n\n" + personal_ctx) if personal_ctx else ""
 
-	# Inject agent context (operational expertise — lower priority than personal context)
-	from app.services.agent_context import get_agent_context_for_prompt, refresh_agent_context
-	agent_ctx = get_agent_context_for_prompt()
+	# Inject agent skill modules (operational expertise — lower priority than personal context)
+	from app.services.agent_context import get_agent_skills_for_prompt, refresh_agent_context
+	agent_ctx = get_agent_skills_for_prompt()
 	if not agent_ctx:
 		try:
 			await refresh_agent_context()
-			agent_ctx = get_agent_context_for_prompt()
+			agent_ctx = get_agent_skills_for_prompt()
 		except Exception:
 			logger.debug("chat_with_context: agent context refresh failed", exc_info=True)
-	agent_ctx_block = ("\n\n" + agent_ctx) if agent_ctx else ""
+	agent_skills_block = ("\n\n" + agent_ctx) if agent_ctx else ""
 
 	formatted_system_prompt = SYSTEM_PROMPT_CHAT.format(
 		current_time=simplified_time,
 		user_name=user_name
-	) + personal_block + agent_ctx_block + user_id_context + lang_directive + personality_directive
+	) + personal_block + agent_skills_block + user_id_context + lang_directive + personality_directive
 
 	context_header = f"Current Local Time (Raw): {format_date_full(now)}\n"
 	context_header += f"Current Formatted Time (Use This): {simplified_time}\n\n"
@@ -739,6 +703,13 @@ async def chat(
 # Instant: greetings, trivial, memory distillation (<1s)
 # Standard: normal conversation, tool-intent (2-5s streaming)
 # Deep: complex reasoning, briefings, creative (10-30s streaming)
+
+TRIVIAL_PATTERNS = {
+	"ok", "okay", "yes", "no", "yep", "nope", "sure", "thanks", "thank you",
+	"thx", "ty", "hey", "hi", "hello", "yo", "gm", "gn", "good morning",
+	"good night", "lol", "haha", "cool", "nice", "great", "wow", "hmm",
+	"bye", "cya", "later", "cheers", "np", "k", "kk", "yea", "yeah",
+}
 
 # Short messages that require social/creative reasoning — must not hit instant tier
 # even when they fall under the length threshold.
@@ -982,7 +953,7 @@ async def chat_stream(
 										continue
 								return
 					except Exception as fb_err:
-						logger.error("Instant fallback (standard) also failed: %s", fb_err)
+						logger.error("Instant fallback (standard) also failed [%s]: %s", type(fb_err).__name__, fb_err)
 						yield "I'm still waking up. Try again in a moment."
 					return
 				else:
@@ -1030,7 +1001,7 @@ async def chat_stream(
 										continue
 								return
 					except Exception as fb_err:
-						logger.error("Instant fallback (standard) also failed after 400: %s", fb_err)
+						logger.error("Instant fallback (standard) also failed after 400 [%s]: %s", type(fb_err).__name__, fb_err)
 						yield "I'm still waking up. Try again in a moment."
 					return
 				else:
@@ -1075,7 +1046,7 @@ async def chat_stream(
 										continue
 								return
 					except Exception as fb_err:
-						logger.error("Instant fallback (standard) also failed after ConnectError: %s", fb_err)
+						logger.error("Instant fallback (standard) also failed after ConnectError [%s]: %s", type(fb_err).__name__, fb_err)
 						yield "I'm still waking up. Try again in a moment."
 					return
 				else:
@@ -1206,7 +1177,7 @@ async def chat_with_context(
 		# Always fetch identity (needed for user_name/profile), but skip circle context for trivial messages
 		try:
 			async with AsyncSessionLocal() as session:
-				result = await session.execute(sa_select(Person))
+				result = await session.execute(select(Person))
 				people = result.scalars().all()
 				identity_name = "User"
 				user_profile = {}
@@ -1487,7 +1458,7 @@ async def chat_stream_with_context(
 	async def fetch_people():
 		try:
 			async with AsyncSessionLocal() as session:
-				result = await session.execute(sa_select(Person))
+				result = await session.execute(select(Person))
 				people = result.scalars().all()
 				identity_name = "User"
 				user_profile = {}
@@ -1586,49 +1557,31 @@ async def chat_stream_with_context(
 					user_name=user_name,
 					user_profile=user_profile,
 				)
-				sanitizer = StreamSanitizer(_SENSITIVE_OUTPUT_PATTERNS) if sanitize else None
 				first_chunk = await asyncio.wait_for(stream.__anext__(), timeout=settings.DEEP_MODEL_TIMEOUT_S)
-				
-				if sanitizer:
-					clean = sanitizer.feed(first_chunk)
-					if clean: yield _strip_emoji(clean)
-				else:
-					yield _strip_emoji(first_chunk)
-
+				cleaned = _strip_emoji(first_chunk)
+				if cleaned:
+					yield cleaned
 				async for chunk in stream:
-					if sanitizer:
-						clean = sanitizer.feed(chunk)
-						if clean: yield _strip_emoji(clean)
-					else:
-						yield _strip_emoji(chunk)
-				
-				if sanitizer:
-					last = sanitizer.flush()
-					if last: yield _strip_emoji(last)
+					cleaned = _strip_emoji(chunk)
+					if cleaned:
+						yield cleaned
 				return
 			except (asyncio.TimeoutError, StopAsyncIteration):
 				logger.debug("Deep stream timeout -- falling back to standard")
 				last_model_used.set(f"Standard: {settings.LLM_MODEL_STANDARD}")
 				tier_name = "standard"
 
-		sanitizer = StreamSanitizer(_SENSITIVE_OUTPUT_PATTERNS) if sanitize else None
 		async for chunk in chat_stream(
 			user_message,
 			system_override=system_with_context,
 			tier=tier_name,
-			sanitize=False, # Handled in this loop
+			sanitize=sanitize,
 			user_name=user_name,
 			user_profile=user_profile,
 		):
-			if sanitizer:
-				clean = sanitizer.feed(chunk)
-				if clean: yield _strip_emoji(clean)
-			else:
-				yield _strip_emoji(chunk)
-				
-		if sanitizer:
-			last = sanitizer.flush()
-			if last: yield _strip_emoji(last)
+			cleaned = _strip_emoji(chunk)
+			if cleaned:
+				yield cleaned
 	except Exception as e:
 		logger.warning("chat_stream_with_context failed: %s", e)
 		yield "I encountered a temporary issue. Please try again."
