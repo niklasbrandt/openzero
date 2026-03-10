@@ -166,7 +166,7 @@ async def extract_and_store_facts(user_message: str):
 		return
 
 	# Skip trivial messages (greetings, confirmations, commands)
-	from app.services.llm import TRIVIAL_PATTERNS
+	from app.common.strings import TRIVIAL_PATTERNS
 	msg_lower = user_message.lower().strip().rstrip('!?.,')
 	if msg_lower in TRIVIAL_PATTERNS:
 		return
