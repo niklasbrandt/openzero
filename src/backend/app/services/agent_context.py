@@ -57,7 +57,7 @@ _executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="agent_ctx")
 # In-memory cache
 # ---------------------------------------------------------------------------
 class _AgentContextState:
-	def __init__(self):
+	def __init__(self) -> None:
 		self.cache:         dict[str, str] = {}   # filename -> post-deterministic text
 		self.compressed:    dict[str, str] = {}   # filename -> post-LLM text (if triggered)
 		self.final:         dict[str, str] = {}   # filename -> budget-capped text actually injected
