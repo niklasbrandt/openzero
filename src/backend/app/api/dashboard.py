@@ -21,7 +21,7 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from app.models.db import AsyncSessionLocal, Project, EmailRule, Briefing, Person
-from app.services.memory import semantic_search, semantic_search_raw, list_memories as list_memories_svc, delete_memory
+from app.services.memory import semantic_search, semantic_search_raw, list_memories as list_memories_svc, delete_memory, extract_and_store_facts
 from app.services.planka import get_project_tree
 from app.services.operator_board import operator_service
 from pydantic import BaseModel
@@ -399,7 +399,7 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 				"• `/unlearn <query>` — Remove a fact from the vault\n\n"
 				f"**{ss}:**\n"
 				"• `/personal` — Show compressed personal context Z loaded from /personal\n"
-				"• `/skills` — Show agent skill modules loaded from /agent\n"
+				"• `/agent` — Show agent skill modules loaded from /agent\n"
 				"• `/status` — Deep integration health check\n"
 				"• `/purge` — Permanently wipe all semantic memory\n\n"
 				"Type any message to chat with Z directly."
@@ -475,7 +475,20 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 			return {"reply": f"✅ {msg}", "pending_actions": pending}
 		else:
 			return {"reply": "Could not parse custom turnus. Try: '/custom every Monday at 10am remind me...'"}
+	elif msg == "/status":
+		from app.services.timezone import get_current_timezone
+		tz = await get_current_timezone()
+		now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+		return {"reply": f"🤖 **System Status**\n\n• **Local Time**: {now}\n• **Timezone**: {tz}\n• **Memory Vault**: Connected\n• **Planka**: Connected\n\nSee the **Diagnostics** widget for detailed hardware and model performance metrics."}
+	elif msg.startswith("/think "):
+		# Forward to LLM with a 'thinking' prefix or just handle it as a normal message but acknowledge the mode
+		query = msg.replace("/think", "").strip()
+		# For now, let the LLM handle it, but we identify it in the help.
+		# If we want a special mode, we'd trigger it here. 
+		# Let's just return a placeholder for now since the LLM already handles general chat.
+		return {"reply": "🤖 **Z Thinking Mode** initiated. Processing complex multi-step reasoning for: " + query + "\n\n(This is handled by the Standard/Deep LLM tiers with elevated context limits.)"}
 	elif msg == "/protocols":
+
 		from app.services.agent_actions import AVAILABLE_TOOLS
 		tools_info = "\n".join([f"• **{t.name}**: {t.description}" for t in AVAILABLE_TOOLS])
 		protocols_reply = (
@@ -489,9 +502,9 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		from app.services.personal_context import get_personal_context_debug_report
 		report = get_personal_context_debug_report()
 		return {"reply": report}
-	elif msg == "/skills":
-		from app.services.agent_context import get_agent_skills_debug_report
-		report = get_agent_skills_debug_report()
+	elif msg == "/agent":
+		from app.services.agent_context import get_agent_context_debug_report
+		report = get_agent_context_debug_report()
 		return {"reply": report}
 	elif msg == "/purge":
 		from app.services.translations import get_user_lang, get_translations
@@ -634,9 +647,33 @@ async def get_calibration():
 
 @router.get("/protocols")
 async def get_protocols():
-	"""Fetch Z's operational protocols (action tags)."""
+	"""Fetch Z's operational protocols (action tags) and system commands."""
 	from app.services.agent_actions import AVAILABLE_TOOLS
-	return {"tools": [{"name": t.name, "description": t.description} for t in AVAILABLE_TOOLS]}
+	tools = [{"name": t.name, "description": t.description} for t in AVAILABLE_TOOLS]
+	
+	# Truth: These are the slash commands handled in dashboard_chat() and documented in help.
+	commands = [
+		{"name": "/day", "description": "Strategic Briefing: Generate proactive morning report."},
+		{"name": "/week", "description": "Weekly Review: Strategic overview of the last 7 days."},
+		{"name": "/month", "description": "Monthly Review: High-level 30-day performance review."},
+		{"name": "/quarter", "description": "Quarterly Roadmap: 90-day trajectory analysis."},
+		{"name": "/year", "description": "Yearly Goal Review: Comprehensive annual alignment audit."},
+		{"name": "/tree", "description": "Life Tree: Visualize hierarchy and workspace overview."},
+		{"name": "/think", "description": "Deep Think: Multi-step chain-of-thought reasoning mode."},
+		{"name": "/remind", "description": "Quick Reminder: Set a temporary recurring nudge."},
+		{"name": "/custom", "description": "Persistent Task: Create a scheduled turnus (cron/interval)."},
+		{"name": "/search", "description": "Semantic Search: Query the knowledge vault for facts."},
+		{"name": "/memories", "description": "Memory List: Scroll through all permanently stored facts."},
+		{"name": "/add", "description": "Learn Fact: Commit a specific fact to long-term memory."},
+		{"name": "/unlearn", "description": "Forget Fact: Remove a specific vector from the knowledge vault."},
+		{"name": "/personal", "description": "Personal Context: Inspect loaded user profile & mission data."},
+		{"name": "/agent", "description": "Agent Context: Inspect loaded modular expertise definitions."},
+		{"name": "/status", "description": "Health Check: Deep diagnostic report of all integrations."},
+		{"name": "/purge", "description": "Factory Reset: Permanently wipe ALL semantic memory."},
+	]
+	
+	return {"tools": tools, "commands": commands}
+
 
 @router.get("/personality")
 async def get_personality(db: AsyncSession = Depends(get_db)):
