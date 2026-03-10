@@ -19,7 +19,7 @@ the user every morning.
 
 import httpx
 import logging
-from typing import Optional, Any
+from typing import Optional
 from app.config import settings
 from app.services.translations import (
 	get_planka_entity_names,
