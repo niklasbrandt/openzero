@@ -442,7 +442,7 @@ translations: dict[str, str] = {
 	"tip_avx512": "Breiteste SIMD. Bis zu 2x schneller als AVX2 für große quantisierte Modelle. Selten bei Consumer-CPUs, häufig bei EPYC/Xeon.",
 	"tip_backend": "FastAPI-Anwendungsserver, der den openZero-Kern ausführt.",
 	"tip_bench_all": "Alle drei Tier-Benchmarks nacheinander ausführen für ein vollständiges Leistungsbild.",
-	"tip_bench_deep": "Benchmark des Deep-Tiers (~14B Modell). Für komplexe Analyse und strategisches Denken.",
+	"tip_bench_deep": "Benchmark des Deep-Tiers (~8B Modell). Für komplexe Analyse und strategisches Denken.",
 	"tip_bench_instant": "Benchmark des Instant-Tiers (~3-4B Modell). Für schnelle Aufgaben wie Faktenextraktion und Klassifikation.",
 	"tip_bench_standard": "Benchmark des Standard-Tiers (~8B Modell). Für allgemeine Konversation und Schlussfolgerung.",
 	"tip_cores": "Physische Kerne führen Berechnungen aus. Logische Kerne (Hyperthreads) helfen bei Scheduling, bringen aber weniger Durchsatz für LLM-Workloads.",

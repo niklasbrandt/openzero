@@ -22,7 +22,7 @@ export class DiagnosticsWidget extends HTMLElement {
     private static readonly EXPECTATIONS: Record<string, { model: string; fast: number; good: number; ok: number }> = {
         instant: { model: '~3-4B', fast: 15, good: 8, ok: 3 },
         standard: { model: '~8B', fast: 10, good: 5, ok: 2 },
-        deep: { model: '~14B', fast: 6, good: 3, ok: 1.5 },
+        deep: { model: '~8B', fast: 10, good: 5, ok: 2 },
     };
 
     constructor() {
@@ -213,7 +213,7 @@ export class DiagnosticsWidget extends HTMLElement {
                 const parts = t.model.split('/');
                 return parts[parts.length - 1].replace('.gguf', '');
             }
-            return name === 'instant' ? 'Qwen3-0.6B' : name === 'standard' ? 'Qwen3-8B' : 'Qwen3-14B';
+            return name === 'instant' ? 'Qwen3-0.6B' : name === 'standard' ? 'Qwen3-8B' : 'Qwen3-8B';
         };
 
         const tierNames = ['instant', 'standard', 'deep'];
