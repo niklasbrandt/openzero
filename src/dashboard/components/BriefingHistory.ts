@@ -197,7 +197,7 @@ export class BriefingHistory extends HTMLElement {
 					}
 					.date { 
 						font-size: 0.8rem; 
-						color: var(--text-muted, hsla(0, 0%, 100%, 0.4)); 
+						color: var(--text-muted, hsla(0, 0%, 100%, 0.7)); 
 						font-weight: 500;
 					}
 					.model-tag {
@@ -252,7 +252,7 @@ export class BriefingHistory extends HTMLElement {
 						width: 100%;
 						background: var(--surface-card, hsla(0, 0%, 100%, 0.03));
 						border: 1px dashed var(--border-medium, hsla(0, 0%, 100%, 0.12));
-						color: var(--text-muted, hsla(0, 0%, 100%, 0.4));
+						color: var(--text-muted, hsla(0, 0%, 100%, 0.7));
 						padding: 0.75rem;
 						border-radius: var(--radius-lg, 0.75rem);
 						font-size: 0.8rem;

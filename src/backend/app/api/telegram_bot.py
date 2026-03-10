@@ -14,6 +14,11 @@ import asyncio
 import html as _html
 import pytz
 import re
+import os
+import json
+import httpx
+import uuid
+import io
 from datetime import datetime
 import logging
 from app.services.translations import get_translations, get_user_lang
@@ -135,7 +140,6 @@ async def start_telegram_bot():
 			from app.services.memory import get_memory_stats
 			from app.models.db import AsyncSessionLocal, Person
 			from sqlalchemy import select
-			import os
 			
 			logger.debug("start_telegram_bot - step 7: Fetching stats for greeting")
 			stats = await get_memory_stats()
@@ -427,7 +431,6 @@ async def send_voice_message(audio_bytes: bytes, caption: Optional[str] = None):
 	if not settings.TELEGRAM_BOT_TOKEN or not settings.TELEGRAM_ALLOWED_USER_ID:
 		return
 	bot = Bot(token=settings.TELEGRAM_BOT_TOKEN)
-	import io
 	voice_file = io.BytesIO(audio_bytes)
 	voice_file.name = "briefing.mp3"
 	await bot.send_voice(
@@ -471,8 +474,6 @@ async def cmd_board(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	try:
 		from app.services.planka import get_planka_auth_token
 		from app.services.operator_board import operator_service
-		import httpx
-		import html
 
 		token = await get_planka_auth_token()
 		async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, timeout=10.0,
@@ -1171,7 +1172,6 @@ async def handle_calendar_approval(update: Update, context: ContextTypes.DEFAULT
 		return
 
 	from app.models.db import get_pending_thought, AsyncSessionLocal, LocalEvent
-	import json
 	
 	thought = await get_pending_thought(event_id)
 	if not thought:
@@ -1218,8 +1218,7 @@ async def handle_draft_approval(update: Update, context: ContextTypes.DEFAULT_TY
 		return
 
 	try:
-		import json as _json
-		draft_data = _json.loads(thought["context_data"])
+		draft_data = json.loads(thought["context_data"])
 		from app.services.gmail import create_draft_reply
 		success = await create_draft_reply(draft_data["email_id"], draft_data["reply_body"])
 		if success:
@@ -1249,8 +1248,7 @@ async def handle_action_approval(update: Update, context: ContextTypes.DEFAULT_T
 		return
 
 	try:
-		import json as _json
-		action_data = _json.loads(thought["context_data"])
+		action_data = json.loads(thought["context_data"])
 		tag = action_data["tag"]
 		description = action_data.get("description", "Action")
 		

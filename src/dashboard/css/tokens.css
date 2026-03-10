@@ -59,10 +59,10 @@
 	--accent-color: hsla(196, 78%, 45%, 1);
 	--accent-color-rgb: 32, 177, 206;
 
-	/* -- Circle colors -- */
-	--circle-inner-color: hsla(217, 91%, 60%, 1);
-	--circle-close-color: hsla(160, 84%, 39%, 1);
-	--circle-outer-color: hsla(263, 90%, 76%, 1);
+	/* -- Circle colors (optimized for contrast ≥4.5:1 on card surfaces) -- */
+	--circle-inner-color: hsla(217, 91%, 65%, 1);
+	--circle-close-color: hsla(160, 84%, 42%, 1);
+	--circle-outer-color: hsla(263, 90%, 78%, 1);
 
 	/* -- Semantic status colors -- */
 	--color-success: hsla(142, 71%, 45%, 1);
@@ -182,9 +182,9 @@
 		--accent-color-rgb: 20, 122, 159;
 
 		/* -- Circle colors (light mode darkened for contrast) -- */
-		--circle-inner-color: hsla(217, 85%, 35%, 1);
-		--circle-close-color: hsla(160, 84%, 28%, 1);
-		--circle-outer-color: hsla(263, 60%, 45%, 1);
+		--circle-inner-color: hsla(217, 85%, 32%, 1);
+		--circle-close-color: hsla(160, 84%, 25%, 1);
+		--circle-outer-color: hsla(263, 60%, 40%, 1);
 	}
 }
 
@@ -227,8 +227,8 @@
 	 * For light mode, we slightly darken high-vibrancy accents to ensure 
 	 * contrast against light surfaces (WCAG AA). 
 	 */
-	--accent-primary-l: 35%;
-	--accent-secondary-l: 45%;
+	--accent-primary-l: 28%;
+	--accent-secondary-l: 35%;
 	--accent-tertiary-l: 50%;
 	/* Danger/error text needs lower lightness on near-white surfaces (WCAG AA). */
 	--color-danger: hsla(0, 84%, 42%, 1);
@@ -245,7 +245,7 @@
 	--accent-color-rgb: 20, 122, 159;
 
 	/* -- Circle colors (light mode darkened) -- */
-	--circle-inner-color: hsla(217, 85%, 35%, 1);
-	--circle-close-color: hsla(160, 84%, 28%, 1);
-	--circle-outer-color: hsla(263, 60%, 45%, 1);
+	--circle-inner-color: hsla(217, 85%, 32%, 1);
+	--circle-close-color: hsla(160, 84%, 25%, 1);
+	--circle-outer-color: hsla(263, 60%, 40%, 1);
 }

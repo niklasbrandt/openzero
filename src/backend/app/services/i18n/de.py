@@ -95,6 +95,8 @@ translations: dict[str, str] = {
 	"aria_project_tree": "Projekt-Board-Strukturbaum",
 	"aria_quick_actions": "Schnellaktionen",
 	"aria_quick_commands": "Schnellbefehle",
+	"aria_read_aloud": "Briefing vorlesen",
+	"aria_refresh_diagnostics": "Aktualisierung aller Diagnosemetriken erzwingen",
 	"aria_remove_from_circle": "Aus dem Kreis entfernen",
 	"aria_search_memory": "Semantisches Gedächtnis durchsuchen",
 	"aria_select_language": "Antwortsprache von Z wählen",
