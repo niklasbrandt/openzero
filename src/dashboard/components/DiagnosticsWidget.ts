@@ -468,7 +468,7 @@ export class DiagnosticsWidget extends HTMLElement {
                 .llm-status-text { font-size: 0.55rem; font-weight: 900; letter-spacing: 0.05em; }
                 .llm-status-text.online { color: var(--accent-primary); }
                 .llm-status-text.processing { color: var(--accent-primary); animation: diag-pulse 1s infinite; }
-                .llm-status-text.offline { color: var(--status-danger); opacity: 0.7; }
+                .llm-status-text.offline { color: var(--color-danger, hsla(0, 84%, 42%, 1)); }
                 .llm-tier-info { font-size: 0.6rem; font-family: var(--font-mono); color: var(--text-muted); opacity: 0.8; }
                 .svc-dot.processing { background: var(--accent-primary); box-shadow: 0 0 10px var(--accent-primary); animation: diag-pulse 1s infinite; }
 
@@ -495,6 +495,15 @@ export class DiagnosticsWidget extends HTMLElement {
 				.b-btn:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(100%); }
 				.b-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem; }
 				.b-btn.sm { font-size: 0.55rem; padding: 0.4rem 0.2rem; }
+
+				/* Light mode: .b-btn uses color:var(--text-primary) which is white in dark mode
+				   and may not cascade correctly into shadow DOM on theme switch. Explicit
+				   @media rule is the reliable guard (fires per-shadow-root stylesheet). */
+				@media (prefers-color-scheme: light) {
+					.b-btn { color: hsla(228, 45%, 8%, 1); background: hsla(0, 0%, 0%, 0.05); border-color: hsla(0, 0%, 0%, 0.12); }
+					.b-btn.main { background: hsla(196, 78%, 35%, 0.12); border-color: hsla(196, 78%, 35%, 0.25); color: hsla(196, 78%, 22%, 1); }
+					.b-btn:hover:not(:disabled) { background: hsla(0, 0%, 0%, 0.1); border-color: hsla(196, 78%, 35%, 1); color: hsla(196, 78%, 22%, 1); }
+				}
 
 				@keyframes diag-pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
 
