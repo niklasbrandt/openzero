@@ -21,7 +21,8 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from app.models.db import AsyncSessionLocal, Project, EmailRule, Briefing, Person
-from app.services.memory import semantic_search, semantic_search_raw, list_memories as list_memories_svc, delete_memory, extract_and_store_facts
+from app.services.memory import semantic_search, semantic_search_raw, list_memories as list_memories_svc, delete_memory
+from app.services.learning import extract_and_store_facts
 from app.services.planka import get_project_tree
 from app.services.operator_board import operator_service
 from pydantic import BaseModel
@@ -395,7 +396,7 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 				f"**{si}:**\n"
 				"• `/search <query>` — Semantic search\n"
 				"• `/memories` — List all stored facts\n"
-				"• `/add <topic>` — Commit a fact to memory\n"
+				"• `/learn <topic>` — Commit a fact to memory\n"
 				"• `/unlearn <query>` — Remove a fact from the vault\n\n"
 				f"**{ss}:**\n"
 				"• `/personal` — Show compressed personal context Z loaded from /personal\n"
@@ -432,8 +433,8 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		text = point.payload.get('text', '[No Text]')
 		await delete_memory(point.id)
 		return {"reply": f"✅ Unlearned: \"{text}\". Z has evolved past this specific context."}
-	elif msg.startswith("/add "):
-		topic = msg.replace("/add", "").strip()
+	elif msg.startswith("/learn "):
+		topic = msg.replace("/learn", "").strip()
 		from app.services.memory import store_memory
 		await store_memory(topic)
 		return {"reply": f"✅ Stored to memory: {topic}"}
@@ -478,8 +479,8 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 	elif msg == "/status":
 		from app.services.timezone import get_current_timezone
 		tz = await get_current_timezone()
-		now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-		return {"reply": f"🤖 **System Status**\n\n• **Local Time**: {now}\n• **Timezone**: {tz}\n• **Memory Vault**: Connected\n• **Planka**: Connected\n\nSee the **Diagnostics** widget for detailed hardware and model performance metrics."}
+		now_str = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+		return {"reply": f"🤖 **System Status**\n\n• **Local Time**: {now_str}\n• **Timezone**: {tz}\n• **Memory Vault**: Connected\n• **Planka**: Connected\n\nSee the **Diagnostics** widget for detailed hardware and model performance metrics."}
 	elif msg.startswith("/think "):
 		# Forward to LLM with a 'thinking' prefix or just handle it as a normal message but acknowledge the mode
 		query = msg.replace("/think", "").strip()
@@ -664,7 +665,7 @@ async def get_protocols():
 		{"name": "/custom", "description": "Persistent Task: Create a scheduled turnus (cron/interval)."},
 		{"name": "/search", "description": "Semantic Search: Query the knowledge vault for facts."},
 		{"name": "/memories", "description": "Memory List: Scroll through all permanently stored facts."},
-		{"name": "/add", "description": "Learn Fact: Commit a specific fact to long-term memory."},
+		{"name": "/learn", "description": "Learn Fact: Commit a specific fact to long-term memory."},
 		{"name": "/unlearn", "description": "Forget Fact: Remove a specific vector from the knowledge vault."},
 		{"name": "/personal", "description": "Personal Context: Inspect loaded user profile & mission data."},
 		{"name": "/agent", "description": "Agent Context: Inspect loaded modular expertise definitions."},

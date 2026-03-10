@@ -10,7 +10,7 @@ export class ZProtocols extends HTMLElement {
 	private commands: any[] = [];
 	private isLoading = true;
 	private t: Record<string, string> = {};
-	private openSections: Set<string> = new Set(['commands', 'tools']);
+	private openSections: Set<string> = new Set();
 
 	constructor() {
 		super();
@@ -206,17 +206,20 @@ export class ZProtocols extends HTMLElement {
 								</svg>
 							</button>
 							<div class="accordion-content">
+								${cmd.length > 0 ? `
 								<div class="prot-list" role="list">
 									${cmd.map((c: any, i: number) => `
 										<div class="prot-item cmd-item" role="listitem" style="animation-delay: ${i * 0.03}s">
 											<span class="prot-name">
-												${this.getCommandIcon(c.name)}
 												${c.name}
 											</span>
 											<span class="prot-desc">${c.description}</span>
 										</div>
 									`).join('')}
 								</div>
+								` : `
+								<div class="empty-state" style="padding: 1rem 0">${this.tr('no_commands', 'No system commands available.')}</div>
+								`}
 							</div>
 						</div>
 
@@ -229,6 +232,7 @@ export class ZProtocols extends HTMLElement {
 								</svg>
 							</button>
 							<div class="accordion-content">
+								${prot.length > 0 ? `
 								<div class="prot-list" role="list">
 									${prot.map((p: any, i: number) => `
 										<div class="prot-item" role="listitem" style="animation-delay: ${i * 0.05}s">
@@ -239,8 +243,10 @@ export class ZProtocols extends HTMLElement {
 											<span class="prot-desc">${p.description}</span>
 										</div>
 									`).join('')}
-									${prot.length === 0 ? `<div class="empty-state" style="padding: 1rem 0">${this.tr('no_protocols', 'No active strategic protocols.')}</div>` : ''}
 								</div>
+								` : `
+								<div class="empty-state" style="padding: 1rem 0">${this.tr('no_protocols', 'No active strategic protocols.')}</div>
+								`}
 							</div>
 						</div>
 					`}
@@ -261,32 +267,6 @@ export class ZProtocols extends HTMLElement {
 		if (btnTools) {
 			btnTools.addEventListener('click', () => this.toggleSection('tools'));
 		}
-	}
-
-	private getCommandIcon(name: string): string {
-		const icons: Record<string, string> = {
-			'/day': '<path d="M12 2v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="M20 12h2"/><path d="m19.07 4.93-1.41 1.41"/><path d="M15.89 16.75 12 14.81 8.11 16.75l.74-4.33-3.15-3.07 4.35-.63L12 4.79l1.95 3.93 4.35.63-3.15 3.07.74 4.33Z"/>',
-			'/week': '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
-			'/month': '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/>',
-			'/quarter': '<path d="M12 2v20"/><path d="M2 12h20"/><path d="M12 12 2.1 2.1"/><path d="m12 12 9.9 9.9"/>',
-			'/year': '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M7 14h.01"/><path d="M12 14h.01"/><path d="M17 14h.01"/><path d="M7 18h.01"/><path d="M12 18h.01"/><path d="M17 18h.01"/>',
-			'/search': '<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
-			'/memories': '<path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 15a5 5 0 1 1 5-5 5 5 0 0 1-5 5z"/>',
-			'/add': '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
-			'/unlearn': '<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>',
-			'/tree': '<path d="M12 19V5"/><path d="m5 12 7-7 7 7"/>',
-			'/think': '<path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.04-2.44 2.5 2.5 0 0 1-2.04-2.44 2.5 2.5 0 0 1 1.96-2.44V4.5a2.5 2.5 0 0 1 2.5-2.5z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.04-2.44 2.5 2.5 0 0 0 2.04-2.44 2.5 2.5 0 0 0-1.96-2.44V4.5A2.5 2.5 0 0 0 14.5 2z"/>',
-			'/remind': '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>',
-			'/custom': '<path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M12 7v5l4 2"/>',
-			'/purge': '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',
-			'/personal': '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
-			'/agent': '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
-			'/status': '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
-			'/protocols': '<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>',
-		};
-
-		const d = icons[name] || icons[name.split(' ')[0]] || '<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>';
-		return `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${d}</svg>`;
 	}
 
 }

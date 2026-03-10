@@ -72,7 +72,7 @@ class RegressionSuite:
 			await self.test_tree_command()
 			await self.test_life_tree_api()
 
-			# Memory commands: /add, /search, /memories, /unlearn
+			# Memory commands: /learn, /search, /memories, /unlearn
 			await self.test_memory_commands()
 
 			# Briefing commands: /day /week /month /quarter /year
@@ -148,7 +148,7 @@ class RegressionSuite:
 		resp = await self._request("POST", "/api/dashboard/chat", {"message": "/help", "history": [], "skip_history": True})
 		assert resp.status_code == 200, f"/help returned {resp.status_code}"
 		reply = resp.json().get("reply", "")
-		assert "/tree" in reply and "/add" in reply and "/think" in reply, \
+		assert "/tree" in reply and "/learn" in reply and "/think" in reply, \
 			"Help text missing expected commands"
 		self._log("✅ /help OK")
 
@@ -180,17 +180,17 @@ class RegressionSuite:
 	# ------------------------------------------------------------------
 
 	async def test_memory_commands(self):
-		print("🧪 Memory commands (/add, /search, /memories, /unlearn)...")
+		print("🧪 Memory commands (/learn, /search, /memories, /unlearn)...")
 
 		add_token = "TEST_MEMORY_TOKEN"
 		unlearn_token = "TEST_UNLEARN_TOKEN"
 
-		# /add
+		# /learn
 		resp = await self._request("POST", "/api/dashboard/chat", {
-			"message": f"/add {add_token}",
+			"message": f"/learn {add_token}",
 			"history": [], "skip_history": True,
 		})
-		assert resp.status_code == 200, f"/add returned {resp.status_code}"
+		assert resp.status_code == 200, f"/learn returned {resp.status_code}"
 
 		# Brief pause for Qdrant to index
 		await asyncio.sleep(1)
@@ -203,7 +203,7 @@ class RegressionSuite:
 		assert resp.status_code == 200, f"/search returned {resp.status_code}"
 		reply = resp.json().get("reply", "")
 		if add_token.lower().replace("_", "") in reply.lower().replace("_", ""):
-			self._log("✅ /add + /search round-trip verified")
+			self._log("✅ /learn + /search round-trip verified")
 		else:
 			self._log("⚠️ /search returned OK but token not found (possible LLM variance)")
 
@@ -216,7 +216,7 @@ class RegressionSuite:
 		assert resp.json().get("reply"), "/memories returned empty reply"
 		self._log("✅ /memories OK")
 
-		# Clean up the /add token used for the search round-trip test
+		# Clean up the /learn token used for the search round-trip test
 		await self._request("POST", "/api/dashboard/chat", {
 			"message": f"/unlearn {add_token}",
 			"history": [], "skip_history": True,
@@ -224,7 +224,7 @@ class RegressionSuite:
 
 		# /unlearn -- store a distinct token, then remove it
 		await self._request("POST", "/api/dashboard/chat", {
-			"message": f"/add {unlearn_token}",
+			"message": f"/learn {unlearn_token}",
 			"history": [], "skip_history": True,
 		})
 		await asyncio.sleep(1)
