@@ -28,7 +28,7 @@ from app.services.translations import (
 logger = logging.getLogger(__name__)
 
 class OperatorBoardService:
-	def __init__(self):
+	def __init__(self) -> None:
 		self._lang = "en"
 		self._apply_lang()
 		self._token = None
@@ -37,7 +37,7 @@ class OperatorBoardService:
 		self._board_id: str | None = None
 		self._list_ids: dict[str, str] = {}  # logical key -> planka id
 
-	def _apply_lang(self):
+	def _apply_lang(self) -> None:
 		"""Refresh entity names from the translations module."""
 		names = get_planka_entity_names(self._lang)
 		self.project_name = names["project_name"]
@@ -64,7 +64,7 @@ class OperatorBoardService:
 		self._token = await get_planka_auth_token()
 		return self._token
 
-	async def _get_client(self):
+	async def _get_client(self) -> httpx.AsyncClient:
 		"""Returns a configured async client."""
 		token = await self._get_auth_token()
 		return httpx.AsyncClient(
@@ -174,7 +174,7 @@ class OperatorBoardService:
 				
 		return project["id"], board["id"]
 
-	async def sync_operator_tasks(self):
+	async def sync_operator_tasks(self) -> str:
 		"""
 		Consolidates tasks from other boards into the Operator Board.
 		"""

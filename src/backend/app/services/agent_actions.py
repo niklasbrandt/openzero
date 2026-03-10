@@ -220,13 +220,13 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
         board, llist, title = match.groups()
         board, llist, title = board.strip(), llist.strip(), title.strip()
         
-        async def _exec(board=board, llist=llist, title=title):
+        async def _exec_task(board=board, llist=llist, title=title):
             path = await planka_create_task(board_name=board, list_name=llist, title=title)
             if path:
                 return f"Task '{title}' created in {path}."
             return f"\u26a0 Failed to create task '{title}'. Check Planka connection."
 
-        await handle_action("CREATE_TASK", raw_tag, _exec, f"Create task '{title}' on {board}")
+        await handle_action("CREATE_TASK", raw_tag, _exec_task, f"Create task '{title}' on {board}")
         clean_reply = strip_tag(clean_reply, raw_tag)
 
     # 2. Create Project Tag
@@ -236,7 +236,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
         name, desc = match.groups()
         name, desc = name.strip(), desc.strip()
 
-        async def _exec(name=name, desc=desc):
+        async def _exec_project(name=name, desc=desc):
             try:
                 result = await planka_create_project(name=name, description=desc)
                 if result:
@@ -246,7 +246,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
                 logger.error("CREATE_PROJECT failed: %s", _e)
                 return f"\u26a0 Failed to create project '{name}'. Check Planka connection."
 
-        await handle_action("CREATE_PROJECT", raw_tag, _exec, f"Create project '{name}'")
+        await handle_action("CREATE_PROJECT", raw_tag, _exec_project, f"Create project '{name}'")
         clean_reply = strip_tag(clean_reply, raw_tag)
 
     # 2b. Create Board Tag
@@ -256,7 +256,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
         proj_name, board_name = match.groups()
         proj_name, board_name = proj_name.strip(), board_name.strip()
 
-        async def _exec(proj_name=proj_name, board_name=board_name):
+        async def _exec_board(proj_name=proj_name, board_name=board_name):
             try:
                 from app.services.planka import get_planka_auth_token
                 import httpx
@@ -280,7 +280,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
                 logger.error("CREATE_BOARD failed: %s", _e)
                 return f"\u26a0 Failed to create board '{board_name}'. Check Planka connection."
 
-        await handle_action("CREATE_BOARD", raw_tag, _exec, f"Create board '{board_name}' in project '{proj_name}'")
+        await handle_action("CREATE_BOARD", raw_tag, _exec_board, f"Create board '{board_name}' in project '{proj_name}'")
         clean_reply = strip_tag(clean_reply, raw_tag)
 
     # 2c. Create List (Column) Tag
@@ -290,7 +290,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
         board_name, list_name = match.groups()
         board_name, list_name = board_name.strip(), list_name.strip()
 
-        async def _exec(board_name=board_name, list_name=list_name):
+        async def _exec_list(board_name=board_name, list_name=list_name):
             try:
                 result = await planka_create_list(board_name=board_name, list_name=list_name)
                 if result:
@@ -300,7 +300,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
                 logger.error("CREATE_LIST failed: %s", _e)
                 return f"\u26a0 Failed to create list '{list_name}'. Check Planka connection."
 
-        await handle_action("CREATE_LIST", raw_tag, _exec, f"Create list '{list_name}' on board '{board_name}'")
+        await handle_action("CREATE_LIST", raw_tag, _exec_list, f"Create list '{list_name}' on board '{board_name}'")
         clean_reply = strip_tag(clean_reply, raw_tag)
 
     # 3. Create Event Tag
@@ -311,7 +311,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
         # Clean potential quotes from model output
         title = title.strip().strip('"').strip("'")
         
-        async def _exec(title=title, start=start, end=end):
+        async def _exec_event(title=title, start=start, end=end):
             try:
                 event_result = await create_event.ainvoke({"title": title, "start_time": start.strip(), "end_time": end.strip()})
                 # The tool returns an error string starting with "Error:" on failure
@@ -322,7 +322,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
                 logger.error("CREATE_EVENT failed: %s", _e)
                 return f"\u26a0 Failed to create event '{title}'. Check calendar configuration."
 
-        await handle_action("CREATE_EVENT", raw_tag, _exec, f"Schedule event: {title} ({start.strip()})")
+        await handle_action("CREATE_EVENT", raw_tag, _exec_event, f"Schedule event: {title} ({start.strip()})")
         clean_reply = strip_tag(clean_reply, raw_tag)
 
     # 5. Remind Tag
@@ -332,7 +332,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
         message, interval, duration = match.groups()
         message = message.strip()
         
-        async def _exec(message=message, interval=interval, duration=duration):
+        async def _exec_remind(message=message, interval=interval, duration=duration):
             try:
                 res = await schedule_reminder.ainvoke({
                     "message": message,
@@ -346,7 +346,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
                 logger.error("REMIND failed: %s", _e)
                 return f"\u26a0 Failed to schedule reminder '{message[:60]}'. Check scheduler."
 
-        await handle_action("REMIND", raw_tag, _exec, f"Set reminder: {message} every {interval.strip()}m")
+        await handle_action("REMIND", raw_tag, _exec_remind, f"Set reminder: {message} every {interval.strip()}m")
         clean_reply = strip_tag(clean_reply, raw_tag)
 
     # 6. Persistent Custom Tag
@@ -356,7 +356,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
         name, msg, ttype, spec = match.groups()
         name, msg, ttype, spec = name.strip(), msg.strip(), ttype.strip().lower(), spec.strip()
 
-        async def _exec(name=name, msg=msg, ttype=ttype, spec=spec):
+        async def _exec_custom(name=name, msg=msg, ttype=ttype, spec=spec):
             try:
                 res = await schedule_persistent_custom.ainvoke({
                     "name": name,
@@ -371,7 +371,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
                 logger.error("SCHEDULE_CUSTOM failed: %s", _e)
                 return f"\u26a0 Failed to schedule custom task '{name[:60]}'. Check scheduler."
 
-        await handle_action("SCHEDULE_CUSTOM", raw_tag, _exec, f"Schedule persistent task '{name}' ({spec})")
+        await handle_action("SCHEDULE_CUSTOM", raw_tag, _exec_custom, f"Schedule persistent task '{name}' ({spec})")
         clean_reply = strip_tag(clean_reply, raw_tag)
 
     # 7. Add Person Tag
@@ -381,7 +381,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
         name, rel, ctx, circle = match.groups()
         name, rel, ctx, circle = name.strip(), rel.strip(), ctx.strip(), circle.strip()
 
-        async def _exec(name=name, rel=rel, ctx=ctx, circle=circle):
+        async def _exec_person(name=name, rel=rel, ctx=ctx, circle=circle):
             try:
                 from app.models.db import Person, AsyncSessionLocal
                 # --- Input validation (M-A2) ---
@@ -397,7 +397,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
                 logger.error("ADD_PERSON failed: %s", _e)
                 return f"\u26a0 Failed to add '{name}' to circle. Check database."
 
-        await handle_action("ADD_PERSON", raw_tag, _exec, f"Add {name} ({rel}) to circle")
+        await handle_action("ADD_PERSON", raw_tag, _exec_person, f"Add {name} ({rel}) to circle")
         clean_reply = strip_tag(clean_reply, raw_tag)
 
     # 5. Learn Memory Tag
@@ -406,7 +406,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
         raw_tag = match.group(0)
         text = match.group(1).strip()
 
-        async def _exec(text=text):
+        async def _exec_learn(text=text):
             try:
                 from app.services.memory import store_memory
                 await store_memory(text)
@@ -417,7 +417,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
                 logger.error("LEARN failed: %s", _e)
                 return "\u26a0 Failed to store memory. Check Qdrant connection."
 
-        await handle_action("LEARN", raw_tag, _exec, f"Learn: {text}")
+        await handle_action("LEARN", raw_tag, _exec_learn, f"Learn: {text}")
         clean_reply = strip_tag(clean_reply, raw_tag)
 
     # 6. Proximity Track Tag
@@ -427,7 +427,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
         tasks, breakdown, end_val = match.groups()
         tasks, breakdown, end_val = tasks.strip(), breakdown.strip(), end_val.strip()
 
-        async def _exec(tasks=tasks, breakdown=breakdown, end_val=end_val):
+        async def _exec_track(tasks=tasks, breakdown=breakdown, end_val=end_val):
             try:
                 from app.models.db import TrackingSession, AsyncSessionLocal
                 import datetime
@@ -471,7 +471,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
                 logger.error("PROXIMITY_TRACK failed: %s", _e)
                 return "\u26a0 Failed to initiate Precision Tracking. Check database."
 
-        await handle_action("PROXIMITY_TRACK", raw_tag, _exec, f"Initiate tracking: {tasks}")
+        await handle_action("PROXIMITY_TRACK", raw_tag, _exec_track, f"Initiate tracking: {tasks}")
         clean_reply = strip_tag(clean_reply, raw_tag)
 
     # 9. Move Card Tag
@@ -482,13 +482,13 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
         dest_list = match.group(2).strip()
         board = (match.group(3) or "").strip()
         
-        async def _exec(card_frag=card_frag, dest_list=dest_list, board=board):
+        async def _exec_move(card_frag=card_frag, dest_list=dest_list, board=board):
             success = await planka_move_card(card_title_fragment=card_frag, destination_list=dest_list, board_name=board)
             if success:
                 return f"Card '{card_frag}' moved to '{dest_list}'."
             return f"\u26a0 Could not find card matching '{card_frag}'. Check Planka board."
 
-        await handle_action("MOVE_CARD", raw_tag, _exec, f"Move card '{card_frag}' to '{dest_list}'")
+        await handle_action("MOVE_CARD", raw_tag, _exec_move, f"Move card '{card_frag}' to '{dest_list}'")
         clean_reply = strip_tag(clean_reply, raw_tag)
 
     # 10. Mark Done Tag (shortcut: moves card to Done list)
@@ -497,13 +497,13 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
         raw_tag = match.group(0)
         card_frag = match.group(1).strip()
 
-        async def _exec(card_frag=card_frag):
+        async def _exec_done(card_frag=card_frag):
             success = await planka_move_card(card_title_fragment=card_frag, destination_list="Done", board_name="")
             if success:
                 return f"Card '{card_frag}' marked done."
             return f"\u26a0 Could not find card matching '{card_frag}'. Check Planka board."
 
-        await handle_action("MARK_DONE", raw_tag, _exec, f"Mark card '{card_frag}' as done")
+        await handle_action("MARK_DONE", raw_tag, _exec_done, f"Mark card '{card_frag}' as done")
         clean_reply = strip_tag(clean_reply, raw_tag)
 
     # 8. Set Nudge Interval Tag
@@ -513,7 +513,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
         task_f, interval_raw = match.groups()
         task_f = task_f.strip()
 
-        async def _exec(task_f=task_f, interval_raw=interval_raw):
+        async def _exec_nudge(task_f=task_f, interval_raw=interval_raw):
             try:
                 minutes = int(interval_raw.strip())
                 if minutes < 1:
@@ -528,7 +528,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
                 logger.error("SET_NUDGE_INTERVAL failed: %s", _e)
                 return f"\u26a0 Failed to set nudge interval for '{task_f}'. Check scheduler."
 
-        await handle_action("SET_NUDGE_INTERVAL", raw_tag, _exec, f"Set nudge interval for '{task_f}' to {interval_raw.strip()}m")
+        await handle_action("SET_NUDGE_INTERVAL", raw_tag, _exec_nudge, f"Set nudge interval for '{task_f}' to {interval_raw.strip()}m")
         clean_reply = strip_tag(clean_reply, raw_tag)
 
     # --- FINAL AGGRESSIVE HYGIENE ---
