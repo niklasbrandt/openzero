@@ -246,7 +246,7 @@ async def confirm_action(action_id: str, db: AsyncSession = Depends(get_db), aut
 		return {"status": "success", "executed": executed}
 	except Exception as e:
 		logger.error("Action confirmation failed: %s", e)
-		raise HTTPException(status_code=500, detail=str(e)) from e
+		raise HTTPException(status_code=500, detail=str(e)) from None
 
 @router.post("/actions/cancel/{action_id}")
 async def cancel_action(action_id: str, auth: None = Depends(require_auth)):
@@ -544,7 +544,7 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		}
 	except Exception as e:
 		logger.error("dashboard_chat error: %s", e)
-		raise HTTPException(status_code=500, detail="Internal server error") from e
+		raise HTTPException(status_code=500, detail="Internal server error") from None
 
 @router.post("/regression-cleanup")
 async def regression_cleanup(request: Request, db: AsyncSession = Depends(get_db)):
@@ -655,7 +655,6 @@ async def get_personality(db: AsyncSession = Depends(get_db)):
 		"honesty": 5,     
 		"depth": 4,      
 		"roast": 0,       # 0: None, 5: Brutal
-		"theme": "default",
 		"color_primary": "#14B8A6",
 		"color_secondary": "#0066FF",
 		"color_tertiary": "#6366F1",
@@ -673,47 +672,7 @@ async def get_personality(db: AsyncSession = Depends(get_db)):
 			{"id": "role", "label": "Core Identity / Archetype", "type": "text", "placeholder": "e.g. Master Architect, Stoic Mentor, Sharp Assistant"},
 			{"id": "relationship", "label": "Relational Context", "type": "text", "placeholder": "Who are you to the user? (e.g. Mentor, Tool, Equal Partner)"},
 			{"id": "values", "label": "Core Values & Principles", "type": "textarea", "placeholder": "What drives your decision making? (e.g. Efficiency above all, or Ethics first)"},
-			{"id": "behavior", "label": "Linguistic & Behavioral Style", "type": "textarea", "placeholder": "Specific quirks, metaphors, or formal/informal speech patterns."},
-			{"id": "theme", "label": "Dashboard Theme", "type": "select", "options": [
-				{"value": "fusion", "label": "Default Fusion", "group": "default", "colors": {"primary": "#14B8A6", "secondary": "#0066FF", "tertiary": "#6366F1"}},
-				{"value": "wind", "label": "Wind", "group": "elements", "colors": {"primary": "#7DB8C9", "secondary": "#A8D4E0", "tertiary": "#5B8FA3"}},
-				{"value": "water", "label": "Water", "group": "elements", "colors": {"primary": "#0077B6", "secondary": "#00B4D8", "tertiary": "#023E8A"}},
-				{"value": "fire", "label": "Fire", "group": "elements", "colors": {"primary": "#E85D04", "secondary": "#DC2F02", "tertiary": "#F48C06"}},
-				{"value": "earth", "label": "Earth", "group": "elements", "colors": {"primary": "#8B6914", "secondary": "#606C38", "tertiary": "#BC6C25"}},
-				{"value": "polar", "label": "Polar", "group": "environments", "colors": {"primary": "#A8DADC", "secondary": "#457B9D", "tertiary": "#1D3557"}},
-				{"value": "mountain", "label": "Mountain", "group": "environments", "colors": {"primary": "#6C757D", "secondary": "#495057", "tertiary": "#8D99AE"}},
-				{"value": "forest", "label": "Forest", "group": "environments", "colors": {"primary": "#2D6A4F", "secondary": "#40916C", "tertiary": "#52B788"}},
-				{"value": "desert", "label": "Desert", "group": "environments", "colors": {"primary": "#C2956B", "secondary": "#D4A373", "tertiary": "#9C6644"}},
-				{"value": "coast", "label": "Coast", "group": "environments", "colors": {"primary": "#0096C7", "secondary": "#48CAE4", "tertiary": "#F4A261"}},
-				{"value": "sky", "label": "Sky", "group": "environments", "colors": {"primary": "#4895EF", "secondary": "#4CC9F0", "tertiary": "#F9C74F"}},
-				{"value": "aurora", "label": "Aurora", "group": "phenomena", "colors": {"primary": "#22C55E", "secondary": "#A855F7", "tertiary": "#06B6D4"}},
-				{"value": "storm", "label": "Storm", "group": "phenomena", "colors": {"primary": "#475569", "secondary": "#38BDF8", "tertiary": "#E2E8F0"}},
-				{"value": "jungle", "label": "Jungle", "group": "phenomena", "colors": {"primary": "#15803D", "secondary": "#A3E635", "tertiary": "#CA8A04"}},
-				{"value": "solarized", "label": "Solarized", "group": "ide", "colors": {"primary": "#CB4B16", "secondary": "#268BD2", "tertiary": "#2AA198"}},
-				{"value": "monokai", "label": "Monokai", "group": "ide", "colors": {"primary": "#F92672", "secondary": "#FD971F", "tertiary": "#A6E22E"}},
-				{"value": "dracula", "label": "Dracula", "group": "ide", "colors": {"primary": "#BD93F9", "secondary": "#FF79C6", "tertiary": "#8BE9FD"}},
-				{"value": "gruvbox", "label": "Gruvbox", "group": "ide", "colors": {"primary": "#FABD2F", "secondary": "#FE8019", "tertiary": "#B8BB26"}},
-				{"value": "nord", "label": "Nord", "group": "ide", "colors": {"primary": "#88C0D0", "secondary": "#81A1C1", "tertiary": "#5E81AC"}},
-				{"value": "catppuccin", "label": "Catppuccin", "group": "ide", "colors": {"primary": "#CBA6F7", "secondary": "#89B4FA", "tertiary": "#A6E3A1"}},
-				{"value": "tokyo_night", "label": "Tokyo Night", "group": "ide", "colors": {"primary": "#7AA2F7", "secondary": "#BB9AF7", "tertiary": "#7DCFFF"}},
-				{"value": "mono_silver", "label": "Monochrome Silver", "group": "mono", "colors": {"primary": "#ADB5BD", "secondary": "#6C757D", "tertiary": "#CED4DA"}},
-				{"value": "mono_teal", "label": "Monochrome Teal", "group": "mono", "colors": {"primary": "#14B8A6", "secondary": "#0D9488", "tertiary": "#2DD4BF"}},
-				{"value": "mono_violet", "label": "Monochrome Violet", "group": "mono", "colors": {"primary": "#8B5CF6", "secondary": "#7C3AED", "tertiary": "#A78BFA"}},
-				{"value": "color_red", "label": "Red", "group": "colors", "colors": {"primary": "#E53E3E", "secondary": "#B91C1C", "tertiary": "#F87171"}},
-				{"value": "color_blue", "label": "Blue", "group": "colors", "colors": {"primary": "#3B82F6", "secondary": "#2563EB", "tertiary": "#60A5FA"}},
-				{"value": "color_green", "label": "Green", "group": "colors", "colors": {"primary": "#22C55E", "secondary": "#16A34A", "tertiary": "#4ADE80"}},
-				{"value": "color_purple", "label": "Purple", "group": "colors", "colors": {"primary": "#A855F7", "secondary": "#9333EA", "tertiary": "#C084FC"}},
-				{"value": "color_orange", "label": "Orange", "group": "colors", "colors": {"primary": "#F97316", "secondary": "#EA580C", "tertiary": "#FB923C"}},
-				{"value": "color_cyan", "label": "Cyan", "group": "colors", "colors": {"primary": "#22D3EE", "secondary": "#0891B2", "tertiary": "#A5F3FC"}},
-				{"value": "color_gold", "label": "Gold", "group": "colors", "colors": {"primary": "#EAB308", "secondary": "#CA8A04", "tertiary": "#FACC15"}},
-				{"value": "color_indigo", "label": "Indigo", "group": "colors", "colors": {"primary": "#6366F1", "secondary": "#4F46E5", "tertiary": "#818CF8"}},
-				{"value": "glass_frost", "label": "Glass Frost", "group": "glass", "colors": {"primary": "#67E8F9", "secondary": "#A5F3FC", "tertiary": "#22D3EE"}},
-				{"value": "glass_ember", "label": "Glass Ember", "group": "glass", "colors": {"primary": "#FB923C", "secondary": "#FDBA74", "tertiary": "#F97316"}},
-				{"value": "neon", "label": "Neon", "group": "style", "colors": {"primary": "#FF00FF", "secondary": "#00FFFF", "tertiary": "#FFFF00"}},
-				{"value": "hc_1", "label": "High Contrast I", "group": "hc", "colors": {"primary": "#38BDF8", "secondary": "#FB923C", "tertiary": "#A78BFA"}},
-				{"value": "hc_2", "label": "High Contrast II", "group": "hc", "colors": {"primary": "#FACC15", "secondary": "#F472B6", "tertiary": "#34D399"}},
-				{"value": "hc_3", "label": "High Contrast III", "group": "hc", "colors": {"primary": "#FFFFFF", "secondary": "#FFFF00", "tertiary": "#00FFFF"}}
-			]}
+			{"id": "behavior", "label": "Linguistic & Behavioral Style", "type": "textarea", "placeholder": "Specific quirks, metaphors, or formal/informal speech patterns."}
 		]
 	}
 
@@ -1398,6 +1357,15 @@ async def get_people(circle_type: Optional[str] = None, db: AsyncSession = Depen
 
 @router.post("/people")
 async def create_person(person: PersonCreate, db: AsyncSession = Depends(get_db)):
+	# Guardrail: Prevent adding the identity user as a duplicate in other circles
+	ident_res = await db.execute(select(Person).where(Person.circle_type == "identity"))
+	identity = ident_res.scalar_one_or_none()
+	if identity and person.name.lower().strip() == identity.name.lower().strip():
+		raise HTTPException(
+			status_code=400, 
+			detail="This person matches your 'identity' profile. You are already in your own circle of trust."
+		)
+
 	db_person = Person(
 		name=person.name, 
 		relationship=person.relationship, 
@@ -1423,6 +1391,16 @@ async def update_person(person_id: int, person: PersonCreate, db: AsyncSession =
 	db_p = res.scalar_one_or_none()
 	if not db_p: raise HTTPException(status_code=404, detail="Not found")
 	
+	# Guardrail: Prevent updating a person to match the identity user's name
+	if db_p.circle_type != "identity":
+		ident_res = await db.execute(select(Person).where(Person.circle_type == "identity"))
+		identity = ident_res.scalar_one_or_none()
+		if identity and person.name.lower().strip() == identity.name.lower().strip():
+			raise HTTPException(
+				status_code=400, 
+				detail="This name matches your 'identity' profile. Avoid duplicates in your circle of trust."
+			)
+
 	db_p.name = person.name
 	db_p.relationship = person.relationship
 	db_p.context = person.context
@@ -1592,7 +1570,7 @@ async def delete_local_event(event_id: str, db: AsyncSession = Depends(get_db)):
 
 # --- Server Info (RAM, uptime, LLM tier health) ---
 @router.get("/server-info")
-async def server_info():
+async def server_info() -> dict:
 	"""Return host RAM, uptime, and per-tier LLM configuration from llama-server /props."""
 	import os
 
@@ -1732,7 +1710,7 @@ async def server_info():
 # --- System Benchmark ---
 
 @router.get("/llm-config")
-async def get_llm_config():
+async def get_llm_config() -> dict:
 	"""Return the configured LLM tier setup for the dashboard."""
 	def _model_display(file_env: str, fallback: str) -> str:
 		"""Derive a human-readable name from the GGUF filename, falling back to the legacy label."""
@@ -1766,7 +1744,7 @@ async def get_llm_config():
 		"deep_timeout_s": settings.DEEP_MODEL_TIMEOUT_S,
 	}
 @router.get("/benchmark/cpu")
-async def benchmark_cpu():
+async def benchmark_cpu() -> dict:
 	"""Fetch VPS CPU info: model, cores, architecture, SIMD flags."""
 	import subprocess
 	import os
