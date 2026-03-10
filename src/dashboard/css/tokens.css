@@ -27,21 +27,21 @@
 	/* -- Accent palette -- */
 	--accent-primary-h: 196;
 	--accent-primary-s: 78%;
-	--accent-primary-l: 40%;
+	--accent-primary-l: 45%;
 	--accent-primary: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 1);
 	--accent-primary-rgb: 22, 161, 188;
-	
+
 	--accent-secondary-h: 216;
 	--accent-secondary-s: 100%;
 	--accent-secondary-l: 50%;
 	--accent-secondary: hsla(var(--accent-secondary-h), var(--accent-secondary-s), var(--accent-secondary-l), 1);
 	--accent-secondary-rgb: 0, 102, 255;
-	
+
 	--accent-tertiary-h: 239;
 	--accent-tertiary-s: 84%;
 	--accent-tertiary-l: 67%;
 	--accent-tertiary: hsla(var(--accent-tertiary-h), var(--accent-tertiary-s), var(--accent-tertiary-l), 1);
-	
+
 	--accent-glow: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.4);
 	/* Use as text color where the accent must contrast against the current surface.
 	   Dark mode: 52% L gives ≥4.5:1 on the darkest expected tinted surface
@@ -56,8 +56,13 @@
 	--accent-secondary-text: hsl(var(--accent-secondary-h), 100%, 65%);
 
 	/* -- Legacy Mapping (flat literals so Shadow DOM inherits one level, not a 3-level var chain) -- */
-	--accent-color: hsla(196, 78%, 40%, 1);
-	--accent-color-rgb: 22, 139, 182;
+	--accent-color: hsla(196, 78%, 45%, 1);
+	--accent-color-rgb: 32, 177, 206;
+
+	/* -- Circle colors -- */
+	--circle-inner-color: hsla(217, 91%, 60%, 1);
+	--circle-close-color: hsla(160, 84%, 39%, 1);
+	--circle-outer-color: hsla(263, 90%, 76%, 1);
 
 	/* -- Semantic status colors -- */
 	--color-success: hsla(142, 71%, 45%, 1);
@@ -175,6 +180,11 @@
 		/* Flat literal so Shadow DOM inherits one level, not a 3-level var chain. */
 		--accent-color: hsla(196, 78%, 35%, 1);
 		--accent-color-rgb: 20, 122, 159;
+
+		/* -- Circle colors (light mode darkened for contrast) -- */
+		--circle-inner-color: hsla(217, 85%, 35%, 1);
+		--circle-close-color: hsla(160, 84%, 28%, 1);
+		--circle-outer-color: hsla(263, 60%, 45%, 1);
 	}
 }
 
@@ -184,7 +194,7 @@
 	--bg-body: hsla(228, 20%, 98%, 1);
 	--bg-body-end: hsla(228, 20%, 94%, 1);
 	--bg-surface: hsla(var(--accent-primary-h), 20%, 95%, 0.92);
-	
+
 	/* Neutral Flip */
 	--text-primary: hsla(228, 45%, 4%, 1);
 	--text-secondary: hsla(228, 45%, 4%, 0.7);
@@ -233,4 +243,9 @@
 	/* Flat literal so Shadow DOM inherits one level, not a 3-level var chain. */
 	--accent-color: hsla(196, 78%, 35%, 1);
 	--accent-color-rgb: 20, 122, 159;
+
+	/* -- Circle colors (light mode darkened) -- */
+	--circle-inner-color: hsla(217, 85%, 35%, 1);
+	--circle-close-color: hsla(160, 84%, 28%, 1);
+	--circle-outer-color: hsla(263, 60%, 45%, 1);
 }

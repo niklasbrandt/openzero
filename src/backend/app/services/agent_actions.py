@@ -220,7 +220,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
         board, llist, title = match.groups()
         board, llist, title = board.strip(), llist.strip(), title.strip()
         
-        async def _exec():
+        async def _exec(board=board, llist=llist, title=title):
             path = await planka_create_task(board_name=board, list_name=llist, title=title)
             if path:
                 return f"Task '{title}' created in {path}."
@@ -236,7 +236,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
         name, desc = match.groups()
         name, desc = name.strip(), desc.strip()
 
-        async def _exec():
+        async def _exec(name=name, desc=desc):
             try:
                 result = await planka_create_project(name=name, description=desc)
                 if result:
@@ -256,7 +256,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
         proj_name, board_name = match.groups()
         proj_name, board_name = proj_name.strip(), board_name.strip()
 
-        async def _exec():
+        async def _exec(proj_name=proj_name, board_name=board_name):
             try:
                 from app.services.planka import get_planka_auth_token
                 import httpx
@@ -290,7 +290,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
         board_name, list_name = match.groups()
         board_name, list_name = board_name.strip(), list_name.strip()
 
-        async def _exec():
+        async def _exec(board_name=board_name, list_name=list_name):
             try:
                 result = await planka_create_list(board_name=board_name, list_name=list_name)
                 if result:
@@ -311,7 +311,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
         # Clean potential quotes from model output
         title = title.strip().strip('"').strip("'")
         
-        async def _exec():
+        async def _exec(title=title, start=start, end=end):
             try:
                 event_result = await create_event.ainvoke({"title": title, "start_time": start.strip(), "end_time": end.strip()})
                 # The tool returns an error string starting with "Error:" on failure
@@ -332,7 +332,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
         message, interval, duration = match.groups()
         message = message.strip()
         
-        async def _exec():
+        async def _exec(message=message, interval=interval, duration=duration):
             try:
                 res = await schedule_reminder.ainvoke({
                     "message": message,
@@ -356,7 +356,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
         name, msg, ttype, spec = match.groups()
         name, msg, ttype, spec = name.strip(), msg.strip(), ttype.strip().lower(), spec.strip()
 
-        async def _exec():
+        async def _exec(name=name, msg=msg, ttype=ttype, spec=spec):
             try:
                 res = await schedule_persistent_custom.ainvoke({
                     "name": name,
@@ -381,7 +381,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
         name, rel, ctx, circle = match.groups()
         name, rel, ctx, circle = name.strip(), rel.strip(), ctx.strip(), circle.strip()
 
-        async def _exec():
+        async def _exec(name=name, rel=rel, ctx=ctx, circle=circle):
             try:
                 from app.models.db import Person, AsyncSessionLocal
                 # --- Input validation (M-A2) ---
@@ -406,7 +406,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
         raw_tag = match.group(0)
         text = match.group(1).strip()
 
-        async def _exec():
+        async def _exec(text=text):
             try:
                 from app.services.memory import store_memory
                 await store_memory(text)
@@ -427,7 +427,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
         tasks, breakdown, end_val = match.groups()
         tasks, breakdown, end_val = tasks.strip(), breakdown.strip(), end_val.strip()
 
-        async def _exec():
+        async def _exec(tasks=tasks, breakdown=breakdown, end_val=end_val):
             try:
                 from app.models.db import TrackingSession, AsyncSessionLocal
                 import datetime
@@ -482,7 +482,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
         dest_list = match.group(2).strip()
         board = (match.group(3) or "").strip()
         
-        async def _exec():
+        async def _exec(card_frag=card_frag, dest_list=dest_list, board=board):
             success = await planka_move_card(card_title_fragment=card_frag, destination_list=dest_list, board_name=board)
             if success:
                 return f"Card '{card_frag}' moved to '{dest_list}'."
@@ -497,7 +497,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
         raw_tag = match.group(0)
         card_frag = match.group(1).strip()
 
-        async def _exec():
+        async def _exec(card_frag=card_frag):
             success = await planka_move_card(card_title_fragment=card_frag, destination_list="Done", board_name="")
             if success:
                 return f"Card '{card_frag}' marked done."
@@ -513,7 +513,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
         task_f, interval_raw = match.groups()
         task_f = task_f.strip()
 
-        async def _exec():
+        async def _exec(task_f=task_f, interval_raw=interval_raw):
             try:
                 minutes = int(interval_raw.strip())
                 if minutes < 1:

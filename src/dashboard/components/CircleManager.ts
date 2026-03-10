@@ -223,9 +223,9 @@ export class CircleManager extends HTMLElement {
 				unified: this.tr('relationships', 'Relationships'),
 			};
 			const accents: Record<string, string> = {
-				inner: 'hsla(217, 91%, 60%, 1)',
-				close: 'hsla(160, 84%, 39%, 1)',
-				outer: 'hsla(263, 90%, 76%, 1)',
+				inner: 'var(--circle-inner-color)',
+				close: 'var(--circle-close-color)',
+				outer: 'var(--circle-outer-color)',
 				unified: 'var(--accent-color)',
 			};
 			const title = titles[this.circleType] || titles['unified'];
@@ -317,8 +317,8 @@ export class CircleManager extends HTMLElement {
 					overflow-wrap: break-word;
 				}
 				.name { font-weight: 700; color: var(--text-primary, hsla(0, 0%, 100%, 1)); display: block; overflow-wrap: break-word; }
-				.rel { font-size: 0.8rem; color: ${accent}; display: block; overflow-wrap: break-word; }
-				.ctx { font-size: 0.85rem; color: var(--text-muted, hsla(0, 0%, 100%, 0.4)); opacity: 1.5; margin: 0.5rem 0 0 0; overflow-wrap: break-word; }
+				.rel { font-size: 0.8rem; color: ${accent}; display: block; overflow-wrap: break-word; font-weight: 600; }
+				.ctx { font-size: 0.85rem; color: var(--text-muted, hsla(0, 0%, 100%, 0.4)); margin: 0.5rem 0 0 0; overflow-wrap: break-word; }
 				.edit-btn { margin-right: 0; }
 				.edit-btn:hover { background: var(--surface-card-hover, hsla(0, 0%, 100%, 0.06)); border-color: var(--border-subtle, hsla(0, 0%, 100%, 0.1)); }
 				.item-actions {
@@ -372,8 +372,8 @@ export class CircleManager extends HTMLElement {
 					.unified-h3 { font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); opacity: 0.8; letter-spacing: 0.1em; margin-bottom: 0.5rem; border-bottom: 1px solid hsla(0, 0%, 100%, 0.05); padding-bottom: 0.5rem; }
 					.people-sublist { display: flex; flex-direction: column; gap: 0.75rem; }
 					
-					[data-circle-type="inner"] .rel { color: hsla(217, 91%, 60%, 1); }
-					[data-circle-type="close"] .rel { color: hsla(160, 84%, 39%, 1); }
+					[data-circle-type="inner"] .rel { color: var(--circle-inner-color); }
+					[data-circle-type="close"] .rel { color: var(--circle-close-color); }
 
 					@media (max-width: 900px) {
 						.unified-grid { grid-template-columns: 1fr; }
@@ -396,8 +396,8 @@ export class CircleManager extends HTMLElement {
 						${!this.isAdding ? `
 						<div style="display: flex; gap: 0.5rem;">
 							${this.circleType === 'unified' ? `
-								<button id="addInnerBtn" class="btn-primary" style="background: hsla(217, 91%, 60%, 0.2); color: hsla(217, 91%, 60%, 1); border-color: hsla(217, 91%, 60%, 0.3);">+ Inner</button>
-								<button id="addCloseBtn" class="btn-primary" style="background: hsla(160, 84%, 39%, 0.2); color: hsla(160, 84%, 39%, 1); border-color: hsla(160, 84%, 39%, 0.3);">+ Close</button>
+								<button id="addInnerBtn" class="btn-primary" style="background: var(--surface-card); color: var(--circle-inner-color); border-color: var(--circle-inner-color);">+ Inner</button>
+								<button id="addCloseBtn" class="btn-primary" style="background: var(--surface-card); color: var(--circle-close-color); border-color: var(--circle-close-color);">+ Close</button>
 							` : `<button id="showAddBtn" class="btn-primary" aria-label="${this.tr('aria_add_person', 'Add a new person to')} ${title}">${this.tr('new_person', '+ New Person')}</button>`}
 						</div>
 						` : ''}

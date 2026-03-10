@@ -4,8 +4,19 @@ import { ACCESSIBILITY_STYLES } from '../services/accessibilityStyles';
 import { SECTION_HEADER_STYLES } from '../services/sectionHeaderStyles';
 import { EMPTY_STATE_STYLES } from '../services/emptyStateStyles';
 
+interface CalendarEvent {
+	id: string;
+	summary: string;
+	start: string;
+	end?: string;
+	is_all_day: boolean;
+	is_birthday?: boolean;
+	is_local?: boolean;
+	person?: string;
+}
+
 export class CalendarAgenda extends HTMLElement {
-	private events: any[] = [];
+	private events: CalendarEvent[] = [];
 	private filterPerson: string | null = null;
 	private t: Record<string, string> = {};
 
@@ -35,8 +46,9 @@ export class CalendarAgenda extends HTMLElement {
 		});
 		initGoo(this);
 		window.addEventListener('goo-changed', () => initGoo(this));
-		window.addEventListener('refresh-data', (e: any) => {
-			if (e.detail && e.detail.actions && e.detail.actions.includes('calendar')) {
+		window.addEventListener('refresh-data', (e: Event) => {
+			const ce = e as CustomEvent;
+			if (ce.detail && ce.detail.actions && ce.detail.actions.includes('calendar')) {
 				this.fetchEvents();
 			}
 		});
@@ -190,9 +202,11 @@ export class CalendarAgenda extends HTMLElement {
 					const id = el.getAttribute('data-id');
 					if (id) this.updateEvent(id, el.value);
 				});
-				input.addEventListener('keydown', (e: any) => {
-					if (e.key === 'Enter') {
-						e.target.blur();
+				input.addEventListener('keydown', (e: Event) => {
+					const ke = e as KeyboardEvent;
+					if (ke.key === 'Enter') {
+						const target = e.target as HTMLInputElement;
+						target.blur();
 					}
 				});
 			});

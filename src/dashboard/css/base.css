@@ -85,7 +85,8 @@ body {
 	display: flex;
 	min-width: 320px;
 	min-height: 100vh;
-	background-color: transparent; /* gradient served by html::before fixed layer */
+	background-color: transparent;
+	/* gradient served by html::before fixed layer */
 	transition: background-color var(--duration-base);
 	flex-wrap: wrap;
 	scroll-padding: 2rem;
@@ -126,6 +127,7 @@ software-status:not(:defined),
 system-benchmark:not(:defined),
 calendar-manager:not(:defined),
 welcome-onboarding:not(:defined),
+z-protocols:not(:defined),
 project-tree:not(:defined) {
 	opacity: 0;
 	display: block;
@@ -147,12 +149,14 @@ software-status:defined,
 system-benchmark:defined,
 calendar-manager:defined,
 welcome-onboarding:defined,
+z-protocols:defined,
 project-tree:defined {
 	opacity: 1;
 	transition: opacity 0.15s ease;
 }
 
 @media (prefers-reduced-motion: reduce) {
+
 	chat-prompt:defined,
 	life-overview:defined,
 	create-project:defined,
@@ -168,6 +172,7 @@ project-tree:defined {
 	system-benchmark:defined,
 	calendar-manager:defined,
 	welcome-onboarding:defined,
+	z-protocols:defined,
 	project-tree:defined {
 		transition: none;
 	}
@@ -185,6 +190,7 @@ project-tree:defined {
 	pointer-events: none;
 	transition: opacity 0.18s ease;
 }
+
 #page-loader.hidden {
 	opacity: 0;
 }
