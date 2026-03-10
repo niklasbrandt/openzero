@@ -80,7 +80,7 @@ async def schedule_reminder(message: str, interval_minutes: int, duration_hours:
         return "Error: duration_hours must be between 1 and 168 (max 1 week)."
     message = message[:500]
 
-    from app.tasks.scheduler import scheduler
+    from app.common.scheduler_instance import scheduler
     from app.services.notifier import send_notification
     from apscheduler.triggers.interval import IntervalTrigger
     from datetime import datetime, timedelta

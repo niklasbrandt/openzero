@@ -5,56 +5,56 @@ import { SCROLLBAR_STYLES } from '../services/scrollbarStyles';
 import { EMPTY_STATE_STYLES } from '../services/emptyStateStyles';
 
 export class ZProtocols extends HTMLElement {
-    private protocols: any[] = [];
-    private isLoading = true;
-    private t: Record<string, string> = {};
+	private protocols: any[] = [];
+	private isLoading = true;
+	private t: Record<string, string> = {};
 
-    constructor() {
-        super();
-        this.attachShadow({ mode: 'open' });
-    }
+	constructor() {
+		super();
+		this.attachShadow({ mode: 'open' });
+	}
 
-    private async loadTranslations() {
-        if (window.__z_translations) { this.t = window.__z_translations; return; }
-        try {
-            await window.__z_translations_ready;
-            if (window.__z_translations) { this.t = window.__z_translations; return; }
-            const res = await fetch('/api/dashboard/translations');
-            if (res.ok) this.t = await res.json();
-        } catch (_) { }
-    }
+	private async loadTranslations() {
+		if (window.__z_translations) { this.t = window.__z_translations; return; }
+		try {
+			await window.__z_translations_ready;
+			if (window.__z_translations) { this.t = window.__z_translations; return; }
+			const res = await fetch('/api/dashboard/translations');
+			if (res.ok) this.t = await res.json();
+		} catch (_) { }
+	}
 
-    private tr(key: string, fallback: string): string {
-        return this.t[key] || fallback;
-    }
+	private tr(key: string, fallback: string): string {
+		return this.t[key] || fallback;
+	}
 
-    connectedCallback() {
-        this.loadTranslations().then(() => this.fetchData());
-    }
+	connectedCallback() {
+		this.loadTranslations().then(() => this.fetchData());
+	}
 
-    async fetchData() {
-        this.isLoading = true;
-        this.render();
-        try {
-            const protRes = await fetch('/api/dashboard/protocols');
-            if (protRes.ok) {
-                const data = await protRes.json();
-                this.protocols = data.tools || [];
-            }
-        } catch (e) {
-            console.error('Failed to fetch protocols data', e);
-        } finally {
-            this.isLoading = false;
-            this.render();
-        }
-    }
+	async fetchData() {
+		this.isLoading = true;
+		this.render();
+		try {
+			const protRes = await fetch('/api/dashboard/protocols');
+			if (protRes.ok) {
+				const data = await protRes.json();
+				this.protocols = data.tools || [];
+			}
+		} catch (e) {
+			console.error('Failed to fetch protocols data', e);
+		} finally {
+			this.isLoading = false;
+			this.render();
+		}
+	}
 
-    render() {
-        if (!this.shadowRoot) return;
+	render() {
+		if (!this.shadowRoot) return;
 
-        const prot = this.protocols;
+		const prot = this.protocols;
 
-        this.shadowRoot.innerHTML = `
+		this.shadowRoot.innerHTML = `
 			<style>
 				${BUTTON_STYLES}
 				${ACCESSIBILITY_STYLES}
@@ -79,7 +79,7 @@ export class ZProtocols extends HTMLElement {
 				.cmd-item { border-left-color: var(--accent-tertiary, hsla(280, 80%, 50%, 1)); }
 
 				.prot-name { font-size: 0.85rem; font-weight: 700; letter-spacing: 0.02em; display: block; margin-bottom: 0.25rem; display: flex; align-items: center; gap: 0.5rem; }
-				.prot-desc { font-size: 0.8rem; color: var(--text-muted, hsla(0,0%,100%,0.5)); line-height: 1.5; }
+				.prot-desc { font-size: 0.8rem; color: var(--text-muted, hsla(0,0%,100%,0.7)); line-height: 1.5; }
 
 				@keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
 				
@@ -157,13 +157,13 @@ export class ZProtocols extends HTMLElement {
 									<span class="prot-desc">${p.description}</span>
 								</div>
 							`).join('')}
-							${prot.length === 0 ? `<div class="empty-state">${this.tr('no_protocols', 'No active strategic protocols.')}</div>` : ''}
 						</div>
+						${prot.length === 0 ? `<div class="empty-state">${this.tr('no_protocols', 'No active strategic protocols.')}</div>` : ''}
 					`}
 				</div>
 			</div>
 		`;
-    }
+	}
 }
 
 customElements.define('z-protocols', ZProtocols);
