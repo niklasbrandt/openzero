@@ -316,11 +316,11 @@ export class DiagnosticsWidget extends HTMLElement {
 				<div class="diag-col benchmarks">
 					<div class="diag-section-label">Benchmark</div>
 					<div class="bench-actions" style="margin-top: 0">
-						<button class="b-btn main has-tip ${this.isBenchRunning ? 'running' : ''}" data-tier="all" data-tip="Run performance tests across all active tiers.">Benchmark all LLMs</button>
+						<button class="b-btn main has-tip ${this.isBenchRunning ? 'running' : ''}" ${this.isBenchRunning ? 'disabled' : ''} data-tier="all" data-tip="Run performance tests across all active tiers.">${this.isBenchRunning ? 'Benchmarking...' : 'Benchmark all LLMs'}</button>
 						<div class="b-row">
-							<button class="b-btn sm has-tip" data-tier="instant" data-tip="Test latency of the instant tier.">Instant</button>
-							<button class="b-btn sm has-tip" data-tier="standard" data-tip="Test speed of the standard tier.">Standard</button>
-							<button class="b-btn sm has-tip" data-tier="deep" data-tip="Test throughput of the deep tier.">Deep</button>
+							<button class="b-btn sm has-tip ${this.isBenchRunning ? 'running' : ''}" ${this.isBenchRunning ? 'disabled' : ''} data-tier="instant" data-tip="Test latency of the instant tier.">Instant</button>
+							<button class="b-btn sm has-tip ${this.isBenchRunning ? 'running' : ''}" ${this.isBenchRunning ? 'disabled' : ''} data-tier="standard" data-tip="Test speed of the standard tier.">Standard</button>
+							<button class="b-btn sm has-tip ${this.isBenchRunning ? 'running' : ''}" ${this.isBenchRunning ? 'disabled' : ''} data-tier="deep" data-tip="Test throughput of the deep tier.">Deep</button>
 						</div>
 					</div>
 					<div class="bench-results-list" style="margin-top: 0.5rem">${benchHtml}</div>
@@ -489,9 +489,10 @@ export class DiagnosticsWidget extends HTMLElement {
 
 				.bench-actions { display: flex; flex-direction: column; gap: 0.5rem; margin-top: auto; }
 				.b-btn { background: hsla(0, 0%, 100%, 0.04); color: var(--text-primary); border: 1px solid hsla(0, 0%, 100%, 0.08); padding: 0.5rem; border-radius: 0.5rem; font-size: 0.65rem; font-weight: 700; cursor: pointer; transition: all 0.2s; text-transform: uppercase; letter-spacing: 0.05em; }
-				.b-btn:hover { background: hsla(0, 0%, 100%, 0.08); border-color: var(--accent-color); color: var(--accent-color); }
+				.b-btn:hover:not(:disabled) { background: hsla(0, 0%, 100%, 0.08); border-color: var(--accent-color); color: var(--accent-color); }
                 .b-btn.main { background: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.1); border-color: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.2); }
 				.b-btn.running { opacity: 0.6; animation: diag-pulse 1.5s infinite; pointer-events: none; }
+				.b-btn:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(100%); }
 				.b-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem; }
 				.b-btn.sm { font-size: 0.55rem; padding: 0.4rem 0.2rem; }
 

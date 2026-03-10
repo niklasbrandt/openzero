@@ -420,6 +420,7 @@ def rehydrate_response(text: str, replacement_map: dict[str, str]) -> str:
 from app.config import settings
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+from app.common.strings import TRIVIAL_PATTERNS
 from langgraph.prebuilt import create_react_agent
 
 # Track the model used for the current request context
@@ -738,13 +739,6 @@ async def chat(
 # Instant: greetings, trivial, memory distillation (<1s)
 # Standard: normal conversation, tool-intent (2-5s streaming)
 # Deep: complex reasoning, briefings, creative (10-30s streaming)
-
-TRIVIAL_PATTERNS = {
-	"ok", "okay", "yes", "no", "yep", "nope", "sure", "thanks", "thank you",
-	"thx", "ty", "hey", "hi", "hello", "yo", "gm", "gn", "good morning",
-	"good night", "lol", "haha", "cool", "nice", "great", "wow", "hmm",
-	"bye", "cya", "later", "cheers", "np", "k", "kk", "yea", "yeah",
-}
 
 # Short messages that require social/creative reasoning — must not hit instant tier
 # even when they fall under the length threshold.

@@ -22,8 +22,7 @@ _ALLOWED_SCRIPT_DIR = os.path.abspath(
 # ---------------------------------------------------------------------------
 # DNS Watchdog state
 # ---------------------------------------------------------------------------
-_dns_fail_count: int = 0
-_dns_alert_sent: bool = False  # avoids spamming on sustained failure
+_dns_state = {"fail_count": 0, "alert_sent": False}
 
 async def run_backup():
 	"""Runs the daily system backup script."""
@@ -220,6 +219,15 @@ async def start_scheduler():
 		replace_existing=True,
 	)
 
+	# 4. Hourly agent context scan
+	from app.services.agent_context import refresh_agent_context
+	scheduler.add_job(
+		refresh_agent_context,
+		IntervalTrigger(hours=1),
+		id="agent_context_scan",
+		replace_existing=True,
+	)
+
 	scheduler.start()
 	logger.info("Z: Missions scheduled. Morning Briefing set to %02d:%02d %s", brief_hour, brief_min, user_tz_str)
 
@@ -331,8 +339,6 @@ async def check_pihole_dns():
 	- Attempts auto-fix (pihole -g gravity rebuild) if FTL.log shows gravity DB errors.
 	- Sends a recovery notification once DNS comes back.
 	"""
-	global _dns_fail_count, _dns_alert_sent
-
 	try:
 		result = subprocess.run(
 			["docker", "exec", "openzero-pihole-1", "dig",
@@ -345,9 +351,9 @@ async def check_pihole_dns():
 		dns_ok = False
 
 	if dns_ok:
-		if _dns_fail_count > 0:
-			logger.info("dns_watchdog: DNS recovered after %d failed checks.", _dns_fail_count)
-			if _dns_alert_sent:
+		if _dns_state["fail_count"] > 0:
+			logger.info("dns_watchdog: DNS recovered after %d failed checks.", _dns_state["fail_count"])
+			if _dns_state["alert_sent"]:
 				try:
 					from app.services.notifier import send_notification_html
 					await send_notification_html(
@@ -355,13 +361,13 @@ async def check_pihole_dns():
 					)
 				except Exception as te:
 					logger.error("dns_watchdog: failed to send recovery alert: %s", te)
-		_dns_fail_count = 0
-		_dns_alert_sent = False
+		_dns_state["fail_count"] = 0
+		_dns_state["alert_sent"] = False
 		return
 
 	# DNS failed
-	_dns_fail_count += 1
-	logger.warning("dns_watchdog: DNS failure #%d — host.docker.internal:53 not answering for open.zero", _dns_fail_count)
+	_dns_state["fail_count"] += 1
+	logger.warning("dns_watchdog: DNS failure #%d — host.docker.internal:53 not answering for open.zero", _dns_state["fail_count"])
 
 	# Inspect FTL log for gravity DB corruption signature
 	gravity_broken = False
@@ -403,15 +409,15 @@ async def check_pihole_dns():
 			logger.error("dns_watchdog: auto-fix exception: %s", e)
 
 	# Alert after 2 consecutive failures (skip transient single-poll blips)
-	if _dns_fail_count >= 2 and not _dns_alert_sent:
-		_dns_alert_sent = True
+	if _dns_state["fail_count"] >= 2 and not _dns_state["alert_sent"]:
+		_dns_state["alert_sent"] = True
 		try:
 			from app.services.notifier import send_notification_html
 			fix_line = f"\n<b>Auto-fix:</b> <code>{auto_fix_result}</code>" if gravity_broken else ""
 			gravity_line = "\n<b>Cause:</b> gravity DB corruption detected in FTL.log" if gravity_broken else "\n<b>Cause:</b> unknown — check FTL.log manually"
 			await send_notification_html(
 				f"<b>🚨 DNS DOWN</b> — Pi-hole not resolving <code>open.zero</code>\n"
-				f"<b>Failures:</b> {_dns_fail_count} consecutive checks{gravity_line}{fix_line}\n\n"
+				f"<b>Failures:</b> {_dns_state['fail_count']} consecutive checks{gravity_line}{fix_line}\n\n"
 				f"Run: <code>docker exec openzero-pihole-1 pihole -g</code> if auto-fix failed."
 			)
 		except Exception as te:

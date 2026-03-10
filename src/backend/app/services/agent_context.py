@@ -56,11 +56,16 @@ _executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="agent_ctx")
 # ---------------------------------------------------------------------------
 # In-memory cache
 # ---------------------------------------------------------------------------
-_cache:         dict[str, str] = {}   # filename -> post-deterministic text
-_compressed:    dict[str, str] = {}   # filename -> post-LLM text (if triggered)
-_final:         dict[str, str] = {}   # filename -> budget-capped text actually injected
-_combined_hash: str            = ""   # SHA-256 of all file mtimes+sizes
-_prompt_block:  str            = ""   # final assembled block
+class _AgentContextState:
+	def __init__(self):
+		self.cache:         dict[str, str] = {}   # filename -> post-deterministic text
+		self.compressed:    dict[str, str] = {}   # filename -> post-LLM text (if triggered)
+		self.final:         dict[str, str] = {}   # filename -> budget-capped text actually injected
+		self.combined_hash: str            = ""   # SHA-256 of all file mtimes+sizes
+		self.prompt_block:  str            = ""   # final assembled block
+
+_state = _AgentContextState()
+
 
 
 # ---------------------------------------------------------------------------
@@ -291,17 +296,15 @@ def _compute_hash(files: list[Path]) -> str:
 # ---------------------------------------------------------------------------
 
 async def refresh_agent_context() -> None:
-	"""Compare hash, re-read files if changed, rebuild _prompt_block."""
-	global _cache, _compressed, _final, _combined_hash, _prompt_block
-
+	"""Compare hash, re-read files if changed, rebuild _state.prompt_block."""
 	files = _discover_files()
 	new_hash = _compute_hash(files)
 
-	if new_hash == _combined_hash and _prompt_block:
+	if new_hash == _state.combined_hash and _state.prompt_block:
 		logger.debug("agent_context: no changes detected, using cached block")
 		return
 
-	_combined_hash = new_hash
+	_state.combined_hash = new_hash
 	new_cache: dict[str, str] = {}
 	new_compressed: dict[str, str] = {}
 
@@ -362,15 +365,15 @@ async def refresh_agent_context() -> None:
 		if last_key:
 			final[last_key] += f"\n\n[truncated — {omitted} file(s) omitted due to context budget]"
 
-	_cache = new_cache
-	_compressed = new_compressed
-	_final = final
-	_prompt_block = _assemble_block(final)
+	_state.cache = new_cache
+	_state.compressed = new_compressed
+	_state.final = final
+	_state.prompt_block = _assemble_block(final)
 
-	if _prompt_block:
+	if _state.prompt_block:
 		logger.info(
 			"agent_context: loaded %d agent file(s), prompt block %d chars",
-			len(final), len(_prompt_block),
+			len(final), len(_state.prompt_block),
 		)
 	else:
 		logger.info("agent_context: no agent files found — block empty")
@@ -378,19 +381,19 @@ async def refresh_agent_context() -> None:
 
 def get_agent_context_for_prompt() -> str:
 	"""Return the cached agent context block (empty string if none)."""
-	return _prompt_block
+	return _state.prompt_block
 
 
 def get_agent_context_debug_report() -> str:
 	"""Return the exact content Z injects as agent context, per file."""
-	if not _prompt_block:
+	if not _state.prompt_block:
 		return "No agent context loaded. Check that /agent/ contains .md, .pdf, or .docx files."
 
-	source = _final if _final else (_compressed if _compressed else _cache)
+	source = _state.final if _state.final else (_state.compressed if _state.compressed else _state.cache)
 	if not source:
 		return "Agent context cache is empty."
 
-	lines = [f"Agent Context — {len(source)} file(s) active ({len(_prompt_block)} chars total)"]
+	lines = [f"Agent Context — {len(source)} file(s) active ({len(_state.prompt_block)} chars total)"]
 	for fname, text in source.items():
 		lines.append(f"\n--- {fname} ---\n{text.strip()}")
 	return "\n".join(lines)
