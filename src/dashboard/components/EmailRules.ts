@@ -37,7 +37,7 @@ export class EmailRules extends HTMLElement {
 
   private editingId: number | null = null;
   private isAdding: boolean = false;
-  private currentRules: any[] = [];
+  private currentRules: { id: number, sender_pattern: string, action: string, badge?: string }[] = [];
 
   async fetchRules() {
     try {
@@ -84,7 +84,7 @@ export class EmailRules extends HTMLElement {
   }
 
 
-  displayRules(rules: any[]) {
+  displayRules(rules: { id: number, sender_pattern: string, action: string, badge?: string }[]) {
     const list = this.shadowRoot?.querySelector('#rules-list');
     if (list) {
       list.innerHTML = rules.map(r => `
@@ -162,10 +162,10 @@ export class EmailRules extends HTMLElement {
 					.info { display: flex; flex-direction: column; gap: 4px; }
 					.pattern { color: var(--text-primary, hsla(0, 0%, 100%, 1)); font-weight: 500; font-size: 0.9rem; }
 					${BUTTON_STYLES}
-					.action-tag { font-size: 0.75rem; color: var(--accent-color, hsla(173, 80%, 40%, 1)); opacity: 0.9; font-weight: 500; }
+					.action-tag { font-size: 0.75rem; color: var(--accent-color, hsla(173, 80%, 40%, 1)); font-weight: 600; }
 					.label-badge { 
-						background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.15); 
-						color: var(--accent-color, hsla(173, 80%, 40%, 1)); 
+						background: var(--accent-color); 
+						color: var(--on-accent-text); 
 						font-size: 0.65rem; 
 						padding: 2px 6px; 
 						border-radius: 4px; 
@@ -270,9 +270,10 @@ export class EmailRules extends HTMLElement {
 
       // Accessibility: Submit on Enter
       this.shadowRoot.querySelectorAll('input, select').forEach(el => {
-        el.addEventListener('keydown', (e: any) => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
+        el.addEventListener('keydown', (e: Event) => {
+          const ke = e as KeyboardEvent;
+          if (ke.key === 'Enter') {
+            ke.preventDefault();
             this.shadowRoot?.querySelector<HTMLButtonElement>('#addBtn')?.click();
           }
         });

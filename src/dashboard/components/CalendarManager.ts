@@ -3,9 +3,20 @@ import { initGoo } from '../services/gooStyles';
 import { ACCESSIBILITY_STYLES } from '../services/accessibilityStyles';
 import { SCROLLBAR_STYLES } from '../services/scrollbarStyles';
 
+interface CalendarEvent {
+	id: string;
+	summary: string;
+	start: string;
+	end?: string;
+	is_all_day: boolean;
+	is_birthday?: boolean;
+	is_local?: boolean;
+	person?: string;
+}
+
 export class CalendarManager extends HTMLElement {
 	private t: Record<string, string> = {};
-	private events: any[] = [];
+	private events: CalendarEvent[] = [];
 	private isOpen = false;
 	private selectedDate: number | null = null;
 	private viewMonth: number;
@@ -79,8 +90,9 @@ export class CalendarManager extends HTMLElement {
 		initGoo(this);
 		window.addEventListener('goo-changed', () => initGoo(this));
 		window.addEventListener('open-calendar', () => this.toggle(true));
-		window.addEventListener('refresh-data', (e: any) => {
-			if (e.detail && e.detail.actions && e.detail.actions.includes('calendar')) {
+		window.addEventListener('refresh-data', (e: Event) => {
+			const ce = e as CustomEvent;
+			if (ce.detail && ce.detail.actions && ce.detail.actions.includes('calendar')) {
 				this.fetchEvents();
 			}
 		});
@@ -110,8 +122,8 @@ export class CalendarManager extends HTMLElement {
 					this.render();
 				}
 			}
-		} catch (e: any) {
-			if (e.name !== 'AbortError') {
+		} catch (e: unknown) {
+			if (e instanceof Error && e.name !== 'AbortError') {
 				console.error('Failed to fetch events', e);
 			}
 		} finally {
@@ -541,7 +553,8 @@ export class CalendarManager extends HTMLElement {
 		const daysInMonth = new Date(this.viewYear, this.viewMonth + 1, 0).getDate();
 		const monthName = new Date(this.viewYear, this.viewMonth).toLocaleString('default', { month: 'long' });
 
-		this.shadowRoot.querySelector('.month-label')!.textContent = `${monthName} ${this.viewYear}`;
+		const monthLabel = this.shadowRoot.querySelector('.month-label');
+		if (monthLabel) monthLabel.textContent = `${monthName} ${this.viewYear}`;
 
 		const eventDays = new Set(
 			this.events.filter(e => {
@@ -550,12 +563,13 @@ export class CalendarManager extends HTMLElement {
 			}).map(e => new Date(e.start).getDate())
 		);
 
-		let displayedEvents: typeof this.events;
+		let displayedEvents: CalendarEvent[];
 		if (this.selectedDate) {
+			const selectedDay = this.selectedDate;
 			displayedEvents = this.events.filter(e => {
 				if (!e.start) return false;
 				const d = new Date(e.start);
-				return d.getDate() === this.selectedDate && d.getMonth() === this.viewMonth && d.getFullYear() === this.viewYear;
+				return d.getDate() === selectedDay && d.getMonth() === this.viewMonth && d.getFullYear() === this.viewYear;
 			});
 		} else {
 			displayedEvents = this.events.filter(e => {
@@ -594,30 +608,35 @@ export class CalendarManager extends HTMLElement {
 						`;
 		}).join('') || `<div style="padding: 2rem; text-align: center; opacity: 0.3;">${this.tr('clear_schedule', 'Clear schedule.')}</div>`;
 
-		const monthGrid = this.shadowRoot.querySelector('.month-grid')!;
-		monthGrid.innerHTML = `
+		const monthGrid = this.shadowRoot.querySelector('.month-grid');
+		if (monthGrid) {
+			monthGrid.innerHTML = `
 									${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d, i) => {
-										const fullDays = [
-									this.tr('sun', 'Sunday'), this.tr('mon', 'Monday'), this.tr('tue', 'Tuesday'),
-									this.tr('wed', 'Wednesday'), this.tr('thu', 'Thursday'), this.tr('fri', 'Friday'), this.tr('sat', 'Saturday')
-								];
-										return `<div class="weekday" role="columnheader" aria-label="${fullDays[i]}">${d}</div>`;
-									}).join('')}
+				const fullDays = [
+					this.tr('sun', 'Sunday'), this.tr('mon', 'Monday'), this.tr('tue', 'Tuesday'),
+					this.tr('wed', 'Wednesday'), this.tr('thu', 'Thursday'), this.tr('fri', 'Friday'), this.tr('sat', 'Saturday')
+				];
+				return `<div class="weekday" role="columnheader" aria-label="${fullDays[i]}">${d}</div>`;
+			}).join('')}
 						${Array(firstDay).fill(null).map(() => `<div></div>`).join('')}
 						${Array(daysInMonth).fill(null).map((_, i) => {
-			const day = i + 1;
-			const isToday = day === now.getDate() && this.viewMonth === now.getMonth() && this.viewYear === now.getFullYear();
-			const isSelected = day === this.selectedDate;
-			return `
+				const day = i + 1;
+				const isToday = day === now.getDate() && this.viewMonth === now.getMonth() && this.viewYear === now.getFullYear();
+				const isSelected = day === this.selectedDate;
+				return `
 										<div class="day-cell ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}" data-day="${day}" role="button" tabindex="0" aria-label="${monthName} ${day}, ${this.viewYear}" ${isToday ? 'aria-current="date"' : ''} aria-pressed="${isSelected ? 'true' : 'false'}">
 												${day}
 												${eventDays.has(day) ? '<div class="event-dot" aria-hidden="true"></div>' : ''}
 										</div>`;
-		}).join('')}
+			}).join('')}
 				`;
+		}
 
-		this.shadowRoot.querySelector('.events-list')!.innerHTML = eventsListHtml;
-		this.shadowRoot.querySelector('.agenda-header')!.textContent = this.selectedDate ? `${this.tr('schedule_for', 'Schedule for')} ${monthName} ${this.selectedDate}` : this.tr('coming_up', 'Coming Up');
+		const eventsList = this.shadowRoot.querySelector('.events-list');
+		if (eventsList) eventsList.innerHTML = eventsListHtml;
+
+		const agendaHeader = this.shadowRoot.querySelector('.agenda-header');
+		if (agendaHeader) agendaHeader.textContent = this.selectedDate ? `${this.tr('schedule_for', 'Schedule for')} ${monthName} ${this.selectedDate}` : this.tr('coming_up', 'Coming Up');
 
 		// Only attach persistent listeners once if they aren't already attached
 		if (!this.listenersBound) {
