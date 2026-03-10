@@ -215,13 +215,20 @@ export class DiagnosticsWidget extends HTMLElement {
             }
             return name === 'instant' ? 'Qwen3-0.6B' : name === 'standard' ? 'Qwen3-8B' : 'Qwen3-8B';
         };
+        const ramEstFor = (name: string): number => {
+            const t = cfgTiers.find((x: any) => x.tier === name);
+            return t?.ram_est_gb || 0;
+        };
 
         const tierNames = ['instant', 'standard', 'deep'];
-        const llmStatusHtml = tierNames.map(name => {
+        const tierColors = ['var(--accent-primary)', 'hsl(200,80%,60%)', 'hsl(260,70%,65%)'];
+        const llmStatusHtml = tierNames.map((name, idx) => {
             const td = tiers[name] || {};
             const isOnline = td.status === 'online';
             const isBusy = td.activity === 'processing';
             const model = modelFor(name);
+            const ramGb = ramEstFor(name);
+            const ramLabel = ramGb > 0 ? `~${ramGb} GB` : '';
             const dotClass = !isOnline ? 'offline' : isBusy ? 'processing' : 'online';
             const statusLabel = !isOnline ? 'OFFLINE' : isBusy ? 'BUSY' : 'IDLE';
             const tierTips: Record<string, string> = {
@@ -229,11 +236,19 @@ export class DiagnosticsWidget extends HTMLElement {
                 'standard': 'General-purpose reasoning and standard tool use.',
                 'deep': 'Chain-of-thought optimized for high-precision logic.'
             };
+            const ramPctOfTotal = srv.ram_total_gb && ramGb ? Math.min((ramGb / srv.ram_total_gb) * 100, 100) : 0;
+            const color = tierColors[idx];
             return `
                 <div class="llm-tier-status has-tip ${isBusy ? 'busy' : ''}" data-tip="${tierTips[name] || ''}">
                     <div class="llm-tier-main">
                         <span class="svc-dot ${dotClass}"></span>
                         <span class="llm-tier-label">${name}</span>
+                    </div>
+                    <div class="llm-tier-center">
+                        <div class="llm-ram-bar-wrap">
+                            <div class="llm-ram-bar-fill" style="width:${ramPctOfTotal}%;background:${color};opacity:${isOnline ? '1' : '0.3'}"></div>
+                        </div>
+                        <span class="llm-ram-label" style="color:${color}">${this.esc(ramLabel)}</span>
                     </div>
                     <div class="llm-tier-meta">
                         <span class="llm-status-text ${dotClass}">${statusLabel}</span>
@@ -292,6 +307,26 @@ export class DiagnosticsWidget extends HTMLElement {
                         <div class="leg-item"><span class="leg-dot cache"></span> Cache: ${srv.ram_bufcache_gb || 0}G</div>
                         <div class="leg-item"><span class="leg-dot free"></span> Free: ${(srv.ram_free_gb || 0).toFixed(1)}G</div>
                     </div>
+                    ${cfgTiers.length > 0 ? `
+                    <div class="llm-ram-breakdown">
+                        <div class="llm-ram-bd-label">LLM models (est. mlock'd)</div>
+                        <div class="llm-ram-bd-row">
+                            ${tierNames.map((name, idx) => {
+                                const ramGb = ramEstFor(name);
+                                const color = tierColors[idx];
+                                if (!ramGb) return '';
+                                return `<div class="llm-ram-bd-item">
+                                    <span class="llm-ram-bd-dot" style="background:${color}"></span>
+                                    <span class="llm-ram-bd-name">${name}</span>
+                                    <span class="llm-ram-bd-val" style="color:${color}">${ramGb} GB</span>
+                                </div>`;
+                            }).join('')}
+                            <div class="llm-ram-bd-item total">
+                                <span class="llm-ram-bd-name">Total LLMs</span>
+                                <span class="llm-ram-bd-val">${tierNames.reduce((s, n) => s + ramEstFor(n), 0).toFixed(1)} GB</span>
+                            </div>
+                        </div>
+                    </div>` : ''}
                 </div>
 
 				<!-- Left Column: Hardware -->
@@ -461,10 +496,14 @@ export class DiagnosticsWidget extends HTMLElement {
 				.svc-detail { font-size: 0.65rem; font-family: var(--font-mono); color: var(--text-muted); text-align: right; }
 
                 .llm-status-list { display: flex; flex-direction: column; gap: 0.4rem; }
-                .llm-tier-status { display: flex; justify-content: space-between; align-items: center; padding: 0.4rem 0.6rem; background: hsla(0, 0%, 100%, 0.02); border-radius: 0.4rem; border: 1px solid hsla(0, 0%, 100%, 0.04); transition: all 0.3s; }
+                .llm-tier-status { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 0.5rem; padding: 0.45rem 0.6rem; background: hsla(0, 0%, 100%, 0.02); border-radius: 0.4rem; border: 1px solid hsla(0, 0%, 100%, 0.04); transition: all 0.3s; }
                 .llm-tier-status.busy { background: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.05); border-color: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.2); animation: diag-pulse 2s infinite; }
-                .llm-tier-main { display: flex; align-items: center; gap: 0.5rem; }
+                .llm-tier-main { display: flex; align-items: center; gap: 0.5rem; min-width: 4.5rem; }
                 .llm-tier-label { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.05em; }
+                .llm-tier-center { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+                .llm-ram-bar-wrap { height: 4px; background: hsla(0,0%,100%,0.06); border-radius: 2px; overflow: hidden; }
+                .llm-ram-bar-fill { height: 100%; border-radius: 2px; transition: width 0.8s cubic-bezier(0.4,0,0.2,1); }
+                .llm-ram-label { font-size: 0.6rem; font-weight: 700; font-family: var(--font-mono); line-height: 1; }
                 .llm-tier-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
                 .llm-status-text { font-size: 0.55rem; font-weight: 900; letter-spacing: 0.05em; }
                 .llm-status-text.online { color: var(--accent-primary); }
@@ -472,6 +511,15 @@ export class DiagnosticsWidget extends HTMLElement {
                 .llm-status-text.offline { color: var(--color-danger, hsla(0, 84%, 42%, 1)); }
                 .llm-tier-info { font-size: 0.6rem; font-family: var(--font-mono); color: var(--text-muted); opacity: 0.8; }
                 .svc-dot.processing { background: var(--accent-primary); box-shadow: 0 0 10px var(--accent-primary); animation: diag-pulse 1s infinite; }
+
+                .llm-ram-breakdown { margin-top: 0.6rem; padding-top: 0.5rem; border-top: 1px solid hsla(0,0%,100%,0.05); }
+                .llm-ram-bd-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); font-weight: 700; margin-bottom: 0.4rem; }
+                .llm-ram-bd-row { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }
+                .llm-ram-bd-item { display: flex; align-items: center; gap: 0.3rem; }
+                .llm-ram-bd-item.total { margin-left: auto; padding-left: 0.75rem; border-left: 1px solid hsla(0,0%,100%,0.08); }
+                .llm-ram-bd-dot { width: 7px; height: 7px; border-radius: 2px; flex-shrink: 0; }
+                .llm-ram-bd-name { font-size: 0.6rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+                .llm-ram-bd-val { font-size: 0.7rem; font-weight: 800; font-family: var(--font-mono); color: var(--text-secondary); }
 
 				/* Benchmark Styles */
 				.bench-results-list { display: flex; flex-direction: column; gap: 0.5rem; }
