@@ -82,7 +82,7 @@ export class ZPersonality extends HTMLElement {
 		if (!this.shadowRoot) return;
 
 		const per = this.personality;
-		const agentInitial = (per?.agent_name || 'Z').charAt(0).toUpperCase();
+		const agentInitial = 'Z';
 
 		this.shadowRoot.innerHTML = `
 			<style>
@@ -184,7 +184,7 @@ export class ZPersonality extends HTMLElement {
 					
 					${!this.isLoading && this.isEditing ? `
 						<div class="form">
-							${per.questions.filter((q: any) => q.id !== 'agent_name' && q.type !== 'select').map((q: any) => `
+							${per.questions.filter((q: any) => q.type !== 'select').map((q: any) => `
 								<div class="form-group">
 									<label class="form-label">${q.label}</label>
 									${q.type === 'range' ? `

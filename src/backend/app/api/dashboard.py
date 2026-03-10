@@ -34,7 +34,6 @@ from collections import defaultdict
 from app.config import settings
 import psutil
 import platform
-import subprocess
 import os
 import posixpath
 import urllib.parse
@@ -247,7 +246,7 @@ async def confirm_action(action_id: str, db: AsyncSession = Depends(get_db), aut
 		return {"status": "success", "executed": executed}
 	except Exception as e:
 		logger.error("Action confirmation failed: %s", e)
-		raise HTTPException(status_code=500, detail=str(e))
+		raise HTTPException(status_code=500, detail=str(e)) from e
 
 @router.post("/actions/cancel/{action_id}")
 async def cancel_action(action_id: str, auth: None = Depends(require_auth)):
@@ -545,7 +544,7 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		}
 	except Exception as e:
 		logger.error("dashboard_chat error: %s", e)
-		raise HTTPException(status_code=500, detail="Internal server error") from None
+		raise HTTPException(status_code=500, detail="Internal server error") from e
 
 @router.post("/regression-cleanup")
 async def regression_cleanup(request: Request, db: AsyncSession = Depends(get_db)):
@@ -648,7 +647,6 @@ async def get_personality(db: AsyncSession = Depends(get_db)):
 	pref = res.scalar_one_or_none()
 	
 	default_personality = {
-		"agent_name": "Z",
 		"directness": 4, 
 		"warmth": 3,     
 		"agency": 4,     
@@ -663,7 +661,6 @@ async def get_personality(db: AsyncSession = Depends(get_db)):
 		"color_tertiary": "#6366F1",
 		"role": "Agent Operator",
 		"questions": [
-			{"id": "agent_name", "label": "Agent Name", "type": "text", "placeholder": "e.g. Z, Jarvis, Hal"},
 			{"id": "directness", "label": "Communication Style", "type": "range", "min": 1, "max": 5, "low": "Elaborate", "high": "Concise"},
 			{"id": "warmth", "label": "Emotional Tone", "type": "range", "min": 1, "max": 5, "low": "Clinical", "high": "Empathetic"},
 			{"id": "agency", "label": "Agency Level", "type": "range", "min": 1, "max": 5, "low": "Reactive", "high": "Proactive"},
@@ -1956,7 +1953,6 @@ async def get_system_status(db: AsyncSession = Depends(get_db)):
     """Deep health check of all OS subsystems."""
     from app.services.llm import last_model_used
     from app.services.memory import get_memory_stats
-    import os
     import subprocess
     import json
     from sqlalchemy import text

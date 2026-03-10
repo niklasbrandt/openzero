@@ -174,7 +174,7 @@ export class DiagnosticsWidget extends HTMLElement {
             { id: 'sse4_2', label: 'SSE4.2' },
         ];
         const featGrid = cpuFeats.map(f => `
-            <div class="hw-feat has-tip ${cpu[f.id] ? 'active' : 'inactive'}" data-tip="${f.label} hardware instruction set extension ${cpu[f.id] ? 'is available' : 'is not detected'}.">
+            <div class="hw-feat has-tip ${cpu[f.id] ? 'active' : 'inactive'}" data-tip="${f.label} hardware instruction set extension ${cpu[f.id] ? 'is available' : 'is not detected'}. " ${!cpu[f.id] ? 'aria-disabled="true"' : ''}>
                 <span class="feat-dot"></span>
                 <span class="feat-label">${f.label}</span>
             </div>
@@ -411,7 +411,7 @@ export class DiagnosticsWidget extends HTMLElement {
 				.ram-strip { grid-column: 1 / -1; background: hsla(0, 0%, 100%, 0.03); padding: 1rem; border-radius: 0.6rem; border: 1px solid hsla(0, 0%, 100%, 0.06); margin-bottom: 0.5rem; }
                 .ram-strip-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.6rem; }
                 .ram-title { font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
-                .ram-value { font-size: 0.9rem; font-weight: 800; font-family: var(--font-mono); color: var(--accent-primary); }
+                .ram-value { font-size: 0.9rem; font-weight: 800; font-family: var(--font-mono); color: var(--accent-text, var(--accent-primary)); }
                 .ram-strip-bar { height: 10px; background: hsla(0, 0%, 100%, 0.05); border-radius: 5px; overflow: hidden; display: flex; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); }
                 .ram-segment { height: 100%; transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
                 .ram-segment.apps { background: linear-gradient(90deg, var(--accent-primary) 0%, var(--accent-secondary) 100%); box-shadow: 0 0 10px hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.3); }
@@ -437,10 +437,11 @@ export class DiagnosticsWidget extends HTMLElement {
                 .hw-feat { display: flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.6rem; border-radius: 1rem; background: hsla(0, 0%, 100%, 0.02); border: 1px solid hsla(0, 0%, 100%, 0.04); }
                 .hw-feat.active { border-color: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.2); background: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.05); }
                 .hw-feat.inactive { opacity: 0.4; filter: grayscale(1); }
-                .feat-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--text-muted); }
+                .feat-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--text-muted); transition: all 0.3s; }
                 .hw-feat.active .feat-dot { background: var(--accent-primary); box-shadow: 0 0 5px var(--accent-primary); }
-                .feat-label { font-size: 0.55rem; font-weight: 800; font-family: var(--font-mono); color: var(--text-muted); }
+                .feat-label { font-size: 0.55rem; font-weight: 800; font-family: var(--font-mono); color: var(--text-muted); transition: all 0.3s; }
                 .hw-feat.active .feat-label { color: var(--text-secondary); }
+                .hw-feat.inactive .feat-label { color: var(--text-muted); opacity: 0.7; }
 
 				/* Removed old .ram-box, .ram-header, .ram-bar, .ram-fill, .ram-footer styles */
 

@@ -211,11 +211,11 @@ _PROMPT_ECHO_MIN_WORDS = 8
 # Build a pattern from SYSTEM_PROMPT_CHAT constant words (populated after SYSTEM_PROMPT_CHAT is defined)
 _PROMPT_ECHO_RE: re.Pattern | None = None
 
-def _build_prompt_echo_re(system_prompt: str) -> re.Pattern:
+def _build_prompt_echo_re(system_prompt: str) -> Optional[re.Pattern]:
 	"""Build a regex that detects runs of 8+ consecutive words from the system prompt."""
 	words = re.findall(r'[A-Za-z]{4,}', system_prompt)[:60]  # first 60 meaningful words
 	if len(words) < _PROMPT_ECHO_MIN_WORDS:
-		return re.compile(r'(?!x)x')  # never-match fallback
+		return None  # never-match fallback
 	# Build overlapping sequences of 8 consecutive words
 	phrases = [
 		r'\b' + r'\s+'.join(re.escape(w) for w in words[i:i+_PROMPT_ECHO_MIN_WORDS]) + r'\b'
@@ -589,7 +589,7 @@ async def get_agent_personality() -> str:
 	try:
 		from app.models.db import Preference
 		async with AsyncSessionLocal() as session:
-			res = await session.execute(select(Preference).where(Preference.key == "agent_personality"))
+			res = await session.execute(sa_select(Preference).where(Preference.key == "agent_personality"))
 			pref = res.scalar_one_or_none()
 			if not pref:
 				return ""
@@ -1212,7 +1212,7 @@ async def chat_with_context(
 		# Always fetch identity (needed for user_name/profile), but skip circle context for trivial messages
 		try:
 			async with AsyncSessionLocal() as session:
-				result = await session.execute(select(Person))
+				result = await session.execute(sa_select(Person))
 				people = result.scalars().all()
 				identity_name = "User"
 				user_profile = {}
@@ -1493,7 +1493,7 @@ async def chat_stream_with_context(
 	async def fetch_people():
 		try:
 			async with AsyncSessionLocal() as session:
-				result = await session.execute(select(Person))
+				result = await session.execute(sa_select(Person))
 				people = result.scalars().all()
 				identity_name = "User"
 				user_profile = {}
