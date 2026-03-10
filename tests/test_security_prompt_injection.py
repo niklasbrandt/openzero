@@ -1161,7 +1161,7 @@ class TestTelegramSpecific:
 			"/start", "/help", "/commands", "/status", "/tree",
 			"/review", "/search", "/memories", "/unlearn", "/purge",
 			"/wipe_memory", "/week", "/month", "/quarter", "/year",
-			"/day", "/add", "/protocols", "/remind", "/custom", "/think",
+			"/day", "/learn", "/protocols", "/remind", "/custom", "/think",
 			"/board",
 		}
 		malicious_commands = [
