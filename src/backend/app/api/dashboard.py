@@ -1376,7 +1376,6 @@ async def update_identity(person: PersonCreate, db: AsyncSession = Depends(get_d
 
 	# If language changed, rename Planka entities in background
 	if old_lang != new_lang:
-		import asyncio
 		asyncio.create_task(operator_service.rename_planka_entities(old_lang, new_lang))
 
 	return me

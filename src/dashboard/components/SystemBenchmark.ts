@@ -10,6 +10,7 @@ const BENCH_ACCENT_RGB = 'var(--accent-secondary-rgb, 0, 102, 255)';
 export class SystemBenchmark extends HTMLElement {
 	private benchResults: any[] = [];
 	private isRunning: boolean = false;
+	private isRunningAll: boolean = false;
 	private t: Record<string, string> = {};
 
 	// Expected tok/s ranges per tier on CPU-only (Q4_K_M quantized)
@@ -48,7 +49,7 @@ export class SystemBenchmark extends HTMLElement {
 	}
 
 	async runBenchmark(tier: string) {
-		if (this.isRunning) return;
+		if (this.isRunning && !this.isRunningAll) return;
 		this.isRunning = true;
 		this.toggleButtons(true);
 		const btn = this.shadowRoot?.querySelector(`#bench-${tier}`) as HTMLButtonElement;
@@ -69,28 +70,54 @@ export class SystemBenchmark extends HTMLElement {
 		} catch (e) {
 			console.error('Benchmark failed:', e);
 		} finally {
-			this.isRunning = false;
-			this.toggleButtons(false);
 			if (btn) {
 				btn.classList.remove('running');
 				btn.textContent = this.tr(`bench_${tier}`, `Bench ${tier}`);
 				btn.removeAttribute('aria-busy');
 				btn.setAttribute('aria-label', `${this.tr('aria_benchmark_tier', 'Benchmark')} ${tier} tier`);
 			}
+			if (!this.isRunningAll) {
+				this.isRunning = false;
+				this.toggleButtons(false);
+			}
 		}
 	}
 
 	async runAllBenchmarks() {
-		if (this.isRunning) return;
-		const tiers = ['instant', 'standard', 'deep'];
-		for (const tier of tiers) {
-			await this.runBenchmark(tier);
+		if (this.isRunning || this.isRunningAll) return;
+		this.isRunningAll = true;
+		this.isRunning = true;
+		this.toggleButtons(true);
+
+		const allBtn = this.shadowRoot?.querySelector('#bench-all') as HTMLButtonElement;
+		if (allBtn) {
+			allBtn.classList.add('running');
+			allBtn.textContent = 'Running\u2026';
+		}
+
+		try {
+			const tiers = ['instant', 'standard', 'deep'];
+			for (const tier of tiers) {
+				await this.runBenchmark(tier);
+			}
+		} finally {
+			if (allBtn) {
+				allBtn.classList.remove('running');
+				allBtn.textContent = this.tr('bench_run_all', 'Run All');
+			}
+			this.isRunningAll = false;
+			this.isRunning = false;
+			this.toggleButtons(false);
 		}
 	}
 
 	private toggleButtons(disabled: boolean) {
 		const btns = this.shadowRoot?.querySelectorAll('.bench-btn');
-		btns?.forEach(b => (b as HTMLButtonElement).disabled = disabled);
+		btns?.forEach(b => {
+			(b as HTMLButtonElement).disabled = disabled;
+			if (disabled) b.classList.add('disabled-state');
+			else b.classList.remove('disabled-state');
+		});
 	}
 
 	private getRating(tps: number, tier: string): { cls: string; icon: string; label: string; hint: string } {
@@ -276,9 +303,15 @@ export class SystemBenchmark extends HTMLElement {
 					border-color: rgba(var(--accent-color-rgb, 20, 184, 166), 0.2);
 				}
 
-				.bench-btn.all:hover {
+				.bench-btn.all:hover:not(:disabled) {
 					background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.2);
 					border-color: var(--accent-color, hsla(173, 80%, 40%, 1));
+				}
+
+				.bench-btn:disabled, .bench-btn.disabled-state {
+					opacity: 0.5;
+					cursor: not-allowed;
+					filter: grayscale(100%);
 				}
 
 				@keyframes pulse {
