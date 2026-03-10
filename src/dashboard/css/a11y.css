@@ -21,8 +21,6 @@
 	outline: none;
 }
 
-/* Planka buttons inherit focus-visible */
-.planka-btn:focus-visible,
 .sidebar-nav a:focus-visible {
 	outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1));
 	outline-offset: 3px;
@@ -46,7 +44,6 @@
 @media (forced-colors: active) {
 
 	.skip-link,
-	.planka-btn,
 	.sidebar-nav a {
 		forced-color-adjust: none;
 	}
