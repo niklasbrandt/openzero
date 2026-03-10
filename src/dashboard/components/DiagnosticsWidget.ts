@@ -267,7 +267,9 @@ export class DiagnosticsWidget extends HTMLElement {
 
         el.innerHTML = `
 			<div class="diag-layout">
-                <button id="btn-force-reload" class="reload-btn has-tip" data-tip="Force refresh of all diagnostic metrics.">
+                <button id="btn-force-reload" class="reload-btn has-tip" 
+					aria-label="${this.tr('aria_refresh_diagnostics', 'Force refresh of all diagnostic metrics')}"
+					data-tip="${this.tr('aria_refresh_diagnostics', 'Force refresh of all diagnostic metrics')}">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21 2v6h-6"></path><path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path><path d="M3 22v-6h6"></path><path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
                     </svg>

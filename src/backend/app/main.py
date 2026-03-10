@@ -133,15 +133,12 @@ async def lifespan(app: FastAPI):
                         await session.commit()
                         logging.info("✓ Identity record initialized.")
                 # 3b. Load user settings (timezone, location) from DB into cache
-                from app.services.timezone import refresh_user_settings
                 await refresh_user_settings()
                 logging.info("\u2713 User settings loaded from identity record.")
                 # 3c. Load personal context folder into system prompt
-                from app.services.personal_context import refresh_personal_context
                 await refresh_personal_context()
                 logging.info("\u2713 Personal context loaded from /personal folder.")
                 # 3d. Load agent skills folder into system prompt
-                from app.services.agent_context import refresh_agent_context
                 await refresh_agent_context()
                 logging.info("\u2713 Agent skills loaded from /agent folder.")
                 # 4. Initial Operator Board Sync

@@ -51,7 +51,7 @@ export class ProjectTree extends HTMLElement {
 			const createProject = document.querySelector('create-project') as any;
 			if (createProject && typeof createProject.toggle === 'function') {
 				createProject.toggle();
-				
+
 				const isOpen = createProject.getAttribute('data-open') === 'true';
 				const btn = this.shadowRoot?.querySelector('#new-project-btn');
 				if (btn) {
@@ -88,7 +88,7 @@ export class ProjectTree extends HTMLElement {
 		const pre = this.shadowRoot?.querySelector('pre');
 		if (pre) {
 			pre.textContent = this.tr('no_boards', 'No boards found.');
-			pre.style.color = 'var(--text-muted, hsla(0, 0%, 100%, 0.4))';
+			pre.style.color = 'var(--text-muted, hsla(0, 0%, 100%, 0.7))';
 			pre.style.fontFamily = "var(--font-sans, 'Inter', system-ui, sans-serif)";
 			pre.style.textAlign = 'center';
 			pre.style.padding = '2rem';
@@ -123,7 +123,7 @@ export class ProjectTree extends HTMLElement {
 					
 					#new-project-btn {
 						background: var(--surface-accent-subtle, hsla(173, 80%, 40%, 0.12));
-						color: var(--accent-color, hsla(173, 80%, 40%, 1));
+						color: var(--accent-text, var(--accent-color, hsla(173, 80%, 45%, 1)));
 						border: 1px solid var(--border-accent, hsla(173, 80%, 40%, 0.2));
 						padding: 0.4rem 1rem;
 						border-radius: var(--radius-md, 0.6rem);
@@ -146,7 +146,7 @@ export class ProjectTree extends HTMLElement {
 						font-family: var(--font-mono, 'Fira Code', monospace);
 						font-size: 0.95rem;
 						line-height: 1.6;
-						color: var(--accent-color, hsla(173, 80%, 40%, 1));
+						color: var(--accent-text, var(--accent-color, hsla(173, 80%, 45%, 1)));
 						border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.05));
 						overflow-x: auto;
 						margin: 0;
