@@ -1910,6 +1910,9 @@ async def benchmark_llm(tier: str = "instant"):
 		gen_time = (end - first_token_time) if first_token_time else total_s
 		tps = token_count / gen_time if gen_time > 0 else 0
 
+		if token_count == 0:
+			return {"tier": tier, "model": model_name, "error": "No tokens received — model may be loading or unavailable"}
+
 		# Fetch thread config for this tier
 		import os
 		thread_env_map = {
