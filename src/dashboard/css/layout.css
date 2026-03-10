@@ -17,7 +17,7 @@
 	display: flex;
 	flex-wrap: wrap;
 	gap: 2rem;
-	align-items: center;
+	align-items: normal;
 	min-width: 0;
 	box-sizing: border-box;
 	overflow: visible;
@@ -83,13 +83,58 @@ welcome-onboarding {
 	flex: 0 0 100%;
 }
 
-/* Side-by-side on desktop (Uneven layout) */
-.chat-calendar-row .chat-card {
-	flex: 0 0 calc(66.666% - 1.25rem);
+/* Overview Grid (Chat + Projects + Calendar inside one card) */
+.overview-grid {
+	display: grid;
+	grid-template-columns: 2fr 1px 1fr;
+	grid-template-rows: auto 1px auto;
+	gap: 1.5rem;
+	width: 100%;
+	align-items: stretch;
 }
 
-.chat-calendar-row #section-calendar {
-	flex: 0 0 calc(33.333% - 1.25rem);
+.overview-col {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.overview-col>* {
+	flex: 1;
+}
+
+.chat-col {
+	grid-column: 1 / 2;
+	grid-row: 1 / 2;
+}
+
+.projects-col {
+	grid-column: 3 / 4;
+	grid-row: 1 / 2;
+}
+
+.calendar-col {
+	grid-column: 1 / -1;
+	grid-row: 3 / 4;
+}
+
+.overview-divider {
+	background: var(--border-color);
+	opacity: 0.6;
+}
+
+.v-divider {
+	width: 1px;
+	height: 100%;
+	grid-column: 2 / 3;
+	grid-row: 1 / 2;
+}
+
+.h-divider {
+	width: 100%;
+	height: 1px;
+	grid-column: 1 / -1;
+	grid-row: 2 / 3;
 }
 
 .persona-profile-row .persona-row-card {
@@ -141,11 +186,33 @@ welcome-onboarding {
 		contain-intrinsic-size: 1px 400px;
 	}
 
-	.chat-card,
-	.life-overview-card,
 	.full-width-card,
 	welcome-onboarding {
 		flex: 0 0 100% !important;
+	}
+
+	.overview-grid {
+		grid-template-columns: 1fr;
+		grid-template-rows: auto;
+		gap: 2rem;
+	}
+
+	.chat-col,
+	.projects-col,
+	.calendar-col {
+		grid-column: 1 / -1;
+		grid-row: auto;
+	}
+
+	.overview-divider {
+		width: 100%;
+		height: 1px;
+		grid-column: 1 / -1;
+		grid-row: auto;
+	}
+
+	.v-divider {
+		display: none;
 	}
 }
 
@@ -183,11 +250,6 @@ welcome-onboarding {
 
 	.header-actions::-webkit-scrollbar {
 		display: none;
-	}
-
-	/* Show all button labels on mobile since they scroll in a row */
-	.header-actions .planka-btn span {
-		display: inline;
 	}
 
 	.dashboard-card {

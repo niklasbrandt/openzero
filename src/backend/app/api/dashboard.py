@@ -1683,7 +1683,12 @@ async def server_info():
 						health_status = health.get("status", "ok")
 					except Exception:
 						health_status = "ok" if resp.status_code == 200 else "offline"
-					tier_info["status"] = health_status
+						
+					if health_status in ("ok", "no slot available", "loading model"):
+						tier_info["status"] = "online"
+					else:
+						tier_info["status"] = "offline"
+
 					# llama-server returns HTTP 503 + {"status":"no slot available"}
 					# when actively processing a request — that IS the busy signal.
 					# HTTP 200 + "ok" = idle/available.

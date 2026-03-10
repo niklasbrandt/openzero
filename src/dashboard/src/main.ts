@@ -4,13 +4,12 @@ import '../style.css'
 // ── Critical components: loaded synchronously so the above-fold UI paints
 //    without a flash of unregistered custom elements.
 import '../components/ChatPrompt'
-import '../components/LifeOverview'
+import '../components/ProjectTree'
 import '../components/UserCard'
 
 // ── Lazy components: deferred until the browser is idle so the main thread
 //    is free for first paint (reduces TBT / long-tasks significantly).
 function loadLazyComponents(): void {
-	import('../components/ProjectTree')
 	import('../components/MemorySearch')
 	import('../components/BriefingHistory')
 	import('../components/EmailRules')
@@ -21,6 +20,7 @@ function loadLazyComponents(): void {
 	import('../components/WelcomeOnboarding')
 	import('../components/DiagnosticsWidget')
 	import('../components/ZPersonality')
+	import('../components/ZProtocols')
 }
 
 if ('requestIdleCallback' in window) {
@@ -336,7 +336,7 @@ const domReady = new Promise<void>(resolve => {
 // happens behind the loader, not in front of the user's eyes.
 const criticalComponents = Promise.all([
 	customElements.whenDefined('chat-prompt'),
-	customElements.whenDefined('life-overview'),
+	customElements.whenDefined('project-tree'),
 	customElements.whenDefined('user-card'),
 ]);
 
@@ -361,34 +361,7 @@ async function initHeaderTranslations() {
 		const t = window.__z_translations;
 		if (!t) return;
 
-		const tr = (key: string, fallback: string) => t[key] || fallback;
 
-		// Operator Board button
-		const opBtn = document.getElementById('header-operator-btn');
-		if (opBtn) {
-			opBtn.setAttribute('aria-label', tr('aria_open_operator_board', 'Open Operator Board — centralized overview of tasks (opens in new tab)'));
-			opBtn.setAttribute('data-tooltip', tr('header_operator_board_tooltip', 'Centralized overview of tasks across all your boards'));
-			const opSpan = opBtn.querySelector('span');
-			if (opSpan) opSpan.textContent = tr('header_operator_board_label', 'Operator Board');
-		}
-
-		// Projects button
-		const projBtn = document.getElementById('header-projects-btn');
-		if (projBtn) {
-			projBtn.setAttribute('aria-label', tr('aria_open_projects', 'Open Projects board (opens in new tab)'));
-			projBtn.setAttribute('data-tooltip', tr('header_projects_tooltip', 'Access individual project boards and spaces'));
-			const projSpan = projBtn.querySelector('span');
-			if (projSpan) projSpan.textContent = tr('header_projects_label', 'Projects');
-		}
-
-		// Calendar button
-		const calBtn = document.getElementById('open-calendar-btn');
-		if (calBtn) {
-			calBtn.setAttribute('aria-label', tr('aria_open_calendar_btn', 'Open Calendar manager'));
-			calBtn.setAttribute('data-tooltip', tr('header_calendar_tooltip', 'Open your integrated Google or Local Calendar'));
-			const calSpan = calBtn.querySelector('span');
-			if (calSpan) calSpan.textContent = tr('header_calendar_label', 'Calendar');
-		}
 
 		// Nav labels — apply translations to all [data-tr] spans across
 		// sidebar-nav, top-marquee-nav, and mobile-nav-drawer.
@@ -666,11 +639,6 @@ function initMobileNav() {
 
 initScrollSpy();
 initMobileNav();
-
-// ── Header calendar button ──
-document.getElementById('open-calendar-btn')?.addEventListener('click', () => {
-	window.dispatchEvent(new CustomEvent('open-calendar'));
-});
 
 // Check for deep-link overlays
 const urlParams = new URLSearchParams(window.location.search);

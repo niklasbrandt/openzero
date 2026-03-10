@@ -7,8 +7,6 @@ import { initGoo } from '../services/gooStyles';
 
 export class ZPersonality extends HTMLElement {
 	private personality: any = null;
-	private protocols: any[] = [];
-	private activeTab: 'personality' | 'protocols' = 'personality';
 	private isEditing = false;
 	private isLoading = true;
 	private t: Record<string, string> = {};
@@ -42,15 +40,8 @@ export class ZPersonality extends HTMLElement {
 		this.isLoading = true;
 		this.render();
 		try {
-			const [perRes, protRes] = await Promise.all([
-				fetch('/api/dashboard/personality'),
-				fetch('/api/dashboard/protocols')
-			]);
+			const perRes = await fetch('/api/dashboard/personality');
 			if (perRes.ok) this.personality = await perRes.json();
-			if (protRes.ok) {
-				const data = await protRes.json();
-				this.protocols = data.tools || [];
-			}
 		} catch (e) {
 			console.error('Failed to fetch personality data', e);
 		} finally {
@@ -91,7 +82,6 @@ export class ZPersonality extends HTMLElement {
 		if (!this.shadowRoot) return;
 
 		const per = this.personality;
-		const prot = this.protocols;
 		const agentInitial = (per?.agent_name || 'Z').charAt(0).toUpperCase();
 
 		this.shadowRoot.innerHTML = `
@@ -118,13 +108,6 @@ export class ZPersonality extends HTMLElement {
 				}
 
 				.tabs { display: flex; gap: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); }
-				.tab { 
-					padding: 0.5rem 0; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; 
-					color: var(--text-muted, rgba(255,255,255,0.55)); cursor: pointer; border-bottom: 2px solid transparent;
-					transition: all 0.2s;
-				}
-				.tab.active { color: var(--accent-text, var(--accent-primary, hsla(173, 80%, 40%, 1))); border-color: var(--accent-text, var(--accent-primary, hsla(173, 80%, 40%, 1))); }
-				.tab:focus-visible { outline: 2px solid var(--accent-primary, hsla(173, 80%, 40%, 1)); outline-offset: 2px; border-radius: 2px 2px 0 0; }
 				.edit-btn:focus-visible, .save-btn:focus-visible, .cancel-btn:focus-visible { outline: 2px solid var(--accent-primary, hsla(173, 80%, 40%, 1)); outline-offset: 2px; border-radius: 4px; }
 				input[type="text"]:focus-visible, textarea:focus-visible, select:focus-visible, input[type="range"]:focus-visible, input[type="color"]:focus-visible { outline: 2px solid var(--accent-primary, hsla(173, 80%, 40%, 1)); outline-offset: 2px; }
 
@@ -177,24 +160,12 @@ export class ZPersonality extends HTMLElement {
 
 				.actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.25rem; }
 
-
-				.prot-list { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.5rem; }
-				.prot-item { 
-					background: var(--surface-card, hsla(0,0%,100%,0.03)); padding: 0.75rem 1rem; border-radius: 0.75rem;
-					border-left: 3px solid var(--accent-secondary, hsla(216, 100%, 50%, 1)); animation: slideIn 0.3s ease-out backwards;
-				}
-				.prot-name { font-size: 0.85rem; font-weight: 700; letter-spacing: 0.02em; display: block; margin-bottom: 0.25rem; }
-				.prot-desc { font-size: 0.8rem; color: var(--text-muted, hsla(0,0%,100%,0.5)); line-height: 1.5; }
-
 				@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-				@keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
 				
 				@media (prefers-reduced-motion: reduce) {
-					.tab, .edit-btn, .prot-item { transition: none !important; animation: none !important; }
+					.edit-btn { transition: none !important; animation: none !important; }
 				}
 				@media (forced-colors: active) {
-					.tab.active { border-color: Highlight; color: Highlight; }
-					.prot-item { border-left-color: Highlight; border: 1px solid CanvasText; }
 					input[type="range"] { accent-color: Highlight; }
 				}
 			</style>
@@ -203,19 +174,12 @@ export class ZPersonality extends HTMLElement {
 				<div class="header">
 					<h2>
 						<div class="h-icon" aria-hidden="true">${agentInitial}</div>
-						${this.isEditing ? this.tr('agent_config', 'Config') : (this.activeTab === 'personality' ? this.tr('agent_personality', 'Personality') : this.tr('agent_protocols', 'Protocols'))}
+						${this.isEditing ? this.tr('agent_config', 'Config') : this.tr('agent_personality', 'Personality')}
 					</h2>
-					${!this.isEditing && !this.isLoading && this.activeTab === 'personality' ? `<button class="edit-btn" id="edit-trigger" aria-label="${this.tr('refine', 'Refine')} — ${this.tr('aria_edit_personality', 'Edit agent personality settings')}">${this.tr('refine', 'Refine')}</button>` : ''}
+					${!this.isEditing && !this.isLoading ? `<button class="edit-btn" id="edit-trigger" aria-label="${this.tr('refine', 'Refine')} — ${this.tr('aria_edit_personality', 'Edit agent personality settings')}">${this.tr('refine', 'Refine')}</button>` : ''}
 				</div>
 
-				${!this.isEditing ? `
-					<div class="tabs" role="tablist" aria-label="${this.tr('aria_personality_views', 'Personality views')}">
-						<div class="tab ${this.activeTab === 'personality' ? 'active' : ''}" id="tab-per" role="tab" aria-selected="${this.activeTab === 'personality'}" tabindex="${this.activeTab === 'personality' ? '0' : '-1'}">${this.tr('tab_identity', 'Identity')}</div>
-						<div class="tab ${this.activeTab === 'protocols' ? 'active' : ''}" id="tab-prot" role="tab" aria-selected="${this.activeTab === 'protocols'}" tabindex="${this.activeTab === 'protocols' ? '0' : '-1'}">${this.tr('tab_protocols', 'Protocols')}</div>
-					</div>
-				` : ''}
-
-				<div class="content" role="tabpanel" id="tabpanel-main" aria-labelledby="${this.activeTab === 'personality' ? 'tab-per' : 'tab-prot'}">
+				<div class="content" id="tabpanel-main">
 					${this.isLoading ? `<div class="empty-state">${this.tr('aligning', 'Aligning neural paths...')}</div>` : ''}
 					
 					${!this.isLoading && this.isEditing ? `
@@ -246,40 +210,22 @@ export class ZPersonality extends HTMLElement {
 								<button class="oz-btn oz-btn-primary" id="save-trigger">${this.tr('save_persona', 'Save Persona')}</button>
 							</div>
 						</div>
-					` : !this.isLoading && this.activeTab === 'personality' ? `
+					` : !this.isLoading ? `
 						<div class="trait-grid">
 							${(() => {
-								const isGoo = localStorage.getItem('goo-mode') === 'true';
-								const traits = [
-									{ label: this.tr('core_identity', 'Core Identity'), value: per?.role || 'Agent Operator' },
-									{ label: this.tr('communication', 'Communication'), value: `${['', 'Elaborate', 'Nuanced', 'Balanced', 'Direct', 'Concise'][per?.directness || 3]} (${per?.directness}/5)` }
-								];
-								return traits.map(t => `
+					const isGoo = localStorage.getItem('goo-mode') === 'true';
+					const traits = [
+						{ label: this.tr('core_identity', 'Core Identity'), value: per?.role || 'Agent Operator' },
+						{ label: this.tr('communication', 'Communication'), value: `${['', 'Elaborate', 'Nuanced', 'Balanced', 'Direct', 'Concise'][per?.directness || 3]} (${per?.directness}/5)` }
+					];
+					return traits.map(t => `
 									<div class="trait-item ${isGoo ? 'oz-goo-container' : ''}">
 										<span class="trait-label">${t.label}</span>
 										<div class="trait-value">${t.value}</div>
 										<div class="trait-indicator" aria-hidden="true"></div>
 									</div>
 								`).join('');
-							})()}
-						</div>
-					` : ''}
-
-					${!this.isLoading && !this.isEditing && this.activeTab === 'protocols' ? `
-						<div class="prot-explanation" style="font-size: 0.75rem; color: rgba(255,255,255,0.4); margin-bottom: 1rem; line-height: 1.4; padding: 0.5rem; background: rgba(0,102,255,0.05); border-radius: 4px; border-left: 2px solid var(--accent-secondary, hsla(216, 100%, 50%, 1));">
-							${this.tr('prot_explanation', `Operational Protocols are the agent's internal "Action Tags". They define the specific strategic actions ${per?.agent_name || 'Z'} can perform across integrated services. These are core system capabilities.`)}
-						</div>
-					<div class="prot-list" role="list">
-						${prot.map((p: any, i: number) => `
-							<div class="prot-item" role="listitem" style="animation-delay: ${i * 0.05}s">
-								<span class="prot-name" style="display: flex; align-items: center; gap: 0.5rem;">
-									<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-										${p.name.replace(/_/g, ' ')}
-									</span>
-									<span class="prot-desc">${p.description}</span>
-								</div>
-							`).join('')}
-							${prot.length === 0 ? `<div class="empty-state">${this.tr('no_protocols', 'No active strategic protocols.')}</div>` : ''}
+				})()}
 						</div>
 					` : ''}
 				</div>
@@ -289,30 +235,6 @@ export class ZPersonality extends HTMLElement {
 		this.shadowRoot.querySelector('#edit-trigger')?.addEventListener('click', () => { this.isEditing = true; this.render(); });
 		this.shadowRoot.querySelector('#cancel-trigger')?.addEventListener('click', () => { this.isEditing = false; this.render(); });
 		this.shadowRoot.querySelector('#save-trigger')?.addEventListener('click', () => this.savePersonality());
-
-		this.shadowRoot.querySelector('#tab-per')?.addEventListener('click', () => {
-			this.activeTab = 'personality';
-			this.isEditing = false;
-			this.render();
-		});
-		this.shadowRoot.querySelector('#tab-prot')?.addEventListener('click', () => {
-			this.activeTab = 'protocols';
-			this.isEditing = false;
-			this.render();
-		});
-		// Keyboard navigation for tabs (ARIA tablist pattern)
-		this.shadowRoot.querySelector('.tabs')?.addEventListener('keydown', (e: Event) => {
-			const ke = e as KeyboardEvent;
-			if (ke.key === 'ArrowRight' || ke.key === 'ArrowLeft') {
-				ke.preventDefault();
-				const newTab = this.activeTab === 'personality' ? 'protocols' : 'personality';
-				this.activeTab = newTab;
-				this.isEditing = false;
-				this.render();
-				const focusId = newTab === 'personality' ? '#tab-per' : '#tab-prot';
-				(this.shadowRoot?.querySelector(focusId) as HTMLElement)?.focus();
-			}
-		});
 
 	}
 }
