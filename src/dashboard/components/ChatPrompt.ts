@@ -681,7 +681,7 @@ export class ChatPrompt extends HTMLElement {
 			}
 
 			.empty-state > span {
-				color: var(--text-muted, hsla(0, 0%, 100%, 0.4));
+				color: var(--text-muted, hsla(0, 0%, 100%, 0.7));
 				font-size: 0.85rem;
 			}
 
@@ -834,7 +834,7 @@ export class ChatPrompt extends HTMLElement {
 			}
 			.message.user .bubble-content a {
 				color: var(--text-primary, hsla(0, 0%, 100%, 1));
-				text-decoration-color: var(--text-muted, hsla(0, 0%, 100%, 0.4));
+				text-decoration-color: var(--text-muted, hsla(0, 0%, 100%, 0.7));
 			}
 			.bubble-content a:hover {
 				color: var(--accent-secondary, hsla(216, 100%, 50%, 1));
@@ -855,7 +855,7 @@ export class ChatPrompt extends HTMLElement {
 				width: 6px;
 				height: 6px;
 				border-radius: 50%;
-				background: var(--text-muted, hsla(0, 0%, 100%, 0.4));
+				background: var(--text-muted, hsla(0, 0%, 100%, 0.7));
 				animation: typing 1.4s infinite ease-in-out;
 			}
 
@@ -951,7 +951,7 @@ export class ChatPrompt extends HTMLElement {
 			}
 
 			textarea::placeholder {
-				color: var(--text-muted, hsla(0, 0%, 100%, 0.4));
+				color: var(--text-muted, hsla(0, 0%, 100%, 0.7));
 			}
 
 			textarea:focus {

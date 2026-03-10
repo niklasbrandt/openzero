@@ -37,7 +37,9 @@ import platform
 import os
 import posixpath
 import urllib.parse
-
+import subprocess
+import redis
+import asyncio
 import logging
 
 logger = logging.getLogger(__name__)
@@ -228,7 +230,6 @@ async def confirm_action(action_id: str, db: AsyncSession = Depends(get_db), aut
 	"""Confirm a pending action from the dashboard."""
 	from app.models.db import get_pending_thought
 	from app.services.agent_actions import parse_and_execute_actions
-	import json
 	
 	thought = await get_pending_thought(action_id)
 	if not thought:
@@ -595,8 +596,7 @@ async def regression_cleanup(request: Request, db: AsyncSession = Depends(get_db
 		from app.services.memory import get_qdrant, COLLECTION_NAME
 		client = get_qdrant()
 		points, _ = client.scroll(collection_name=COLLECTION_NAME, limit=200)
-		import re as _re
-		_REGRESSION_PAT = _re.compile(r'TEST.?MEMORY.?TOKEN|TEST.?UNLEARN.?TOKEN', _re.IGNORECASE)
+		_REGRESSION_PAT = re.compile(r'TEST.?MEMORY.?TOKEN|TEST.?UNLEARN.?TOKEN', re.IGNORECASE)
 		regression_ids = [p.id for p in points if _REGRESSION_PAT.search(p.payload.get("text", "") if p.payload else "")]
 		if regression_ids:
 			from qdrant_client.models import PointIdsList
@@ -614,7 +614,6 @@ async def regression_cleanup(request: Request, db: AsyncSession = Depends(get_db
 @router.get("/calibration")
 async def get_calibration():
 	"""Fetch the daily calibration exercise for the dashboard."""
-	import datetime
 	methods = [
 		("🙏 Gratitude", "Name 3 specific things you are grateful for right now. Be concrete — not 'family' but 'the way Mom called yesterday to check in'."),
 		("🎯 Intention Setting", "Set one clear intention for today. Not a task — an intention for HOW you want to show up."),
@@ -752,8 +751,6 @@ async def dashboard_chat_stream(req: ChatRequest, request: Request, _rl: None = 
 		await save_global_message("dashboard", "z", clean_reply, model=model_label)
 
 		# Background memory extraction — learn from user message without blocking reply
-		import asyncio
-		from app.services.memory import extract_and_store_facts
 		asyncio.create_task(extract_and_store_facts(msg))
 
 		yield f"data: {json.dumps({'done': True, 'reply': _sanitise_reply_html(clean_reply), 'actions': executed_cmds, 'model': model_label})}\n\n"
@@ -1931,8 +1928,6 @@ async def get_system_status(db: AsyncSession = Depends(get_db)):
     """Deep health check of all OS subsystems."""
     from app.services.llm import last_model_used
     from app.services.memory import get_memory_stats
-    import subprocess
-    import json
     from sqlalchemy import text
 
     try:
@@ -1951,7 +1946,6 @@ async def get_system_status(db: AsyncSession = Depends(get_db)):
     # Software Metrics: Redis
     redis_detail = "0B / 0 keys"
     try:
-        import redis
         r = redis.Redis(host="redis", password=settings.REDIS_PASSWORD, decode_responses=True)
         r_info = r.info()
         redis_detail = f"{r_info.get('used_memory_human', '0B')} / {r.dbsize()} keys"

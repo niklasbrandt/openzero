@@ -1,7 +1,7 @@
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 from app.config import settings
+from app.common.scheduler_instance import scheduler
 import pytz
 import logging
 import re
@@ -9,8 +9,6 @@ import subprocess
 import os
 
 logger = logging.getLogger(__name__)
-
-scheduler = AsyncIOScheduler(timezone=pytz.utc)
 
 # ---------------------------------------------------------------------------
 # Subprocess security allowlist
