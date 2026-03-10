@@ -488,22 +488,13 @@ export class DiagnosticsWidget extends HTMLElement {
                 .bench-error { font-size: 0.65rem; color: var(--status-danger); font-family: var(--font-mono); flex: 1; text-align: right; }
 
 				.bench-actions { display: flex; flex-direction: column; gap: 0.5rem; margin-top: auto; }
-				.b-btn { background: hsla(0, 0%, 100%, 0.04); color: var(--text-primary); border: 1px solid hsla(0, 0%, 100%, 0.08); padding: 0.5rem; border-radius: 0.5rem; font-size: 0.65rem; font-weight: 700; cursor: pointer; transition: all 0.2s; text-transform: uppercase; letter-spacing: 0.05em; }
+				.b-btn { background: hsla(0, 0%, 100%, 0.04); color: light-dark(hsla(228, 45%, 8%, 1), var(--text-primary, hsla(0, 0%, 100%, 0.85))); border: 1px solid hsla(0, 0%, 100%, 0.08); padding: 0.5rem; border-radius: 0.5rem; font-size: 0.65rem; font-weight: 700; cursor: pointer; transition: all 0.2s; text-transform: uppercase; letter-spacing: 0.05em; }
 				.b-btn:hover:not(:disabled) { background: hsla(0, 0%, 100%, 0.08); border-color: var(--accent-color); color: var(--accent-color); }
                 .b-btn.main { background: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.1); border-color: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.2); }
 				.b-btn.running { opacity: 0.6; animation: diag-pulse 1.5s infinite; pointer-events: none; }
 				.b-btn:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(100%); }
 				.b-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem; }
 				.b-btn.sm { font-size: 0.55rem; padding: 0.4rem 0.2rem; }
-
-				/* Light mode: .b-btn uses color:var(--text-primary) which is white in dark mode
-				   and may not cascade correctly into shadow DOM on theme switch. Explicit
-				   @media rule is the reliable guard (fires per-shadow-root stylesheet). */
-				@media (prefers-color-scheme: light) {
-					.b-btn { color: hsla(228, 45%, 8%, 1); background: hsla(0, 0%, 0%, 0.05); border-color: hsla(0, 0%, 0%, 0.12); }
-					.b-btn.main { background: hsla(196, 78%, 35%, 0.12); border-color: hsla(196, 78%, 35%, 0.25); color: hsla(196, 78%, 22%, 1); }
-					.b-btn:hover:not(:disabled) { background: hsla(0, 0%, 0%, 0.1); border-color: hsla(196, 78%, 35%, 1); color: hsla(196, 78%, 22%, 1); }
-				}
 
 				@keyframes diag-pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
 
