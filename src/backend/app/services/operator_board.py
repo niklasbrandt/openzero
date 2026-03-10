@@ -59,7 +59,7 @@ class OperatorBoardService:
 
 	async def _get_auth_token(self) -> str:
 		"""Retrieves or refreshes the authentication token using the central Planka service."""
-		from app.services.planka import get_planka_auth_token
+		from app.services.planka_common import get_planka_auth_token
 		if self._token:
 			return self._token
 		self._token = await get_planka_auth_token()
@@ -330,8 +330,8 @@ class OperatorBoardService:
 				self._apply_lang()
 
 				# Invalidate tree cache so dashboard picks up new names
-				from app.services.planka import _tree_cache
-				_tree_cache.clear()
+				from app.services.planka_common import clear_tree_cache
+				clear_tree_cache()
 
 				if renamed:
 					return f"Renamed: {', '.join(renamed)}"
