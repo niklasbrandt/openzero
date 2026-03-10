@@ -42,9 +42,11 @@ export const BUTTON_STYLES = `
 	/* Primary / filled — save, submit, add-confirm */
 	.btn-primary, .save-btn {
 		background: var(--accent-color, hsla(173, 80%, 40%, 1));
-		/* Dark mode: dark navy on 40% L teal → 4.91:1 (WCAG AA).
-		   Light mode: --on-accent-text overridden to #fff; white on 35% L teal → 4.87:1. */
-		color: var(--on-accent-text, hsla(228, 45%, 8%, 1));
+		/* light-dark() uses the inherited color-scheme property (not @media which fires based on
+		   OS preference regardless of data-theme). :root has color-scheme:dark by default and the
+		   [data-theme="light"] block sets it to light, cascading reliably into Shadow DOM.
+		   Light: #fff on 35% L teal → 4.75:1 (WCAG AA). Dark: navy on 40% L teal → 5.29:1. */
+		color: light-dark(#ffffff, var(--on-accent-text, hsla(228, 45%, 8%, 1)));
 		border-color: var(--accent-color, hsla(173, 80%, 40%, 1));
 		font-weight: 700;
 	}
@@ -92,12 +94,6 @@ export const BUTTON_STYLES = `
 	@media (forced-colors: active) {
 		button { border: 2px solid ButtonText; }
 		.btn-primary, .save-btn { background: ButtonText; color: ButtonFace; }
-	}
-	/* Light mode: --on-accent-text cascades as #fff from tokens.css, but shadow DOM may
-	   resolve it stale. Explict @media rule inside shadow DOM stylesheet is the reliable
-	   guard (media queries fire per-shadow-root; :host-context() removed in Chrome 132). */
-	@media (prefers-color-scheme: light) {
-		.btn-primary, .save-btn { color: #ffffff; }
 	}
 
 	/* ── Goo Mode: elastic buttons ──
