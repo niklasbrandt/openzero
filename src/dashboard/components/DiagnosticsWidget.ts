@@ -246,11 +246,12 @@ export class DiagnosticsWidget extends HTMLElement {
         // 3. Benchmarks Section
         const benchHtml = this.benchResults.length === 0 ? `<div class="empty-state">No benchmark data. Run a test below.</div>` :
             this.benchResults.map(r => {
-                if (r.error) {
+                if (r.error || r.tokens_per_second === 0) {
+                    const msg = r.error || 'No tokens received — model may be loading or unavailable';
                     return `
                         <div class="bench-res-item error has-tip" data-tip="Click a test button to retry.">
                             <span class="bench-tier">${r.tier}</span>
-                            <span class="bench-error">${this.esc(r.error)}</span>
+                            <span class="bench-error">${this.esc(msg)}</span>
                         </div>
                     `;
                 }
