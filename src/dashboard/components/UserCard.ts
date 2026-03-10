@@ -578,8 +578,8 @@ export class UserCard extends HTMLElement {
 					<div class="user-info">
 						<div class="avatar" aria-hidden="true">${(me.name || 'U')[0]}</div>
 						${this.isEditing
-							? `<div style="display:flex;flex-direction:column;gap:2px;"><label class="label" for="name-input" style="margin:0;">${this.tr('name_label', 'Name')}</label><input id="name-input" type="text" placeholder="${this.tr('ph_full_name', 'Full Name')}" value="${me.name || ''}" aria-label="${this.tr('aria_name_input', 'Your name')}" autocomplete="name"></div>`
-							: `<div>
+				? `<div style="display:flex;flex-direction:column;gap:2px;"><label class="label" for="name-input" style="margin:0;">${this.tr('name_label', 'Name')}</label><input id="name-input" type="text" placeholder="${this.tr('ph_full_name', 'Full Name')}" value="${me.name || ''}" aria-label="${this.tr('aria_name_input', 'Your name')}" autocomplete="name"></div>`
+				: `<div>
 									<h2>${me.name || 'User'}</h2>
 									<div class="label" style="text-transform: none; margin-top: 2px;">${me.residency || this.tr('resident', 'Resident')}</div>
 								</div>`}
@@ -651,9 +651,10 @@ export class UserCard extends HTMLElement {
 								<button class="theme-cycle-btn" id="theme-prev" title="${this.tr('prev_theme', 'Previous Theme')}" style="width: 32px; height: 44px; font-size: 0.8rem;">◀</button>
 								<select id="theme-preset-select" style="flex: 1;">
 									<option value="">${this.tr('select_preset', 'Select Preset...')}</option>
-									${Object.entries(this.themeOptions).map(([key, opt]) => `
-										<option value="${key}">${this.tr('theme_' + key, opt.label)}</option>
-									`).join('')}
+									${Object.entries(this.themeOptions).map(([key, opt]) => {
+					const isSelected = localStorage.getItem('theme-preset') === key ? 'selected' : '';
+					return `<option value="${key}" ${isSelected}>${this.tr('theme_' + key, opt.label)}</option>`;
+				}).join('')}
 								</select>
 								<button class="theme-cycle-btn" id="theme-next" title="${this.tr('next_theme', 'Next Theme')}" style="width: 32px; height: 44px; font-size: 0.8rem;">▶</button>
 							</div>
@@ -780,7 +781,9 @@ export class UserCard extends HTMLElement {
 					this.themeMode = (opt as HTMLElement).dataset.mode as any;
 					localStorage.setItem('theme-mode', this.themeMode);
 					this.applyThemeMode();
-					this.render(); // Redraw toggle state
+					this.shadowRoot?.querySelectorAll('.toggle-opt').forEach(el => {
+						el.classList.toggle('active', (el as HTMLElement).dataset.mode === this.themeMode);
+					});
 				});
 			});
 
@@ -792,13 +795,14 @@ export class UserCard extends HTMLElement {
 				let currentIdx = keys.indexOf(currentKey);
 				if (currentIdx === -1) currentIdx = 0;
 
-				const nextIdx = direction === 'next' 
-					? (currentIdx + 1) % keys.length 
+				const nextIdx = direction === 'next'
+					? (currentIdx + 1) % keys.length
 					: (currentIdx - 1 + keys.length) % keys.length;
-				
+
 				const nextKey = keys[nextIdx];
 				presetSelect.value = nextKey;
-				
+				localStorage.setItem('theme-preset', nextKey);
+
 				// Trigger the change event logic
 				const theme = this.themeOptions[nextKey] as any;
 				if (theme) {
@@ -824,6 +828,7 @@ export class UserCard extends HTMLElement {
 				const opt = presetSelect.value;
 				const theme = this.themeOptions[opt] as any;
 				if (theme) {
+					localStorage.setItem('theme-preset', opt);
 					(this.shadowRoot?.querySelector('#color-primary-input') as HTMLInputElement).value = theme.colors[0];
 					(this.shadowRoot?.querySelector('#color-secondary-input') as HTMLInputElement).value = theme.colors[1];
 					(this.shadowRoot?.querySelector('#color-tertiary-input') as HTMLInputElement).value = theme.colors[2];

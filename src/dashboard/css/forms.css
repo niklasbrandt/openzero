@@ -5,36 +5,7 @@
  * the planka board-link buttons used in the dashboard header.
  */
 
-/* -- Planka board-link buttons -- */
-.planka-btn {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	padding: 8px 16px;
-	background: rgba(255, 255, 255, 0.05);
-	border: 1px solid rgba(255, 255, 255, 0.1);
-	border-radius: 8px;
-	color: var(--text-primary, hsla(0, 0%, 100%, 1));
-	text-decoration: none;
-	font-size: 0.9rem;
-	font-weight: 500;
-	font-family: inherit;
-	cursor: pointer;
-	transition: all 0.2s ease;
-}
 
-.planka-btn:hover {
-	background: rgba(255, 255, 255, 0.1);
-	transform: translateY(-1px);
-}
-
-/* Reset browser UA appearance on <button> so it matches <a>.planka-btn exactly */
-button.planka-btn {
-	appearance: none;
-	-webkit-appearance: none;
-	box-sizing: border-box;
-	line-height: 1.5;
-}
 
 /* -- Base button -- */
 button {
@@ -59,46 +30,70 @@ button:hover {
 	border-color: var(--accent-color);
 }
 
-button:active { transform: scale(0.97); }
-button:disabled { opacity: 0.45; cursor: not-allowed; pointer-events: none; }
-button:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
+button:active {
+	transform: scale(0.97);
+}
+
+button:disabled {
+	opacity: 0.45;
+	cursor: not-allowed;
+	pointer-events: none;
+}
+
+button:focus-visible {
+	outline: 2px solid var(--accent-color);
+	outline-offset: 2px;
+}
 
 /* -- Primary / Save -- */
-.btn-primary, .save-btn {
+.btn-primary,
+.save-btn {
 	background: var(--accent-color);
 	color: hsla(225, 54%, 8%, 1);
 	border-color: var(--accent-color);
 	font-weight: 700;
 }
-.btn-primary:hover, .save-btn:hover {
+
+.btn-primary:hover,
+.save-btn:hover {
 	background: color-mix(in srgb, var(--accent-color, hsla(173, 80%, 40%, 1)) 85%, #000);
 	border-color: color-mix(in srgb, var(--accent-color, hsla(173, 80%, 40%, 1)) 85%, #000);
 	color: hsla(225, 54%, 8%, 1);
 }
 
 /* -- Ghost / Cancel -- */
-.btn-ghost, .cancel-btn {
+.btn-ghost,
+.cancel-btn {
 	background: transparent;
 	color: rgba(255, 255, 255, 0.6);
 	border-color: rgba(255, 255, 255, 0.12);
 }
-.btn-ghost:hover, .cancel-btn:hover {
+
+.btn-ghost:hover,
+.cancel-btn:hover {
 	background: rgba(255, 255, 255, 0.06);
 	border-color: rgba(255, 255, 255, 0.25);
 	color: rgba(255, 255, 255, 0.9);
 }
 
 /* -- Danger / Delete -- */
-.delete-btn, .btn-danger {
+.delete-btn,
+.btn-danger {
 	background: hsla(0, 84%, 60%, 0.1);
 	color: var(--color-danger-light, hsla(0, 91%, 71%, 1));
 	border-color: hsla(0, 84%, 60%, 0.25);
 }
-.delete-btn:hover, .btn-danger:hover {
+
+.delete-btn:hover,
+.btn-danger:hover {
 	background: hsla(0, 84%, 60%, 0.2);
 	border-color: hsla(0, 84%, 60%, 0.5);
 }
-.delete-btn:focus-visible, .btn-danger:focus-visible { outline-color: var(--color-danger-light, hsla(0, 91%, 71%, 1)); }
+
+.delete-btn:focus-visible,
+.btn-danger:focus-visible {
+	outline-color: var(--color-danger-light, hsla(0, 91%, 71%, 1));
+}
 
 /* -- Inputs & Textareas -- */
 input,
