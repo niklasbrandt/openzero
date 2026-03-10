@@ -102,7 +102,7 @@ async def start_telegram_bot():
 	bot_app.add_handler(CommandHandler("quarter", cmd_quarter))
 	bot_app.add_handler(CommandHandler("year", cmd_year))
 	bot_app.add_handler(CommandHandler("day", cmd_day))
-	bot_app.add_handler(CommandHandler("add", cmd_add_topic))
+	bot_app.add_handler(CommandHandler("learn", cmd_learn_topic))
 	bot_app.add_handler(CommandHandler("protocols", cmd_protocols))
 	bot_app.add_handler(CommandHandler("remind", cmd_remind))
 	bot_app.add_handler(CommandHandler("custom", cmd_custom))
@@ -811,7 +811,7 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 			"*Memory & Intelligence*\n"
 			"/search -- Conceptual search of the semantic knowledge vault\n"
 			"/memories -- List all core knowledge in permanent memory\n"
-			"/add -- Commit specific facts to memory\n"
+			"/learn -- Commit specific facts to memory\n"
 			"/unlearn -- Evolve past points in the vault\n"
 			"/protocols -- Inspect Z's agentic tools\n\n"
 			"*System*\n"
@@ -834,8 +834,8 @@ async def handle_help_callback(update: Update, context: ContextTypes.DEFAULT_TYP
 	await cmd_help(update, context)
 
 @owner_only
-async def cmd_add_topic(update: Update, context: ContextTypes.DEFAULT_TYPE):
-	topic = update.message.text.replace("/add", "").strip()
+async def cmd_learn_topic(update: Update, context: ContextTypes.DEFAULT_TYPE):
+	topic = update.message.text.replace("/learn", "").strip()
 	from app.services.memory import store_memory
 	await store_memory(topic)
 	await safe_reply(update, f"Stored: {topic}")
@@ -1011,7 +1011,7 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 	await save_global_message("telegram", "z", clean_reply, model=last_model_used.get())
 
 	# Background memory extraction -- learn from user message without blocking reply
-	from app.services.memory import extract_and_store_facts
+	from app.services.learning import extract_and_store_facts
 	asyncio.create_task(extract_and_store_facts(user_text))
 
 	# Prepend real time (strip any LLM-generated time header)
