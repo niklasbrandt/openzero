@@ -215,17 +215,22 @@ export class CalendarAgenda extends HTMLElement {
 					.card { height: 100%; display: flex; flex-direction: column; }
 					.header-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
 					.calendar-link {
-						color: var(--text-muted, hsla(0, 0%, 100%, 0.4));
-						transition: color 0.2s, background 0.2s;
+						color: var(--on-accent-text, hsla(228, 45%, 8%, 1));
+						background: var(--accent-color, hsla(173, 80%, 40%, 1));
+						transition: filter 0.2s, transform 0.1s;
 						display: flex;
 						align-items: center;
 						justify-content: center;
-						padding: 0.3rem;
+						padding: 0.5rem 1rem;
 						border-radius: var(--radius-sm, 0.35rem);
+						text-decoration: none;
+						font-weight: 600;
+						font-size: 0.85rem;
+						letter-spacing: 0.02em;
+						gap: 0.5rem;
 					}
 					.calendar-link:hover { 
-						color: var(--accent-color, hsla(173, 80%, 40%, 1)); 
-						background: var(--surface-hover, hsla(0, 0%, 100%, 0.06)); 
+						filter: brightness(1.2);
 					}
 					#filters { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
 					.filter-btn {
@@ -284,21 +289,20 @@ export class CalendarAgenda extends HTMLElement {
 						margin-right: 0.3rem;
 						vertical-align: middle;
 					}
-					@keyframes rainbow-border {
-						0% { border-color: hsla(0, 100%, 50%, 1); }
-						20% { border-color: hsla(32, 100%, 50%, 1); }
-						40% { border-color: hsla(60, 100%, 50%, 1); }
-						60% { border-color: hsla(120, 100%, 50%, 1); }
-						80% { border-color: hsla(210, 100%, 50%, 1); }
-						100% { border-color: hsla(282, 100%, 50%, 1); }
+					@keyframes theme-pulse-border {
+						0% { border-color: var(--accent-color, hsla(173, 80%, 40%, 1)); }
+						50% { border-color: var(--accent-secondary, hsla(216, 100%, 50%, 1)); }
+						100% { border-color: var(--accent-color, hsla(173, 80%, 40%, 1)); }
 					}
 					.birthday-item {
-						border: 1px solid hsla(0, 100%, 50%, 1) !important;
-						animation: rainbow-border 4s linear infinite;
+						border-width: 1px !important;
+						border-style: solid !important;
+						border-color: var(--accent-color, hsla(173, 80%, 40%, 1));
+						animation: theme-pulse-border 4s ease-in-out infinite;
 						background: var(--surface-card-hover, hsla(0, 0%, 100%, 0.05)) !important;
 					}
-					.birthday-item .day { color: hsla(329, 86%, 70%, 1) !important; }
-					.birthday-item .summary { color: hsla(330, 95%, 85%, 1) !important; }
+					.birthday-item .day { color: var(--accent-color, hsla(173, 80%, 40%, 1)) !important; }
+					.birthday-item .summary { color: var(--accent-secondary, hsla(216, 100%, 50%, 1)) !important; }
 					.empty-state { font-size: 0.85rem; color: var(--text-secondary, hsla(0, 0%, 100%, 0.7)); text-align: center; padding: 2rem; }
 					.filter-btn:focus-visible, .calendar-link:focus-visible { 
 						outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1)); 
@@ -328,13 +332,14 @@ export class CalendarAgenda extends HTMLElement {
 					${this.tr('calendar_agenda', 'Calendar')}
 				</h2>
 					<a href="https://calendar.google.com" target="_blank" class="calendar-link" title="${this.tr('aria_open_google_calendar', 'Open Google Calendar (opens in new tab)')}" aria-label="${this.tr('aria_open_google_calendar', 'Open Google Calendar (opens in new tab)')}" rel="noopener noreferrer">
-							<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+							<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
 								<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
 								<line x1="16" y1="2" x2="16" y2="6"></line>
 								<line x1="8" y1="2" x2="8" y2="6"></line>
 								<line x1="3" y1="10" x2="21" y2="10"></line>
 								<polyline points="8 14 12 18 16 14"></polyline>
 							</svg>
+							${this.tr('open_calendar', 'Open Calendar')}
 						</a>
 					</div>
 					<div id="filters"></div>
