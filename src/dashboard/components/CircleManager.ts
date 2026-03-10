@@ -238,7 +238,7 @@ export class CircleManager extends HTMLElement {
 					${FEEDBACK_STYLES}
 					h2 { font-size: 1.5rem; font-weight: bold; margin: 0; color: var(--text-primary, hsla(0, 0%, 100%, 1)); letter-spacing: 0.02em; display: flex; align-items: center; gap: 0.5rem; overflow-wrap: break-word; word-break: break-word; min-width: 0; flex: 1; }
 					.h-icon { display: inline-flex; width: 32px; height: 32px; background: ${accent}; border-radius: var(--radius-sm, 0.4rem); align-items: center; justify-content: center; flex-shrink: 0; }
-					.subtitle { font-size: 0.65rem; font-weight: 400; color: var(--text-muted, hsla(0, 0%, 100%, 0.4)); margin-left: 0.5rem; text-transform: uppercase; letter-spacing: 0.1em; }
+					.subtitle { font-size: 0.65rem; font-weight: 400; color: var(--text-muted, hsla(0, 0%, 100%, 0.7)); margin-left: 0.5rem; text-transform: uppercase; letter-spacing: 0.1em; }
 					:host { display: block; }
 					.add-form {
 						display: grid;
@@ -318,7 +318,7 @@ export class CircleManager extends HTMLElement {
 				}
 				.name { font-weight: 700; color: var(--text-primary, hsla(0, 0%, 100%, 1)); display: block; overflow-wrap: break-word; }
 				.rel { font-size: 0.8rem; color: ${accent}; display: block; overflow-wrap: break-word; font-weight: 600; }
-				.ctx { font-size: 0.85rem; color: var(--text-muted, hsla(0, 0%, 100%, 0.4)); margin: 0.5rem 0 0 0; overflow-wrap: break-word; }
+				.ctx { font-size: 0.85rem; color: var(--text-muted, hsla(0, 0%, 100%, 0.7)); margin: 0.5rem 0 0 0; overflow-wrap: break-word; }
 				.edit-btn { margin-right: 0; }
 				.edit-btn:hover { background: var(--surface-card-hover, hsla(0, 0%, 100%, 0.06)); border-color: var(--border-subtle, hsla(0, 0%, 100%, 0.1)); }
 				.item-actions {
@@ -396,8 +396,8 @@ export class CircleManager extends HTMLElement {
 						${!this.isAdding ? `
 						<div style="display: flex; gap: 0.5rem;">
 							${this.circleType === 'unified' ? `
-								<button id="addInnerBtn" class="btn-primary" style="background: var(--surface-card); color: var(--circle-inner-color); border-color: var(--circle-inner-color);">+ Inner</button>
-								<button id="addCloseBtn" class="btn-primary" style="background: var(--surface-card); color: var(--circle-close-color); border-color: var(--circle-close-color);">+ Close</button>
+								<button id="addInnerBtn" class="btn-primary" aria-label="${this.tr('aria_add_inner', 'Add person to Inner Circle')}" style="background: var(--surface-card); color: var(--circle-inner-color); border-color: var(--circle-inner-color);">+ Inner</button>
+								<button id="addCloseBtn" class="btn-primary" aria-label="${this.tr('aria_add_close', 'Add person to Close Circle')}" style="background: var(--surface-card); color: var(--circle-close-color); border-color: var(--circle-close-color);">+ Close</button>
 							` : `<button id="showAddBtn" class="btn-primary" aria-label="${this.tr('aria_add_person', 'Add a new person to')} ${title}">${this.tr('new_person', '+ New Person')}</button>`}
 						</div>
 						` : ''}

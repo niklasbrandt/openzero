@@ -1769,7 +1769,7 @@ def _install_backend_mocks():
 		"sentence_transformers",
 		"langchain_openai", "langchain_core", "langchain_core.messages",
 		"langgraph", "langgraph.prebuilt",
-		"httpx", "pytz",
+		"httpx", "pytz", "sqlalchemy", "sqlalchemy.orm", "sqlalchemy.ext.asyncio",
 	]:
 		if name not in sys.modules:
 			mods[name] = types.ModuleType(name)
@@ -1798,6 +1798,24 @@ def _install_backend_mocks():
 	mods["app.services"].agent_actions = mods["app.services.agent_actions"]
 	mods["app.services"].timezone = mods["app.services.timezone"]
 	mods["app.services"].memory = mods["app.services.memory"]
+
+	# Database Mocks (to avoid sqlalchemy dependency)
+	mods["sqlalchemy"].select = lambda *a, **k: None
+	mods["app.models.db"].Person = type("Person", (), {})
+	mods["app.models.db"].Preference = type("Preference", (), {})
+
+	class MockAsyncSession:
+		async def __aenter__(self): return self
+		async def __aexit__(self, *a, **k): pass
+		async def execute(self, *a, **k):
+			return types.SimpleNamespace(
+				scalar_one_or_none=lambda: None,
+				scalars=lambda: types.SimpleNamespace(all=lambda: [])
+			)
+		async def commit(self): pass
+		def add(self, *a, **k): pass
+
+	mods["app.models.db"].AsyncSessionLocal = MockAsyncSession
 
 	mods["app.services.agent_actions"].AVAILABLE_TOOLS = []
 
@@ -2791,7 +2809,7 @@ class TestCmdBoardHTMLSafety:
 
 	_TELEGRAM_PATH = os.path.join(
 		os.path.dirname(__file__), "..", "src", "backend",
-		"app", "api", "telegram.py"
+		"app", "api", "telegram_bot.py"
 	)
 
 	def _read_telegram_src(self) -> str:

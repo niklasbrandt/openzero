@@ -83,10 +83,12 @@
 	     Fades out as soon as main.ts signals readiness. -->
 	<div id="page-loader" aria-hidden="true"></div>
 
-	<!-- Skip navigation — EN 301 549 / WCAG 2.4.1 -->
-	<a href="#main-content" class="skip-link" data-tr-text="skip_to_content">Skip to main content</a>
+	<header role="banner">
+		<!-- Skip navigation — EN 301 549 / WCAG 2.4.1 -->
+		<a href="#main-content" class="skip-link" data-tr-text="skip_to_content">Skip to main content</a>
+	</header>
 
-	<nav class="sidebar-nav" aria-label="Dashboard section navigation" data-tr-aria="aria_nav_landmark">
+	<nav class="sidebar-nav" aria-label="Sidebar navigation" data-tr-aria="aria_nav_sidebar">
 		<a href="#section-overview" data-section="section-overview" aria-label="Overview">
 			<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
 				stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
@@ -170,8 +172,7 @@
 	<main id="main-content">
 		<!-- ── Top sticky carousel-style anchor nav (visible 700–1099 px) ──
 		     Replaces sidebar at mid-viewports. WCAG 2.4.1 / EN 301 549 §9.2.4.1 -->
-		<nav class="top-marquee-nav" id="top-marquee-nav" aria-label="Dashboard section navigation"
-			data-tr-aria="aria_nav_landmark">
+		<nav class="top-marquee-nav" id="top-marquee-nav" aria-label="Top navigation" data-tr-aria="aria_nav_top">
 			<a href="#section-overview" data-section="section-overview" aria-label="Overview">
 				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
 					stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -364,24 +365,26 @@
 
 			<welcome-onboarding></welcome-onboarding>
 
-			<section class="dashboard-card full-width-card" id="section-overview">
+			<section class="dashboard-card full-width-card" id="section-overview" aria-label="Overview"
+				data-tr-aria="nav_overview">
 				<div class="overview-grid">
-					<div class="overview-col chat-col" id="section-chat" aria-label="Chat" data-tr-aria="nav_chat">
+					<section class="overview-col chat-col" id="section-chat" aria-label="Chat" data-tr-aria="nav_chat">
 						<chat-prompt></chat-prompt>
-					</div>
+					</section>
 
 					<div class="overview-divider" aria-hidden="true"></div>
 
-					<div class="overview-col projects-col" id="section-projects" aria-label="Projects">
+					<section class="overview-col projects-col" id="section-projects" aria-label="Projects"
+						data-tr-aria="projects">
 						<project-tree></project-tree>
-					</div>
+					</section>
 
 					<div class="overview-divider" aria-hidden="true"></div>
 
-					<div class="overview-col calendar-col" id="section-calendar" aria-label="Calendar"
+					<section class="overview-col calendar-col" id="section-calendar" aria-label="Calendar"
 						data-tr-aria="nav_calendar">
 						<calendar-agenda></calendar-agenda>
-					</div>
+					</section>
 				</div>
 			</section>
 

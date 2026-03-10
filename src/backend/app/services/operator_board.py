@@ -19,6 +19,7 @@ the user every morning.
 
 import httpx
 import logging
+from typing import Optional, Any
 from app.config import settings
 from app.services.translations import (
 	get_planka_entity_names,
@@ -31,7 +32,7 @@ class OperatorBoardService:
 	def __init__(self) -> None:
 		self._lang = "en"
 		self._apply_lang()
-		self._token = None
+		self._token: Optional[str] = None
 		# Cached IDs so we can rename without searching by name
 		self._project_id: str | None = None
 		self._board_id: str | None = None
