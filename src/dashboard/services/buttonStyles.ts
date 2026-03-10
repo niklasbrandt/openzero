@@ -93,6 +93,12 @@ export const BUTTON_STYLES = `
 		button { border: 2px solid ButtonText; }
 		.btn-primary, .save-btn { background: ButtonText; color: ButtonFace; }
 	}
+	/* Light mode: --on-accent-text cascades as #fff from tokens.css, but shadow DOM may
+	   resolve it stale. Explict @media rule inside shadow DOM stylesheet is the reliable
+	   guard (media queries fire per-shadow-root; :host-context() removed in Chrome 132). */
+	@media (prefers-color-scheme: light) {
+		.btn-primary, .save-btn { color: #ffffff; }
+	}
 
 	/* ── Goo Mode: elastic buttons ──
 	 * Activates when the host element carries .oz-goo (set via initGoo()).
