@@ -30,7 +30,7 @@ from contextvars import ContextVar
 import uuid
 import asyncio
 import time
-from sqlalchemy import select as sa_select
+from sqlalchemy import select
 from app.models.db import AsyncSessionLocal, Person
 
 logger = logging.getLogger(__name__)
@@ -454,7 +454,7 @@ async def _get_user_lang() -> str:
 	global _cached_user_lang
 	try:
 		async with AsyncSessionLocal() as s:
-			res = await s.execute(sa_select(Person).where(Person.circle_type == "identity"))
+			res = await s.execute(select(Person).where(Person.circle_type == "identity"))
 			ident = res.scalar_one_or_none()
 			if ident:
 				_cached_user_lang = getattr(ident, "language", "en") or "en"
