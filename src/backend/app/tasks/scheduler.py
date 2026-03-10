@@ -1,3 +1,4 @@
+import os
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 from app.config import settings
@@ -6,7 +7,6 @@ import pytz
 import logging
 import re
 import subprocess
-import os
 
 logger = logging.getLogger(__name__)
 
