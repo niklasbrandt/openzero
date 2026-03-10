@@ -49,7 +49,7 @@ button:focus-visible {
 .btn-primary,
 .save-btn {
 	background: var(--accent-color);
-	color: hsla(225, 54%, 8%, 1);
+	color: var(--on-accent-text, #ffffff);
 	border-color: var(--accent-color);
 	font-weight: 700;
 }
@@ -58,7 +58,7 @@ button:focus-visible {
 .save-btn:hover {
 	background: color-mix(in srgb, var(--accent-color, hsla(173, 80%, 40%, 1)) 85%, #000);
 	border-color: color-mix(in srgb, var(--accent-color, hsla(173, 80%, 40%, 1)) 85%, #000);
-	color: hsla(225, 54%, 8%, 1);
+	color: var(--on-accent-text, #ffffff);
 }
 
 /* -- Ghost / Cancel -- */
