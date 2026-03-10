@@ -168,8 +168,8 @@
 		--tooltip-border: hsla(228, 45%, 4%, 0.1);
 		--tooltip-text: hsla(228, 45%, 4%, 1);
 		--tooltip-shadow: 0 12px 48px rgba(0, 0, 0, 0.1);
-		--accent-primary-l: 35%;
-		--accent-secondary-l: 45%;
+		--accent-primary-l: 28%;
+		--accent-secondary-l: 35%;
 		--accent-tertiary-l: 50%;
 		--color-danger: hsla(0, 84%, 42%, 1);
 		--color-danger-light: hsla(0, 84%, 58%, 1);

@@ -688,21 +688,21 @@ async def build_system_prompt(user_name: str, user_profile: dict) -> tuple[str, 
 			logger.debug("chat_with_context: personal context refresh failed", exc_info=True)
 	personal_block = ("\n\n" + personal_ctx) if personal_ctx else ""
 
-	# Inject agent skill modules (operational expertise — lower priority than personal context)
-	from app.services.agent_context import get_agent_skills_for_prompt, refresh_agent_context
-	agent_ctx = get_agent_skills_for_prompt()
+	# Inject agent context (operational expertise — lower priority than personal context)
+	from app.services.agent_context import get_agent_context_for_prompt, refresh_agent_context
+	agent_ctx = get_agent_context_for_prompt()
 	if not agent_ctx:
 		try:
 			await refresh_agent_context()
-			agent_ctx = get_agent_skills_for_prompt()
+			agent_ctx = get_agent_context_for_prompt()
 		except Exception:
 			logger.debug("chat_with_context: agent context refresh failed", exc_info=True)
-	agent_skills_block = ("\n\n" + agent_ctx) if agent_ctx else ""
+	agent_ctx_block = ("\n\n" + agent_ctx) if agent_ctx else ""
 
 	formatted_system_prompt = SYSTEM_PROMPT_CHAT.format(
 		current_time=simplified_time,
 		user_name=user_name
-	) + personal_block + agent_skills_block + user_id_context + lang_directive + personality_directive
+	) + personal_block + agent_ctx_block + user_id_context + lang_directive + personality_directive
 
 	context_header = f"Current Local Time (Raw): {format_date_full(now)}\n"
 	context_header += f"Current Formatted Time (Use This): {simplified_time}\n\n"
