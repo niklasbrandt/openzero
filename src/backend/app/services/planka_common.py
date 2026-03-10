@@ -1,6 +1,5 @@
 import httpx
 import logging
-import time
 from app.config import settings
 
 logger = logging.getLogger(__name__)

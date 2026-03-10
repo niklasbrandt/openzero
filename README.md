@@ -241,7 +241,7 @@ All commands are available via the Telegram bot and the dashboard chat interface
 | `/search`    | Semantic search of the knowledge vault -- finds by meaning, not keywords.                                                                                       |
 | `/memories`  | List all core knowledge currently in permanent memory.                                                                                                          |
 | `/personal`  | Display the personal context files currently loaded from the `personal/` folder (about-me, requirements and more).                                              |
-| `/skills`    | Display the agent skill modules currently loaded from the `agent/` folder (kanban, planka, agent-rules and more).                                               |
+| `/agent`    | Display the agent skill modules currently loaded from the `agent/` folder (kanban, planka, agent-rules and more).                                               |
 | `/unlearn`   | Refine Z's memory by evolving or removing specific points in the vault.                                                                                         |
 | `/add`       | Commit specific facts to Z's permanent knowledge vault (bypasses the noise filter).                                                                             |
 | `/remind`    | Set a temporary recurring reminder with interval and expiry (e.g., every 30 min for 4h).                                                                        |
@@ -387,7 +387,7 @@ Edit the files in `agent/` to tailor Z's expertise and rules to your workflow. T
 - Skill files are injected after the personal context block in each system prompt, with a higher token budget (1,800 tokens vs 800 for personal context) to accommodate detailed methodology knowledge.
 - Files are compressed in two stages (deterministic, then LLM-assisted) to fit within the budget. The LLM compressor is instructed to preserve all technical terms, WIP limits, column names, and operational directives.
 - The folder is bind-mounted read-only (`./agent:/app/agent:ro`). The backend cannot write to it.
-- Use `/skills` in the dashboard chat to inspect exactly what Z has loaded from the folder.
+- Use `/agent` in the dashboard chat to inspect exactly what Z has loaded from the folder.
 
 ### Deployment Expectations
 

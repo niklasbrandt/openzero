@@ -17,7 +17,6 @@ import re
 import os
 import json
 import httpx
-import uuid
 import io
 from datetime import datetime
 import logging
@@ -472,6 +471,7 @@ async def safe_edit(message, text: str, parse_mode="HTML", reply_markup=None):
 async def cmd_board(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	"""Show the exact Planka project → board → lists that Z targets, with a clickable link."""
 	try:
+		import html
 		from app.services.planka import get_planka_auth_token
 		from app.services.operator_board import operator_service
 
@@ -485,14 +485,14 @@ async def cmd_board(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 			# Fetch project details for name
 			proj_resp = await client.get(f"/api/projects/{project_id}")
-			proj_name = _html.escape(proj_resp.json().get("item", {}).get("name", "Unknown"))
+			proj_name = html.escape(proj_resp.json().get("item", {}).get("name", "Unknown"))
 
 			# Fetch board + lists
 			b_resp = await client.get(f"/api/boards/{board_id}", params={"included": "lists"})
 			b_data = b_resp.json()
-			board_name = _html.escape(b_data.get("item", {}).get("name", "Unknown"))
+			board_name = html.escape(b_data.get("item", {}).get("name", "Unknown"))
 			lists = b_data.get("included", {}).get("lists", [])
-			list_names = [f"  • {_html.escape(l['name'])} (id: {l['id']})" for l in lists]
+			list_names = [f"  • {html.escape(l['name'])} (id: {l['id']})" for l in lists]
 
 		base_url = settings.BASE_URL.rstrip('/')
 		link = f"{base_url}/api/dashboard/planka-redirect?target_board_id={board_id}"
