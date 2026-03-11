@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 async def extract_and_store_facts(user_message: str):
 	"""
 	Post-processing memory extraction.
-	Runs a fast instant-tier LLM call to extract learnable facts from user messages,
+	Runs a fast fast-tier LLM call to extract learnable facts from user messages,
 	then stores each fact via store_memory(). This is the primary learning mechanism.
 	"""
 	if not user_message or len(user_message.strip()) < 20:
@@ -46,7 +46,7 @@ async def extract_and_store_facts(user_message: str):
 			f"Message: {clean_input}"
 		)
 
-		result = await chat(extraction_prompt, tier="instant")
+		result = await chat(extraction_prompt, tier="fast")
 		result = result.strip()
 
 		# Parse result

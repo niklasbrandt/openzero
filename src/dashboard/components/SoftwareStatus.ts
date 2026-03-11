@@ -190,8 +190,8 @@ export class SoftwareStatus extends HTMLElement {
 		const intelHtml = `
 			<div class="intel-stats">
 				<div class="intel-stat">
-					<span class="intel-label">Instant</span>
-					<span class="intel-value">0.6B / ${(tiers.instant || {}).threads || 7}T</span>
+					<span class="intel-label">Fast</span>
+					<span class="intel-value">0.6B / ${(tiers.fast || {}).threads || 7}T</span>
 				</div>
 				<div class="intel-stat">
 					<span class="intel-label">Deep</span>

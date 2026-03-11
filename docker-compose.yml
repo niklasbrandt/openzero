@@ -30,7 +30,7 @@ services:
       - internal
 
   # --- 2-Tier Local Intelligence (llama-server / llama.cpp) ---
-  # instant: small fast model for trivial tasks; deep: full 8B for everything else.
+  # fast: small fast model for trivial tasks; deep: full 8B for everything else.
   # See .env.example for hardware sizing guide and model recommendations.
 
   llm-instant:
@@ -81,7 +81,7 @@ services:
     environment:
       - MODEL_URL=${LLM_DEEP_MODEL_URL}
       - MODEL_FILE=${LLM_DEEP_MODEL_FILE:-Qwen3-8B-Q4_K_M.gguf}
-      - KEEP_MODELS=${LLM_INSTANT_MODEL_FILE:-Qwen3-0.6B-Q4_K_M.gguf},${LLM_DEEP_MODEL_FILE:-Qwen3-8B-Q4_K_M.gguf}
+      - KEEP_MODELS=${LLM_FAST_MODEL_FILE:-Qwen3-0.6B-Q4_K_M.gguf},${LLM_DEEP_MODEL_FILE:-Qwen3-8B-Q4_K_M.gguf}
       - PORT=8083
       - THREADS=${LLM_DEEP_THREADS:-8}
       - CTX_SIZE=${LLM_DEEP_CTX:-6144}
@@ -195,6 +195,8 @@ services:
       postgres:
         condition: service_healthy
       qdrant:
+        condition: service_started
+      llm-instant:
         condition: service_started
       llm-deep:
         condition: service_started
