@@ -366,6 +366,7 @@ export class CircleManager extends HTMLElement {
 					}
 					@media (forced-colors: active) {
 						.h-icon svg { stroke: white; }
+					}
 					.unified-grid { display: grid; grid-template-columns: 1fr auto 1fr; gap: 1rem; align-items: stretch; }
 					.unified-col { display: flex; flex-direction: column; gap: 0.5rem; }
 					.unified-sep { width: 1px; background: var(--border-subtle, hsla(0, 0%, 100%, 0.1)); height: auto; margin: 0 0.5rem; }
