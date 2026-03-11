@@ -1736,7 +1736,7 @@ async def server_info() -> dict:
 
 	# --- Per-tier LLM props (threads, ctx, etc.) ---
 	tier_urls = {
-		"instant": settings.LLM_INSTANT_URL,
+		"fast": settings.LLM_FAST_URL,
 		"deep": settings.LLM_DEEP_URL,
 	}
 	physical_cores = os.cpu_count() or 0
@@ -1790,7 +1790,7 @@ async def server_info() -> dict:
 
 			# Thread detection from env (the actual configured value)
 			env_thread_map = {
-				"instant": os.environ.get("LLM_INSTANT_THREADS", "7"),
+				"fast": os.environ.get("LLM_FAST_THREADS", "7"),
 				"deep": os.environ.get("LLM_DEEP_THREADS", "7"),
 			}
 			configured_threads = int(env_thread_map.get(tier_name, "4"))
@@ -1956,7 +1956,7 @@ async def server_info() -> dict:
 				# models volume disk usage — exec `du -sb /models` in any running LLM container
 				_llm_containers = [
 					c for c in containers
-					if c.get("Labels", {}).get("com.docker.compose.service", "") in ("llm-instant", "llm-deep")
+					if c.get("Labels", {}).get("com.docker.compose.service", "") in ("llm-fast", "llm-deep")
 				]
 				if _llm_containers:
 					try:
@@ -2202,14 +2202,16 @@ async def get_llm_config() -> dict:
 	return {
 		"tiers": [
 			{
-				"tier": "instant",
-				"model": _model_display("LLM_INSTANT_MODEL_FILE", settings.LLM_MODEL_INSTANT),
+				"tier": "fast",
+				"label": "Fast (0.6B)",
+				"icon": "zap",
+				"model": _model_display("LLM_FAST_MODEL_FILE", settings.LLM_MODEL_FAST),
 				"use_case": "Greetings, confirmations, trivial Q&A, memory distillation",
-				"threads": int(os.environ.get("LLM_INSTANT_THREADS", "8")),
-				"ctx": int(os.environ.get("LLM_INSTANT_CTX", "4096")),
-				"batch": int(os.environ.get("LLM_INSTANT_BATCH", "512")),
-				"predict": int(os.environ.get("LLM_INSTANT_PREDICT", "512")),
-				"ram_est_gb": _ram_est("LLM_INSTANT_MODEL_FILE", settings.LLM_MODEL_INSTANT),
+				"threads": int(os.environ.get("LLM_FAST_THREADS", "8")),
+				"ctx": int(os.environ.get("LLM_FAST_CTX", "4096")),
+				"batch": int(os.environ.get("LLM_FAST_BATCH", "512")),
+				"predict": int(os.environ.get("LLM_FAST_PREDICT", "512")),
+				"ram_est_gb": _ram_est("LLM_FAST_MODEL_FILE", settings.LLM_MODEL_FAST),
 			},
 			{
 				"tier": "deep",
@@ -2290,12 +2292,12 @@ async def benchmark_cpu() -> dict:
 
 
 @router.post("/benchmark/llm")
-async def benchmark_llm(tier: str = "instant"):
+async def benchmark_llm(tier: str = "fast"):
 	"""Run a fixed-prompt benchmark against a specific LLM tier and measure tokens/second."""
 	import time
 
 	tier_map = {
-		"instant": (settings.LLM_INSTANT_URL, settings.LLM_MODEL_INSTANT),
+		"fast": (settings.LLM_FAST_URL, settings.LLM_MODEL_FAST),
 		"deep": (settings.LLM_DEEP_URL, settings.LLM_MODEL_DEEP),
 	}
 	if tier not in tier_map:
@@ -2364,7 +2366,7 @@ async def benchmark_llm(tier: str = "instant"):
 		# Fetch thread config for this tier
 		import os
 		thread_env_map = {
-			"instant": "LLM_INSTANT_THREADS",
+			"fast": "LLM_FAST_THREADS",
 			"deep": "LLM_DEEP_THREADS",
 		}
 		configured_threads = int(os.environ.get(thread_env_map.get(tier, ""), "0"))

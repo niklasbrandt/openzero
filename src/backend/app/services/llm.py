@@ -6,7 +6,7 @@ of different LLM providers (local llama-server, Groq, OpenAI) and manages the
 system persona 'Z'.
 
 Architecture: 3-Tier Local Intelligence
-- Instant (Qwen3-0.6B): greetings, confirmations, trivial Q&A, memory distillation
+- Fast (Qwen3-0.6B): greetings, confirmations, trivial Q&A, memory distillation
 - Standard (8B): normal conversation, moderate reasoning, tool-intent
 - Deep (14B+): complex analysis, briefings, planning, creative writing
 
@@ -413,7 +413,7 @@ _FAST_PATH_KEYWORDS: list[str] = [
 # so the direct-chat path still runs with ACTION_TAG_DOCS injected.
 # ---------------------------------------------------------------------------
 async def _classify_intent(user_message: str) -> bool:
-	"""Ask the instant model whether the message requires a tool action."""
+	"""Ask the fast model whether the message requires a tool action."""
 	classifier_system = (
 		"You are an intent classifier. "
 		"Reply with exactly the word 'yes' if the user's message requires ANY of: "
@@ -426,7 +426,7 @@ async def _classify_intent(user_message: str) -> bool:
 	try:
 		async with httpx.AsyncClient(timeout=httpx.Timeout(8.0, connect=5.0)) as client:
 			resp = await client.post(
-				f"{settings.LLM_INSTANT_URL}/v1/chat/completions",
+				f"{settings.LLM_FAST_URL}/v1/chat/completions",
 				json={
 					"messages": [
 						{"role": "system", "content": classifier_system},
@@ -739,7 +739,7 @@ SMART_KEYWORDS = [
 # Per-tier max_tokens caps — prevents runaway generation on CPU.
 # These are request-level caps; server-side N_PREDICT acts as a hard ceiling.
 TIER_MAX_TOKENS = {
-	"instant": 250,
+	"fast": 250,
 	"deep": 4000,
 }
 
@@ -747,7 +747,7 @@ TIER_MAX_TOKENS = {
 # hangs for minutes when the CPU is under load.  Deep is generous because
 # briefings and CoT blocks can legitimately take 3+ minutes on a single-board.
 TIER_TIMEOUTS = {
-	"instant": 25.0,
+	"fast": 25.0,
 	"deep": 180.0,
 }
 
@@ -759,9 +759,9 @@ def select_tier(user_message: str, tier_override: Optional[str] = None) -> tuple
 		msg_lower = (user_message or "").lower().strip()
 		msg_len = len(user_message) if user_message else 0
 
-		# Instant: truly trivial (pure greetings / ack / very short and not complex)
+		# Fast: truly trivial (pure greetings / ack / very short and not complex)
 		if (msg_len < 15 or msg_lower in TRIVIAL_PATTERNS) and not any(kw in msg_lower for kw in SMART_KEYWORDS):
-			tier = "instant"
+			tier = "fast"
 		# Deep: everything else (conversation, banter, reasoning, briefings, code)
 		else:
 			tier = "deep"
@@ -771,7 +771,7 @@ def select_tier(user_message: str, tier_override: Optional[str] = None) -> tuple
 		tier = "deep"
 
 	tier_map = {
-		"instant": (settings.LLM_INSTANT_URL, settings.LLM_MODEL_INSTANT),
+		"fast": (settings.LLM_FAST_URL, settings.LLM_MODEL_FAST),
 		"deep": (settings.LLM_DEEP_URL, settings.LLM_MODEL_DEEP),
 	}
 	base_url, model_name = tier_map.get(tier, tier_map["deep"])
@@ -839,20 +839,20 @@ async def chat_stream(
 		# Request-level token cap prevents runaway generation
 		max_tok = kwargs.get("max_tokens") or TIER_MAX_TOKENS.get(tier_name, 400)
 
-		# Qwen3: disable thinking for instant (latency critical);
+		# Qwen3: disable thinking for fast (latency critical);
 		# deep tier can think — CoT improves briefing quality, blocks get stripped.
 		request_thinking = tier_name == "deep"
 
-		# Qwen3 /no_think injection: suppress reasoning for instant so content
+		# Qwen3 /no_think injection: suppress reasoning for fast so content
 		# tokens are not eaten by CoT.
 		if not request_thinking:
 			messages[0]["content"] = messages[0]["content"] + "\n/no_think"
 
-		# Tier-aware read timeout — instant must fail fast, not hang for minutes.
+		# Tier-aware read timeout — fast must fail fast, not hang for minutes.
 		read_timeout = TIER_TIMEOUTS.get(tier_name, 180.0)
-		# Instant tier: single attempt then fall back to deep (CPU may be loaded).
+		# Fast tier: single attempt then fall back to deep (CPU may be loaded).
 		# Deep tier: up to 3 retries as before.
-		max_attempts = 1 if tier_name == "instant" else 3
+		max_attempts = 1 if tier_name == "fast" else 3
 
 		last_err = None
 		for attempt in range(max_attempts):
@@ -909,9 +909,9 @@ async def chat_stream(
 								continue
 						return
 			except httpx.ReadTimeout:
-				if tier_name == "instant":
-					# Instant model is overloaded — fall back to deep silently.
-					logger.warning("LLM instant timeout after %.0fs — falling back to deep", read_timeout)
+				if tier_name == "fast":
+					# Fast model is overloaded — fall back to deep silently.
+					logger.warning("LLM fast timeout after %.0fs — falling back to deep", read_timeout)
 					_, fallback_url, fallback_name = select_tier(user_message, "deep")
 					last_model_used.set(f"Deep: {settings.LLM_MODEL_DEEP} (fallback)")
 					fall_messages = messages
@@ -947,7 +947,7 @@ async def chat_stream(
 										continue
 								return
 					except Exception as fb_err:
-						logger.error("Instant fallback (deep) also failed [%s]: %s", type(fb_err).__name__, fb_err)
+						logger.error("Fast fallback (deep) also failed [%s]: %s", type(fb_err).__name__, fb_err)
 						yield "I'm still waking up. Try again in a moment."
 					return
 				else:
@@ -957,9 +957,9 @@ async def chat_stream(
 						await asyncio.sleep(3)
 					continue
 			except httpx.HTTPStatusError as http_err:
-				if http_err.response.status_code == 400 and tier_name == "instant":
-					# Context overflow on instant tier — fall back to deep silently.
-					logger.warning("LLM instant 400 (context overflow) — falling back to deep")
+				if http_err.response.status_code == 400 and tier_name == "fast":
+					# Context overflow on fast tier — fall back to deep silently.
+					logger.warning("LLM fast 400 (context overflow) — falling back to deep")
 					_, fallback_url, _ = select_tier(user_message, "deep")
 					last_model_used.set(f"Deep: {settings.LLM_MODEL_DEEP} (fallback)")
 					fall_messages = messages
@@ -995,7 +995,7 @@ async def chat_stream(
 										continue
 								return
 					except Exception as fb_err:
-						logger.error("Instant fallback (deep) also failed after 400 [%s]: %s", type(fb_err).__name__, fb_err)
+						logger.error("Fast fallback (deep) also failed after 400 [%s]: %s", type(fb_err).__name__, fb_err)
 						yield "I'm still waking up. Try again in a moment."
 					return
 				else:
@@ -1003,8 +1003,8 @@ async def chat_stream(
 					yield "I'm having trouble reaching the local model. Please try again."
 					return
 			except Exception as e:
-				if tier_name == "instant":
-					logger.warning("LLM instant connection error (%s) — falling back to deep", type(e).__name__)
+				if tier_name == "fast":
+					logger.warning("LLM fast connection error (%s) — falling back to deep", type(e).__name__)
 					_, fallback_url, _ = select_tier(user_message, "deep")
 					last_model_used.set(f"Deep: {settings.LLM_MODEL_DEEP} (fallback)")
 					fall_messages = messages
@@ -1040,7 +1040,7 @@ async def chat_stream(
 										continue
 								return
 					except Exception as fb_err:
-						logger.error("Instant fallback (deep) also failed after ConnectError [%s]: %s", type(fb_err).__name__, fb_err)
+						logger.error("Fast fallback (deep) also failed after ConnectError [%s]: %s", type(fb_err).__name__, fb_err)
 						yield "I'm still waking up. Try again in a moment."
 					return
 				else:
@@ -1360,7 +1360,7 @@ async def chat_with_context(
 			# Always include docs — the model emits tags only when appropriate.
 			_action_docs_block = f"\n{ACTION_TAG_DOCS}"
 
-		# Timeout-racing for deep tier: try deep first, fall back to instant
+		# Timeout-racing for deep tier: try deep first, fall back to fast
 		if tier_name == "deep" and settings.SMART_MODEL_INTERACTIVE:
 			logger.debug("Racing deep model with %ds timeout", settings.DEEP_MODEL_TIMEOUT_S)
 			history_text = _build_history_text(history)
@@ -1383,18 +1383,18 @@ async def chat_with_context(
 					chunks.append(chunk)
 				return sanitise_output("".join(chunks))
 			except Exception as deep_err:
-				logger.warning("Deep model unavailable (%s) -- falling back to instant", type(deep_err).__name__)
+				logger.warning("Deep model unavailable (%s) -- falling back to fast", type(deep_err).__name__)
 				last_model_used.set(f"Deep: {settings.LLM_MODEL_DEEP}")
 				return sanitise_output(await chat(
 					user_message,
 					system_override=system_with_context,
-					tier="instant",
+					tier="fast",
 					sanitize=sanitize,
 					user_name=user_name,
 					user_profile=user_profile,
 				))
 
-		# Standard / Instant direct path
+		# Standard / Fast direct path
 		logger.debug("Direct chat [%s] -> %s", tier_name, display_name)
 		history_text = _build_history_text(history)
 		context_injection = "\n\n".join(filter(None, [full_prompt, history_text]))
@@ -1417,7 +1417,7 @@ async def chat_with_context(
 		return sanitise_output(await chat(
 			user_message,
 			system_override=formatted_system_prompt if 'formatted_system_prompt' in locals() else None,
-tier="instant",
+tier="fast",
 			sanitize=sanitize,
 			user_name=user_name if 'user_name' in locals() else "User",
 			user_profile=user_profile if 'user_profile' in locals() else {},
@@ -1561,9 +1561,9 @@ async def chat_stream_with_context(
 						yield cleaned
 				return
 			except Exception as deep_err:
-				logger.warning("Deep stream unavailable (%s) -- falling back to instant", type(deep_err).__name__)
+				logger.warning("Deep stream unavailable (%s) -- falling back to fast", type(deep_err).__name__)
 				last_model_used.set(f"Deep: {settings.LLM_MODEL_DEEP}")
-				tier_name = "instant"
+				tier_name = "fast"
 
 		async for chunk in chat_stream(
 			user_message,
@@ -1580,7 +1580,7 @@ async def chat_stream_with_context(
 		logger.warning("chat_stream_with_context setup failed (%s) -- falling back to bare stream", type(e).__name__)
 		# Context setup failed (e.g. DB unreachable for build_system_prompt).
 		# Fall back to a bare stream without context so the user still gets a response.
-		async for chunk in chat_stream(user_message, tier="instant"):
+		async for chunk in chat_stream(user_message, tier="fast"):
 			cleaned = _strip_emoji(chunk)
 			if cleaned:
 				yield cleaned

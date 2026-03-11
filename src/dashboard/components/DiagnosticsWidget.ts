@@ -150,18 +150,24 @@ export class DiagnosticsWidget extends HTMLElement {
 		this.updatePanel();
 	}
 
+	private async _runBenchmarkCore(tier: string) {
+		const r = await fetch(`/api/dashboard/benchmark/llm?tier=${encodeURIComponent(tier)}`, {
+			method: 'POST',
+		});
+		const res = await r.json();
+		const idx = this.benchResults.findIndex(b => b.tier === tier);
+		if (idx > -1) this.benchResults[idx] = res;
+		else this.benchResults.push(res);
+	}
+
 	async runBenchmark(tier: string) {
 		if (this.isBenchRunning) return;
 		this.isBenchRunning = true;
 		this.updatePanel();
 		try {
-			const r = await fetch(`/api/dashboard/benchmark/llm?tier=${encodeURIComponent(tier)}`, {
-				method: 'POST',
-			});
-			const res = await r.json();
-			const idx = this.benchResults.findIndex(b => b.tier === tier);
-			if (idx > -1) this.benchResults[idx] = res;
-			else this.benchResults.push(res);
+			await this._runBenchmarkCore(tier);
+		} catch (e) {
+			console.error('Benchmark failed:', e);
 		} finally {
 			this.isBenchRunning = false;
 			this.updatePanel();
@@ -169,7 +175,20 @@ export class DiagnosticsWidget extends HTMLElement {
 	}
 
 	async runAllBenchmarks() {
-		await Promise.all(['instant', 'deep'].map(t => this.runBenchmark(t)));
+		if (this.isBenchRunning) return;
+		this.isBenchRunning = true;
+		this.updatePanel();
+		try {
+			for (const tier of ['instant', 'deep']) {
+				await this._runBenchmarkCore(tier);
+				this.updatePanel();
+			}
+		} catch (e) {
+			console.error('All benchmarks failed:', e);
+		} finally {
+			this.isBenchRunning = false;
+			this.updatePanel();
+		}
 	}
 
 	private displayTier(tier: string): string {
