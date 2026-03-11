@@ -506,8 +506,8 @@ export class DiagnosticsWidget extends HTMLElement {
 			return t?.ram_est_gb || 0;
 		};
 
-		const tierNames = ['instant', 'deep'];
-		const tierColors = ['var(--accent-primary)', 'hsl(260,70%,65%)'];
+		const tierNames = ['deep', 'instant'];
+		const tierColors = ['hsl(260,70%,65%)', 'var(--accent-primary)'];
 		const ctxFor = (name: string): number => { const t = cfgTiers.find((x: any) => x.tier === name); return t?.ctx || 0; };
 		const batchFor = (name: string): number => { const t = cfgTiers.find((x: any) => x.tier === name); return t?.batch || 0; };
 		const predictFor = (name: string): number => { const t = cfgTiers.find((x: any) => x.tier === name); return t?.predict || 0; };
@@ -830,10 +830,11 @@ export class DiagnosticsWidget extends HTMLElement {
 				.ram-strip-bar { height: 10px; background: hsla(0, 0%, 100%, 0.05); border-radius: 5px; overflow: hidden; display: flex; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); }
 				.ram-seg-svc { height: 100%; transition: width 0.7s cubic-bezier(0.4, 0, 0.2, 1); flex-shrink: 0; }
 				.ram-strip-legend { display: flex; flex-wrap: wrap; gap: 0.35rem 1rem; margin-top: 0.6rem; }
-				.leg-item { display: flex; align-items: center; gap: 0.35rem; font-size: 0.62rem; color: var(--text-muted); font-weight: 600; }
+				.leg-item { display: flex; align-items: center; gap: 0.35rem; font-size: 0.62rem; color: var(--text-muted); font-weight: 500; opacity: 0.6; }
 				.leg-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; border: 1px solid transparent; }
-				.leg-name { color: var(--text-secondary); }
+				.leg-name { color: var(--text-muted); }
 				.leg-gb { font-family: var(--font-mono); font-size: 0.6rem; color: var(--text-muted); }
+				.leg-item--large { opacity: 1; font-weight: 600; }
 				.leg-item--large .leg-name { color: var(--text-primary, #e2e8f0); font-weight: 700; }
 				.leg-item--large .leg-gb { color: var(--text-secondary, #94a3b8); font-weight: 700; }
 				.leg-orphan-chip { font-size: 0.52rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: hsl(35,90%,58%); background: hsla(35,90%,58%,0.12); border: 1px solid hsla(35,90%,58%,0.35); border-radius: 3px; padding: 0 0.3rem; line-height: 1.5; }
