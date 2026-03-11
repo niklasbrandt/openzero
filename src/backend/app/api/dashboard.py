@@ -1655,6 +1655,18 @@ async def server_info() -> dict:
 			info["ram_apps_gb"] = round(apps_kb / 1048576, 1)
 			info["ram_bufcache_gb"] = round(bufcache_kb / 1048576, 1)
 			info["ram_kernel_gb"] = round(kernel_kb / 1048576, 2)
+			# Buff/cache sub-breakdown (all reclaimable) sorted by size descending
+			_bc_raw = [
+				("page cache", mem.get("Cached", 0)),
+				("slab cache", mem.get("SReclaimable", 0)),
+				("buffers", buffers_kb),
+			]
+			_bc_raw.sort(key=lambda x: x[1], reverse=True)
+			info["ram_bufcache_breakdown"] = [
+				{"name": _n, "gb": round(_kb / 1048576, 2)}
+				for _n, _kb in _bc_raw
+				if _kb >= 10240
+			]
 			# Non-dockerized process RSS breakdown (drill-down for "system procs" segment)
 			try:
 				_proc_rss: dict = {}
@@ -2084,6 +2096,9 @@ async def server_info() -> dict:
 	except Exception as _docker_err:
 		logger.debug("Docker stats unavailable: %s", _docker_err)
 		info.setdefault("container_ram", [])
+
+	# Sort disk_breakdown by size descending for consistent display
+	info["disk_breakdown"].sort(key=lambda x: x.get("gb", 0), reverse=True)
 
 	return info
 
