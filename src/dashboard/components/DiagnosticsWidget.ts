@@ -571,35 +571,6 @@ export class DiagnosticsWidget extends HTMLElement {
 
 				<!-- Top Row: Prominent RAM -->
 				<div class="ram-strip">
-					<div class="ram-strip-header">
-						<span class="ram-title">${this.tr('diag_ram_title', 'System Memory (RAM)')}</span>
-					${(() => {
-						const _segs = this._ramBarSegments(srv);
-						const _avail = _segs.find(s => s.name === 'free')?.gb || 0;
-						const _used = parseFloat(Math.max((srv.ram_total_gb || 0) - _avail, 0).toFixed(1));
-						return `<span class="ram-value">${_used}GB / ${srv.ram_total_gb}GB</span>`;
-					})()}
-					</div>
-					<div class="ram-strip-bar" id="ram-seg-bar">
-						${this._ramBarSegments(srv).map(s => `
-							<div class="ram-seg-svc" style="width:${Math.max(s.pct, 0).toFixed(2)}%;background:${s.color}" data-seg-tip="${this.esc(s.label)}: ${s.gb} GB (${s.pct.toFixed(1)}%)"></div>
-						`).join('')}
-					</div>
-					${(() => {
-						return `
-							<div class="ram-bar-hover-tip" id="ram-bar-htip" aria-hidden="true" role="tooltip"></div>
-							<div class="ram-strip-legend">
-								${this._ramBarSegments(srv).filter(s => s.name !== 'free').map(s => `
-								<div class="leg-item${s.orphan ? ' leg-item--orphan' : ''}${s.gb >= 0.15 ? ' leg-item--large' : ''}">
-										<span class="leg-dot" style="background:${s.color};border-color:${s.color}"></span>
-										<span class="leg-name">${this.esc(s.label)}</span>
-										<span class="leg-gb">${s.gb}G</span>
-										${s.orphan ? `<span class="leg-orphan-chip" title="${this.tr('tip_orphan_container', 'Not in docker-compose.yml — orphaned container')}">orphan</span>` : ''}
-									</div>
-								`).join('')}
-							</div>
-						`;
-					})()}
 					${cfgTiers.length > 0 ? `
 					<div class="llm-ram-breakdown">
 						${tierNames.map((name, idx) => {
@@ -633,6 +604,35 @@ export class DiagnosticsWidget extends HTMLElement {
 							</div>`;
 						}).join('')}
 					</div>` : ''}
+					<div class="ram-strip-header">
+						<span class="ram-title">${this.tr('diag_ram_title', 'System Memory (RAM)')}</span>
+					${(() => {
+						const _segs = this._ramBarSegments(srv);
+						const _avail = _segs.find(s => s.name === 'free')?.gb || 0;
+						const _used = parseFloat(Math.max((srv.ram_total_gb || 0) - _avail, 0).toFixed(1));
+						return `<span class="ram-value">${_used}GB / ${srv.ram_total_gb}GB</span>`;
+					})()}
+					</div>
+					<div class="ram-strip-bar" id="ram-seg-bar">
+						${this._ramBarSegments(srv).map(s => `
+							<div class="ram-seg-svc" style="width:${Math.max(s.pct, 0).toFixed(2)}%;background:${s.color}" data-seg-tip="${this.esc(s.label)}: ${s.gb} GB (${s.pct.toFixed(1)}%)"></div>
+						`).join('')}
+					</div>
+					${(() => {
+						return `
+							<div class="ram-bar-hover-tip" id="ram-bar-htip" aria-hidden="true" role="tooltip"></div>
+							<div class="ram-strip-legend">
+								${this._ramBarSegments(srv).filter(s => s.name !== 'free').map(s => `
+								<div class="leg-item${s.orphan ? ' leg-item--orphan' : ''}${s.gb >= 0.15 ? ' leg-item--large' : ''}">
+										<span class="leg-dot" style="background:${s.color};border-color:${s.color}"></span>
+										<span class="leg-name">${this.esc(s.label)}</span>
+										<span class="leg-gb">${s.gb}G</span>
+										${s.orphan ? `<span class="leg-orphan-chip" title="${this.tr('tip_orphan_container', 'Not in docker-compose.yml — orphaned container')}">orphan</span>` : ''}
+									</div>
+								`).join('')}
+							</div>
+						`;
+					})()}
 				</div>
 
 				<!-- HDD Row: System Storage -->
