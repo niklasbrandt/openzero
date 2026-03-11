@@ -121,10 +121,8 @@ export class DiagnosticsWidget extends HTMLElement {
 		this.isBenchRunning = true;
 		this.updatePanel();
 		try {
-			const r = await fetch('/api/dashboard/benchmark', {
+			const r = await fetch(`/api/dashboard/benchmark/llm?tier=${encodeURIComponent(tier)}`, {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ tier })
 			});
 			const res = await r.json();
 			const idx = this.benchResults.findIndex(b => b.tier === tier);
