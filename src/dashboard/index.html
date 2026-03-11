@@ -125,15 +125,6 @@
 			</svg>
 			<span data-tr="nav_briefing">Briefing</span>
 		</a>
-		<a href="#section-personality" data-section="section-personality" aria-label="Personality">
-			<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-				stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-				<path
-					d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 5a3 3 0 1 1-3 3 3 3 0 0 1 3-3zm0 13a8 8 0 0 1-6-2.68 3 3 0 0 1 2.84-2.32h6.32A3 3 0 0 1 18 17.32 8 8 0 0 1 12 20z">
-				</path>
-			</svg>
-			<span data-tr="nav_personality">Personality</span>
-		</a>
 		<a href="#section-circles" data-section="section-circles" aria-label="Relationships">
 			<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
 				stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
@@ -206,15 +197,6 @@
 					<polyline points="14 2 14 8 20 8"></polyline>
 				</svg>
 				<span data-tr="nav_briefing">Briefing</span>
-			</a>
-			<a href="#section-personality" data-section="section-personality" aria-label="Personality">
-				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-					stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-					<path
-						d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 5a3 3 0 1 1-3 3 3 3 0 0 1 3-3zm0 13a8 8 0 0 1-6-2.68 3 3 0 0 1 2.84-2.32h6.32A3 3 0 0 1 18 17.32 8 8 0 0 1 12 20z">
-					</path>
-				</svg>
-				<span data-tr="nav_personality">Personality</span>
 			</a>
 			<span class="nav-sep" role="separator" aria-hidden="true"></span>
 			<a href="#section-circles" data-section="section-circles" aria-label="Circles">
@@ -299,15 +281,6 @@
 					<polyline points="14 2 14 8 20 8"></polyline>
 				</svg>
 				<span data-tr="nav_briefing">Briefing</span>
-			</a>
-			<a href="#section-personality" data-section="section-personality" aria-label="Personality">
-				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-					stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-					<path
-						d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 5a3 3 0 1 1-3 3 3 3 0 0 1 3-3zm0 13a8 8 0 0 1-6-2.68 3 3 0 0 1 2.84-2.32h6.32A3 3 0 0 1 18 17.32 8 8 0 0 1 12 20z">
-					</path>
-				</svg>
-				<span data-tr="nav_personality">Personality</span>
 			</a>
 			<div class="drawer-divider" role="separator" aria-hidden="true"></div>
 			<a href="#section-circles" data-section="section-circles" aria-label="Circles">
@@ -396,17 +369,10 @@
 				<briefing-history></briefing-history>
 			</section>
 
-			<div class="dashboard-row persona-profile-row">
-				<section class="dashboard-card persona-row-card" id="section-personality" aria-label="Personality"
-					data-tr-aria="nav_personality">
-					<z-personality></z-personality>
-				</section>
-
-				<section class="dashboard-card persona-row-card" id="section-identity" aria-label="Profile"
-					data-tr-aria="nav_profile">
-					<user-card></user-card>
-				</section>
-			</div>
+			<section class="dashboard-card full-width-card" id="section-identity" aria-label="Profile"
+				data-tr-aria="nav_profile">
+				<user-card></user-card>
+			</section>
 
 			<section class="dashboard-card full-width-card" id="section-circles" aria-label="Relationships"
 				data-tr-aria="nav_circles">

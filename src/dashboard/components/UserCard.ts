@@ -1,10 +1,15 @@
 import { BUTTON_STYLES } from '../services/buttonStyles';
 import { ACCESSIBILITY_STYLES } from '../services/accessibilityStyles';
+import { SECTION_HEADER_STYLES } from '../services/sectionHeaderStyles';
+import { SCROLLBAR_STYLES } from '../services/scrollbarStyles';
+import { EMPTY_STATE_STYLES } from '../services/emptyStateStyles';
 import { initGoo } from '../services/gooStyles';
 
 export class UserCard extends HTMLElement {
 	private me: any = null;
 	private isEditing: boolean = false;
+	private personality: any = null;
+	private isLoadingPersonality: boolean = true;
 	private t: Record<string, string> = {};
 	private languages: Record<string, { native: string, eng: string }> = {
 		en: { native: 'English', eng: 'English' },
@@ -85,7 +90,10 @@ export class UserCard extends HTMLElement {
 	}
 
 	connectedCallback() {
-		this.loadTranslations().then(() => this.fetchIdentity());
+		this.loadTranslations().then(() => {
+			this.fetchIdentity();
+			this.fetchPersonality();
+		});
 		this.gooMode = localStorage.getItem('goo-mode') === 'true';
 		this.themeMode = (localStorage.getItem('theme-mode') as any) || 'dark';
 		this.applyGoo();
@@ -159,9 +167,24 @@ export class UserCard extends HTMLElement {
 		}
 	}
 
+	async fetchPersonality() {
+		this.isLoadingPersonality = true;
+		try {
+			const response = await fetch('/api/dashboard/personality');
+			if (response.ok) {
+				this.personality = await response.json();
+			}
+		} catch (e) {
+			console.error('Failed to fetch personality', e);
+		} finally {
+			this.isLoadingPersonality = false;
+			this.render();
+		}
+	}
+
 	async saveIdentity() {
 		const shadow = this.shadowRoot!;
-		const payload = {
+		const identityPayload = {
 			name: (shadow.querySelector('#name-input') as HTMLInputElement).value,
 			birthday: (shadow.querySelector('#bday-input') as HTMLInputElement).value,
 			gender: (shadow.querySelector('#gender-input') as HTMLInputElement).value,
@@ -180,20 +203,39 @@ export class UserCard extends HTMLElement {
 			relationship: 'Self'
 		};
 
+		const perPayload: any = { ...this.personality };
+		delete perPayload.questions;
+		this.personality?.questions?.forEach((q: any) => {
+			const input = shadow.querySelector(`#per-input-${q.id}`) as any;
+			if (input) perPayload[q.id] = q.type === 'range' ? parseInt(input.value) : input.value;
+		});
+
 		try {
-			const response = await fetch('/api/dashboard/people/identity', {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(payload)
-			});
-			if (response.ok) {
-				const updatedMe = await response.json();
+			const [idRes, perRes] = await Promise.all([
+				fetch('/api/dashboard/people/identity', {
+					method: 'PUT',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify(identityPayload)
+				}),
+				fetch('/api/dashboard/personality', {
+					method: 'PUT',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify(perPayload)
+				})
+			]);
+
+			if (idRes.ok && perRes.ok) {
+				const updatedMe = await idRes.json();
+				const updatedPer = await perRes.json();
 				this.me = updatedMe;
+				this.personality = { ...updatedPer.personality, questions: this.personality.questions };
 				this.isEditing = false;
 				this.render();
 				window.dispatchEvent(new CustomEvent('identity-updated'));
 				window.dispatchEvent(new CustomEvent('refresh-data'));
 				this.applyToRoot(updatedMe.color_primary, updatedMe.color_secondary, updatedMe.color_tertiary);
+			} else {
+				throw new Error('Save failed');
 			}
 		} catch (_e) {
 			alert('Save failed');
@@ -282,6 +324,9 @@ export class UserCard extends HTMLElement {
 			<style>
 				${BUTTON_STYLES}
 				${ACCESSIBILITY_STYLES}
+				${SECTION_HEADER_STYLES}
+				${SCROLLBAR_STYLES}
+				${EMPTY_STATE_STYLES}
 				:host { display: block; height: 100%; }
 				.card {
 					height: 100%;
@@ -307,6 +352,17 @@ export class UserCard extends HTMLElement {
 				:host(:hover) .avatar { transform: scale(1.1) rotate(-5deg); }
 
 				h2 { margin: 0; font-size: 1.1rem; }
+				
+				.content { 
+					flex: 1; 
+					overflow-y: auto; 
+					padding-right: 4px;
+					display: flex;
+					flex-direction: column;
+					gap: 1.5rem;
+				}
+				.content::-webkit-scrollbar { width: 6px; }
+				.content::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 3px; }
 
 				.edit-btn {
 					background: var(--surface-card, hsla(0,0%,100%,0.05));
@@ -409,18 +465,18 @@ export class UserCard extends HTMLElement {
 					transform: scale(0.95);
 				}
 
-				.goals-section h3 { 
+				.goals-section h3, .personality-section h3 { 
 					font-size: 0.7rem; 
 					color: var(--accent-text, var(--accent-primary, hsla(173, 80%, 40%, 1))); 
 					text-transform: uppercase; 
-					margin: 1rem 0 0.5rem 0;
+					margin: 0.5rem 0 0.5rem 0;
 					display: flex;
 					align-items: center;
 					gap: 8px;
 					font-weight: 700;
 					letter-spacing: 0.08em;
 				}
-				.goals-section h3::after {
+				.goals-section h3::after, .personality-section h3::after {
 					content: ''; flex: 1; height: 1px; background: var(--surface-accent-subtle, hsla(173, 80%, 40%, 0.2));
 				}
 
@@ -491,6 +547,26 @@ export class UserCard extends HTMLElement {
 					outline: 2px solid var(--accent-primary, hsla(173, 80%, 40%, 1)); 
 					outline-offset: 3px; 
 				}
+
+				/* Personality specific */
+				.trait-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.5rem; }
+				.trait-item { 
+					background: var(--surface-card-subtle, hsla(0,0%,0%,0.3)); padding: 0.75rem 1rem; border-radius: 0.75rem;
+					border: 1px solid var(--border-subtle, hsla(0,0%,100%,0.1));
+					position: relative;
+					overflow: hidden;
+				}
+				.trait-indicator {
+					position: absolute; bottom: 0; left: 0; height: 2px;
+					background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+					width: 100%; opacity: 0.3;
+				}
+				.trait-label { font-size: 0.6rem; color: var(--text-muted, hsla(0,0%,100%,0.4)); text-transform: uppercase; margin-bottom: 4px; display: block; font-weight: 700; letter-spacing: 0.05em; }
+				.trait-value { font-size: 0.85rem; color: var(--text-primary, hsla(0, 0%, 100%, 1)); font-weight: 500; }
+
+				.range-container { display: flex; align-items: center; gap: 1rem; min-height: 44px; }
+				.range-tag { font-size: 0.65rem; color: var(--text-muted, hsla(0,0%,100%,0.4)); width: 60px; font-weight: 600; text-transform: uppercase; }
+				input[type="range"] { flex: 1; accent-color: var(--accent-primary, hsla(173, 80%, 40%, 1)); cursor: pointer; min-height: 44px; }
 
 				/* Color swatch buttons */
 				.color-swatches { display: flex; gap: 0.5rem; }
@@ -570,6 +646,7 @@ export class UserCard extends HTMLElement {
 					li::before { color: Highlight; }
 					.color-swatch { border: 1px solid ButtonText; }
 					.hsla-picker { border: 1px solid ButtonText; }
+					input[type="range"] { accent-color: Highlight; }
 				}
 			</style>
 
@@ -578,175 +655,251 @@ export class UserCard extends HTMLElement {
 					<div class="user-info">
 						<div class="avatar" aria-hidden="true">${(me.name || 'U')[0]}</div>
 						${this.isEditing
-				? `<div style="display:flex;flex-direction:column;gap:2px;"><label class="label" for="name-input" style="margin:0;">${this.tr('name_label', 'Name')}</label><input id="name-input" type="text" placeholder="${this.tr('ph_full_name', 'Full Name')}" value="${me.name || ''}" aria-label="${this.tr('aria_name_input', 'Your name')}" autocomplete="name"></div>`
+				? `<div style="display:flex;flex-direction:column;gap:4px;"><label class="label" for="name-input" style="margin:0;">${this.tr('name_label', 'Name')}</label><input id="name-input" type="text" placeholder="${this.tr('ph_full_name', 'Full Name')}" value="${me.name || ''}" aria-label="${this.tr('aria_name_input', 'Your name')}" autocomplete="name"></div>`
 				: `<div>
 									<h2>${me.name || 'User'}</h2>
 									<div class="label" style="text-transform: none; margin-top: 2px;">${me.residency || this.tr('resident', 'Resident')}</div>
 								</div>`}
 					</div>
 					<div style="display: flex; gap: 0.5rem;">
-						<button class="edit-btn" id="edit-trigger" aria-label="${this.tr('aria_edit_profile_btn', 'Edit personal profile')}">${this.tr('edit', 'Edit')}</button>
+						${!this.isEditing ? `<button class="edit-btn" id="edit-trigger" aria-label="${this.tr('aria_edit_profile_btn', 'Edit personal profile')}">${this.tr('edit', 'Edit')}</button>` : ''}
 					</div>
 				</div>
 
-				${this.isEditing ? `
-					<div class="grid">
-						<div class="field">
-							<label class="label" for="language-input">${this.tr('fav_lang', 'Language')}</label>
-							<select id="language-input">
-								${Object.entries(this.languages).map(([code, meta]) => `
-									<option value="${code}" ${me.language === code ? 'selected' : ''}>${meta.native}</option>
-								`).join('')}
-							</select>
-						</div>
-						<div class="field">
-							<label class="label" for="bday-input">${this.tr('birthday', 'Birthday')}</label>
-							<input id="bday-input" type="text" placeholder="YYYY-MM-DD" value="${me.birthday || ''}" autocomplete="bday">
-						</div>
-						<div class="field">
-							<label class="label" for="gender-input">${this.tr('gender', 'Gender')}</label>
-							<input id="gender-input" type="text" placeholder="${this.tr('ph_gender', 'e.g. Non-binary')}" value="${me.gender || ''}" autocomplete="sex">
-						</div>
-						<div class="field">
-							<label class="label" for="residency-input">${this.tr('residency', 'Residency')}</label>
-							<input id="residency-input" type="text" placeholder="${this.tr('ph_city_country', 'City, Country')}" value="${me.residency || ''}">
-						</div>
-						<div class="field">
-							<label class="label" for="town-input">${this.tr('town', 'Town')}</label>
-							<input id="town-input" type="text" placeholder="Berlin" value="${me.town || ''}">
-						</div>
-						<div class="field">
-							<label class="label" for="country-input">${this.tr('country', 'Country')}</label>
-							<input id="country-input" type="text" placeholder="Germany" value="${me.country || ''}" autocomplete="country-name">
-						</div>
-						<div class="field">
-							<label class="label" for="timezone-input">${this.tr('timezone_label', 'Timezone')}</label>
-							<input id="timezone-input" type="text" placeholder="Europe/Berlin" value="${me.timezone || ''}">
-						</div>
-						<div class="field">
-							<label class="label" for="work-input">${this.tr('work_times', 'Work Times')}</label>
-							<input id="work-input" type="text" placeholder="${this.tr('ph_work_times', 'e.g. 09:00 - 17:00')}" value="${me.work_times || ''}">
-						</div>
-						<div class="field">
-							<label class="label" for="brief-input">${this.tr('briefing', 'Briefing')}</label>
-							<input id="brief-input" type="time" value="${me.briefing_time || '08:00'}">
-						</div>
-						
-						<div class="field" style="grid-column: span 2;">
-							<label class="label">${this.tr('display_settings', 'Display Settings')}</label>
-							<div class="three-way-toggle">
-								<div class="toggle-opt ${this.themeMode === 'light' ? 'active' : ''}" data-mode="light">${this.tr('light', 'Light')}</div>
-								<div class="toggle-opt ${this.themeMode === 'auto' ? 'active' : ''}" data-mode="auto">${this.tr('auto', 'Auto')}</div>
-								<div class="toggle-opt ${this.themeMode === 'dark' ? 'active' : ''}" data-mode="dark">${this.tr('dark', 'Dark')}</div>
-							</div>
-							<div class="checkbox-group" id="goo-toggle-wrapper">
-								<input type="checkbox" id="goo-mode-checkbox" ${this.gooMode ? 'checked' : ''}>
-								<label for="goo-mode-checkbox">${this.tr('goo_mode', 'I like Goo (Phase 4 Organic Interaction)')}</label>
-							</div>
-						</div>
+				<div class="content">
+					${this.isEditing ? `
+						<div class="identity-section">
+							<div class="grid">
+								<div class="field">
+									<label class="label" for="language-input">${this.tr('fav_lang', 'Language')}</label>
+									<select id="language-input">
+										${Object.entries(this.languages).map(([code, meta]) => `
+											<option value="${code}" ${me.language === code ? 'selected' : ''}>${meta.native}</option>
+										`).join('')}
+									</select>
+								</div>
+								<div class="field">
+									<label class="label" for="bday-input">${this.tr('birthday', 'Birthday')}</label>
+									<input id="bday-input" type="text" placeholder="YYYY-MM-DD" value="${me.birthday || ''}" autocomplete="bday">
+								</div>
+								<div class="field">
+									<label class="label" for="gender-input">${this.tr('gender', 'Gender')}</label>
+									<input id="gender-input" type="text" placeholder="${this.tr('ph_gender', 'e.g. Non-binary')}" value="${me.gender || ''}" autocomplete="sex">
+								</div>
+								<div class="field">
+									<label class="label" for="residency-input">${this.tr('residency', 'Residency')}</label>
+									<input id="residency-input" type="text" placeholder="${this.tr('ph_city_country', 'City, Country')}" value="${me.residency || ''}">
+								</div>
+								<div class="field">
+									<label class="label" for="town-input">${this.tr('town', 'Town')}</label>
+									<input id="town-input" type="text" placeholder="Berlin" value="${me.town || ''}">
+								</div>
+								<div class="field">
+									<label class="label" for="country-input">${this.tr('country', 'Country')}</label>
+									<input id="country-input" type="text" placeholder="Germany" value="${me.country || ''}" autocomplete="country-name">
+								</div>
+								<div class="field">
+									<label class="label" for="timezone-input">${this.tr('timezone_label', 'Timezone')}</label>
+									<input id="timezone-input" type="text" placeholder="Europe/Berlin" value="${me.timezone || ''}">
+								</div>
+								<div class="field">
+									<label class="label" for="work-input">${this.tr('work_times', 'Work Times')}</label>
+									<input id="work-input" type="text" placeholder="${this.tr('ph_work_times', 'e.g. 09:00 - 17:00')}" value="${me.work_times || ''}">
+								</div>
+								<div class="field">
+									<label class="label" for="brief-input">${this.tr('briefing', 'Briefing')}</label>
+									<input id="brief-input" type="time" value="${me.briefing_time || '08:00'}">
+								</div>
+								
+								<div class="field" style="grid-column: span 2;">
+									<label class="label">${this.tr('display_settings', 'Display Settings')}</label>
+									<div class="three-way-toggle">
+										<div class="toggle-opt ${this.themeMode === 'light' ? 'active' : ''}" data-mode="light">${this.tr('light', 'Light')}</div>
+										<div class="toggle-opt ${this.themeMode === 'auto' ? 'active' : ''}" data-mode="auto">${this.tr('auto', 'Auto')}</div>
+										<div class="toggle-opt ${this.themeMode === 'dark' ? 'active' : ''}" data-mode="dark">${this.tr('dark', 'Dark')}</div>
+									</div>
+									<div class="checkbox-group" id="goo-toggle-wrapper">
+										<input type="checkbox" id="goo-mode-checkbox" ${this.gooMode ? 'checked' : ''}>
+										<label for="goo-mode-checkbox">${this.tr('goo_mode', 'I like Goo (Phase 4 Organic Interaction)')}</label>
+									</div>
+								</div>
 
-						<div class="field" style="grid-column: span 2;">
-							<label class="label" for="theme-preset-select">${this.tr('theme_preset', 'Theme Preset')}</label>
-							<div style="display: flex; gap: 0.5rem; align-items: center;">
-								<button class="theme-cycle-btn" id="theme-prev" title="${this.tr('prev_theme', 'Previous Theme')}" style="width: 32px; height: 44px; font-size: 0.8rem;">◀</button>
-								<select id="theme-preset-select" style="flex: 1;">
-									<option value="">${this.tr('select_preset', 'Select Preset...')}</option>
-									${Object.entries(this.themeOptions).map(([key, opt]) => {
+								<div class="field" style="grid-column: span 2;">
+									<label class="label" for="theme-preset-select">${this.tr('theme_preset', 'Theme Preset')}</label>
+									<div style="display: flex; gap: 0.5rem; align-items: center;">
+										<button class="theme-cycle-btn" id="theme-prev" title="${this.tr('prev_theme', 'Previous Theme')}" style="width: 32px; height: 44px; font-size: 0.8rem;">◀</button>
+										<select id="theme-preset-select" style="flex: 1;">
+											<option value="">${this.tr('select_preset', 'Select Preset...')}</option>
+											${Object.entries(this.themeOptions).map(([key, opt]) => {
 					const isSelected = localStorage.getItem('theme-preset') === key ? 'selected' : '';
 					return `<option value="${key}" ${isSelected}>${this.tr('theme_' + key, opt.label)}</option>`;
 				}).join('')}
-								</select>
-								<button class="theme-cycle-btn" id="theme-next" title="${this.tr('next_theme', 'Next Theme')}" style="width: 32px; height: 44px; font-size: 0.8rem;">▶</button>
+										</select>
+										<button class="theme-cycle-btn" id="theme-next" title="${this.tr('next_theme', 'Next Theme')}" style="width: 32px; height: 44px; font-size: 0.8rem;">▶</button>
+									</div>
+								</div>
+
+								<div class="field picker-wrap" style="grid-column: span 2;">
+									<label class="label">${this.tr('accent_colors', 'Accent Colors')}</label>
+									<input type="hidden" id="color-primary-input" value="${me.color_primary || 'hsla(173, 80%, 40%, 1)'}">
+									<input type="hidden" id="color-secondary-input" value="${me.color_secondary || 'hsla(216, 100%, 50%, 1)'}">
+									<input type="hidden" id="color-tertiary-input" value="${me.color_tertiary || 'hsla(239, 84%, 67%, 1)'}">
+									<div class="color-swatches">
+										<button class="color-swatch" id="swatch-primary" data-target="color-primary-input" aria-label="${this.tr('primary_label', 'Primary Accent')}">
+											<span class="swatch-dot" id="swatch-dot-primary" style="background:${me.color_primary || 'hsla(173,80%,40%,1)'}"></span>
+											<span>${this.tr('primary_label', 'Primary')}</span>
+										</button>
+										<button class="color-swatch" id="swatch-secondary" data-target="color-secondary-input" aria-label="${this.tr('secondary_label', 'Secondary Accent')}">
+											<span class="swatch-dot" id="swatch-dot-secondary" style="background:${me.color_secondary || 'hsla(216,100%,50%,1)'}"></span>
+											<span>${this.tr('secondary_label', 'Secondary')}</span>
+										</button>
+										<button class="color-swatch" id="swatch-tertiary" data-target="color-tertiary-input" aria-label="${this.tr('tertiary_label', 'Tertiary Accent')}">
+											<span class="swatch-dot" id="swatch-dot-tertiary" style="background:${me.color_tertiary || 'hsla(239,84%,67%,1)'}"></span>
+											<span>${this.tr('tertiary_label', 'Tertiary')}</span>
+										</button>
+									</div>
+									<div class="hsla-picker" id="hsla-picker" role="dialog" aria-modal="true" aria-label="${this.tr('picker_title', 'HSLA Color Picker')}" hidden>
+										<div class="picker-header">
+											<span class="picker-title">${this.tr('picker_title', 'HSLA Color Picker')}</span>
+											<span class="picker-preview" id="picker-preview" aria-hidden="true"></span>
+										</div>
+										<div class="picker-row">
+											<span class="picker-row-label">${this.tr('color_hue', 'Hue')}</span>
+											<input type="range" id="picker-h" min="0" max="360" step="1" class="picker-range picker-range-h" aria-label="${this.tr('color_hue', 'Hue')}">
+											<input type="number" id="picker-h-num" min="0" max="360" step="1" class="picker-num" aria-label="${this.tr('color_hue', 'Hue')} value">
+										</div>
+										<div class="picker-row">
+											<span class="picker-row-label">${this.tr('color_saturation', 'Saturation')}</span>
+											<input type="range" id="picker-s" min="0" max="100" step="1" class="picker-range picker-range-s" aria-label="${this.tr('color_saturation', 'Saturation')}">
+											<input type="number" id="picker-s-num" min="0" max="100" step="1" class="picker-num" aria-label="${this.tr('color_saturation', 'Saturation')} value">
+										</div>
+										<div class="picker-row">
+											<span class="picker-row-label">${this.tr('color_lightness', 'Lightness')}</span>
+											<input type="range" id="picker-l" min="0" max="100" step="1" class="picker-range picker-range-l" aria-label="${this.tr('color_lightness', 'Lightness')}">
+											<input type="number" id="picker-l-num" min="0" max="100" step="1" class="picker-num" aria-label="${this.tr('color_lightness', 'Lightness')} value">
+										</div>
+										<div class="picker-row">
+											<span class="picker-row-label">${this.tr('color_opacity', 'Opacity')}</span>
+											<input type="range" id="picker-a" min="0" max="1" step="0.01" class="picker-range picker-range-a" aria-label="${this.tr('color_opacity', 'Opacity')}">
+											<input type="number" id="picker-a-num" min="0" max="1" step="0.01" class="picker-num" aria-label="${this.tr('color_opacity', 'Opacity')} value">
+										</div>
+										<div class="picker-actions">
+											<button class="oz-btn oz-btn-secondary" id="picker-cancel">${this.tr('color_cancel', 'Cancel')}</button>
+											<button class="oz-btn oz-btn-primary" id="picker-apply">${this.tr('color_apply', 'Apply')}</button>
+										</div>
+									</div>
+								</div>
+
+								<div class="field" style="grid-column: span 2;">
+									<label class="label" for="context-input">${this.tr('bio', 'Bio / Context')}</label>
+									<textarea id="context-input" rows="4">${me.context || ''}</textarea>
+								</div>
 							</div>
 						</div>
 
-						<div class="field picker-wrap" style="grid-column: span 2;">
-							<label class="label">${this.tr('accent_colors', 'Accent Colors')}</label>
-							<input type="hidden" id="color-primary-input" value="${me.color_primary || 'hsla(173, 80%, 40%, 1)'}">
-							<input type="hidden" id="color-secondary-input" value="${me.color_secondary || 'hsla(216, 100%, 50%, 1)'}">
-							<input type="hidden" id="color-tertiary-input" value="${me.color_tertiary || 'hsla(239, 84%, 67%, 1)'}">
-							<div class="color-swatches">
-								<button class="color-swatch" id="swatch-primary" data-target="color-primary-input" aria-label="${this.tr('primary_label', 'Primary Accent')}">
-									<span class="swatch-dot" id="swatch-dot-primary" style="background:${me.color_primary || 'hsla(173,80%,40%,1)'}"></span>
-									<span>${this.tr('primary_label', 'Primary')}</span>
-								</button>
-								<button class="color-swatch" id="swatch-secondary" data-target="color-secondary-input" aria-label="${this.tr('secondary_label', 'Secondary Accent')}">
-									<span class="swatch-dot" id="swatch-dot-secondary" style="background:${me.color_secondary || 'hsla(216,100%,50%,1)'}"></span>
-									<span>${this.tr('secondary_label', 'Secondary')}</span>
-								</button>
-								<button class="color-swatch" id="swatch-tertiary" data-target="color-tertiary-input" aria-label="${this.tr('tertiary_label', 'Tertiary Accent')}">
-									<span class="swatch-dot" id="swatch-dot-tertiary" style="background:${me.color_tertiary || 'hsla(239,84%,67%,1)'}"></span>
-									<span>${this.tr('tertiary_label', 'Tertiary')}</span>
-								</button>
+						<div class="personality-section">
+							<h3>${this.tr('agent_personality', 'Agent Personality')}</h3>
+							<div class="grid" style="margin-top: 1rem;">
+								${this.isLoadingPersonality ? `<div class="empty-state">${this.tr('aligning', 'Aligning neural paths...')}</div>` : ''}
+								${!this.isLoadingPersonality && this.personality ? `
+									${this.personality.questions.map((q: any) => `
+										<div class="field" style="${q.type === 'textarea' || q.type === 'text' ? 'grid-column: span 2;' : ''}">
+											<label class="label">${q.label}</label>
+											${q.type === 'range' ? `
+												<div class="range-container">
+													<span class="range-tag" aria-hidden="true">${q.low}</span>
+													<input type="range" id="per-input-${q.id}" min="${q.min}" max="${q.max}" value="${this.personality[q.id] || 3}" aria-label="${q.label}">
+													<span class="range-tag" style="text-align: right;" aria-hidden="true">${q.high}</span>
+												</div>
+											` : q.type === 'textarea' ? `
+												<textarea id="per-input-${q.id}" placeholder="${q.placeholder}">${this.personality[q.id] || ''}</textarea>
+											` : `
+												<input type="text" id="per-input-${q.id}" placeholder="${q.placeholder}" value="${this.personality[q.id] || ''}">
+											`}
+										</div>
+									`).join('')}
+								` : ''}
 							</div>
-							<div class="hsla-picker" id="hsla-picker" role="dialog" aria-modal="true" aria-label="${this.tr('picker_title', 'HSLA Color Picker')}" hidden>
-								<div class="picker-header">
-									<span class="picker-title">${this.tr('picker_title', 'HSLA Color Picker')}</span>
-									<span class="picker-preview" id="picker-preview" aria-hidden="true"></span>
+						</div>
+
+						<div class="actions">
+							<button class="oz-btn oz-btn-secondary" id="cancel-trigger">${this.tr('discard', 'Discard')}</button>
+							<button class="oz-btn oz-btn-primary" id="save-trigger">${this.tr('save_profile', 'Save Profile')}</button>
+						</div>
+					` : `
+						<div class="identity-section">
+							<div class="grid">
+								<div class="field">
+									<div class="label">${this.tr('location', 'Location')}</div>
+									<div class="value">${me.town || '—'}, ${me.country || '—'}</div>
 								</div>
-								<div class="picker-row">
-									<span class="picker-row-label">${this.tr('color_hue', 'Hue')}</span>
-									<input type="range" id="picker-h" min="0" max="360" step="1" class="picker-range picker-range-h" aria-label="${this.tr('color_hue', 'Hue')}">
-									<input type="number" id="picker-h-num" min="0" max="360" step="1" class="picker-num" aria-label="${this.tr('color_hue', 'Hue')} value">
+								<div class="field">
+									<div class="label">${this.tr('timezone_label', 'Timezone')}</div>
+									<div class="value">${me.timezone || 'UTC'}</div>
 								</div>
-								<div class="picker-row">
-									<span class="picker-row-label">${this.tr('color_saturation', 'Saturation')}</span>
-									<input type="range" id="picker-s" min="0" max="100" step="1" class="picker-range picker-range-s" aria-label="${this.tr('color_saturation', 'Saturation')}">
-									<input type="number" id="picker-s-num" min="0" max="100" step="1" class="picker-num" aria-label="${this.tr('color_saturation', 'Saturation')} value">
+								<div class="field">
+									<div class="label">${this.tr('work_times', 'Work Times')}</div>
+									<div class="value">${me.work_times || '—'}</div>
 								</div>
-								<div class="picker-row">
-									<span class="picker-row-label">${this.tr('color_lightness', 'Lightness')}</span>
-									<input type="range" id="picker-l" min="0" max="100" step="1" class="picker-range picker-range-l" aria-label="${this.tr('color_lightness', 'Lightness')}">
-									<input type="number" id="picker-l-num" min="0" max="100" step="1" class="picker-num" aria-label="${this.tr('color_lightness', 'Lightness')} value">
+								<div class="field">
+									<div class="label">${this.tr('briefing', 'Briefing')}</div>
+									<div class="value">${me.briefing_time || '08:00'}</div>
 								</div>
-								<div class="picker-row">
-									<span class="picker-row-label">${this.tr('color_opacity', 'Opacity')}</span>
-									<input type="range" id="picker-a" min="0" max="1" step="0.01" class="picker-range picker-range-a" aria-label="${this.tr('color_opacity', 'Opacity')}">
-									<input type="number" id="picker-a-num" min="0" max="1" step="0.01" class="picker-num" aria-label="${this.tr('color_opacity', 'Opacity')} value">
-								</div>
-								<div class="picker-actions">
-									<button class="oz-btn oz-btn-secondary" id="picker-cancel">${this.tr('color_cancel', 'Cancel')}</button>
-									<button class="oz-btn oz-btn-primary" id="picker-apply">${this.tr('color_apply', 'Apply')}</button>
+								<div class="goals-section" style="grid-column: span 2;">
+									<h3>${this.tr('life_goals', 'Life Goals & Ethics')}</h3>
+									<ul aria-label="${this.tr('aria_goals_list', 'Your life goals and values')}">
+										${(me.context || '').split('\n').filter((l: string) => l.trim()).map((l: string) => `<li>${l.replace(/^#+\s*/, '')}</li>`).join('') || `<li>${this.tr('no_goals', 'No goals set.')}</li>`}
+									</ul>
 								</div>
 							</div>
 						</div>
 
-						<div class="field" style="grid-column: span 2;">
-							<label class="label" for="context-input">${this.tr('bio', 'Bio / Context')}</label>
-							<textarea id="context-input" rows="4">${me.context || ''}</textarea>
+						<div class="personality-section">
+							<h3>${this.tr('agent_personality', 'Agent Personality')}</h3>
+							<div class="trait-grid">
+								${this.isLoadingPersonality ? `<div class="empty-state">${this.tr('aligning', 'Aligning neural paths...')}</div>` : ''}
+								${!this.isLoadingPersonality && this.personality ? `
+									${(() => {
+					const traits = [
+						{ label: this.tr('core_identity', 'Core Identity'), value: this.personality.role || this.tr('agent_operator', 'Agent Operator') },
+						{ label: this.tr('communication', 'Communication'), value: `${[
+							'', 
+							this.tr('trait_elaborate', 'Elaborate'), 
+							this.tr('trait_nuanced', 'Nuanced'), 
+							this.tr('trait_balanced', 'Balanced'), 
+							this.tr('trait_direct', 'Direct'), 
+							this.tr('trait_concise', 'Concise')
+						][this.personality.directness || 3]} (${this.personality.directness}/5)` },
+						{ label: this.tr('warmth', 'Emotional Tone'), value: `${[
+							'', 
+							this.tr('trait_clinical', 'Clinical'), 
+							this.tr('trait_reserved', 'Reserved'), 
+							this.tr('trait_balanced', 'Balanced'), 
+							this.tr('trait_friendly', 'Friendly'), 
+							this.tr('trait_empathetic', 'Empathetic')
+						][this.personality.warmth || 3]} (${this.personality.warmth}/5)` },
+						{ label: this.tr('agency', 'Agency Level'), value: `${[
+							'', 
+							this.tr('trait_reactive', 'Reactive'), 
+							this.tr('trait_passive', 'Passive'), 
+							this.tr('trait_balanced', 'Balanced'), 
+							this.tr('trait_helpful', 'Helpful'), 
+							this.tr('trait_proactive', 'Proactive')
+						][this.personality.agency || 3]} (${this.personality.agency}/5)` }
+					];
+					return traits.map(t => `
+											<div class="trait-item">
+												<span class="trait-label">${t.label}</span>
+												<div class="trait-value">${t.value}</div>
+												<div class="trait-indicator" aria-hidden="true"></div>
+											</div>
+										`).join('');
+				})()}
+								` : ''}
+							</div>
 						</div>
-					</div>
-
-					<div class="actions">
-						<button class="oz-btn oz-btn-secondary" id="cancel-trigger">${this.tr('discard', 'Discard')}</button>
-						<button class="oz-btn oz-btn-primary" id="save-trigger">${this.tr('save_profile', 'Save Profile')}</button>
-					</div>
-				` : `
-					<div class="grid">
-						<div class="field">
-							<div class="label">${this.tr('location', 'Location')}</div>
-							<div class="value">${me.town || '—'}, ${me.country || '—'}</div>
-						</div>
-						<div class="field">
-							<div class="label">${this.tr('timezone_label', 'Timezone')}</div>
-							<div class="value">${me.timezone || 'UTC'}</div>
-						</div>
-						<div class="field">
-							<div class="label">${this.tr('work_times', 'Work Times')}</div>
-							<div class="value">${me.work_times || '—'}</div>
-						</div>
-						<div class="field">
-							<div class="label">${this.tr('briefing', 'Briefing')}</div>
-							<div class="value">${me.briefing_time || '08:00'}</div>
-						</div>
-						<div class="goals-section" style="grid-column: span 2;">
-							<h3>${this.tr('life_goals', 'Life Goals & Ethics')}</h3>
-							<ul aria-label="${this.tr('aria_goals_list', 'Your life goals and values')}">
-								${(me.context || '').split('\n').filter((l: string) => l.trim()).map((l: string) => `<li>${l.replace(/^#+\s*/, '')}</li>`).join('') || `<li>${this.tr('no_goals', 'No goals set.')}</li>`}
-							</ul>
-						</div>
-					</div>
-				`}
+					`}
+				</div>
 			</div>
 		`;
 

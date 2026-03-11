@@ -33,13 +33,11 @@ class Settings(BaseSettings):
     TELEGRAM_BOT_TOKEN: str = ""
     TELEGRAM_ALLOWED_USER_ID: str = ""
 
-    # Local LLM (llama-server / llama.cpp) — 3-Tier Intelligence
+    # Local LLM (llama-server / llama.cpp) — 2-Tier Intelligence
     LLM_INSTANT_URL: str = "http://llm-instant:8081"
-    LLM_STANDARD_URL: str = "http://llm-standard:8082"
     LLM_DEEP_URL: str = "http://llm-deep:8083"
     LLM_MODEL_INSTANT: str = "Qwen3-0.6B"
-    LLM_MODEL_STANDARD: str = "Qwen3-8B"
-    LLM_MODEL_DEEP: str = "Qwen3-14B"
+    LLM_MODEL_DEEP: str = "Qwen3-8B"
     DEEP_MODEL_TIMEOUT_S: int = 45
     SMART_MODEL_INTERACTIVE: bool = True
 
@@ -103,7 +101,6 @@ class Settings(BaseSettings):
             "DB_HOST": "postgres",
             "QDRANT_HOST": "qdrant",
             "LLM_INSTANT_URL": "http://llm-instant:8081",
-            "LLM_STANDARD_URL": "http://llm-standard:8082",
             "LLM_DEEP_URL": "http://llm-deep:8083",
             "WHISPER_BASE_URL": "http://whisper:9000",
             "TTS_BASE_URL": "http://tts:8000",

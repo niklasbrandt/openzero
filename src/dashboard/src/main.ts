@@ -19,7 +19,6 @@ function loadLazyComponents(): void {
 	import('../components/CalendarManager')
 	import('../components/WelcomeOnboarding')
 	import('../components/DiagnosticsWidget')
-	import('../components/ZPersonality')
 	import('../components/ZProtocols')
 }
 

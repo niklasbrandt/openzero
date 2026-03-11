@@ -29,8 +29,8 @@ services:
     networks:
       - internal
 
-  # --- 3-Tier Local Intelligence (llama-server / llama.cpp) ---
-  # Each tier runs its own llama-server instance with a dedicated model.
+  # --- 2-Tier Local Intelligence (llama-server / llama.cpp) ---
+  # instant: small fast model for trivial tasks; deep: full 8B for everything else.
   # See .env.example for hardware sizing guide and model recommendations.
 
   llm-instant:
@@ -61,37 +61,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 120s
-    networks:
-      - llm
-
-  llm-standard:
-    image: ghcr.io/ggml-org/llama.cpp:server
-    restart: always
-    volumes:
-      - llm_models:/models
-      - ./scripts/llm-entrypoint.sh:/entrypoint.sh
-    entrypoint: [ "/bin/bash", "/entrypoint.sh" ]
-    cap_add:
-      - IPC_LOCK
-    ulimits:
-      memlock:
-        soft: -1
-        hard: -1
-    environment:
-      - MODEL_URL=${LLM_STANDARD_MODEL_URL}
-      - MODEL_FILE=${LLM_STANDARD_MODEL_FILE:-Qwen3-8B-Q2_K.gguf}
-      - PORT=8082
-      - THREADS=${LLM_STANDARD_THREADS:-8}
-      - CTX_SIZE=${LLM_STANDARD_CTX:-4096}
-      - N_PREDICT=${LLM_STANDARD_PREDICT:-2048}
-      - BATCH_SIZE=${LLM_STANDARD_BATCH:-512}
-      - PARALLEL=${LLM_STANDARD_PARALLEL:-1}
-    healthcheck:
-      test: [ "CMD", "curl", "-sf", "http://localhost:8082/health" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 180s
     networks:
       - llm
 
@@ -215,7 +184,7 @@ services:
         condition: service_healthy
       qdrant:
         condition: service_started
-      llm-standard:
+      llm-deep:
         condition: service_started
     env_file: .env
     environment:
