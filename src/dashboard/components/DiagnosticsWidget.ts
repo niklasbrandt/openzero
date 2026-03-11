@@ -169,23 +169,25 @@ export class DiagnosticsWidget extends HTMLElement {
         return map[name] || 'hsl(220,18%,52%)';
     }
 
-    private _ramBarSegments(srv: any): { name: string; label: string; gb: number; pct: number; color: string }[] {
+    private _ramBarSegments(srv: any): { name: string; label: string; gb: number; pct: number; color: string; orphan?: boolean }[] {
         const total = srv.ram_total_gb || 1;
         const appsGb: number = srv.ram_apps_gb || 0;
         const cacheGb: number = srv.ram_bufcache_gb || 0;
         const freeGb: number = srv.ram_free_gb ?? Math.max(total - appsGb - cacheGb, 0);
-        const containerRam: { name: string; gb: number }[] = srv.container_ram || [];
+        const containerRam: { name: string; gb: number; orphan?: boolean }[] = srv.container_ram || [];
 
         // Build named segments from live container data
-        const segs: { name: string; label: string; gb: number; pct: number; color: string }[] = [];
+        const segs: { name: string; label: string; gb: number; pct: number; color: string; orphan?: boolean }[] = [];
         let accounted = 0;
         for (const c of containerRam) {
+            const isOrphan = c.orphan === true;
             segs.push({
                 name: c.name,
                 label: c.name,
                 gb: c.gb,
                 pct: Math.min((c.gb / total) * 100, 100),
-                color: this._svcColor(c.name),
+                color: isOrphan ? 'hsl(35,90%,58%)' : this._svcColor(c.name),
+                orphan: isOrphan,
             });
             accounted += c.gb;
         }
@@ -214,9 +216,26 @@ export class DiagnosticsWidget extends HTMLElement {
         const usedPct = srv.ram_used_pct || 0;
         const isCritical = appsPct > 85 || usedPct > 92;
         const isWarning = !isCritical && (appsPct > 70 || usedPct > 85);
-        if (!isCritical && !isWarning) return '';
+
+        // Orphan container warning (separate from pressure alerts)
+        const orphans: { name: string; gb: number }[] = (srv.container_ram || []).filter((c: any) => c.orphan);
+        const orphanHtml = orphans.length > 0 ? `
+            <div class="ram-alert warning" role="alert" aria-live="polite">
+                <div class="ram-alert-header">
+                    <span class="ram-alert-headline">Orphan container${orphans.length > 1 ? 's' : ''} consuming RAM — not in current compose config</span>
+                </div>
+                <details class="ram-alert-details">
+                    <summary class="ram-alert-summary"><span class="summary-arrow" aria-hidden="true">&#x25BA;</span> ${orphans.length} orphan${orphans.length > 1 ? 's' : ''}: ${orphans.map(o => `${this.esc(o.name)} (${o.gb}G)`).join(', ')}</summary>
+                    <ul class="ram-alert-list">
+                        <li><strong>Stop orphans</strong><span class="ram-alert-detail">SSH to VPS and run: <code>docker compose down --remove-orphans &amp;&amp; docker compose up -d</code></span></li>
+                        <li><strong>Or remove individually</strong><span class="ram-alert-detail"><code>docker rm -f ${orphans.map(o => `openzero-${this.esc(o.name)}-1`).join(' ')}</code></span></li>
+                    </ul>
+                </details>
+            </div>
+        ` : '';
+
+        if (!isCritical && !isWarning) return orphanHtml;
         const level = isCritical ? 'critical' : 'warning';
-        const icon = isCritical ? '⚠' : '▲';
         const headline = isCritical
             ? `RAM critically full — ${srv.ram_used_gb || usedPct + '%'} GB used of ${srv.ram_total_gb || '?'} GB`
             : `RAM pressure high — ${srv.ram_used_gb || usedPct + '%'} GB used of ${srv.ram_total_gb || '?'} GB`;
@@ -226,10 +245,9 @@ export class DiagnosticsWidget extends HTMLElement {
             { key: 'Profile A', action: 'Switch to Profile A (Q2_K deep model)', detail: 'Use the low-RAM profile in <code>.env.example</code>. Saves ~2 GB at the cost of some quality.' },
             { key: 'LLM_DEEP_BATCH', action: 'Reduce batch size', detail: 'Lower <code>LLM_DEEP_BATCH</code> to 128 or 64. Less RAM per inference pass.' },
         ];
-        return `
+        return `${orphanHtml}
             <div class="ram-alert ${level}" role="alert" aria-live="assertive">
                 <div class="ram-alert-header">
-                    <span class="ram-alert-icon" aria-hidden="true">${icon}</span>
                     <span class="ram-alert-headline">${this.esc(headline)}</span>
                 </div>
                 <details class="ram-alert-details">
@@ -398,10 +416,11 @@ export class DiagnosticsWidget extends HTMLElement {
                     </div>
                     <div class="ram-strip-legend">
                         ${this._ramBarSegments(srv).filter(s => s.name !== 'free').map(s => `
-                            <div class="leg-item">
+                            <div class="leg-item${s.orphan ? ' leg-item--orphan' : ''}">
                                 <span class="leg-dot" style="background:${s.color};border-color:${s.color}"></span>
                                 <span class="leg-name">${this.esc(s.label)}</span>
                                 <span class="leg-gb">${s.gb}G</span>
+                                ${s.orphan ? '<span class="leg-orphan-chip" title="Not in docker-compose.yml — orphaned container">orphan</span>' : ''}
                             </div>
                         `).join('')}
                     </div>
@@ -559,6 +578,7 @@ export class DiagnosticsWidget extends HTMLElement {
                 .leg-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; border: 1px solid transparent; }
                 .leg-name { color: var(--text-secondary); }
                 .leg-gb { font-family: var(--font-mono); font-size: 0.6rem; color: var(--text-muted); }
+                .leg-orphan-chip { font-size: 0.52rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: hsl(35,90%,58%); background: hsla(35,90%,58%,0.12); border: 1px solid hsla(35,90%,58%,0.35); border-radius: 3px; padding: 0 0.3rem; line-height: 1.5; }
 
                 .integration-row { grid-column: 1 / -1; background: hsla(0, 0%, 100%, 0.015); padding: 0.75rem 1rem; border-radius: 0.5rem; border: 1px solid hsla(0, 0%, 100%, 0.04); margin-top: 0.5rem; }
                 .svc-horizontal-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-top: 0.4rem; }
