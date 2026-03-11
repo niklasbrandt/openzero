@@ -152,6 +152,44 @@ export class DiagnosticsWidget extends HTMLElement {
         return { cls: 'slow', icon: '🐌', label: this.tr('slow', 'Slow'), hint: `Below expected for ${exp.model}.` };
     }
 
+    private _ramAlertHtml(srv: any): string {
+        const appsPct = srv.ram_apps_pct || 0;
+        const usedPct = srv.ram_used_pct || 0;
+        const isCritical = appsPct > 85 || usedPct > 92;
+        const isWarning = !isCritical && (appsPct > 70 || usedPct > 85);
+        if (!isCritical && !isWarning) return '';
+        const level = isCritical ? 'critical' : 'warning';
+        const icon = isCritical ? '⚠' : '▲';
+        const headline = isCritical
+            ? `RAM critically full — ${srv.ram_used_gb || usedPct + '%'} GB used of ${srv.ram_total_gb || '?'} GB`
+            : `RAM pressure high — ${srv.ram_used_gb || usedPct + '%'} GB used of ${srv.ram_total_gb || '?'} GB`;
+        const mitigations = [
+            { key: 'LLM_DEEP_CTX', action: 'Reduce context window', detail: 'Lower <code>LLM_DEEP_CTX</code> in <code>.env</code> (e.g. 4096 or 2048). Each halving frees ~1–2 GB KV cache.' },
+            { key: 'LLM_DEEP_PREDICT', action: 'Reduce max prediction', detail: 'Lower <code>LLM_DEEP_PREDICT</code> in <code>.env</code> (e.g. 1024). Less output buffer.' },
+            { key: 'Profile A', action: 'Switch to Profile A (Q2_K deep model)', detail: 'Use the low-RAM profile in <code>.env.example</code>. Saves ~2 GB at the cost of some quality.' },
+            { key: 'LLM_DEEP_BATCH', action: 'Reduce batch size', detail: 'Lower <code>LLM_DEEP_BATCH</code> to 128 or 64. Less RAM per inference pass.' },
+        ];
+        return `
+            <div class="ram-alert ${level}" role="alert" aria-live="assertive">
+                <div class="ram-alert-header">
+                    <span class="ram-alert-icon" aria-hidden="true">${icon}</span>
+                    <span class="ram-alert-headline">${this.esc(headline)}</span>
+                </div>
+                <details class="ram-alert-details">
+                    <summary class="ram-alert-summary">Mitigation options</summary>
+                    <ul class="ram-alert-list">
+                        ${mitigations.map(m => `
+                            <li>
+                                <strong>${this.esc(m.action)}</strong>
+                                <span class="ram-alert-detail">${m.detail}</span>
+                            </li>
+                        `).join('')}
+                    </ul>
+                </details>
+            </div>
+        `;
+    }
+
     updatePanel() {
         const el = this.shadowRoot?.querySelector('#diag-panel');
         if (!el) return;
@@ -288,6 +326,8 @@ export class DiagnosticsWidget extends HTMLElement {
                         <path d="M21 2v6h-6"></path><path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path><path d="M3 22v-6h6"></path><path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
                     </svg>
                 </button>
+
+                ${this._ramAlertHtml(srv)}
 
                 <!-- Top Row: Prominent RAM -->
                 <div class="ram-strip">
@@ -462,6 +502,29 @@ export class DiagnosticsWidget extends HTMLElement {
 
                 .integration-row { grid-column: 1 / -1; background: hsla(0, 0%, 100%, 0.015); padding: 0.75rem 1rem; border-radius: 0.5rem; border: 1px solid hsla(0, 0%, 100%, 0.04); margin-top: 0.5rem; }
                 .svc-horizontal-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-top: 0.4rem; }
+
+                /* RAM Pressure Alert */
+                .ram-alert { grid-column: 1 / -1; padding: 0.75rem 1rem; border-radius: 0.5rem; border-left: 3px solid; margin-bottom: 0.25rem; }
+                .ram-alert.warning { background: hsla(40, 90%, 50%, 0.07); border-color: hsla(40, 90%, 55%, 0.7); }
+                .ram-alert.critical { background: hsla(0, 85%, 55%, 0.09); border-color: hsla(0, 85%, 55%, 0.8); }
+                .ram-alert-header { display: flex; align-items: center; gap: 0.5rem; }
+                .ram-alert-icon { font-size: 0.85rem; }
+                .ram-alert.warning .ram-alert-icon { color: hsl(40, 90%, 60%); }
+                .ram-alert.critical .ram-alert-icon { color: hsl(0, 85%, 65%); }
+                .ram-alert-headline { font-size: 0.75rem; font-weight: 700; }
+                .ram-alert.warning .ram-alert-headline { color: hsl(40, 90%, 70%); }
+                .ram-alert.critical .ram-alert-headline { color: hsl(0, 85%, 72%); }
+                .ram-alert-details { margin-top: 0.4rem; }
+                .ram-alert-summary { font-size: 0.65rem; color: var(--text-muted); cursor: pointer; user-select: none; padding: 0.1rem 0; }
+                .ram-alert-summary::-webkit-details-marker { display: none; }
+                .ram-alert-summary::before { content: '▶ '; font-size: 0.5rem; }
+                details[open] .ram-alert-summary::before { content: '▼ '; }
+                .ram-alert-list { margin: 0.5rem 0 0 0.5rem; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 0.5rem; }
+                .ram-alert-list li { font-size: 0.65rem; }
+                .ram-alert-list li strong { color: var(--text-secondary); display: block; margin-bottom: 0.1rem; }
+                .ram-alert-detail { color: var(--text-muted); line-height: 1.5; }
+                .ram-alert-detail code { font-family: var(--font-mono); font-size: 0.6rem; background: hsla(0,0%,100%,0.08); padding: 0.05rem 0.3rem; border-radius: 3px; }
+                @media (forced-colors: active) { .ram-alert { border: 2px solid ButtonText; } }
 				/* Software Styles */
 				.cpu-info { font-size: 0.85rem; font-weight: 600; color: var(--text-primary); font-family: var(--font-mono); margin-bottom: 0.4rem; }
 				.hw-specs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; background: hsla(0, 0%, 100%, 0.02); padding: 0.75rem; border-radius: 0.4rem; border: 1px solid hsla(0, 0%, 100%, 0.04); }

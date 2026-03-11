@@ -1645,6 +1645,7 @@ async def server_info() -> dict:
 			info["ram_bufcache_gb"] = round(bufcache_kb / 1048576, 1)
 			info["ram_used_pct"] = round((1 - avail_kb / max(total_kb, 1)) * 100, 1)
 			info["ram_apps_pct"] = round(apps_kb / max(total_kb, 1) * 100, 1)
+			info["ram_used_gb"] = round((total_kb - avail_kb) / 1048576, 1)
 		elif platform.system() == "Darwin":
 			import subprocess
 			total = int(subprocess.check_output(["sysctl", "-n", "hw.memsize"], text=True, timeout=5).strip())
