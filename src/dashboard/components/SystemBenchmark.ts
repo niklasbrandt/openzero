@@ -15,9 +15,8 @@ export class SystemBenchmark extends HTMLElement {
 
 	// Expected tok/s ranges per tier on CPU-only (Q4_K_M quantized)
 	private static readonly EXPECTATIONS: Record<string, { model: string; fast: number; good: number; ok: number }> = {
-		instant: { model: '~3-4B', fast: 15, good: 8, ok: 3 },
-		standard: { model: '~8B', fast: 10, good: 5, ok: 2 },
-		deep: { model: '~14B', fast: 6, good: 3, ok: 1.5 },
+		instant: { model: '~0.6B', fast: 15, good: 8, ok: 3 },
+		deep: { model: '~8B', fast: 10, good: 5, ok: 2 },
 	};
 
 	constructor() {
@@ -96,7 +95,7 @@ export class SystemBenchmark extends HTMLElement {
 		}
 
 		try {
-			const tiers = ['instant', 'standard', 'deep'];
+			const tiers = ['instant', 'deep'];
 			for (const tier of tiers) {
 				await this.runBenchmark(tier);
 			}
@@ -121,7 +120,7 @@ export class SystemBenchmark extends HTMLElement {
 	}
 
 	private getRating(tps: number, tier: string): { cls: string; icon: string; label: string; hint: string } {
-		const exp = SystemBenchmark.EXPECTATIONS[tier] || SystemBenchmark.EXPECTATIONS['standard'];
+		const exp = SystemBenchmark.EXPECTATIONS[tier] || SystemBenchmark.EXPECTATIONS['deep'];
 		if (tps >= exp.fast) return {
 			cls: 'excellent',
 			icon: '\uD83D\uDE80',
@@ -177,7 +176,7 @@ export class SystemBenchmark extends HTMLElement {
 
 			const rating = this.getRating(r.tokens_per_second, r.tier);
 			const ttftHint = this.getTtftHint(parseFloat(r.time_to_first_token));
-			const exp = SystemBenchmark.EXPECTATIONS[r.tier] || SystemBenchmark.EXPECTATIONS['standard'];
+			const exp = SystemBenchmark.EXPECTATIONS[r.tier] || SystemBenchmark.EXPECTATIONS['deep'];
 
 			// Thread utilization warning
 			const warningHtml = r.thread_warning
@@ -574,10 +573,9 @@ export class SystemBenchmark extends HTMLElement {
 
 			<div class="bench-header-bar">
 				<div class="bench-actions">
-					<button class="bench-btn has-tip" id="bench-instant" data-tip="${this.tr('tip_bench_instant', 'Benchmark the instant tier (~3-4B model). Used for quick tasks like fact extraction and classification.')}" aria-label="${this.tr('bench_instant', 'Bench instant')}">${this.tr('bench_instant', 'Bench instant')}</button>
-					<button class="bench-btn has-tip" id="bench-standard" data-tip="${this.tr('tip_bench_standard', 'Benchmark the standard tier (~8B model). Used for general conversation and reasoning.')}" aria-label="${this.tr('bench_standard', 'Bench standard')}">${this.tr('bench_standard', 'Bench standard')}</button>
-					<button class="bench-btn has-tip" id="bench-deep" data-tip="${this.tr('tip_bench_deep', 'Benchmark the deep tier (~14B model). Used for complex analysis and strategic thinking.')}" aria-label="${this.tr('bench_deep', 'Bench deep')}">${this.tr('bench_deep', 'Bench deep')}</button>
-					<button class="bench-btn all has-tip" id="bench-all" data-tip="${this.tr('tip_bench_all', 'Run all three tier benchmarks sequentially to get a complete performance picture.')}" aria-label="${this.tr('bench_run_all', 'Run All')}">${this.tr('bench_run_all', 'Run All')}</button>
+					<button class="bench-btn has-tip" id="bench-instant" data-tip="${this.tr('tip_bench_instant', 'Benchmark the instant tier (~0.6B model). Used for quick tasks like greetings and memory distillation.')}" aria-label="${this.tr('bench_instant', 'Bench instant')}">${this.tr('bench_instant', 'Bench instant')}</button>
+					<button class="bench-btn has-tip" id="bench-deep" data-tip="${this.tr('tip_bench_deep', 'Benchmark the deep tier (~8B model). Used for conversation, reasoning, and strategic analysis.')}" aria-label="${this.tr('bench_deep', 'Bench deep')}">${this.tr('bench_deep', 'Bench deep')}</button>
+					<button class="bench-btn all has-tip" id="bench-all" data-tip="${this.tr('tip_bench_all', 'Run both tier benchmarks sequentially to get a complete performance picture.')}" aria-label="${this.tr('bench_run_all', 'Run All')}">${this.tr('bench_run_all', 'Run All')}</button>
 				</div>
 			</div>
 
@@ -594,7 +592,6 @@ export class SystemBenchmark extends HTMLElement {
 		`;
 
 		this.shadowRoot?.querySelector('#bench-instant')?.addEventListener('click', () => this.runBenchmark('instant'));
-		this.shadowRoot?.querySelector('#bench-standard')?.addEventListener('click', () => this.runBenchmark('standard'));
 		this.shadowRoot?.querySelector('#bench-deep')?.addEventListener('click', () => this.runBenchmark('deep'));
 		this.shadowRoot?.querySelector('#bench-all')?.addEventListener('click', () => this.runAllBenchmarks());
 		this.updateBenchPanel();

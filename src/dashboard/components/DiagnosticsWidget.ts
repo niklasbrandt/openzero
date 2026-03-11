@@ -138,14 +138,14 @@ export class DiagnosticsWidget extends HTMLElement {
     }
 
     async runAllBenchmarks() {
-        const tiers = ['instant', 'standard', 'deep'];
+        const tiers = ['instant', 'deep'];
         for (const tier of tiers) {
             await this.runBenchmark(tier);
         }
     }
 
     private getRating(tps: number, tier: string): { cls: string; icon: string; label: string; hint: string } {
-        const exp = DiagnosticsWidget.EXPECTATIONS[tier] || DiagnosticsWidget.EXPECTATIONS['standard'];
+        const exp = DiagnosticsWidget.EXPECTATIONS[tier] || DiagnosticsWidget.EXPECTATIONS['deep'];
         if (tps >= exp.fast) return { cls: 'excellent', icon: '🚀', label: this.tr('excellent', 'Excellent'), hint: `Fast. ${exp.model} running well.` };
         if (tps >= exp.good) return { cls: 'good', icon: '✅', label: this.tr('good', 'Good'), hint: `Interactive. Typical for ${exp.model}.` };
         if (tps >= exp.ok) return { cls: 'moderate', icon: '⚠️', label: this.tr('moderate', 'Moderate'), hint: `Noticeable latency.` };

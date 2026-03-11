@@ -119,7 +119,7 @@ export class SoftwareStatus extends HTMLElement {
 			{
 				name: 'Intelligence',
 				status: (tiers.instant || {}).status === 'online' || d.status === 'online' ? 'online' : 'offline',
-				detail: d.llm_model_short || 'Standard',
+				detail: d.llm_model_short || 'Deep',
 				tip: `Active Provider: ${d.llm_provider}. Model: ${d.llm_model_full}`,
 				icon: 'brain'
 			},
@@ -192,10 +192,6 @@ export class SoftwareStatus extends HTMLElement {
 				<div class="intel-stat">
 					<span class="intel-label">Instant</span>
 					<span class="intel-value">0.6B / ${(tiers.instant || {}).threads || 7}T</span>
-				</div>
-				<div class="intel-stat">
-					<span class="intel-label">Standard</span>
-					<span class="intel-value">8B-Q2 / ${(tiers.standard || {}).threads || 7}T</span>
 				</div>
 				<div class="intel-stat">
 					<span class="intel-label">Deep</span>
