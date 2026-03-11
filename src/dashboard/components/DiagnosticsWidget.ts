@@ -176,7 +176,7 @@ export class DiagnosticsWidget extends HTMLElement {
                     <span class="ram-alert-headline">${this.esc(headline)}</span>
                 </div>
                 <details class="ram-alert-details">
-                    <summary class="ram-alert-summary">Mitigation options</summary>
+                    <summary class="ram-alert-summary"><span class="summary-arrow" aria-hidden="true">▶</span> Mitigation options</summary>
                     <ul class="ram-alert-list">
                         ${mitigations.map(m => `
                             <li>
@@ -193,6 +193,9 @@ export class DiagnosticsWidget extends HTMLElement {
     updatePanel() {
         const el = this.shadowRoot?.querySelector('#diag-panel');
         if (!el) return;
+
+        // Preserve open state of the mitigation details panel across re-renders
+        const alertDetailsOpen = (el.querySelector('.ram-alert-details') as HTMLDetailsElement | null)?.open ?? false;
 
         const cpu = this.cpuData || { cpu_model: '...', cores_physical: '?', cores_logical: '?', architecture: '?' };
         const srv = this.serverData || {};
@@ -408,6 +411,10 @@ export class DiagnosticsWidget extends HTMLElement {
 			</div>
 		`;
 
+        // Restore details open state after innerHTML replacement
+        const alertDetails = el.querySelector('.ram-alert-details') as HTMLDetailsElement | null;
+        if (alertDetails && alertDetailsOpen) alertDetails.open = true;
+
         this.shadowRoot?.querySelector('#btn-force-reload')?.addEventListener('click', (e) => {
             const btn = e.currentTarget as HTMLButtonElement;
             if (btn.classList.contains('spinning')) return;
@@ -515,10 +522,11 @@ export class DiagnosticsWidget extends HTMLElement {
                 .ram-alert.warning .ram-alert-headline { color: hsl(40, 90%, 70%); }
                 .ram-alert.critical .ram-alert-headline { color: hsl(0, 85%, 72%); }
                 .ram-alert-details { margin-top: 0.4rem; }
-                .ram-alert-summary { font-size: 0.65rem; color: var(--text-muted); cursor: pointer; user-select: none; padding: 0.1rem 0; }
+                .ram-alert-summary { font-size: 0.65rem; color: var(--text-muted); cursor: pointer; user-select: none; padding: 0.1rem 0; list-style: none; }
                 .ram-alert-summary::-webkit-details-marker { display: none; }
-                .ram-alert-summary::before { content: '▶ '; font-size: 0.5rem; }
-                details[open] .ram-alert-summary::before { content: '▼ '; }
+                .ram-alert-summary::marker { display: none; }
+                .ram-alert-summary .summary-arrow { font-size: 0.5rem; display: inline-block; transition: transform 0.2s; }
+                details[open] .ram-alert-summary .summary-arrow { transform: rotate(90deg); }
                 .ram-alert-list { margin: 0.5rem 0 0 0.5rem; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 0.5rem; }
                 .ram-alert-list li { font-size: 0.65rem; }
                 .ram-alert-list li strong { color: var(--text-secondary); display: block; margin-bottom: 0.1rem; }
