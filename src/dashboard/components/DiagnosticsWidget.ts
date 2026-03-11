@@ -101,9 +101,9 @@ export class DiagnosticsWidget extends HTMLElement {
 	async fetchAll() {
 		try {
 			const [cpu, srv, sys, cfg] = await Promise.all([
-				fetch('/api/dashboard/cpu-info').then(r => r.json()),
+				fetch('/api/dashboard/benchmark/cpu').then(r => r.json()),
 				fetch('/api/dashboard/server-info').then(r => r.json()),
-				fetch('/api/dashboard/system-status').then(r => r.json()),
+				fetch('/api/dashboard/system').then(r => r.json()),
 				fetch('/api/dashboard/llm-config').then(r => r.json()),
 			]);
 			this.cpuData = cpu;
