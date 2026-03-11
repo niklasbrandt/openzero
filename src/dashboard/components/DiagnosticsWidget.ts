@@ -277,7 +277,10 @@ export class DiagnosticsWidget extends HTMLElement {
 			segs.push({ name: 'free', label: this.tr('ram_free', 'free'), gb: parseFloat(freeGb.toFixed(1)), pct: (freeGb / total) * 100, color: 'hsla(0,0%,100%,0.04)' });
 		}
 
-		return segs;
+		// Sort non-free segments by size descending; free always last
+		const ramFree = segs.filter(s => s.name === 'free');
+		const ramNonFree = segs.filter(s => s.name !== 'free').sort((a, b) => b.gb - a.gb);
+		return [...ramNonFree, ...ramFree];
 	}
 
 	private _hddBarSegments(srv: any): { name: string; label: string; gb: number; pct: number; color: string; desc?: string }[] {
@@ -325,7 +328,10 @@ export class DiagnosticsWidget extends HTMLElement {
 			});
 		}
 
-		return segs;
+		// Sort non-free segments by size descending; free always last
+		const hddFree = segs.filter(s => s.name === 'free');
+		const hddNonFree = segs.filter(s => s.name !== 'free').sort((a, b) => b.gb - a.gb);
+		return [...hddNonFree, ...hddFree];
 	}
 
 	private _ramAlertHtml(srv: any): string {
