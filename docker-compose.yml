@@ -49,6 +49,7 @@ services:
     environment:
       - MODEL_URL=${LLM_INSTANT_MODEL_URL}
       - MODEL_FILE=${LLM_INSTANT_MODEL_FILE:-Qwen3-0.6B-Q4_K_M.gguf}
+      - KEEP_MODELS=${LLM_INSTANT_MODEL_FILE:-Qwen3-0.6B-Q4_K_M.gguf},${LLM_DEEP_MODEL_FILE:-Qwen3-8B-Q4_K_M.gguf}
       - PORT=8081
       - THREADS=${LLM_INSTANT_THREADS:-8}
       - CTX_SIZE=${LLM_INSTANT_CTX:-4096}
@@ -80,11 +81,12 @@ services:
     environment:
       - MODEL_URL=${LLM_DEEP_MODEL_URL}
       - MODEL_FILE=${LLM_DEEP_MODEL_FILE:-Qwen3-8B-Q4_K_M.gguf}
+      - KEEP_MODELS=${LLM_INSTANT_MODEL_FILE:-Qwen3-0.6B-Q4_K_M.gguf},${LLM_DEEP_MODEL_FILE:-Qwen3-8B-Q4_K_M.gguf}
       - PORT=8083
       - THREADS=${LLM_DEEP_THREADS:-8}
-      - CTX_SIZE=${LLM_DEEP_CTX:-8192}
+      - CTX_SIZE=${LLM_DEEP_CTX:-6144}
       - N_PREDICT=${LLM_DEEP_PREDICT:-4096}
-      - BATCH_SIZE=${LLM_DEEP_BATCH:-1024}
+      - BATCH_SIZE=${LLM_DEEP_BATCH:-512}
       - PARALLEL=${LLM_DEEP_PARALLEL:-1}
     healthcheck:
       test: [ "CMD", "curl", "-sf", "http://localhost:8083/health" ]
