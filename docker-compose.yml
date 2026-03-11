@@ -237,7 +237,7 @@ services:
       - "traefik.http.routers.error-page.rule=PathPrefix(`/error-page`)"
       - "traefik.http.services.error-page.loadbalancer.server.port=80"
       - "traefik.http.middlewares.error-pages-middleware.errors.service=error-page"
-      - "traefik.http.middlewares.error-pages-middleware.errors.status=500-599"
+      - "traefik.http.middlewares.error-pages-middleware.errors.status=400-599"
       - "traefik.http.middlewares.error-pages-middleware.errors.query=/"
       - "traefik.docker.network=openzero_internal"
 
