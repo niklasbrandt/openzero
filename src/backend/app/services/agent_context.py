@@ -2,7 +2,7 @@
 
 Reads all supported files (.md, .txt, .docx, .pdf) from /agent,
 compresses them deterministically, caches the result, and provides a
-single get_agent_context_for_prompt() call that injects them as operational
+single get_agent_skills_for_prompt() call that injects them as operational
 expertise into every system prompt.
 
 The /agent folder is designed for skill modules: methodology knowledge,
@@ -379,21 +379,21 @@ async def refresh_agent_context() -> None:
 		logger.info("agent_context: no agent files found — block empty")
 
 
-def get_agent_context_for_prompt() -> str:
-	"""Return the cached agent context block (empty string if none)."""
+def get_agent_skills_for_prompt() -> str:
+	"""Return the cached agent skills block (empty string if none)."""
 	return _state.prompt_block
 
 
-def get_agent_context_debug_report() -> str:
-	"""Return the exact content Z injects as agent context, per file."""
+def get_agent_skills_debug_report() -> str:
+	"""Return the exact content Z injects as agent skills, per file."""
 	if not _state.prompt_block:
-		return "No agent context loaded. Check that /agent/ contains .md, .pdf, or .docx files."
+		return "No agent skills loaded. Check that /agent/ contains .md, .pdf, or .docx files."
 
 	source = _state.final if _state.final else (_state.compressed if _state.compressed else _state.cache)
 	if not source:
-		return "Agent context cache is empty."
+		return "Agent skills cache is empty."
 
-	lines = [f"Agent Context — {len(source)} file(s) active ({len(_state.prompt_block)} chars total)"]
+	lines = [f"Agent Skills — {len(source)} file(s) active ({len(_state.prompt_block)} chars total)"]
 	for fname, text in source.items():
 		lines.append(f"\n--- {fname} ---\n{text.strip()}")
 	return "\n".join(lines)
