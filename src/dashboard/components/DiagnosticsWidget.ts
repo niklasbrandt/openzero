@@ -154,7 +154,12 @@ export class DiagnosticsWidget extends HTMLElement {
 		const r = await fetch(`/api/dashboard/benchmark/llm?tier=${encodeURIComponent(tier)}`, {
 			method: 'POST',
 		});
-		const res = await r.json();
+		let res: any;
+		if (!r.ok) {
+			res = { tier, error: `HTTP ${r.status}` };
+		} else {
+			res = await r.json();
+		}
 		const idx = this.benchResults.findIndex(b => b.tier === tier);
 		if (idx > -1) this.benchResults[idx] = res;
 		else this.benchResults.push(res);
@@ -537,7 +542,7 @@ export class DiagnosticsWidget extends HTMLElement {
 
 		const benchHtml = this.benchResults.length === 0 ? `<div class="empty-state">No benchmark data. Run a test below.</div>` :
 			this.benchResults.map(r => {
-				if (r.error || r.tokens_per_second === 0) {
+				if (r.error || !r.tokens_per_second) {
 					const msg = r.error || 'No tokens received — model may be loading or unavailable';
 					return `
 						<div class="bench-res-item error has-tip" data-tip="Click a test button to retry.">
