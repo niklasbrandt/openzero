@@ -1577,8 +1577,13 @@ async def chat_stream_with_context(
 			if cleaned:
 				yield cleaned
 	except Exception as e:
-		logger.warning("chat_stream_with_context failed: %s", e)
-		yield "I encountered a temporary issue. Please try again."
+		logger.warning("chat_stream_with_context setup failed (%s) -- falling back to bare stream", type(e).__name__)
+		# Context setup failed (e.g. DB unreachable for build_system_prompt).
+		# Fall back to a bare stream without context so the user still gets a response.
+		async for chunk in chat_stream(user_message, tier="instant"):
+			cleaned = _strip_emoji(chunk)
+			if cleaned:
+				yield cleaned
 
 
 def _build_history_text(history: Optional[list] = None) -> str:
