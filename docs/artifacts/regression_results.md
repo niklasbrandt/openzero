@@ -1,11 +1,11 @@
 # Regression Test Report
-**Date:** 2026-03-11 21:03:54
+**Date:** 2026-03-11 21:16:30
 **Target:** http://100.116.160.123
 
 ### Log
 ```text
 # Regression Test Report
-**Date:** 2026-03-11 21:03:54
+**Date:** 2026-03-11 21:16:30
 **Target:** http://100.116.160.123
 
 ✅ System health OK
@@ -15,8 +15,10 @@
 ✅ /tree OK
 ✅ Life-tree API OK
 ✅ /learn + /search round-trip verified
+✅ /memories OK
+✅ /unlearn OK
 
-❌ Suite failed: /memories returned 429
+❌ Suite failed: 
 ✅ Server-side cleanup completed
 
 🏁 Suite aborted/failed. Cleanup complete.
