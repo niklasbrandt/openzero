@@ -152,6 +152,63 @@ export class DiagnosticsWidget extends HTMLElement {
         return { cls: 'slow', icon: '🐌', label: this.tr('slow', 'Slow'), hint: `Below expected for ${exp.model}.` };
     }
 
+    private _svcColor(name: string): string {
+        const map: Record<string, string> = {
+            'llm-deep':    'hsl(260,70%,65%)',
+            'llm-instant': 'hsl(174,72%,56%)',
+            'whisper':     'hsl(200,80%,60%)',
+            'tts':         'hsl(225,65%,65%)',
+            'postgres':    'hsl(140,55%,55%)',
+            'qdrant':      'hsl(30,80%,60%)',
+            'redis':       'hsl(0,68%,62%)',
+            'planka':      'hsl(340,65%,62%)',
+            'backend':     'hsl(210,40%,62%)',
+            'traefik':     'hsl(195,55%,56%)',
+            'pihole':      'hsl(100,45%,55%)',
+        };
+        return map[name] || 'hsl(220,18%,52%)';
+    }
+
+    private _ramBarSegments(srv: any): { name: string; label: string; gb: number; pct: number; color: string }[] {
+        const total = srv.ram_total_gb || 1;
+        const appsGb: number = srv.ram_apps_gb || 0;
+        const cacheGb: number = srv.ram_bufcache_gb || 0;
+        const freeGb: number = srv.ram_free_gb ?? Math.max(total - appsGb - cacheGb, 0);
+        const containerRam: { name: string; gb: number }[] = srv.container_ram || [];
+
+        // Build named segments from live container data
+        const segs: { name: string; label: string; gb: number; pct: number; color: string }[] = [];
+        let accounted = 0;
+        for (const c of containerRam) {
+            segs.push({
+                name: c.name,
+                label: c.name,
+                gb: c.gb,
+                pct: Math.min((c.gb / total) * 100, 100),
+                color: this._svcColor(c.name),
+            });
+            accounted += c.gb;
+        }
+
+        // "Other" — app memory not attributable to any known container
+        const otherGb = Math.max(appsGb - accounted, 0);
+        if (otherGb > 0.05) {
+            segs.push({ name: 'other', label: 'other (OS/misc)', gb: parseFloat(otherGb.toFixed(2)), pct: (otherGb / total) * 100, color: 'hsl(220,18%,42%)' });
+        }
+
+        // Linux page cache / buffers (reclaimable)
+        if (cacheGb > 0.05) {
+            segs.push({ name: 'cache', label: 'page cache', gb: cacheGb, pct: (cacheGb / total) * 100, color: 'hsla(174,40%,50%,0.28)' });
+        }
+
+        // Free
+        if (freeGb > 0.05) {
+            segs.push({ name: 'free', label: 'free', gb: parseFloat(freeGb.toFixed(1)), pct: (freeGb / total) * 100, color: 'hsla(0,0%,100%,0.04)' });
+        }
+
+        return segs;
+    }
+
     private _ramAlertHtml(srv: any): string {
         const appsPct = srv.ram_apps_pct || 0;
         const usedPct = srv.ram_used_pct || 0;
@@ -203,10 +260,6 @@ export class DiagnosticsWidget extends HTMLElement {
         const tiers = srv.tiers || {};
 
         // 1. Hardware Section
-        const ramPct = srv.ram_used_pct || 0;
-        const hasRamBreakdown = srv.ram_apps_gb !== undefined && srv.ram_bufcache_gb !== undefined;
-        const appsPct = hasRamBreakdown ? Math.min(srv.ram_apps_pct || 0, 100) : ramPct;
-        const cachePct = hasRamBreakdown ? Math.min((srv.ram_bufcache_gb / Math.max(srv.ram_total_gb, 0.1)) * 100, 100 - appsPct) : 0;
 
         const cpuFeats = [
             { id: 'avx2', label: 'AVX2' },
@@ -336,17 +389,21 @@ export class DiagnosticsWidget extends HTMLElement {
                 <div class="ram-strip">
                     <div class="ram-strip-header">
                         <span class="ram-title">System Memory (RAM)</span>
-                        <span class="ram-value">${srv.ram_used_gb || (ramPct * srv.ram_total_gb / 100).toFixed(1)}GB / ${srv.ram_total_gb}GB</span>
+                        <span class="ram-value">${srv.ram_used_gb ?? ((srv.ram_used_pct || 0) * (srv.ram_total_gb || 0) / 100).toFixed(1)}GB / ${srv.ram_total_gb}GB</span>
                     </div>
                     <div class="ram-strip-bar">
-                        <div class="ram-segment apps has-tip" style="width:${appsPct}%" data-tip="Applications & Models: Actively used memory."></div>
-                        <div class="ram-segment cache has-tip" style="width:${cachePct}%" data-tip="Cache & Buffers: Reclaimable system memory."></div>
-                        <div class="ram-segment free has-tip" style="width:${100 - appsPct - cachePct}%" data-tip="Free: Unused physical RAM available."></div>
+                        ${this._ramBarSegments(srv).map(s => `
+                            <div class="ram-seg-svc has-tip" style="width:${Math.max(s.pct, 0).toFixed(2)}%;background:${s.color}" data-tip="${this.esc(s.label)}: ${s.gb} GB"></div>
+                        `).join('')}
                     </div>
                     <div class="ram-strip-legend">
-                        <div class="leg-item"><span class="leg-dot apps"></span> Apps: ${srv.ram_apps_gb || 0}G</div>
-                        <div class="leg-item"><span class="leg-dot cache"></span> Cache: ${srv.ram_bufcache_gb || 0}G</div>
-                        <div class="leg-item"><span class="leg-dot free"></span> Free: ${(srv.ram_free_gb || 0).toFixed(1)}G</div>
+                        ${this._ramBarSegments(srv).filter(s => s.name !== 'free').map(s => `
+                            <div class="leg-item">
+                                <span class="leg-dot" style="background:${s.color};border-color:${s.color}"></span>
+                                <span class="leg-name">${this.esc(s.label)}</span>
+                                <span class="leg-gb">${s.gb}G</span>
+                            </div>
+                        `).join('')}
                     </div>
                     ${cfgTiers.length > 0 ? `
                     <div class="llm-ram-breakdown">
@@ -496,16 +553,12 @@ export class DiagnosticsWidget extends HTMLElement {
                 .ram-title { font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
                 .ram-value { font-size: 0.9rem; font-weight: 800; font-family: var(--font-mono); color: var(--accent-text, var(--accent-primary)); }
                 .ram-strip-bar { height: 10px; background: hsla(0, 0%, 100%, 0.05); border-radius: 5px; overflow: hidden; display: flex; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); }
-                .ram-segment { height: 100%; transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
-                .ram-segment.apps { background: linear-gradient(90deg, var(--accent-primary) 0%, var(--accent-secondary) 100%); box-shadow: 0 0 10px hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.3); }
-                .ram-segment.cache { background: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.25); }
-                .ram-segment.free { background: transparent; }
-                .ram-strip-legend { display: flex; gap: 1.5rem; margin-top: 0.6rem; }
-                .leg-item { display: flex; align-items: center; gap: 0.4rem; font-size: 0.65rem; color: var(--text-muted); font-weight: 600; }
-                .leg-dot { width: 8px; height: 8px; border-radius: 2px; }
-                .leg-dot.apps { background: var(--accent-primary); }
-                .leg-dot.cache { background: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.4); border: 1px solid hsla(0, 0%, 100%, 0.1); }
-                .leg-dot.free { background: transparent; border: 1px solid hsla(0, 0%, 100%, 0.2); }
+                .ram-seg-svc { height: 100%; transition: width 0.7s cubic-bezier(0.4, 0, 0.2, 1); flex-shrink: 0; }
+                .ram-strip-legend { display: flex; flex-wrap: wrap; gap: 0.35rem 1rem; margin-top: 0.6rem; }
+                .leg-item { display: flex; align-items: center; gap: 0.35rem; font-size: 0.62rem; color: var(--text-muted); font-weight: 600; }
+                .leg-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; border: 1px solid transparent; }
+                .leg-name { color: var(--text-secondary); }
+                .leg-gb { font-family: var(--font-mono); font-size: 0.6rem; color: var(--text-muted); }
 
                 .integration-row { grid-column: 1 / -1; background: hsla(0, 0%, 100%, 0.015); padding: 0.75rem 1rem; border-radius: 0.5rem; border: 1px solid hsla(0, 0%, 100%, 0.04); margin-top: 0.5rem; }
                 .svc-horizontal-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-top: 0.4rem; }
