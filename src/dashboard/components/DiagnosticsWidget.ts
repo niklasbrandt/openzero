@@ -540,7 +540,7 @@ export class DiagnosticsWidget extends HTMLElement {
 		const predictFor = (name: string): number => { const t = cfgTiers.find((x: any) => x.tier === name); return t?.predict || 0; };
 		const threadsFor = (name: string): number => { const t = cfgTiers.find((x: any) => x.tier === name); return t?.threads || 0; };
 
-		const benchHtml = this.benchResults.length === 0 ? `<div class="empty-state">No benchmark data. Run a test below.</div>` :
+		const benchHtml = this.benchResults.length === 0 ? `` :
 			this.benchResults.map(r => {
 				if (r.error || !r.tokens_per_second) {
 					const msg = r.error || 'No tokens received — model may be loading or unavailable';
@@ -949,8 +949,9 @@ export class DiagnosticsWidget extends HTMLElement {
 				.b-btn.tier-fast:hover:not(:disabled) { background: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.12); border-color: var(--accent-primary); color: var(--accent-primary); }
 				.b-btn.tier-deep { border-color: hsla(260,70%,65%,0.4); color: hsl(260,70%,70%); }
 				.b-btn.tier-deep:hover:not(:disabled) { background: hsla(260,70%,65%,0.12); border-color: hsl(260,70%,65%); color: hsl(260,70%,75%); }
-
-				@keyframes diag-pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+			/* Light-theme contrast override: hsl(260,65%,35%) gives ≥8:1 on --surface-bg-light */
+			:host-context([data-theme="light"]) .b-btn.tier-deep { color: hsl(260,65%,35%); border-color: hsla(260,65%,35%,0.5); }
+			:host-context([data-theme="light"]) .b-btn.tier-deep:hover:not(:disabled) { background: hsla(260,65%,35%,0.1); border-color: hsl(260,65%,35%); color: hsl(260,65%,28%); }
 
 				.vol-inventory { grid-column: 1 / -1; background: hsla(0,0%,100%,0.02); border: 1px solid hsla(0,0%,100%,0.06); border-radius: 0.6rem; overflow: hidden; }
 				.vol-inv-summary { display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem 1rem; cursor: pointer; user-select: none; list-style: none; }
