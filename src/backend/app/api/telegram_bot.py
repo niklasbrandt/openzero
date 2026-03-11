@@ -70,6 +70,11 @@ chat_histories: dict[int, list[dict[str, str]]] = {} # chat_id -> list of dicts 
 _thinking_locks: dict[int, asyncio.Lock] = {}  # chat_id -> Lock
 _pending_messages: dict[int, list[str]] = {}   # chat_id -> buffered texts
 
+# Strong references to background tasks so the GC cannot destroy them mid-execution.
+# asyncio.create_task() returns a weak reference; without this set the task can
+# be collected before it finishes (Python 3.12 asyncio GC behaviour).
+_background_tasks: set = set()
+
 async def start_telegram_bot():
 	"""Start the Telegram bot in polling mode within the FastAPI event loop."""
 	global bot_app
@@ -328,8 +333,10 @@ async def start_telegram_bot():
 		nav_markup=get_nav_markup,
 	)
 
-	# Launch greeting in background
-	asyncio.create_task(send_startup_greeting())
+	# Launch greeting in background (keep a strong reference to prevent GC mid-run)
+	_task = asyncio.create_task(send_startup_greeting())
+	_background_tasks.add(_task)
+	_task.add_done_callback(_background_tasks.discard)
 
 
 async def _recover_unanswered_messages():
