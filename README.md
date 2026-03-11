@@ -242,7 +242,7 @@ All commands are available via the Telegram bot and the dashboard chat interface
 | `/personal`  | Display the personal context files currently loaded from the `personal/` folder (about-me, requirements and more).                                              |
 | `/skills`    | Display the agent skill modules currently loaded from the `agent/` folder (kanban, planka, agent-rules and more).                                               |
 | `/unlearn`   | Refine Z's memory by evolving or removing specific points in the vault.                                                                                         |
-| `/add`       | Commit specific facts to Z's permanent knowledge vault (bypasses the noise filter).                                                                             |
+| `/learn`     | Commit specific facts to Z's permanent knowledge vault (bypasses the noise filter).                                                                             |
 | `/remind`    | Set a temporary recurring reminder with interval and expiry (e.g., every 30 min for 4h).                                                                        |
 | `/protocols` | Inspect Z's Semantic Action Tags and available agentic tools.                                                                                                   |
 | `/purge`     | Permanently delete all semantic memories from the vault (Qdrant). Does **not** affect task boards, people, or briefing history. Requires explicit confirmation. |
@@ -254,7 +254,7 @@ Z follows a strict **"Core Knowledge, not Noise"** logic for long-term intellige
 - **Permanent Memory:** Preferences, family members, project goals, health facts, and life milestones are committed to the **Semantic Vault** (Qdrant). Z learns proactively -- when you mention "I am dust allergic" in conversation, it is silently distilled and stored.
 - **Transient Traffic:** Status updates ("I'm at the store"), transient chat history, and bot responses are **intentionally ignored** by the memory vault to prevent hallucination loops and context pollution.
 - **The Guardrail:** Automatic filtering via a local reasoning pass ensures trivialities like "thanks" or "hello" never hit the vault. The system distinguishes between factual data worth keeping (preferences, people, plans) and ephemeral chatter.
-- **Manual Control:** Use `/add` to explicitly override the filter when you have critical context Z must never forget.
+- **Manual Control:** Use `/learn` to explicitly override the filter when you have critical context Z must never forget.
 - **Memory Review:** Each morning briefing includes a "New Memories (Last 24h)" section, showing exactly what was stored. Use `/unlearn` to correct any mistakes.
 
 ## Maintenance

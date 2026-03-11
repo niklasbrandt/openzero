@@ -62,9 +62,10 @@
 		}
 		.wordmark {
 			font-size: 22px; font-weight: 200; letter-spacing: 0.12em;
-			color: var(--text-secondary); text-transform: uppercase;
+			color: var(--text-secondary);
 			margin-bottom: 32px; animation: fadeIn 1.2s ease-out;
 		}
+		.wm-zero { color: var(--accent-blue); opacity: 0.9; }
 		.status-code {
 			font-size: 72px; font-weight: 100; letter-spacing: -0.04em;
 			line-height: 1; margin-bottom: 12px;
@@ -108,7 +109,7 @@
 <body>
 	<div class="border-glow">
 		<div class="container">
-			<div class="wordmark">openZero</div>
+			<div class="wordmark">open<span class="wm-zero">Zero</span></div>
 			<div class="status-code" id="status-code" aria-live="polite">---</div>
 			<div class="status-label" id="status-label"></div>
 
@@ -159,7 +160,17 @@
 			500: 'Internal Server Error', 502: 'Bad Gateway',
 			503: 'Service Unavailable', 504: 'Gateway Timeout'
 		};
+		// ?status= is set when navigating directly to /error-page/?status=NNN.
+		// When Traefik's errors middleware serves this page, the client URL is unchanged
+		// so the query param is absent — fall back to the Navigation Timing API which
+		// reports the actual HTTP response status the browser received.
 		var code = parseInt(new URLSearchParams(window.location.search).get('status') || '0', 10);
+		if (!code) {
+			try {
+				var navEntry = performance.getEntriesByType('navigation')[0];
+				if (navEntry && navEntry.responseStatus >= 400) code = navEntry.responseStatus;
+			} catch(_) {}
+		}
 		var is5xx = code >= 500 && code < 600;
 		document.getElementById('status-code').textContent = code || '';
 		document.getElementById('status-label').textContent =
