@@ -2060,6 +2060,24 @@ async def server_info() -> dict:
 						info["docker_orphan_volumes_gb"] = _orphan_gb
 						if _orphan_gb > 0.05:
 							info["disk_breakdown"].append({"name": "Orphan Volumes", "gb": _orphan_gb, "color": "hsl(35,90%,55%)"})
+
+						# Named volumes not individually probed via du exec
+						_extra_vol_map = {
+							"tts_models": ("TTS Models", "hsl(300,55%,62%)"),
+							"redis_data": ("Redis Cache", "hsl(7,75%,58%)"),
+						}
+						for _vitem in _vol_inventory:
+							_vshort = _vitem["name"]
+							if _vshort in _extra_vol_map and not _vitem.get("orphan") and _vitem.get("gb", 0) > 0.05:
+								_vlabel, _vcolor = _extra_vol_map[_vshort]
+								info["disk_breakdown"].append({"name": _vlabel, "gb": _vitem["gb"], "color": _vcolor})
+
+						# Container writable layers (overlay delta written by containers — not counted in image sizes)
+						_c_df_list = _df.get("Containers") or []
+						_c_rw_bytes = sum(c.get("SizeRw", 0) for c in _c_df_list)
+						_c_rw_gb = round(_c_rw_bytes / (1024 ** 3), 1)
+						if _c_rw_gb > 0.05:
+							info["disk_breakdown"].append({"name": "Container Layers", "gb": _c_rw_gb, "color": "hsl(215,55%,58%)"})
 					except Exception as _dfdf_err:
 						logger.debug("Docker system/df failed: %s", _dfdf_err)
 
