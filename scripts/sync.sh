@@ -75,6 +75,7 @@ fi
 # silently accumulating GBs between deployments (7+ GB observed after ~10 syncs).
 ssh $REMOTE_USER@$REMOTE_HOST "cd $REMOTE_DIR \
   && docker compose build backend \
+  && docker compose rm -f --stop backend \
   && docker compose up -d \
   && docker builder prune -f \
   && docker image prune -f"
