@@ -300,6 +300,10 @@ async def start_telegram_bot():
 				auth_url = f"{base}/api/dashboard/auth?token={settings.DASHBOARD_TOKEN}"
 				mobile_hint = f'\n\n📲 <a href="{auth_url}">Open dashboard</a> — tap once to save access'
 
+			# Save greeting to DB so the dashboard and recovery logic see it in the timeline
+			from app.models.db import save_global_message as _sgm
+			await _sgm("telegram", "z", greeting_clean, model="deep")
+
 			await send_notification_html(
 				f"<blockquote><b>{real_time}</b>\n\n{_md_to_html(greeting_clean)}\n\n<i>{stats_text}</i>{mobile_hint}</blockquote>",
 				reply_markup=get_nav_markup(t, token=settings.DASHBOARD_TOKEN)
@@ -329,21 +333,34 @@ async def start_telegram_bot():
 
 async def _recover_unanswered_messages():
 	"""Check if the last global message(s) are from the user with no Z reply.
-	If so, pick them up and respond now."""
+	Waits 30 s first so live handle_freetext handlers can consume any pending
+	Telegram updates (drop_pending_updates=False) without double-responding."""
 	try:
+		await asyncio.sleep(30)
+
 		from app.models.db import get_global_history, save_global_message
-		history = await get_global_history(limit=5)
+		from datetime import datetime, timezone as _tz
+		history = await get_global_history(limit=10)
 		if not history:
 			return
 
-		# Collect trailing unanswered user messages
+		# Collect trailing unanswered user messages that are at least 60 s old.
+		# Messages younger than 60 s were likely just delivered via Telegram
+		# pending-update replay and are already being handled by handle_freetext.
+		now_utc = datetime.now(_tz.utc)
 		unanswered = []
 		for msg in reversed(history):
 			if msg["role"] == "user":
+				try:
+					msg_ts = datetime.fromisoformat(msg["at"]).replace(tzinfo=_tz.utc)
+					if (now_utc - msg_ts).total_seconds() < 60:
+						break  # too recent — handle_freetext is likely handling it
+				except Exception:
+					pass
 				unanswered.append(msg["content"])
 			else:
 				break
-		
+
 		if not unanswered:
 			return
 
@@ -934,9 +951,30 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
 			if quoted:
 				user_text = f"[Replying to: \"{quoted[:500]}\"]\n\n{user_text}"
 
-		from app.models.db import save_global_message
+		from app.models.db import save_global_message, get_global_history
 		# Save user message FIRST so rapid follow-up messages see the context
 		await save_global_message("telegram", "user", user_text)
+
+		# --- "Coming back" detection: inject return context for long silences ---
+		# If the last Z reply was >2 h ago, annotate the LLM prompt so Z
+		# acknowledges the gap. The raw user_text stays in the DB unchanged.
+		llm_user_text = user_text
+		try:
+			from datetime import datetime, timezone as _tz
+			_hist = await get_global_history(limit=15)
+			_last_z = next((m for m in reversed(_hist) if m["role"] == "z"), None)
+			if _last_z:
+				_last_ts = datetime.fromisoformat(_last_z["at"]).replace(tzinfo=_tz.utc)
+				_gap = datetime.now(_tz.utc) - _last_ts
+				if _gap.total_seconds() > 7200:
+					_gap_h = int(_gap.total_seconds() // 3600)
+					llm_user_text = (
+						f"[SYSTEM: User returning after ~{_gap_h}h of silence. "
+						f"Acknowledge their return naturally in one sentence, then respond to their message.]\n\n{user_text}"
+					)
+					logger.debug("Return greeting injected: gap %.0f h", _gap.total_seconds() / 3600)
+		except Exception:
+			pass
 
 		# --- Message Coalescing ---
 		if chat_id not in _thinking_locks:
@@ -952,7 +990,7 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
 			return
 
 		async with lock:
-			await _process_freetext(update, context, chat_id, user_text)
+			await _process_freetext(update, context, chat_id, llm_user_text)
 
 			# After responding, check if messages arrived while we were thinking
 			while _pending_messages.get(chat_id):
