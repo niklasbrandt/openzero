@@ -11,10 +11,10 @@ const puppeteer = require('puppeteer');
     const res = await page.evaluate(() => {
         const diag = document.querySelector('system-benchmark');
         if (!diag) return 'no diag';
-        const instantBtn = diag.shadowRoot.querySelector('button[id="bench-instant"]');
-        if (!instantBtn) return 'no instant btn';
-        instantBtn.click();
-        return 'clicked diag instant';
+        const fastBtn = diag.shadowRoot.querySelector('button[id="bench-fast"]');
+        if (!fastBtn) return 'no fast btn';
+        fastBtn.click();
+        return 'clicked diag fast';
     });
     console.log(res);
 
