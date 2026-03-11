@@ -195,6 +195,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./personal:/app/personal:ro
       - ./agent:/app/agent:ro
+      - ./docker-compose.yml:/app/compose.yml:ro
     group_add:
       - "988"  # docker socket GID on VPS host (getent group docker | cut -d: -f3)
     extra_hosts:
