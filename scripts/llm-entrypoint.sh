@@ -34,6 +34,18 @@ else
 	echo "Model already present: ${MODEL_FILE}"
 fi
 
+# Prune stale models — delete any .gguf files in MODEL_DIR that are NOT the
+# currently configured model. This prevents the volume from accumulating
+# gigabytes of abandoned models each time the profile is changed in .env.
+echo "Checking for stale models in ${MODEL_DIR}..."
+find "$MODEL_DIR" -maxdepth 1 -name "*.gguf" | while read -r f; do
+	if [ "$(basename "$f")" != "$MODEL_FILE" ]; then
+		SIZE_MB=$(du -sm "$f" 2>/dev/null | cut -f1)
+		echo "Removing stale model: $(basename "$f") (${SIZE_MB} MB)"
+		rm -f "$f"
+	fi
+done
+
 # Batch size for prompt evaluation — larger = faster TTFT but more RAM.
 # Default 512 is a good balance. Set via BATCH_SIZE env var.
 BATCH="${BATCH_SIZE:-512}"

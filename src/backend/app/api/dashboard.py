@@ -1829,6 +1829,36 @@ async def server_info() -> dict:
 					[r for r in results if r],
 					key=lambda x: x["gb"], reverse=True,
 				)
+
+				# models volume disk usage — exec `du -sb /models` in any running LLM container
+				_llm_containers = [
+					c for c in containers
+					if c.get("Labels", {}).get("com.docker.compose.service", "") in ("llm-instant", "llm-deep")
+				]
+				if _llm_containers:
+					try:
+						_cid = _llm_containers[0]["Id"]
+						# Create exec instance
+						_exec_resp = await dc.post(
+							f"/containers/{_cid}/exec",
+							json={"AttachStdout": True, "AttachStderr": False, "Cmd": ["du", "-sb", "/models"]},
+						)
+						if _exec_resp.status_code == 201:
+							_exec_id = _exec_resp.json()["Id"]
+							_start_resp = await dc.post(
+								f"/exec/{_exec_id}/start",
+								json={"Detach": False, "Tty": False},
+								headers={"Content-Type": "application/json"},
+								timeout=httpx.Timeout(connect=1.0, read=8.0, write=1.0, pool=1.0),
+							)
+							if _start_resp.status_code == 200:
+								# Docker multiplexed stream: first 8 bytes are header (stream type + size)
+								_raw = _start_resp.content
+								_text = _raw[8:].decode("utf-8", errors="replace").strip() if len(_raw) > 8 else _raw.decode("utf-8", errors="replace").strip()
+								_bytes_used = int(_text.split()[0])
+								info["models_disk_gb"] = round(_bytes_used / (1024 ** 3), 1)
+					except Exception as _du_err:
+						logger.debug("models du failed: %s", _du_err)
 	except Exception as _docker_err:
 		logger.debug("Docker stats unavailable: %s", _docker_err)
 		info.setdefault("container_ram", [])
