@@ -1678,8 +1678,8 @@ async def server_info() -> dict:
 							with open(f'/proc/{_pid}/cgroup') as _cg_f:
 								if 'docker' in _cg_f.read():
 									continue
-						except OSError:
-							pass
+						except OSError as _oe:
+							logger.debug("RAM probe - cgroup check failed: %s", _oe)
 						_name, _rss_kb = '', 0
 						with open(f'/proc/{_pid}/status') as _sf:
 							for _line in _sf:
@@ -1689,8 +1689,8 @@ async def server_info() -> dict:
 									_rss_kb = int(_line.split()[1])
 						if _name and _rss_kb >= 1024:
 							_proc_rss[_name] = _proc_rss.get(_name, 0) + _rss_kb
-					except Exception:
-						pass
+					except Exception as _exc:
+						logger.debug("RAM probe - status check loop failed: %s", _exc)
 				_sp_sorted = sorted(_proc_rss.items(), key=lambda x: x[1], reverse=True)
 				_sp_top = [(n, kb) for n, kb in _sp_sorted[:10] if kb >= 10240]
 				_sp_misc_kb = sum(kb for _, kb in _sp_sorted[len(_sp_top):])
@@ -1812,7 +1812,8 @@ async def server_info() -> dict:
 	# RSS = memory_stats.usage minus the kernel's page cache (reclaimable).
 	# Results arrive in parallel to stay within the request timeout.
 	try:
-		import asyncio as _asyncio, re as _re
+		import asyncio as _asyncio
+		import re as _re
 		_docker_transport = httpx.AsyncHTTPTransport(uds="/var/run/docker.sock")
 
 		def _cname(raw: str) -> str:
@@ -2048,8 +2049,8 @@ async def server_info() -> dict:
 								_pl_gb = round(_pl_bytes / (1024 ** 3), 2)
 								if _pl_gb > 0.1:
 									info["disk_breakdown"].append({"name": "Project Files", "gb": _pl_gb, "color": "hsl(180,50%,50%)"})
-					except Exception:
-						pass
+					except Exception as _exc:
+						logger.debug("Planka du failed: %s", _exc)
 
 				# --- Docker system/df: build cache + volume inventory ---
 				try:
@@ -2081,8 +2082,8 @@ async def server_info() -> dict:
 											_compose_vol_names.add(_vm.group(1))
 										elif _vs and not _vs[0].isspace() and not _vs.startswith("#"):
 											_in_vblock = False
-						except Exception:
-							pass
+						except Exception as _exc:
+							logger.debug("Compose volume parse failed: %s", _exc)
 
 						# Build volume inventory
 						_vol_list = _df.get("Volumes") or []
@@ -2441,18 +2442,16 @@ async def get_system_status(db: AsyncSession = Depends(get_db)):
     # Software Metrics: Pi-hole (Blocked Stats)
     pihole_stats = "0 blocked (0%)"
     try:
-        # Get pihole summary via its API
-        ph_json_cmd = subprocess.run(
-            ["docker", "exec", "openzero-pihole-1", "php", "/var/www/html/admin/api.php", "summary"],
-            capture_output=True, text=True, timeout=5
-        )
-        if ph_json_cmd.returncode == 0:
-            ph_data = json.loads(ph_json_cmd.stdout)
-            blocked = ph_data.get("ads_blocked_today", 0)
-            percentage = ph_data.get("ads_percentage_today", 0)
-            pihole_stats = f"{blocked} blocked ({percentage}%)"
+        # Get pihole summary via its API over the internal network
+        async with httpx.AsyncClient(timeout=5) as client:
+            resp = await client.get("http://pihole:8081/admin/api.php?summaryRaw")
+            if resp.status_code == 200:
+                ph_data = resp.json()
+                blocked = ph_data.get("ads_blocked_today", 0)
+                percentage = ph_data.get("ads_percentage_today", 0)
+                pihole_stats = f"{blocked} blocked ({percentage}%)"
     except Exception as e:
-        logger.debug("Failed to get Pi-hole stats: %s", e)
+        logger.debug("Failed to get Pi-hole stats via API: %s", e)
 
     # System RAM for health metrics
     ram = psutil.virtual_memory()
@@ -2463,15 +2462,11 @@ async def get_system_status(db: AsyncSession = Depends(get_db)):
     res_people = await db.execute(select(Person).where(Person.circle_type == "identity"))
     identity_set = res_people.scalar_one_or_none() is not None
 
-    # DNS Health — test Pi-hole can resolve open.zero.
-    # Pi-hole runs network_mode:host; UFW blocks port 53 from Docker bridge
-    # subnets (Tailscale-only). Run dig inside the pihole container via docker
-    # exec, which the backend can do via its mounted Docker socket.
     dns_ok = False
     try:
+        # Query directly via internal network (pihole resolves to host-gateway)
         dig = subprocess.run(
-            ["docker", "exec", "openzero-pihole-1", "dig",
-             "@127.0.0.1", "open.zero", "+short", "+time=2", "+tries=1"],
+            ["dig", "@pihole", "open.zero", "+short", "+time=2", "+tries=1"],
             capture_output=True, text=True, timeout=8
         )
         if dig.returncode == 0 and dig.stdout.strip():
