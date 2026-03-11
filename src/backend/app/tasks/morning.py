@@ -130,19 +130,19 @@ async def morning_briefing():
 		f"LATEST EMAILS:\n{email_summary}\n"
 	)
 	
-	# 3. Generate Briefing — deep tier with 90s hard timeout, fallback to standard
+	# 3. Generate Briefing — deep tier with 90s hard timeout, retry on failure
 	logger.debug("morning_briefing — starting LLM generation")
 	_t3 = asyncio.get_event_loop().time()
 	try:
 		raw_content = await asyncio.wait_for(chat(full_prompt, tier="deep"), timeout=90.0)
 	except asyncio.TimeoutError:
-		logger.warning("morning_briefing — deep tier timed out after 90s, falling back to standard tier")
-		raw_content = await chat(full_prompt, tier="standard")
+		logger.warning("morning_briefing — deep tier timed out after 90s, retrying")
+		raw_content = await chat(full_prompt, tier="deep")
 	logger.debug("morning_briefing — LLM done in %.1fs", asyncio.get_event_loop().time() - _t3)
 	
 	# 3.2 Post-Processing & Cleanup
 	from app.services.agent_actions import parse_and_execute_actions
-	content, executed, pending = await parse_and_execute_actions(raw_content, require_hitl=True)
+	content, _ = await parse_and_execute_actions(raw_content)
 	
 	# 3.3 Append Memory Review (raw, not via LLM — user sees exactly what was stored)
 	if memory_review:
