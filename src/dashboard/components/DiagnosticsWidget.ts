@@ -883,9 +883,9 @@ export class DiagnosticsWidget extends HTMLElement {
 
 				.svc-dot.processing { background: var(--accent-primary); box-shadow: 0 0 10px var(--accent-primary); animation: diag-pulse 1s infinite; }
 
-				.llm-ram-breakdown { margin-top: 0.6rem; padding-top: 0.5rem; border-top: 1px solid hsla(0,0%,100%,0.05); display: flex; flex-direction: column; gap: 0.4rem; }
+				.llm-ram-breakdown { margin-top: 0.6rem; padding-top: 0.5rem; border-top: 1px solid hsla(0,0%,100%,0.05); display: flex; flex-wrap: wrap; gap: 0.6rem; }
 				.llm-ram-bd-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); font-weight: 700; margin-bottom: 0.1rem; }
-				.llm-tier-card { background: hsla(0,0%,100%,0.025); border: 1px solid hsla(0,0%,100%,0.05); border-left: 2px solid var(--tier-color, var(--accent-primary)); border-radius: 0.4rem; padding: 0.45rem 0.6rem; display: flex; flex-direction: column; gap: 0.25rem; }
+				.llm-tier-card { flex: 1; min-width: 200px; background: hsla(0,0%,100%,0.025); border: 1px solid hsla(0,0%,100%,0.05); border-left: 2px solid var(--tier-color, var(--accent-primary)); border-radius: 0.4rem; padding: 0.45rem 0.6rem; display: flex; flex-direction: column; gap: 0.25rem; }
 				.ltc-header { display: flex; align-items: center; gap: 0.4rem; }
 				.ltc-name { font-size: 0.6rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.07em; }
 				.ltc-status { font-size: 0.5rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; margin-left: auto; }
