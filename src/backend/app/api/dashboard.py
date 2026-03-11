@@ -1954,6 +1954,75 @@ async def server_info() -> dict:
 									info["disk_breakdown"].append({"name": "Project Files", "gb": _pl_gb, "color": "hsl(180,50%,50%)"})
 					except Exception:
 						pass
+
+				# --- Docker system/df: build cache + volume inventory ---
+				try:
+					_df_resp = await dc.get("/system/df?verbose=true")
+					if _df_resp.status_code == 200:
+						_df = _df_resp.json()
+
+						# Build cache
+						_bc_entries = _df.get("BuildCache") or []
+						_bc_bytes = sum(e.get("Size", 0) for e in _bc_entries)
+						_bc_gb = round(_bc_bytes / (1024 ** 3), 1)
+						info["docker_buildcache_gb"] = _bc_gb
+						if _bc_gb > 0.05:
+							info["disk_breakdown"].append({"name": "Build Cache", "gb": _bc_gb, "color": "hsl(45,80%,50%)"})
+
+						# Parse compose volumes section to detect declared names
+						_compose_vol_names: set = set()
+						try:
+							with open("/app/compose.yml") as _cvf:
+								_in_vblock = False
+								for _vline in _cvf:
+									_vs = _vline.rstrip()
+									if _vs == "volumes:":
+										_in_vblock = True
+										continue
+									if _in_vblock:
+										_vm = _re.match(r"^  ([a-zA-Z][a-zA-Z0-9_-]*):\s*$", _vs)
+										if _vm:
+											_compose_vol_names.add(_vm.group(1))
+										elif _vs and not _vs[0].isspace() and not _vs.startswith("#"):
+											_in_vblock = False
+						except Exception:
+							pass
+
+						# Build volume inventory
+						_vol_list = _df.get("Volumes") or []
+						_vol_inventory = []
+						_orphan_bytes = 0
+						for _vd in _vol_list:
+							_vname = _vd.get("Name", "")
+							if not _vname.startswith("openzero_"):
+								continue
+							_short = _vname[len("openzero_"):]
+							_ud = _vd.get("UsageData") or {}
+							_sz = _ud.get("Size", -1)
+							_rc = _ud.get("RefCount", -1)
+							_vgb = round(_sz / (1024 ** 3), 2) if _sz > 0 else (-1.0 if _sz == -1 else 0.0)
+							_in_compose = _short in _compose_vol_names
+							if not _in_compose and _sz > 0:
+								_orphan_bytes += _sz
+							_vol_inventory.append({
+								"name": _short,
+								"gb": _vgb,
+								"in_compose": _in_compose,
+								"ref_count": _rc,
+								"orphan": not _in_compose,
+							})
+
+						info["docker_volume_inventory"] = sorted(
+							_vol_inventory,
+							key=lambda x: (not x["orphan"], -(x["gb"] if x["gb"] >= 0 else 0)),
+						)
+						_orphan_gb = round(_orphan_bytes / (1024 ** 3), 1)
+						info["docker_orphan_volumes_gb"] = _orphan_gb
+						if _orphan_gb > 0.05:
+							info["disk_breakdown"].append({"name": "Orphan Volumes", "gb": _orphan_gb, "color": "hsl(35,90%,55%)"})
+					except Exception as _dfdf_err:
+						logger.debug("Docker system/df failed: %s", _dfdf_err)
+
 	except Exception as _docker_err:
 		logger.debug("Docker stats unavailable: %s", _docker_err)
 		info.setdefault("container_ram", [])
