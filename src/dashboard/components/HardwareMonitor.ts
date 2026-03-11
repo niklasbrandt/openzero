@@ -492,8 +492,8 @@ export class HardwareMonitor extends HTMLElement {
 				}
 				.llm-tiers {
 					display: flex;
-					flex-direction: column;
-					gap: 0.3rem;
+					flex-wrap: wrap;
+					gap: 0.75rem;
 				}
 				.llm-tier-row {
 					display: flex;
