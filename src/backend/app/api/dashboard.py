@@ -1772,9 +1772,19 @@ async def server_info() -> dict:
 						ms = sr.json().get("memory_stats", {})
 						usage = ms.get("usage", 0)
 						st = ms.get("stats", {})
-						# cgroups v1 exposes 'cache'; v2 exposes 'inactive_file'
-						reclaimable = st.get("cache", st.get("inactive_file", 0))
-						rss = max(usage - reclaimable, 0)
+						# Prefer cgroups v2 breakdown: anon (heap/stack) +
+						# active_file (mlock'd mmap weights, unique per cgroup) +
+						# shmem (shared mem). This avoids inflating LLM containers
+						# with shared-volume page cache from sibling containers.
+						if "anon" in st:
+							rss = st["anon"] + st.get("active_file", 0) + st.get("shmem", 0)
+						elif "rss" in st:
+							# cgroups v1 exposes 'rss' directly (excludes file cache)
+							rss = st["rss"] + st.get("rss_huge", 0)
+						else:
+							# Last resort: total usage minus all reclaimable cache
+							reclaimable = st.get("cache", 0) + st.get("inactive_file", 0) + st.get("active_file", 0)
+							rss = max(usage - reclaimable, 0)
 						if rss < 8 * 1024 * 1024:  # skip < 8 MB (noise)
 							return None
 						return {"name": label, "gb": round(rss / (1024 ** 3), 2)}
