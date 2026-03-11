@@ -2488,8 +2488,8 @@ async def get_system_status(db: AsyncSession = Depends(get_db)):
     return {
         "status": "online",
         "llm_provider": settings.LLM_PROVIDER,
-        "llm_model_short": (last_model_used.get() or settings.LLM_MODEL_STANDARD).split("/")[-1].removesuffix(".gguf"),
-        "llm_model_full": last_model_used.get() or settings.LLM_MODEL_STANDARD,
+        "llm_model_short": (last_model_used.get() or settings.LLM_MODEL_DEEP).split("/")[-1].removesuffix(".gguf"),
+        "llm_model_full": last_model_used.get() or settings.LLM_MODEL_DEEP,
         "memory_points": mem_stats.get("points", 0),
         "identity_active": identity_set,
         "dns_ok": dns_ok,
