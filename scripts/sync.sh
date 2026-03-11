@@ -70,8 +70,14 @@ if [ -d .git ]; then
   git rev-parse HEAD > "$LAST_SYNC_FILE"
 fi
 
-# Rebuild and restart using docker compose
-ssh $REMOTE_USER@$REMOTE_HOST "cd $REMOTE_DIR && docker compose build backend && docker compose up -d && sync && echo 3 | sudo tee /proc/sys/vm/drop_caches"
+# Rebuild and restart using docker compose, then prune stale build cache and
+# dangling images left behind by the build. This prevents the build cache from
+# silently accumulating GBs between deployments (7+ GB observed after ~10 syncs).
+ssh $REMOTE_USER@$REMOTE_HOST "cd $REMOTE_DIR \
+  && docker compose build backend \
+  && docker compose up -d \
+  && docker builder prune -f \
+  && docker image prune -f"
 
 # Clean up local temporary file
 rm -f LATEST_CHANGES.txt
