@@ -2468,7 +2468,7 @@ async def get_system_status(db: AsyncSession = Depends(get_db)):
 
     dns_ok = False
     try:
-        # Query directly via internal network (pihole resolves to host-gateway)
+        # Query open.zero via Pi-hole (pihole resolves to host-gateway via extra_hosts)
         dig = subprocess.run(
             ["dig", "@pihole", "open.zero", "+short", "+time=2", "+tries=1"],
             capture_output=True, text=True, timeout=8
@@ -2477,9 +2477,19 @@ async def get_system_status(db: AsyncSession = Depends(get_db)):
             dns_ok = True
             dns_detail = dig.stdout.strip().split("\n")[0]
         else:
-            dns_detail = "no answer"
+            # open.zero custom record missing — check if Pi-hole resolver itself is alive
+            dig2 = subprocess.run(
+                ["dig", "@pihole", "google.com", "+short", "+time=2", "+tries=1"],
+                capture_output=True, text=True, timeout=8
+            )
+            if dig2.returncode == 0 and dig2.stdout.strip():
+                # Pi-hole resolves public domains fine — custom record missing
+                dns_ok = True
+                dns_detail = "resolving (open.zero record missing)"
+            else:
+                dns_detail = "no answer"
     except FileNotFoundError:
-        dns_detail = "docker not found"
+        dns_detail = "dig not found"
     except Exception as e:
         logger.warning("DNS health check failed: %s", e)
         dns_detail = "check failed"
