@@ -230,18 +230,44 @@ async def start_telegram_bot():
 				"NEVER invent data not present in SYSTEM_DATA."
 				f"{lang_directive}"
 			)
+			# Wait for the deep model to become ready before calling the LLM.
+			# On a cold Docker start, llm-deep can take 3-5 minutes to load the
+			# model into memory. Polling the /health endpoint prevents the greeting
+			# from using all its retry budget on immediate ConnectErrors.
+			import httpx as _httpx
+			logger.debug("Greeting Seq - Polling deep model for readiness...")
+			_model_ready = False
+			for _poll in range(20):  # up to 5 minutes (20 × 15 s)
+				try:
+					async with _httpx.AsyncClient(timeout=_httpx.Timeout(5.0, connect=3.0)) as _hc:
+						if (await _hc.get(f"{settings.LLM_DEEP_URL}/health")).status_code == 200:
+							_model_ready = True
+							break
+				except Exception:
+					pass
+				logger.debug("Greeting - Deep model not ready yet (poll %d/20), waiting 15s...", _poll + 1)
+				await asyncio.sleep(15)
+			if not _model_ready:
+				logger.warning("Greeting - Deep model never became ready after 5 minutes")
+
 			logger.debug("Greeting Seq - Calling LLM (deep tier)")
 
-			# Strings returned by llm.py on timeout/failure — must not reach the user
-			_ERROR_INDICATORS = ["initializing my local core", "synchronize my reasoning", "Error connecting", "No response from"]
+			# Error strings returned by llm.py's chat_stream() on connection/timeout
+			# failure. Must be kept in sync with the yield strings in llm.py.
+			_ERROR_INDICATORS = [
+				"still waking up", "still warming up", "having trouble reaching",
+				"initializing my local core", "synchronize my reasoning",
+				"Error connecting", "No response from",
+			]
 			def _is_error(text: str) -> bool:
-				return any(ind.lower() in text.lower() for ind in _ERROR_INDICATORS)
+				return not text or any(ind.lower() in text.lower() for ind in _ERROR_INDICATORS)
 
 			raw_greeting = await chat(greeting_prompt, system_override=system_override, tier="deep")
 
-			# Fallback 1: deep tier timed out — retry with deep tier
+			# Fallback 1: deep tier returned an error string — wait briefly then retry
 			if _is_error(raw_greeting):
-				logger.debug("Greeting - Deep tier returned error, retrying")
+				logger.debug("Greeting - Deep tier returned error, waiting 30s then retrying")
+				await asyncio.sleep(30)
 				raw_greeting = await chat(greeting_prompt, system_override=system_override, tier="deep")
 
 			# Fallback 2: both models failed — send clean static greeting
@@ -272,7 +298,7 @@ async def start_telegram_bot():
 			if settings.DASHBOARD_TOKEN:
 				base = settings.BASE_URL.rstrip('/')
 				auth_url = f"{base}/api/dashboard/auth?token={settings.DASHBOARD_TOKEN}"
-				mobile_hint = f"\n\n📲 <a href='{auth_url}'>Open dashboard</a> — tap once to save access"
+				mobile_hint = f'\n\n📲 <a href="{auth_url}">Open dashboard</a> — tap once to save access'
 
 			await send_notification_html(
 				f"<blockquote><b>{real_time}</b>\n\n{_md_to_html(greeting_clean)}\n\n<i>{stats_text}</i>{mobile_hint}</blockquote>",
