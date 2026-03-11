@@ -519,7 +519,6 @@ async def safe_edit(message, text: str, parse_mode="HTML", reply_markup=None):
 async def cmd_board(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	"""Show the exact Planka project → board → lists that Z targets, with a clickable link."""
 	try:
-		import html as _html
 		from app.services.planka import get_planka_auth_token
 		from app.services.operator_board import operator_service
 		import httpx
