@@ -349,6 +349,8 @@ translations: dict[str, str] = {
 	"ram_apps": "Apps",
 	"ram_cache": "Cache",
 	"ram_free": "Frei",
+	"ram_kernel": "Kernel (Slab+Stacks+Ptbl)",
+	"ram_sysproc": "Systemprozesse",
 	"ram_usage_label": "RAM-Auslastung",
 	"refine": "Verfeinern",
 	"rel_placeholder": "z.B. Enge Freundin",

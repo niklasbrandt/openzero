@@ -184,10 +184,27 @@ export class DiagnosticsWidget extends HTMLElement {
 			accounted += c.gb;
 		}
 
-		// \"Other\" — app memory not attributable to any known container
+		// Split "other" = apps not in containers into: kernel overhead + system procs
 		const otherGb = Math.max(appsGb - accounted, 0);
-		if (otherGb > 0.05) {
-			segs.push({ name: 'other', label: 'other (OS/misc)', gb: parseFloat(otherGb.toFixed(2)), pct: (otherGb / total) * 100, color: 'hsl(220,18%,42%)' });
+		const kernelGb: number = parseFloat((srv.ram_kernel_gb || 0).toFixed(2));
+		const sysProcGb = Math.max(otherGb - kernelGb, 0);
+		if (kernelGb > 0.01) {
+			segs.push({
+				name: 'kernel',
+				label: this.tr('ram_kernel', 'kernel (slab+stacks+ptbl)'),
+				gb: kernelGb,
+				pct: (kernelGb / total) * 100,
+				color: 'hsl(215,30%,48%)'
+			});
+		}
+		if (sysProcGb > 0.05) {
+			segs.push({
+				name: 'system',
+				label: this.tr('ram_sysproc', 'system procs'),
+				gb: parseFloat(sysProcGb.toFixed(2)),
+				pct: (sysProcGb / total) * 100,
+				color: 'hsl(220,18%,42%)'
+			});
 		}
 
 		// Linux page cache / buffers (reclaimable)
