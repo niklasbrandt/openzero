@@ -118,7 +118,7 @@ export class SoftwareStatus extends HTMLElement {
 		const services = [
 			{
 				name: 'Intelligence',
-				status: (tiers.instant || {}).status === 'online' || d.status === 'online' ? 'online' : 'offline',
+				status: (tiers.fast || {}).status === 'online' || d.status === 'online' ? 'online' : 'offline',
 				detail: d.llm_model_short || 'Deep',
 				tip: `Active Provider: ${d.llm_provider}. Model: ${d.llm_model_full}`,
 				icon: 'brain'
