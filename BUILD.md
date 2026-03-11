@@ -9,7 +9,7 @@ This guide is designed for anyone—even if you've never used a server before. F
 We recommend a VPS with **Ubuntu 24.04**. For best performance with Llama 8B, aim for at least **8 Cores** and **16GB RAM**.
 
 > [!IMPORTANT]
-> **Z uses a 3-tier LLM architecture** (Qwen3-0.6B instant + Qwen3-8B standard + Qwen3-8B deep). With 16GB RAM this runs comfortably. **Swap space is still recommended as a safety buffer.**
+> **Z uses a 2-tier LLM architecture** (Qwen3-0.6B instant + Qwen3-8B deep). A **12 GB VPS** is the minimum (use `Qwen3-8B-Q2_K.gguf` for the deep tier, ~3 GB total). A **24 GB VPS** comfortably runs the default Q4_K_M deep model (~5 GB total) with headroom for Whisper and TTS. **Swap space is still recommended as a safety buffer.**
 
 ### 0. Add Swap Space (MANDATORY first step)
 
@@ -332,10 +332,10 @@ bash scripts/sync.sh
 Z will now package itself, fly to your server, build its brain (llama-server), and start up.
 
 > [!NOTE]
-> **AI Models are downloaded automatically** on first start. The entrypoint script downloads GGUF models from HuggingFace for all 3 tiers. This can take **10-30 minutes** on first boot. Monitor with:
+> **AI Models are downloaded automatically** on first start. The entrypoint script downloads GGUF models from HuggingFace for both tiers. This can take **5-15 minutes** on first boot. Monitor with:
 >
 > ```bash
-> docker compose logs -f llm-standard
+> docker compose logs -f llm-deep
 > ```
 
 > [!NOTE]
@@ -428,6 +428,11 @@ The openZero dashboard features a high-performance mission-control interface. Yo
 
 - **Cursor Parallax:** The background glow and accent highlights track your mouse movements using a hardware-accelerated `lerp` engine.
 - **Goo Mode (Phase 4):** Organic fluid interactions are driven by an SVG filter (`#oz-goo`) and CSS classes (`.oz-goo-container`).
+### 4. Agent Personality
+
+- You can now configure Z's **Communication Style**, **Emotional Tone**, and **Agency Level** directly from the User Card.
+- These settings are updated in real-time and saved to the backend as part of your identity profile.
+- A single "Save Profile" action now persists both your personal details and your agent's character traits.
 
 ---
 

@@ -738,10 +738,8 @@ SMART_KEYWORDS = [
 
 # Per-tier max_tokens caps — prevents runaway generation on CPU.
 # These are request-level caps; server-side N_PREDICT acts as a hard ceiling.
-# Server defaults: instant=256, standard=1024, deep=2048 — stay below those.
 TIER_MAX_TOKENS = {
 	"instant": 250,
-	"standard": 1000,
 	"deep": 4000,
 }
 
@@ -750,7 +748,6 @@ TIER_MAX_TOKENS = {
 # briefings and CoT blocks can legitimately take 3+ minutes on a single-board.
 TIER_TIMEOUTS = {
 	"instant": 25.0,
-	"standard": 90.0,
 	"deep": 180.0,
 }
 
@@ -762,26 +759,22 @@ def select_tier(user_message: str, tier_override: Optional[str] = None) -> tuple
 		msg_lower = (user_message or "").lower().strip()
 		msg_len = len(user_message) if user_message else 0
 
-		# Content intent takes priority over length heuristics:
-		# 1. Banter/creative — needs social reasoning, force standard
-		if any(p in msg_lower for p in BANTER_PATTERNS):
-			tier = "standard"
-		# 2. Deep reasoning keywords — never demote to instant
-		elif any(kw in msg_lower for kw in SMART_KEYWORDS) or msg_len > 800:
-			tier = "deep"
-		# 3. Instant: truly trivial (pure greetings / ack / very short)
-		elif msg_len < 15 or msg_lower in TRIVIAL_PATTERNS:
+		# Instant: truly trivial (pure greetings / ack / very short and not complex)
+		if (msg_len < 15 or msg_lower in TRIVIAL_PATTERNS) and not any(kw in msg_lower for kw in SMART_KEYWORDS):
 			tier = "instant"
-		# 4. Standard: everything else
+		# Deep: everything else (conversation, banter, reasoning, briefings, code)
 		else:
-			tier = "standard"
+			tier = "deep"
+
+	# Normalise any legacy "standard" references to "deep"
+	if tier == "standard":
+		tier = "deep"
 
 	tier_map = {
 		"instant": (settings.LLM_INSTANT_URL, settings.LLM_MODEL_INSTANT),
-		"standard": (settings.LLM_STANDARD_URL, settings.LLM_MODEL_STANDARD),
 		"deep": (settings.LLM_DEEP_URL, settings.LLM_MODEL_DEEP),
 	}
-	base_url, model_name = tier_map.get(tier, tier_map["standard"])
+	base_url, model_name = tier_map.get(tier, tier_map["deep"])
 	display_name = f"{tier.capitalize()}: {model_name}"
 	return tier, base_url, display_name
 
@@ -846,21 +839,19 @@ async def chat_stream(
 		# Request-level token cap prevents runaway generation
 		max_tok = kwargs.get("max_tokens") or TIER_MAX_TOKENS.get(tier_name, 400)
 
-		# Qwen3: disable thinking for instant/standard (latency critical);
+		# Qwen3: disable thinking for instant (latency critical);
 		# deep tier can think — CoT improves briefing quality, blocks get stripped.
 		request_thinking = tier_name == "deep"
 
-		# Qwen3 /no_think injection: the API-level "thinking: false" flag is not
-		# reliably honoured by all llama.cpp builds.  Appending /no_think to the
-		# system message is the authoritative way to suppress the reasoning phase
-		# for instant and standard tiers so content tokens are not eaten by CoT.
+		# Qwen3 /no_think injection: suppress reasoning for instant so content
+		# tokens are not eaten by CoT.
 		if not request_thinking:
 			messages[0]["content"] = messages[0]["content"] + "\n/no_think"
 
 		# Tier-aware read timeout — instant must fail fast, not hang for minutes.
-		read_timeout = TIER_TIMEOUTS.get(tier_name, 90.0)
-		# Instant tier: single attempt then fall back to standard (CPU may be loaded).
-		# Standard/deep tiers: up to 3 retries as before.
+		read_timeout = TIER_TIMEOUTS.get(tier_name, 180.0)
+		# Instant tier: single attempt then fall back to deep (CPU may be loaded).
+		# Deep tier: up to 3 retries as before.
 		max_attempts = 1 if tier_name == "instant" else 3
 
 		last_err = None
@@ -919,13 +910,13 @@ async def chat_stream(
 						return
 			except httpx.ReadTimeout:
 				if tier_name == "instant":
-					# Instant model is overloaded — fall back to standard silently.
-					logger.warning("LLM instant timeout after %.0fs — falling back to standard", read_timeout)
-					_, fallback_url, fallback_name = select_tier(user_message, "standard")
-					last_model_used.set(f"Standard: {settings.LLM_MODEL_STANDARD} (fallback)")
+					# Instant model is overloaded — fall back to deep silently.
+					logger.warning("LLM instant timeout after %.0fs — falling back to deep", read_timeout)
+					_, fallback_url, fallback_name = select_tier(user_message, "deep")
+					last_model_used.set(f"Deep: {settings.LLM_MODEL_DEEP} (fallback)")
 					fall_messages = messages
-					fall_max_tok = TIER_MAX_TOKENS["standard"]
-					fall_timeout = TIER_TIMEOUTS["standard"]
+					fall_max_tok = TIER_MAX_TOKENS["deep"]
+					fall_timeout = TIER_TIMEOUTS["deep"]
 					try:
 						async with httpx.AsyncClient(timeout=httpx.Timeout(fall_timeout, connect=10.0)) as fc:
 							async with fc.stream(
@@ -956,7 +947,7 @@ async def chat_stream(
 										continue
 								return
 					except Exception as fb_err:
-						logger.error("Instant fallback (standard) also failed [%s]: %s", type(fb_err).__name__, fb_err)
+						logger.error("Instant fallback (deep) also failed [%s]: %s", type(fb_err).__name__, fb_err)
 						yield "I'm still waking up. Try again in a moment."
 					return
 				else:
@@ -967,13 +958,13 @@ async def chat_stream(
 					continue
 			except httpx.HTTPStatusError as http_err:
 				if http_err.response.status_code == 400 and tier_name == "instant":
-					# Context overflow on instant tier — fall back to standard silently.
-					logger.warning("LLM instant 400 (context overflow) — falling back to standard")
-					_, fallback_url, _ = select_tier(user_message, "standard")
-					last_model_used.set(f"Standard: {settings.LLM_MODEL_STANDARD} (fallback)")
+					# Context overflow on instant tier — fall back to deep silently.
+					logger.warning("LLM instant 400 (context overflow) — falling back to deep")
+					_, fallback_url, _ = select_tier(user_message, "deep")
+					last_model_used.set(f"Deep: {settings.LLM_MODEL_DEEP} (fallback)")
 					fall_messages = messages
-					fall_max_tok = TIER_MAX_TOKENS["standard"]
-					fall_timeout = TIER_TIMEOUTS["standard"]
+					fall_max_tok = TIER_MAX_TOKENS["deep"]
+					fall_timeout = TIER_TIMEOUTS["deep"]
 					try:
 						async with httpx.AsyncClient(timeout=httpx.Timeout(fall_timeout, connect=10.0)) as fc:
 							async with fc.stream(
@@ -1004,7 +995,7 @@ async def chat_stream(
 										continue
 								return
 					except Exception as fb_err:
-						logger.error("Instant fallback (standard) also failed after 400 [%s]: %s", type(fb_err).__name__, fb_err)
+						logger.error("Instant fallback (deep) also failed after 400 [%s]: %s", type(fb_err).__name__, fb_err)
 						yield "I'm still waking up. Try again in a moment."
 					return
 				else:
@@ -1013,12 +1004,12 @@ async def chat_stream(
 					return
 			except Exception as e:
 				if tier_name == "instant":
-					logger.warning("LLM instant connection error (%s) — falling back to standard", type(e).__name__)
-					_, fallback_url, _ = select_tier(user_message, "standard")
-					last_model_used.set(f"Standard: {settings.LLM_MODEL_STANDARD} (fallback)")
+					logger.warning("LLM instant connection error (%s) — falling back to deep", type(e).__name__)
+					_, fallback_url, _ = select_tier(user_message, "deep")
+					last_model_used.set(f"Deep: {settings.LLM_MODEL_DEEP} (fallback)")
 					fall_messages = messages
-					fall_max_tok = TIER_MAX_TOKENS["standard"]
-					fall_timeout = TIER_TIMEOUTS["standard"]
+					fall_max_tok = TIER_MAX_TOKENS["deep"]
+					fall_timeout = TIER_TIMEOUTS["deep"]
 					try:
 						async with httpx.AsyncClient(timeout=httpx.Timeout(fall_timeout, connect=10.0)) as fc:
 							async with fc.stream(
@@ -1049,7 +1040,7 @@ async def chat_stream(
 										continue
 								return
 					except Exception as fb_err:
-						logger.error("Instant fallback (standard) also failed after ConnectError [%s]: %s", type(fb_err).__name__, fb_err)
+						logger.error("Instant fallback (deep) also failed after ConnectError [%s]: %s", type(fb_err).__name__, fb_err)
 						yield "I'm still waking up. Try again in a moment."
 					return
 				else:
@@ -1290,9 +1281,9 @@ async def chat_with_context(
 			needs_agent = await _classify_intent(user_message)
 
 		if needs_agent:
-			# Agent path uses standard tier (tool calling doesn't need 14B)
-			agent_url = settings.LLM_STANDARD_URL
-			agent_display = f"Standard: {settings.LLM_MODEL_STANDARD}"
+			# Agent path uses deep tier
+			agent_url = settings.LLM_DEEP_URL
+			agent_display = f"Deep: {settings.LLM_MODEL_DEEP}"
 			last_model_used.set(agent_display)
 			logger.debug("Tool intent detected -- using LangGraph agent (%s)", agent_display)
 			llm = ChatOpenAI(
@@ -1369,7 +1360,7 @@ async def chat_with_context(
 			# Always include docs — the model emits tags only when appropriate.
 			_action_docs_block = f"\n{ACTION_TAG_DOCS}"
 
-		# Timeout-racing for deep tier: try deep first, fall back to standard
+		# Timeout-racing for deep tier: try deep first, fall back to instant
 		if tier_name == "deep" and settings.SMART_MODEL_INTERACTIVE:
 			logger.debug("Racing deep model with %ds timeout", settings.DEEP_MODEL_TIMEOUT_S)
 			history_text = _build_history_text(history)
@@ -1392,12 +1383,12 @@ async def chat_with_context(
 					chunks.append(chunk)
 				return sanitise_output("".join(chunks))
 			except Exception as deep_err:
-				logger.warning("Deep model unavailable (%s) -- falling back to standard", type(deep_err).__name__)
-				last_model_used.set(f"Standard: {settings.LLM_MODEL_STANDARD}")
+				logger.warning("Deep model unavailable (%s) -- falling back to instant", type(deep_err).__name__)
+				last_model_used.set(f"Deep: {settings.LLM_MODEL_DEEP}")
 				return sanitise_output(await chat(
 					user_message,
 					system_override=system_with_context,
-					tier="standard",
+					tier="instant",
 					sanitize=sanitize,
 					user_name=user_name,
 					user_profile=user_profile,
@@ -1426,7 +1417,7 @@ async def chat_with_context(
 		return sanitise_output(await chat(
 			user_message,
 			system_override=formatted_system_prompt if 'formatted_system_prompt' in locals() else None,
-			tier="standard",
+tier="instant",
 			sanitize=sanitize,
 			user_name=user_name if 'user_name' in locals() else "User",
 			user_profile=user_profile if 'user_profile' in locals() else {},
@@ -1570,9 +1561,9 @@ async def chat_stream_with_context(
 						yield cleaned
 				return
 			except Exception as deep_err:
-				logger.warning("Deep stream unavailable (%s) -- falling back to standard", type(deep_err).__name__)
-				last_model_used.set(f"Standard: {settings.LLM_MODEL_STANDARD}")
-				tier_name = "standard"
+				logger.warning("Deep stream unavailable (%s) -- falling back to instant", type(deep_err).__name__)
+				last_model_used.set(f"Deep: {settings.LLM_MODEL_DEEP}")
+				tier_name = "instant"
 
 		async for chunk in chat_stream(
 			user_message,
