@@ -1737,6 +1737,59 @@ async def server_info() -> dict:
 			info["tiers"][tier_name] = tier_info
 
 	info["physical_cores"] = physical_cores
+
+	# --- Per-container RAM (Docker socket) ---
+	# Queries live RSS for each running container via the mounted Docker socket.
+	# RSS = memory_stats.usage minus the kernel's page cache (reclaimable).
+	# Results arrive in parallel to stay within the request timeout.
+	try:
+		import asyncio as _asyncio, re as _re
+		_docker_transport = httpx.AsyncHTTPTransport(uds="/var/run/docker.sock")
+
+		def _cname(raw: str) -> str:
+			"""Strip project prefix and replica suffix: openzero-whisper-1 → whisper."""
+			n = raw.lstrip("/")
+			for pfx in ("openzero-",):
+				if n.startswith(pfx):
+					n = n[len(pfx):]
+			return _re.sub(r"-\d+$", "", n)
+
+		async with httpx.AsyncClient(
+			transport=_docker_transport,
+			base_url="http://docker",
+			timeout=httpx.Timeout(connect=1.0, read=4.0, write=1.0, pool=1.0),
+		) as dc:
+			clist_resp = await dc.get("/containers/json?all=false")
+			if clist_resp.status_code == 200:
+				containers = clist_resp.json()
+
+				async def _stats(c: dict):
+					label = _cname(c["Names"][0]) if c.get("Names") else c["Id"][:8]
+					try:
+						sr = await dc.get(f"/containers/{c['Id']}/stats?stream=false")
+						if sr.status_code != 200:
+							return None
+						ms = sr.json().get("memory_stats", {})
+						usage = ms.get("usage", 0)
+						st = ms.get("stats", {})
+						# cgroups v1 exposes 'cache'; v2 exposes 'inactive_file'
+						reclaimable = st.get("cache", st.get("inactive_file", 0))
+						rss = max(usage - reclaimable, 0)
+						if rss < 8 * 1024 * 1024:  # skip < 8 MB (noise)
+							return None
+						return {"name": label, "gb": round(rss / (1024 ** 3), 2)}
+					except Exception:
+						return None
+
+				results = await _asyncio.gather(*[_stats(c) for c in containers])
+				info["container_ram"] = sorted(
+					[r for r in results if r],
+					key=lambda x: x["gb"], reverse=True,
+				)
+	except Exception as _docker_err:
+		logger.debug("Docker stats unavailable: %s", _docker_err)
+		info.setdefault("container_ram", [])
+
 	return info
 
 
