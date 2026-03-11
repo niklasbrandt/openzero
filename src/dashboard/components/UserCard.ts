@@ -493,7 +493,7 @@ export class UserCard extends HTMLElement {
 					content: '◈'; 
 					position: absolute; 
 					left: 0; 
-					color: var(--accent-primary, hsla(173, 80%, 40%, 1)); 
+					color: var(--accent-text, var(--accent-primary, hsla(173, 80%, 40%, 1))); 
 					font-size: 0.75rem; 
 					top: 0.1rem; 
 				}
@@ -540,7 +540,7 @@ export class UserCard extends HTMLElement {
 				}
 				.toggle-opt.active {
 					background: var(--accent-primary);
-					color: #000;
+					color: var(--on-accent-text, #ffffff);
 				}
 
 				button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { 
