@@ -379,11 +379,12 @@ export class DiagnosticsWidget extends HTMLElement {
                         <span class="ram-title">System Memory (RAM)</span>
                         <span class="ram-value">${srv.ram_used_gb ?? ((srv.ram_used_pct || 0) * (srv.ram_total_gb || 0) / 100).toFixed(1)}GB / ${srv.ram_total_gb}GB</span>
                     </div>
-                    <div class="ram-strip-bar">
+                    <div class="ram-strip-bar" id="ram-seg-bar">
                         ${this._ramBarSegments(srv).map(s => `
-                            <div class="ram-seg-svc has-tip" style="width:${Math.max(s.pct, 0).toFixed(2)}%;background:${s.color}" data-tip="${this.esc(s.label)}: ${s.gb} GB"></div>
+                            <div class="ram-seg-svc" style="width:${Math.max(s.pct, 0).toFixed(2)}%;background:${s.color}" data-seg-tip="${this.esc(s.label)}: ${s.gb} GB (${s.pct.toFixed(1)}%)"></div>
                         `).join('')}
                     </div>
+                    <div class="ram-bar-hover-tip" id="ram-bar-htip" aria-hidden="true" role="tooltip"></div>
                     <div class="ram-strip-legend">
                         ${this._ramBarSegments(srv).filter(s => s.name !== 'free').map(s => `
                             <div class="leg-item${s.orphan ? ' leg-item--orphan' : ''}">
@@ -492,6 +493,34 @@ export class DiagnosticsWidget extends HTMLElement {
         this.shadowRoot?.querySelectorAll('button.sm').forEach(b => {
             b.addEventListener('click', () => this.runBenchmark(b.getAttribute('data-tier')!));
         });
+
+        // RAM bar segment hover tooltips — positioned relative to .ram-strip (escapes overflow:hidden on bar)
+        const _bar = el.querySelector('#ram-seg-bar') as HTMLElement | null;
+        const _htip = el.querySelector('#ram-bar-htip') as HTMLElement | null;
+        if (_bar && _htip) {
+            _bar.querySelectorAll('.ram-seg-svc').forEach(_seg => {
+                _seg.addEventListener('mouseenter', () => {
+                    const label = _seg.getAttribute('data-seg-tip') || '';
+                    if (!label) return;
+                    _htip.textContent = label;
+                    _htip.classList.add('visible');
+                });
+                _seg.addEventListener('mouseleave', () => _htip.classList.remove('visible'));
+            });
+            _bar.addEventListener('mousemove', (e: Event) => {
+                const me = e as MouseEvent;
+                const stripEl = _bar.closest('.ram-strip') as HTMLElement | null;
+                if (!stripEl) return;
+                const stripRect = stripEl.getBoundingClientRect();
+                const barRect = _bar.getBoundingClientRect();
+                const x = Math.max(40, Math.min(me.clientX - stripRect.left, stripRect.width - 40));
+                const y = barRect.top - stripRect.top - 6;
+                _htip.style.left = `${x}px`;
+                _htip.style.top = `${y}px`;
+            });
+            _bar.addEventListener('mouseleave', () => _htip.classList.remove('visible'));
+        }
+
         this.injectTooltips();
     }
 
@@ -557,7 +586,9 @@ export class DiagnosticsWidget extends HTMLElement {
 					margin-bottom: 0.25rem;
 				}
 
-				.ram-strip { grid-column: 1 / -1; background: hsla(0, 0%, 100%, 0.03); padding: 1rem; border-radius: 0.6rem; border: 1px solid hsla(0, 0%, 100%, 0.06); margin-bottom: 0.5rem; }
+				.ram-strip { grid-column: 1 / -1; background: hsla(0, 0%, 100%, 0.03); padding: 1rem; border-radius: 0.6rem; border: 1px solid hsla(0, 0%, 100%, 0.06); margin-bottom: 0.5rem; position: relative; }
+				.ram-bar-hover-tip { position: absolute; pointer-events: none; opacity: 0; visibility: hidden; transition: opacity 0.12s ease, transform 0.12s ease; background: var(--tooltip-bg, rgba(18,18,28,0.82)); backdrop-filter: blur(28px) saturate(1.5); -webkit-backdrop-filter: blur(28px) saturate(1.5); color: var(--tooltip-text, rgba(255,255,255,0.92)); font-size: 0.7rem; font-weight: 600; letter-spacing: 0.01em; padding: 0.32rem 0.65rem; border-radius: 0.45rem; border: 1px solid var(--tooltip-border, rgba(255,255,255,0.14)); white-space: nowrap; z-index: 200; transform: translateX(-50%) translateY(0); box-shadow: 0 6px 24px rgba(0,0,0,0.45); }
+				.ram-bar-hover-tip.visible { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(-4px); }
                 .ram-strip-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.6rem; }
                 .ram-title { font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
                 .ram-value { font-size: 0.9rem; font-weight: 800; font-family: var(--font-mono); color: var(--accent-text, var(--accent-primary)); }
