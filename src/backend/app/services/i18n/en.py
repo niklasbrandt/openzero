@@ -378,6 +378,8 @@ translations: dict[str, str] = {
 	"ram_apps": "apps",
 	"ram_cache": "cache",
 	"ram_free": "free",
+	"ram_kernel": "kernel (slab+stacks+ptbl)",
+	"ram_sysproc": "system procs",
 	"ram_usage_label": "RAM usage",
 	"refine": "Refine",
 	"rel_placeholder": "e.g. Close friend",

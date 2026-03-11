@@ -1643,11 +1643,18 @@ async def server_info() -> dict:
 			cached_kb = mem.get("Cached", 0) + mem.get("SReclaimable", 0)
 			apps_kb = max(total_kb - free_kb - buffers_kb - cached_kb, 0)
 			bufcache_kb = buffers_kb + cached_kb
+			# Kernel-owned memory (not shown in container stats, not reclaimable):
+			# SUnreclaim = unreclaimable slab objects (SReclaimable is already in bufcache)
+			# KernelStack = stack pages for all kernel threads
+			# PageTables = hardware page table RAM
+			sunreclaim_kb = mem.get("SUnreclaim", max(mem.get("Slab", 0) - mem.get("SReclaimable", 0), 0))
+			kernel_kb = sunreclaim_kb + mem.get("KernelStack", 0) + mem.get("PageTables", 0)
 			info["ram_total_gb"] = round(total_kb / 1048576, 1)
 			info["ram_available_gb"] = round(avail_kb / 1048576, 1)
 			info["ram_free_gb"] = round(free_kb / 1048576, 1)
 			info["ram_apps_gb"] = round(apps_kb / 1048576, 1)
 			info["ram_bufcache_gb"] = round(bufcache_kb / 1048576, 1)
+			info["ram_kernel_gb"] = round(kernel_kb / 1048576, 2)
 			info["ram_used_pct"] = round((1 - avail_kb / max(total_kb, 1)) * 100, 1)
 			info["ram_apps_pct"] = round(apps_kb / max(total_kb, 1) * 100, 1)
 			info["ram_used_gb"] = round((total_kb - avail_kb) / 1048576, 1)
