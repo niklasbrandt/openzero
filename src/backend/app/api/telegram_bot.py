@@ -14,10 +14,6 @@ import asyncio
 import html as _html
 import pytz
 import re
-import os
-import json
-import httpx
-import io
 from datetime import datetime
 import logging
 from app.services.translations import get_translations, get_user_lang
@@ -102,19 +98,17 @@ async def start_telegram_bot():
 	bot_app.add_handler(CommandHandler("quarter", cmd_quarter))
 	bot_app.add_handler(CommandHandler("year", cmd_year))
 	bot_app.add_handler(CommandHandler("day", cmd_day))
-	bot_app.add_handler(CommandHandler("learn", cmd_learn_topic))
+	bot_app.add_handler(CommandHandler("add", cmd_add_topic))
 	bot_app.add_handler(CommandHandler("protocols", cmd_protocols))
 	bot_app.add_handler(CommandHandler("remind", cmd_remind))
 	bot_app.add_handler(CommandHandler("custom", cmd_custom))
 	bot_app.add_handler(CommandHandler("think", cmd_think))
 	bot_app.add_handler(CommandHandler("personal", cmd_personal))
-	bot_app.add_handler(CommandHandler("agent", cmd_agent))
 	bot_app.add_handler(CallbackQueryHandler(handle_approval, pattern="^think_"))
 	bot_app.add_handler(CallbackQueryHandler(handle_unlearn_approval, pattern="^unlearn_"))
 	bot_app.add_handler(CallbackQueryHandler(handle_wipe_confirm, pattern="^wipe_"))
 	bot_app.add_handler(CallbackQueryHandler(handle_calendar_approval, pattern="^cal_"))
 	bot_app.add_handler(CallbackQueryHandler(handle_draft_approval, pattern="^draft_"))
-	bot_app.add_handler(CallbackQueryHandler(handle_action_approval, pattern="^action_confirm_"))
 	bot_app.add_handler(CallbackQueryHandler(handle_memories_callback, pattern="^call_memories$"))
 	bot_app.add_handler(CallbackQueryHandler(handle_help_callback, pattern="^call_help$"))
 	bot_app.add_handler(CommandHandler("help", cmd_help))
@@ -140,6 +134,7 @@ async def start_telegram_bot():
 			from app.services.memory import get_memory_stats
 			from app.models.db import AsyncSessionLocal, Person
 			from sqlalchemy import select
+			import os
 			
 			logger.debug("start_telegram_bot - step 7: Fetching stats for greeting")
 			stats = await get_memory_stats()
@@ -260,7 +255,7 @@ async def start_telegram_bot():
 
 			# Clean action tags from output
 			from app.services.agent_actions import parse_and_execute_actions
-			greeting, _, _ = await parse_and_execute_actions(raw_greeting, require_hitl=True)
+			greeting, _ = await parse_and_execute_actions(raw_greeting)
 			logger.debug("Greeting Seq - OK")
 
 			# Prepend real current time (don't trust LLM for timestamps)
@@ -345,7 +340,7 @@ async def _recover_unanswered_messages():
 
 		async with AsyncSessionLocal() as db:
 			from app.services.agent_actions import parse_and_execute_actions
-			clean_reply, _, _ = await parse_and_execute_actions(response, db=db, require_hitl=True)
+			clean_reply, _ = await parse_and_execute_actions(response, db=db)
 
 		from app.services.llm import last_model_used
 		await save_global_message("telegram", "z", clean_reply, model=last_model_used.get())
@@ -431,6 +426,7 @@ async def send_voice_message(audio_bytes: bytes, caption: Optional[str] = None):
 	if not settings.TELEGRAM_BOT_TOKEN or not settings.TELEGRAM_ALLOWED_USER_ID:
 		return
 	bot = Bot(token=settings.TELEGRAM_BOT_TOKEN)
+	import io
 	voice_file = io.BytesIO(audio_bytes)
 	voice_file.name = "briefing.mp3"
 	await bot.send_voice(
@@ -472,9 +468,9 @@ async def safe_edit(message, text: str, parse_mode="HTML", reply_markup=None):
 async def cmd_board(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	"""Show the exact Planka project → board → lists that Z targets, with a clickable link."""
 	try:
-		import html
 		from app.services.planka import get_planka_auth_token
 		from app.services.operator_board import operator_service
+		import httpx
 
 		token = await get_planka_auth_token()
 		async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, timeout=10.0,
@@ -486,14 +482,14 @@ async def cmd_board(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 			# Fetch project details for name
 			proj_resp = await client.get(f"/api/projects/{project_id}")
-			proj_name = html.escape(proj_resp.json().get("item", {}).get("name", "Unknown"))
+			proj_name = _html.escape(proj_resp.json().get("item", {}).get("name", "Unknown"))
 
 			# Fetch board + lists
 			b_resp = await client.get(f"/api/boards/{board_id}", params={"included": "lists"})
 			b_data = b_resp.json()
-			board_name = html.escape(b_data.get("item", {}).get("name", "Unknown"))
+			board_name = _html.escape(b_data.get("item", {}).get("name", "Unknown"))
 			lists = b_data.get("included", {}).get("lists", [])
-			list_names = [f"  • {html.escape(l['name'])} (id: {l['id']})" for l in lists]
+			list_names = [f"  • {_html.escape(l['name'])} (id: {l['id']})" for l in lists]
 
 		base_url = settings.BASE_URL.rstrip('/')
 		link = f"{base_url}/api/dashboard/planka-redirect?target_board_id={board_id}"
@@ -529,13 +525,30 @@ async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
 			if token: p_text = "🟢 Connected"
 		except Exception:
 			pass  # Planka offline
-		# 3. LLM
-		try:
-			from app.services.llm import chat
-			await chat("hi", tier="instant")
-			l_text = "🟢 Ready"
-		except Exception:
-			l_text = "🔴 Error"
+		# 3. LLM — check all three tiers independently
+		from app.services.llm import chat
+		import httpx as _httpx
+		from app.config import settings as _s
+
+		async def _ping_tier(url: str) -> bool:
+			try:
+				async with _httpx.AsyncClient(timeout=_httpx.Timeout(5.0, connect=3.0)) as _c:
+					r = await _c.get(f"{url}/health")
+					return r.status_code < 500
+			except Exception:
+				return False
+
+		inst_ok, std_ok, deep_ok = await asyncio.gather(
+			_ping_tier(_s.LLM_INSTANT_URL),
+			_ping_tier(_s.LLM_STANDARD_URL),
+			_ping_tier(_s.LLM_DEEP_URL),
+		)
+		dot = lambda ok: "🟢" if ok else "🔴"
+		l_text = (
+			f"{dot(inst_ok)} Instant  "
+			f"{dot(std_ok)} Standard  "
+			f"{dot(deep_ok)} Deep"
+		)
 		lang = await get_user_lang()
 		t = get_translations(lang)
 		
@@ -583,18 +596,6 @@ async def cmd_personal(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		await safe_reply(update, report)
 	except Exception as e:
 		await safe_reply(update, f"Personal context report failed: {e}")
-
-@owner_only
-async def cmd_agent(update: Update, context: ContextTypes.DEFAULT_TYPE):
-	try:
-		from app.services.agent_context import refresh_agent_context, get_agent_context_debug_report
-		await refresh_agent_context()
-		report = get_agent_context_debug_report()
-		if len(report) > 3500:
-			report = report[:3500] + "\n... (truncated — use dashboard to view full context)"
-		await safe_reply(update, report)
-	except Exception as e:
-		await safe_reply(update, f"Agent context report failed: {e}")
 
 @owner_only
 async def cmd_week(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -645,7 +646,7 @@ async def cmd_remind(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	
 	response = await chat(prompt)
 	from app.services.agent_actions import parse_and_execute_actions
-	_, executed, _ = await parse_and_execute_actions(response, require_hitl=True)
+	_, executed = await parse_and_execute_actions(response)
 	
 	if executed:
 		await safe_reply(update, "\n".join(executed))
@@ -671,7 +672,7 @@ async def cmd_custom(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	
 	response = await chat(prompt)
 	from app.services.agent_actions import parse_and_execute_actions
-	_, executed, _ = await parse_and_execute_actions(response, require_hitl=True)
+	_, executed = await parse_and_execute_actions(response)
 	
 	if executed:
 		await safe_reply(update, "\n".join(executed))
@@ -811,12 +812,11 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 			"*Memory & Intelligence*\n"
 			"/search -- Conceptual search of the semantic knowledge vault\n"
 			"/memories -- List all core knowledge in permanent memory\n"
-			"/learn -- Commit specific facts to memory\n"
+			"/add -- Commit specific facts to memory\n"
 			"/unlearn -- Evolve past points in the vault\n"
 			"/protocols -- Inspect Z's agentic tools\n\n"
 			"*System*\n"
 			"/personal -- Show personal context Z loaded from /personal\n"
-			"/agent -- Show agent context loaded from /agent\n"
 			"/status -- Deep integration health check\n"
 			"/purge -- Permanently delete all memories\n\n"
 			"_Tap any command to execute it directly._"
@@ -834,8 +834,8 @@ async def handle_help_callback(update: Update, context: ContextTypes.DEFAULT_TYP
 	await cmd_help(update, context)
 
 @owner_only
-async def cmd_learn_topic(update: Update, context: ContextTypes.DEFAULT_TYPE):
-	topic = update.message.text.replace("/learn", "").strip()
+async def cmd_add_topic(update: Update, context: ContextTypes.DEFAULT_TYPE):
+	topic = update.message.text.replace("/add", "").strip()
 	from app.services.memory import store_memory
 	await store_memory(topic)
 	await safe_reply(update, f"Stored: {topic}")
@@ -1004,14 +1004,14 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 
 	async with AsyncSessionLocal() as db:
 		from app.services.agent_actions import parse_and_execute_actions
-		clean_reply, executed, pending = await parse_and_execute_actions(response, db=db, require_hitl=True)
+		clean_reply, _ = await parse_and_execute_actions(response, db=db)
 
 	# Save Z's reply to global history
 	from app.services.llm import last_model_used
 	await save_global_message("telegram", "z", clean_reply, model=last_model_used.get())
 
 	# Background memory extraction -- learn from user message without blocking reply
-	from app.services.learning import extract_and_store_facts
+	from app.services.memory import extract_and_store_facts
 	asyncio.create_task(extract_and_store_facts(user_text))
 
 	# Prepend real time (strip any LLM-generated time header)
@@ -1020,19 +1020,7 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 	display_reply = f"<b>{format_time()}</b>\n\n{html_reply}"
 
 	footer = await _get_stats_footer()
-	markup = get_nav_markup(t)
-	if pending:
-		# Add a button for each pending action
-		extra_buttons = []
-		for p in pending:
-			extra_buttons.append([InlineKeyboardButton(f"✅ Approve: {p['description'][:30]}...", callback_data=f"action_confirm_{p['id']}")])
-		if extra_buttons:
-			# Merge with existing markup
-			current_keyboard = markup.inline_keyboard
-			new_keyboard = extra_buttons + list(current_keyboard)
-			markup = InlineKeyboardMarkup(new_keyboard)
-
-	await safe_edit(thinking_msg, f"<blockquote>{display_reply}{footer}</blockquote>", parse_mode="HTML", reply_markup=markup)
+	await safe_edit(thinking_msg, f"<blockquote>{display_reply}{footer}</blockquote>", parse_mode="HTML", reply_markup=get_nav_markup(t))
 
 @owner_only
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1072,7 +1060,7 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		
 		async with AsyncSessionLocal() as db:
 			from app.services.agent_actions import parse_and_execute_actions
-			clean_reply, executed, pending = await parse_and_execute_actions(response, db=db, require_hitl=True)
+			clean_reply, _ = await parse_and_execute_actions(response, db=db)
 
 		await save_global_message("telegram", "z", clean_reply, model=last_model_used.get())
 		
@@ -1081,16 +1069,7 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		display_reply = f"📝 <b>Transcript:</b>\n<i>{transcript}</i>\n\n<b>{format_time()}</b>\n\n{html_reply}"
 		
 		footer = await _get_stats_footer()
-		markup = get_nav_markup()
-		if pending:
-			extra_buttons = []
-			for p in pending:
-				extra_buttons.append([InlineKeyboardButton(f"✅ Approve: {p['description'][:30]}...", callback_data=f"action_confirm_{p['id']}")])
-			if extra_buttons:
-				new_keyboard = extra_buttons + list(markup.inline_keyboard)
-				markup = InlineKeyboardMarkup(new_keyboard)
-
-		await safe_edit(status_msg, f"<blockquote>{display_reply}{footer}</blockquote>", parse_mode="HTML", reply_markup=markup)
+		await safe_edit(status_msg, f"<blockquote>{display_reply}{footer}</blockquote>", parse_mode="HTML", reply_markup=get_nav_markup())
 	except Exception as e:
 		logger.error("handle_voice failed: %s", e)
 		await safe_reply(update, "Voice processing failed. There might be an issue with the transcription or intelligence layer.")
@@ -1186,6 +1165,7 @@ async def handle_calendar_approval(update: Update, context: ContextTypes.DEFAULT
 		return
 
 	from app.models.db import get_pending_thought, AsyncSessionLocal, LocalEvent
+	import json
 	
 	thought = await get_pending_thought(event_id)
 	if not thought:
@@ -1232,7 +1212,8 @@ async def handle_draft_approval(update: Update, context: ContextTypes.DEFAULT_TY
 		return
 
 	try:
-		draft_data = json.loads(thought["context_data"])
+		import json as _json
+		draft_data = _json.loads(thought["context_data"])
 		from app.services.gmail import create_draft_reply
 		success = await create_draft_reply(draft_data["email_id"], draft_data["reply_body"])
 		if success:
@@ -1245,36 +1226,3 @@ async def handle_draft_approval(update: Update, context: ContextTypes.DEFAULT_TY
 	except Exception as e:
 		logger.warning("Draft approval failed: %s", e)
 		await query.edit_message_text("❌ Error creating draft. Check logs.")
-
-@owner_only
-async def handle_action_approval(update: Update, context: ContextTypes.DEFAULT_TYPE):
-	"""Handle user approving a pending semantic action."""
-	query = update.callback_query
-	await query.answer()
-
-	data = query.data
-	action_id = data.split("_")[-1]
-
-	from app.models.db import get_pending_thought, AsyncSessionLocal
-	thought = await get_pending_thought(action_id)
-	if not thought:
-		await query.edit_message_text("❌ Error: Action expired or not found.")
-		return
-
-	try:
-		action_data = json.loads(thought["context_data"])
-		tag = action_data["tag"]
-		description = action_data.get("description", "Action")
-		
-		from app.services.agent_actions import parse_and_execute_actions
-		async with AsyncSessionLocal() as db:
-			# Execute without HITL
-			clean_reply, executed, pending = await parse_and_execute_actions(tag, db=db, require_hitl=False)
-		
-		if executed:
-			await query.edit_message_text(f"✅ <b>Action executed:</b> {description}\n<i>{executed[0]}</i>", parse_mode="HTML")
-		else:
-			await query.edit_message_text(f"❌ Failed to execute action: {description}", parse_mode="HTML")
-	except Exception as e:
-		logger.error("Action approval failed: %s", e)
-		await query.edit_message_text(f"❌ Error executing action: {str(e)}")
