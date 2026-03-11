@@ -25,7 +25,9 @@ export class DiagnosticsWidget extends HTMLElement {
 	};
 
 	private static readonly HDD_SEG_TIPS: Record<string, string> = {
+		// Legacy aggregated key (kept for backward compat with older API responses)
 		'docker images': 'Base filesystem layers for all container images pulled from Docker Hub.',
+		// Named volume segments
 		'models': 'GGUF model files served by the LLM inference servers.',
 		'database': 'PostgreSQL data — conversations, email rules, and calendar events.',
 		'memory': 'Qdrant vector embeddings for long-term semantic memory retrieval.',
@@ -35,7 +37,24 @@ export class DiagnosticsWidget extends HTMLElement {
 		'container layers': 'Files written by running containers (logs, temp files, runtime state) on top of their base images.',
 		'tts models': 'Text-to-speech synthesis model files used by the voice service.',
 		'redis cache': 'Redis in-memory store snapshot persisted to disk.',
-		'other': 'OS system files, application source code, and other host-level data outside Docker tracked storage.',
+		// Per-image segments (group: docker_image)
+		'backend': 'openZero backend image — FastAPI application server and all Python dependencies.',
+		'postgres': 'PostgreSQL database server image (data is in the separate Database segment).',
+		'qdrant': 'Qdrant vector search engine image (vectors are in the separate Memory segment).',
+		'planka': 'Planka kanban board image (attachments are in the separate Project Files segment).',
+		'traefik': 'Traefik reverse proxy image — routes all incoming HTTP traffic.',
+		'redis': 'Redis in-memory cache image (data is in the separate Redis Cache segment).',
+		'whisper': 'Whisper automatic speech recognition image for voice input.',
+		'tts': 'Text-to-speech inference image for voice output.',
+		'openedai-speech': 'Text-to-speech inference image for voice output.',
+		'openai-whisper-asr-webservice': 'Whisper speech-to-text webservice image.',
+		'pihole': 'Pi-hole DNS-level ad and tracker blocking server image.',
+		'nginx': 'Nginx HTTP server image (used for error pages).',
+		'llama.cpp': 'llama.cpp inference server image — shared by the instant and deep LLM tiers.',
+		'other images': 'Smaller Docker images not shown individually (each under 70 MB).',
+		'untagged': 'Untagged or dangling image layers with no associated tag.',
+		// Catch-all
+		'other': 'Host OS packages, system logs, user files, and all data outside Docker\'s managed storage. Requires direct host filesystem access to sub-divide further.',
 	};
 
 	constructor() {
@@ -275,13 +294,16 @@ export class DiagnosticsWidget extends HTMLElement {
 
 		for (const item of breakdown) {
 			const itemName = item.name.toLowerCase();
+			const specificTip = DiagnosticsWidget.HDD_SEG_TIPS[itemName];
+			const desc = specificTip
+				|| (item.group === 'docker_image' ? `Docker container image for ${item.name}.` : '');
 			segs.push({
 				name: itemName,
 				label: item.name,
 				gb: item.gb,
 				pct: (item.gb / total) * 100,
 				color: item.color || this._svcColor(itemName),
-				desc: DiagnosticsWidget.HDD_SEG_TIPS[itemName] || '',
+				desc,
 			});
 			accounted += item.gb;
 		}
