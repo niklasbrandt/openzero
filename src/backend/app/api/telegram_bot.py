@@ -314,7 +314,8 @@ async def start_telegram_bot():
 			await _recover_unanswered_messages()
 
 		except Exception as e:
-			logging.error("FAILED to send Telegram startup greeting: %s", e)
+			import traceback as _tb
+			logging.error("FAILED to send Telegram startup greeting: %s\n%s", e, _tb.format_exc())
 
 	# Register send functions with the notifier shim so task modules can use them
 	# without importing this module directly (breaks circular import cycles).
