@@ -1757,6 +1757,7 @@ def _install_backend_mocks():
 		"langchain_openai", "langchain_core", "langchain_core.messages",
 		"langgraph", "langgraph.prebuilt",
 		"httpx", "pytz",
+		"sqlalchemy", "sqlalchemy.orm", "sqlalchemy.ext", "sqlalchemy.ext.asyncio",
 	]:
 		if name not in sys.modules:
 			mods[name] = types.ModuleType(name)
@@ -1823,6 +1824,20 @@ def _install_backend_mocks():
 	mods["langchain_core.messages"].HumanMessage = type("HumanMessage", (), {"__init__": lambda self, **kw: None})
 	mods["langchain_core.messages"].AIMessage = type("AIMessage", (), {"__init__": lambda self, **kw: None})
 	mods["langgraph.prebuilt"].create_react_agent = lambda *a, **kw: None
+
+	mods["sqlalchemy"].select = lambda *a, **kw: None
+	mods["sqlalchemy"].Column = type("Column", (), {})
+	mods["sqlalchemy"].String = type("String", (), {})
+	mods["sqlalchemy"].Integer = type("Integer", (), {})
+	mods["sqlalchemy"].orm = mods["sqlalchemy.orm"]
+	mods["sqlalchemy"].ext = mods["sqlalchemy.ext"]
+	mods["sqlalchemy.ext"].asyncio = mods["sqlalchemy.ext.asyncio"]
+	mods["sqlalchemy.orm"].DeclarativeBase = type("DeclarativeBase", (), {})
+	mods["sqlalchemy.orm"].Mapped = type("Mapped", (), {})
+	mods["sqlalchemy.orm"].mapped_column = lambda *a, **kw: None
+	mods["sqlalchemy.ext.asyncio"].create_async_engine = lambda *a, **kw: None
+	mods["sqlalchemy.ext.asyncio"].async_sessionmaker = lambda *a, **kw: None
+	mods["sqlalchemy.ext.asyncio"].AsyncSession = type("AsyncSession", (), {})
 
 	# Install all mocks, overwriting any stale entries
 	for name, mod in mods.items():
