@@ -166,6 +166,8 @@ def _check_rate_limit(request: Request):
 
 def _check_chat_rate_limit(request: Request):
     """Stricter sliding-window limiter for LLM chat endpoints: 5 requests per 60 s per client IP."""
+    if request.headers.get("Authorization") == f"Bearer {settings.DASHBOARD_TOKEN}":
+        return  # Bypass rate limits for valid DASHBOARD_TOKEN (e.g., test suites)
     client_ip = (
         request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
         or (request.client.host if request.client else "unknown")
