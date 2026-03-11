@@ -242,8 +242,33 @@ export class DiagnosticsWidget extends HTMLElement {
 			});
 		}
 
-		// Linux page cache / buffers (reclaimable)
-		if (cacheGb > 0.05) {
+		// Linux page cache / buffers (reclaimable) — break into sub-segments if available
+		const cacheBreakdown: { name: string; gb: number }[] = srv.ram_bufcache_breakdown || [];
+		const _cacheColors: Record<string, string> = {
+			'page cache': 'hsla(174,48%,55%,0.36)',
+			'slab cache': 'hsla(158,40%,48%,0.30)',
+			'buffers':    'hsla(190,36%,50%,0.25)',
+		};
+		const _cacheTrKeys: Record<string, [string, string]> = {
+			'page cache': ['ram_page_cache', 'page cache'],
+			'slab cache': ['ram_slab_cache', 'slab cache'],
+			'buffers':    ['ram_buffers',    'buffers'],
+		};
+		if (cacheBreakdown.length > 0) {
+			for (const sub of cacheBreakdown) {
+				const subPct = (sub.gb / total) * 100;
+				if (subPct > 0.05) {
+					const [trKey, trFb] = _cacheTrKeys[sub.name] || [`ram_${sub.name}`, sub.name];
+					segs.push({
+						name: `cache_${sub.name.replace(' ', '_')}`,
+						label: this.tr(trKey, trFb),
+						gb: sub.gb,
+						pct: subPct,
+						color: _cacheColors[sub.name] || 'hsla(174,40%,50%,0.28)',
+					});
+				}
+			}
+		} else if (cacheGb > 0.05) {
 			segs.push({ name: 'cache', label: this.tr('ram_cache', 'page cache'), gb: cacheGb, pct: (cacheGb / total) * 100, color: 'hsla(174,40%,50%,0.28)' });
 		}
 
@@ -259,7 +284,8 @@ export class DiagnosticsWidget extends HTMLElement {
 		const total = srv.disk_total_gb || 1;
 		const used = srv.disk_used_gb || 0;
 		const free = srv.disk_free_gb || 0;
-		const breakdown = srv.disk_breakdown || [];
+		// Sort breakdown by gb descending so largest segments appear first
+		const breakdown = [...(srv.disk_breakdown || [])].sort((a: any, b: any) => (b.gb || 0) - (a.gb || 0));
 
 		const segs: { name: string; label: string; gb: number; pct: number; color: string; desc?: string }[] = [];
 		let accounted = 0;
