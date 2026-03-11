@@ -10,9 +10,9 @@ const { chromium } = require('playwright');
 
         // find the DiagnosticsWidget
         const diagWidget = await page.locator('diagnostics-widget');
-        await diagWidget.locator('button[data-tier="instant"]').click();
+        await diagWidget.locator('button[data-tier="fast"]').click();
         
-        console.log("Clicked instant benchmark in DiagnosticsWidget...");
+        console.log("Clicked fast benchmark in DiagnosticsWidget...");
         await page.waitForTimeout(2000);
         
         let content = await diagWidget.innerHTML();

@@ -53,7 +53,7 @@ async def health_check_detailed():
 
 	llm_status = {}
 	for name, url in [
-		("llm_instant", settings.LLM_INSTANT_URL),
+		("llm_fast", settings.LLM_FAST_URL),
 		("llm_deep", settings.LLM_DEEP_URL),
 	]:
 		try:

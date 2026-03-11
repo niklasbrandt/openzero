@@ -202,7 +202,7 @@ def _security_sanitise(text: str) -> str:
 # ---------------------------------------------------------------------------
 
 async def _llm_compress(filename: str, text: str) -> str:
-	"""Compress via instant-tier LLM. Falls back to deterministic on failure."""
+	"""Compress via fast-tier LLM. Falls back to deterministic on failure."""
 	try:
 		from app.services.llm import chat
 		compressed = await chat(
@@ -213,7 +213,7 @@ async def _llm_compress(filename: str, text: str) -> str:
 				"behavioral rules, and explicit instructions. Remove only redundancy and formatting noise. "
 				"Output only the compressed text, nothing else."
 			),
-			tier="instant",
+			tier="fast",
 		)
 		logger.debug("personal_context: LLM-compressed %s (%d→%d chars)", filename, len(text), len(compressed))
 		return compressed.strip()

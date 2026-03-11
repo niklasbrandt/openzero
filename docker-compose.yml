@@ -33,7 +33,7 @@ services:
   # fast: small fast model for trivial tasks; deep: full 8B for everything else.
   # See .env.example for hardware sizing guide and model recommendations.
 
-  llm-instant:
+  llm-fast:
     image: ghcr.io/ggml-org/llama.cpp:server
     restart: always
     volumes:
@@ -47,15 +47,15 @@ services:
         soft: -1
         hard: -1
     environment:
-      - MODEL_URL=${LLM_INSTANT_MODEL_URL}
-      - MODEL_FILE=${LLM_INSTANT_MODEL_FILE:-Qwen3-0.6B-Q4_K_M.gguf}
-      - KEEP_MODELS=${LLM_INSTANT_MODEL_FILE:-Qwen3-0.6B-Q4_K_M.gguf},${LLM_DEEP_MODEL_FILE:-Qwen3-8B-Q4_K_M.gguf}
+      - MODEL_URL=${LLM_FAST_MODEL_URL}
+      - MODEL_FILE=${LLM_FAST_MODEL_FILE:-Qwen3-0.6B-Q4_K_M.gguf}
+      - KEEP_MODELS=${LLM_FAST_MODEL_FILE:-Qwen3-0.6B-Q4_K_M.gguf},${LLM_DEEP_MODEL_FILE:-Qwen3-8B-Q4_K_M.gguf}
       - PORT=8081
-      - THREADS=${LLM_INSTANT_THREADS:-8}
-      - CTX_SIZE=${LLM_INSTANT_CTX:-4096}
-      - N_PREDICT=${LLM_INSTANT_PREDICT:-512}
-      - BATCH_SIZE=${LLM_INSTANT_BATCH:-512}
-      - PARALLEL=${LLM_INSTANT_PARALLEL:-1}
+      - THREADS=${LLM_FAST_THREADS:-8}
+      - CTX_SIZE=${LLM_FAST_CTX:-4096}
+      - N_PREDICT=${LLM_FAST_PREDICT:-512}
+      - BATCH_SIZE=${LLM_FAST_BATCH:-512}
+      - PARALLEL=${LLM_FAST_PARALLEL:-1}
     healthcheck:
       test: [ "CMD", "curl", "-sf", "http://localhost:8081/health" ]
       interval: 30s
@@ -196,7 +196,7 @@ services:
         condition: service_healthy
       qdrant:
         condition: service_started
-      llm-instant:
+      llm-fast:
         condition: service_started
       llm-deep:
         condition: service_started

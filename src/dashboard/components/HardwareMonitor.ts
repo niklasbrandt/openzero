@@ -198,7 +198,7 @@ export class HardwareMonitor extends HTMLElement {
 			const t = cfgTiers.find((x: any) => x.tier === name);
 			return t ? t.model : name;
 		};
-		const tierNames = ['instant', 'deep'];
+		const tierNames = ['fast', 'deep'];
 		const anyTierData = tierNames.some(n => tiers[n]);
 
 		const llmLoadHtml = anyTierData ? `

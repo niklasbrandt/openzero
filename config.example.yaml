@@ -60,11 +60,11 @@ preferences:
 # 4. Intelligence Configuration
 # ------------------------------------------------------------------------------
 intelligence:
-  # 2-Tier architecture: instant / deep
+  # 2-Tier architecture: fast / deep
   # Tier routing is automatic based on message complexity.
-  # Override defaults in .env (LLM_MODEL_INSTANT, LLM_MODEL_DEEP)
+  # Override defaults in .env (LLM_MODEL_FAST, LLM_MODEL_DEEP)
 
-  # Deep tier timeout (seconds) — instant falls back to deep on timeout
+  # Deep tier timeout (seconds) — fast falls back to deep on timeout
   deep_timeout_seconds: 12
 
   # Whether to attempt the deep tier for interactive messages at all

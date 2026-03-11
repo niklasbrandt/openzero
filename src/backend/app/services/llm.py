@@ -703,7 +703,7 @@ async def chat(
 
 
 # --- 3-Tier Model Selection ---
-# Instant: greetings, trivial, memory distillation (<1s)
+# Fast: greetings, trivial, memory distillation (<1s)
 # Standard: normal conversation, tool-intent (2-5s streaming)
 # Deep: complex reasoning, briefings, creative (10-30s streaming)
 
@@ -714,7 +714,7 @@ TRIVIAL_PATTERNS = {
 	"bye", "cya", "later", "cheers", "np", "k", "kk", "yea", "yeah",
 }
 
-# Short messages that require social/creative reasoning — must not hit instant tier
+# Short messages that require social/creative reasoning — must not hit fast tier
 # even when they fall under the length threshold.
 BANTER_PATTERNS = [
 	"roast me", "roast", "joke", "tell me a joke", "be mean", "be rude",
@@ -743,7 +743,7 @@ TIER_MAX_TOKENS = {
 	"deep": 4000,
 }
 
-# Per-tier read timeouts (seconds). Instant must fail fast so the UI never
+# Per-tier read timeouts (seconds). Fast must fail fast so the UI never
 # hangs for minutes when the CPU is under load.  Deep is generous because
 # briefings and CoT blocks can legitimately take 3+ minutes on a single-board.
 TIER_TIMEOUTS = {
