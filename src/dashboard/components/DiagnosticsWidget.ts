@@ -7,420 +7,385 @@ import { GOO_STYLES, initGoo } from '../services/gooStyles';
 
 
 export class DiagnosticsWidget extends HTMLElement {
-    private cpuData: any = null;
-    private serverData: any = null;
-    private systemData: any = null;
-    private llmConfig: any = null;
-    private benchResults: any[] = [];
-    private isBenchRunning: boolean = false;
-    private t: Record<string, string> = {};
-    private _refreshTimer: ReturnType<typeof setInterval> | null = null;
-    private _observer: IntersectionObserver | null = null;
-    private _visible = false;
-    private _onVisChange = () => this._handleVisibilityChange();
+	private cpuData: any = null;
+	private serverData: any = null;
+	private systemData: any = null;
+	private llmConfig: any = null;
+	private benchResults: any[] = [];
+	private isBenchRunning: boolean = false;
+	private t: Record<string, string> = {};
+	private _refreshTimer: ReturnType<typeof setInterval> | null = null;
+	private _observer: IntersectionObserver | null = null;
+	private _visible = false;
+	private _onVisChange = () => this._handleVisibilityChange();
 
-    private static readonly EXPECTATIONS: Record<string, { model: string; fast: number; good: number; ok: number }> = {
-        instant: { model: '~0.6B', fast: 15, good: 8, ok: 3 },
-        deep: { model: '~8B', fast: 10, good: 5, ok: 2 },
-    };
+	private static readonly EXPECTATIONS: Record<string, { model: string; fast: number; good: number; ok: number }> = {
+		instant: { model: '~0.6B', fast: 15, good: 8, ok: 3 },
+		deep: { model: '~8B', fast: 10, good: 5, ok: 2 },
+	};
 
-    constructor() {
-        super();
-        this.attachShadow({ mode: 'open' });
-    }
+	constructor() {
+		super();
+		this.attachShadow({ mode: 'open' });
+	}
 
-    connectedCallback() {
-        this.loadTranslations().then(() => {
-            this.render();
-            this.fetchAll();
-        });
-        this._observer = new IntersectionObserver(
-            ([entry]) => {
-                this._visible = entry.isIntersecting;
-                if (entry.isIntersecting && !document.hidden) {
-                    this._startPolling();
-                } else {
-                    this._stopPolling();
-                }
-            },
-            { threshold: 0 }
-        );
-        this._observer.observe(this);
-        document.addEventListener('visibilitychange', this._onVisChange);
-        initGoo(this);
-        window.addEventListener('goo-changed', () => initGoo(this));
-        window.addEventListener('identity-updated', () => {
-            this.loadTranslations().then(() => {
-                this.render();
-                this.fetchAll();
-            });
-        });
-    }
+	connectedCallback() {
+		this.loadTranslations().then(() => {
+			this.render();
+			this.fetchAll();
+		});
+		this._observer = new IntersectionObserver(
+			([entry]) => {
+				this._visible = entry.isIntersecting;
+				if (entry.isIntersecting && !document.hidden) {
+					this._startPolling();
+				} else {
+					this._stopPolling();
+				}
+			},
+			{ threshold: 0 }
+		);
+		this._observer.observe(this);
+		document.addEventListener('visibilitychange', this._onVisChange);
+		initGoo(this);
+		window.addEventListener('goo-changed', () => initGoo(this));
+		window.addEventListener('identity-updated', () => {
+			this.loadTranslations().then(() => {
+				this.render();
+				this.fetchAll();
+			});
+		});
+	}
 
-    disconnectedCallback() {
-        this._stopPolling();
-        if (this._observer) {
-            this._observer.disconnect();
-            this._observer = null;
-        }
-        document.removeEventListener('visibilitychange', this._onVisChange);
-    }
+	disconnectedCallback() {
+		this._stopPolling();
+		if (this._observer) {
+			this._observer.disconnect();
+			this._observer = null;
+		}
+		document.removeEventListener('visibilitychange', this._onVisChange);
+	}
 
-    private _handleVisibilityChange() {
-        if (document.hidden) {
-            this._stopPolling();
-        } else if (this._visible) {
-            this._startPolling();
-        }
-    }
+	private _handleVisibilityChange() {
+		if (document.hidden) {
+			this._stopPolling();
+		} else if (this._visible) {
+			this._startPolling();
+		}
+	}
 
-    private _startPolling() {
-        if (this._refreshTimer) return;
-        this._refreshTimer = setInterval(() => this.fetchAll(), 5_000);
-    }
+	private _startPolling() {
+		if (this._refreshTimer) return;
+		this._refreshTimer = setInterval(() => this.fetchAll(), 8000);
+	}
 
-    private _stopPolling() {
-        if (this._refreshTimer) {
-            clearInterval(this._refreshTimer);
-            this._refreshTimer = null;
-        }
-    }
+	private _stopPolling() {
+		if (this._refreshTimer) {
+			clearInterval(this._refreshTimer);
+			this._refreshTimer = null;
+		}
+	}
 
-    private async loadTranslations() {
-        if (window.__z_translations) { this.t = window.__z_translations; return; }
-        try {
-            await window.__z_translations_ready;
-            if (window.__z_translations) { this.t = window.__z_translations; return; }
-            const res = await fetch('/api/dashboard/translations');
-            if (res.ok) this.t = await res.json();
-        } catch (_) { }
-    }
+	private async loadTranslations() {
+		if (window.__z_translations) { this.t = window.__z_translations; return; }
+		try {
+			const r = await fetch('/api/dashboard/translations');
+			if (r.ok) this.t = await r.json();
+		} catch (e) { console.error('Failed to load translations', e); }
+	}
 
-    private tr(key: string, fallback: string): string {
-        return this.t[key] || fallback;
-    }
+	private tr(key: string, fallback: string): string {
+		return this.t[key] || fallback;
+	}
 
-    async fetchAll() {
-        try {
-            const [cpuRes, serverRes, sysRes, llmRes] = await Promise.all([
-                fetch('/api/dashboard/benchmark/cpu'),
-                fetch('/api/dashboard/server-info'),
-                fetch('/api/dashboard/system'),
-                fetch('/api/dashboard/llm-config'),
-            ]);
-            if (cpuRes.ok) this.cpuData = await cpuRes.json();
-            if (serverRes.ok) this.serverData = await serverRes.json();
-            if (sysRes.ok) this.systemData = await sysRes.json();
-            if (llmRes.ok) this.llmConfig = await llmRes.json();
-            this.updatePanel();
-        } catch (e) {
-            console.error('Failed to fetch diagnostics info:', e);
-        }
-    }
+	async fetchAll() {
+		try {
+			const [cpu, srv, sys, cfg] = await Promise.all([
+				fetch('/api/dashboard/cpu-info').then(r => r.json()),
+				fetch('/api/dashboard/server-info').then(r => r.json()),
+				fetch('/api/dashboard/system-status').then(r => r.json()),
+				fetch('/api/dashboard/llm-config').then(r => r.json()),
+			]);
+			this.cpuData = cpu;
+			this.serverData = srv;
+			this.systemData = sys;
+			this.llmConfig = cfg;
+			this.updatePanel();
+		} catch (e) {
+			console.error('Fetch error:', e);
+		}
+	}
 
-    async runBenchmark(tier: string) {
-        if (this.isBenchRunning) return;
-        this.isBenchRunning = true;
-        this.updatePanel(); // Refresh to show running state
+	async runBenchmark(tier: string) {
+		if (this.isBenchRunning) return;
+		this.isBenchRunning = true;
+		this.updatePanel();
+		try {
+			const r = await fetch('/api/dashboard/benchmark', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ tier })
+			});
+			const res = await r.json();
+			const idx = this.benchResults.findIndex(b => b.tier === tier);
+			if (idx > -1) this.benchResults[idx] = res;
+			else this.benchResults.push(res);
+		} finally {
+			this.isBenchRunning = false;
+			this.updatePanel();
+		}
+	}
 
-        try {
-            const res = await fetch(`/api/dashboard/benchmark/llm?tier=${tier}`, { method: 'POST' });
-            if (!res.ok) throw new Error('API error');
-            const data = await res.json();
-            this.benchResults = this.benchResults.filter(r => r.tier !== tier);
-            this.benchResults.push(data);
-        } catch (e) {
-            console.error('Benchmark failed:', e);
-        } finally {
-            this.isBenchRunning = false;
-            this.updatePanel();
-        }
-    }
+	async runAllBenchmarks() {
+		await Promise.all(['instant', 'deep'].map(t => this.runBenchmark(t)));
+	}
 
-    async runAllBenchmarks() {
-        const tiers = ['instant', 'deep'];
-        for (const tier of tiers) {
-            await this.runBenchmark(tier);
-        }
-    }
+	private getRating(tps: number, tier: string): { cls: string; icon: string; label: string; hint: string } {
+		const exp = DiagnosticsWidget.EXPECTATIONS[tier] || DiagnosticsWidget.EXPECTATIONS['deep'];
+		if (tps >= exp.fast) return { cls: 'excellent', icon: '🚀', label: this.tr('excellent', 'Excellent'), hint: `Fast. ${exp.model} running well.` };
+		if (tps >= exp.good) return { cls: 'good', icon: '✅', label: this.tr('good', 'Good'), hint: `Interactive. Typical for ${exp.model}.` };
+		if (tps >= exp.ok) return { cls: 'moderate', icon: '⚠️', label: this.tr('moderate', 'Moderate'), hint: `Noticeable latency.` };
+		return { cls: 'slow', icon: '🐌', label: this.tr('slow', 'Slow'), hint: `Below expected for ${exp.model}.` };
+	}
 
-    private getRating(tps: number, tier: string): { cls: string; icon: string; label: string; hint: string } {
-        const exp = DiagnosticsWidget.EXPECTATIONS[tier] || DiagnosticsWidget.EXPECTATIONS['deep'];
-        if (tps >= exp.fast) return { cls: 'excellent', icon: '🚀', label: this.tr('excellent', 'Excellent'), hint:  };
-        if (tps >= exp.good) return { cls: 'good', icon: '✅', label: this.tr('good', 'Good'), hint:  };
-        if (tps >= exp.ok) return { cls: 'moderate', icon: '⚠️', label: this.tr('moderate', 'Moderate'), hint:  };
-        return { cls: 'slow', icon: '🐌', label: this.tr('slow', 'Slow'), hint:  };
-    }
+	private _svcColor(name: string): string {
+		const colors: Record<string, string> = {
+			'llm-instant': 'var(--accent-primary)',
+			'llm-deep': 'hsl(260,70%,65%)',
+			'postgres': 'hsl(140,55%,55%)',
+			'qdrant': 'hsl(30,80%,60%)',
+			'redis': 'hsl(0,75%,60%)',
+			'pihole': 'hsl(10,80%,55%)',
+			'dashboard': 'hsl(200,80%,55%)',
+			'traefik': 'hsl(190,70%,50%)',
+			'planka': 'hsl(210,80%,55%)',
+		};
+		return colors[name] || 'hsl(220,15%,50%)';
+	}
 
-    private _svcColor(name: string): string {
-        const map: Record<string, string> = {
-            'llm-deep':    'hsl(260,70%,65%)',
-            'llm-instant': 'hsl(174,72%,56%)',
-            'whisper':     'hsl(200,80%,60%)',
-            'tts':         'hsl(225,65%,65%)',
-            'postgres':    'hsl(140,55%,55%)',
-            'qdrant':      'hsl(30,80%,60%)',
-            'redis':       'hsl(0,68%,62%)',
-            'planka':      'hsl(340,65%,62%)',
-            'backend':     'hsl(210,40%,62%)',
-            'traefik':     'hsl(195,55%,56%)',
-            'pihole':      'hsl(100,45%,55%)',
-        };
-        return map[name] || 'hsl(220,18%,52%)';
-    }
+	private _ramBarSegments(srv: any): { name: string; label: string; gb: number; pct: number; color: string; orphan?: boolean }[] {
+		const total = srv.ram_total_gb || 1;
+		const appsGb: number = srv.ram_apps_gb || 0;
+		const cacheGb: number = srv.ram_bufcache_gb || 0;
+		const freeGb: number = srv.ram_free_gb ?? Math.max(total - appsGb - cacheGb, 0);
+		const containerRam: { name: string; gb: number; orphan?: boolean }[] = srv.container_ram || [];
 
-    private _ramBarSegments(srv: any): { name: string; label: string; gb: number; pct: number; color: string; orphan?: boolean }[] {
-        const total = srv.ram_total_gb || 1;
-        const appsGb: number = srv.ram_apps_gb || 0;
-        const cacheGb: number = srv.ram_bufcache_gb || 0;
-        const freeGb: number = srv.ram_free_gb ?? Math.max(total - appsGb - cacheGb, 0);
-        const containerRam: { name: string; gb: number; orphan?: boolean }[] = srv.container_ram || [];
+		// Build named segments from live container data
+		const segs: { name: string; label: string; gb: number; pct: number; color: string; orphan?: boolean }[] = [];
+		let accounted = 0;
+		for (const c of containerRam) {
+			const isOrphan = c.orphan === true;
+			segs.push({
+				name: c.name,
+				label: c.name,
+				gb: c.gb,
+				pct: Math.min((c.gb / total) * 100, 100),
+				color: isOrphan ? 'hsl(35,90%,58%)' : this._svcColor(c.name),
+				orphan: isOrphan,
+			});
+			accounted += c.gb;
+		}
 
-        // Build named segments from live container data
-        const segs: { name: string; label: string; gb: number; pct: number; color: string; orphan?: boolean }[] = [];
-        let accounted = 0;
-        for (const c of containerRam) {
-            const isOrphan = c.orphan === true;
-            segs.push({
-                name: c.name,
-                label: c.name,
-                gb: c.gb,
-                pct: Math.min((c.gb / total) * 100, 100),
-                color: isOrphan ? 'hsl(35,90%,58%)' : this._svcColor(c.name),
-                orphan: isOrphan,
-            });
-            accounted += c.gb;
-        }
+		// \"Other\" — app memory not attributable to any known container
+		const otherGb = Math.max(appsGb - accounted, 0);
+		if (otherGb > 0.05) {
+			segs.push({ name: 'other', label: 'other (OS/misc)', gb: parseFloat(otherGb.toFixed(2)), pct: (otherGb / total) * 100, color: 'hsl(220,18%,42%)' });
+		}
 
-        // "Other" — app memory not attributable to any known container
-        const otherGb = Math.max(appsGb - accounted, 0);
-        if (otherGb > 0.05) {
-            segs.push({ name: 'other', label: 'other (OS/misc)', gb: parseFloat(otherGb.toFixed(2)), pct: (otherGb / total) * 100, color: 'hsl(220,18%,42%)' });
-        }
+		// Linux page cache / buffers (reclaimable)
+		if (cacheGb > 0.05) {
+			segs.push({ name: 'cache', label: this.tr('ram_cache', 'page cache'), gb: cacheGb, pct: (cacheGb / total) * 100, color: 'hsla(174,40%,50%,0.28)' });
+		}
 
-        // Linux page cache / buffers (reclaimable)
-        if (cacheGb > 0.05) {
-            segs.push({ name: 'cache', label: this.tr('ram_cache', 'page cache'), gb: cacheGb, pct: (cacheGb / total) * 100, color: 'hsla(174,40%,50%,0.28)' });
-        }
+		// Free
+		if (freeGb > 0.05) {
+			segs.push({ name: 'free', label: this.tr('ram_free', 'free'), gb: parseFloat(freeGb.toFixed(1)), pct: (freeGb / total) * 100, color: 'hsla(0,0%,100%,0.04)' });
+		}
 
-        // Free
-        if (freeGb > 0.05) {
-            segs.push({ name: 'free', label: this.tr('ram_free', 'free'), gb: parseFloat(freeGb.toFixed(1)), pct: (freeGb / total) * 100, color: 'hsla(0,0%,100%,0.04)' });
-        }
+		return segs;
+	}
 
-        return segs;
-    }
+	private _hddBarSegments(srv: any): { name: string; label: string; gb: number; pct: number; color: string }[] {
+		const total = srv.disk_total_gb || 1;
+		const used = srv.disk_used_gb || 0;
+		const free = srv.disk_free_gb || 0;
+		const breakdown = srv.disk_breakdown || [];
 
-    private _hddBarSegments(srv: any): { name: string; label: string; gb: number; pct: number; color: string }[] {
-        const total = srv.disk_total_gb || 1;
-        const used = srv.disk_used_gb || 0;
-        const free = srv.disk_free_gb || 0;
-        const breakdown = srv.disk_breakdown || [];
+		const segs: { name: string; label: string; gb: number; pct: number; color: string }[] = [];
+		let accounted = 0;
 
-        const segs: { name: string; label: string; gb: number; pct: number; color: string }[] = [];
-        let accounted = 0;
+		for (const item of breakdown) {
+			segs.push({
+				name: item.name.toLowerCase(),
+				label: item.name,
+				gb: item.gb,
+				pct: (item.gb / total) * 100,
+				color: item.color || this._svcColor(item.name.toLowerCase())
+			});
+			accounted += item.gb;
+		}
 
-        for (const item of breakdown) {
-            segs.push({
-                name: item.name.toLowerCase(),
-                label: item.name,
-                gb: item.gb,
-                pct: (item.gb / total) * 100,
-                color: item.color || this._svcColor(item.name.toLowerCase())
-            });
-            accounted += item.gb;
-        }
+		const otherGb = Math.max(used - accounted, 0);
+		if (otherGb > 0.1) {
+			segs.push({
+				name: 'other',
+				label: this.tr('diag_hdd_other', 'System / Other'),
+				gb: parseFloat(otherGb.toFixed(1)),
+				pct: (otherGb / total) * 100,
+				color: 'hsl(210,40%,62%)'
+			});
+		}
 
-        const otherGb = Math.max(used - accounted, 0);
-        if (otherGb > 0.1) {
-            segs.push({
-                name: 'other',
-                label: this.tr('diag_hdd_other', 'System / Other'),
-                gb: parseFloat(otherGb.toFixed(1)),
-                pct: (otherGb / total) * 100,
-                color: 'hsl(210,40%,62%)'
-            });
-        }
+		if (free > 0.1) {
+			segs.push({
+				name: 'free',
+				label: this.tr('diag_hdd_free', 'Free Space'),
+				gb: parseFloat(free.toFixed(1)),
+				pct: (free / total) * 100,
+				color: 'hsla(0,0%,100%,0.04)'
+			});
+		}
 
-        if (free > 0.1) {
-            segs.push({
-                name: 'free',
-                label: this.tr('diag_hdd_free', 'Free Space'),
-                gb: parseFloat(free.toFixed(1)),
-                pct: (free / total) * 100,
-                color: 'hsla(0,0%,100%,0.04)'
-            });
-        }
+		return segs;
+	}
 
-        return segs;
-    }
+	private _ramAlertHtml(srv: any): string {
+		const appsPct = srv.ram_apps_pct || 0;
+		const usedPct = srv.ram_used_pct || 0;
+		const isCritical = appsPct > 85 || usedPct > 92;
+		const isWarning = !isCritical && (appsPct > 70 || usedPct > 85);
 
-    private _modelsDiskAlertHtml(srv: any): string {
-        const diskGb: number = srv.models_disk_gb || 0;
-        if (!diskGb) return '';
-        const activeGb = ((this.llmConfig || {}).tiers || [])
-            .reduce((s: number, t: any) => s + (t?.ram_est_gb || 0), 0);
-        if (!activeGb) return '';
-        const bloated = diskGb > activeGb * 1.5;
-        if (!bloated) return '';
-        const staleGb = (diskGb - activeGb).toFixed(1);
-        return `
-            <div class="ram-alert warning" role="alert" aria-live="polite">
-                <div class="ram-alert-header">
-                    <span class="ram-alert-headline">Models disk bloated &#x2014; ${diskGb} GB used, ~${activeGb.toFixed(1)} GB needed</span>
-                </div>
-                <details class="ram-alert-details">
-                    <summary class="ram-alert-summary"><span class="summary-arrow" aria-hidden="true">&#x25BA;</span> ${staleGb} GB stale .gguf files detected</summary>
-                    <ul class="ram-alert-list">
-                        <li><strong>Auto-prune on restart</strong><span class="ram-alert-detail">Stale <code>.gguf</code> files are automatically deleted when LLM containers next start up.</span></li>
-                        <li><strong>Force prune now</strong><span class="ram-alert-detail">SSH to VPS and run: <code>docker compose restart llm-instant llm-deep</code></span></li>
-                    </ul>
-                </details>
-            </div>
-        `;
-    }
+		// Orphan container warning (separate from pressure alerts)
+		const orphans: { name: string; gb: number }[] = (srv.container_ram || []).filter((c: any) => c.orphan);
+		const orphanHtml = orphans.length > 0 ? `
+			<div class="ram-alert warning" role="alert" aria-live="polite">
+				<div class="ram-alert-header">
+					<span class="ram-alert-headline">Orphan container${orphans.length > 1 ? 's' : ''} consuming RAM — not in current compose config</span>
+				</div>
+				<details class="ram-alert-details">
+					<summary class="ram-alert-summary"><span class="summary-arrow" aria-hidden="true">&#x25BA;</span> ${orphans.length} orphan${orphans.length > 1 ? 's' : ''}: ${orphans.map(o => `${this.esc(o.name)} (${o.gb}G)`).join(', ')}</summary>
+					<ul class="ram-alert-list">
+						<li><strong>Stop orphans</strong><span class="ram-alert-detail">SSH to VPS and run: <code>docker compose down --remove-orphans &amp;&amp; docker compose up -d</code></span></li>
+						<li><strong>Or remove individually</strong><span class="ram-alert-detail"><code>docker rm -f ${orphans.map(o => `openzero-${this.esc(o.name)}-1`).join(' ')}</code></span></li>
+					</ul>
+				</details>
+			</div>
+		` : '';
 
-    private _ramAlertHtml(srv: any): string {
-        const appsPct = srv.ram_apps_pct || 0;
-        const usedPct = srv.ram_used_pct || 0;
-        const isCritical = appsPct > 85 || usedPct > 92;
-        const isWarning = !isCritical && (appsPct > 70 || usedPct > 85);
+		if (!isCritical && !isWarning) return orphanHtml;
+		const level = isCritical ? 'critical' : 'warning';
+		const headline = isCritical
+			? `RAM critically full — ${srv.ram_used_gb || usedPct + '%'} GB used of ${srv.ram_total_gb || '?'} GB`
+			: `RAM pressure high — ${srv.ram_used_gb || usedPct + '%'} GB used of ${srv.ram_total_gb || '?'} GB`;
+		const mitigations = [
+			{ key: 'LLM_DEEP_CTX', action: 'Reduce context window', detail: 'Lower <code>LLM_DEEP_CTX</code> in <code>.env</code> (e.g. 4096 or 2048). Each halving frees ~1–2 GB KV cache.' },
+			{ key: 'LLM_DEEP_PREDICT', action: 'Reduce max prediction', detail: 'Lower <code>LLM_DEEP_PREDICT</code> in <code>.env</code> (e.g. 1024). Less output buffer.' },
+			{ key: 'Profile A', action: 'Switch to Profile A (Q2_K deep model)', detail: 'Use the low-RAM profile in <code>.env.example</code>. Saves ~2 GB at the cost of some quality.' },
+			{ key: 'LLM_DEEP_BATCH', action: 'Reduce batch size', detail: 'Lower <code>LLM_DEEP_BATCH</code> to 128 or 64. Less RAM per inference pass.' },
+		];
+		return `${orphanHtml}
+			<div class="ram-alert ${level}" role="alert" aria-live="assertive">
+				<div class="ram-alert-header">
+					<span class="ram-alert-headline">${this.esc(headline)}</span>
+				</div>
+				<details class="ram-alert-details">
+					<summary class="ram-alert-summary"><span class="summary-arrow" aria-hidden="true">▶</span> Mitigation options</summary>
+					<ul class="ram-alert-list">
+						${mitigations.map(m => `
+							<li>
+								<strong>${this.esc(m.action)}</strong>
+								<span class="ram-alert-detail">${m.detail}</span>
+							</li>
+						`).join('')}
+					</ul>
+				</details>
+			</div>
+		`;
+	}
 
-        // Orphan container warning (separate from pressure alerts)
-        const orphans: { name: string; gb: number }[] = (srv.container_ram || []).filter((c: any) => c.orphan);
-        const orphanHtml = orphans.length > 0 ? `
-            <div class="ram-alert warning" role="alert" aria-live="polite">
-                <div class="ram-alert-header">
-                    <span class="ram-alert-headline">Orphan container${orphans.length > 1 ? 's' : ''} consuming RAM — not in current compose config</span>
-                </div>
-                <details class="ram-alert-details">
-                    <summary class="ram-alert-summary"><span class="summary-arrow" aria-hidden="true">&#x25BA;</span> ${orphans.length} orphan${orphans.length > 1 ? 's' : ''}: ${orphans.map(o => `${this.esc(o.name)} (${o.gb}G)`).join(', ')}</summary>
-                    <ul class="ram-alert-list">
-                        <li><strong>Stop orphans</strong><span class="ram-alert-detail">SSH to VPS and run: <code>docker compose down --remove-orphans &amp;&amp; docker compose up -d</code></span></li>
-                        <li><strong>Or remove individually</strong><span class="ram-alert-detail"><code>docker rm -f ${orphans.map(o => `openzero-${this.esc(o.name)}-1`).join(' ')}</code></span></li>
-                    </ul>
-                </details>
-            </div>
-        ` : '';
+	updatePanel() {
+		const el = this.shadowRoot?.querySelector('#diag-panel');
+		if (!el) return;
 
-        if (!isCritical && !isWarning) return orphanHtml;
-        const level = isCritical ? 'critical' : 'warning';
-        const headline = isCritical
-            ? `RAM critically full — ${srv.ram_used_gb || usedPct + '%'} GB used of ${srv.ram_total_gb || '?'} GB`
-            : `RAM pressure high — ${srv.ram_used_gb || usedPct + '%'} GB used of ${srv.ram_total_gb || '?'} GB`;
-        const mitigations = [
-            { key: 'LLM_DEEP_CTX', action: 'Reduce context window', detail: 'Lower <code>LLM_DEEP_CTX</code> in <code>.env</code> (e.g. 4096 or 2048). Each halving frees ~1–2 GB KV cache.' },
-            { key: 'LLM_DEEP_PREDICT', action: 'Reduce max prediction', detail: 'Lower <code>LLM_DEEP_PREDICT</code> in <code>.env</code> (e.g. 1024). Less output buffer.' },
-            { key: 'Profile A', action: 'Switch to Profile A (Q2_K deep model)', detail: 'Use the low-RAM profile in <code>.env.example</code>. Saves ~2 GB at the cost of some quality.' },
-            { key: 'LLM_DEEP_BATCH', action: 'Reduce batch size', detail: 'Lower <code>LLM_DEEP_BATCH</code> to 128 or 64. Less RAM per inference pass.' },
-        ];
-        return `${orphanHtml}
-            <div class="ram-alert ${level}" role="alert" aria-live="assertive">
-                <div class="ram-alert-header">
-                    <span class="ram-alert-headline">${this.esc(headline)}</span>
-                </div>
-                <details class="ram-alert-details">
-                    <summary class="ram-alert-summary"><span class="summary-arrow" aria-hidden="true">▶</span> Mitigation options</summary>
-                    <ul class="ram-alert-list">
-                        ${mitigations.map(m => `
-                            <li>
-                                <strong>${this.esc(m.action)}</strong>
-                                <span class="ram-alert-detail">${m.detail}</span>
-                            </li>
-                        `).join('')}
-                    </ul>
-                </details>
-            </div>
-        `;
-    }
+		// Preserve open state of the mitigation details panel across re-renders
+		const alertDetailsOpen = (el.querySelector('.ram-alert-details') as HTMLDetailsElement | null)?.open ?? false;
 
-    updatePanel() {
-        const el = this.shadowRoot?.querySelector('#diag-panel');
-        if (!el) return;
+		const cpu = this.cpuData || { cpu_model: '...', cores_physical: '?', cores_logical: '?', architecture: '?' };
+		const srv = this.serverData || {};
+		const sys = this.systemData || {};
+		const tiers = srv.tiers || {};
 
-        // Preserve open state of the mitigation details panel across re-renders
-        const alertDetailsOpen = (el.querySelector('.ram-alert-details') as HTMLDetailsElement | null)?.open ?? false;
+		const cpuFeats = [
+			{ id: 'avx2', label: 'AVX2' },
+			{ id: 'avx512', label: 'AVX512' },
+			{ id: 'sse4_2', label: 'SSE4.2' },
+		];
+		const featGrid = cpuFeats.map(f => `
+			<div class="hw-feat has-tip ${cpu[f.id] ? 'active' : 'inactive'}" data-tip="${f.label} hardware instruction set extension ${cpu[f.id] ? 'is available' : 'is not detected'}. " ${!cpu[f.id] ? 'aria-disabled="true"' : ''}>
+				<span class="feat-dot"></span>
+				<span class="feat-label">${f.label}</span>
+			</div>
+		`).join('');
 
-        const cpu = this.cpuData || { cpu_model: '...', cores_physical: '?', cores_logical: '?', architecture: '?' };
-        const srv = this.serverData || {};
-        const sys = this.systemData || {};
-        const tiers = srv.tiers || {};
+		const swServices = [
+			{ name: 'Memory', status: (sys.memory_points || 0) >= 0 ? 'online' : 'offline', detail: `${sys.memory_points || 0} pts` },
+			{ name: 'Database', status: sys.db_size ? 'online' : 'warning', detail: sys.db_size || '0 MB' },
+			{ name: 'Cache', status: sys.redis_stats ? 'online' : 'warning', detail: sys.redis_stats || 'offline' },
+			{ name: 'DNS', status: sys.dns_ok === true ? 'online' : 'warning', detail: sys.dns_detail || 'online' },
+		];
 
-        // 1. Hardware Section
+		const swGrid = swServices.map(s => {
+			const tips: Record<string, string> = {
+				'Memory': 'Status of the semantic memory vector store (Qdrant).',
+				'Database': 'Relational data storage (Postgres) health and size.',
+				'Cache': 'Fast transient storage (Redis) for sessions and coordination.',
+				'DNS': 'Local privacy-focused DNS resolver (Pi-hole) status.'
+			};
+			return `
+				<div class="svc-item has-tip" data-tip="${tips[s.name] || ''}">
+					<div class="svc-main">
+						<span class="svc-dot ${s.status}"></span>
+						<span class="svc-name">${s.name}</span>
+					</div>
+					<span class="svc-detail">${this.esc(s.detail)}</span>
+				</div>
+			`;
+		}).join('');
 
-        const cpuFeats = [
-            { id: 'avx2', label: 'AVX2' },
-            { id: 'avx512', label: 'AVX512' },
-            { id: 'sse4_2', label: 'SSE4.2' },
-        ];
-        const featGrid = cpuFeats.map(f => `
-            <div class="hw-feat has-tip ${cpu[f.id] ? 'active' : 'inactive'}" data-tip="${f.label} hardware instruction set extension ${cpu[f.id] ? 'is available' : 'is not detected'}. " ${!cpu[f.id] ? 'aria-disabled="true"' : ''}>
-                <span class="feat-dot"></span>
-                <span class="feat-label">${f.label}</span>
-            </div>
-        `).join('');
+		const cfgTiers: any[] = (this.llmConfig || {}).tiers || [];
+		const modelFor = (name: string) => {
+			const t = cfgTiers.find((x: any) => x.tier === name);
+			if (t && t.model) {
+				const parts = t.model.split('/');
+				return parts[parts.length - 1].replace('.gguf', '');
+			}
+			return name === 'instant' ? 'Qwen3-0.6B' : 'Qwen3-8B';
+		};
+		const ramEstFor = (name: string): number => {
+			const t = cfgTiers.find((x: any) => x.tier === name);
+			return t?.ram_est_gb || 0;
+		};
 
-        // 2. Software Section
-        const swServices = [
-            { name: 'Memory', status: (sys.memory_points || 0) >= 0 ? 'online' : 'offline', detail: `${sys.memory_points || 0} pts` },
-            { name: 'Database', status: sys.db_size ? 'online' : 'warning', detail: sys.db_size || '0 MB' },
-            { name: 'Cache', status: sys.redis_stats ? 'online' : 'warning', detail: sys.redis_stats || 'offline' },
-            { name: 'DNS', status: sys.dns_ok === true ? 'online' : 'warning', detail: sys.dns_detail || 'online' },
-        ];
+		const tierNames = ['instant', 'deep'];
+		const tierColors = ['var(--accent-primary)', 'hsl(260,70%,65%)'];
+		const ctxFor = (name: string): number => { const t = cfgTiers.find((x: any) => x.tier === name); return t?.ctx || 0; };
+		const batchFor = (name: string): number => { const t = cfgTiers.find((x: any) => x.tier === name); return t?.batch || 0; };
+		const predictFor = (name: string): number => { const t = cfgTiers.find((x: any) => x.tier === name); return t?.predict || 0; };
+		const threadsFor = (name: string): number => { const t = cfgTiers.find((x: any) => x.tier === name); return t?.threads || 0; };
 
-        const swGrid = swServices.map(s => {
-            const tips: Record<string, string> = {
-                'Memory': 'Status of the semantic memory vector store (Qdrant).',
-                'Database': 'Relational data storage (Postgres) health and size.',
-                'Cache': 'Fast transient storage (Redis) for sessions and coordination.',
-                'DNS': 'Local privacy-focused DNS resolver (Pi-hole) status.'
-            };
-            return `
-                <div class="svc-item has-tip" data-tip="${tips[s.name] || ''}">
-                    <div class="svc-main">
-                        <span class="svc-dot ${s.status}"></span>
-                        <span class="svc-name">${s.name}</span>
-                    </div>
-                    <span class="svc-detail">${this.esc(s.detail)}</span>
-                </div>
-            `;
-        }).join('');
-
-        const cfgTiers: any[] = (this.llmConfig || {}).tiers || [];
-        const modelFor = (name: string) => {
-            const t = cfgTiers.find((x: any) => x.tier === name);
-            if (t && t.model) {
-                const parts = t.model.split('/');
-                return parts[parts.length - 1].replace('.gguf', '');
-            }
-            return name === 'instant' ? 'Qwen3-0.6B' : 'Qwen3-8B';
-        };
-        const ramEstFor = (name: string): number => {
-            const t = cfgTiers.find((x: any) => x.tier === name);
-            return t?.ram_est_gb || 0;
-        };
-
-        const tierNames = ['instant', 'deep'];
-        const tierColors = ['var(--accent-primary)', 'hsl(260,70%,65%)'];
-        const ctxFor = (name: string): number => { const t = cfgTiers.find((x: any) => x.tier === name); return t?.ctx || 0; };
-        const batchFor = (name: string): number => { const t = cfgTiers.find((x: any) => x.tier === name); return t?.batch || 0; };
-        const predictFor = (name: string): number => { const t = cfgTiers.find((x: any) => x.tier === name); return t?.predict || 0; };
-        const threadsFor = (name: string): number => { const t = cfgTiers.find((x: any) => x.tier === name); return t?.threads || 0; };
-
-        // 3. Benchmarks Section
-        const benchHtml = this.benchResults.length === 0 ? `<div class="empty-state">No benchmark data. Run a test below.</div>` :
-            this.benchResults.map(r => {
-                if (r.error || r.tokens_per_second === 0) {
-                    const msg = r.error || 'No tokens received — model may be loading or unavailable';
-                    return `
-                        <div class="bench-res-item error has-tip" data-tip="Click a test button to retry.">
-                            <span class="bench-tier">${r.tier}</span>
-                            <span class="bench-error">${this.esc(msg)}</span>
-                        </div>
-                    `;
-                }
-                const rtg = this.getRating(r.tokens_per_second, r.tier);
-                return `
+		const benchHtml = this.benchResults.length === 0 ? `<div class="empty-state">No benchmark data. Run a test below.</div>` :
+			this.benchResults.map(r => {
+				if (r.error || r.tokens_per_second === 0) {
+					const msg = r.error || 'No tokens received — model may be loading or unavailable';
+					return `
+						<div class="bench-res-item error has-tip" data-tip="Click a test button to retry.">
+							<span class="bench-tier">${r.tier}</span>
+							<span class="bench-error">${this.esc(msg)}</span>
+						</div>
+					`;
+				}
+				const rtg = this.getRating(r.tokens_per_second, r.tier);
+				return `
 					<div class="bench-res-item has-tip" data-tip="${rtg.hint}">
 						<span class="bench-tier">${r.tier}</span>
 						<span class="bench-val ${rtg.cls}">${r.tokens_per_second} <small>tok/s</small></span>
@@ -428,101 +393,114 @@ export class DiagnosticsWidget extends HTMLElement {
 						<span class="bench-rtg">${rtg.icon}</span>
 					</div>
 				`;
-            }).join('');
+			}).join('');
 
-        el.innerHTML = `
+		el.innerHTML = `
 			<div class="diag-layout">
-                <button id="btn-force-reload" class="reload-btn has-tip" 
+				<button id="btn-force-reload" class="reload-btn has-tip" 
 					aria-label="${this.tr('aria_refresh_diagnostics', 'Force refresh of all diagnostic metrics')}"
 					data-tip="${this.tr('aria_refresh_diagnostics', 'Force refresh of all diagnostic metrics')}">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 2v6h-6"></path><path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path><path d="M3 22v-6h6"></path><path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
-                    </svg>
-                </button>
+					<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+						<path d="M21 2v6h-6"></path><path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path><path d="M3 22v-6h6"></path><path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
+					</svg>
+				</button>
 
-                ${this._modelsDiskAlertHtml(srv)}
-                ${this._ramAlertHtml(srv)}
+				${this._ramAlertHtml(srv)}
 
-                <!-- Top Row: Prominent RAM -->
-                <div class="ram-strip">
-                    <div class="ram-strip-header">
-                        <span class="ram-title">${this.tr('diag_ram_title', 'System Memory (RAM)')}</span>
-                        <span class="ram-value">${srv.ram_used_gb ?? ((srv.ram_used_pct || 0) * (srv.ram_total_gb || 0) / 100).toFixed(1)}GB / ${srv.ram_total_gb}GB</span>
-                    </div>
-                    <div class="ram-strip-bar" id="ram-seg-bar">
-                        ${this._ramBarSegments(srv).map(s => `
-                            <div class="ram-seg-svc" style="width:${Math.max(s.pct, 0).toFixed(2)}%;background:${s.color}" data-seg-tip="${this.esc(s.label)}: ${s.gb} GB (${s.pct.toFixed(1)}%)"></div>
-                        `).join('')}
-                    </div>
-                    <div class="ram-bar-hover-tip" id="ram-bar-htip" aria-hidden="true" role="tooltip"></div>
-                    <div class="ram-strip-legend">
-                        ${this._ramBarSegments(srv).filter(s => s.name !== 'free').map(s => `
-                            <div class="leg-item${s.orphan ? ' leg-item--orphan' : ''}">
-                                <span class="leg-dot" style="background:${s.color};border-color:${s.color}"></span>
-                                <span class="leg-name">${this.esc(s.label)}</span>
-                                <span class="leg-gb">${s.gb}G</span>
-                                ${s.orphan ? `<span class="leg-orphan-chip" title="${this.tr('tip_orphan_container', 'Not in docker-compose.yml — orphaned container')}">orphan</span>` : ''}
-                            </div>
-                        `).join('')}
-                    </div>
-                    ${cfgTiers.length > 0 ? `
-                    <div class="llm-ram-breakdown">
-                        <div class="llm-ram-bd-label">LLM memory</div>
-                        ${tierNames.map((name, idx) => {
-                            const td = tiers[name] || {};
-                            const isOnline = td.status === 'online';
-                            const isBusy = td.activity === 'processing';
-                            const dotClass = !isOnline ? 'offline' : isBusy ? 'processing' : 'online';
-                            const statusLabel = !isOnline ? 'OFFLINE' : isBusy ? 'BUSY' : 'IDLE';
-                            const color = tierColors[idx];
-                            const ramGb = ramEstFor(name);
-                            const ctx = ctxFor(name);
-                            const batch = batchFor(name);
-                            const predict = predictFor(name);
-                            const threads = threadsFor(name);
-                            const model = modelFor(name);
-                            const liveRamGb = ((srv.container_ram || []).find((c: any) => c.name === 'llm-' + name) || {}).gb || 0;
-                            return `<div class="llm-tier-card" style="--tier-color:${color}">
-                                <div class="ltc-header">
-                                    <span class="svc-dot ${dotClass}"></span>
-                                    <span class="ltc-name" style="color:${color}">${name}</span>
-                                    <span class="ltc-status ${dotClass}">${statusLabel}</span>
-                                </div>
-                                <div class="ltc-model">${this.esc(model)}</div>
-                                <div class="ltc-specs">
-                                    ${ctx ? `<div class="ltc-spec has-tip" data-tip="Context window — max tokens held in memory per request"><span>CTX</span><strong>${ctx.toLocaleString()}</strong></div>` : ''}
-                                    ${threads ? `<div class="ltc-spec has-tip" data-tip="CPU threads allocated to this tier"><span>Threads</span><strong>${threads}</strong></div>` : ''}
-                                    ${batch ? `<div class="ltc-spec has-tip" data-tip="Batch size — tokens processed per inference pass. Higher = faster first token but more RAM"><span>Batch</span><strong>${batch}</strong></div>` : ''}
-                                    ${predict ? `<div class="ltc-spec has-tip" data-tip="Max tokens generated per response"><span>Max out</span><strong>${predict}</strong></div>` : ''}
-                                    ${(liveRamGb || ramGb) ? `<div class="ltc-spec has-tip" data-tip="${liveRamGb ? 'Live RAM from Docker stats — model weights + KV cache + compute buffers' : 'Estimated model weight RAM (excludes KV cache and compute overhead)'}"><span>${liveRamGb ? 'RAM live' : 'RAM est'}</span><strong style="color:${color}">${liveRamGb || ramGb} GB</strong></div>` : ''}
-                                </div>
-                            </div>`;
-                        }).join('')}
-                    </div>` : ''}
-                </div>
+				<!-- Top Row: Prominent RAM -->
+				<div class="ram-strip">
+					<div class="ram-strip-header">
+						<span class="ram-title">${this.tr('diag_ram_title', 'System Memory (RAM)')}</span>
+						<span class="ram-value">${srv.ram_used_gb ?? ((srv.ram_used_pct || 0) * (srv.ram_total_gb || 0) / 100).toFixed(1)}GB / ${srv.ram_total_gb}GB</span>
+					</div>
+					<div class="ram-strip-bar" id="ram-seg-bar">
+						${this._ramBarSegments(srv).map(s => `
+							<div class="ram-seg-svc" style="width:${Math.max(s.pct, 0).toFixed(2)}%;background:${s.color}" data-seg-tip="${this.esc(s.label)}: ${s.gb} GB (${s.pct.toFixed(1)}%)"></div>
+						`).join('')}
+					</div>
+					<div class="ram-bar-hover-tip" id="ram-bar-htip" aria-hidden="true" role="tooltip"></div>
+					<div class="ram-strip-legend">
+						${this._ramBarSegments(srv).filter(s => s.name !== 'free').map(s => `
+							<div class="leg-item${s.orphan ? ' leg-item--orphan' : ''}">
+								<span class="leg-dot" style="background:${s.color};border-color:${s.color}"></span>
+								<span class="leg-name">${this.esc(s.label)}</span>
+								<span class="leg-gb">${s.gb}G</span>
+								${s.orphan ? `<span class="leg-orphan-chip" title="${this.tr('tip_orphan_container', 'Not in docker-compose.yml — orphaned container')}">orphan</span>` : ''}
+							</div>
+						`).join('')}
+					</div>
+					${cfgTiers.length > 0 ? `
+					<div class="llm-ram-breakdown">
+						<div class="llm-ram-bd-label">LLM models (est. mlock'd)</div>
+						${tierNames.map((name, idx) => {
+							const td = tiers[name] || {};
+							const isOnline = td.status === 'online';
+							const isBusy = td.activity === 'processing';
+							const dotClass = !isOnline ? 'offline' : isBusy ? 'processing' : 'online';
+							const statusLabel = !isOnline ? 'OFFLINE' : isBusy ? 'BUSY' : 'IDLE';
+							const color = tierColors[idx];
+							const ramGb = ramEstFor(name);
+							const ctx = ctxFor(name);
+							const batch = batchFor(name);
+							const predict = predictFor(name);
+							const threads = threadsFor(name);
+							const model = modelFor(name);
+							const liveRamGb = ((srv.container_ram || []).find((c: any) => c.name === 'llm-' + name) || {}).gb || 0;
+							return `<div class="llm-tier-card" style="--tier-color:${color}">
+								<div class="ltc-header">
+									<span class="svc-dot ${dotClass}"></span>
+									<span class="ltc-name" style="color:${color}">${name}</span>
+									<span class="ltc-status ${dotClass}">${statusLabel}</span>
+								</div>
+								<div class="ltc-model">${this.esc(model)}</div>
+								<div class="ltc-specs">
+									${ctx ? `<div class="ltc-spec has-tip" data-tip="Context window — max tokens held in memory per request"><span>CTX</span><strong>${ctx.toLocaleString()}</strong></div>` : ''}
+									${threads ? `<div class="ltc-spec has-tip" data-tip="CPU threads allocated to this tier"><span>Threads</span><strong>${threads}</strong></div>` : ''}
+									${batch ? `<div class="ltc-spec has-tip" data-tip="Batch size — tokens processed per inference pass. Higher = faster first token but more RAM"><span>Batch</span><strong>${batch}</strong></div>` : ''}
+									${predict ? `<div class="ltc-spec has-tip" data-tip="Max tokens generated per response"><span>Max out</span><strong>${predict}</strong></div>` : ''}
+									${(liveRamGb || ramGb) ? `<div class="ltc-spec has-tip" data-tip="${liveRamGb ? 'Live RAM from Docker stats — model weights + KV cache + compute buffers' : 'Estimated model weight RAM (excludes KV cache and compute overhead)'}"><span>${liveRamGb ? 'RAM live' : 'RAM est'}</span><strong style="color:${color}">${liveRamGb || ramGb} GB</strong></div>` : ''}
+								</div>
+							</div>`;
+						}).join('')}
+						${(() => {
+							const diskGb: number = srv.models_disk_gb || 0;
+							if (!diskGb) return '';
+							const activeGb = tierNames.reduce((s, n) => s + ramEstFor(n), 0);
+							const bloated = activeGb > 0 && diskGb > activeGb * 1.5;
+							const color = bloated ? 'hsl(35,90%,58%)' : 'var(--text-muted)';
+							const tip = bloated
+								? `Models volume is ${diskGb} GB but only ~${activeGb.toFixed(1)} GB needed. Stale files auto-pruned on next restart.`
+								: `Total disk used by /models volume.`;
+							return `<div class="llm-models-disk has-tip" data-tip="${tip}" style="color:${color}">
+								<span>Models disk${bloated ? ' &#x26A0;' : ''}</span>
+								<span style="font-family:var(--font-mono);font-weight:800">${diskGb} GB${bloated ? ` <span style="font-size:0.55rem;font-weight:600">(${(diskGb - activeGb).toFixed(1)} GB stale)</span>` : ''}</span>
+							</div>`;
+						})()}
+					</div>` : ''}
+				</div>
 
-                <!-- HDD Row: System Storage -->
-                <div class="ram-strip hdd-strip">
-                    <div class="ram-strip-header">
-                        <span class="ram-title">${this.tr('diag_hdd_title', 'System Storage (HDD)')}</span>
-                        <span class="ram-value">${srv.disk_used_gb || '0'}GB / ${srv.disk_total_gb || '0'}GB</span>
-                    </div>
-                    <div class="ram-strip-bar hdd-strip-bar" id="hdd-seg-bar">
-                        ${this._hddBarSegments(srv).map(s => `
-                            <div class="ram-seg-svc" style="width:${Math.max(s.pct, 0).toFixed(2)}%;background:${s.color}" data-seg-tip="${this.esc(s.label)}: ${s.gb} GB (${s.pct.toFixed(1)}%)"></div>
-                        `).join('')}
-                    </div>
-                    <div class="ram-bar-hover-tip hdd-bar-hover-tip" id="hdd-bar-htip" aria-hidden="true" role="tooltip"></div>
-                    <div class="ram-strip-legend">
-                        ${this._hddBarSegments(srv).filter(s => s.name !== 'free').map(s => `
-                            <div class="leg-item">
-                                <span class="leg-dot" style="background:${s.color};border-color:${s.color}"></span>
-                                <span class="leg-name">${this.esc(s.label)}</span>
-                                <span class="leg-gb">${s.gb}G</span>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
+				<!-- HDD Row: System Storage -->
+				<div class="ram-strip hdd-strip">
+					<div class="ram-strip-header">
+						<span class="ram-title">${this.tr('diag_hdd_title', 'System Storage (HDD)')}</span>
+						<span class="ram-value">${srv.disk_used_gb || '0'}GB / ${srv.disk_total_gb || '0'}GB</span>
+					</div>
+					<div class="ram-strip-bar hdd-strip-bar" id="hdd-seg-bar">
+						${this._hddBarSegments(srv).map(s => `
+							<div class="ram-seg-svc" style="width:${Math.max(s.pct, 0).toFixed(2)}%;background:${s.color}" data-seg-tip="${this.esc(s.label)}: ${s.gb} GB (${s.pct.toFixed(1)}%)"></div>
+						`).join('')}
+					</div>
+					<div class="ram-bar-hover-tip hdd-bar-hover-tip" id="hdd-bar-htip" aria-hidden="true" role="tooltip"></div>
+					<div class="ram-strip-legend">
+						${this._hddBarSegments(srv).filter(s => s.name !== 'free').map(s => `
+							<div class="leg-item">
+								<span class="leg-dot" style="background:${s.color};border-color:${s.color}"></span>
+								<span class="leg-name">${this.esc(s.label)}</span>
+								<span class="leg-gb">${s.gb}G</span>
+							</div>
+						`).join('')}
+					</div>
+				</div>
 
 				<!-- Left Column: Hardware -->
 				<div class="diag-col hardware">
@@ -533,13 +511,13 @@ export class DiagnosticsWidget extends HTMLElement {
 						<div class="hw-spec has-tip" data-tip="System instruction set architecture."><span>Arch</span><strong>${cpu.architecture}</strong></div>
 						<div class="hw-spec has-tip" data-tip="Time since the last system boot."><span>Uptime</span><strong>${srv.uptime_human || '?'}</strong></div>
 					</div>
-                    <div class="diag-section-label" style="margin-top: 0.5rem">CPU Features</div>
-                    <div class="hw-feat-grid">${featGrid}</div>
+					<div class="diag-section-label" style="margin-top: 0.5rem">CPU Features</div>
+					<div class="hw-feat-grid">${featGrid}</div>
 				</div>
 
 				<!-- Middle Column: Integration -->
 				<div class="diag-col software">
-                    <div class="diag-section-label">Integration</div>
+					<div class="diag-section-label">Integration</div>
 					<div class="svc-grid">${swGrid}</div>
 				</div>
 
@@ -558,79 +536,97 @@ export class DiagnosticsWidget extends HTMLElement {
 			</div>
 		`;
 
-        // Restore details open state after innerHTML replacement
-        const alertDetails = el.querySelector('.ram-alert-details') as HTMLDetailsElement | null;
-        if (alertDetails && alertDetailsOpen) alertDetails.open = true;
+		// Restore details open state after innerHTML replacement
+		const alertDetails = el.querySelector('.ram-alert-details') as HTMLDetailsElement | null;
+		if (alertDetails && alertDetailsOpen) alertDetails.open = true;
 
-        this.shadowRoot?.querySelector('#btn-force-reload')?.addEventListener('click', (e) => {
-            const btn = e.currentTarget as HTMLButtonElement;
-            if (btn.classList.contains('spinning')) return;
-            btn.classList.add('spinning');
-            this.fetchAll().finally(() => setTimeout(() => btn.classList.remove('spinning'), 600));
-        });
+		this.shadowRoot?.querySelector('#btn-force-reload')?.addEventListener('click', (e) => {
+			const btn = e.currentTarget as HTMLButtonElement;
+			if (btn.classList.contains('spinning')) return;
+			btn.classList.add('spinning');
+			this.fetchAll().finally(() => setTimeout(() => btn.classList.remove('spinning'), 600));
+		});
 
-        this.shadowRoot?.querySelector('button[data-tier="all"]')?.addEventListener('click', () => this.runAllBenchmarks());
-        this.shadowRoot?.querySelectorAll('button.sm').forEach(b => {
-            b.addEventListener('click', () => this.runBenchmark(b.getAttribute('data-tier')!));
-        });
+		this.shadowRoot?.querySelector('button[data-tier="all"]')?.addEventListener('click', () => this.runAllBenchmarks());
+		this.shadowRoot?.querySelectorAll('button.sm').forEach(b => {
+			b.addEventListener('click', () => this.runBenchmark(b.getAttribute('data-tier')!));
+		});
 
-        // RAM bar segment hover tooltips — positioned relative to .ram-strip (escapes overflow:hidden on bar)
-        const setupBarTooltips = (barId: string, tipId: string, stripClass: string) => {
-            const _bar = el.querySelector(barId) as HTMLElement | null;
-            const _htip = el.querySelector(tipId) as HTMLElement | null;
-            if (_bar && _htip) {
-                _bar.querySelectorAll('.ram-seg-svc').forEach(_seg => {
-                    _seg.addEventListener('mouseenter', () => {
-                        const label = _seg.getAttribute('data-seg-tip') || '';
-                        if (!label) return;
-                        _htip.textContent = label;
-                        _htip.classList.add('visible');
-                    });
-                    _seg.addEventListener('mouseleave', () => _htip.classList.remove('visible'));
-                });
-                _bar.addEventListener('mousemove', (e: Event) => {
-                    const me = e as MouseEvent;
-                    const stripEl = _bar.closest(stripClass) as HTMLElement | null;
-                    if (!stripEl) return;
-                    const stripRect = stripEl.getBoundingClientRect();
-                    const barRect = _bar.getBoundingClientRect();
-                    const x = Math.max(40, Math.min(me.clientX - stripRect.left, stripRect.width - 40));
-                    const y = barRect.top - stripRect.top - 6;
-                    _htip.style.left = `${x}px`;
-                    _htip.style.top = `${y}px`;
-                });
-                _bar.addEventListener('mouseleave', () => _htip.classList.remove('visible'));
-            }
-        };
+		// Tooltip positioning helper
+		const setupBarTooltips = (barId: string, tipId: string, stripSelector: string) => {
+			const _bar = el.querySelector(barId) as HTMLElement | null;
+			const _htip = el.querySelector(tipId) as HTMLElement | null;
+			if (_bar && _htip) {
+				_bar.querySelectorAll('.ram-seg-svc').forEach(_seg => {
+					_seg.addEventListener('mouseenter', () => {
+						const label = _seg.getAttribute('data-seg-tip') || '';
+						if (!label) return;
+						_htip.textContent = label;
+						_htip.classList.add('visible');
+					});
+					_seg.addEventListener('mouseleave', () => _htip.classList.remove('visible'));
+				});
+				_bar.addEventListener('mousemove', (e: Event) => {
+					const me = e as MouseEvent;
+					const stripEl = _bar.closest(stripSelector) as HTMLElement | null;
+					if (!stripEl) return;
+					const stripRect = stripEl.getBoundingClientRect();
+					const barRect = _bar.getBoundingClientRect();
+					const x = Math.max(40, Math.min(me.clientX - stripRect.left, stripRect.width - 40));
+					const y = barRect.top - stripRect.top - 6;
+					_htip.style.left = `${x}px`;
+					_htip.style.top = `${y}px`;
+				});
+				_bar.addEventListener('mouseleave', () => _htip.classList.remove('visible'));
+			}
+		};
 
-        setupBarTooltips('#ram-seg-bar', '#ram-bar-htip', '.ram-strip:not(.hdd-strip)');
-        setupBarTooltips('#hdd-seg-bar', '#hdd-bar-htip', '.hdd-strip');
+		setupBarTooltips('#ram-seg-bar', '#ram-bar-htip', '.ram-strip:not(.hdd-strip)');
+		setupBarTooltips('#hdd-seg-bar', '#hdd-bar-htip', '.hdd-strip');
 
-        this.injectTooltips();
-    }
+		this.injectTooltips();
+	}
 
-    private esc(str: any): string {
-        if (!str) return '';
-        const s = String(str);
-        return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    }
+	private esc(str: any): string {
+		if (!str) return '';
+		return String(str)
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;')
+			.replace(/"/g, '&quot;')
+			.replace(/'/g, '&#x27;');
+	}
 
-    private injectTooltips() {
-        if (!this.shadowRoot) return;
-        this.shadowRoot.querySelectorAll('.has-tip[data-tip]').forEach(el => {
-            const text = el.getAttribute('data-tip');
-            if (!text || el.querySelector('.glass-tooltip')) return;
-            const tip = document.createElement('span');
-            tip.className = 'glass-tooltip';
-            tip.setAttribute('aria-hidden', 'true');
-            tip.textContent = text;
-            el.appendChild(tip);
-        });
-    }
+	private injectTooltips() {
+		if (!this.shadowRoot) return;
+		const htips = this.shadowRoot.querySelectorAll('.has-tip');
+		htips.forEach(el => {
+			const tip = el.getAttribute('data-tip');
+			if (!tip) return;
+			el.addEventListener('mouseenter', (e) => {
+				const target = e.currentTarget as HTMLElement;
+				const rect = target.getBoundingClientRect();
+				const msg = target.getAttribute('data-tip') || '';
+				const tooltip = document.createElement('div');
+				tooltip.className = 'glass-tooltip';
+				tooltip.textContent = msg;
+				document.body.appendChild(tooltip);
+				const tRect = tooltip.getBoundingClientRect();
+				tooltip.style.left = `${rect.left + rect.width / 2 - tRect.width / 2}px`;
+				tooltip.style.top = `${rect.top - tRect.height - 8}px`;
+				tooltip.classList.add('visible');
+				const out = () => {
+					tooltip.remove();
+					target.removeEventListener('mouseleave', out);
+				};
+				target.addEventListener('mouseleave', out);
+			});
+		});
+	}
 
-    render() {
-        if (!this.shadowRoot) return;
-        this.shadowRoot.innerHTML = `
+	render() {
+		if (!this.shadowRoot) return;
+		this.shadowRoot.innerHTML = `
 			<style>
 				:host { display: block; color-scheme: light dark; }
 				${ACCESSIBILITY_STYLES}
@@ -647,14 +643,14 @@ export class DiagnosticsWidget extends HTMLElement {
 					grid-template-columns: 1.2fr 1fr 1fr;
 					gap: 1.5rem;
 					min-height: 280px;
-                    position: relative;
+					position: relative;
 				}
 
-                .reload-btn { position: absolute; top: -38px; right: 0; background: hsla(0,0%,100%,0.05); border: 1px solid hsla(0,0%,100%,0.1); color: var(--text-muted); width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 10; padding: 0; }
-                .reload-btn:hover { background: hsla(0,0%,100%,0.1); border-color: var(--accent-primary); color: var(--accent-primary); transform: scale(1.1) rotate(15deg); box-shadow: 0 0 15px hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.2); }
-                .reload-btn:active { transform: scale(0.9); }
-                .reload-btn.spinning svg { animation: diag-rotate 0.8s infinite linear; }
-                @keyframes diag-rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+				.reload-btn { position: absolute; top: -38px; right: 0; background: hsla(0,0%,100%,0.05); border: 1px solid hsla(0,0%,100%,0.1); color: var(--text-muted); width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 10; padding: 0; }
+				.reload-btn:hover { background: hsla(0,0%,100%,0.1); border-color: var(--accent-primary); color: var(--accent-primary); transform: scale(1.1) rotate(15deg); box-shadow: 0 0 15px hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.2); }
+				.reload-btn:active { transform: scale(0.9); }
+				.reload-btn.spinning svg { animation: diag-rotate 0.8s infinite linear; }
+				@keyframes diag-rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
 				.diag-col {
 					display: flex;
@@ -662,138 +658,106 @@ export class DiagnosticsWidget extends HTMLElement {
 					gap: 1rem;
 				}
 
-				.diag-section-label {
-					font-size: 0.65rem;
-					text-transform: uppercase;
-					letter-spacing: 0.1em;
-					color: var(--text-muted, hsla(0, 0%, 100%, 0.4));
-					font-weight: 700;
-					margin-bottom: 0.25rem;
-				}
+				.diag-section-label { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: -0.25rem; }
+
+				.cpu-info { font-size: 0.9rem; font-weight: 800; color: var(--text-primary); line-height: 1.2; letter-spacing: -0.01em; }
+				.hw-specs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-top: 0.2rem; }
+				.hw-spec { display: flex; flex-direction: column; gap: 2px; }
+				.hw-spec span { font-size: 0.55rem; text-transform: uppercase; font-weight: 700; color: var(--text-muted); letter-spacing: 0.05em; }
+				.hw-spec strong { font-size: 0.75rem; font-family: var(--font-mono); color: var(--text-secondary); }
+
+				.hw-feat-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.3rem; }
+				.hw-feat { display: flex; align-items: center; gap: 0.4rem; padding: 0.3rem 0.6rem; background: hsla(0, 0%, 100%, 0.03); border-radius: 2rem; border: 1px solid hsla(0, 0%, 100%, 0.05); transition: all 0.3s; }
+				.hw-feat.inactive { opacity: 0.4; filter: grayscale(1); }
+				.hw-feat.active { border-color: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.3); background: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.05); }
+				.feat-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--text-muted); }
+				.hw-feat.active .feat-dot { background: var(--accent-primary); box-shadow: 0 0 8px var(--accent-primary); }
+				.feat-label { font-size: 0.55rem; font-weight: 800; color: var(--text-secondary); }
 
 				.ram-strip { grid-column: 1 / -1; background: hsla(0, 0%, 100%, 0.03); padding: 1rem; border-radius: 0.6rem; border: 1px solid hsla(0, 0%, 100%, 0.06); margin-bottom: 0.5rem; position: relative; }
 				.ram-bar-hover-tip { position: absolute; pointer-events: none; opacity: 0; visibility: hidden; transition: opacity 0.12s ease, transform 0.12s ease; background: var(--tooltip-bg, rgba(18,18,28,0.82)); backdrop-filter: blur(28px) saturate(1.5); -webkit-backdrop-filter: blur(28px) saturate(1.5); color: var(--tooltip-text, rgba(255,255,255,0.92)); font-size: 0.7rem; font-weight: 600; letter-spacing: 0.01em; padding: 0.32rem 0.65rem; border-radius: 0.45rem; border: 1px solid var(--tooltip-border, rgba(255,255,255,0.14)); white-space: nowrap; z-index: 200; transform: translateX(-50%) translateY(0); box-shadow: 0 6px 24px rgba(0,0,0,0.45); }
 				.ram-bar-hover-tip.visible { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(-4px); }
-                .ram-strip-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.6rem; }
-                .ram-title { font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
-                .ram-value { font-size: 0.9rem; font-weight: 800; font-family: var(--font-mono); color: var(--accent-text, var(--accent-primary)); }
-                .ram-strip-bar { height: 10px; background: hsla(0, 0%, 100%, 0.05); border-radius: 5px; overflow: hidden; display: flex; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); }
-                .ram-seg-svc { height: 100%; transition: width 0.7s cubic-bezier(0.4, 0, 0.2, 1); flex-shrink: 0; }
-                .ram-strip-legend { display: flex; flex-wrap: wrap; gap: 0.35rem 1rem; margin-top: 0.6rem; }
-                .leg-item { display: flex; align-items: center; gap: 0.35rem; font-size: 0.62rem; color: var(--text-muted); font-weight: 600; }
-                .leg-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; border: 1px solid transparent; }
-                .leg-name { color: var(--text-secondary); }
-                .leg-gb { font-family: var(--font-mono); font-size: 0.6rem; color: var(--text-muted); }
-                .leg-orphan-chip { font-size: 0.52rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: hsl(35,90%,58%); background: hsla(35,90%,58%,0.12); border: 1px solid hsla(35,90%,58%,0.35); border-radius: 3px; padding: 0 0.3rem; line-height: 1.5; }
+				.ram-strip-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.6rem; }
+				.ram-title { font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
+				.ram-value { font-size: 0.9rem; font-weight: 800; font-family: var(--font-mono); color: var(--accent-text, var(--accent-primary)); }
+				.ram-strip-bar { height: 10px; background: hsla(0, 0%, 100%, 0.05); border-radius: 5px; overflow: hidden; display: flex; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); }
+				.ram-seg-svc { height: 100%; transition: width 0.7s cubic-bezier(0.4, 0, 0.2, 1); flex-shrink: 0; }
+				.ram-strip-legend { display: flex; flex-wrap: wrap; gap: 0.35rem 1rem; margin-top: 0.6rem; }
+				.leg-item { display: flex; align-items: center; gap: 0.35rem; font-size: 0.62rem; color: var(--text-muted); font-weight: 600; }
+				.leg-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; border: 1px solid transparent; }
+				.leg-name { color: var(--text-secondary); }
+				.leg-gb { font-family: var(--font-mono); font-size: 0.6rem; color: var(--text-muted); }
+				.leg-orphan-chip { font-size: 0.52rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: hsl(35,90%,58%); background: hsla(35,90%,58%,0.12); border: 1px solid hsla(35,90%,58%,0.35); border-radius: 3px; padding: 0 0.3rem; line-height: 1.5; }
 
-                /* integration-row removed; integration is now a diag-col */
+				.ram-alert { grid-column: 1 / -1; padding: 0.75rem 1rem; border-radius: 0.5rem; border-left: 3px solid; margin-bottom: 0.25rem; }
+				.ram-alert.warning { background: hsla(40, 90%, 50%, 0.07); border-color: hsla(40, 90%, 55%, 0.7); }
+				.ram-alert.critical { background: hsla(0, 85%, 55%, 0.09); border-color: hsla(0, 85%, 55%, 0.8); }
+				.ram-alert-header { display: flex; align-items: center; gap: 0.5rem; }
+				.ram-alert-icon { font-size: 0.85rem; }
+				.ram-alert.warning .ram-alert-icon { color: hsl(40, 90%, 60%); }
+				.ram-alert.critical .ram-alert-icon { color: hsl(0, 85%, 65%); }
+				.ram-alert-headline { font-size: 0.75rem; font-weight: 700; }
+				.ram-alert.warning .ram-alert-headline { color: hsl(40, 90%, 70%); }
+				.ram-alert.critical .ram-alert-headline { color: hsl(0, 85%, 72%); }
+				.ram-alert-details { margin-top: 0.4rem; }
+				.ram-alert-summary { font-size: 0.65rem; color: var(--text-muted); cursor: pointer; user-select: none; padding: 0.1rem 0; list-style: none; }
+				.ram-alert-summary::-webkit-details-marker { display: none; }
+				.ram-alert-summary::marker { display: none; }
+				.ram-alert-summary .summary-arrow { font-size: 0.5rem; display: inline-block; transition: transform 0.2s; }
+				details[open] .ram-alert-summary .summary-arrow { transform: rotate(90deg); }
+				.ram-alert-list { margin: 0.5rem 0 0 0.5rem; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 0.5rem; }
+				.ram-alert-list li { font-size: 0.65rem; }
+				.ram-alert-list li strong { color: var(--text-secondary); display: block; margin-bottom: 0.1rem; }
+				.ram-alert-detail { color: var(--text-muted); line-height: 1.5; }
+				.ram-alert-detail code { font-family: var(--font-mono); font-size: 0.6rem; background: hsla(0,0%,100%,0.08); padding: 0.05rem 0.3rem; border-radius: 3px; }
 
-                /* RAM Pressure Alert */
-                .ram-alert { grid-column: 1 / -1; padding: 0.75rem 1rem; border-radius: 0.5rem; border-left: 3px solid; margin-bottom: 0.25rem; }
-                .ram-alert.warning { background: hsla(40, 90%, 50%, 0.07); border-color: hsla(40, 90%, 55%, 0.7); }
-                .ram-alert.critical { background: hsla(0, 85%, 55%, 0.09); border-color: hsla(0, 85%, 55%, 0.8); }
-                .ram-alert-header { display: flex; align-items: center; gap: 0.5rem; }
-                .ram-alert-icon { font-size: 0.85rem; }
-                .ram-alert.warning .ram-alert-icon { color: hsl(40, 90%, 60%); }
-                .ram-alert.critical .ram-alert-icon { color: hsl(0, 85%, 65%); }
-                .ram-alert-headline { font-size: 0.75rem; font-weight: 700; }
-                .ram-alert.warning .ram-alert-headline { color: hsl(40, 90%, 70%); }
-                .ram-alert.critical .ram-alert-headline { color: hsl(0, 85%, 72%); }
-                .ram-alert-details { margin-top: 0.4rem; }
-                .ram-alert-summary { font-size: 0.65rem; color: var(--text-muted); cursor: pointer; user-select: none; padding: 0.1rem 0; list-style: none; }
-                .ram-alert-summary::-webkit-details-marker { display: none; }
-                .ram-alert-summary::marker { display: none; }
-                .ram-alert-summary .summary-arrow { font-size: 0.5rem; display: inline-block; transition: transform 0.2s; }
-                details[open] .ram-alert-summary .summary-arrow { transform: rotate(90deg); }
-                .ram-alert-list { margin: 0.5rem 0 0 0.5rem; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 0.5rem; }
-                .ram-alert-list li { font-size: 0.65rem; }
-                .ram-alert-list li strong { color: var(--text-secondary); display: block; margin-bottom: 0.1rem; }
-                .ram-alert-detail { color: var(--text-muted); line-height: 1.5; }
-                .ram-alert-detail code { font-family: var(--font-mono); font-size: 0.6rem; background: hsla(0,0%,100%,0.08); padding: 0.05rem 0.3rem; border-radius: 3px; }
-                @media (forced-colors: active) { .ram-alert { border: 2px solid ButtonText; } }
-				/* Software Styles */
-				.cpu-info { font-size: 0.85rem; font-weight: 600; color: var(--text-primary); font-family: var(--font-mono); margin-bottom: 0.4rem; }
-				.hw-specs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; background: hsla(0, 0%, 100%, 0.02); padding: 0.75rem; border-radius: 0.4rem; border: 1px solid hsla(0, 0%, 100%, 0.04); }
-				.hw-spec { display: flex; flex-direction: column; font-size: 0.7rem; }
-				.hw-spec span { color: var(--text-muted); font-size: 0.6rem; text-transform: uppercase; }
-				.hw-spec strong { color: var(--text-secondary); font-family: var(--font-mono); }
-
-                .hw-feat-grid { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.2rem; }
-                .hw-feat { display: flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.6rem; border-radius: 1rem; background: hsla(0, 0%, 100%, 0.02); border: 1px solid hsla(0, 0%, 100%, 0.04); }
-                .hw-feat.active { border-color: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.2); background: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.05); }
-                .hw-feat.inactive { opacity: 0.4; filter: grayscale(1); }
-                .feat-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--text-muted); transition: all 0.3s; }
-                .hw-feat.active .feat-dot { background: var(--accent-primary); box-shadow: 0 0 5px var(--accent-primary); }
-                .feat-label { font-size: 0.55rem; font-weight: 800; font-family: var(--font-mono); color: var(--text-muted); transition: all 0.3s; }
-                .hw-feat.active .feat-label { color: var(--text-secondary); }
-                .hw-feat.inactive .feat-label { color: var(--text-muted); opacity: 0.7; }
-
-				/* Removed old .ram-box, .ram-header, .ram-bar, .ram-fill, .ram-footer styles */
-
-				/* Software Styles */
-				.svc-grid { display: flex; flex-direction: column; gap: 0.4rem; }
-				.svc-item { display: flex; justify-content: space-between; align-items: center; padding: 0.4rem 0.6rem; background: hsla(0, 0%, 100%, 0.02); border-radius: 0.4rem; border: 1px solid hsla(0, 0%, 100%, 0.04); transition: transform 0.2s; }
-                .svc-item:hover { transform: translateY(-1px); background: hsla(0, 0%, 100%, 0.035); }
-				.svc-main { display: flex; align-items: center; gap: 0.5rem; }
-				.svc-dot { width: 8px; height: 8px; border-radius: 50%; }
-				.svc-dot.online { background: var(--color-success, var(--accent-primary)); box-shadow: 0 0 6px var(--color-success, var(--accent-primary)); }
+				.svc-grid { display: grid; grid-template-columns: 1fr; gap: 0.5rem; }
+				.svc-item { display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0.75rem; background: hsla(0, 0%, 100%, 0.02); border-radius: 0.4rem; border: 1px solid hsla(0, 0%, 100%, 0.04); transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+				.svc-item:hover { background: hsla(0, 0%, 100%, 0.05); transform: translateX(4px); }
+				.svc-main { display: flex; align-items: center; gap: 0.6rem; }
+				.svc-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+				.svc-dot.online { background: var(--color-success); box-shadow: 0 0 8px var(--color-success); }
 				.svc-dot.warning { background: var(--color-warning); }
 				.svc-dot.offline { background: var(--color-danger); }
 				.svc-name { font-size: 0.7rem; font-weight: 600; color: var(--text-secondary); }
 				.svc-detail { font-size: 0.65rem; font-family: var(--font-mono); color: var(--text-muted); text-align: right; }
 
-                .llm-status-list { display: flex; flex-direction: column; gap: 0.4rem; }
-                .llm-tier-status { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 0.5rem; padding: 0.45rem 0.6rem; background: hsla(0, 0%, 100%, 0.02); border-radius: 0.4rem; border: 1px solid hsla(0, 0%, 100%, 0.04); transition: all 0.3s; }
-                .llm-tier-status.busy { background: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.05); border-color: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.2); animation: diag-pulse 2s infinite; }
-                .llm-tier-main { display: flex; align-items: center; gap: 0.5rem; min-width: 4.5rem; }
-                .llm-tier-label { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.05em; }
-                .llm-tier-center { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
-                .llm-ram-bar-wrap { height: 4px; background: hsla(0,0%,100%,0.06); border-radius: 2px; overflow: hidden; }
-                .llm-ram-bar-fill { height: 100%; border-radius: 2px; transition: width 0.8s cubic-bezier(0.4,0,0.2,1); }
-                .llm-ram-label { font-size: 0.6rem; font-weight: 700; font-family: var(--font-mono); line-height: 1; }
-                .llm-tier-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
-                .llm-status-text { font-size: 0.55rem; font-weight: 900; letter-spacing: 0.05em; }
-                .llm-status-text.online { color: var(--accent-text, var(--accent-primary)); }
-                .llm-status-text.processing { color: var(--accent-text, var(--accent-primary)); animation: diag-pulse 1s infinite; }
-                .llm-status-text.offline { color: var(--color-danger); }
-                .llm-tier-info { font-size: 0.6rem; font-family: var(--font-mono); color: var(--text-muted); }
-                .svc-dot.processing { background: var(--accent-primary); box-shadow: 0 0 10px var(--accent-primary); animation: diag-pulse 1s infinite; }
+				.svc-dot.processing { background: var(--accent-primary); box-shadow: 0 0 10px var(--accent-primary); animation: diag-pulse 1s infinite; }
 
-                .llm-ram-breakdown { margin-top: 0.6rem; padding-top: 0.5rem; border-top: 1px solid hsla(0,0%,100%,0.05); display: flex; flex-direction: column; gap: 0.4rem; }
-                .llm-ram-bd-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); font-weight: 700; margin-bottom: 0.1rem; }
-                .llm-tier-card { background: hsla(0,0%,100%,0.025); border: 1px solid hsla(0,0%,100%,0.05); border-left: 2px solid var(--tier-color, var(--accent-primary)); border-radius: 0.4rem; padding: 0.45rem 0.6rem; display: flex; flex-direction: column; gap: 0.25rem; }
-                .ltc-header { display: flex; align-items: center; gap: 0.4rem; }
-                .ltc-name { font-size: 0.6rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.07em; }
-                .ltc-status { font-size: 0.5rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; margin-left: auto; }
-                .ltc-status.online { color: var(--accent-primary); }
-                .ltc-status.processing { color: var(--accent-primary); animation: diag-pulse 1s infinite; }
-                .ltc-status.offline { color: var(--color-danger); }
-                .ltc-model { font-size: 0.6rem; font-family: var(--font-mono); color: var(--text-secondary); font-weight: 600; }
-                .ltc-specs { display: flex; flex-wrap: wrap; gap: 0.3rem 0.7rem; margin-top: 0.1rem; }
-                .ltc-spec { display: flex; align-items: baseline; gap: 0.25rem; }
-                .ltc-spec span { font-size: 0.52rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
-                .ltc-spec strong { font-size: 0.65rem; font-family: var(--font-mono); font-weight: 800; color: var(--text-secondary); }
-                .llm-models-disk { display: flex; justify-content: space-between; align-items: center; font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding-top: 0.3rem; border-top: 1px solid hsla(0,0%,100%,0.04); margin-top: 0.1rem; }
+				.llm-ram-breakdown { margin-top: 0.6rem; padding-top: 0.5rem; border-top: 1px solid hsla(0,0%,100%,0.05); display: flex; flex-direction: column; gap: 0.4rem; }
+				.llm-ram-bd-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); font-weight: 700; margin-bottom: 0.1rem; }
+				.llm-tier-card { background: hsla(0,0%,100%,0.025); border: 1px solid hsla(0,0%,100%,0.05); border-left: 2px solid var(--tier-color, var(--accent-primary)); border-radius: 0.4rem; padding: 0.45rem 0.6rem; display: flex; flex-direction: column; gap: 0.25rem; }
+				.ltc-header { display: flex; align-items: center; gap: 0.4rem; }
+				.ltc-name { font-size: 0.6rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.07em; }
+				.ltc-status { font-size: 0.5rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; margin-left: auto; }
+				.ltc-status.online { color: var(--accent-primary); }
+				.ltc-status.processing { color: var(--accent-primary); animation: diag-pulse 1s infinite; }
+				.ltc-status.offline { color: var(--color-danger); }
+				.ltc-model { font-size: 0.6rem; font-family: var(--font-mono); color: var(--text-secondary); font-weight: 600; }
+				.ltc-specs { display: flex; flex-wrap: wrap; gap: 0.3rem 0.7rem; margin-top: 0.1rem; }
+				.ltc-spec { display: flex; align-items: baseline; gap: 0.25rem; }
+				.ltc-spec span { font-size: 0.52rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
+				.ltc-spec strong { font-size: 0.65rem; font-family: var(--font-mono); font-weight: 800; color: var(--text-secondary); }
+				.llm-models-disk { display: flex; justify-content: space-between; align-items: center; font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding-top: 0.3rem; border-top: 1px solid hsla(0,0%,100%,0.04); margin-top: 0.1rem; }
 
-				/* Benchmark Styles */
 				.bench-results-list { display: flex; flex-direction: column; gap: 0.5rem; }
 				.bench-res-item { display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0.75rem; background: hsla(0, 0%, 100%, 0.02); border-radius: 0.4rem; border: 1px solid hsla(0, 0%, 100%, 0.04); }
 				.bench-tier { font-size: 0.6rem; text-transform: uppercase; font-weight: 700; color: var(--accent-secondary-text, hsl(216, 100%, 65%)); font-family: var(--font-mono); width: 60px; }
 				.bench-val { font-size: 0.9rem; font-weight: 800; font-family: var(--font-mono); text-align: right; margin-right: 0.5rem; }
 				.bench-val small { font-size: 0.6rem; opacity: 0.5; font-weight: 400; }
-                .bench-label { font-size: 0.65rem; font-weight: 600; flex: 1; text-align: left; }
+				.bench-label { font-size: 0.65rem; font-weight: 600; flex: 1; text-align: left; }
 				.bench-val.excellent, .bench-label.excellent { color: var(--accent-text, var(--accent-color)); }
 				.bench-val.good, .bench-label.good { color: var(--color-success); }
 				.bench-val.moderate, .bench-label.moderate { color: var(--color-warning); }
 				.bench-val.slow, .bench-label.slow { color: var(--color-danger); }
 				.bench-rtg { font-size: 1rem; margin-left: 0.5rem; }
-                .bench-res-item.error { background: hsla(0, 90%, 60%, 0.05); border-color: hsla(0, 90%, 60%, 0.1); }
-                .bench-error { font-size: 0.65rem; color: var(--color-danger); font-family: var(--font-mono); flex: 1; text-align: right; }
+				.bench-res-item.error { background: hsla(0, 90%, 60%, 0.05); border-color: hsla(0, 90%, 60%, 0.1); }
+				.bench-error { font-size: 0.65rem; color: var(--color-danger); font-family: var(--font-mono); flex: 1; text-align: right; }
 
 				.bench-actions { display: flex; flex-direction: column; gap: 0.5rem; margin-top: auto; }
 				.b-btn { background: var(--surface-card, hsla(0, 0%, 100%, 0.04)); color: var(--text-primary); border: 1px solid var(--border-medium, hsla(0, 0%, 100%, 0.08)); padding: 0.5rem; border-radius: 0.5rem; font-size: 0.65rem; font-weight: 700; cursor: pointer; transition: all 0.2s; text-transform: uppercase; letter-spacing: 0.05em; }
 				.b-btn:hover:not(:disabled) { background: var(--surface-card-hover, hsla(0, 0%, 100%, 0.08)); border-color: var(--accent-color); color: var(--accent-text, var(--accent-color)); }
-                .b-btn.main { background: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.15); border-color: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.3); color: var(--text-primary); }
+				.b-btn.main { background: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.15); border-color: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.3); color: var(--text-primary); }
 				.b-btn.running { opacity: 0.6; animation: diag-pulse 1.5s infinite; pointer-events: none; }
 				.b-btn:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(100%); }
 				.b-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; }
@@ -823,7 +787,7 @@ export class DiagnosticsWidget extends HTMLElement {
 				<div class="empty-state">Loading diagnostics...</div>
 			</div>
 		`;
-    }
+	}
 }
 
 customElements.define('diagnostics-widget', DiagnosticsWidget);
