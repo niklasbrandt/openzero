@@ -522,7 +522,6 @@ translations: dict[str, str] = {
 	"tip_platform": "Host operating system running the Docker containers.",
 	"tip_ram_apps": "Memory actively used by processes and LLM models (mlock). Cannot be reclaimed by the kernel without stopping services.",
 	"tip_orphan_container": "Not in docker-compose.yml — orphaned container",
-	"tip_orphan_container": "Not in docker-compose.yml — orphaned container",
 	"tip_ram_buffers": "Kernel buffers for block device I/O. Small and reclaimable.",
 	"tip_ram_cache": "Linux kernel buffers and page cache. Automatically reclaimed when apps need more memory -- not a concern.",
 	"tip_ram_free": "Completely unallocated RAM.",
