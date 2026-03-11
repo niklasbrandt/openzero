@@ -375,7 +375,7 @@ export class CircleManager extends HTMLElement {
 					[data-circle-type="inner"] .rel { color: var(--circle-inner-color); }
 					[data-circle-type="close"] .rel { color: var(--circle-close-color); }
 
-					@media (max-width: 900px) {
+					@media (max-width: 699px) {
 						.unified-grid { grid-template-columns: 1fr; }
 						.unified-sep { height: 1px; width: 100%; margin: 1rem 0; }
 					}
