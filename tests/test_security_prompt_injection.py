@@ -2797,7 +2797,7 @@ class TestCmdBoardHTMLSafety:
 
 	_TELEGRAM_PATH = os.path.join(
 		os.path.dirname(__file__), "..", "src", "backend",
-		"app", "api", "telegram.py"
+		"app", "api", "telegram_bot.py"
 	)
 
 	def _read_telegram_src(self) -> str:
