@@ -504,8 +504,8 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		report = get_personal_context_debug_report()
 		return {"reply": report}
 	elif msg == "/agent":
-		from app.services.agent_context import get_agent_context_debug_report
-		report = get_agent_context_debug_report()
+		from app.services.agent_context import get_agent_skills_debug_report
+		report = get_agent_skills_debug_report()
 		return {"reply": report}
 	elif msg == "/purge":
 		from app.services.translations import get_user_lang, get_translations
