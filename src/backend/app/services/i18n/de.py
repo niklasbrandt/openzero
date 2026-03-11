@@ -349,6 +349,7 @@ translations: dict[str, str] = {
 	"ram_apps": "Apps",
 	"ram_buffers": "Puffer",
 	"ram_cache": "Cache",
+	"ram_available": "Verfügbar",
 	"ram_page_cache": "Seiten-Cache",
 	"ram_slab_cache": "Slab-Cache",
 	"ram_free": "Frei",

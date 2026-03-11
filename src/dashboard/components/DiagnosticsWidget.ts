@@ -152,6 +152,10 @@ export class DiagnosticsWidget extends HTMLElement {
 		await Promise.all(['instant', 'deep'].map(t => this.runBenchmark(t)));
 	}
 
+	private displayTier(tier: string): string {
+		return tier === 'instant' ? 'fast' : tier;
+	}
+
 	private getRating(tps: number, tier: string): { cls: string; icon: string; label: string; hint: string } {
 		const exp = DiagnosticsWidget.EXPECTATIONS[tier] || DiagnosticsWidget.EXPECTATIONS['deep'];
 		if (tps >= exp.fast) return { cls: 'excellent', icon: '🚀', label: this.tr('excellent', 'Excellent'), hint: `Fast. ${exp.model} running well.` };
@@ -241,46 +245,20 @@ export class DiagnosticsWidget extends HTMLElement {
 			});
 		}
 
-		// Linux page cache / buffers (reclaimable) — break into sub-segments if available
-		const cacheBreakdown: { name: string; gb: number }[] = srv.ram_bufcache_breakdown || [];
-		const _cacheColors: Record<string, string> = {
-			'page cache': 'hsla(174,48%,55%,0.36)',
-			'slab cache': 'hsla(158,40%,48%,0.30)',
-			'buffers':    'hsla(190,36%,50%,0.25)',
-		};
-		const _cacheTrKeys: Record<string, [string, string]> = {
-			'page cache': ['ram_page_cache', 'page cache'],
-			'slab cache': ['ram_slab_cache', 'slab cache'],
-			'buffers':    ['ram_buffers',    'buffers'],
-		};
-		if (cacheBreakdown.length > 0) {
-			for (const sub of cacheBreakdown) {
-				const subPct = (sub.gb / total) * 100;
-				if (subPct > 0.05) {
-					const [trKey, trFb] = _cacheTrKeys[sub.name] || [`ram_${sub.name}`, sub.name];
-					segs.push({
-						name: `cache_${sub.name.replace(' ', '_')}`,
-						label: this.tr(trKey, trFb),
-						gb: sub.gb,
-						pct: subPct,
-						color: _cacheColors[sub.name] || 'hsla(174,40%,50%,0.28)',
-					});
-				}
-			}
-		} else if (cacheGb > 0.05) {
-			segs.push({ name: 'cache', label: this.tr('ram_cache', 'page cache'), gb: cacheGb, pct: (cacheGb / total) * 100, color: 'hsla(174,40%,50%,0.28)' });
-		}
-
-		// Free — use the residual after all named segments so the bar fills exactly 100%.
-		// (ram_free_gb is MemFree which excludes reclaimable cache; using it would overflow
-		// the bar because cache is already shown as separate segments above.)
+		// Reclaimable cache (page cache, slab cache, buffers) is intentionally NOT shown as
+		// separate segments. The per-container cgroup v2 measurement already includes
+		// active_file (mmap'd model weights) which is the same physical pages the kernel
+		// counts in its Cached/SReclaimable figures. Adding cache segments on top would
+		// double-count ~7-9 GB and make the bar overflow.
+		// Instead, the residual "available" segment absorbs all reclaimable pages, so its
+		// value equals MemAvailable and aligns with the header's "used = total − MemAvailable".
 		const usedBySegs = segs.reduce((sum, s) => sum + s.gb, 0);
-		const freeGb = parseFloat(Math.max(total - usedBySegs, 0).toFixed(1));
-		if (freeGb > 0.05) {
-			segs.push({ name: 'free', label: this.tr('ram_free', 'free'), gb: freeGb, pct: (freeGb / total) * 100, color: 'hsla(0,0%,100%,0.04)' });
+		const availGb = parseFloat(Math.max(total - usedBySegs, 0).toFixed(1));
+		if (availGb > 0.05) {
+			segs.push({ name: 'free', label: this.tr('ram_available', 'available'), gb: availGb, pct: (availGb / total) * 100, color: 'hsla(0,0%,100%,0.04)' });
 		}
 
-		// Sort non-free segments by size descending; free always last
+		// Sort non-available segments by size descending; available always last
 		const ramFree = segs.filter(s => s.name === 'free');
 		const ramNonFree = segs.filter(s => s.name !== 'free').sort((a, b) => b.gb - a.gb);
 		return [...ramNonFree, ...ramFree];
@@ -522,7 +500,7 @@ export class DiagnosticsWidget extends HTMLElement {
 					const msg = r.error || 'No tokens received — model may be loading or unavailable';
 					return `
 						<div class="bench-res-item error has-tip" data-tip="Click a test button to retry.">
-							<span class="bench-tier">${r.tier}</span>
+							<span class="bench-tier">${this.displayTier(r.tier)}</span>
 							<span class="bench-error">${this.esc(msg)}</span>
 						</div>
 					`;
@@ -530,7 +508,7 @@ export class DiagnosticsWidget extends HTMLElement {
 				const rtg = this.getRating(r.tokens_per_second, r.tier);
 				return `
 					<div class="bench-res-item has-tip" data-tip="${rtg.hint}">
-						<span class="bench-tier">${r.tier}</span>
+						<span class="bench-tier">${this.displayTier(r.tier)}</span>
 						<span class="bench-val ${rtg.cls}">${r.tokens_per_second} <small>tok/s</small></span>
 						<span class="bench-label ${rtg.cls}">${rtg.label}</span>
 						<span class="bench-rtg">${rtg.icon}</span>
@@ -554,7 +532,12 @@ export class DiagnosticsWidget extends HTMLElement {
 				<div class="ram-strip">
 					<div class="ram-strip-header">
 						<span class="ram-title">${this.tr('diag_ram_title', 'System Memory (RAM)')}</span>
-						<span class="ram-value">${srv.ram_used_gb ?? ((srv.ram_used_pct || 0) * (srv.ram_total_gb || 0) / 100).toFixed(1)}GB / ${srv.ram_total_gb}GB</span>
+					${(() => {
+						const _segs = this._ramBarSegments(srv);
+						const _avail = _segs.find(s => s.name === 'free')?.gb || 0;
+						const _used = parseFloat(Math.max((srv.ram_total_gb || 0) - _avail, 0).toFixed(1));
+						return `<span class="ram-value">${_used}GB / ${srv.ram_total_gb}GB</span>`;
+					})()}
 					</div>
 					<div class="ram-strip-bar" id="ram-seg-bar">
 						${this._ramBarSegments(srv).map(s => `
@@ -596,7 +579,7 @@ export class DiagnosticsWidget extends HTMLElement {
 							return `<div class="llm-tier-card" style="--tier-color:${color}">
 								<div class="ltc-header">
 									<span class="svc-dot ${dotClass}"></span>
-									<span class="ltc-name" style="color:${color}">${name}</span>
+									<span class="ltc-name" style="color:${color}">${this.displayTier(name)}</span>
 									<span class="ltc-status ${dotClass}">${statusLabel}</span>
 								</div>
 								<div class="ltc-model">${this.esc(model)}</div>
@@ -677,7 +660,7 @@ export class DiagnosticsWidget extends HTMLElement {
 					<div class="bench-actions" style="margin-top: 0">
 						<button class="b-btn main has-tip ${this.isBenchRunning ? 'running' : ''}" ${this.isBenchRunning ? 'disabled' : ''} data-tier="all" data-tip="Run performance tests across all active tiers.">${this.isBenchRunning ? 'Benchmarking...' : 'Benchmark all LLMs'}</button>
 						<div class="b-row">
-							<button class="b-btn sm tier-instant has-tip ${this.isBenchRunning ? 'running' : ''}" ${this.isBenchRunning ? 'disabled' : ''} data-tier="instant" data-tip="Test latency of the instant tier.">Instant</button>
+							<button class="b-btn sm tier-instant has-tip ${this.isBenchRunning ? 'running' : ''}" ${this.isBenchRunning ? 'disabled' : ''} data-tier="instant" data-tip="Test latency of the fast tier.">Fast</button>
 							<button class="b-btn sm tier-deep has-tip ${this.isBenchRunning ? 'running' : ''}" ${this.isBenchRunning ? 'disabled' : ''} data-tier="deep" data-tip="Test throughput of the deep tier.">Deep</button>
 						</div>
 					</div>
