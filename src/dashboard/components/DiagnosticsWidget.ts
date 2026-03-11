@@ -146,10 +146,10 @@ export class DiagnosticsWidget extends HTMLElement {
 
     private getRating(tps: number, tier: string): { cls: string; icon: string; label: string; hint: string } {
         const exp = DiagnosticsWidget.EXPECTATIONS[tier] || DiagnosticsWidget.EXPECTATIONS['deep'];
-        if (tps >= exp.fast) return { cls: 'excellent', icon: '🚀', label: this.tr('excellent', 'Excellent'), hint: `Fast. ${exp.model} running well.` };
-        if (tps >= exp.good) return { cls: 'good', icon: '✅', label: this.tr('good', 'Good'), hint: `Interactive. Typical for ${exp.model}.` };
-        if (tps >= exp.ok) return { cls: 'moderate', icon: '⚠️', label: this.tr('moderate', 'Moderate'), hint: `Noticeable latency.` };
-        return { cls: 'slow', icon: '🐌', label: this.tr('slow', 'Slow'), hint: `Below expected for ${exp.model}.` };
+        if (tps >= exp.fast) return { cls: 'excellent', icon: '🚀', label: this.tr('excellent', 'Excellent'), hint:  };
+        if (tps >= exp.good) return { cls: 'good', icon: '✅', label: this.tr('good', 'Good'), hint:  };
+        if (tps >= exp.ok) return { cls: 'moderate', icon: '⚠️', label: this.tr('moderate', 'Moderate'), hint:  };
+        return { cls: 'slow', icon: '🐌', label: this.tr('slow', 'Slow'), hint:  };
     }
 
     private _svcColor(name: string): string {
@@ -200,15 +200,84 @@ export class DiagnosticsWidget extends HTMLElement {
 
         // Linux page cache / buffers (reclaimable)
         if (cacheGb > 0.05) {
-            segs.push({ name: 'cache', label: 'page cache', gb: cacheGb, pct: (cacheGb / total) * 100, color: 'hsla(174,40%,50%,0.28)' });
+            segs.push({ name: 'cache', label: this.tr('ram_cache', 'page cache'), gb: cacheGb, pct: (cacheGb / total) * 100, color: 'hsla(174,40%,50%,0.28)' });
         }
 
         // Free
         if (freeGb > 0.05) {
-            segs.push({ name: 'free', label: 'free', gb: parseFloat(freeGb.toFixed(1)), pct: (freeGb / total) * 100, color: 'hsla(0,0%,100%,0.04)' });
+            segs.push({ name: 'free', label: this.tr('ram_free', 'free'), gb: parseFloat(freeGb.toFixed(1)), pct: (freeGb / total) * 100, color: 'hsla(0,0%,100%,0.04)' });
         }
 
         return segs;
+    }
+
+    private _hddBarSegments(srv: any): { name: string; label: string; gb: number; pct: number; color: string }[] {
+        const total = srv.disk_total_gb || 1;
+        const used = srv.disk_used_gb || 0;
+        const free = srv.disk_free_gb || 0;
+        const breakdown = srv.disk_breakdown || [];
+
+        const segs: { name: string; label: string; gb: number; pct: number; color: string }[] = [];
+        let accounted = 0;
+
+        for (const item of breakdown) {
+            segs.push({
+                name: item.name.toLowerCase(),
+                label: item.name,
+                gb: item.gb,
+                pct: (item.gb / total) * 100,
+                color: item.color || this._svcColor(item.name.toLowerCase())
+            });
+            accounted += item.gb;
+        }
+
+        const otherGb = Math.max(used - accounted, 0);
+        if (otherGb > 0.1) {
+            segs.push({
+                name: 'other',
+                label: this.tr('diag_hdd_other', 'System / Other'),
+                gb: parseFloat(otherGb.toFixed(1)),
+                pct: (otherGb / total) * 100,
+                color: 'hsl(210,40%,62%)'
+            });
+        }
+
+        if (free > 0.1) {
+            segs.push({
+                name: 'free',
+                label: this.tr('diag_hdd_free', 'Free Space'),
+                gb: parseFloat(free.toFixed(1)),
+                pct: (free / total) * 100,
+                color: 'hsla(0,0%,100%,0.04)'
+            });
+        }
+
+        return segs;
+    }
+
+    private _modelsDiskAlertHtml(srv: any): string {
+        const diskGb: number = srv.models_disk_gb || 0;
+        if (!diskGb) return '';
+        const activeGb = ((this.llmConfig || {}).tiers || [])
+            .reduce((s: number, t: any) => s + (t?.ram_est_gb || 0), 0);
+        if (!activeGb) return '';
+        const bloated = diskGb > activeGb * 1.5;
+        if (!bloated) return '';
+        const staleGb = (diskGb - activeGb).toFixed(1);
+        return `
+            <div class="ram-alert warning" role="alert" aria-live="polite">
+                <div class="ram-alert-header">
+                    <span class="ram-alert-headline">Models disk bloated &#x2014; ${diskGb} GB used, ~${activeGb.toFixed(1)} GB needed</span>
+                </div>
+                <details class="ram-alert-details">
+                    <summary class="ram-alert-summary"><span class="summary-arrow" aria-hidden="true">&#x25BA;</span> ${staleGb} GB stale .gguf files detected</summary>
+                    <ul class="ram-alert-list">
+                        <li><strong>Auto-prune on restart</strong><span class="ram-alert-detail">Stale <code>.gguf</code> files are automatically deleted when LLM containers next start up.</span></li>
+                        <li><strong>Force prune now</strong><span class="ram-alert-detail">SSH to VPS and run: <code>docker compose restart llm-instant llm-deep</code></span></li>
+                    </ul>
+                </details>
+            </div>
+        `;
     }
 
     private _ramAlertHtml(srv: any): string {
@@ -371,12 +440,13 @@ export class DiagnosticsWidget extends HTMLElement {
                     </svg>
                 </button>
 
+                ${this._modelsDiskAlertHtml(srv)}
                 ${this._ramAlertHtml(srv)}
 
                 <!-- Top Row: Prominent RAM -->
                 <div class="ram-strip">
                     <div class="ram-strip-header">
-                        <span class="ram-title">System Memory (RAM)</span>
+                        <span class="ram-title">${this.tr('diag_ram_title', 'System Memory (RAM)')}</span>
                         <span class="ram-value">${srv.ram_used_gb ?? ((srv.ram_used_pct || 0) * (srv.ram_total_gb || 0) / 100).toFixed(1)}GB / ${srv.ram_total_gb}GB</span>
                     </div>
                     <div class="ram-strip-bar" id="ram-seg-bar">
@@ -391,13 +461,13 @@ export class DiagnosticsWidget extends HTMLElement {
                                 <span class="leg-dot" style="background:${s.color};border-color:${s.color}"></span>
                                 <span class="leg-name">${this.esc(s.label)}</span>
                                 <span class="leg-gb">${s.gb}G</span>
-                                ${s.orphan ? '<span class="leg-orphan-chip" title="Not in docker-compose.yml — orphaned container">orphan</span>' : ''}
+                                ${s.orphan ? `<span class="leg-orphan-chip" title="${this.tr('tip_orphan_container', 'Not in docker-compose.yml — orphaned container')}">orphan</span>` : ''}
                             </div>
                         `).join('')}
                     </div>
                     ${cfgTiers.length > 0 ? `
                     <div class="llm-ram-breakdown">
-                        <div class="llm-ram-bd-label">LLM models (est. mlock'd)</div>
+                        <div class="llm-ram-bd-label">LLM memory</div>
                         ${tierNames.map((name, idx) => {
                             const td = tiers[name] || {};
                             const isOnline = td.status === 'online';
@@ -411,6 +481,7 @@ export class DiagnosticsWidget extends HTMLElement {
                             const predict = predictFor(name);
                             const threads = threadsFor(name);
                             const model = modelFor(name);
+                            const liveRamGb = ((srv.container_ram || []).find((c: any) => c.name === 'llm-' + name) || {}).gb || 0;
                             return `<div class="llm-tier-card" style="--tier-color:${color}">
                                 <div class="ltc-header">
                                     <span class="svc-dot ${dotClass}"></span>
@@ -423,25 +494,34 @@ export class DiagnosticsWidget extends HTMLElement {
                                     ${threads ? `<div class="ltc-spec has-tip" data-tip="CPU threads allocated to this tier"><span>Threads</span><strong>${threads}</strong></div>` : ''}
                                     ${batch ? `<div class="ltc-spec has-tip" data-tip="Batch size — tokens processed per inference pass. Higher = faster first token but more RAM"><span>Batch</span><strong>${batch}</strong></div>` : ''}
                                     ${predict ? `<div class="ltc-spec has-tip" data-tip="Max tokens generated per response"><span>Max out</span><strong>${predict}</strong></div>` : ''}
-                                    ${ramGb ? `<div class="ltc-spec has-tip" data-tip="Estimated RAM locked in memory (mlock) for model weights + KV cache"><span>RAM est</span><strong style="color:${color}">${ramGb} GB</strong></div>` : ''}
+                                    ${(liveRamGb || ramGb) ? `<div class="ltc-spec has-tip" data-tip="${liveRamGb ? 'Live RAM from Docker stats — model weights + KV cache + compute buffers' : 'Estimated model weight RAM (excludes KV cache and compute overhead)'}"><span>${liveRamGb ? 'RAM live' : 'RAM est'}</span><strong style="color:${color}">${liveRamGb || ramGb} GB</strong></div>` : ''}
                                 </div>
                             </div>`;
                         }).join('')}
-                        ${(() => {
-                            const diskGb: number = srv.models_disk_gb || 0;
-                            if (!diskGb) return '';
-                            const activeGb = tierNames.reduce((s, n) => s + ramEstFor(n), 0);
-                            const bloated = activeGb > 0 && diskGb > activeGb * 1.5;
-                            const color = bloated ? 'hsl(35,90%,58%)' : 'var(--text-muted)';
-                            const tip = bloated
-                                ? `Models volume is ${diskGb} GB but only ~${activeGb.toFixed(1)} GB needed. Stale files auto-pruned on next restart.`
-                                : `Total disk used by /models volume.`;
-                            return `<div class="llm-models-disk has-tip" data-tip="${tip}" style="color:${color}">
-                                <span>Models disk${bloated ? ' &#x26A0;' : ''}</span>
-                                <span style="font-family:var(--font-mono);font-weight:800">${diskGb} GB${bloated ? ` <span style="font-size:0.55rem;font-weight:600">(${(diskGb - activeGb).toFixed(1)} GB stale)</span>` : ''}</span>
-                            </div>`;
-                        })()}
                     </div>` : ''}
+                </div>
+
+                <!-- HDD Row: System Storage -->
+                <div class="ram-strip hdd-strip">
+                    <div class="ram-strip-header">
+                        <span class="ram-title">${this.tr('diag_hdd_title', 'System Storage (HDD)')}</span>
+                        <span class="ram-value">${srv.disk_used_gb || '0'}GB / ${srv.disk_total_gb || '0'}GB</span>
+                    </div>
+                    <div class="ram-strip-bar hdd-strip-bar" id="hdd-seg-bar">
+                        ${this._hddBarSegments(srv).map(s => `
+                            <div class="ram-seg-svc" style="width:${Math.max(s.pct, 0).toFixed(2)}%;background:${s.color}" data-seg-tip="${this.esc(s.label)}: ${s.gb} GB (${s.pct.toFixed(1)}%)"></div>
+                        `).join('')}
+                    </div>
+                    <div class="ram-bar-hover-tip hdd-bar-hover-tip" id="hdd-bar-htip" aria-hidden="true" role="tooltip"></div>
+                    <div class="ram-strip-legend">
+                        ${this._hddBarSegments(srv).filter(s => s.name !== 'free').map(s => `
+                            <div class="leg-item">
+                                <span class="leg-dot" style="background:${s.color};border-color:${s.color}"></span>
+                                <span class="leg-name">${this.esc(s.label)}</span>
+                                <span class="leg-gb">${s.gb}G</span>
+                            </div>
+                        `).join('')}
+                    </div>
                 </div>
 
 				<!-- Left Column: Hardware -->
@@ -495,31 +575,36 @@ export class DiagnosticsWidget extends HTMLElement {
         });
 
         // RAM bar segment hover tooltips — positioned relative to .ram-strip (escapes overflow:hidden on bar)
-        const _bar = el.querySelector('#ram-seg-bar') as HTMLElement | null;
-        const _htip = el.querySelector('#ram-bar-htip') as HTMLElement | null;
-        if (_bar && _htip) {
-            _bar.querySelectorAll('.ram-seg-svc').forEach(_seg => {
-                _seg.addEventListener('mouseenter', () => {
-                    const label = _seg.getAttribute('data-seg-tip') || '';
-                    if (!label) return;
-                    _htip.textContent = label;
-                    _htip.classList.add('visible');
+        const setupBarTooltips = (barId: string, tipId: string, stripClass: string) => {
+            const _bar = el.querySelector(barId) as HTMLElement | null;
+            const _htip = el.querySelector(tipId) as HTMLElement | null;
+            if (_bar && _htip) {
+                _bar.querySelectorAll('.ram-seg-svc').forEach(_seg => {
+                    _seg.addEventListener('mouseenter', () => {
+                        const label = _seg.getAttribute('data-seg-tip') || '';
+                        if (!label) return;
+                        _htip.textContent = label;
+                        _htip.classList.add('visible');
+                    });
+                    _seg.addEventListener('mouseleave', () => _htip.classList.remove('visible'));
                 });
-                _seg.addEventListener('mouseleave', () => _htip.classList.remove('visible'));
-            });
-            _bar.addEventListener('mousemove', (e: Event) => {
-                const me = e as MouseEvent;
-                const stripEl = _bar.closest('.ram-strip') as HTMLElement | null;
-                if (!stripEl) return;
-                const stripRect = stripEl.getBoundingClientRect();
-                const barRect = _bar.getBoundingClientRect();
-                const x = Math.max(40, Math.min(me.clientX - stripRect.left, stripRect.width - 40));
-                const y = barRect.top - stripRect.top - 6;
-                _htip.style.left = `${x}px`;
-                _htip.style.top = `${y}px`;
-            });
-            _bar.addEventListener('mouseleave', () => _htip.classList.remove('visible'));
-        }
+                _bar.addEventListener('mousemove', (e: Event) => {
+                    const me = e as MouseEvent;
+                    const stripEl = _bar.closest(stripClass) as HTMLElement | null;
+                    if (!stripEl) return;
+                    const stripRect = stripEl.getBoundingClientRect();
+                    const barRect = _bar.getBoundingClientRect();
+                    const x = Math.max(40, Math.min(me.clientX - stripRect.left, stripRect.width - 40));
+                    const y = barRect.top - stripRect.top - 6;
+                    _htip.style.left = `${x}px`;
+                    _htip.style.top = `${y}px`;
+                });
+                _bar.addEventListener('mouseleave', () => _htip.classList.remove('visible'));
+            }
+        };
+
+        setupBarTooltips('#ram-seg-bar', '#ram-bar-htip', '.ram-strip:not(.hdd-strip)');
+        setupBarTooltips('#hdd-seg-bar', '#hdd-bar-htip', '.hdd-strip');
 
         this.injectTooltips();
     }
