@@ -7,6 +7,7 @@ import pytz
 import logging
 import re
 import subprocess
+import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -334,15 +335,17 @@ async def stop_scheduler():
 async def check_pihole_dns():
 	"""
 	Runs every 5 minutes.
-	- Queries Pi-hole on 127.0.0.1 for 'open.zero' via dig.
+	- Queries Pi-hole on 'pihole' (host-gateway) for 'open.zero' via dig.
 	- Alerts via Telegram after 2 consecutive failures.
-	- Attempts auto-fix (pihole -g gravity rebuild) if FTL.log shows gravity DB errors.
+	- Replaces docker exec ... dig @127.0.0.1 with dig @pihole.
+	- Replaces docker exec ... tail FTL.log with httpx GET summary.
 	- Sends a recovery notification once DNS comes back.
 	"""
+	import subprocess # Local import for subprocess
 	try:
+		# Query directly via internal network (pihole resolves to host-gateway)
 		result = subprocess.run(
-			["docker", "exec", "openzero-pihole-1", "dig",
-			 "@127.0.0.1", "open.zero", "+short", "+time=3", "+tries=1"],
+			["dig", "@pihole", "open.zero", "+short", "+time=3", "+tries=1"],
 			capture_output=True, text=True, timeout=10
 		)
 		dns_ok = result.returncode == 0 and result.stdout.strip() != ""
@@ -360,65 +363,36 @@ async def check_pihole_dns():
 						"<b>✅ DNS recovered</b> — Pi-hole is resolving <code>open.zero</code> again."
 					)
 				except Exception as te:
-					logger.error("dns_watchdog: failed to send recovery alert: %s", te)
+					logger.error("dns_watchdog: failed to send Telegram alert: %s", te)
 		_dns_state["fail_count"] = 0
 		_dns_state["alert_sent"] = False
 		return
 
 	# DNS failed
 	_dns_state["fail_count"] += 1
-	logger.warning("dns_watchdog: DNS failure #%d — host.docker.internal:53 not answering for open.zero", _dns_state["fail_count"])
+	logger.warning("dns_watchdog: DNS failure #%d — pihole:53 not answering for open.zero", _dns_state["fail_count"])
 
-	# Inspect FTL log for gravity DB corruption signature
-	gravity_broken = False
+	# Inspect FTL health via API instead of docker exec tail
+	ftl_alive = False
 	try:
-		ftl_check = subprocess.run(
-			["docker", "exec", "openzero-pihole-1", "tail", "-50", "/var/log/pihole/FTL.log"],
-			capture_output=True, text=True, timeout=10
-		)
-		ftl_out = ftl_check.stdout.lower()
-		# Add more patterns like 'database not available'
-		if "no such table" in ftl_out or "gravitydb" in ftl_out or "database not available" in ftl_out:
-			gravity_broken = True
-			logger.error("dns_watchdog: gravity DB corruption detected in FTL.log")
+		# Pi-hole v6 FTL port is 8081 in our compose. Use long timeout for slow VPS.
+		async with httpx.AsyncClient(timeout=10) as client:
+			resp = await client.get("http://pihole:8081/admin/api.php?summaryRaw")
+			ftl_alive = resp.status_code == 200
 	except Exception as e:
-		logger.error("dns_watchdog: could not read FTL.log: %s", e)
-
-	# Auto-fix: rebuild gravity DB if corruption detected
-	auto_fix_result = "not attempted"
-	if gravity_broken:
-		logger.warning("dns_watchdog: attempting auto-fix — deleting and rebuilding gravity.db")
-		try:
-			subprocess.run(
-				["docker", "exec", "openzero-pihole-1", "rm", "-f",
-				 "/etc/pihole/gravity.db", "/etc/pihole/gravity.db_temp"],
-				timeout=10
-			)
-			rebuild = subprocess.run(
-				["docker", "exec", "openzero-pihole-1", "pihole", "-g"],
-				capture_output=True, text=True, timeout=120
-			)
-			if rebuild.returncode == 0:
-				auto_fix_result = "gravity DB rebuilt successfully"
-				logger.info("dns_watchdog: gravity DB rebuild succeeded")
-			else:
-				auto_fix_result = f"rebuild failed (exit {rebuild.returncode}): {rebuild.stderr[:200]}"
-				logger.error("dns_watchdog: gravity rebuild failed: %s", rebuild.stderr[:400])
-		except Exception as e:
-			auto_fix_result = f"exception during rebuild: {e}"
-			logger.error("dns_watchdog: auto-fix exception: %s", e)
+		logger.error("dns_watchdog: FTL health check failed: %s", e)
 
 	# Alert after 2 consecutive failures (skip transient single-poll blips)
 	if _dns_state["fail_count"] >= 2 and not _dns_state["alert_sent"]:
 		_dns_state["alert_sent"] = True
 		try:
 			from app.services.notifier import send_notification_html
-			fix_line = f"\n<b>Auto-fix:</b> <code>{auto_fix_result}</code>" if gravity_broken else ""
-			gravity_line = "\n<b>Cause:</b> gravity DB corruption detected in FTL.log" if gravity_broken else "\n<b>Cause:</b> unknown — check FTL.log manually"
+			# Removed auto-fix logic (docker exec rm/pihole -g) as it requires docker.sock mount
+			cause_line = "\n<b>Cause:</b> FTL process unreachable (API 503/timeout)" if not ftl_alive else "\n<b>Cause:</b> unknown — FTL is alive but DNS failed"
 			await send_notification_html(
 				f"<b>🚨 DNS DOWN</b> — Pi-hole not resolving <code>open.zero</code>\n"
-				f"<b>Failures:</b> {_dns_state['fail_count']} consecutive checks{gravity_line}{fix_line}\n\n"
-				f"Run: <code>docker exec openzero-pihole-1 pihole -g</code> if auto-fix failed."
+				f"<b>Failures:</b> {_dns_state['fail_count']} consecutive checks{cause_line}\n\n"
+				f"Run: <code>docker exec -it openzero-pihole-1 pihole -g</code> on the VPS if gravity is corrupt."
 			)
 		except Exception as te:
 			logger.error("dns_watchdog: failed to send Telegram alert: %s", te)

@@ -212,6 +212,7 @@ services:
       - "988"  # docker socket GID on VPS host (getent group docker | cut -d: -f3)
     extra_hosts:
       - "host.docker.internal:host-gateway"
+      - "pihole:host-gateway"
     networks:
       - internal
       - llm

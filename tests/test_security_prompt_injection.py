@@ -1522,9 +1522,9 @@ class TestResourceAbuse:
 		]
 		assert len(inflation_prompts) > 0, "At least one inflation prompt must be defined"
 # openZero TIER_MAX_TOKENS caps: instant=250, deep=4000
-				tier_caps = {"instant": 250, "deep": 4000}
-				for tier, cap in tier_caps.items():
-					assert cap <= 4000, f"Tier {tier} cap too high: {cap}"
+		tier_caps = {"instant": 250, "deep": 4000}
+		for tier, cap in tier_caps.items():
+			assert cap <= 4000, f"Tier {tier} cap too high: {cap}"
 
 	def test_recursive_expansion(self):
 		"""Inputs that could cause recursive processing."""
@@ -1782,6 +1782,25 @@ def _install_backend_mocks():
 	mods["app"].models = mods["app.models"]
 	mods["app"].services = mods["app.services"]
 	mods["app.models"].db = mods["app.models.db"]
+	# Provide necessary members for app.models.db to avoid ImportErrors
+	class MockSession:
+		def __init__(self, *a, **kw): pass
+		async def __aenter__(self): return self
+		async def __aexit__(self, *a): pass
+		async def execute(self, *a, **kw):
+			class MockResult:
+				def scalars(self):
+					return type("S", (), {"all": lambda self: []})()
+				def scalar_one_or_none(self): return None
+			return MockResult()
+		def add(self, obj): pass
+		async def commit(self): pass
+
+	mods["app.models.db"].AsyncSessionLocal = MockSession
+	mods["app.models.db"].Person = type("Person", (), {"circle_type": None, "language": "en"})
+	mods["app.models.db"].Preference = type("Preference", (), {"key": None, "value": "{}"})
+	mods["app.models.db"].GlobalMessage = type("GlobalMessage", (), {"role": None, "content": "", "channel": "", "model": None, "created_at": __import__("datetime").datetime.now()})
+	mods["app.models.db"].Base = type("Base", (), {})
 	mods["app.services"].agent_actions = mods["app.services.agent_actions"]
 	mods["app.services"].timezone = mods["app.services.timezone"]
 	mods["app.services"].memory = mods["app.services.memory"]

@@ -14,7 +14,7 @@ import asyncio
 import html as _html
 import pytz
 import re
-from datetime import datetime
+from datetime import datetime, timezone as _tz
 import logging
 from app.services.translations import get_translations, get_user_lang
 
@@ -248,8 +248,8 @@ async def start_telegram_bot():
 						if (await _hc.get(f"{settings.LLM_DEEP_URL}/health")).status_code == 200:
 							_model_ready = True
 							break
-				except Exception:
-					pass
+				except Exception as _exc:
+					logger.debug("Greeting Seq - Health poll failed: %s", _exc)
 				logger.debug("Greeting - Deep model not ready yet (poll %d/20), waiting 15s...", _poll + 1)
 				await asyncio.sleep(15)
 			if not _model_ready:
@@ -347,7 +347,7 @@ async def _recover_unanswered_messages():
 		await asyncio.sleep(30)
 
 		from app.models.db import get_global_history, save_global_message
-		from datetime import datetime, timezone as _tz
+		# Re-import of datetime removed as it is now at module level
 		history = await get_global_history(limit=10)
 		if not history:
 			return
@@ -363,8 +363,8 @@ async def _recover_unanswered_messages():
 					msg_ts = datetime.fromisoformat(msg["at"]).replace(tzinfo=_tz.utc)
 					if (now_utc - msg_ts).total_seconds() < 60:
 						break  # too recent — handle_freetext is likely handling it
-				except Exception:
-					pass
+				except Exception as _exc:
+					logger.debug("Recovery - TS parse failed: %s", _exc)
 				unanswered.append(msg["content"])
 			else:
 				break
@@ -577,7 +577,6 @@ async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		except Exception:
 			pass  # Planka offline
 		# 3. LLM — check all three tiers independently
-		from app.services.llm import chat
 		import httpx as _httpx
 		from app.config import settings as _s
 
@@ -593,7 +592,8 @@ async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
 			_ping_tier(_s.LLM_INSTANT_URL),
 			_ping_tier(_s.LLM_DEEP_URL),
 		)
-		dot = lambda ok: "🟢" if ok else "🔴"
+		def dot(ok):
+			return "🟢" if ok else "🔴"
 		l_text = (
 			f"{dot(inst_ok)} Instant  "
 			f"{dot(deep_ok)} Deep"
@@ -968,7 +968,7 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		# acknowledges the gap. The raw user_text stays in the DB unchanged.
 		llm_user_text = user_text
 		try:
-			from datetime import datetime, timezone as _tz
+			# Re-import of datetime removed as it is now at module level
 			_hist = await get_global_history(limit=15)
 			_last_z = next((m for m in reversed(_hist) if m["role"] == "z"), None)
 			if _last_z:
@@ -981,8 +981,8 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
 						f"Acknowledge their return naturally in one sentence, then respond to their message.]\n\n{user_text}"
 					)
 					logger.debug("Return greeting injected: gap %.0f h", _gap.total_seconds() / 3600)
-		except Exception:
-			pass
+		except Exception as _exc:
+			logger.debug("Return greeting failed to hydrate: %s", _exc)
 
 		# --- Message Coalescing ---
 		if chat_id not in _thinking_locks:
