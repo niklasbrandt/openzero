@@ -93,20 +93,17 @@
 	min-width: 0;
 }
 
-/* Tablet / small desktop: collapse three-up to single column */
-@media (max-width: 1099px) {
-	.section-group.three-up > .dashboard-card {
-		flex: 0 0 100%;
-	}
-}
+/* Tablet / small desktop: keep three-up side-by-side; only collapse on mobile */
+/* (no 1099px override — three columns stay in place down to the mobile breakpoint) */
 
-/* Mobile: all groups stack */
+/* Mobile: all groups stack, each card full-width */
 @media (max-width: 699px) {
 	.section-group {
 		gap: 1rem;
 	}
 
-	.section-group > .dashboard-card {
+	.section-group > .dashboard-card,
+	.section-group.three-up > .dashboard-card {
 		flex: 0 0 100%;
 	}
 }
