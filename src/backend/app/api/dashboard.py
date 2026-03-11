@@ -1847,6 +1847,15 @@ async def server_info() -> dict:
 					key=lambda x: x["gb"], reverse=True,
 				)
 
+				# Docker Images size
+				images_resp = await dc.get("/images/json")
+				if images_resp.status_code == 200:
+					images = images_resp.json()
+					total_image_bytes = sum(img.get("Size", 0) for img in images)
+					image_gb = round(total_image_bytes / (1024 ** 3), 1)
+					if image_gb > 0:
+						info["disk_breakdown"].append({"name": "Docker Images", "gb": image_gb, "color": "hsl(200,60%,45%)"})
+
 				# models volume disk usage — exec `du -sb /models` in any running LLM container
 				_llm_containers = [
 					c for c in containers
@@ -1923,6 +1932,28 @@ async def server_info() -> dict:
 									info["disk_breakdown"].append({"name": "Memory", "gb": _qd_gb, "color": "hsl(30,80%,60%)"})
 					except Exception as _qd_err:
 						logger.debug("qdrant du failed: %s", _qd_err)
+
+				# Planka data (Uploads/Attachments)
+				_pl_containers = [c for c in containers if c.get("Labels", {}).get("com.docker.compose.service", "") == "planka"]
+				if _pl_containers:
+					try:
+						_cid = _pl_containers[0]["Id"]
+						_exec_resp = await dc.post(
+							f"/containers/{_cid}/exec",
+							json={"AttachStdout": True, "AttachStderr": False, "Cmd": ["du", "-sb", "/app/private/attachments"]},
+						)
+						if _exec_resp.status_code == 201:
+							_exec_id = _exec_resp.json()["Id"]
+							_start_resp = await dc.post(f"/exec/{_exec_id}/start", json={"Detach": False, "Tty": False})
+							if _start_resp.status_code == 200:
+								_raw = _start_resp.content
+								_text = _raw[8:].decode("utf-8", errors="replace").strip() if len(_raw) > 8 else _raw.decode("utf-8", errors="replace").strip()
+								_pl_bytes = int(_text.split()[0])
+								_pl_gb = round(_pl_bytes / (1024 ** 3), 2)
+								if _pl_gb > 0.1:
+									info["disk_breakdown"].append({"name": "Project Files", "gb": _pl_gb, "color": "hsl(180,50%,50%)"})
+					except Exception:
+						pass
 	except Exception as _docker_err:
 		logger.debug("Docker stats unavailable: %s", _docker_err)
 		info.setdefault("container_ram", [])
