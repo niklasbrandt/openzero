@@ -333,40 +333,10 @@ export class DiagnosticsWidget extends HTMLElement {
 
         const tierNames = ['instant', 'deep'];
         const tierColors = ['var(--accent-primary)', 'hsl(260,70%,65%)'];
-        const llmStatusHtml = tierNames.map((name, idx) => {
-            const td = tiers[name] || {};
-            const isOnline = td.status === 'online';
-            const isBusy = td.activity === 'processing';
-            const model = modelFor(name);
-            const ramGb = ramEstFor(name);
-            const ramLabel = ramGb > 0 ? `~${ramGb} GB` : '';
-            const dotClass = !isOnline ? 'offline' : isBusy ? 'processing' : 'online';
-            const statusLabel = !isOnline ? 'OFFLINE' : isBusy ? 'BUSY' : 'IDLE';
-            const tierTips: Record<string, string> = {
-                'instant': 'Edge-optimized for near-zero latency on trivial requests.',
-                'deep': 'Full 8B model for conversation, reasoning, and strategic analysis.'
-            };
-            const ramPctOfTotal = srv.ram_total_gb && ramGb ? Math.min((ramGb / srv.ram_total_gb) * 100, 100) : 0;
-            const color = tierColors[idx];
-            return `
-                <div class="llm-tier-status has-tip ${isBusy ? 'busy' : ''}" data-tip="${tierTips[name] || ''}">
-                    <div class="llm-tier-main">
-                        <span class="svc-dot ${dotClass}"></span>
-                        <span class="llm-tier-label">${name}</span>
-                    </div>
-                    <div class="llm-tier-center">
-                        <div class="llm-ram-bar-wrap">
-                            <div class="llm-ram-bar-fill" style="width:${ramPctOfTotal}%;background:${color};opacity:${isOnline ? '1' : '0.3'}"></div>
-                        </div>
-                        <span class="llm-ram-label" style="color:${color}">${this.esc(ramLabel)}</span>
-                    </div>
-                    <div class="llm-tier-meta">
-                        <span class="llm-status-text ${dotClass}">${statusLabel}</span>
-                        <span class="llm-tier-info">${this.esc(model)}</span>
-                    </div>
-                </div>
-            `;
-        }).join('');
+        const ctxFor = (name: string): number => { const t = cfgTiers.find((x: any) => x.tier === name); return t?.ctx || 0; };
+        const batchFor = (name: string): number => { const t = cfgTiers.find((x: any) => x.tier === name); return t?.batch || 0; };
+        const predictFor = (name: string): number => { const t = cfgTiers.find((x: any) => x.tier === name); return t?.predict || 0; };
+        const threadsFor = (name: string): number => { const t = cfgTiers.find((x: any) => x.tier === name); return t?.threads || 0; };
 
         // 3. Benchmarks Section
         const benchHtml = this.benchResults.length === 0 ? `<div class="empty-state">No benchmark data. Run a test below.</div>` :
@@ -427,22 +397,35 @@ export class DiagnosticsWidget extends HTMLElement {
                     ${cfgTiers.length > 0 ? `
                     <div class="llm-ram-breakdown">
                         <div class="llm-ram-bd-label">LLM models (est. mlock'd)</div>
-                        <div class="llm-ram-bd-row">
-                            ${tierNames.map((name, idx) => {
-                                const ramGb = ramEstFor(name);
-                                const color = tierColors[idx];
-                                if (!ramGb) return '';
-                                return `<div class="llm-ram-bd-item">
-                                    <span class="llm-ram-bd-dot" style="background:${color}"></span>
-                                    <span class="llm-ram-bd-name">${name}</span>
-                                    <span class="llm-ram-bd-val" style="color:${color}">${ramGb} GB</span>
-                                </div>`;
-                            }).join('')}
-                            <div class="llm-ram-bd-item total">
-                                <span class="llm-ram-bd-name">Total LLMs</span>
-                                <span class="llm-ram-bd-val">${tierNames.reduce((s, n) => s + ramEstFor(n), 0).toFixed(1)} GB</span>
-                            </div>
-                        </div>
+                        ${tierNames.map((name, idx) => {
+                            const td = tiers[name] || {};
+                            const isOnline = td.status === 'online';
+                            const isBusy = td.activity === 'processing';
+                            const dotClass = !isOnline ? 'offline' : isBusy ? 'processing' : 'online';
+                            const statusLabel = !isOnline ? 'OFFLINE' : isBusy ? 'BUSY' : 'IDLE';
+                            const color = tierColors[idx];
+                            const ramGb = ramEstFor(name);
+                            const ctx = ctxFor(name);
+                            const batch = batchFor(name);
+                            const predict = predictFor(name);
+                            const threads = threadsFor(name);
+                            const model = modelFor(name);
+                            return `<div class="llm-tier-card" style="--tier-color:${color}">
+                                <div class="ltc-header">
+                                    <span class="svc-dot ${dotClass}"></span>
+                                    <span class="ltc-name" style="color:${color}">${name}</span>
+                                    <span class="ltc-status ${dotClass}">${statusLabel}</span>
+                                </div>
+                                <div class="ltc-model">${this.esc(model)}</div>
+                                <div class="ltc-specs">
+                                    ${ctx ? `<div class="ltc-spec has-tip" data-tip="Context window — max tokens held in memory per request"><span>CTX</span><strong>${ctx.toLocaleString()}</strong></div>` : ''}
+                                    ${threads ? `<div class="ltc-spec has-tip" data-tip="CPU threads allocated to this tier"><span>Threads</span><strong>${threads}</strong></div>` : ''}
+                                    ${batch ? `<div class="ltc-spec has-tip" data-tip="Batch size — tokens processed per inference pass. Higher = faster first token but more RAM"><span>Batch</span><strong>${batch}</strong></div>` : ''}
+                                    ${predict ? `<div class="ltc-spec has-tip" data-tip="Max tokens generated per response"><span>Max out</span><strong>${predict}</strong></div>` : ''}
+                                    ${ramGb ? `<div class="ltc-spec has-tip" data-tip="Estimated RAM locked in memory (mlock) for model weights + KV cache"><span>RAM est</span><strong style="color:${color}">${ramGb} GB</strong></div>` : ''}
+                                </div>
+                            </div>`;
+                        }).join('')}
                         ${(() => {
                             const diskGb: number = srv.models_disk_gb || 0;
                             if (!diskGb) return '';
@@ -450,11 +433,11 @@ export class DiagnosticsWidget extends HTMLElement {
                             const bloated = activeGb > 0 && diskGb > activeGb * 1.5;
                             const color = bloated ? 'hsl(35,90%,58%)' : 'var(--text-muted)';
                             const tip = bloated
-                                ? `Models volume is ${diskGb} GB but only ~${activeGb.toFixed(1)} GB is needed. Stale models will be auto-pruned on next container restart.`
+                                ? `Models volume is ${diskGb} GB but only ~${activeGb.toFixed(1)} GB needed. Stale files auto-pruned on next restart.`
                                 : `Total disk used by /models volume.`;
-                            return `<div class="llm-ram-bd-row llm-models-disk has-tip" data-tip="${tip}">
-                                <span class="llm-ram-bd-name" style="color:${color}">Models disk${bloated ? ' ⚠' : ''}</span>
-                                <span class="llm-ram-bd-val" style="color:${color}">${diskGb} GB${bloated ? ` (${(diskGb - activeGb).toFixed(1)} GB stale)` : ''}</span>
+                            return `<div class="llm-models-disk has-tip" data-tip="${tip}" style="color:${color}">
+                                <span>Models disk${bloated ? ' &#x26A0;' : ''}</span>
+                                <span style="font-family:var(--font-mono);font-weight:800">${diskGb} GB${bloated ? ` <span style="font-size:0.55rem;font-weight:600">(${(diskGb - activeGb).toFixed(1)} GB stale)</span>` : ''}</span>
                             </div>`;
                         })()}
                     </div>` : ''}
@@ -473,10 +456,10 @@ export class DiagnosticsWidget extends HTMLElement {
                     <div class="hw-feat-grid">${featGrid}</div>
 				</div>
 
-				<!-- Middle Column: LLM Tiers -->
+				<!-- Middle Column: Integration -->
 				<div class="diag-col software">
-                    <div class="diag-section-label">LLM Tiers</div>
-					<div class="llm-status-list">${llmStatusHtml}</div>
+                    <div class="diag-section-label">Integration</div>
+					<div class="svc-grid">${swGrid}</div>
 				</div>
 
 				<!-- Right Column: Benchmark -->
@@ -485,19 +468,12 @@ export class DiagnosticsWidget extends HTMLElement {
 					<div class="bench-actions" style="margin-top: 0">
 						<button class="b-btn main has-tip ${this.isBenchRunning ? 'running' : ''}" ${this.isBenchRunning ? 'disabled' : ''} data-tier="all" data-tip="Run performance tests across all active tiers.">${this.isBenchRunning ? 'Benchmarking...' : 'Benchmark all LLMs'}</button>
 						<div class="b-row">
-							<button class="b-btn sm has-tip ${this.isBenchRunning ? 'running' : ''}" ${this.isBenchRunning ? 'disabled' : ''} data-tier="instant" data-tip="Test latency of the instant tier.">Instant</button>
-
-							<button class="b-btn sm has-tip ${this.isBenchRunning ? 'running' : ''}" ${this.isBenchRunning ? 'disabled' : ''} data-tier="deep" data-tip="Test throughput of the deep tier.">Deep</button>
+							<button class="b-btn sm tier-instant has-tip ${this.isBenchRunning ? 'running' : ''}" ${this.isBenchRunning ? 'disabled' : ''} data-tier="instant" data-tip="Test latency of the instant tier.">Instant</button>
+							<button class="b-btn sm tier-deep has-tip ${this.isBenchRunning ? 'running' : ''}" ${this.isBenchRunning ? 'disabled' : ''} data-tier="deep" data-tip="Test throughput of the deep tier.">Deep</button>
 						</div>
 					</div>
 					<div class="bench-results-list" style="margin-top: 0.5rem">${benchHtml}</div>
 				</div>
-
-                <!-- Bottom Row: Integration -->
-                <div class="integration-row">
-                    <div class="diag-section-label">Integration</div>
-                    <div class="svc-horizontal-grid">${swGrid}</div>
-                </div>
 			</div>
 		`;
 
@@ -542,7 +518,7 @@ export class DiagnosticsWidget extends HTMLElement {
         if (!this.shadowRoot) return;
         this.shadowRoot.innerHTML = `
 			<style>
-				:host { display: block; }
+				:host { display: block; color-scheme: light dark; }
 				${ACCESSIBILITY_STYLES}
 				${SECTION_HEADER_STYLES}
 				${GLASS_TOOLTIP_STYLES}
@@ -594,8 +570,7 @@ export class DiagnosticsWidget extends HTMLElement {
                 .leg-gb { font-family: var(--font-mono); font-size: 0.6rem; color: var(--text-muted); }
                 .leg-orphan-chip { font-size: 0.52rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: hsl(35,90%,58%); background: hsla(35,90%,58%,0.12); border: 1px solid hsla(35,90%,58%,0.35); border-radius: 3px; padding: 0 0.3rem; line-height: 1.5; }
 
-                .integration-row { grid-column: 1 / -1; background: hsla(0, 0%, 100%, 0.015); padding: 0.75rem 1rem; border-radius: 0.5rem; border: 1px solid hsla(0, 0%, 100%, 0.04); margin-top: 0.5rem; }
-                .svc-horizontal-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-top: 0.4rem; }
+                /* integration-row removed; integration is now a diag-col */
 
                 /* RAM Pressure Alert */
                 .ram-alert { grid-column: 1 / -1; padding: 0.75rem 1rem; border-radius: 0.5rem; border-left: 3px solid; margin-bottom: 0.25rem; }
@@ -662,20 +637,27 @@ export class DiagnosticsWidget extends HTMLElement {
                 .llm-ram-label { font-size: 0.6rem; font-weight: 700; font-family: var(--font-mono); line-height: 1; }
                 .llm-tier-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
                 .llm-status-text { font-size: 0.55rem; font-weight: 900; letter-spacing: 0.05em; }
-                .llm-status-text.online { color: var(--accent-primary); }
-                .llm-status-text.processing { color: var(--accent-primary); animation: diag-pulse 1s infinite; }
+                .llm-status-text.online { color: var(--accent-text, var(--accent-primary)); }
+                .llm-status-text.processing { color: var(--accent-text, var(--accent-primary)); animation: diag-pulse 1s infinite; }
                 .llm-status-text.offline { color: var(--color-danger); }
                 .llm-tier-info { font-size: 0.6rem; font-family: var(--font-mono); color: var(--text-muted); }
                 .svc-dot.processing { background: var(--accent-primary); box-shadow: 0 0 10px var(--accent-primary); animation: diag-pulse 1s infinite; }
 
-                .llm-ram-breakdown { margin-top: 0.6rem; padding-top: 0.5rem; border-top: 1px solid hsla(0,0%,100%,0.05); }
-                .llm-ram-bd-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); font-weight: 700; margin-bottom: 0.4rem; }
-                .llm-ram-bd-row { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }
-                .llm-ram-bd-item { display: flex; align-items: center; gap: 0.3rem; }
-                .llm-ram-bd-item.total { margin-left: auto; padding-left: 0.75rem; border-left: 1px solid hsla(0,0%,100%,0.08); }
-                .llm-ram-bd-dot { width: 7px; height: 7px; border-radius: 2px; flex-shrink: 0; }
-                .llm-ram-bd-name { font-size: 0.6rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
-                .llm-ram-bd-val { font-size: 0.7rem; font-weight: 800; font-family: var(--font-mono); color: var(--text-secondary); }
+                .llm-ram-breakdown { margin-top: 0.6rem; padding-top: 0.5rem; border-top: 1px solid hsla(0,0%,100%,0.05); display: flex; flex-direction: column; gap: 0.4rem; }
+                .llm-ram-bd-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); font-weight: 700; margin-bottom: 0.1rem; }
+                .llm-tier-card { background: hsla(0,0%,100%,0.025); border: 1px solid hsla(0,0%,100%,0.05); border-left: 2px solid var(--tier-color, var(--accent-primary)); border-radius: 0.4rem; padding: 0.45rem 0.6rem; display: flex; flex-direction: column; gap: 0.25rem; }
+                .ltc-header { display: flex; align-items: center; gap: 0.4rem; }
+                .ltc-name { font-size: 0.6rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.07em; }
+                .ltc-status { font-size: 0.5rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; margin-left: auto; }
+                .ltc-status.online { color: var(--accent-primary); }
+                .ltc-status.processing { color: var(--accent-primary); animation: diag-pulse 1s infinite; }
+                .ltc-status.offline { color: var(--color-danger); }
+                .ltc-model { font-size: 0.6rem; font-family: var(--font-mono); color: var(--text-secondary); font-weight: 600; }
+                .ltc-specs { display: flex; flex-wrap: wrap; gap: 0.3rem 0.7rem; margin-top: 0.1rem; }
+                .ltc-spec { display: flex; align-items: baseline; gap: 0.25rem; }
+                .ltc-spec span { font-size: 0.52rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
+                .ltc-spec strong { font-size: 0.65rem; font-family: var(--font-mono); font-weight: 800; color: var(--text-secondary); }
+                .llm-models-disk { display: flex; justify-content: space-between; align-items: center; font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding-top: 0.3rem; border-top: 1px solid hsla(0,0%,100%,0.04); margin-top: 0.1rem; }
 
 				/* Benchmark Styles */
 				.bench-results-list { display: flex; flex-direction: column; gap: 0.5rem; }
@@ -693,13 +675,17 @@ export class DiagnosticsWidget extends HTMLElement {
                 .bench-error { font-size: 0.65rem; color: var(--color-danger); font-family: var(--font-mono); flex: 1; text-align: right; }
 
 				.bench-actions { display: flex; flex-direction: column; gap: 0.5rem; margin-top: auto; }
-				.b-btn { background: hsla(0, 0%, 100%, 0.04); color: light-dark(hsla(228, 45%, 8%, 1), var(--text-primary, hsla(0, 0%, 100%, 0.85))); border: 1px solid hsla(0, 0%, 100%, 0.08); padding: 0.5rem; border-radius: 0.5rem; font-size: 0.65rem; font-weight: 700; cursor: pointer; transition: all 0.2s; text-transform: uppercase; letter-spacing: 0.05em; }
-				.b-btn:hover:not(:disabled) { background: hsla(0, 0%, 100%, 0.08); border-color: var(--accent-color); color: var(--accent-color); }
-                .b-btn.main { background: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.1); border-color: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.2); }
+				.b-btn { background: var(--surface-card, hsla(0, 0%, 100%, 0.04)); color: var(--text-primary); border: 1px solid var(--border-medium, hsla(0, 0%, 100%, 0.08)); padding: 0.5rem; border-radius: 0.5rem; font-size: 0.65rem; font-weight: 700; cursor: pointer; transition: all 0.2s; text-transform: uppercase; letter-spacing: 0.05em; }
+				.b-btn:hover:not(:disabled) { background: var(--surface-card-hover, hsla(0, 0%, 100%, 0.08)); border-color: var(--accent-color); color: var(--accent-text, var(--accent-color)); }
+                .b-btn.main { background: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.15); border-color: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.3); color: var(--text-primary); }
 				.b-btn.running { opacity: 0.6; animation: diag-pulse 1.5s infinite; pointer-events: none; }
 				.b-btn:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(100%); }
-				.b-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem; }
-				.b-btn.sm { font-size: 0.55rem; padding: 0.4rem 0.2rem; }
+				.b-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; }
+				.b-btn.sm { font-size: 0.55rem; padding: 0.4rem 0.2rem; flex: 1; }
+				.b-btn.tier-instant { border-color: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.4); color: var(--accent-primary); }
+				.b-btn.tier-instant:hover:not(:disabled) { background: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.12); border-color: var(--accent-primary); color: var(--accent-primary); }
+				.b-btn.tier-deep { border-color: hsla(260,70%,65%,0.4); color: hsl(260,70%,70%); }
+				.b-btn.tier-deep:hover:not(:disabled) { background: hsla(260,70%,65%,0.12); border-color: hsl(260,70%,65%); color: hsl(260,70%,75%); }
 
 				@keyframes diag-pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
 
