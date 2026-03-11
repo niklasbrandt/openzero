@@ -1391,8 +1391,8 @@ async def chat_with_context(
 				async for chunk in stream:
 					chunks.append(chunk)
 				return sanitise_output("".join(chunks))
-			except (asyncio.TimeoutError, StopAsyncIteration):
-				logger.debug("Deep model timeout -- falling back to standard")
+			except Exception as deep_err:
+				logger.warning("Deep model unavailable (%s) -- falling back to standard", type(deep_err).__name__)
 				last_model_used.set(f"Standard: {settings.LLM_MODEL_STANDARD}")
 				return sanitise_output(await chat(
 					user_message,
@@ -1569,8 +1569,8 @@ async def chat_stream_with_context(
 					if cleaned:
 						yield cleaned
 				return
-			except (asyncio.TimeoutError, StopAsyncIteration):
-				logger.debug("Deep stream timeout -- falling back to standard")
+			except Exception as deep_err:
+				logger.warning("Deep stream unavailable (%s) -- falling back to standard", type(deep_err).__name__)
 				last_model_used.set(f"Standard: {settings.LLM_MODEL_STANDARD}")
 				tier_name = "standard"
 
