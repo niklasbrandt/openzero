@@ -418,17 +418,21 @@ export class DiagnosticsWidget extends HTMLElement {
 							<div class="ram-seg-svc" style="width:${Math.max(s.pct, 0).toFixed(2)}%;background:${s.color}" data-seg-tip="${this.esc(s.label)}: ${s.gb} GB (${s.pct.toFixed(1)}%)"></div>
 						`).join('')}
 					</div>
-					<div class="ram-bar-hover-tip" id="ram-bar-htip" aria-hidden="true" role="tooltip"></div>
-					<div class="ram-strip-legend">
-						${this._ramBarSegments(srv).filter(s => s.name !== 'free').map(s => `
-							<div class="leg-item${s.orphan ? ' leg-item--orphan' : ''}">
-								<span class="leg-dot" style="background:${s.color};border-color:${s.color}"></span>
-								<span class="leg-name">${this.esc(s.label)}</span>
-								<span class="leg-gb">${s.gb}G</span>
-								${s.orphan ? `<span class="leg-orphan-chip" title="${this.tr('tip_orphan_container', 'Not in docker-compose.yml — orphaned container')}">orphan</span>` : ''}
+					${(() => {
+						return `
+							<div class="ram-bar-hover-tip" id="ram-bar-htip" aria-hidden="true" role="tooltip"></div>
+							<div class="ram-strip-legend">
+								${this._ramBarSegments(srv).filter(s => s.name !== 'free').map(s => `
+									<div class="leg-item${s.orphan ? ' leg-item--orphan' : ''}">
+										<span class="leg-dot" style="background:${s.color};border-color:${s.color}"></span>
+										<span class="leg-name">${this.esc(s.label)}</span>
+										<span class="leg-gb">${s.gb}G</span>
+										${s.orphan ? `<span class="leg-orphan-chip" title="${this.tr('tip_orphan_container', 'Not in docker-compose.yml — orphaned container')}">orphan</span>` : ''}
+									</div>
+								`).join('')}
 							</div>
-						`).join('')}
-					</div>
+						`;
+					})()}
 					${cfgTiers.length > 0 ? `
 					<div class="llm-ram-breakdown">
 						<div class="llm-ram-bd-label">LLM models (est. mlock'd)</div>
@@ -462,20 +466,6 @@ export class DiagnosticsWidget extends HTMLElement {
 								</div>
 							</div>`;
 						}).join('')}
-						${(() => {
-							const diskGb: number = srv.models_disk_gb || 0;
-							if (!diskGb) return '';
-							const activeGb = tierNames.reduce((s, n) => s + ramEstFor(n), 0);
-							const bloated = activeGb > 0 && diskGb > activeGb * 1.5;
-							const color = bloated ? 'hsl(35,90%,58%)' : 'var(--text-muted)';
-							const tip = bloated
-								? `Models volume is ${diskGb} GB but only ~${activeGb.toFixed(1)} GB needed. Stale files auto-pruned on next restart.`
-								: `Total disk used by /models volume.`;
-							return `<div class="llm-models-disk has-tip" data-tip="${tip}" style="color:${color}">
-								<span>Models disk${bloated ? ' &#x26A0;' : ''}</span>
-								<span style="font-family:var(--font-mono);font-weight:800">${diskGb} GB${bloated ? ` <span style="font-size:0.55rem;font-weight:600">(${(diskGb - activeGb).toFixed(1)} GB stale)</span>` : ''}</span>
-							</div>`;
-						})()}
 					</div>` : ''}
 				</div>
 
@@ -491,15 +481,29 @@ export class DiagnosticsWidget extends HTMLElement {
 						`).join('')}
 					</div>
 					<div class="ram-bar-hover-tip hdd-bar-hover-tip" id="hdd-bar-htip" aria-hidden="true" role="tooltip"></div>
-					<div class="ram-strip-legend">
-						${this._hddBarSegments(srv).filter(s => s.name !== 'free').map(s => `
-							<div class="leg-item">
-								<span class="leg-dot" style="background:${s.color};border-color:${s.color}"></span>
-								<span class="leg-name">${this.esc(s.label)}</span>
-								<span class="leg-gb">${s.gb}G</span>
+					${(() => {
+						const activeGb = tierNames.reduce((s, n) => s + ramEstFor(n), 0);
+						return `
+							<div class="ram-strip-legend">
+								${this._hddBarSegments(srv).filter(s => s.name !== 'free').map(s => {
+									const isModels = s.name === 'models';
+									const bloated = isModels && activeGb > 0 && s.gb > activeGb * 1.5;
+									const tip = bloated 
+										? `Models volume is ${s.gb} GB but current tiers only need ~${activeGb.toFixed(1)} GB. Stale files from previous downloads are taking up space.`
+										: '';
+									
+									return `
+										<div class="leg-item${bloated ? ' leg-item--bloat has-tip' : ''}" ${bloated ? `data-tip="${tip}"` : ''}>
+											<span class="leg-dot" style="background:${s.color};border-color:${s.color}"></span>
+											<span class="leg-name">${this.esc(s.label)}</span>
+											<span class="leg-gb">${s.gb}G</span>
+											${bloated ? `<span class="leg-bloat-chip">stale</span>` : ''}
+										</div>
+									`;
+								}).join('')}
 							</div>
-						`).join('')}
-					</div>
+						`;
+					})()}
 				</div>
 
 				<!-- Left Column: Hardware -->
@@ -688,6 +692,7 @@ export class DiagnosticsWidget extends HTMLElement {
 				.leg-name { color: var(--text-secondary); }
 				.leg-gb { font-family: var(--font-mono); font-size: 0.6rem; color: var(--text-muted); }
 				.leg-orphan-chip { font-size: 0.52rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: hsl(35,90%,58%); background: hsla(35,90%,58%,0.12); border: 1px solid hsla(35,90%,58%,0.35); border-radius: 3px; padding: 0 0.3rem; line-height: 1.5; }
+				.leg-bloat-chip { font-size: 0.52rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: hsl(35,90%,58%); background: hsla(35,90%,58%,0.12); border: 1px solid hsla(35,90%,58%,0.35); border-radius: 3px; padding: 0 0.3rem; line-height: 1.5; margin-left: 0.2rem; }
 
 				.ram-alert { grid-column: 1 / -1; padding: 0.75rem 1rem; border-radius: 0.5rem; border-left: 3px solid; margin-bottom: 0.25rem; }
 				.ram-alert.warning { background: hsla(40, 90%, 50%, 0.07); border-color: hsla(40, 90%, 55%, 0.7); }
