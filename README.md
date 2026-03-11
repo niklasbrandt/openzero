@@ -89,7 +89,7 @@ A 2-tier **llama.cpp** architecture runs optimized GGUF models directly on your 
 
 | Tier        | Model               | Purpose                                                         | Context | RAM  |
 | :---------- | :------------------ | :-------------------------------------------------------------- | :------ | :--- |
-| **Instant** | Qwen3-0.6B (Q4_K_M) | Greetings, confirmations, trivial Q&A, memory distillation      | 4,096   | 0.4G |
+| **Fast** | Qwen3-0.6B (Q4_K_M) | Greetings, confirmations, trivial Q&A, memory distillation      | 4,096   | 0.4G |
 | **Deep**    | Qwen3-8B (Q4_K_M)   | Conversation, reasoning, creative tasks, briefings, strategic analysis | 8,192   | 4.7G |
 
 The default profile targets a **24 GB VPS** (5 GB system overhead, leaving ~19 GB for models and services). On a **12 GB VPS** swap the Deep model to `Qwen3-8B-Q2_K.gguf` (~2.6 GB, ~5-8 tok/s on 8-core) for a total model footprint of ~3 GB. On 32-64 GB systems the Deep tier can be upgraded to Qwen3-14B-Q4_K_M (~8.7 GB) for higher reasoning quality. See `.env` for model URL variables.
@@ -160,7 +160,7 @@ The stack is optimized for single-server CPU-only deployment with full privacy:
 | Component        | Technology                                                                                                                                                                                                                                                                             | Purpose                                                                                             |
 | :--------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------- |
 | **Core OS**      | ![Ubuntu](https://img.shields.io/badge/Ubuntu-E9433F?style=flat&logo=ubuntu&logoColor=white) ![Python](https://img.shields.io/badge/Python-3776AB?style=flat&logo=python&logoColor=white) ![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white) | Containerized foundation on Linux with Python backend.                                              |
-| **Intelligence** | ![llama.cpp](https://img.shields.io/badge/llama.cpp-black?style=flat)                                                                                                                                                                                                                  | 2-tier local LLM (instant/deep) via llama-server with streaming. CPU-only, SIMD-optimized. |
+| **Intelligence** | ![llama.cpp](https://img.shields.io/badge/llama.cpp-black?style=flat)                                                                                                                                                                                                                  | 2-tier local LLM (fast/deep) via llama-server with streaming. CPU-only, SIMD-optimized. |
 | **Dashboard**    | ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white) ![Vite](https://img.shields.io/badge/Vite-646CFF?style=flat&logo=vite&logoColor=white)                                                                                        | Native Web Components (Shadow DOM) with hot-reload development.                                     |
 | **Messenger**    | ![Telegram](https://img.shields.io/badge/Telegram-2CA5E0?style=flat&logo=telegram&logoColor=white)                                                                                                                                                                                     | Messenger interface (Telegram implemented); architecture supports additional platforms.             |
 | **Storage**      | ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=flat&logo=postgresql&logoColor=white) ![Qdrant](https://img.shields.io/badge/Qdrant-red?style=flat)                                                                                                                 | Relational data paired with high-dimensional semantic vector memory.                                |
@@ -309,7 +309,7 @@ python -m pytest tests/test_security_prompt_injection.py tests/test_static_analy
 
 A VPS with **24 GB RAM** or a local Mac Mini/homelab is recommended. The entire stack is optimized for **CPU-only inference** using quantized GGUF models with llama.cpp. No GPU required -- both tiers run with 8 threads. Since tiers run sequentially (one request at a time, no parallelism), each active model gets full access to all CPU cores. Use the built-in benchmark widget to measure actual throughput on your hardware.
 
-Typical throughput on an 8-core EPYC VPS: 10-20 tok/s (instant tier), 3-5 tok/s (deep tier).
+Typical throughput on an 8-core EPYC VPS: 10-20 tok/s (fast tier), 3-5 tok/s (deep tier).
 
 1. **Deploy:** Run `docker compose up -d`. First-time model downloads happen automatically per tier.
 2. **Secure:** Link the server to the Tailscale network. Configure Pi-hole Split DNS for your vanity domain.
