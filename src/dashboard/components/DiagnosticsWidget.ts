@@ -443,6 +443,20 @@ export class DiagnosticsWidget extends HTMLElement {
                                 <span class="llm-ram-bd-val">${tierNames.reduce((s, n) => s + ramEstFor(n), 0).toFixed(1)} GB</span>
                             </div>
                         </div>
+                        ${(() => {
+                            const diskGb: number = srv.models_disk_gb || 0;
+                            if (!diskGb) return '';
+                            const activeGb = tierNames.reduce((s, n) => s + ramEstFor(n), 0);
+                            const bloated = activeGb > 0 && diskGb > activeGb * 1.5;
+                            const color = bloated ? 'hsl(35,90%,58%)' : 'var(--text-muted)';
+                            const tip = bloated
+                                ? `Models volume is ${diskGb} GB but only ~${activeGb.toFixed(1)} GB is needed. Stale models will be auto-pruned on next container restart.`
+                                : `Total disk used by /models volume.`;
+                            return `<div class="llm-ram-bd-row llm-models-disk has-tip" data-tip="${tip}">
+                                <span class="llm-ram-bd-name" style="color:${color}">Models disk${bloated ? ' ⚠' : ''}</span>
+                                <span class="llm-ram-bd-val" style="color:${color}">${diskGb} GB${bloated ? ` (${(diskGb - activeGb).toFixed(1)} GB stale)` : ''}</span>
+                            </div>`;
+                        })()}
                     </div>` : ''}
                 </div>
 
@@ -631,9 +645,9 @@ export class DiagnosticsWidget extends HTMLElement {
                 .svc-item:hover { transform: translateY(-1px); background: hsla(0, 0%, 100%, 0.035); }
 				.svc-main { display: flex; align-items: center; gap: 0.5rem; }
 				.svc-dot { width: 8px; height: 8px; border-radius: 50%; }
-				.svc-dot.online { background: var(--accent-primary); box-shadow: 0 0 6px var(--accent-primary); }
-				.svc-dot.warning { background: var(--status-warning); }
-				.svc-dot.offline { background: var(--status-danger); }
+				.svc-dot.online { background: var(--color-success, var(--accent-primary)); box-shadow: 0 0 6px var(--color-success, var(--accent-primary)); }
+				.svc-dot.warning { background: var(--color-warning); }
+				.svc-dot.offline { background: var(--color-danger); }
 				.svc-name { font-size: 0.7rem; font-weight: 600; color: var(--text-secondary); }
 				.svc-detail { font-size: 0.65rem; font-family: var(--font-mono); color: var(--text-muted); text-align: right; }
 
@@ -650,8 +664,8 @@ export class DiagnosticsWidget extends HTMLElement {
                 .llm-status-text { font-size: 0.55rem; font-weight: 900; letter-spacing: 0.05em; }
                 .llm-status-text.online { color: var(--accent-primary); }
                 .llm-status-text.processing { color: var(--accent-primary); animation: diag-pulse 1s infinite; }
-                .llm-status-text.offline { color: var(--color-danger, hsla(0, 84%, 42%, 1)); }
-                .llm-tier-info { font-size: 0.6rem; font-family: var(--font-mono); color: var(--text-muted); opacity: 0.8; }
+                .llm-status-text.offline { color: var(--color-danger); }
+                .llm-tier-info { font-size: 0.6rem; font-family: var(--font-mono); color: var(--text-muted); }
                 .svc-dot.processing { background: var(--accent-primary); box-shadow: 0 0 10px var(--accent-primary); animation: diag-pulse 1s infinite; }
 
                 .llm-ram-breakdown { margin-top: 0.6rem; padding-top: 0.5rem; border-top: 1px solid hsla(0,0%,100%,0.05); }
@@ -670,13 +684,13 @@ export class DiagnosticsWidget extends HTMLElement {
 				.bench-val { font-size: 0.9rem; font-weight: 800; font-family: var(--font-mono); text-align: right; margin-right: 0.5rem; }
 				.bench-val small { font-size: 0.6rem; opacity: 0.5; font-weight: 400; }
                 .bench-label { font-size: 0.65rem; font-weight: 600; flex: 1; text-align: left; }
-				.bench-val.excellent, .bench-label.excellent { color: var(--accent-color); }
-				.bench-val.good, .bench-label.good { color: var(--status-success); }
-				.bench-val.moderate, .bench-label.moderate { color: var(--status-warning); }
-				.bench-val.slow, .bench-label.slow { color: var(--status-danger); }
+				.bench-val.excellent, .bench-label.excellent { color: var(--accent-text, var(--accent-color)); }
+				.bench-val.good, .bench-label.good { color: var(--color-success); }
+				.bench-val.moderate, .bench-label.moderate { color: var(--color-warning); }
+				.bench-val.slow, .bench-label.slow { color: var(--color-danger); }
 				.bench-rtg { font-size: 1rem; margin-left: 0.5rem; }
                 .bench-res-item.error { background: hsla(0, 90%, 60%, 0.05); border-color: hsla(0, 90%, 60%, 0.1); }
-                .bench-error { font-size: 0.65rem; color: var(--status-danger); font-family: var(--font-mono); flex: 1; text-align: right; }
+                .bench-error { font-size: 0.65rem; color: var(--color-danger); font-family: var(--font-mono); flex: 1; text-align: right; }
 
 				.bench-actions { display: flex; flex-direction: column; gap: 0.5rem; margin-top: auto; }
 				.b-btn { background: hsla(0, 0%, 100%, 0.04); color: light-dark(hsla(228, 45%, 8%, 1), var(--text-primary, hsla(0, 0%, 100%, 0.85))); border: 1px solid hsla(0, 0%, 100%, 0.08); padding: 0.5rem; border-radius: 0.5rem; font-size: 0.65rem; font-weight: 700; cursor: pointer; transition: all 0.2s; text-transform: uppercase; letter-spacing: 0.05em; }
