@@ -2078,8 +2078,8 @@ async def server_info() -> dict:
 						_c_rw_gb = round(_c_rw_bytes / (1024 ** 3), 1)
 						if _c_rw_gb > 0.05:
 							info["disk_breakdown"].append({"name": "Container Layers", "gb": _c_rw_gb, "color": "hsl(215,55%,58%)"})
-					except Exception as _dfdf_err:
-						logger.debug("Docker system/df failed: %s", _dfdf_err)
+				except Exception as _dfdf_err:
+					logger.debug("Docker system/df failed: %s", _dfdf_err)
 
 	except Exception as _docker_err:
 		logger.debug("Docker stats unavailable: %s", _docker_err)
