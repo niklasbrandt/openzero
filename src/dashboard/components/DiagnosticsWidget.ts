@@ -132,21 +132,22 @@ export class DiagnosticsWidget extends HTMLElement {
 	}
 
 	async fetchAll() {
-		try {
-			const [cpu, srv, sys, cfg] = await Promise.all([
-				fetch('/api/dashboard/benchmark/cpu').then(r => r.json()),
-				fetch('/api/dashboard/server-info').then(r => r.json()),
-				fetch('/api/dashboard/system').then(r => r.json()),
-				fetch('/api/dashboard/llm-config').then(r => r.json()),
-			]);
-			this.cpuData = cpu;
-			this.serverData = srv;
-			this.systemData = sys;
-			this.llmConfig = cfg;
-			this.updatePanel();
-		} catch (e) {
-			console.error('Fetch error:', e);
-		}
+		const safeFetch = (url: string) =>
+			fetch(url)
+				.then(r => { if (!r.ok) throw new Error(`${r.status}`); return r.json(); })
+				.catch((e: Error) => { console.warn(`DiagnosticsWidget: ${url} failed (${e.message})`); return null; });
+
+		const [cpu, srv, sys, cfg] = await Promise.all([
+			safeFetch('/api/dashboard/benchmark/cpu'),
+			safeFetch('/api/dashboard/server-info'),
+			safeFetch('/api/dashboard/system'),
+			safeFetch('/api/dashboard/llm-config'),
+		]);
+		if (cpu !== null) this.cpuData = cpu;
+		if (srv !== null) this.serverData = srv;
+		if (sys !== null) this.systemData = sys;
+		if (cfg !== null) this.llmConfig = cfg;
+		this.updatePanel();
 	}
 
 	async runBenchmark(tier: string) {
