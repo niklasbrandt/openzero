@@ -34,14 +34,22 @@ else
 	echo "Model already present: ${MODEL_FILE}"
 fi
 
-# Prune stale models — delete any .gguf files in MODEL_DIR that are NOT the
-# currently configured model. This prevents the volume from accumulating
-# gigabytes of abandoned models each time the profile is changed in .env.
+# Prune stale models — delete any .gguf files in MODEL_DIR that are not
+# in the KEEP_MODELS whitelist. KEEP_MODELS is a comma-separated list of
+# all currently active model filenames across ALL tiers (set via docker-compose).
+# This prevents the volume from accumulating gigabytes of abandoned models
+# AND prevents each container from deleting the other tier's model.
 echo "Checking for stale models in ${MODEL_DIR}..."
+# Build an associative list of models to keep
+KEEP="${KEEP_MODELS:-$MODEL_FILE}"
 find "$MODEL_DIR" -maxdepth 1 -name "*.gguf" | while read -r f; do
-	if [ "$(basename "$f")" != "$MODEL_FILE" ]; then
+	FNAME="$(basename "$f")"
+	# Check if this file is in the keep list
+	if echo ",$KEEP," | grep -qF ",${FNAME},"; then
+		: # keep it
+	else
 		SIZE_MB=$(du -sm "$f" 2>/dev/null | cut -f1)
-		echo "Removing stale model: $(basename "$f") (${SIZE_MB} MB)"
+		echo "Removing stale model: ${FNAME} (${SIZE_MB} MB)"
 		rm -f "$f"
 	fi
 done
