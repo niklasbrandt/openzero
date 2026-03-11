@@ -24,6 +24,20 @@ export class DiagnosticsWidget extends HTMLElement {
 		deep: { model: '~8B', fast: 10, good: 5, ok: 2 },
 	};
 
+	private static readonly HDD_SEG_TIPS: Record<string, string> = {
+		'docker images': 'Base filesystem layers for all container images pulled from Docker Hub.',
+		'models': 'GGUF model files served by the LLM inference servers.',
+		'database': 'PostgreSQL data — conversations, email rules, and calendar events.',
+		'memory': 'Qdrant vector embeddings for long-term semantic memory retrieval.',
+		'project files': 'Planka task board attachments and uploaded files.',
+		'build cache': 'Docker build layer cache — safe to prune with docker builder prune.',
+		'orphan volumes': 'Docker volumes no longer referenced by any active service.',
+		'container layers': 'Files written by running containers (logs, temp files, runtime state) on top of their base images.',
+		'tts models': 'Text-to-speech synthesis model files used by the voice service.',
+		'redis cache': 'Redis in-memory store snapshot persisted to disk.',
+		'other': 'OS system files, application source code, and other host-level data outside Docker tracked storage.',
+	};
+
 	constructor() {
 		super();
 		this.attachShadow({ mode: 'open' });
@@ -241,22 +255,24 @@ export class DiagnosticsWidget extends HTMLElement {
 		return segs;
 	}
 
-	private _hddBarSegments(srv: any): { name: string; label: string; gb: number; pct: number; color: string }[] {
+	private _hddBarSegments(srv: any): { name: string; label: string; gb: number; pct: number; color: string; desc?: string }[] {
 		const total = srv.disk_total_gb || 1;
 		const used = srv.disk_used_gb || 0;
 		const free = srv.disk_free_gb || 0;
 		const breakdown = srv.disk_breakdown || [];
 
-		const segs: { name: string; label: string; gb: number; pct: number; color: string }[] = [];
+		const segs: { name: string; label: string; gb: number; pct: number; color: string; desc?: string }[] = [];
 		let accounted = 0;
 
 		for (const item of breakdown) {
+			const itemName = item.name.toLowerCase();
 			segs.push({
-				name: item.name.toLowerCase(),
+				name: itemName,
 				label: item.name,
 				gb: item.gb,
 				pct: (item.gb / total) * 100,
-				color: item.color || this._svcColor(item.name.toLowerCase())
+				color: item.color || this._svcColor(itemName),
+				desc: DiagnosticsWidget.HDD_SEG_TIPS[itemName] || '',
 			});
 			accounted += item.gb;
 		}
@@ -265,10 +281,11 @@ export class DiagnosticsWidget extends HTMLElement {
 		if (otherGb > 0.1) {
 			segs.push({
 				name: 'other',
-				label: this.tr('diag_hdd_other', 'System / Other'),
+				label: this.tr('diag_hdd_other', 'OS & Host Files'),
 				gb: parseFloat(otherGb.toFixed(1)),
 				pct: (otherGb / total) * 100,
-				color: 'hsl(210,40%,62%)'
+				color: 'hsl(210,40%,62%)',
+				desc: DiagnosticsWidget.HDD_SEG_TIPS['other'] || '',
 			});
 		}
 
@@ -278,7 +295,7 @@ export class DiagnosticsWidget extends HTMLElement {
 				label: this.tr('diag_hdd_free', 'Free Space'),
 				gb: parseFloat(free.toFixed(1)),
 				pct: (free / total) * 100,
-				color: 'hsla(0,0%,100%,0.04)'
+				color: 'hsla(0,0%,100%,0.04)',
 			});
 		}
 
@@ -568,7 +585,7 @@ export class DiagnosticsWidget extends HTMLElement {
 					</div>
 					<div class="ram-strip-bar hdd-strip-bar" id="hdd-seg-bar">
 						${this._hddBarSegments(srv).map(s => `
-							<div class="ram-seg-svc" style="width:${Math.max(s.pct, 0).toFixed(2)}%;background:${s.color}" data-seg-tip="${this.esc(s.label)}: ${s.gb} GB (${s.pct.toFixed(1)}%)"></div>
+							<div class="ram-seg-svc" style="width:${Math.max(s.pct, 0).toFixed(2)}%;background:${s.color}" data-seg-tip="${this.esc(s.label)}: ${s.gb} GB (${s.pct.toFixed(1)}%)${s.desc ? ' — ' + this.esc(s.desc) : ''}"></div>
 						`).join('')}
 					</div>
 					<div class="ram-bar-hover-tip hdd-bar-hover-tip" id="hdd-bar-htip" aria-hidden="true" role="tooltip"></div>
@@ -579,12 +596,13 @@ export class DiagnosticsWidget extends HTMLElement {
 								${this._hddBarSegments(srv).filter(s => s.name !== 'free').map(s => {
 									const isModels = s.name === 'models';
 									const bloated = isModels && activeGb > 0 && s.gb > activeGb * 1.5;
-									const tip = bloated 
-										? `Models volume is ${s.gb} GB but current tiers only need ~${activeGb.toFixed(1)} GB. Stale files from previous downloads are taking up space.`
-										: '';
-									
-									return `
-										<div class="leg-item${bloated ? ' leg-item--bloat has-tip' : ''}" ${bloated ? `data-tip="${tip}"` : ''}>
+								const bloatTip = bloated
+									? `Models volume is ${s.gb} GB but current tiers only need ~${activeGb.toFixed(1)} GB. Stale files from previous downloads are taking up space.`
+									: '';
+								const tip = bloatTip || s.desc || '';
+								
+								return `
+									<div class="leg-item${tip ? ' has-tip' : ''}${bloated ? ' leg-item--bloat' : ''}" ${tip ? `data-tip="${this.esc(tip)}"` : ''}>
 											<span class="leg-dot" style="background:${s.color};border-color:${s.color}"></span>
 											<span class="leg-name">${this.esc(s.label)}</span>
 											<span class="leg-gb">${s.gb}G</span>
