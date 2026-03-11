@@ -1615,6 +1615,11 @@ async def server_info() -> dict:
 		"uptime_seconds": 0,
 		"uptime_human": "",
 		"tiers": {},
+		"disk_total_gb": 0,
+		"disk_used_gb": 0,
+		"disk_free_gb": 0,
+		"disk_used_pct": 0,
+		"disk_breakdown": [],
 	}
 
 	# --- RAM ---
@@ -1652,6 +1657,18 @@ async def server_info() -> dict:
 			info["ram_total_gb"] = round(total / (1024**3), 1)
 	except Exception as ram_err:
 		logger.debug("RAM info unavailable: %s", ram_err)
+
+	# --- Disk ---
+	try:
+		# Use psutil to get root disk usage. In Docker, this is the container's view
+		# but if the volume is large and mounted, it often reflects the host or volume size.
+		usage = psutil.disk_usage('/')
+		info["disk_total_gb"] = round(usage.total / (1024 ** 3), 1)
+		info["disk_used_gb"] = round(usage.used / (1024 ** 3), 1)
+		info["disk_free_gb"] = round(usage.free / (1024 ** 3), 1)
+		info["disk_used_pct"] = round(usage.percent, 1)
+	except Exception as disk_err:
+		logger.debug("Disk info unavailable: %s", disk_err)
 
 	# --- Uptime ---
 	try:
@@ -1857,8 +1874,55 @@ async def server_info() -> dict:
 								_text = _raw[8:].decode("utf-8", errors="replace").strip() if len(_raw) > 8 else _raw.decode("utf-8", errors="replace").strip()
 								_bytes_used = int(_text.split()[0])
 								info["models_disk_gb"] = round(_bytes_used / (1024 ** 3), 1)
+								info["disk_breakdown"].append({"name": "Models", "gb": info["models_disk_gb"], "color": "hsl(260,70%,65%)"})
 					except Exception as _du_err:
 						logger.debug("models du failed: %s", _du_err)
+
+				# Database size (Postgres)
+				_pg_containers = [c for c in containers if c.get("Labels", {}).get("com.docker.compose.service", "") == "postgres"]
+				if _pg_containers:
+					try:
+						# We don't have a direct DB session here easily without more plumbing, 
+						# so we du the data directory.
+						_cid = _pg_containers[0]["Id"]
+						_exec_resp = await dc.post(
+							f"/containers/{_cid}/exec",
+							json={"AttachStdout": True, "AttachStderr": False, "Cmd": ["du", "-sb", "/var/lib/postgresql/data"]},
+						)
+						if _exec_resp.status_code == 201:
+							_exec_id = _exec_resp.json()["Id"]
+							_start_resp = await dc.post(f"/exec/{_exec_id}/start", json={"Detach": False, "Tty": False})
+							if _start_resp.status_code == 200:
+								_raw = _start_resp.content
+								_text = _raw[8:].decode("utf-8", errors="replace").strip() if len(_raw) > 8 else _raw.decode("utf-8", errors="replace").strip()
+								_db_bytes = int(_text.split()[0])
+								_db_gb = round(_db_bytes / (1024 ** 3), 2)
+								if _db_gb > 0:
+									info["disk_breakdown"].append({"name": "Database", "gb": _db_gb, "color": "hsl(140,55%,55%)"})
+					except Exception as _pg_err:
+						logger.debug("postgres du failed: %s", _pg_err)
+
+				# Semantic Memory size (Qdrant)
+				_qd_containers = [c for c in containers if c.get("Labels", {}).get("com.docker.compose.service", "") == "qdrant"]
+				if _qd_containers:
+					try:
+						_cid = _qd_containers[0]["Id"]
+						_exec_resp = await dc.post(
+							f"/containers/{_cid}/exec",
+							json={"AttachStdout": True, "AttachStderr": False, "Cmd": ["du", "-sb", "/qdrant/storage"]},
+						)
+						if _exec_resp.status_code == 201:
+							_exec_id = _exec_resp.json()["Id"]
+							_start_resp = await dc.post(f"/exec/{_exec_id}/start", json={"Detach": False, "Tty": False})
+							if _start_resp.status_code == 200:
+								_raw = _start_resp.content
+								_text = _raw[8:].decode("utf-8", errors="replace").strip() if len(_raw) > 8 else _raw.decode("utf-8", errors="replace").strip()
+								_qd_bytes = int(_text.split()[0])
+								_qd_gb = round(_qd_bytes / (1024 ** 3), 2)
+								if _qd_gb > 0:
+									info["disk_breakdown"].append({"name": "Memory", "gb": _qd_gb, "color": "hsl(30,80%,60%)"})
+					except Exception as _qd_err:
+						logger.debug("qdrant du failed: %s", _qd_err)
 	except Exception as _docker_err:
 		logger.debug("Docker stats unavailable: %s", _docker_err)
 		info.setdefault("container_ram", [])

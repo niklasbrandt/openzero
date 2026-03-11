@@ -42,18 +42,14 @@ export const BUTTON_STYLES = `
 	/* Primary / filled — save, submit, add-confirm */
 	.btn-primary, .save-btn {
 		background: var(--accent-color, hsla(173, 80%, 40%, 1));
-		/* light-dark() uses the inherited color-scheme property (not @media which fires based on
-		   OS preference regardless of data-theme). :root has color-scheme:dark by default and the
-		   [data-theme="light"] block sets it to light, cascading reliably into Shadow DOM.
-		   Light: #fff on 35% L teal → 4.75:1 (WCAG AA). Dark: navy on 40% L teal → 5.29:1. */
-		color: light-dark(#ffffff, var(--on-accent-text, hsla(228, 45%, 8%, 1)));
+		color: var(--on-accent-text, #ffffff);
 		border-color: var(--accent-color, hsla(173, 80%, 40%, 1));
 		font-weight: 700;
 	}
 	.btn-primary:hover, .save-btn:hover {
-		background: color-mix(in srgb, var(--accent-color, hsla(173, 80%, 40%, 1)) 85%, #000);
-		border-color: color-mix(in srgb, var(--accent-color, hsla(173, 80%, 40%, 1)) 85%, #000);
-		color: var(--bg-body, hsla(225, 50%, 8%, 1));
+		background: color-mix(in srgb, var(--accent-color, hsla(173, 80%, 40%, 1)) 90%, #000);
+		border-color: color-mix(in srgb, var(--accent-color, hsla(173, 80%, 40%, 1)) 90%, #000);
+		color: var(--on-accent-text, #ffffff);
 	}
 
 	/* Ghost / cancel — transparent, muted white */
