@@ -916,7 +916,7 @@ export class DiagnosticsWidget extends HTMLElement {
 				.ltc-status.online { color: var(--accent-primary); }
 				.ltc-status.processing { color: var(--accent-primary); animation: diag-pulse 1s infinite; }
 				.ltc-status.offline { color: var(--color-danger); }
-				.ltc-model { font-size: 0.6rem; font-family: var(--font-mono); color: var(--text-secondary); font-weight: 600; }
+				.ltc-model { font-size: 0.78rem; font-family: var(--font-mono); color: var(--text-secondary); font-weight: 600; }
 				.ltc-specs { display: flex; flex-wrap: wrap; gap: 0.3rem 0.7rem; margin-top: 0.1rem; }
 				.ltc-spec { display: flex; align-items: baseline; gap: 0.25rem; }
 				.ltc-spec span { font-size: 0.52rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
