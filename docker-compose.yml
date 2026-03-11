@@ -298,6 +298,7 @@ services:
       - DNSMASQ_LISTENING=all
       - FTLCONF_dns_listeningMode=all
       - DNSMASQ_USER=root
+      - WEBPORT=8081
       - FTLCONF_webserver_port=8081
       # Aggressive rate limiting: max 100 queries per 60s per client.
       # Default (1000/60s) is useless against distributed floods.
