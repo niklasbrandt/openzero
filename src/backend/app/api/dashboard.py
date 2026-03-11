@@ -1655,6 +1655,39 @@ async def server_info() -> dict:
 			info["ram_apps_gb"] = round(apps_kb / 1048576, 1)
 			info["ram_bufcache_gb"] = round(bufcache_kb / 1048576, 1)
 			info["ram_kernel_gb"] = round(kernel_kb / 1048576, 2)
+			# Non-dockerized process RSS breakdown (drill-down for "system procs" segment)
+			try:
+				_proc_rss: dict = {}
+				for _pid in os.listdir('/proc'):
+					if not _pid.isdigit():
+						continue
+					try:
+						try:
+							with open(f'/proc/{_pid}/cgroup') as _cg_f:
+								if 'docker' in _cg_f.read():
+									continue
+						except OSError:
+							pass
+						_name, _rss_kb = '', 0
+						with open(f'/proc/{_pid}/status') as _sf:
+							for _line in _sf:
+								if _line.startswith('Name:\t'):
+									_name = _line[6:].strip()
+								elif _line.startswith('VmRSS:\t'):
+									_rss_kb = int(_line.split()[1])
+						if _name and _rss_kb >= 1024:
+							_proc_rss[_name] = _proc_rss.get(_name, 0) + _rss_kb
+					except Exception:
+						pass
+				_sp_sorted = sorted(_proc_rss.items(), key=lambda x: x[1], reverse=True)
+				_sp_top = [(n, kb) for n, kb in _sp_sorted[:10] if kb >= 10240]
+				_sp_misc_kb = sum(kb for _, kb in _sp_sorted[len(_sp_top):])
+				_sp_list: list = [{"name": n, "mb": round(kb / 1024, 1)} for n, kb in _sp_top]
+				if _sp_misc_kb >= 10240:
+					_sp_list.append({"name": "misc", "mb": round(_sp_misc_kb / 1024, 1)})
+				info["ram_sysproc_breakdown"] = _sp_list
+			except Exception as _spb_err:
+				logger.debug("sysproc breakdown unavailable: %s", _spb_err)
 			info["ram_used_pct"] = round((1 - avail_kb / max(total_kb, 1)) * 100, 1)
 			info["ram_apps_pct"] = round(apps_kb / max(total_kb, 1) * 100, 1)
 			info["ram_used_gb"] = round((total_kb - avail_kb) / 1048576, 1)
