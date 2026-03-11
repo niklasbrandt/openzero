@@ -161,6 +161,13 @@ export class DiagnosticsWidget extends HTMLElement {
 		return colors[name] || 'hsl(220,15%,50%)';
 	}
 
+	private _sysProcColor(name: string): string {
+		let h = 0;
+		for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xffff;
+		const hue = 195 + (h % 55); // 195-250: indigo-blue family, distinct from service colors
+		return `hsl(${hue},22%,${42 + (h % 10)}%)`;
+	}
+
 	private _ramBarSegments(srv: any): { name: string; label: string; gb: number; pct: number; color: string; orphan?: boolean }[] {
 		const total = srv.ram_total_gb || 1;
 		const appsGb: number = srv.ram_apps_gb || 0;
@@ -197,7 +204,21 @@ export class DiagnosticsWidget extends HTMLElement {
 				color: 'hsl(215,30%,48%)'
 			});
 		}
-		if (sysProcGb > 0.05) {
+		const sysprocBreakdown: { name: string; mb: number }[] = srv.ram_sysproc_breakdown || [];
+		if (sysprocBreakdown.length > 0) {
+			for (const sp of sysprocBreakdown) {
+				const spGb = parseFloat((sp.mb / 1024).toFixed(2));
+				if (spGb > 0.01) {
+					segs.push({
+						name: `sys_${sp.name}`,
+						label: sp.name,
+						gb: spGb,
+						pct: (spGb / total) * 100,
+						color: this._sysProcColor(sp.name),
+					});
+				}
+			}
+		} else if (sysProcGb > 0.05) {
 			segs.push({
 				name: 'system',
 				label: this.tr('ram_sysproc', 'system procs'),
