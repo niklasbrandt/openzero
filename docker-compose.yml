@@ -171,6 +171,16 @@ services:
       - "traefik.http.routers.p8.priority=10"
       - "traefik.http.routers.p9.priority=10"
       - "traefik.http.routers.p10.priority=10"
+      - "traefik.http.routers.p1.middlewares=error-pages-middleware"
+      - "traefik.http.routers.p2.middlewares=error-pages-middleware"
+      - "traefik.http.routers.p3.middlewares=error-pages-middleware"
+      - "traefik.http.routers.p4.middlewares=error-pages-middleware"
+      - "traefik.http.routers.p5.middlewares=error-pages-middleware"
+      - "traefik.http.routers.p6.middlewares=error-pages-middleware"
+      - "traefik.http.routers.p7.middlewares=error-pages-middleware"
+      - "traefik.http.routers.p8.middlewares=error-pages-middleware"
+      - "traefik.http.routers.p9.middlewares=error-pages-middleware"
+      - "traefik.http.routers.p10.middlewares=error-pages-middleware"
       - "traefik.http.services.planka.loadbalancer.server.port=1337"
       - "traefik.docker.network=openzero_internal"
 
@@ -210,6 +220,23 @@ services:
       - "traefik.http.routers.backend.entrypoints=web"
       - "traefik.http.services.backend.loadbalancer.server.port=8000"
       - "traefik.http.routers.backend.priority=1"
+      - "traefik.http.routers.backend.middlewares=error-pages-middleware"
+      - "traefik.docker.network=openzero_internal"
+
+  error-page:
+    image: nginx:1.27-alpine
+    restart: always
+    volumes:
+      - ./src/error-pages:/usr/share/nginx/html:ro
+    networks:
+      - internal
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.error-page.rule=PathPrefix(`/error-page`)"
+      - "traefik.http.services.error-page.loadbalancer.server.port=80"
+      - "traefik.http.middlewares.error-pages-middleware.errors.service=error-page"
+      - "traefik.http.middlewares.error-pages-middleware.errors.status=500-599"
+      - "traefik.http.middlewares.error-pages-middleware.errors.query=/"
       - "traefik.docker.network=openzero_internal"
 
   traefik:
