@@ -376,6 +376,7 @@ translations: dict[str, str] = {
 	"quick_add_event": "Quick Add Event",
 	"ram": "RAM",
 	"ram_apps": "apps",
+	"ram_available": "available",
 	"ram_buffers": "buffers",
 	"ram_cache": "cache",
 	"ram_free": "free",
