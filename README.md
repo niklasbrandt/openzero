@@ -388,6 +388,29 @@ Edit the files in `agent/` to tailor Z's expertise and rules to your workflow. T
 - The folder is bind-mounted read-only (`./agent:/app/agent:ro`). The backend cannot write to it.
 - Use `/skills` in the dashboard chat to inspect exactly what Z has loaded from the folder.
 
+### Storage Requirements
+
+The full stack (all services running, models downloaded, media engines cached) uses approximately **60-80 GB** of disk. A minimum of **100 GB** is strongly recommended to leave room for build cache, log rotation, and database growth.
+
+| Component | Typical size | Notes |
+| :--- | :--- | :--- |
+| Docker images (active) | ~25 GB | TTS ~12 GB, Whisper ~8 GB, llama.cpp ~0.2 GB, the rest combined ~5 GB |
+| LLM models volume | ~5 GB | Qwen3-0.6B (~0.4 GB) + Qwen3-8B-Q4_K_M (~4.7 GB) |
+| TTS models (openedai-speech) | ~6 GB | Piper/Kokoro voice models downloaded on first run |
+| PostgreSQL data | ~100 MB | Grows slowly with calendar events, tasks, email history |
+| Qdrant semantic memory | ~50 MB | Grows with learned facts; small even after years of use |
+| Redis data | negligible | Ephemeral task queue; flushed on restart |
+| Planka uploads | variable | Depends on card attachments |
+| Docker build cache | 0-40 GB | Accumulates across rebuilds; fully reclaimable at any time |
+| **Total (no build cache)** | **~60-80 GB** | After `docker builder prune -a` |
+| **Total (with build cache)** | **up to 120 GB** | Left uncleaned after many deployments |
+
+**Keeping storage healthy:**
+- Run `docker builder prune -a` after every major deployment — build cache is 100% reclaimable.
+- Run `docker image prune -a` (or `docker system prune -a`) periodically to remove old image tags after upgrades.
+- Orphan volumes (named volumes left behind by removed services) are flagged in the Diagnostics widget with cleanup commands.
+- The Diagnostics widget Storage panel shows a live breakdown and flags both stale build cache and orphan volumes.
+
 ### Deployment Expectations
 
 First-time builds and model downloads incur significant durations:
