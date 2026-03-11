@@ -303,6 +303,61 @@ export class DiagnosticsWidget extends HTMLElement {
 		`;
 	}
 
+	private _volumeInventoryHtml(srv: any): string {
+		const vols: any[] = srv.docker_volume_inventory || [];
+		const bcGb: number = srv.docker_buildcache_gb || 0;
+		if (vols.length === 0 && bcGb < 0.05) return '';
+
+		const orphans = vols.filter(v => v.orphan && v.gb > 0);
+		const active = vols.filter(v => !v.orphan);
+		const totalOrphanGb = orphans.reduce((s: number, v: any) => s + (v.gb > 0 ? v.gb : 0), 0);
+
+		const volRow = (v: any): string => {
+			const gbLabel = v.gb >= 0 ? `${v.gb} GB` : '?';
+			const chip = v.orphan
+				? `<span class="vi-chip vi-chip--orphan">orphan</span>`
+				: `<span class="vi-chip vi-chip--active">active</span>`;
+			const cmd = v.orphan
+				? `<details class="vi-cmd"><summary>${this.tr('vi_cleanup', 'cleanup')}</summary><code>docker volume rm openzero_${this.esc(v.name)}</code></details>`
+				: '';
+			return `
+				<div class="vi-row${v.orphan ? ' vi-row--orphan' : ''}">
+					<span class="vi-name">${this.esc(v.name)}</span>
+					${chip}
+					<span class="vi-size">${gbLabel}</span>
+					${cmd}
+				</div>
+			`;
+		};
+
+		const bcRow = bcGb > 0.05 ? `
+			<div class="vi-row vi-row--cache">
+				<span class="vi-name">build cache</span>
+				<span class="vi-chip vi-chip--cache">${this.tr('vi_reclaimable', 'reclaimable')}</span>
+				<span class="vi-size">${bcGb} GB</span>
+				<details class="vi-cmd"><summary>${this.tr('vi_cleanup', 'cleanup')}</summary><code>docker builder prune -a</code></details>
+			</div>
+		` : '';
+
+		const warnBadge = (orphans.length > 0 || bcGb > 0.5)
+			? `<span class="vol-inv-warn">${orphans.length > 0 ? `${orphans.length} orphan${orphans.length > 1 ? 's' : ''} · ${totalOrphanGb.toFixed(1)} GB` : ''}${orphans.length > 0 && bcGb > 0.5 ? ' · ' : ''}${bcGb > 0.5 ? `cache ${bcGb} GB` : ''}</span>`
+			: '';
+
+		return `
+			<details class="vol-inventory" aria-label="${this.tr('aria_vol_inventory', 'Volume Inventory')}">
+				<summary class="vol-inv-summary">
+					<span class="vol-inv-title">${this.tr('diag_vol_title', 'Volume Inventory')}</span>
+					<span class="vol-inv-meta">${vols.length} ${this.tr('vi_volumes', 'volumes')} ${warnBadge}</span>
+				</summary>
+				<div class="vi-table" role="list">
+					${bcRow}
+					${orphans.map(v => volRow(v)).join('')}
+					${active.map(v => volRow(v)).join('')}
+				</div>
+			</details>
+		`;
+	}
+
 	updatePanel() {
 		const el = this.shadowRoot?.querySelector('#diag-panel');
 		if (!el) return;
@@ -505,6 +560,8 @@ export class DiagnosticsWidget extends HTMLElement {
 						`;
 					})()}
 				</div>
+
+				${this._volumeInventoryHtml(srv)}
 
 				<!-- Left Column: Hardware -->
 				<div class="diag-col hardware">
@@ -773,6 +830,29 @@ export class DiagnosticsWidget extends HTMLElement {
 				.b-btn.tier-deep:hover:not(:disabled) { background: hsla(260,70%,65%,0.12); border-color: hsl(260,70%,65%); color: hsl(260,70%,75%); }
 
 				@keyframes diag-pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+
+				.vol-inventory { grid-column: 1 / -1; background: hsla(0,0%,100%,0.02); border: 1px solid hsla(0,0%,100%,0.06); border-radius: 0.6rem; overflow: hidden; }
+				.vol-inv-summary { display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem 1rem; cursor: pointer; user-select: none; list-style: none; }
+				.vol-inv-summary::-webkit-details-marker { display: none; }
+				.vol-inv-summary::marker { display: none; }
+				.vol-inv-summary:hover { background: hsla(0,0%,100%,0.03); }
+				.vol-inv-title { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-secondary); }
+				.vol-inv-meta { font-size: 0.6rem; color: var(--text-muted); margin-left: auto; display: flex; align-items: center; gap: 0.4rem; }
+				.vol-inv-warn { font-size: 0.58rem; font-weight: 700; color: hsl(35,90%,60%); background: hsla(35,90%,58%,0.12); border: 1px solid hsla(35,90%,58%,0.3); border-radius: 3px; padding: 0.05rem 0.35rem; }
+				.vi-table { padding: 0 0.75rem 0.75rem; display: flex; flex-direction: column; gap: 0.25rem; }
+				.vi-row { display: grid; grid-template-columns: 1fr auto auto auto; align-items: center; gap: 0.5rem; padding: 0.35rem 0.5rem; border-radius: 0.3rem; background: hsla(0,0%,100%,0.015); border: 1px solid hsla(0,0%,100%,0.03); }
+				.vi-row--orphan { background: hsla(35,90%,58%,0.05); border-color: hsla(35,90%,58%,0.15); }
+				.vi-row--cache { background: hsla(45,80%,50%,0.05); border-color: hsla(45,80%,50%,0.15); }
+				.vi-name { font-size: 0.65rem; font-family: var(--font-mono); color: var(--text-secondary); font-weight: 600; }
+				.vi-size { font-size: 0.62rem; font-family: var(--font-mono); color: var(--text-muted); font-weight: 700; text-align: right; min-width: 3.5rem; }
+				.vi-chip { font-size: 0.5rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; border-radius: 3px; padding: 0.08rem 0.35rem; }
+				.vi-chip--active { color: var(--color-success); background: hsla(140,55%,55%,0.1); border: 1px solid hsla(140,55%,55%,0.25); }
+				.vi-chip--orphan { color: hsl(35,90%,60%); background: hsla(35,90%,58%,0.12); border: 1px solid hsla(35,90%,58%,0.35); }
+				.vi-chip--cache { color: hsl(45,80%,60%); background: hsla(45,80%,50%,0.12); border: 1px solid hsla(45,80%,50%,0.3); }
+				.vi-cmd { grid-column: 1 / -1; }
+				.vi-cmd summary { font-size: 0.58rem; color: var(--text-muted); cursor: pointer; padding: 0.2rem 0; }
+				.vi-cmd summary:hover { color: var(--text-secondary); }
+				.vi-cmd code { display: block; font-size: 0.58rem; font-family: var(--font-mono); background: hsla(0,0%,100%,0.06); padding: 0.3rem 0.5rem; border-radius: 4px; margin-top: 0.2rem; color: var(--text-secondary); word-break: break-all; }
 
 				@media (max-width: 1100px) {
 					.diag-layout { grid-template-columns: 1fr; }
