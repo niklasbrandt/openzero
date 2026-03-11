@@ -186,7 +186,6 @@ export class DiagnosticsWidget extends HTMLElement {
 		const total = srv.ram_total_gb || 1;
 		const appsGb: number = srv.ram_apps_gb || 0;
 		const cacheGb: number = srv.ram_bufcache_gb || 0;
-		const freeGb: number = srv.ram_free_gb ?? Math.max(total - appsGb - cacheGb, 0);
 		const containerRam: { name: string; gb: number; orphan?: boolean }[] = srv.container_ram || [];
 
 		// Build named segments from live container data
@@ -272,9 +271,13 @@ export class DiagnosticsWidget extends HTMLElement {
 			segs.push({ name: 'cache', label: this.tr('ram_cache', 'page cache'), gb: cacheGb, pct: (cacheGb / total) * 100, color: 'hsla(174,40%,50%,0.28)' });
 		}
 
-		// Free
+		// Free — use the residual after all named segments so the bar fills exactly 100%.
+		// (ram_free_gb is MemFree which excludes reclaimable cache; using it would overflow
+		// the bar because cache is already shown as separate segments above.)
+		const usedBySegs = segs.reduce((sum, s) => sum + s.gb, 0);
+		const freeGb = parseFloat(Math.max(total - usedBySegs, 0).toFixed(1));
 		if (freeGb > 0.05) {
-			segs.push({ name: 'free', label: this.tr('ram_free', 'free'), gb: parseFloat(freeGb.toFixed(1)), pct: (freeGb / total) * 100, color: 'hsla(0,0%,100%,0.04)' });
+			segs.push({ name: 'free', label: this.tr('ram_free', 'free'), gb: freeGb, pct: (freeGb / total) * 100, color: 'hsla(0,0%,100%,0.04)' });
 		}
 
 		// Sort non-free segments by size descending; free always last
@@ -830,11 +833,11 @@ export class DiagnosticsWidget extends HTMLElement {
 				.ram-strip-bar { height: 10px; background: hsla(0, 0%, 100%, 0.05); border-radius: 5px; overflow: hidden; display: flex; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); }
 				.ram-seg-svc { height: 100%; transition: width 0.7s cubic-bezier(0.4, 0, 0.2, 1); flex-shrink: 0; }
 				.ram-strip-legend { display: flex; flex-wrap: wrap; gap: 0.35rem 1rem; margin-top: 0.6rem; }
-				.leg-item { display: flex; align-items: center; gap: 0.35rem; font-size: 0.62rem; color: var(--text-muted); font-weight: 500; opacity: 0.6; }
+				.leg-item { display: flex; align-items: center; gap: 0.35rem; font-size: 0.62rem; color: var(--text-muted); font-weight: 500; }
 				.leg-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; border: 1px solid transparent; }
 				.leg-name { color: var(--text-muted); }
 				.leg-gb { font-family: var(--font-mono); font-size: 0.6rem; color: var(--text-muted); }
-				.leg-item--large { opacity: 1; font-weight: 600; }
+				.leg-item--large { font-weight: 600; }
 				.leg-item--large .leg-name { color: var(--text-primary, #e2e8f0); font-weight: 700; }
 				.leg-item--large .leg-gb { color: var(--text-secondary, #94a3b8); font-weight: 700; }
 				.leg-orphan-chip { font-size: 0.52rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: hsl(35,90%,58%); background: hsla(35,90%,58%,0.12); border: 1px solid hsla(35,90%,58%,0.35); border-radius: 3px; padding: 0 0.3rem; line-height: 1.5; }
