@@ -1754,6 +1754,30 @@ async def server_info() -> dict:
 					n = n[len(pfx):]
 			return _re.sub(r"-\d+$", "", n)
 
+		def _configured_services() -> set:
+			"""Parse /app/compose.yml (mounted from project root) for service names."""
+			try:
+				with open("/app/compose.yml") as _f:
+					_in_svcs = False
+					_svcs: set = set()
+					for _line in _f:
+						_stripped = _line.rstrip()
+						if _stripped == "services:":
+							_in_svcs = True
+							continue
+						if _in_svcs:
+							# Service names sit at exactly 2-space indent with no deeper nesting
+							_m = _re.match(r"^  ([a-zA-Z][a-zA-Z0-9_-]*):\s*$", _stripped)
+							if _m:
+								_svcs.add(_m.group(1))
+							elif _stripped and not _stripped[0].isspace() and not _stripped.startswith("#"):
+								_in_svcs = False  # left the services block
+					return _svcs
+			except Exception:
+				return set()
+
+		_conf_svcs = _configured_services()
+
 		async with httpx.AsyncClient(
 			transport=_docker_transport,
 			base_url="http://docker",
@@ -1765,6 +1789,12 @@ async def server_info() -> dict:
 
 				async def _stats(c: dict):
 					label = _cname(c["Names"][0]) if c.get("Names") else c["Id"][:8]
+					# Detect orphans: compose-project containers whose service is no
+					# longer defined in the current docker-compose.yml.
+					labels = c.get("Labels", {})
+					svc = labels.get("com.docker.compose.service", "")
+					is_openzero = labels.get("com.docker.compose.project", "") == "openzero"
+					orphan = is_openzero and bool(_conf_svcs) and svc not in _conf_svcs
 					try:
 						sr = await dc.get(f"/containers/{c['Id']}/stats?stream=false")
 						if sr.status_code != 200:
@@ -1787,7 +1817,10 @@ async def server_info() -> dict:
 							rss = max(usage - reclaimable, 0)
 						if rss < 8 * 1024 * 1024:  # skip < 8 MB (noise)
 							return None
-						return {"name": label, "gb": round(rss / (1024 ** 3), 2)}
+						result: dict = {"name": label, "gb": round(rss / (1024 ** 3), 2)}
+						if orphan:
+							result["orphan"] = True
+						return result
 					except Exception:
 						return None
 
