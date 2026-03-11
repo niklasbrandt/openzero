@@ -184,7 +184,7 @@ translations: dict[str, str] = {
 	"description_label": "Description",
 	"detecting_hw": "Detecting hardware...",
 	"diag_hdd_free": "Free Space",
-	"diag_hdd_other": "System / Other",
+	"diag_hdd_other": "OS & Host Files",
 	"diag_hdd_title": "System Storage (HDD)",
 	"diag_ram_title": "System Memory (RAM)",
 	"diag_vol_title": "Volume Inventory",
