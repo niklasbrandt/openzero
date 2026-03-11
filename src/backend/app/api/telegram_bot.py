@@ -281,7 +281,7 @@ async def start_telegram_bot():
 
 			# Clean action tags from output
 			from app.services.agent_actions import parse_and_execute_actions
-			greeting, _ = await parse_and_execute_actions(raw_greeting)
+			greeting, _, _ = await parse_and_execute_actions(raw_greeting)
 			logger.debug("Greeting Seq - OK")
 
 			# Prepend real current time (don't trust LLM for timestamps)
@@ -383,7 +383,7 @@ async def _recover_unanswered_messages():
 
 		async with AsyncSessionLocal() as db:
 			from app.services.agent_actions import parse_and_execute_actions
-			clean_reply, _ = await parse_and_execute_actions(response, db=db)
+			clean_reply, _, _ = await parse_and_execute_actions(response, db=db)
 
 		from app.services.llm import last_model_used
 		await save_global_message("telegram", "z", clean_reply, model=last_model_used.get())
@@ -687,7 +687,7 @@ async def cmd_remind(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	
 	response = await chat(prompt)
 	from app.services.agent_actions import parse_and_execute_actions
-	_, executed = await parse_and_execute_actions(response)
+	_, executed, _ = await parse_and_execute_actions(response)
 	
 	if executed:
 		await safe_reply(update, "\n".join(executed))
@@ -713,7 +713,7 @@ async def cmd_custom(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	
 	response = await chat(prompt)
 	from app.services.agent_actions import parse_and_execute_actions
-	_, executed = await parse_and_execute_actions(response)
+	_, executed, _ = await parse_and_execute_actions(response)
 	
 	if executed:
 		await safe_reply(update, "\n".join(executed))
@@ -1066,7 +1066,7 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 
 	async with AsyncSessionLocal() as db:
 		from app.services.agent_actions import parse_and_execute_actions
-		clean_reply, _ = await parse_and_execute_actions(response, db=db)
+		clean_reply, _, _ = await parse_and_execute_actions(response, db=db)
 
 	# Save Z's reply to global history
 	from app.services.llm import last_model_used
@@ -1122,7 +1122,7 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		
 		async with AsyncSessionLocal() as db:
 			from app.services.agent_actions import parse_and_execute_actions
-			clean_reply, _ = await parse_and_execute_actions(response, db=db)
+			clean_reply, _, _ = await parse_and_execute_actions(response, db=db)
 
 		await save_global_message("telegram", "z", clean_reply, model=last_model_used.get())
 		
