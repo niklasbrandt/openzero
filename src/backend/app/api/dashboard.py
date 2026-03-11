@@ -1899,14 +1899,58 @@ async def server_info() -> dict:
 					key=lambda x: x["gb"], reverse=True,
 				)
 
-				# Docker Images size
+				# Docker Images size — per-image breakdown
 				images_resp = await dc.get("/images/json")
 				if images_resp.status_code == 200:
+					_img_palette: dict[str, str] = {
+						"backend": "hsl(173,60%,38%)",
+						"postgres": "hsl(207,62%,50%)",
+						"redis": "hsl(7,75%,58%)",
+						"qdrant": "hsl(16,75%,58%)",
+						"pihole": "hsl(270,60%,60%)",
+						"traefik": "hsl(185,65%,50%)",
+						"planka": "hsl(220,70%,60%)",
+						"whisper": "hsl(300,55%,62%)",
+						"tts": "hsl(30,70%,55%)",
+						"nginx": "hsl(100,55%,45%)",
+						"llama.cpp": "hsl(255,55%,60%)",
+						"openedai-speech": "hsl(30,70%,55%)",
+						"openai-whisper-asr-webservice": "hsl(300,55%,62%)",
+					}
+
+					def _img_hsl(n: str) -> str:
+						return f"hsl({sum(ord(c) for c in n) % 360},52%,50%)"
+
 					images = images_resp.json()
-					total_image_bytes = sum(img.get("Size", 0) for img in images)
-					image_gb = round(total_image_bytes / (1024 ** 3), 1)
-					if image_gb > 0:
-						info["disk_breakdown"].append({"name": "Docker Images", "gb": image_gb, "color": "hsl(200,60%,45%)"})
+					_img_bytes_map: dict[str, int] = {}
+					for _img in images:
+						_tags = _img.get("RepoTags") or []
+						if not _tags or _tags == ["<none>:<none>"]:
+							_sname = "untagged"
+						else:
+							_repo = _tags[0].split(":")[0]  # strip tag
+							_sname = _repo.split("/")[-1]   # last path segment
+						_img_bytes_map[_sname] = _img_bytes_map.get(_sname, 0) + _img.get("Size", 0)
+
+					_img_min_bytes = int(0.07 * (1024 ** 3))  # show own segment if >= 70 MB
+					_img_other_bytes = 0
+					for _sname, _sbytes in sorted(_img_bytes_map.items(), key=lambda x: -x[1]):
+						if _sbytes < _img_min_bytes:
+							_img_other_bytes += _sbytes
+							continue
+						info["disk_breakdown"].append({
+							"name": _sname,
+							"gb": round(_sbytes / (1024 ** 3), 1),
+							"color": _img_palette.get(_sname.lower(), _img_hsl(_sname)),
+							"group": "docker_image",
+						})
+					if _img_other_bytes >= int(0.05 * (1024 ** 3)):
+						info["disk_breakdown"].append({
+							"name": "other images",
+							"gb": round(_img_other_bytes / (1024 ** 3), 1),
+							"color": "hsl(200,30%,45%)",
+							"group": "docker_image",
+						})
 
 				# models volume disk usage — exec `du -sb /models` in any running LLM container
 				_llm_containers = [
