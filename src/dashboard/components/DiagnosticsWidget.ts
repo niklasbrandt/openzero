@@ -563,7 +563,7 @@ export class DiagnosticsWidget extends HTMLElement {
 							<div class="ram-bar-hover-tip" id="ram-bar-htip" aria-hidden="true" role="tooltip"></div>
 							<div class="ram-strip-legend">
 								${this._ramBarSegments(srv).filter(s => s.name !== 'free').map(s => `
-									<div class="leg-item${s.orphan ? ' leg-item--orphan' : ''}">
+								<div class="leg-item${s.orphan ? ' leg-item--orphan' : ''}${s.gb >= 0.15 ? ' leg-item--large' : ''}">
 										<span class="leg-dot" style="background:${s.color};border-color:${s.color}"></span>
 										<span class="leg-name">${this.esc(s.label)}</span>
 										<span class="leg-gb">${s.gb}G</span>
@@ -634,7 +634,7 @@ export class DiagnosticsWidget extends HTMLElement {
 								const tip = bloatTip || s.desc || '';
 								
 								return `
-									<div class="leg-item${tip ? ' has-tip' : ''}${bloated ? ' leg-item--bloat' : ''}" ${tip ? `data-tip="${this.esc(tip)}"` : ''}>
+								<div class="leg-item${tip ? ' has-tip' : ''}${bloated ? ' leg-item--bloat' : ''}${s.gb >= 0.15 ? ' leg-item--large' : ''}" ${tip ? `data-tip="${this.esc(tip)}"` : ''}>
 											<span class="leg-dot" style="background:${s.color};border-color:${s.color}"></span>
 											<span class="leg-name">${this.esc(s.label)}</span>
 											<span class="leg-gb">${s.gb}G</span>
@@ -834,6 +834,8 @@ export class DiagnosticsWidget extends HTMLElement {
 				.leg-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; border: 1px solid transparent; }
 				.leg-name { color: var(--text-secondary); }
 				.leg-gb { font-family: var(--font-mono); font-size: 0.6rem; color: var(--text-muted); }
+				.leg-item--large .leg-name { color: var(--text-primary, #e2e8f0); font-weight: 700; }
+				.leg-item--large .leg-gb { color: var(--text-secondary, #94a3b8); font-weight: 700; }
 				.leg-orphan-chip { font-size: 0.52rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: hsl(35,90%,58%); background: hsla(35,90%,58%,0.12); border: 1px solid hsla(35,90%,58%,0.35); border-radius: 3px; padding: 0 0.3rem; line-height: 1.5; }
 				.leg-bloat-chip { font-size: 0.52rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: hsl(35,90%,58%); background: hsla(35,90%,58%,0.12); border: 1px solid hsla(35,90%,58%,0.35); border-radius: 3px; padding: 0 0.3rem; line-height: 1.5; margin-left: 0.2rem; }
 
