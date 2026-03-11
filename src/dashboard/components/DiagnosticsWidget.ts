@@ -574,20 +574,20 @@ export class DiagnosticsWidget extends HTMLElement {
 					${cfgTiers.length > 0 ? `
 					<div class="llm-ram-breakdown">
 						${tierNames.map((name, idx) => {
-							const td = tiers[name] || {};
-							const isOnline = td.status === 'online';
-							const isBusy = td.activity === 'processing';
-							const dotClass = !isOnline ? 'offline' : isBusy ? 'processing' : 'online';
-							const statusLabel = !isOnline ? 'OFFLINE' : isBusy ? 'BUSY' : 'IDLE';
-							const color = tierColors[idx];
-							const ramGb = ramEstFor(name);
-							const ctx = ctxFor(name);
-							const batch = batchFor(name);
-							const predict = predictFor(name);
-							const threads = threadsFor(name);
-							const model = modelFor(name);
-							const liveRamGb = ((srv.container_ram || []).find((c: any) => c.name === 'llm-' + name) || {}).gb || 0;
-							return `<div class="llm-tier-card" style="--tier-color:${color}">
+			const td = tiers[name] || {};
+			const isOnline = td.status === 'online';
+			const isBusy = td.activity === 'processing';
+			const dotClass = !isOnline ? 'offline' : isBusy ? 'processing' : 'online';
+			const statusLabel = !isOnline ? 'OFFLINE' : isBusy ? 'BUSY' : 'IDLE';
+			const color = tierColors[idx];
+			const ramGb = ramEstFor(name);
+			const ctx = ctxFor(name);
+			const batch = batchFor(name);
+			const predict = predictFor(name);
+			const threads = threadsFor(name);
+			const model = modelFor(name);
+			const liveRamGb = ((srv.container_ram || []).find((c: any) => c.name === 'llm-' + name) || {}).gb || 0;
+			return `<div class="llm-tier-card" style="--tier-color:${color}">
 								<div class="ltc-header">
 									<span class="svc-dot ${dotClass}"></span>
 									<span class="ltc-name" style="color:${color}">${this.displayTier(name)}</span>
@@ -602,16 +602,16 @@ export class DiagnosticsWidget extends HTMLElement {
 									${(liveRamGb || ramGb) ? `<div class="ltc-spec has-tip" data-tip="${liveRamGb ? 'Live RAM from Docker stats — model weights + KV cache + compute buffers' : 'Estimated model weight RAM (excludes KV cache and compute overhead)'}"><span>${liveRamGb ? 'RAM live' : 'RAM est'}</span><strong style="color:${color}">${liveRamGb || ramGb} GB</strong></div>` : ''}
 								</div>
 							</div>`;
-						}).join('')}
+		}).join('')}
 					</div>` : ''}
 					<div class="ram-strip-header">
 						<span class="ram-title">${this.tr('diag_ram_title', 'System Memory (RAM)')}</span>
 					${(() => {
-						const _segs = this._ramBarSegments(srv);
-						const _avail = _segs.find(s => s.name === 'free')?.gb || 0;
-						const _used = parseFloat(Math.max((srv.ram_total_gb || 0) - _avail, 0).toFixed(1));
-						return `<span class="ram-value">${_used}GB / ${srv.ram_total_gb}GB</span>`;
-					})()}
+				const _segs = this._ramBarSegments(srv);
+				const _avail = _segs.find(s => s.name === 'free')?.gb || 0;
+				const _used = parseFloat(Math.max((srv.ram_total_gb || 0) - _avail, 0).toFixed(1));
+				return `<span class="ram-value">${_used}GB / ${srv.ram_total_gb}GB</span>`;
+			})()}
 					</div>
 					<div class="ram-strip-bar" id="ram-seg-bar">
 						${this._ramBarSegments(srv).map(s => `
@@ -619,7 +619,7 @@ export class DiagnosticsWidget extends HTMLElement {
 						`).join('')}
 					</div>
 					${(() => {
-						return `
+				return `
 							<div class="ram-bar-hover-tip" id="ram-bar-htip" aria-hidden="true" role="tooltip"></div>
 							<div class="ram-strip-legend">
 								${this._ramBarSegments(srv).filter(s => s.name !== 'free').map(s => `
@@ -632,7 +632,7 @@ export class DiagnosticsWidget extends HTMLElement {
 								`).join('')}
 							</div>
 						`;
-					})()}
+			})()}
 				</div>
 
 				<!-- HDD Row: System Storage -->
@@ -648,18 +648,18 @@ export class DiagnosticsWidget extends HTMLElement {
 					</div>
 					<div class="ram-bar-hover-tip hdd-bar-hover-tip" id="hdd-bar-htip" aria-hidden="true" role="tooltip"></div>
 					${(() => {
-						const activeGb = tierNames.reduce((s, n) => s + ramEstFor(n), 0);
-						return `
+				const activeGb = tierNames.reduce((s, n) => s + ramEstFor(n), 0);
+				return `
 							<div class="ram-strip-legend">
 								${this._hddBarSegments(srv).filter(s => s.name !== 'free').map(s => {
-									const isModels = s.name === 'models';
-									const bloated = isModels && activeGb > 0 && s.gb > activeGb * 1.5;
-								const bloatTip = bloated
-									? `Models volume is ${s.gb} GB but current tiers only need ~${activeGb.toFixed(1)} GB. Stale files from previous downloads are taking up space.`
-									: '';
-								const tip = bloatTip || s.desc || '';
-								
-								return `
+					const isModels = s.name === 'models';
+					const bloated = isModels && activeGb > 0 && s.gb > activeGb * 1.5;
+					const bloatTip = bloated
+						? `Models volume is ${s.gb} GB but current tiers only need ~${activeGb.toFixed(1)} GB. Stale files from previous downloads are taking up space.`
+						: '';
+					const tip = bloatTip || s.desc || '';
+
+					return `
 								<div class="leg-item${tip ? ' has-tip' : ''}${bloated ? ' leg-item--bloat' : ''}${s.gb >= 0.15 ? ' leg-item--large' : ''}" ${tip ? `data-tip="${this.esc(tip)}"` : ''}>
 											<span class="leg-dot" style="background:${s.color};border-color:${s.color}"></span>
 											<span class="leg-name">${this.esc(s.label)}</span>
@@ -667,10 +667,10 @@ export class DiagnosticsWidget extends HTMLElement {
 											${bloated ? `<span class="leg-bloat-chip">stale</span>` : ''}
 										</div>
 									`;
-								}).join('')}
+				}).join('')}
 							</div>
 						`;
-					})()}
+			})()}
 				</div>
 
 				${this._volumeInventoryHtml(srv)}
