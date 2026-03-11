@@ -20,7 +20,7 @@ export class DiagnosticsWidget extends HTMLElement {
 	private _onVisChange = () => this._handleVisibilityChange();
 
 	private static readonly EXPECTATIONS: Record<string, { model: string; fast: number; good: number; ok: number }> = {
-		instant: { model: '~0.6B', fast: 15, good: 8, ok: 3 },
+		fast: { model: '~0.6B', fast: 15, good: 8, ok: 3 },
 		deep: { model: '~8B', fast: 10, good: 5, ok: 2 },
 	};
 
@@ -50,7 +50,7 @@ export class DiagnosticsWidget extends HTMLElement {
 		'openai-whisper-asr-webservice': 'Whisper speech-to-text webservice image.',
 		'pihole': 'Pi-hole DNS-level ad and tracker blocking server image.',
 		'nginx': 'Nginx HTTP server image (used for error pages).',
-		'llama.cpp': 'llama.cpp inference server image — shared by the instant and deep LLM tiers.',
+		'llama.cpp': 'llama.cpp inference server image — shared by the fast and deep LLM tiers.',
 		'other images': 'Smaller Docker images not shown individually (each under 70 MB).',
 		'untagged': 'Untagged or dangling image layers with no associated tag.',
 		// Catch-all
@@ -179,7 +179,7 @@ export class DiagnosticsWidget extends HTMLElement {
 		this.isBenchRunning = true;
 		this.updatePanel();
 		try {
-			for (const tier of ['instant', 'deep']) {
+			for (const tier of ['fast', 'deep']) {
 				await this._runBenchmarkCore(tier);
 				this.updatePanel();
 			}
@@ -192,7 +192,7 @@ export class DiagnosticsWidget extends HTMLElement {
 	}
 
 	private displayTier(tier: string): string {
-		return tier === 'instant' ? 'fast' : tier;
+		return tier === 'fast' ? 'fast' : tier;
 	}
 
 	private getRating(tps: number, tier: string): { cls: string; icon: string; label: string; hint: string } {
@@ -205,7 +205,7 @@ export class DiagnosticsWidget extends HTMLElement {
 
 	private _svcColor(name: string): string {
 		const colors: Record<string, string> = {
-			'llm-instant': 'var(--accent-primary)',
+			'llm-fast': 'var(--accent-primary)',
 			'llm-deep': 'hsl(260,70%,65%)',
 			'postgres': 'hsl(140,55%,55%)',
 			'qdrant': 'hsl(30,80%,60%)',
@@ -521,14 +521,14 @@ export class DiagnosticsWidget extends HTMLElement {
 				const parts = t.model.split('/');
 				return parts[parts.length - 1].replace('.gguf', '');
 			}
-			return name === 'instant' ? 'Qwen3-0.6B' : 'Qwen3-8B';
+			return name === 'fast' ? 'Qwen3-0.6B' : 'Qwen3-8B';
 		};
 		const ramEstFor = (name: string): number => {
 			const t = cfgTiers.find((x: any) => x.tier === name);
 			return t?.ram_est_gb || 0;
 		};
 
-		const tierNames = ['deep', 'instant'];
+		const tierNames = ['deep', 'fast'];
 		const tierColors = ['hsl(260,70%,65%)', 'var(--accent-primary)'];
 		const ctxFor = (name: string): number => { const t = cfgTiers.find((x: any) => x.tier === name); return t?.ctx || 0; };
 		const batchFor = (name: string): number => { const t = cfgTiers.find((x: any) => x.tier === name); return t?.batch || 0; };
@@ -701,7 +701,7 @@ export class DiagnosticsWidget extends HTMLElement {
 					<div class="bench-actions" style="margin-top: 0">
 						<button class="b-btn main has-tip ${this.isBenchRunning ? 'running' : ''}" ${this.isBenchRunning ? 'disabled' : ''} data-tier="all" data-tip="Run performance tests across all active tiers.">${this.isBenchRunning ? 'Benchmarking...' : 'Benchmark all LLMs'}</button>
 						<div class="b-row">
-							<button class="b-btn sm tier-instant has-tip ${this.isBenchRunning ? 'running' : ''}" ${this.isBenchRunning ? 'disabled' : ''} data-tier="instant" data-tip="Test latency of the fast tier.">Fast</button>
+							<button class="b-btn sm tier-fast has-tip ${this.isBenchRunning ? 'running' : ''}" ${this.isBenchRunning ? 'disabled' : ''} data-tier="fast" data-tip="Test latency of the fast tier.">Fast</button>
 							<button class="b-btn sm tier-deep has-tip ${this.isBenchRunning ? 'running' : ''}" ${this.isBenchRunning ? 'disabled' : ''} data-tier="deep" data-tip="Test throughput of the deep tier.">Deep</button>
 						</div>
 					</div>
@@ -940,8 +940,8 @@ export class DiagnosticsWidget extends HTMLElement {
 				.b-btn:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(100%); }
 				.b-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; }
 				.b-btn.sm { font-size: 0.55rem; padding: 0.4rem 0.2rem; flex: 1; }
-				.b-btn.tier-instant { border-color: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.4); color: var(--accent-primary); }
-				.b-btn.tier-instant:hover:not(:disabled) { background: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.12); border-color: var(--accent-primary); color: var(--accent-primary); }
+				.b-btn.tier-fast { border-color: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.4); color: var(--accent-primary); }
+				.b-btn.tier-fast:hover:not(:disabled) { background: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.12); border-color: var(--accent-primary); color: var(--accent-primary); }
 				.b-btn.tier-deep { border-color: hsla(260,70%,65%,0.4); color: hsl(260,70%,70%); }
 				.b-btn.tier-deep:hover:not(:disabled) { background: hsla(260,70%,65%,0.12); border-color: hsl(260,70%,65%); color: hsl(260,70%,75%); }
 

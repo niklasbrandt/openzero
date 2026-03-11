@@ -81,7 +81,7 @@ def _keyword_urgency(text: str) -> str | None:
 
 
 async def _llm_classify_urgency(task_titles: list[str]) -> dict[str, str]:
-    """Use the instant LLM tier to classify urgency for tasks not caught by keywords.
+    """Use the fast LLM tier to classify urgency for tasks not caught by keywords.
 
     Returns a dict mapping task title → 'urgent' | 'medium' | 'low'.
     Falls back to 'medium' for any title that cannot be matched.
@@ -100,7 +100,7 @@ async def _llm_classify_urgency(task_titles: list[str]) -> dict[str, str]:
     )
     try:
         from app.services.llm import chat
-        result = await chat(prompt, tier="instant")
+        result = await chat(prompt, tier="fast")
         mapping: dict[str, str] = {}
         for line in result.strip().splitlines():
             if ':' not in line:

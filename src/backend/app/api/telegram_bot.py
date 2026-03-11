@@ -589,14 +589,14 @@ async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
 			except Exception:
 				return False
 
-		inst_ok, deep_ok = await asyncio.gather(
-			_ping_tier(_s.LLM_INSTANT_URL),
+		fast_ok, deep_ok = await asyncio.gather(
+			_ping_tier(_s.LLM_FAST_URL),
 			_ping_tier(_s.LLM_DEEP_URL),
 		)
 		def dot(ok):
 			return "🟢" if ok else "🔴"
 		l_text = (
-			f"{dot(inst_ok)} Instant  "
+			f"{dot(fast_ok)} Fast  "
 			f"{dot(deep_ok)} Deep"
 		)
 		lang = await get_user_lang()
