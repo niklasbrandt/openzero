@@ -189,7 +189,6 @@ export class DiagnosticsWidget extends HTMLElement {
 	private _ramBarSegments(srv: any): { name: string; label: string; gb: number; pct: number; color: string; orphan?: boolean }[] {
 		const total = srv.ram_total_gb || 1;
 		const appsGb: number = srv.ram_apps_gb || 0;
-		const cacheGb: number = srv.ram_bufcache_gb || 0;
 		const containerRam: { name: string; gb: number; orphan?: boolean }[] = srv.container_ram || [];
 
 		// Build named segments from live container data
