@@ -20,8 +20,7 @@ export class DiagnosticsWidget extends HTMLElement {
     private _onVisChange = () => this._handleVisibilityChange();
 
     private static readonly EXPECTATIONS: Record<string, { model: string; fast: number; good: number; ok: number }> = {
-        instant: { model: '~3-4B', fast: 15, good: 8, ok: 3 },
-        standard: { model: '~8B', fast: 10, good: 5, ok: 2 },
+        instant: { model: '~0.6B', fast: 15, good: 8, ok: 3 },
         deep: { model: '~8B', fast: 10, good: 5, ok: 2 },
     };
 
@@ -213,15 +212,15 @@ export class DiagnosticsWidget extends HTMLElement {
                 const parts = t.model.split('/');
                 return parts[parts.length - 1].replace('.gguf', '');
             }
-            return name === 'instant' ? 'Qwen3-0.6B' : name === 'standard' ? 'Qwen3-8B' : 'Qwen3-8B';
+            return name === 'instant' ? 'Qwen3-0.6B' : 'Qwen3-8B';
         };
         const ramEstFor = (name: string): number => {
             const t = cfgTiers.find((x: any) => x.tier === name);
             return t?.ram_est_gb || 0;
         };
 
-        const tierNames = ['instant', 'standard', 'deep'];
-        const tierColors = ['var(--accent-primary)', 'hsl(200,80%,60%)', 'hsl(260,70%,65%)'];
+        const tierNames = ['instant', 'deep'];
+        const tierColors = ['var(--accent-primary)', 'hsl(260,70%,65%)'];
         const llmStatusHtml = tierNames.map((name, idx) => {
             const td = tiers[name] || {};
             const isOnline = td.status === 'online';
@@ -232,9 +231,8 @@ export class DiagnosticsWidget extends HTMLElement {
             const dotClass = !isOnline ? 'offline' : isBusy ? 'processing' : 'online';
             const statusLabel = !isOnline ? 'OFFLINE' : isBusy ? 'BUSY' : 'IDLE';
             const tierTips: Record<string, string> = {
-                'instant': 'Edge-optimized for near-zero latency intent detection.',
-                'standard': 'General-purpose reasoning and standard tool use.',
-                'deep': 'Chain-of-thought optimized for high-precision logic.'
+                'instant': 'Edge-optimized for near-zero latency on trivial requests.',
+                'deep': 'Full 8B model for conversation, reasoning, and strategic analysis.'
             };
             const ramPctOfTotal = srv.ram_total_gb && ramGb ? Math.min((ramGb / srv.ram_total_gb) * 100, 100) : 0;
             const color = tierColors[idx];
@@ -355,7 +353,7 @@ export class DiagnosticsWidget extends HTMLElement {
 						<button class="b-btn main has-tip ${this.isBenchRunning ? 'running' : ''}" ${this.isBenchRunning ? 'disabled' : ''} data-tier="all" data-tip="Run performance tests across all active tiers.">${this.isBenchRunning ? 'Benchmarking...' : 'Benchmark all LLMs'}</button>
 						<div class="b-row">
 							<button class="b-btn sm has-tip ${this.isBenchRunning ? 'running' : ''}" ${this.isBenchRunning ? 'disabled' : ''} data-tier="instant" data-tip="Test latency of the instant tier.">Instant</button>
-							<button class="b-btn sm has-tip ${this.isBenchRunning ? 'running' : ''}" ${this.isBenchRunning ? 'disabled' : ''} data-tier="standard" data-tip="Test speed of the standard tier.">Standard</button>
+
 							<button class="b-btn sm has-tip ${this.isBenchRunning ? 'running' : ''}" ${this.isBenchRunning ? 'disabled' : ''} data-tier="deep" data-tip="Test throughput of the deep tier.">Deep</button>
 						</div>
 					</div>

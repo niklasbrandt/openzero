@@ -239,10 +239,10 @@ async def start_telegram_bot():
 
 			raw_greeting = await chat(greeting_prompt, system_override=system_override, tier="deep")
 
-			# Fallback 1: deep tier timed out — try standard tier
+			# Fallback 1: deep tier timed out — retry with deep tier
 			if _is_error(raw_greeting):
-				logger.debug("Greeting - Deep tier timeout, falling back to standard")
-				raw_greeting = await chat(greeting_prompt, system_override=system_override, tier="standard")
+				logger.debug("Greeting - Deep tier returned error, retrying")
+				raw_greeting = await chat(greeting_prompt, system_override=system_override, tier="deep")
 
 			# Fallback 2: both models failed — send clean static greeting
 			if _is_error(raw_greeting):
@@ -538,15 +538,13 @@ async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
 			except Exception:
 				return False
 
-		inst_ok, std_ok, deep_ok = await asyncio.gather(
+		inst_ok, deep_ok = await asyncio.gather(
 			_ping_tier(_s.LLM_INSTANT_URL),
-			_ping_tier(_s.LLM_STANDARD_URL),
 			_ping_tier(_s.LLM_DEEP_URL),
 		)
 		dot = lambda ok: "🟢" if ok else "🔴"
 		l_text = (
 			f"{dot(inst_ok)} Instant  "
-			f"{dot(std_ok)} Standard  "
 			f"{dot(deep_ok)} Deep"
 		)
 		lang = await get_user_lang()

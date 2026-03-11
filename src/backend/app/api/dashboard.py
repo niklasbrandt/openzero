@@ -1667,7 +1667,6 @@ async def server_info() -> dict:
 	# --- Per-tier LLM props (threads, ctx, etc.) ---
 	tier_urls = {
 		"instant": settings.LLM_INSTANT_URL,
-		"standard": settings.LLM_STANDARD_URL,
 		"deep": settings.LLM_DEEP_URL,
 	}
 	physical_cores = os.cpu_count() or 0
@@ -1722,7 +1721,6 @@ async def server_info() -> dict:
 			# Thread detection from env (the actual configured value)
 			env_thread_map = {
 				"instant": os.environ.get("LLM_INSTANT_THREADS", "7"),
-				"standard": os.environ.get("LLM_STANDARD_THREADS", "7"),
 				"deep": os.environ.get("LLM_DEEP_THREADS", "7"),
 			}
 			configured_threads = int(env_thread_map.get(tier_name, "4"))
@@ -1802,16 +1800,9 @@ async def get_llm_config() -> dict:
 				"ram_est_gb": _ram_est("LLM_INSTANT_MODEL_FILE", settings.LLM_MODEL_INSTANT),
 			},
 			{
-				"tier": "standard",
-				"model": _model_display("LLM_STANDARD_MODEL_FILE", settings.LLM_MODEL_STANDARD),
-				"use_case": "Normal conversation, moderate reasoning, tool-intent",
-				"threads": int(os.environ.get("LLM_STANDARD_THREADS", "0")),
-				"ram_est_gb": _ram_est("LLM_STANDARD_MODEL_FILE", settings.LLM_MODEL_STANDARD),
-			},
-			{
 				"tier": "deep",
 				"model": _model_display("LLM_DEEP_MODEL_FILE", settings.LLM_MODEL_DEEP),
-				"use_case": "Complex reasoning, briefings, creative, strategic analysis",
+				"use_case": "Conversation, reasoning, creative tasks, briefings, strategic analysis",
 				"threads": int(os.environ.get("LLM_DEEP_THREADS", "0")),
 				"ram_est_gb": _ram_est("LLM_DEEP_MODEL_FILE", settings.LLM_MODEL_DEEP),
 			},
@@ -1890,7 +1881,6 @@ async def benchmark_llm(tier: str = "instant"):
 
 	tier_map = {
 		"instant": (settings.LLM_INSTANT_URL, settings.LLM_MODEL_INSTANT),
-		"standard": (settings.LLM_STANDARD_URL, settings.LLM_MODEL_STANDARD),
 		"deep": (settings.LLM_DEEP_URL, settings.LLM_MODEL_DEEP),
 	}
 	if tier not in tier_map:
@@ -1907,12 +1897,13 @@ async def benchmark_llm(tier: str = "instant"):
 		token_count = 0
 
 		# Qwen3 models consume all tokens in the reasoning phase if thinking is
-		# not suppressed — inject /no_think for instant/standard so the tokens
-		# budget goes to actual output, not CoT.
-		bench_messages: list[dict] = []
-		if tier != "deep":
-			bench_messages.append({"role": "system", "content": "/no_think"})
-		bench_messages.append({"role": "user", "content": prompt})
+		# Suppress Qwen3 thinking for all tiers — benchmarks measure raw generation
+		# speed.  The "thinking" API parameter is not honoured by the current
+		# llama.cpp build; /no_think is the only reliable way to disable CoT.
+		bench_messages: list[dict] = [
+			{"role": "system", "content": "/no_think"},
+			{"role": "user", "content": prompt},
+		]
 
 		async with httpx.AsyncClient(timeout=300) as client:
 			async with client.stream(
@@ -1959,7 +1950,6 @@ async def benchmark_llm(tier: str = "instant"):
 		import os
 		thread_env_map = {
 			"instant": "LLM_INSTANT_THREADS",
-			"standard": "LLM_STANDARD_THREADS",
 			"deep": "LLM_DEEP_THREADS",
 		}
 		configured_threads = int(os.environ.get(thread_env_map.get(tier, ""), "0"))
