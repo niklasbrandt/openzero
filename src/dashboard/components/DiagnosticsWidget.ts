@@ -571,47 +571,14 @@ export class DiagnosticsWidget extends HTMLElement {
 
 				<!-- Top Row: Prominent RAM -->
 				<div class="ram-strip">
-					${cfgTiers.length > 0 ? `
-					<div class="llm-ram-breakdown">
-						${tierNames.map((name, idx) => {
-			const td = tiers[name] || {};
-			const isOnline = td.status === 'online';
-			const isBusy = td.activity === 'processing';
-			const dotClass = !isOnline ? 'offline' : isBusy ? 'processing' : 'online';
-			const statusLabel = !isOnline ? 'OFFLINE' : isBusy ? 'BUSY' : 'IDLE';
-			const color = tierColors[idx];
-			const ramGb = ramEstFor(name);
-			const ctx = ctxFor(name);
-			const batch = batchFor(name);
-			const predict = predictFor(name);
-			const threads = threadsFor(name);
-			const model = modelFor(name);
-			const liveRamGb = ((srv.container_ram || []).find((c: any) => c.name === 'llm-' + name) || {}).gb || 0;
-			return `<div class="llm-tier-card" style="--tier-color:${color}">
-								<div class="ltc-header">
-									<span class="svc-dot ${dotClass}"></span>
-									<span class="ltc-name" style="color:${color}">${this.displayTier(name)}</span>
-									<span class="ltc-status ${dotClass}">${statusLabel}</span>
-								</div>
-								<div class="ltc-model">${this.esc(model)}</div>
-								<div class="ltc-specs">
-									${ctx ? `<div class="ltc-spec has-tip" data-tip="Context window — max tokens held in memory per request"><span>CTX</span><strong>${ctx.toLocaleString()}</strong></div>` : ''}
-									${threads ? `<div class="ltc-spec has-tip" data-tip="CPU threads allocated to this tier"><span>Threads</span><strong>${threads}</strong></div>` : ''}
-									${batch ? `<div class="ltc-spec has-tip" data-tip="Batch size — tokens processed per inference pass. Higher = faster first token but more RAM"><span>Batch</span><strong>${batch}</strong></div>` : ''}
-									${predict ? `<div class="ltc-spec has-tip" data-tip="Max tokens generated per response"><span>Max out</span><strong>${predict}</strong></div>` : ''}
-									${(liveRamGb || ramGb) ? `<div class="ltc-spec has-tip" data-tip="${liveRamGb ? 'Live RAM from Docker stats — model weights + KV cache + compute buffers' : 'Estimated model weight RAM (excludes KV cache and compute overhead)'}"><span>${liveRamGb ? 'RAM live' : 'RAM est'}</span><strong style="color:${color}">${liveRamGb || ramGb} GB</strong></div>` : ''}
-								</div>
-							</div>`;
-		}).join('')}
-					</div>` : ''}
 					<div class="ram-strip-header">
 						<span class="ram-title">${this.tr('diag_ram_title', 'System Memory (RAM)')}</span>
 					${(() => {
-				const _segs = this._ramBarSegments(srv);
-				const _avail = _segs.find(s => s.name === 'free')?.gb || 0;
-				const _used = parseFloat(Math.max((srv.ram_total_gb || 0) - _avail, 0).toFixed(1));
-				return `<span class="ram-value">${_used}GB / ${srv.ram_total_gb}GB</span>`;
-			})()}
+						const _segs = this._ramBarSegments(srv);
+						const _avail = _segs.find(s => s.name === 'free')?.gb || 0;
+						const _used = parseFloat(Math.max((srv.ram_total_gb || 0) - _avail, 0).toFixed(1));
+						return `<span class="ram-value">${_used}GB / ${srv.ram_total_gb}GB</span>`;
+					})()}
 					</div>
 					<div class="ram-strip-bar" id="ram-seg-bar">
 						${this._ramBarSegments(srv).map(s => `
@@ -619,7 +586,7 @@ export class DiagnosticsWidget extends HTMLElement {
 						`).join('')}
 					</div>
 					${(() => {
-				return `
+						return `
 							<div class="ram-bar-hover-tip" id="ram-bar-htip" aria-hidden="true" role="tooltip"></div>
 							<div class="ram-strip-legend">
 								${this._ramBarSegments(srv).filter(s => s.name !== 'free').map(s => `
@@ -632,8 +599,42 @@ export class DiagnosticsWidget extends HTMLElement {
 								`).join('')}
 							</div>
 						`;
-			})()}
+					})()}
 				</div>
+
+				${cfgTiers.length > 0 ? `
+				<div class="llm-ram-breakdown">
+					${tierNames.map((name, idx) => {
+						const td = tiers[name] || {};
+						const isOnline = td.status === 'online';
+						const isBusy = td.activity === 'processing';
+						const dotClass = !isOnline ? 'offline' : isBusy ? 'processing' : 'online';
+						const statusLabel = !isOnline ? 'OFFLINE' : isBusy ? 'BUSY' : 'IDLE';
+						const color = tierColors[idx];
+						const ramGb = ramEstFor(name);
+						const ctx = ctxFor(name);
+						const batch = batchFor(name);
+						const predict = predictFor(name);
+						const threads = threadsFor(name);
+						const model = modelFor(name);
+						const liveRamGb = ((srv.container_ram || []).find((c: any) => c.name === 'llm-' + name) || {}).gb || 0;
+						return `<div class="llm-tier-card" style="--tier-color:${color}">
+							<div class="ltc-header">
+								<span class="svc-dot ${dotClass}"></span>
+								<span class="ltc-name" style="color:${color}">${this.displayTier(name)}</span>
+								<span class="ltc-status ${dotClass}">${statusLabel}</span>
+							</div>
+							<div class="ltc-model">${this.esc(model)}</div>
+							<div class="ltc-specs">
+								${ctx ? `<div class="ltc-spec has-tip" data-tip="Context window — max tokens held in memory per request"><span>CTX</span><strong>${ctx.toLocaleString()}</strong></div>` : ''}
+								${threads ? `<div class="ltc-spec has-tip" data-tip="CPU threads allocated to this tier"><span>Threads</span><strong>${threads}</strong></div>` : ''}
+								${batch ? `<div class="ltc-spec has-tip" data-tip="Batch size — tokens processed per inference pass. Higher = faster first token but more RAM"><span>Batch</span><strong>${batch}</strong></div>` : ''}
+								${predict ? `<div class="ltc-spec has-tip" data-tip="Max tokens generated per response"><span>Max out</span><strong>${predict}</strong></div>` : ''}
+								${(liveRamGb || ramGb) ? `<div class="ltc-spec has-tip" data-tip="${liveRamGb ? 'Live RAM from Docker stats — model weights + KV cache + compute buffers' : 'Estimated model weight RAM (excludes KV cache and compute overhead)'}"><span>${liveRamGb ? 'RAM live' : 'RAM est'}</span><strong style="color:${color}">${liveRamGb || ramGb} GB</strong></div>` : ''}
+							</div>
+						</div>`;
+					}).join('')}
+				</div>` : ''}
 
 				<!-- HDD Row: System Storage -->
 				<div class="ram-strip hdd-strip">
@@ -648,18 +649,18 @@ export class DiagnosticsWidget extends HTMLElement {
 					</div>
 					<div class="ram-bar-hover-tip hdd-bar-hover-tip" id="hdd-bar-htip" aria-hidden="true" role="tooltip"></div>
 					${(() => {
-				const activeGb = tierNames.reduce((s, n) => s + ramEstFor(n), 0);
-				return `
+						const activeGb = tierNames.reduce((s, n) => s + ramEstFor(n), 0);
+						return `
 							<div class="ram-strip-legend">
 								${this._hddBarSegments(srv).filter(s => s.name !== 'free').map(s => {
-					const isModels = s.name === 'models';
-					const bloated = isModels && activeGb > 0 && s.gb > activeGb * 1.5;
-					const bloatTip = bloated
-						? `Models volume is ${s.gb} GB but current tiers only need ~${activeGb.toFixed(1)} GB. Stale files from previous downloads are taking up space.`
-						: '';
-					const tip = bloatTip || s.desc || '';
-
-					return `
+									const isModels = s.name === 'models';
+									const bloated = isModels && activeGb > 0 && s.gb > activeGb * 1.5;
+								const bloatTip = bloated
+									? `Models volume is ${s.gb} GB but current tiers only need ~${activeGb.toFixed(1)} GB. Stale files from previous downloads are taking up space.`
+									: '';
+								const tip = bloatTip || s.desc || '';
+								
+								return `
 								<div class="leg-item${tip ? ' has-tip' : ''}${bloated ? ' leg-item--bloat' : ''}${s.gb >= 0.15 ? ' leg-item--large' : ''}" ${tip ? `data-tip="${this.esc(tip)}"` : ''}>
 											<span class="leg-dot" style="background:${s.color};border-color:${s.color}"></span>
 											<span class="leg-name">${this.esc(s.label)}</span>
@@ -667,10 +668,10 @@ export class DiagnosticsWidget extends HTMLElement {
 											${bloated ? `<span class="leg-bloat-chip">stale</span>` : ''}
 										</div>
 									`;
-				}).join('')}
+								}).join('')}
 							</div>
 						`;
-			})()}
+					})()}
 				</div>
 
 				${this._volumeInventoryHtml(srv)}
@@ -901,8 +902,8 @@ export class DiagnosticsWidget extends HTMLElement {
 
 				.svc-dot.processing { background: var(--accent-primary); box-shadow: 0 0 10px var(--accent-primary); animation: diag-pulse 1s infinite; }
 
-				.llm-ram-breakdown { margin-top: 0.6rem; padding-top: 0.5rem; border-top: 1px solid hsla(0,0%,100%,0.05); display: flex; flex-wrap: wrap; gap: 0.6rem; }
-				.llm-ram-info { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; }
+				.llm-ram-breakdown { margin-top: 0.75rem; display: flex; flex-wrap: wrap; gap: 0.6rem; }
+				.llm-ram-bd-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); font-weight: 700; margin-bottom: 0.1rem; }
 				.llm-tier-card { flex: 1; min-width: 200px; background: hsla(0,0%,100%,0.025); border: 1px solid hsla(0,0%,100%,0.05); border-left: 2px solid var(--tier-color, var(--accent-primary)); border-radius: 0.4rem; padding: 0.45rem 0.6rem; display: flex; flex-direction: column; gap: 0.25rem; }
 				.ltc-header { display: flex; align-items: center; gap: 0.4rem; }
 				.ltc-name { font-size: 0.6rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.07em; }
