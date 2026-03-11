@@ -75,7 +75,42 @@
 	flex-wrap: wrap;
 }
 
-/* -- Full-width cards -- */
+/* -- Section group: responsive wrapper for semantically related cards -- */
+/* Takes a full row in #app, then lays its children out internally. */
+.section-group {
+	flex: 0 0 100%;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 2rem;
+	align-items: stretch;
+	min-width: 0;
+	box-sizing: border-box;
+}
+
+/* Three-up: three equal columns on desktop (>= 1100px) */
+.section-group.three-up > .dashboard-card {
+	flex: 0 0 calc(33.33% - 1.34rem);
+	min-width: 0;
+}
+
+/* Tablet / small desktop: collapse three-up to single column */
+@media (max-width: 1099px) {
+	.section-group.three-up > .dashboard-card {
+		flex: 0 0 100%;
+	}
+}
+
+/* Mobile: all groups stack */
+@media (max-width: 699px) {
+	.section-group {
+		gap: 1rem;
+	}
+
+	.section-group > .dashboard-card {
+		flex: 0 0 100%;
+	}
+}
+
 .life-overview-card,
 .full-width-card,
 welcome-onboarding {
