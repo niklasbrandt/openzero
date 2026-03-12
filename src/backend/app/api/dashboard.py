@@ -2194,9 +2194,11 @@ def _estimate_model_ram_gb(gguf_filename: str) -> float:
 			bpw = bits
 			break
 
-	# weight bytes + ~5% overhead for tensors, kv-cache at typical ctx
+	# weight bytes + ~5% overhead for tensors
 	weight_gb = params_b * 1e9 * bpw / 8 / (1024 ** 3)
-	return round(weight_gb * 1.05, 2)
+	# llama-server base overhead: slot allocation, kv-cache, prompt-cache, and process memory.
+	# Typically 0.5–0.8 GB depending on batch/ctx.
+	return round((weight_gb * 1.05) + 0.6, 2)
 
 
 @router.get("/llm-config")
