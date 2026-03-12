@@ -20,17 +20,18 @@ set -e
 MODEL_DIR="/models"
 MODEL_PATH="${MODEL_DIR}/${MODEL_FILE}"
 
-# ── Safety Check: Signature Verification ──────────────────────
+# ── Signature Validation (URL vs Filename) ──────────────────────
 # Extract parameter signature (e.g. 0.6B, 8B, 14B) from URL and File
 URL_SIG=$(echo "$MODEL_URL" | grep -oEi '[0-9.]+[BM]' | tr '[:lower:]' '[:upper:]' | head -n1)
 FILE_SIG=$(echo "$MODEL_FILE" | grep -oEi '[0-9.]+[BM]' | tr '[:lower:]' '[:upper:]' | head -n1)
 
 if [[ -n "$URL_SIG" && -n "$FILE_SIG" && "$URL_SIG" != "$FILE_SIG" ]]; then
-	echo "⚠️  WARNING: Signature mismatch detected!"
+	echo "❌ ERROR: Resource signature conflict!"
 	echo "  URL signature: ${URL_SIG}"
 	echo "  File signature: ${FILE_SIG}"
-	echo "This suggests a large model (e.g. 14B) might be hiding as a small one (0.6B)."
-	echo "Proceeding, but check your .env configuration."
+	echo "This suggests a large model (e.g. ${URL_SIG}) is being forced into a container labeled as ${FILE_SIG}."
+	echo "Refusing to start to prevent system instability."
+	exit 1
 fi
 
 # Ensure model directory exists
@@ -45,6 +46,40 @@ if [ ! -f "$MODEL_PATH" ]; then
 	echo "Download complete: ${MODEL_FILE}"
 else
 	echo "Model already present: ${MODEL_FILE}"
+fi
+
+# ── Size Validation (Physical vs Filename Claim) ──────────────
+# Prevent 'lying' filenames by checking floor file size against claimed params.
+# A 0.6B Q4 model is ~400MB. If the file is 8GB, it's NOT a 0.6B model.
+if [[ -n "$FILE_SIG" ]]; then
+	# Convert signature to number (B = 10^9)
+	NUM=$(echo "$FILE_SIG" | sed 's/B//')
+	# Rough estimate: Q4_K_M is ~0.6 GB per 1B parameters
+	EXPECTED_GB=$(echo "$NUM * 0.6" | bc -l)
+	# Max tolerance: 1.8x the base estimate (allows for higher quants like Q8)
+	MAX_GB=$(echo "$EXPECTED_GB * 1.8" | bc -l)
+	# Actual size on disk
+	ACTUAL_BYTES=$(stat -c%s "$MODEL_PATH")
+	ACTUAL_GB=$(echo "$ACTUAL_BYTES / (1024^3)" | bc -l)
+
+	# If filename claims < 1B but file is > 2GB, or if > 1.8x expected.
+	# We use a floor of 1.0GB for very small models to avoid false positives.
+	IS_SUSPICIOUS=0
+	if (( $(echo "$ACTUAL_GB > 1.0" | bc -l) )) && (( $(echo "$NUM < 1.0" | bc -l) )); then
+		IS_SUSPICIOUS=1
+	elif (( $(echo "$ACTUAL_GB > $MAX_GB" | bc -l) )) && (( $(echo "$EXPECTED_GB > 0.5" | bc -l) )); then
+		IS_SUSPICIOUS=1
+	fi
+
+	if [[ "$IS_SUSPICIOUS" -eq 1 ]]; then
+		echo "❌ ERROR: Physical size mismatch!"
+		echo "  Claimed params: ${FILE_SIG} (~${EXPECTED_GB} GB expected for Q4)"
+		echo "  Actual size:   $(printf "%.2f" "$ACTUAL_GB") GB"
+		echo "The file is physically too large to be a ${FILE_SIG} model."
+		echo "This happens if you renamed a 14B model to '0.6B' to bypass UI warnings."
+		echo "Please fix your .env and delete the stale file: rm ${MODEL_PATH}"
+		exit 1
+	fi
 fi
 
 # Prune stale models — delete any .gguf files in MODEL_DIR that are not
