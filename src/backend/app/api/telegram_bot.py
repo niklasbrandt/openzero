@@ -155,8 +155,8 @@ async def start_telegram_bot():
 					if changes:
 						release_info = f"DEPLOYMENT UPDATE - TECHNICAL DIFF SUMMARY:\n{changes[:2000]}\n"
 					os.remove(notes_file)
-				except Exception:
-					pass  # notes file missing or unreadable -- non-fatal
+				except Exception as _ne:
+					logger.debug("Greeting Seq - Release notes read fail: %s", _ne)
 			# Unified Context gathering
 			event_summary_parts = []
 
@@ -513,8 +513,8 @@ async def safe_edit(message, text: str, parse_mode="HTML", reply_markup=None):
 		logger.debug("HTML edit failed, falling back to plain: %s", e)
 		try:
 			await message.edit_text(text)
-		except Exception:
-			pass  # plain-text fallback also failed -- drop silently
+		except Exception as _pe:
+			logger.debug("safe_edit final fallback failed: %s", _pe)
 @owner_only
 async def cmd_board(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	"""Show the exact Planka project → board → lists that Z targets, with a clickable link."""
@@ -575,8 +575,8 @@ async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		try:
 			token = await get_planka_auth_token()
 			if token: p_text = "🟢 Connected"
-		except Exception:
-			pass  # Planka offline
+		except Exception as _pe:
+			logger.debug("cmd_status Planka check failed: %s", _pe)
 		# 3. LLM — check all three tiers independently
 		import httpx as _httpx
 		from app.config import settings as _s
@@ -1015,8 +1015,8 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		logger.error("handle_freetext failed: %s", e)
 		try:
 			await safe_reply(update, "I encountered friction while processing that request. My local core is still active, but that specific thread was dropped.")
-		except Exception:
-			pass  # safe_reply itself failed -- nothing more to do
+		except Exception as _se:
+			logger.debug("handle_freetext error reporting failed: %s", _se)
 
 async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, user_text: str, is_followup: bool = False):
 	"""Core freetext processing logic with streaming progressive updates."""
@@ -1063,8 +1063,8 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 				try:
 					display = f"<blockquote><i>{_md_to_html(partial_text)}...</i></blockquote>"
 					await safe_edit(thinking_msg, display, parse_mode="HTML")
-				except Exception:
-					pass  # Telegram rate limits or unchanged content
+				except Exception as _ee:
+					logger.debug("Progressive edit skip: %s", _ee)
 				last_edit_time = now
 
 	response = "".join(chunks)
