@@ -488,9 +488,10 @@ export class DiagnosticsWidget extends HTMLElement {
 			{ id: 'sse4_2', label: 'SSE4.2' },
 		];
 		const featGrid = cpuFeats.map(f => `
-			<div class="hw-feat has-tip ${cpu[f.id] ? 'active' : 'inactive'}" data-tip="${f.label} hardware instruction set extension ${cpu[f.id] ? 'is available' : 'is not detected'}. " ${!cpu[f.id] ? 'aria-disabled="true"' : ''}>
+			<div class="hw-feat has-tip ${cpu[f.id] ? 'active' : 'inactive'}" ${!cpu[f.id] ? 'aria-disabled="true"' : ''}>
 				<span class="feat-dot"></span>
 				<span class="feat-label">${f.label}</span>
+				<span class="glass-tooltip">${f.label} hardware instruction set extension ${cpu[f.id] ? 'is available' : 'is not detected'}.</span>
 			</div>
 		`).join('');
 
@@ -509,12 +510,13 @@ export class DiagnosticsWidget extends HTMLElement {
 				'DNS': 'Local privacy-focused DNS resolver (Pi-hole) status.'
 			};
 			return `
-				<div class="svc-item has-tip" data-tip="${tips[s.name] || ''}">
+				<div class="svc-item has-tip">
 					<div class="svc-main">
 						<span class="svc-dot ${s.status}"></span>
 						<span class="svc-name">${s.name}</span>
 					</div>
 					<span class="svc-detail">${this.esc(s.detail)}</span>
+					<span class="glass-tooltip">${tips[s.name] || ''}</span>
 				</div>
 			`;
 		}).join('');
@@ -537,19 +539,21 @@ export class DiagnosticsWidget extends HTMLElement {
 				if (r.error || !r.tokens_per_second) {
 					const msg = r.error || 'No tokens received — model may be loading or unavailable';
 					return `
-						<div class="bench-res-item error has-tip" data-tip="Click a test button to retry.">
+						<div class="bench-res-item error has-tip">
 							<span class="bench-tier">${this.displayTier(r.tier)}</span>
 							<span class="bench-error">${this.esc(msg)}</span>
+							<span class="glass-tooltip">Click a test button to retry.</span>
 						</div>
 					`;
 				}
 				const rtg = this.getRating(r.tokens_per_second, r.tier);
 				return `
-					<div class="bench-res-item has-tip" data-tip="${rtg.hint}">
+					<div class="bench-res-item has-tip">
 						<span class="bench-tier">${this.displayTier(r.tier)}</span>
 						<span class="bench-val ${rtg.cls}">${r.tokens_per_second} <small>tok/s</small></span>
 						<span class="bench-label ${rtg.cls}">${rtg.label}</span>
 						<span class="bench-rtg">${rtg.icon}</span>
+						<span class="glass-tooltip">${rtg.hint}</span>
 					</div>
 				`;
 			}).join('');
@@ -557,11 +561,11 @@ export class DiagnosticsWidget extends HTMLElement {
 		el.innerHTML = `
 			<div class="diag-layout">
 				<button id="btn-force-reload" class="reload-btn has-tip" 
-					aria-label="${this.tr('aria_refresh_diagnostics', 'Force refresh of all diagnostic metrics')}"
-					data-tip="${this.tr('aria_refresh_diagnostics', 'Force refresh of all diagnostic metrics')}">
+					aria-label="${this.tr('aria_refresh_diagnostics', 'Force refresh of all diagnostic metrics')}">
 					<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
 						<path d="M21 2v6h-6"></path><path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path><path d="M3 22v-6h6"></path><path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
 					</svg>
+					<span class="glass-tooltip">${this.tr('aria_refresh_diagnostics', 'Force refresh of all diagnostic metrics')}</span>
 				</button>
 
 				${this._ramAlertHtml(srv)}
@@ -605,19 +609,21 @@ export class DiagnosticsWidget extends HTMLElement {
 								<span class="svc-dot ${dotClass}"></span>
 								<span class="ltc-name" style="color:${color}">${this.displayTier(name)}</span>
 								<span class="ltc-status ${dotClass}">${statusLabel}</span>
-								${isMismatch ? `<span class="ltc-badge mismatch has-tip" data-tip="${this.tr('diag_llm_mismatch_tip', 'CRITICAL: Model RAM usage is significantly higher than estimated weights. Possible configuration error or corrupted model file.')}">MISMATCH</span>` : ''}
+								${isMismatch ? `<span class="ltc-badge mismatch has-tip">MISMATCH
+									<span class="glass-tooltip">${this.tr('diag_llm_mismatch_tip', 'CRITICAL: Model RAM usage is significantly higher than estimated weights. Possible configuration error or corrupted model file.')}</span>
+								</span>` : ''}
 							</div>
-							<div class="ltc-model ${isMismatch ? 'mismatch has-tip' : ''}" 
-								${isMismatch ? `data-tip="${this.tr('diag_llm_model_mismatch_tip', 'CRITICAL: Resource signature mismatch. This model is consuming far more RAM than its filename (e.g. 0.6B) would suggest.')}"` : ''}>
+							<div class="ltc-model ${isMismatch ? 'mismatch has-tip' : ''}">
 								${isMismatch ? '<span class="ltc-mismatch-icon" aria-hidden="true">⚠️</span>' : ''}
 								${this.esc(model)}
+								${isMismatch ? `<span class="glass-tooltip">${this.tr('diag_llm_model_mismatch_tip', 'CRITICAL: Resource signature mismatch. This model is consuming far more RAM than its filename (e.g. 0.6B) would suggest.')}</span>` : ''}
 							</div>
 							<div class="ltc-specs">
-								${ctx ? `<div class="ltc-spec has-tip" data-tip="Context window — max tokens held in memory per request"><span>CTX</span><strong>${ctx.toLocaleString()}</strong></div>` : ''}
-								${threads ? `<div class="ltc-spec has-tip" data-tip="CPU threads allocated to this tier"><span>Threads</span><strong>${threads}</strong></div>` : ''}
-								${batch ? `<div class="ltc-spec has-tip" data-tip="Batch size — tokens processed per inference pass. Higher = faster first token but more RAM"><span>Batch</span><strong>${batch}</strong></div>` : ''}
-								${predict ? `<div class="ltc-spec has-tip" data-tip="Max tokens generated per response"><span>Max out</span><strong>${predict}</strong></div>` : ''}
-								${(liveRamGb || ramGb) ? `<div class="ltc-spec has-tip" data-tip="${liveRamGb ? this.tr('diag_ram_live_tip', 'Live RAM from Docker stats: Model weights + KV cache + compute buffers') : this.tr('diag_ram_est_tip', 'Estimated weight-only RAM lower bound (excludes cache overhead)')}"><span>${liveRamGb ? 'RAM live' : 'RAM est'}</span><strong style="color:${isMismatch ? 'var(--color-danger)' : color}">${(liveRamGb || ramGb).toFixed(1)} GB</strong></div>` : ''}
+								${ctx ? `<div class="ltc-spec has-tip"><span>CTX</span><strong>${ctx.toLocaleString()}</strong><span class="glass-tooltip">Context window — max tokens held in memory per request</span></div>` : ''}
+								${threads ? `<div class="ltc-spec has-tip"><span>Threads</span><strong>${threads}</strong><span class="glass-tooltip">CPU threads allocated to this tier</span></div>` : ''}
+								${batch ? `<div class="ltc-spec has-tip"><span>Batch</span><strong>${batch}</strong><span class="glass-tooltip">Batch size — tokens processed per inference pass. Higher = faster first token but more RAM</span></div>` : ''}
+								${predict ? `<div class="ltc-spec has-tip"><span>Max out</span><strong>${predict}</strong><span class="glass-tooltip">Max tokens generated per response</span></div>` : ''}
+								${(liveRamGb || ramGb) ? `<div class="ltc-spec has-tip"><span>${liveRamGb ? 'RAM live' : 'RAM est'}</span><strong style="color:${isMismatch ? 'var(--color-danger)' : color}">${(liveRamGb || ramGb).toFixed(1)} GB</strong><span class="glass-tooltip">${liveRamGb ? this.tr('diag_ram_live_tip', 'Live RAM from Docker stats: Model weights + KV cache + compute buffers') : this.tr('diag_ram_est_tip', 'Estimated weight-only RAM lower bound (excludes cache overhead)')}</span></div>` : ''}
 							</div>
 						</div>`;
 					}).join('')}
@@ -681,11 +687,12 @@ export class DiagnosticsWidget extends HTMLElement {
 								const tip = bloatTip || s.desc || '';
 								
 								return `
-								<div class="leg-item${tip ? ' has-tip' : ''}${bloated ? ' leg-item--bloat' : ''}${s.gb >= 0.15 ? ' leg-item--large' : ''}" ${tip ? `data-tip="${this.esc(tip)}"` : ''}>
+								<div class="leg-item${tip ? ' has-tip' : ''}${bloated ? ' leg-item--bloat' : ''}${s.gb >= 0.15 ? ' leg-item--large' : ''}">
 											<span class="leg-dot" style="background:${s.color};border-color:${s.color}"></span>
 											<span class="leg-name">${this.esc(s.label)}</span>
 											<span class="leg-gb">${s.gb}G</span>
 											${bloated ? `<span class="leg-bloat-chip">stale</span>` : ''}
+											${tip ? `<span class="glass-tooltip">${this.esc(tip)}</span>` : ''}
 										</div>
 									`;
 								}).join('')}
@@ -701,9 +708,9 @@ export class DiagnosticsWidget extends HTMLElement {
 					<div class="diag-section-label">Processor Info</div>
 					<div class="cpu-info">${cpu.cpu_model}</div>
 					<div class="hw-specs">
-						<div class="hw-spec has-tip" data-tip="${cpu.cores_physical} physical cores / ${cpu.cores_logical} logical threads."><span>Cores</span><strong>${cpu.cores_physical}P/${cpu.cores_logical}L</strong></div>
-						<div class="hw-spec has-tip" data-tip="System instruction set architecture."><span>Arch</span><strong>${cpu.architecture}</strong></div>
-						<div class="hw-spec has-tip" data-tip="Time since the last system boot."><span>Uptime</span><strong>${srv.uptime_human || '?'}</strong></div>
+						<div class="hw-spec has-tip"><span>Cores</span><strong>${cpu.cores_physical}P/${cpu.cores_logical}L</strong><span class="glass-tooltip">${cpu.cores_physical} physical cores / ${cpu.cores_logical} logical threads.</span></div>
+						<div class="hw-spec has-tip"><span>Arch</span><strong>${cpu.architecture}</strong><span class="glass-tooltip">System instruction set architecture.</span></div>
+						<div class="hw-spec has-tip"><span>Uptime</span><strong>${srv.uptime_human || '?'}</strong><span class="glass-tooltip">Time since the last system boot.</span></div>
 					</div>
 					<div class="diag-section-label" style="margin-top: 0.5rem">CPU Features</div>
 					<div class="hw-feat-grid">${featGrid}</div>
@@ -719,10 +726,19 @@ export class DiagnosticsWidget extends HTMLElement {
 				<div class="diag-col benchmarks">
 					<div class="diag-section-label">Benchmark</div>
 					<div class="bench-actions" style="margin-top: 0">
-						<button class="b-btn main has-tip ${this.isBenchRunning ? 'running' : ''}" ${this.isBenchRunning ? 'disabled' : ''} data-tier="all" data-tip="Run performance tests across all active tiers.">${this.isBenchRunning ? 'Benchmarking...' : 'Benchmark all LLMs'}</button>
+						<button class="b-btn main has-tip ${this.isBenchRunning ? 'running' : ''}" ${this.isBenchRunning ? 'disabled' : ''} data-tier="all">
+							${this.isBenchRunning ? 'Benchmarking...' : 'Benchmark all LLMs'}
+							<span class="glass-tooltip">Run performance tests across all active tiers.</span>
+						</button>
 						<div class="b-row">
-							<button class="b-btn sm tier-fast has-tip ${this.isBenchRunning ? 'running' : ''}" ${this.isBenchRunning ? 'disabled' : ''} data-tier="fast" data-tip="Test latency of the fast tier.">Fast</button>
-							<button class="b-btn sm tier-deep has-tip ${this.isBenchRunning ? 'running' : ''}" ${this.isBenchRunning ? 'disabled' : ''} data-tier="deep" data-tip="Test throughput of the deep tier.">Deep</button>
+							<button class="b-btn sm tier-fast has-tip ${this.isBenchRunning ? 'running' : ''}" ${this.isBenchRunning ? 'disabled' : ''} data-tier="fast">
+								Fast
+								<span class="glass-tooltip">Test latency of the fast tier.</span>
+							</button>
+							<button class="b-btn sm tier-deep has-tip ${this.isBenchRunning ? 'running' : ''}" ${this.isBenchRunning ? 'disabled' : ''} data-tier="deep">
+								Deep
+								<span class="glass-tooltip">Test throughput of the deep tier.</span>
+							</button>
 						</div>
 					</div>
 					<div class="bench-results-list" style="margin-top: 0.5rem">${benchHtml}</div>
@@ -777,8 +793,6 @@ export class DiagnosticsWidget extends HTMLElement {
 
 		setupBarTooltips('#ram-seg-bar', '#ram-bar-htip', '.ram-strip:not(.hdd-strip)');
 		setupBarTooltips('#hdd-seg-bar', '#hdd-bar-htip', '.hdd-strip');
-
-		this.injectTooltips();
 	}
 
 	private esc(str: any): string {
@@ -791,32 +805,6 @@ export class DiagnosticsWidget extends HTMLElement {
 			.replace(/'/g, '&#x27;');
 	}
 
-	private injectTooltips() {
-		if (!this.shadowRoot) return;
-		const htips = this.shadowRoot.querySelectorAll('.has-tip');
-		htips.forEach(el => {
-			const tip = el.getAttribute('data-tip');
-			if (!tip) return;
-			el.addEventListener('mouseenter', (e) => {
-				const target = e.currentTarget as HTMLElement;
-				const rect = target.getBoundingClientRect();
-				const msg = target.getAttribute('data-tip') || '';
-				const tooltip = document.createElement('div');
-				tooltip.className = 'glass-tooltip';
-				tooltip.textContent = msg;
-				document.body.appendChild(tooltip);
-				const tRect = tooltip.getBoundingClientRect();
-				tooltip.style.left = `${rect.left + rect.width / 2 - tRect.width / 2}px`;
-				tooltip.style.top = `${rect.top - tRect.height - 8}px`;
-				tooltip.classList.add('visible');
-				const out = () => {
-					tooltip.remove();
-					target.removeEventListener('mouseleave', out);
-				};
-				target.addEventListener('mouseleave', out);
-			});
-		});
-	}
 
 	render() {
 		if (!this.shadowRoot) return;
