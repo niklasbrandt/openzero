@@ -607,7 +607,11 @@ export class DiagnosticsWidget extends HTMLElement {
 								<span class="ltc-status ${dotClass}">${statusLabel}</span>
 								${isMismatch ? `<span class="ltc-badge mismatch has-tip" data-tip="${this.tr('diag_llm_mismatch_tip', 'CRITICAL: Model RAM usage is significantly higher than estimated weights. Possible configuration error or corrupted model file.')}">MISMATCH</span>` : ''}
 							</div>
-							<div class="ltc-model">${this.esc(model)}</div>
+							<div class="ltc-model ${isMismatch ? 'mismatch has-tip' : ''}" 
+								${isMismatch ? `data-tip="${this.tr('diag_llm_model_mismatch_tip', 'CRITICAL: Resource signature mismatch. This model is consuming far more RAM than its filename (e.g. 0.6B) would suggest.')}"` : ''}>
+								${isMismatch ? '<span class="ltc-mismatch-icon" aria-hidden="true">⚠️</span>' : ''}
+								${this.esc(model)}
+							</div>
 							<div class="ltc-specs">
 								${ctx ? `<div class="ltc-spec has-tip" data-tip="Context window — max tokens held in memory per request"><span>CTX</span><strong>${ctx.toLocaleString()}</strong></div>` : ''}
 								${threads ? `<div class="ltc-spec has-tip" data-tip="CPU threads allocated to this tier"><span>Threads</span><strong>${threads}</strong></div>` : ''}
@@ -929,7 +933,9 @@ export class DiagnosticsWidget extends HTMLElement {
 				.ltc-status.offline { color: var(--color-danger); }
 				.ltc-badge { font-size: 0.5rem; font-weight: 900; letter-spacing: 0.05em; text-transform: uppercase; border-radius: 3px; padding: 0.1rem 0.35rem; margin-left: auto; }
 				.ltc-badge.mismatch { color: #fff; background: var(--color-danger); box-shadow: 0 0 10px hsla(0, 85%, 55%, 0.4); animation: diag-pulse 2s infinite; }
-				.ltc-model { font-size: 0.78rem; font-family: var(--font-mono); color: var(--text-secondary); font-weight: 600; }
+				.ltc-model { font-size: 0.78rem; font-family: var(--font-mono); color: var(--text-secondary); font-weight: 600; display: flex; align-items: center; gap: 0.4rem; padding: 0.1rem 0; }
+				.ltc-model.mismatch { color: var(--color-danger); }
+				.ltc-mismatch-icon { color: var(--color-danger); font-size: 0.8rem; animation: diag-pulse 1s infinite; }
 				.ltc-specs { display: flex; flex-wrap: wrap; gap: 0.3rem 0.7rem; margin-top: 0.1rem; }
 				.ltc-spec { display: flex; align-items: baseline; gap: 0.25rem; }
 				.ltc-spec span { font-size: 0.52rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }

@@ -187,6 +187,7 @@ translations: dict[str, str] = {
 	"diag_hdd_other": "OS & Host Files",
 	"diag_hdd_title": "System Storage (HDD)",
 	"diag_llm_mismatch_tip": "CRITICAL: Model RAM usage is significantly higher than estimated weights. Possible configuration error or corrupted model file.",
+	"diag_llm_model_mismatch_tip": "CRITICAL: Resource signature mismatch. This model is consuming far more RAM than its filename (e.g. 0.6B) would suggest.",
 	"diag_ram_est_tip": "Estimated weight-only RAM lower bound (excludes cache overhead)",
 	"diag_ram_live_tip": "Live RAM from Docker stats: Model weights + KV cache + compute buffers",
 	"diag_ram_title": "System Memory (RAM)",
