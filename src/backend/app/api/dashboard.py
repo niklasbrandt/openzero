@@ -1798,6 +1798,18 @@ async def server_info() -> dict:
 			configured_threads = int(env_thread_map.get(tier_name, "4"))
 			tier_info["threads"] = configured_threads
 
+			# Fetch real model metadata from /props
+			try:
+				props_resp = await client.get(f"{base_url}/props")
+				if props_resp.status_code == 200:
+					props = props_resp.json()
+					gs = props.get("default_generation_settings", {})
+					model_path = gs.get("model", "")
+					if model_path:
+						tier_info["model_file"] = os.path.basename(model_path)
+			except Exception:
+				pass
+
 			if configured_threads < 2:
 				tier_info["thread_warning"] = f"Only {configured_threads} thread(s) configured -- likely a misconfigured env var."
 				tier_info["using_all_cores"] = False
@@ -2201,11 +2213,18 @@ async def get_llm_config() -> dict:
 		fname = os.environ.get(file_env, "").strip() or fallback
 		return _estimate_model_ram_gb(fname)
 
+	def _tier_label(tier_name: str, file_env: str, fallback_file: str) -> str:
+		m = _model_display(file_env, fallback_file)
+		# Try to extract parameter count (e.g. 7B, 14B, 0.6B) from the filename
+		match = re.search(r'(\d+(?:\.\d+)?B)', m, re.IGNORECASE)
+		size_hit = f" ({match.group(1)})" if match else ""
+		return f"{tier_name.capitalize()}{size_hit}"
+
 	return {
 		"tiers": [
 			{
 				"tier": "fast",
-				"label": "Fast (0.6B)",
+				"label": _tier_label("fast", "LLM_FAST_MODEL_FILE", settings.LLM_MODEL_FAST),
 				"icon": "zap",
 				"model": _model_display("LLM_FAST_MODEL_FILE", settings.LLM_MODEL_FAST),
 				"use_case": "Greetings, confirmations, trivial Q&A, memory distillation",
@@ -2217,6 +2236,7 @@ async def get_llm_config() -> dict:
 			},
 			{
 				"tier": "deep",
+				"label": _tier_label("deep", "LLM_DEEP_MODEL_FILE", settings.LLM_MODEL_DEEP),
 				"model": _model_display("LLM_DEEP_MODEL_FILE", settings.LLM_MODEL_DEEP),
 				"use_case": "Conversation, reasoning, creative tasks, briefings, strategic analysis",
 				"threads": int(os.environ.get("LLM_DEEP_THREADS", "7")),
