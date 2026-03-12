@@ -522,6 +522,7 @@ async def cmd_board(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		from app.services.planka import get_planka_auth_token
 		from app.services.operator_board import operator_service
 		import httpx
+		import html as _html
 
 		token = await get_planka_auth_token()
 		async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, timeout=10.0,
