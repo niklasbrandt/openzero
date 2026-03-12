@@ -55,19 +55,19 @@ if [[ -n "$FILE_SIG" ]]; then
 	# Convert signature to number (B = 10^9)
 	NUM=$(echo "$FILE_SIG" | sed 's/B//')
 	# Rough estimate: Q4_K_M is ~0.6 GB per 1B parameters
-	EXPECTED_GB=$(echo "$NUM * 0.6" | bc -l)
+	EXPECTED_GB=$(awk "BEGIN {print $NUM * 0.6}")
 	# Max tolerance: 1.8x the base estimate (allows for higher quants like Q8)
-	MAX_GB=$(echo "$EXPECTED_GB * 1.8" | bc -l)
+	MAX_GB=$(awk "BEGIN {print $EXPECTED_GB * 1.8}")
 	# Actual size on disk
 	ACTUAL_BYTES=$(stat -c%s "$MODEL_PATH")
-	ACTUAL_GB=$(echo "$ACTUAL_BYTES / (1024^3)" | bc -l)
+	ACTUAL_GB=$(awk "BEGIN {print $ACTUAL_BYTES / (1024^3)}")
 
 	# If filename claims < 1B but file is > 2GB, or if > 1.8x expected.
 	# We use a floor of 1.0GB for very small models to avoid false positives.
 	IS_SUSPICIOUS=0
-	if (( $(echo "$ACTUAL_GB > 1.0" | bc -l) )) && (( $(echo "$NUM < 1.0" | bc -l) )); then
+	if [ "$(awk "BEGIN {print ($ACTUAL_GB > 1.0 && $NUM < 1.0) ? 1 : 0}")" -eq 1 ]; then
 		IS_SUSPICIOUS=1
-	elif (( $(echo "$ACTUAL_GB > $MAX_GB" | bc -l) )) && (( $(echo "$EXPECTED_GB > 0.5" | bc -l) )); then
+	elif [ "$(awk "BEGIN {print ($ACTUAL_GB > $MAX_GB && $EXPECTED_GB > 0.5) ? 1 : 0}")" -eq 1 ]; then
 		IS_SUSPICIOUS=1
 	fi
 
