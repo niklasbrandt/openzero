@@ -520,21 +520,13 @@ export class DiagnosticsWidget extends HTMLElement {
 		}).join('');
 
 		const cfgTiers: any[] = (this.llmConfig || {}).tiers || [];
-		const modelFor = (name: string) => {
-			const t = cfgTiers.find((x: any) => x.tier === name);
-			if (t && t.model) {
-				const parts = t.model.split('/');
-				return parts[parts.length - 1].replace('.gguf', '');
-			}
-			return name === 'fast' ? 'Qwen3-0.6B' : 'Qwen3-8B';
-		};
 		const ramEstFor = (name: string): number => {
 			const t = cfgTiers.find((x: any) => x.tier === name);
 			return t?.ram_est_gb || 0;
 		};
 
-		const tierNames = ['deep', 'fast'];
-		const tierColors = ['hsl(260,70%,65%)', 'var(--accent-primary)'];
+		const tierNames = ['fast', 'deep'];
+		const tierColors = ['var(--accent-primary)', 'hsl(260,70%,65%)'];
 		const ctxFor = (name: string): number => { const t = cfgTiers.find((x: any) => x.tier === name); return t?.ctx || 0; };
 		const batchFor = (name: string): number => { const t = cfgTiers.find((x: any) => x.tier === name); return t?.batch || 0; };
 		const predictFor = (name: string): number => { const t = cfgTiers.find((x: any) => x.tier === name); return t?.predict || 0; };
@@ -584,11 +576,24 @@ export class DiagnosticsWidget extends HTMLElement {
 						const statusLabel = !isOnline ? 'OFFLINE' : isBusy ? 'BUSY' : 'IDLE';
 						const color = tierColors[idx];
 						const ramGb = ramEstFor(name);
+
+						// Model identification: Prefer live reporter from /props, then env config, then hardcoded fallback
+						let model = td.model_file || '';
+						if (!model) {
+							const t = cfgTiers.find((x: any) => x.tier === name);
+							if (t && t.model) {
+								const parts = t.model.split('/');
+								model = parts[parts.length - 1].replace('.gguf', '');
+							}
+						}
+						if (!model) {
+							model = name === 'fast' ? 'Qwen3-0.6B' : 'Qwen3-8B';
+						}
+
 						const ctx = ctxFor(name);
 						const batch = batchFor(name);
 						const predict = predictFor(name);
 						const threads = threadsFor(name);
-						const model = modelFor(name);
 						const liveRamGb = ((srv.container_ram || []).find((c: any) => c.name === 'llm-' + name) || {}).gb || 0;
 						return `<div class="llm-tier-card" style="--tier-color:${color}">
 							<div class="ltc-header">
@@ -602,7 +607,7 @@ export class DiagnosticsWidget extends HTMLElement {
 								${threads ? `<div class="ltc-spec has-tip" data-tip="CPU threads allocated to this tier"><span>Threads</span><strong>${threads}</strong></div>` : ''}
 								${batch ? `<div class="ltc-spec has-tip" data-tip="Batch size — tokens processed per inference pass. Higher = faster first token but more RAM"><span>Batch</span><strong>${batch}</strong></div>` : ''}
 								${predict ? `<div class="ltc-spec has-tip" data-tip="Max tokens generated per response"><span>Max out</span><strong>${predict}</strong></div>` : ''}
-								${(liveRamGb || ramGb) ? `<div class="ltc-spec has-tip" data-tip="${liveRamGb ? 'Live RAM from Docker stats — model weights + KV cache + compute buffers' : 'Estimated model weight RAM (excludes KV cache and compute overhead)'}"><span>${liveRamGb ? 'RAM live' : 'RAM est'}</span><strong style="color:${color}">${liveRamGb || ramGb} GB</strong></div>` : ''}
+								${(liveRamGb || ramGb) ? `<div class="ltc-spec has-tip" data-tip="${liveRamGb ? 'Live RAM from Docker stats: Model weights + KV cache + compute buffers' : 'Estimated weight-only RAM lower bound (excludes cache overhead)'}"><span>${liveRamGb ? 'RAM live' : 'RAM est'}</span><strong style="color:${color}">${(liveRamGb || ramGb).toFixed(1)} GB</strong></div>` : ''}
 							</div>
 						</div>`;
 					}).join('')}
