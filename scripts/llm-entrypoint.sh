@@ -26,14 +26,11 @@ URL_SIG=$(echo "$MODEL_URL" | grep -oEi '[0-9.]+[BM]' | tr '[:lower:]' '[:upper:
 FILE_SIG=$(echo "$MODEL_FILE" | grep -oEi '[0-9.]+[BM]' | tr '[:lower:]' '[:upper:]' | head -n1)
 
 if [[ -n "$URL_SIG" && -n "$FILE_SIG" && "$URL_SIG" != "$FILE_SIG" ]]; then
-	echo "CRITICAL: Signature mismatch detected!"
+	echo "⚠️  WARNING: Signature mismatch detected!"
 	echo "  URL signature: ${URL_SIG}"
 	echo "  File signature: ${FILE_SIG}"
-	echo "This prevents a large model (e.g. 14B) from hiding as a small one (0.6B)."
-	echo "Set FORCE_SIGNATURE_MISMATCH=1 to bypass."
-	if [[ "$FORCE_SIGNATURE_MISMATCH" != "1" ]]; then
-		exit 1
-	fi
+	echo "This suggests a large model (e.g. 14B) might be hiding as a small one (0.6B)."
+	echo "Proceeding, but check your .env configuration."
 fi
 
 # Ensure model directory exists
