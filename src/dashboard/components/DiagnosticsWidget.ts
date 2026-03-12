@@ -525,8 +525,8 @@ export class DiagnosticsWidget extends HTMLElement {
 			return t?.ram_est_gb || 0;
 		};
 
-		const tierNames = ['fast', 'deep'];
-		const tierColors = ['var(--accent-primary)', 'hsl(260,70%,65%)'];
+		const tierNames = ['deep', 'fast'];
+		const tierColors = ['hsl(260,70%,65%)', 'var(--accent-primary)'];
 		const ctxFor = (name: string): number => { const t = cfgTiers.find((x: any) => x.tier === name); return t?.ctx || 0; };
 		const batchFor = (name: string): number => { const t = cfgTiers.find((x: any) => x.tier === name); return t?.batch || 0; };
 		const predictFor = (name: string): number => { const t = cfgTiers.find((x: any) => x.tier === name); return t?.predict || 0; };
@@ -595,11 +595,17 @@ export class DiagnosticsWidget extends HTMLElement {
 						const predict = predictFor(name);
 						const threads = threadsFor(name);
 						const liveRamGb = ((srv.container_ram || []).find((c: any) => c.name === 'llm-' + name) || {}).gb || 0;
+						
+						// Mitigation: Detect hidden large models (e.g. 14B hiding as 0.6B)
+						// If live RAM exceeds estimated RAM by > 50%, show a mismatch badge.
+						const isMismatch = (liveRamGb > 0 && ramGb > 0 && (liveRamGb / ramGb) > 1.5);
+						
 						return `<div class="llm-tier-card" style="--tier-color:${color}">
 							<div class="ltc-header">
 								<span class="svc-dot ${dotClass}"></span>
 								<span class="ltc-name" style="color:${color}">${this.displayTier(name)}</span>
 								<span class="ltc-status ${dotClass}">${statusLabel}</span>
+								${isMismatch ? `<span class="ltc-badge mismatch has-tip" data-tip="CRITICAL: Model RAM usage (${liveRamGb}GB) is significantly higher than estimated weights. Possible configuration error or corrupted model file.">MISMATCH</span>` : ''}
 							</div>
 							<div class="ltc-model">${this.esc(model)}</div>
 							<div class="ltc-specs">
@@ -607,7 +613,7 @@ export class DiagnosticsWidget extends HTMLElement {
 								${threads ? `<div class="ltc-spec has-tip" data-tip="CPU threads allocated to this tier"><span>Threads</span><strong>${threads}</strong></div>` : ''}
 								${batch ? `<div class="ltc-spec has-tip" data-tip="Batch size — tokens processed per inference pass. Higher = faster first token but more RAM"><span>Batch</span><strong>${batch}</strong></div>` : ''}
 								${predict ? `<div class="ltc-spec has-tip" data-tip="Max tokens generated per response"><span>Max out</span><strong>${predict}</strong></div>` : ''}
-								${(liveRamGb || ramGb) ? `<div class="ltc-spec has-tip" data-tip="${liveRamGb ? 'Live RAM from Docker stats: Model weights + KV cache + compute buffers' : 'Estimated weight-only RAM lower bound (excludes cache overhead)'}"><span>${liveRamGb ? 'RAM live' : 'RAM est'}</span><strong style="color:${color}">${(liveRamGb || ramGb).toFixed(1)} GB</strong></div>` : ''}
+								${(liveRamGb || ramGb) ? `<div class="ltc-spec has-tip" data-tip="${liveRamGb ? 'Live RAM from Docker stats: Model weights + KV cache + compute buffers' : 'Estimated weight-only RAM lower bound (excludes cache overhead)'}"><span>${liveRamGb ? 'RAM live' : 'RAM est'}</span><strong style="color:${isMismatch ? 'var(--color-danger)' : color}">${(liveRamGb || ramGb).toFixed(1)} GB</strong></div>` : ''}
 							</div>
 						</div>`;
 					}).join('')}
@@ -921,6 +927,8 @@ export class DiagnosticsWidget extends HTMLElement {
 				.ltc-status.online { color: var(--accent-primary); }
 				.ltc-status.processing { color: var(--accent-primary); animation: diag-pulse 1s infinite; }
 				.ltc-status.offline { color: var(--color-danger); }
+				.ltc-badge { font-size: 0.5rem; font-weight: 900; letter-spacing: 0.05em; text-transform: uppercase; border-radius: 3px; padding: 0.1rem 0.35rem; margin-left: auto; }
+				.ltc-badge.mismatch { color: #fff; background: var(--color-danger); box-shadow: 0 0 10px hsla(0, 85%, 55%, 0.4); animation: diag-pulse 2s infinite; }
 				.ltc-model { font-size: 0.78rem; font-family: var(--font-mono); color: var(--text-secondary); font-weight: 600; }
 				.ltc-specs { display: flex; flex-wrap: wrap; gap: 0.3rem 0.7rem; margin-top: 0.1rem; }
 				.ltc-spec { display: flex; align-items: baseline; gap: 0.25rem; }
