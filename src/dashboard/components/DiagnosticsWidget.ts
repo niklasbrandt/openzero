@@ -605,7 +605,7 @@ export class DiagnosticsWidget extends HTMLElement {
 								<span class="svc-dot ${dotClass}"></span>
 								<span class="ltc-name" style="color:${color}">${this.displayTier(name)}</span>
 								<span class="ltc-status ${dotClass}">${statusLabel}</span>
-								${isMismatch ? `<span class="ltc-badge mismatch has-tip" data-tip="CRITICAL: Model RAM usage (${liveRamGb}GB) is significantly higher than estimated weights. Possible configuration error or corrupted model file.">MISMATCH</span>` : ''}
+								${isMismatch ? `<span class="ltc-badge mismatch has-tip" data-tip="${this.tr('diag_llm_mismatch_tip', 'CRITICAL: Model RAM usage is significantly higher than estimated weights. Possible configuration error or corrupted model file.')}">MISMATCH</span>` : ''}
 							</div>
 							<div class="ltc-model">${this.esc(model)}</div>
 							<div class="ltc-specs">
@@ -613,7 +613,7 @@ export class DiagnosticsWidget extends HTMLElement {
 								${threads ? `<div class="ltc-spec has-tip" data-tip="CPU threads allocated to this tier"><span>Threads</span><strong>${threads}</strong></div>` : ''}
 								${batch ? `<div class="ltc-spec has-tip" data-tip="Batch size — tokens processed per inference pass. Higher = faster first token but more RAM"><span>Batch</span><strong>${batch}</strong></div>` : ''}
 								${predict ? `<div class="ltc-spec has-tip" data-tip="Max tokens generated per response"><span>Max out</span><strong>${predict}</strong></div>` : ''}
-								${(liveRamGb || ramGb) ? `<div class="ltc-spec has-tip" data-tip="${liveRamGb ? 'Live RAM from Docker stats: Model weights + KV cache + compute buffers' : 'Estimated weight-only RAM lower bound (excludes cache overhead)'}"><span>${liveRamGb ? 'RAM live' : 'RAM est'}</span><strong style="color:${isMismatch ? 'var(--color-danger)' : color}">${(liveRamGb || ramGb).toFixed(1)} GB</strong></div>` : ''}
+								${(liveRamGb || ramGb) ? `<div class="ltc-spec has-tip" data-tip="${liveRamGb ? this.tr('diag_ram_live_tip', 'Live RAM from Docker stats: Model weights + KV cache + compute buffers') : this.tr('diag_ram_est_tip', 'Estimated weight-only RAM lower bound (excludes cache overhead)')}"><span>${liveRamGb ? 'RAM live' : 'RAM est'}</span><strong style="color:${isMismatch ? 'var(--color-danger)' : color}">${(liveRamGb || ramGb).toFixed(1)} GB</strong></div>` : ''}
 							</div>
 						</div>`;
 					}).join('')}
