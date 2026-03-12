@@ -326,10 +326,10 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 						"time": dt.strftime('%a %H:%M'),
 						"sort_key": dt
 					})
-				except Exception:
-					pass  # malformed event date -- non-fatal
-		except Exception:
-			pass  # calendar fetch failed -- non-fatal
+				except Exception as _e:
+					logger.debug("Google event date parse failed: %s", _e) # malformed event date -- non-fatal
+		except Exception as _e:
+			logger.debug("Google calendar fetch failed: %s", _e) # calendar fetch failed -- non-fatal
 		
 		# B. Local Events
 		res_local = await db.execute(select(LocalEvent).where(LocalEvent.start_time >= today, LocalEvent.start_time <= end_limit))
@@ -357,8 +357,8 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 							"time": bday_this_year.strftime('%a, %d %b'),
 							"sort_key": bday_this_year
 						})
-				except Exception:
-					pass  # malformed birthday -- skip silently
+				except Exception as _e:
+					logger.debug("Birthday date calculation failed for %s: %s", p.name, _e) # malformed birthday -- skip silently
 
 		timeline_events.sort(key=lambda x: x["sort_key"])
 		event_list = "\n".join([f"• {e['summary']} ({e['time']})" for e in timeline_events[:5]])
@@ -1101,8 +1101,8 @@ async def planka_redirect(request: Request, target: str = "", background: bool =
 						elif projects:
 							proj_id = projects[0]["id"]
 							PLANKA_ID_CACHE["oz_project_id"] = proj_id
-					except Exception:
-						pass  # project lookup optional -- continue with redirect fallback
+					except Exception as _pe:
+						logger.debug("SSO project lookup failed: %s", _pe) # project lookup optional -- continue with redirect fallback
 
 				if proj_id:
 					redirect_url = f"{public_base}/projects/{proj_id}"
@@ -1807,8 +1807,8 @@ async def server_info() -> dict:
 					model_path = gs.get("model", "")
 					if model_path:
 						tier_info["model_file"] = os.path.basename(model_path)
-			except Exception:
-				pass
+			except Exception as _e:
+				logger.debug("Fetch props failed for %s: %s", tier_name, _e)
 
 			if configured_threads < 2:
 				tier_info["thread_warning"] = f"Only {configured_threads} thread(s) configured -- likely a misconfigured env var."

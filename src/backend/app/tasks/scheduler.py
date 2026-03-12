@@ -307,8 +307,8 @@ async def load_custom_tasks():
 									v_int = int(v.strip())
 									if v_int >= 1:
 										kwargs[k.strip()] = v_int
-								except ValueError:
-									pass  # non-integer spec value -- skip this key
+								except ValueError as _ve:
+									logger.debug("Scheduler: Invalid interval value in spec %s: %s", t.spec, _ve)
 					if not kwargs:
 						logger.warning("Skipping custom task '%s': invalid interval spec '%s'", t.name, t.spec)
 						continue

@@ -152,8 +152,8 @@ def get_birthday_proximity(birthday_str: str) -> str | None:
 				return "tomorrow"
 			elif days_until <= 30:
 				return f"in {days_until} days"
-	except Exception:
-		pass  # birthday parse or date arithmetic failed -- return None below
+	except Exception as _e:
+		logger.debug("Birthday proximity calculation failed for %s: %s", birthday_str, _e)
 	return None
 
 def format_date_full(dt: Optional[datetime.datetime] = None) -> str:
