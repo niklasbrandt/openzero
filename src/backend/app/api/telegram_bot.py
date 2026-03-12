@@ -11,7 +11,6 @@ from telegram.ext import (
 from app.config import settings
 from app.services.timezone import format_time, get_user_timezone
 import asyncio
-import html as _html
 import pytz
 import re
 from datetime import datetime, timezone as _tz
@@ -457,6 +456,7 @@ def _md_to_html(text: str) -> str:
 	containing '<', '>', or '&' cannot break Telegram's HTML parser.
 	Intentional <b>, <i>, <a> tags are injected by the substitutions below.
 	"""
+	import html as _html
 	# Escape raw HTML chars BEFORE injecting intentional tags.
 	safe = _html.escape(text)
 	# Bold: **text** or *text* -> <b>text</b>
