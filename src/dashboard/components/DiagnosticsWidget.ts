@@ -604,19 +604,21 @@ export class DiagnosticsWidget extends HTMLElement {
 						// If live RAM exceeds estimated RAM by > 50%, show a mismatch badge.
 						const isMismatch = (liveRamGb > 0 && ramGb > 0 && (liveRamGb / ramGb) > 1.5);
 						
+						const mismatchDesc = this.tr('diag_llm_mismatch_desc', 'CRITICAL: Live RAM usage ({live} GB) is over 50% higher than estimated weights ({est} GB). This suggests a larger model is hiding under a smaller filename.').replace('{live}', liveRamGb.toFixed(1)).replace('{est}', ramGb.toFixed(1));
+						
 						return `<div class="llm-tier-card" style="--tier-color:${color}">
 							<div class="ltc-header">
 								<span class="svc-dot ${dotClass}"></span>
 								<span class="ltc-name" style="color:${color}">${this.displayTier(name)}</span>
 								<span class="ltc-status ${dotClass}">${statusLabel}</span>
 								${isMismatch ? `<span class="ltc-badge mismatch has-tip">MISMATCH
-									<span class="glass-tooltip">${this.tr('diag_llm_mismatch_tip', 'CRITICAL: Model RAM usage is significantly higher than estimated weights. Possible configuration error or corrupted model file.')}</span>
+									<span class="glass-tooltip">${mismatchDesc}</span>
 								</span>` : ''}
 							</div>
 							<div class="ltc-model ${isMismatch ? 'mismatch has-tip' : ''}">
 								${isMismatch ? '<span class="ltc-mismatch-icon" aria-hidden="true">⚠️</span>' : ''}
 								${this.esc(model)}
-								${isMismatch ? `<span class="glass-tooltip">${this.tr('diag_llm_model_mismatch_tip', 'CRITICAL: Resource signature mismatch. This model is consuming far more RAM than its filename (e.g. 0.6B) would suggest.')}</span>` : ''}
+								${isMismatch ? `<span class="glass-tooltip">${mismatchDesc}</span>` : ''}
 							</div>
 							<div class="ltc-specs">
 								${ctx ? `<div class="ltc-spec has-tip"><span>CTX</span><strong>${ctx.toLocaleString()}</strong><span class="glass-tooltip">Context window — max tokens held in memory per request</span></div>` : ''}
@@ -919,10 +921,13 @@ export class DiagnosticsWidget extends HTMLElement {
 				.ltc-status.online { color: var(--accent-primary); }
 				.ltc-status.processing { color: var(--accent-primary); animation: diag-pulse 1s infinite; }
 				.ltc-status.offline { color: var(--color-danger); }
-				.ltc-badge { font-size: 0.5rem; font-weight: 900; letter-spacing: 0.05em; text-transform: uppercase; border-radius: 3px; padding: 0.1rem 0.35rem; margin-left: auto; }
-				.ltc-badge.mismatch { color: #fff; background: var(--color-danger); box-shadow: 0 0 10px hsla(0, 85%, 55%, 0.4); animation: diag-pulse 2s infinite; }
-				.ltc-model { font-size: 0.78rem; font-family: var(--font-mono); color: var(--text-secondary); font-weight: 600; display: flex; align-items: center; gap: 0.4rem; padding: 0.1rem 0; }
-				.ltc-model.mismatch { color: var(--color-danger); }
+				.ltc-badge { font-size: 0.5rem; font-weight: 900; letter-spacing: 0.05em; text-transform: uppercase; border-radius: 3px; padding: 0.1rem 0.35rem; margin-left: auto; position: relative; }
+				.ltc-badge.mismatch { color: #fff; background: var(--color-danger); box-shadow: 0 0 10px hsla(0, 85%, 55%, 0.4); animation: diag-pulse 2s infinite; cursor: help; }
+				.ltc-badge .glass-tooltip { right: 0; left: auto; transform: translateY(2px); margin-bottom: 2px; }
+				.has-tip:hover > .ltc-badge .glass-tooltip { transform: translateY(-4px); }
+				
+				.ltc-model { font-size: 0.78rem; font-family: var(--font-mono); color: var(--text-secondary); font-weight: 600; display: flex; align-items: center; gap: 0.4rem; padding: 0.1rem 0; position: relative; width: fit-content; }
+				.ltc-model.mismatch { color: var(--color-danger); cursor: help; }
 				.ltc-mismatch-icon { color: var(--color-danger); font-size: 0.8rem; animation: diag-pulse 1s infinite; }
 				.ltc-specs { display: flex; flex-wrap: wrap; gap: 0.3rem 0.7rem; margin-top: 0.1rem; }
 				.ltc-spec { display: flex; align-items: baseline; gap: 0.25rem; }
