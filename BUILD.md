@@ -89,6 +89,10 @@ sudo ufw deny 80
 sudo ufw allow in on tailscale0 from 100.64.0.0/10 to any port 53 proto udp
 sudo ufw allow in on tailscale0 from 100.64.0.0/10 to any port 53 proto tcp
 
+# Allow DNS (port 53) from Docker bridge networks (172.16.0.0/12) so backend container can resolve open.zero
+sudo ufw allow in from 172.16.0.0/12 to any port 53 proto udp
+sudo ufw allow in from 172.16.0.0/12 to any port 53 proto tcp
+
 # Activate the firewall
 sudo ufw --force enable
 
