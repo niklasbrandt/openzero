@@ -82,6 +82,26 @@ if [[ -n "$FILE_SIG" ]]; then
 	fi
 fi
 
+# ── Header Validation (Internal Model Name) ───────────────────
+# Read the first 1KB of the file and look for the internal model name string.
+# Most GGUF files contain 'general.name' or 'general.basename' early in the header.
+echo "Verifying internal model header..."
+HEADER_SIG=$(head -c 1024 "$MODEL_PATH" | tr -dc '[:print:]' | grep -oEi "Qwen3-[0-9.]+B|Llama-[0-9.]+B" | head -n1 | tr '[:lower:]' '[:upper:]')
+if [[ -n "$HEADER_SIG" && -n "$FILE_SIG" ]]; then
+	# We only enforce this for Qwen3 models since we know the signature format precisely.
+	if [[ "$HEADER_SIG" == "QWEN3"* ]]; then
+		if [[ "$HEADER_SIG" != *"$FILE_SIG"* ]]; then
+			echo "❌ ERROR: Internal header mismatch!"
+			echo "  Filename claims: ${FILE_SIG}"
+			echo "  Header contains: ${HEADER_SIG}"
+			echo "This file is internally identified as ${HEADER_SIG} regardless of its filename."
+			echo "Please use the correct model for this tier."
+			exit 1
+		fi
+		echo "Header validation passed: ${HEADER_SIG}"
+	fi
+fi
+
 # Prune stale models — delete any .gguf files in MODEL_DIR that are not
 # in the KEEP_MODELS whitelist. KEEP_MODELS is a comma-separated list of
 # all currently active model filenames across ALL tiers (set via docker-compose).
