@@ -101,7 +101,7 @@ async def store_memory(text: str, metadata: Optional[dict] = None):
 	# Adversarial content filter -- reject text containing known injection
 	# phrases that could poison future prompt contexts.
 	if _ADVERSARIAL_PATTERNS.search(distilled_text):
-		logger.warning("Memory rejected (adversarial pattern detected): %s", _log_safe(distilled_text))
+		logger.warning("Memory rejected: adversarial pattern detected")
 		return
 
 	# 3. Semantic Deduplication
@@ -116,7 +116,7 @@ async def store_memory(text: str, metadata: Optional[dict] = None):
 			limit=1
 		)
 		if dupes.points and dupes.points[0].score > 0.98:
-			logger.info("Memory Deduplicator: Ignored existing fact: %s", _log_safe(distilled_text))
+			logger.info("Memory Deduplicator: Ignored existing fact")
 			return
 	except Exception as _e:
 		logger.debug("Memory dedup check failed: %s", _e) # optional; proceed with upsert if it fails

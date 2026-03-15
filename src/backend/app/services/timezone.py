@@ -25,7 +25,7 @@ async def refresh_user_settings():
 				if identity.town and identity.town.strip():
 					cc = (identity.country or "").strip()
 					_cached_location = f"{identity.town.strip()}, {cc}" if cc else identity.town.strip()
-			logger.info("User settings refreshed: tz=%s, loc=%s", _cached_timezone or 'Europe/Berlin', _cached_location or 'N/A')
+			logger.info("User settings refreshed: tz=%s, loc=(loaded)", _cached_timezone or 'Europe/Berlin')
 	except Exception as e:
 		logger.error("Failed to refresh user settings from DB: %s", e)
 
@@ -153,7 +153,7 @@ def get_birthday_proximity(birthday_str: str) -> str | None:
 			elif days_until <= 30:
 				return f"in {days_until} days"
 	except Exception as _e:
-		logger.debug("Birthday proximity calculation failed for %s: %s", birthday_str, _e)
+		logger.debug("Birthday proximity calculation failed: %s", _e)
 	return None
 
 def format_date_full(dt: Optional[datetime.datetime] = None) -> str:
