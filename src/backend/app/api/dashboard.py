@@ -1795,7 +1795,12 @@ async def server_info() -> dict:
 							if n_ctx > 0:
 								tier_info["kv_usage_pct"] = round((n_past / n_ctx) * 100, 1)
 				except Exception:
-					tier_info["ctx_size"] = 0  # /slots probe optional
+					# Fallback to configured value if /slots probe fails
+					env_ctx_map = {
+						"fast": os.environ.get("LLM_FAST_CTX", "4096"),
+						"deep": os.environ.get("LLM_DEEP_CTX", "6144"),
+					}
+					tier_info["ctx_size"] = int(env_ctx_map.get(tier_name, "4096"))
 			except Exception:
 				tier_info["status"] = "offline"
 
