@@ -1,29 +1,33 @@
 {
-    "name": "openzero-dashboard",
-    "private": true,
-    "version": "1.0.0",
-    "type": "module",
-    "scripts": {
-        "dev": "vite",
-        "build": "tsc && vite build",
-        "preview": "vite preview",
-        "test:a11y": "playwright test tests/accessibility.spec.ts",
-        "lint:ts": "eslint src/ components/ services/",
-        "perf:baseline": "lighthouse http://localhost:5173 --only-categories=performance --output=json --output=html --output-path=./lighthouse-baseline --chrome-flags='--headless=new'",
-        "perf:audit": "lighthouse http://localhost:5173 --only-categories=performance --output=json --output=html --output-path=./lighthouse-report --chrome-flags='--headless=new'",
-        "perf:audit:prod": "echo 'Requires SSH tunnel: ssh -f -N -L 4173:localhost:80 openzero@100.116.160.123' && lighthouse http://127.0.0.1:4173/dashboard --output=json --output=html --output-path=./lighthouse-prod --chrome-flags='--headless=new' --throttling-method=provided --max-wait-for-load=20000"
-    },
-    "devDependencies": {
-        "@axe-core/playwright": "^4.10.1",
-        "@lhci/cli": "^0.15.1",
-        "@playwright/test": "^1.51.0",
-        "eslint": "^10.0.3",
-        "lighthouse": "^12.0.0",
-        "typescript": "^5.2.2",
-        "typescript-eslint": "^8.26.0",
-        "vite": "^7.3.1"
-    },
-    "dependencies": {
-        "normalize.css": "^8.0.1"
-    }
+	"name": "openzero-dashboard",
+	"private": true,
+	"version": "1.0.0",
+	"type": "module",
+	"scripts": {
+		"dev": "vite",
+		"build": "tsc && vite build",
+		"preview": "vite preview",
+		"test:a11y": "playwright test tests/accessibility.spec.ts",
+		"lint:ts": "eslint src/ components/ services/",
+		"perf:baseline": "lighthouse http://localhost:5173 --only-categories=performance --output=json --output=html --output-path=./lighthouse-baseline --chrome-flags='--headless=new'",
+		"perf:audit": "lighthouse http://localhost:5173 --only-categories=performance --output=json --output=html --output-path=./lighthouse-report --chrome-flags='--headless=new'",
+		"perf:audit:prod": "echo 'Requires SSH tunnel: ssh -f -N -L 4173:localhost:80 openzero@100.116.160.123' && lighthouse http://127.0.0.1:4173/dashboard --output=json --output=html --output-path=./lighthouse-prod --chrome-flags='--headless=new' --throttling-method=provided --max-wait-for-load=20000"
+	},
+	"devDependencies": {
+		"@axe-core/playwright": "^4.10.1",
+		"@lhci/cli": "^0.15.1",
+		"@playwright/test": "^1.51.0",
+		"eslint": "^10.0.3",
+		"lighthouse": "^12.0.0",
+		"typescript": "^5.2.2",
+		"typescript-eslint": "^8.26.0",
+		"vite": "^7.3.1"
+	},
+	"dependencies": {
+		"normalize.css": "^8.0.1"
+	},
+	"overrides": {
+		"tmp": "^0.2.5",
+		"yauzl": "^3.2.1"
+	}
 }
