@@ -530,8 +530,6 @@ export class DiagnosticsWidget extends HTMLElement {
 		const tierNames = ['deep', 'fast'];
 		const tierColors = ['hsl(260,70%,65%)', 'var(--accent-primary)'];
 		const ctxFor = (name: string): number => { const t = cfgTiers.find((x: any) => x.tier === name); return t?.ctx || 0; };
-		const batchFor = (name: string): number => { const t = cfgTiers.find((x: any) => x.tier === name); return t?.batch || 0; };
-		const predictFor = (name: string): number => { const t = cfgTiers.find((x: any) => x.tier === name); return t?.predict || 0; };
 		const threadsFor = (name: string): number => { const t = cfgTiers.find((x: any) => x.tier === name); return t?.threads || 0; };
 
 		const benchHtml = this.benchResults.length === 0 ? `` :
