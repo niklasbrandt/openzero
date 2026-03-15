@@ -130,12 +130,17 @@ BATCH="${BATCH_SIZE:-512}"
 # Increasing this multiplies KV cache memory by N. Set via PARALLEL env var.
 PARALLEL="${PARALLEL:-1}"
 
+# Prompt cache size in MiB — recent llama-server versions default to 8192 MiB (8GB).
+# We limit this to save VPS RAM. Default to 256 MiB.
+CACHE="${LLM_CACHE_RAM:-256}"
+
 echo "Starting llama-server on port ${PORT}..."
 echo "  Threads: ${THREADS}"
 echo "  Context: ${CTX_SIZE}"
 echo "  Max predict: ${N_PREDICT}"
 echo "  Batch size: ${BATCH}"
 echo "  Parallel slots: ${PARALLEL}"
+echo "  Cache RAM: ${CACHE} MiB"
 echo "  Extra args: ${EXTRA_ARGS}"
 
 exec /app/llama-server \
@@ -148,6 +153,7 @@ exec /app/llama-server \
 	--n-predict "${N_PREDICT}" \
 	--batch-size "${BATCH}" \
 	--parallel "${PARALLEL}" \
+	--cache-ram "${CACHE}" \
 	--no-mmap \
 	--mlock \
 	--cont-batching \
