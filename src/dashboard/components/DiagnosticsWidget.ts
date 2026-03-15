@@ -611,14 +611,13 @@ export class DiagnosticsWidget extends HTMLElement {
 						
 						return `<div class="llm-tier-card" style="--tier-color:${color}">
 							<div class="ltc-header">
-								<span class="svc-dot ${dotClass}"></span>
 								<span class="ltc-name" style="color:${color}">${this.displayTier(name)}</span>
 								<span class="ltc-status ${dotClass}">${statusLabel}</span>
 								${isMismatch ? `<span class="ltc-badge mismatch has-tip">MISMATCH
 									<span class="glass-tooltip">${mismatchDesc}</span>
 								</span>` : ''}
-								${kvUsage > 0.1 ? `<span class="ltc-badge kv-usage has-tip" style="background:${color}22; color:${color}">KV ${kvUsage.toFixed(0)}%
-									<span class="glass-tooltip">Real-time KV Cache usage: how much of the context window is currently filled with active conversation.</span>
+								${isOnline ? `<span class="ltc-badge kv-usage has-tip" style="background:${color}22; color:${color}">KV ${kvUsage.toFixed(0)}%
+									<span class="glass-tooltip">Real-time KV Cache usage: how much of the context window (${ctx.toLocaleString()} tokens) is currently filled.</span>
 								</span>` : ''}
 							</div>
 							<div class="ltc-model ${isMismatch ? 'mismatch has-tip' : ''}">

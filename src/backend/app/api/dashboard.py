@@ -1819,8 +1819,11 @@ async def server_info() -> dict:
 				props_resp = await client.get(f"{base_url}/props")
 				if props_resp.status_code == 200:
 					props = props_resp.json()
-					gs = props.get("default_generation_settings", {})
-					model_path = gs.get("model", "")
+					model_path = props.get("model_path")
+					if not model_path:
+						gs = props.get("default_generation_settings", {})
+						model_path = gs.get("model", props.get("model_alias", ""))
+					
 					if model_path:
 						fname = os.path.basename(model_path)
 						tier_info["model_file"] = fname
