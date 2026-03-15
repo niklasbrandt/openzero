@@ -572,7 +572,6 @@ export class DiagnosticsWidget extends HTMLElement {
 				<div class="llm-ram-breakdown">
 					${tierNames.map((name, idx) => {
 						const td = tiers[name] || {};
-						const isOnline = td.status === 'online';
 						const color = tierColors[idx];
 						const ramGb = ramEstFor(name);
 
@@ -612,9 +611,6 @@ export class DiagnosticsWidget extends HTMLElement {
 								${isMismatch ? `<span class="ltc-badge mismatch has-tip">MISMATCH
 									<span class="glass-tooltip">${mismatchDesc}</span>
 								</span>` : ''}
-								${isOnline && kvUsage >= 1 ? `<span class="ltc-badge kv-usage has-tip" style="background:${color}22; color:${color}">KV ${kvUsage.toFixed(0)}%
-									<span class="glass-tooltip">Real-time KV Cache usage: how much of the context window (${ctx.toLocaleString()} tokens) is currently filled.</span>
-								</span>` : ''}
 							</div>
 							<div class="ltc-model ${isMismatch ? 'mismatch has-tip' : ''}">
 								${isMismatch ? '<span class="ltc-mismatch-icon" aria-hidden="true">⚠️</span>' : ''}
@@ -624,7 +620,7 @@ export class DiagnosticsWidget extends HTMLElement {
 							<div class="ltc-specs">
 								${fileSizeGb ? `<div class="ltc-spec has-tip"><span>File</span><strong>${fileSizeGb.toFixed(1)} GB</strong><span class="glass-tooltip">Physical size of the model file on disk.</span></div>` : ''}
 								${ctx ? `<div class="ltc-spec has-tip"><span>CTX</span><strong>${ctx.toLocaleString()}</strong><span class="glass-tooltip">Context window — max tokens held in memory per request</span></div>` : ''}
-								${cacheRamMb ? `<div class="ltc-spec has-tip"><span>Prompt Cache</span><strong>${cacheRamMb} MiB</strong><span class="glass-tooltip">Allocated memory for reuse of earlier prompt parts. Limits RAM growth.</span></div>` : ''}
+								${cacheRamMb ? `<div class="ltc-spec has-tip"><span>Prompt Cache</span><strong>${cacheRamMb} MiB <small style="font-weight:400; opacity:0.6; margin-left:0.3rem;">(used ${kvUsage.toFixed(0)}%)</small></strong><span class="glass-tooltip">Allocated memory for reuse of earlier prompt parts. Limits RAM growth.</span></div>` : ''}
 								${threads ? `<div class="ltc-spec has-tip"><span>Threads</span><strong>${threads}</strong><span class="glass-tooltip">CPU threads allocated to this tier</span></div>` : ''}
 								${liveRamGb ? `<div class="ltc-spec has-tip"><span>RAM live</span><strong style="color:${isMismatch ? 'var(--color-danger)' : color}">${liveRamGb.toFixed(1)} GB</strong><span class="glass-tooltip">${this.tr('diag_ram_live_tip', 'Live RAM from Docker stats: Model weights + KV cache + compute buffers')}</span></div>` : ''}
 							</div>
