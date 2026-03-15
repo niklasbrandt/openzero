@@ -299,7 +299,7 @@ def _compute_hash(files: list[Path]) -> str:
 			st = p.stat()
 			h.update(f"{p.name}:{st.st_mtime}:{st.st_size}".encode())
 		except OSError as _oe:
-			logger.debug("Personal context file stats failed for %s: %s", p.name, _oe) # skip it
+			logger.debug("Personal context file stats failed: %s", _oe) # skip it
 	return h.hexdigest()
 
 

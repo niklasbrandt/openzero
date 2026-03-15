@@ -358,7 +358,7 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 							"sort_key": bday_this_year
 						})
 				except Exception as _e:
-					logger.debug("Birthday date calculation failed for %s: %s", p.name, _e) # malformed birthday -- skip silently
+					logger.debug("Birthday date calculation failed: %s", _e) # malformed birthday -- skip silently
 
 		timeline_events.sort(key=lambda x: x["sort_key"])
 		event_list = "\n".join([f"• {e['summary']} ({e['time']})" for e in timeline_events[:5]])
