@@ -573,9 +573,6 @@ export class DiagnosticsWidget extends HTMLElement {
 					${tierNames.map((name, idx) => {
 						const td = tiers[name] || {};
 						const isOnline = td.status === 'online';
-						const isBusy = td.activity === 'processing';
-						const dotClass = !isOnline ? 'offline' : isBusy ? 'processing' : 'online';
-						const statusLabel = !isOnline ? 'OFFLINE' : isBusy ? 'BUSY' : 'IDLE';
 						const color = tierColors[idx];
 						const ramGb = ramEstFor(name);
 
@@ -612,11 +609,10 @@ export class DiagnosticsWidget extends HTMLElement {
 						return `<div class="llm-tier-card" style="--tier-color:${color}">
 							<div class="ltc-header">
 								<span class="ltc-name" style="color:${color}">${this.displayTier(name)}</span>
-								<span class="ltc-status ${dotClass}">${statusLabel}</span>
 								${isMismatch ? `<span class="ltc-badge mismatch has-tip">MISMATCH
 									<span class="glass-tooltip">${mismatchDesc}</span>
 								</span>` : ''}
-								${isOnline ? `<span class="ltc-badge kv-usage has-tip" style="background:${color}22; color:${color}">KV ${kvUsage.toFixed(0)}%
+								${isOnline && kvUsage >= 1 ? `<span class="ltc-badge kv-usage has-tip" style="background:${color}22; color:${color}">KV ${kvUsage.toFixed(0)}%
 									<span class="glass-tooltip">Real-time KV Cache usage: how much of the context window (${ctx.toLocaleString()} tokens) is currently filled.</span>
 								</span>` : ''}
 							</div>
