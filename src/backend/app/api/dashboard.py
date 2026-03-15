@@ -1752,6 +1752,9 @@ async def server_info() -> dict:
 				"ctx_size": 0,
 				"n_predict": 0,
 				"model_file": "",
+				"model_size_gb": 0,
+				"cache_ram_mb": 0,
+				"kv_usage_pct": 0,
 				"using_all_cores": True,
 				"thread_warning": "",
 			}
@@ -1783,8 +1786,14 @@ async def server_info() -> dict:
 					if slots_resp.status_code == 200:
 						slots = slots_resp.json()
 						if isinstance(slots, list) and len(slots) > 0:
-							tier_info["n_predict"] = slots[0].get("n_predict", 0)
-							tier_info["ctx_size"] = slots[0].get("n_ctx", 0)
+							slot = slots[0]
+							tier_info["n_predict"] = slot.get("n_predict", 0)
+							tier_info["ctx_size"] = slot.get("n_ctx", 0)
+							# Calculate real-time KV cache usage
+							n_ctx = slot.get("n_ctx", 0)
+							n_past = slot.get("n_past", 0)
+							if n_ctx > 0:
+								tier_info["kv_usage_pct"] = round((n_past / n_ctx) * 100, 1)
 				except Exception:
 					tier_info["ctx_size"] = 0  # /slots probe optional
 			except Exception:
@@ -1798,6 +1807,13 @@ async def server_info() -> dict:
 			configured_threads = int(env_thread_map.get(tier_name, "4"))
 			tier_info["threads"] = configured_threads
 
+			# Cache RAM detection from env (as passed to container)
+			env_cache_map = {
+				"fast": os.environ.get("LLM_FAST_CACHE_RAM", "256"),
+				"deep": os.environ.get("LLM_DEEP_CACHE_RAM", "1024"),
+			}
+			tier_info["cache_ram_mb"] = int(env_cache_map.get(tier_name, "256"))
+
 			# Fetch real model metadata from /props
 			try:
 				props_resp = await client.get(f"{base_url}/props")
@@ -1806,7 +1822,17 @@ async def server_info() -> dict:
 					gs = props.get("default_generation_settings", {})
 					model_path = gs.get("model", "")
 					if model_path:
-						tier_info["model_file"] = os.path.basename(model_path)
+						fname = os.path.basename(model_path)
+						tier_info["model_file"] = fname
+						# Measure physical file size if model directory is mounted
+						try:
+							# Look for file in the mounted /models directory
+							mount_path = f"/models/{fname}"
+							if os.path.exists(mount_path):
+								sz_bytes = os.path.getsize(mount_path)
+								tier_info["model_size_gb"] = round(sz_bytes / (1024**3), 2)
+						except Exception as _e:
+							logger.debug("Physical size check failed for %s: %s", fname, _e)
 			except Exception as _e:
 				logger.debug("Fetch props failed for %s: %s", tier_name, _e)
 
