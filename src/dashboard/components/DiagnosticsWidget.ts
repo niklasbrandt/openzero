@@ -595,16 +595,21 @@ export class DiagnosticsWidget extends HTMLElement {
 						}
 
 						const ctx = ctxFor(name);
-						const batch = batchFor(name);
-						const predict = predictFor(name);
 						const threads = threadsFor(name);
 						const liveRamGb = ((srv.container_ram || []).find((c: any) => c.name === 'llm-' + name) || {}).gb || 0;
 						
-						// Mitigation: Detect hidden large models (e.g. 14B hiding as 0.6B)
-						// If live RAM exceeds estimated RAM by > 50%, show a mismatch badge.
-						const isMismatch = (liveRamGb > 0 && ramGb > 0 && (liveRamGb / ramGb) > 1.5);
+						// Enhanced metadata from tier data (td)
+						const fileSizeGb = td.model_size_gb || 0;
+						const cacheRamMb = td.cache_ram_mb || 0;
+						const kvUsage = td.kv_usage_pct || 0;
+
+						// Mitigation: Detect hidden large models
+						// Accounting for the configured prompt cache to avoid false positives.
+						// Mismatch if live RAM > (Estimated Weights + Cache RAM + 1GB buffer) * 1.5
+						const cacheGb = cacheRamMb / 1024;
+						const isMismatch = (liveRamGb > 0 && ramGb > 0 && (liveRamGb / (ramGb + cacheGb + 1.0)) > 1.3);
 						
-						const mismatchDesc = this.tr('diag_llm_mismatch_desc', 'CRITICAL: Live RAM usage ({live} GB) is over 50% higher than estimated weights ({est} GB). This suggests a larger model is hiding under a smaller filename.').replace('{live}', liveRamGb.toFixed(1)).replace('{est}', ramGb.toFixed(1));
+						const mismatchDesc = this.tr('diag_llm_mismatch_desc', 'CRITICAL: Live RAM usage ({live} GB) is significantly higher than expected ({est} GB + {cache} GB cache). This suggests a larger model is hiding under a smaller filename.').replace('{live}', liveRamGb.toFixed(1)).replace('{est}', ramGb.toFixed(1)).replace('{cache}', cacheGb.toFixed(1));
 						
 						return `<div class="llm-tier-card" style="--tier-color:${color}">
 							<div class="ltc-header">
@@ -614,6 +619,9 @@ export class DiagnosticsWidget extends HTMLElement {
 								${isMismatch ? `<span class="ltc-badge mismatch has-tip">MISMATCH
 									<span class="glass-tooltip">${mismatchDesc}</span>
 								</span>` : ''}
+								${kvUsage > 0.1 ? `<span class="ltc-badge kv-usage has-tip" style="background:${color}22; color:${color}">KV ${kvUsage.toFixed(0)}%
+									<span class="glass-tooltip">Real-time KV Cache usage: how much of the context window is currently filled with active conversation.</span>
+								</span>` : ''}
 							</div>
 							<div class="ltc-model ${isMismatch ? 'mismatch has-tip' : ''}">
 								${isMismatch ? '<span class="ltc-mismatch-icon" aria-hidden="true">⚠️</span>' : ''}
@@ -621,11 +629,11 @@ export class DiagnosticsWidget extends HTMLElement {
 								${isMismatch ? `<span class="glass-tooltip">${mismatchDesc}</span>` : ''}
 							</div>
 							<div class="ltc-specs">
+								${fileSizeGb ? `<div class="ltc-spec has-tip"><span>File</span><strong>${fileSizeGb.toFixed(1)} GB</strong><span class="glass-tooltip">Physical size of the model file on disk.</span></div>` : ''}
 								${ctx ? `<div class="ltc-spec has-tip"><span>CTX</span><strong>${ctx.toLocaleString()}</strong><span class="glass-tooltip">Context window — max tokens held in memory per request</span></div>` : ''}
+								${cacheRamMb ? `<div class="ltc-spec has-tip"><span>Prompt Cache</span><strong>${cacheRamMb} MiB</strong><span class="glass-tooltip">Allocated memory for reuse of earlier prompt parts. Limits RAM growth.</span></div>` : ''}
 								${threads ? `<div class="ltc-spec has-tip"><span>Threads</span><strong>${threads}</strong><span class="glass-tooltip">CPU threads allocated to this tier</span></div>` : ''}
-								${batch ? `<div class="ltc-spec has-tip"><span>Batch</span><strong>${batch}</strong><span class="glass-tooltip">Batch size — tokens processed per inference pass. Higher = faster first token but more RAM</span></div>` : ''}
-								${predict ? `<div class="ltc-spec has-tip"><span>Max out</span><strong>${predict}</strong><span class="glass-tooltip">Max tokens generated per response</span></div>` : ''}
-								${(liveRamGb || ramGb) ? `<div class="ltc-spec has-tip"><span>${liveRamGb ? 'RAM live' : 'RAM est'}</span><strong style="color:${isMismatch ? 'var(--color-danger)' : color}">${(liveRamGb || ramGb).toFixed(1)} GB</strong><span class="glass-tooltip">${liveRamGb ? this.tr('diag_ram_live_tip', 'Live RAM from Docker stats: Model weights + KV cache + compute buffers') : this.tr('diag_ram_est_tip', 'Estimated weight-only RAM lower bound (excludes cache overhead)')}</span></div>` : ''}
+								${liveRamGb ? `<div class="ltc-spec has-tip"><span>RAM live</span><strong style="color:${isMismatch ? 'var(--color-danger)' : color}">${liveRamGb.toFixed(1)} GB</strong><span class="glass-tooltip">${this.tr('diag_ram_live_tip', 'Live RAM from Docker stats: Model weights + KV cache + compute buffers')}</span></div>` : ''}
 							</div>
 						</div>`;
 					}).join('')}
