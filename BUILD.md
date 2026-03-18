@@ -180,6 +180,10 @@ cp .env.example .env
 # REMOTE_USER=openzero
 # REDIS_PASSWORD=your_strong_random_password  (protects the task queue)
 # BASE_URL=http://open.zero  (or http://YOUR_SERVER_IP — must match your access URL)
+
+# LLM Memory Management (RAM savings)
+# LLM_FAST_CACHE_RAM=256   (MiB for prompt cache - 0.6B tier)
+# LLM_DEEP_CACHE_RAM=1024  (MiB for prompt cache - 8B tier)
 ```
 
 > [!NOTE]

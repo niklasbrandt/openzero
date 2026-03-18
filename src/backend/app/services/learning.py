@@ -51,7 +51,7 @@ async def extract_and_store_facts(user_message: str):
 
 		# Parse result
 		if not result or 'NONE' in result.upper():
-			logger.debug("Memory extraction: no facts in '%s...' ", _log_safe(clean_input, 50))
+			logger.debug("Memory extraction: no facts found in message")
 			return
 
 		# Store each extracted fact
@@ -67,7 +67,7 @@ async def extract_and_store_facts(user_message: str):
 			stored_count += 1
 
 		if stored_count > 0:
-			logger.info("Memory extraction: stored %d fact(s) from '%s...'", stored_count, _log_safe(clean_input, 60))
+			logger.info("Memory extraction: stored %d fact(s)", stored_count)
 
 	except Exception as e:
 		logger.warning("Memory extraction failed (non-blocking): %s", e)
