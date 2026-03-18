@@ -58,9 +58,9 @@ A centralized **Operator Board** pulls high-priority tasks from all project boar
 
 | Urgency | Examples                                       | Nudge interval   |
 | :------ | :--------------------------------------------- | :--------------- |
-| Urgent  | deadline, asap, outage, critical, blocker      | every 10 minutes |
-| Medium  | general tasks without urgency signals          | every 60 minutes |
-| Low     | backlog, someday, wishlist, nice to have       | every 3 hours    |
+| Urgent  | deadline, asap, outage, critical, blocker      | every hour       |
+| Medium  | general tasks without urgency signals          | every 6 hours    |
+| Low     | backlog, someday, wishlist, nice to have       | every 12 hours   |
 | Custom  | user-specified (e.g. "remind me every 20 min") | as requested     |
 
 A custom interval can also be set directly from chat -- just tell Z "nudge me about the deploy task every 15 minutes" and it will emit a `SET_NUDGE_INTERVAL` action tag that overrides the automatic estimate. Task names can embed intervals inline using patterns like `[nudge:30m]` or `[2h]`.
@@ -105,7 +105,7 @@ Z does not wait to be asked. The system runs scheduled automation cycles that ac
 - **Morning Briefing** (daily, configurable time) -- Gathers projects, calendar, weather, emails, social circle birthdays, and recent memories into a structured prompt. Generates a text briefing and a TTS voice note. Includes a rotating **mental calibration exercise** (gratitude, breathing, visualization, journaling).
 - **Contextual Automation** -- Scans circle calendars for upcoming birthdays, deadlines, and priority events within 3 days and auto-creates Kanban tasks.
 - **Email Polling** (every 10 minutes) -- Fetches unread emails via Gmail API, applies user-defined rules, detects embedded calendar events (with approval buttons), and auto-drafts replies for urgent senders.
-- **Proactive Follow-ups** (every 3 hours, 9AM-9PM) -- Checks the Operator Board "Today" list and sends warm, direct mission-check nudges via Telegram.
+- **Proactive Follow-ups** (every 6 hours, 6AM-Midnight) -- Checks the Operator Board "Today" list and sends warm, direct mission-check nudges via Telegram. Frequency adapts to urgency (Urgent: 1h, Medium: 6h, Low: 12h).
 - **Proximity Tracking** -- Time-boxed mission sessions with per-segment milestone nudges and a final wrap-up report. Each segment deadline triggers a targeted progress check.
 - **Weekly Review** (Sundays) -- Summarizes progress, identifies stagnant projects (no activity in 7+ days), and proposes micro-tasks to unblock them.
 - **Monthly / Quarterly / Yearly Reviews** -- Escalating strategic analysis at each cadence, stored as browsable briefings.
