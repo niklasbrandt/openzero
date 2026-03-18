@@ -1,6 +1,6 @@
 import logging
 import re
-from app.services.memory import store_memory, _log_safe
+from app.services.memory import store_memory
 
 logger = logging.getLogger(__name__)
 
