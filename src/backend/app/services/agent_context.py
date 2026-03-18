@@ -156,10 +156,10 @@ async def _extract_text(path: Path) -> Optional[str]:
 		)
 		return text
 	except asyncio.TimeoutError:
-		logger.warning("agent_context: parse timeout for %s — skipping", path.name)
+		logger.warning("agent_context: parse timeout — skipping file")
 		return None
 	except Exception as exc:
-		logger.warning("agent_context: parse error for %s: %s", path.name, exc)
+		logger.warning("agent_context: parse error: %s", exc)
 		return None
 
 
@@ -311,20 +311,20 @@ async def refresh_agent_context() -> None:
 	for path in files:
 		# Security: symlink traversal check
 		if not _is_safe_path(AGENT_FOLDER_PATH, path):
-			logger.warning("agent_context: symlink traversal attempt — skipping %s", path.name)
+			logger.warning("agent_context: symlink traversal attempt — skipping file")
 			continue
 
 		# Security: size gate
 		try:
 			if path.stat().st_size > _MAX_FILE_SIZE_BYTES:
-				logger.warning("agent_context: file too large (>512KB) — skipping %s", path.name)
+				logger.warning("agent_context: file too large (>512KB) — skipping file")
 				continue
 		except OSError:
 			continue
 
 		# Security: magic byte check
 		if not _validate_magic(path):
-			logger.warning("agent_context: magic byte mismatch — skipping %s", path.name)
+			logger.warning("agent_context: magic byte mismatch — skipping file")
 			continue
 
 		raw = await _extract_text(path)
