@@ -166,12 +166,12 @@ async def start_scheduler():
 		replace_existing=True,
 	)
 
-	# Proactive Mission Follow-up — Every 10 minutes from 9 AM to 9 PM
+	# Proactive Mission Follow-up — Every 10 minutes from 6 AM to Midnight
 	# Per-card urgency controls actual send cadence: urgent=10min, medium=60min, low=3h
 	from app.services.follow_up import run_proactive_follow_up, check_active_tracking_sessions
 	scheduler.add_job(
 		run_proactive_follow_up,
-		CronTrigger(hour="9-21", minute="*/10"),
+		CronTrigger(hour="6-23", minute="*/10", timezone=tz),
 		id="proactive_follow_up",
 		replace_existing=True,
 	)
