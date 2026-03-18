@@ -7,9 +7,9 @@ logger = logging.getLogger(__name__)
 
 # Urgency label → nudge interval in minutes
 URGENCY_INTERVALS: dict[str, int] = {
-    "urgent": 10,
-    "medium": 60,
-    "low": 180,
+    "urgent": 60,
+    "medium": 360,
+    "low": 720,
 }
 
 # card_id → (last_nudged_at, urgency_label, interval_minutes)
