@@ -1,25 +1,15 @@
 # Regression Test Report
-**Date:** 2026-03-11 21:16:30
+**Date:** 2026-03-18 12:34:24
 **Target:** http://100.116.160.123
 
 ### Log
 ```text
 # Regression Test Report
-**Date:** 2026-03-11 21:16:30
+**Date:** 2026-03-18 12:34:24
 **Target:** http://100.116.160.123
 
-✅ System health OK
-✅ Planka connectivity OK
-✅ /help OK
-✅ /protocols OK
-✅ /tree OK
-✅ Life-tree API OK
-✅ /learn + /search round-trip verified
-✅ /memories OK
-✅ /unlearn OK
 
-❌ Suite failed: 
-✅ Server-side cleanup completed
+❌ Suite failed: /api/dashboard/system returned 401
 
 🏁 Suite aborted/failed. Cleanup complete.
 ```

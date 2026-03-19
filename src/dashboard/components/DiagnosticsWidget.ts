@@ -608,7 +608,7 @@ export class DiagnosticsWidget extends HTMLElement {
 						return `<div class="llm-tier-card" style="--tier-color:${color}">
 							<div class="ltc-header">
 								<span class="ltc-name" style="color:${color}">${this.displayTier(name)}</span>
-								${isMismatch ? `<span class="ltc-badge mismatch has-tip">MISMATCH
+								${isMismatch ? `<span class="ltc-badge mismatch has-tip">${this.tr('diag_llm_mismatch', 'MISMATCH')}
 									<span class="glass-tooltip">${mismatchDesc}</span>
 								</span>` : ''}
 							</div>
@@ -618,11 +618,11 @@ export class DiagnosticsWidget extends HTMLElement {
 								${isMismatch ? `<span class="glass-tooltip">${mismatchDesc}</span>` : ''}
 							</div>
 							<div class="ltc-specs">
-								${fileSizeGb ? `<div class="ltc-spec has-tip"><span>File</span><strong>${fileSizeGb.toFixed(1)} GB</strong><span class="glass-tooltip">Physical size of the model file on disk.</span></div>` : ''}
-								${ctx ? `<div class="ltc-spec has-tip"><span>CTX</span><strong>${ctx.toLocaleString()}</strong><span class="glass-tooltip">Context window — max tokens held in memory per request</span></div>` : ''}
-								${cacheRamMb ? `<div class="ltc-spec has-tip"><span>Prompt Cache</span><strong>${cacheRamMb} MiB <small style="font-weight:400; opacity:0.6; margin-left:0.3rem;">(used ${kvUsage.toFixed(0)}%)</small></strong><span class="glass-tooltip">Allocated memory for reuse of earlier prompt parts. Limits RAM growth.</span></div>` : ''}
-								${threads ? `<div class="ltc-spec has-tip"><span>Threads</span><strong>${threads}</strong><span class="glass-tooltip">CPU threads allocated to this tier</span></div>` : ''}
-								${liveRamGb ? `<div class="ltc-spec has-tip"><span>RAM live</span><strong style="color:${isMismatch ? 'var(--color-danger)' : color}">${liveRamGb.toFixed(1)} GB</strong><span class="glass-tooltip">${this.tr('diag_ram_live_tip', 'Live RAM from Docker stats: Model weights + KV cache + compute buffers')}</span></div>` : ''}
+								${fileSizeGb ? `<div class="ltc-spec has-tip"><span>${this.tr('diag_llm_file', 'File')}</span><strong>${fileSizeGb.toFixed(1)} GB</strong><span class="glass-tooltip">${this.tr('diag_llm_file_tip', 'Physical size of the model file on disk.')}</span></div>` : ''}
+								${ctx ? `<div class="ltc-spec has-tip"><span>${this.tr('diag_llm_ctx', 'CTX')}</span><strong>${ctx.toLocaleString()}</strong><span class="glass-tooltip">${this.tr('diag_llm_ctx_tip', 'Context window — max tokens held in memory per request')}</span></div>` : ''}
+								${cacheRamMb ? `<div class="ltc-spec has-tip"><span>${this.tr('diag_llm_prompt_cache', 'Prompt Cache')}</span><strong>${cacheRamMb} MiB <small style="font-weight:400; opacity:0.6; margin-left:0.3rem;">(used ${kvUsage.toFixed(0)}%)</small></strong><span class="glass-tooltip">${this.tr('diag_llm_cache_tip', 'Allocated memory for reuse of earlier prompt parts. Limits RAM growth.')}</span></div>` : ''}
+								${threads ? `<div class="ltc-spec has-tip"><span>${this.tr('threads', 'Threads')}</span><strong>${threads}</strong><span class="glass-tooltip">${this.tr('diag_llm_threads_tip', 'CPU threads allocated to this tier')}</span></div>` : ''}
+								${liveRamGb ? `<div class="ltc-spec has-tip"><span>${this.tr('diag_ram_live_label', 'RAM live')}</span><strong style="color:${isMismatch ? 'var(--color-danger)' : color}">${liveRamGb.toFixed(1)} GB</strong><span class="glass-tooltip">${this.tr('diag_ram_live_tip', 'Live RAM from Docker stats: Model weights + KV cache + compute buffers')}</span></div>` : ''}
 							</div>
 						</div>`;
 					}).join('')}
@@ -704,30 +704,30 @@ export class DiagnosticsWidget extends HTMLElement {
 
 				<!-- Left Column: Hardware -->
 				<div class="diag-col hardware">
-					<div class="diag-section-label">Processor Info</div>
+					<div class="diag-section-label">${this.tr('diag_processor_info', 'Processor Info')}</div>
 					<div class="cpu-info">${cpu.cpu_model}</div>
 					<div class="hw-specs">
-						<div class="hw-spec has-tip"><span>Cores</span><strong>${cpu.cores_physical}P/${cpu.cores_logical}L</strong><span class="glass-tooltip">${cpu.cores_physical} physical cores / ${cpu.cores_logical} logical threads.</span></div>
-						<div class="hw-spec has-tip"><span>Arch</span><strong>${cpu.architecture}</strong><span class="glass-tooltip">System instruction set architecture.</span></div>
-						<div class="hw-spec has-tip"><span>Uptime</span><strong>${srv.uptime_human || '?'}</strong><span class="glass-tooltip">Time since the last system boot.</span></div>
+						<div class="hw-spec has-tip"><span>${this.tr('cores', 'Cores')}</span><strong>${cpu.cores_physical}P/${cpu.cores_logical}L</strong><span class="glass-tooltip">${cpu.cores_physical} ${this.tr('tip_cores_physical', 'physical cores')} / ${cpu.cores_logical} ${this.tr('tip_cores_logical', 'logical threads')}.</span></div>
+						<div class="hw-spec has-tip"><span>${this.tr('arch', 'Arch')}</span><strong>${cpu.architecture}</strong><span class="glass-tooltip">${this.tr('tip_arch', 'System instruction set architecture.')}</span></div>
+						<div class="hw-spec has-tip"><span>${this.tr('uptime', 'Uptime')}</span><strong>${srv.uptime_human || '?'}</strong><span class="glass-tooltip">${this.tr('tip_uptime', 'Time since the last system boot.')}</span></div>
 					</div>
-					<div class="diag-section-label" style="margin-top: 0.5rem">CPU Features</div>
+					<div class="diag-section-label" style="margin-top: 0.5rem">${this.tr('diag_cpu_features', 'CPU Features')}</div>
 					<div class="hw-feat-grid">${featGrid}</div>
 				</div>
 
 				<!-- Middle Column: Integration -->
 				<div class="diag-col software">
-					<div class="diag-section-label">Integration</div>
+					<div class="diag-section-label">${this.tr('diag_integration', 'Integration')}</div>
 					<div class="svc-grid">${swGrid}</div>
 				</div>
 
 				<!-- Right Column: Benchmark -->
 				<div class="diag-col benchmarks">
-					<div class="diag-section-label">Benchmark</div>
+					<div class="diag-section-label">${this.tr('llm_benchmark', 'Benchmark')}</div>
 					<div class="bench-actions" style="margin-top: 0">
 						<button class="b-btn main has-tip ${this.isBenchRunning ? 'running' : ''}" ${this.isBenchRunning ? 'disabled' : ''} data-tier="all">
-							${this.isBenchRunning ? 'Benchmarking...' : 'Benchmark all LLMs'}
-							<span class="glass-tooltip">Run performance tests across all active tiers.</span>
+							${this.isBenchRunning ? this.tr('diag_benchmarking', 'Benchmarking...') : this.tr('diag_bench_all', 'Benchmark all LLMs')}
+							<span class="glass-tooltip">${this.tr('diag_bench_run_all_tip', 'Run performance tests across all active tiers.')}</span>
 						</button>
 						<div class="b-row">
 							<button class="b-btn sm tier-fast has-tip ${this.isBenchRunning ? 'running' : ''}" ${this.isBenchRunning ? 'disabled' : ''} data-tier="fast">

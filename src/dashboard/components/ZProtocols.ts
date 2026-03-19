@@ -200,7 +200,7 @@ export class ZProtocols extends HTMLElement {
 						<!-- System Commands Accordion -->
 						<div class="accordion-section ${this.openSections.has('commands') ? 'open' : ''}">
 							<button class="accordion-header" id="btn-toggle-commands">
-								<span>System Commands</span>
+								<span>${this.tr('diag_system_commands', 'System Commands')}</span>
 								<svg class="accordion-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 									<polyline points="6 9 12 15 18 9"></polyline>
 								</svg>
@@ -226,7 +226,7 @@ export class ZProtocols extends HTMLElement {
 						<!-- Strategic Tools Accordion -->
 						<div class="accordion-section ${this.openSections.has('tools') ? 'open' : ''}">
 							<button class="accordion-header" id="btn-toggle-tools">
-								<span>Strategic Tools</span>
+								<span>${this.tr('diag_strategic_tools', 'Strategic Tools')}</span>
 								<svg class="accordion-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 									<polyline points="6 9 12 15 18 9"></polyline>
 								</svg>
