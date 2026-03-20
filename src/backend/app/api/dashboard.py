@@ -242,12 +242,11 @@ async def confirm_action(action_id: str, db: AsyncSession = Depends(get_db), aut
 		data = json.loads(thought["context_data"])
 		tag = data["tag"]
 		# Execute without HITL
-		clean_reply, executed, pending = await parse_and_execute_actions(tag, db=db, require_hitl=False)
+		_, executed, _ = await parse_and_execute_actions(tag, db=db, require_hitl=False)
 		
-		# Cleanup (optional, but keep DB clean)
-		# await delete_pending_thought(action_id) 
-		
-		return {"status": "success", "executed": executed}
+		# Return a clean summary list to avoid any object leakage
+		safe_executed = [str(cmd) for cmd in executed]
+		return {"status": "success", "executed": safe_executed}
 	except Exception as e:
 		logger.error("Action confirmation failed: %s", e)
 		raise HTTPException(status_code=500, detail="Action confirmation failed.") from None
@@ -506,10 +505,11 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 			clean_reply += f"\n\n*(Reasoning supported by {', '.join(crews)})*"
 
 		if executed or pending:
-			msg = " ".join(executed)
+			msg = " ".join([str(c) for c in executed])
+			safe_pending = [{"description": str(p.get("description", "Action")), "type": str(p.get("type", "UNKNOWN"))} for p in pending]
 			if pending:
 				msg += f" (Pending: {len(pending)} actions)"
-			return {"reply": f"✅ {msg}", "pending_actions": pending}
+			return {"reply": f"✅ {msg}", "pending_actions": safe_pending}
 		else:
 			return {"reply": "Could not parse reminder. Try: '/remind 30m for 2h drink water'"}
 	elif msg.startswith("/custom "):
@@ -533,10 +533,11 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 			clean_reply += f"\n\n*(Reasoning supported by {', '.join(crews)})*"
 
 		if executed or pending:
-			msg = " ".join(executed)
+			msg = " ".join([str(c) for c in executed])
+			safe_pending = [{"description": str(p.get("description", "Action")), "type": str(p.get("type", "UNKNOWN"))} for p in pending]
 			if pending:
 				msg += f" (Pending: {len(pending)} actions)"
-			return {"reply": f"✅ {msg}", "pending_actions": pending}
+			return {"reply": f"✅ {msg}", "pending_actions": safe_pending}
 		else:
 			return {"reply": "Could not parse custom turnus. Try: '/custom every Monday at 10am remind me...'"}
 	elif msg == "/status":
@@ -590,10 +591,13 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		if crews:
 			clean_reply += f"\n\n*(Reasoning supported by {', '.join(crews)})*"
 
+		safe_executed = [str(c) for c in executed_cmds]
+		safe_pending = [{"description": str(p.get("description", "Action")), "type": str(p.get("type", "UNKNOWN"))} for p in pending_actions]
+		
 		return {
 			"reply": clean_reply or "Direct execution complete.",
-			"actions": executed_cmds,
-			"pending_actions": pending_actions,
+			"actions": safe_executed,
+			"pending_actions": safe_pending,
 			"model": "operator_direct"
 		}
 
@@ -627,10 +631,13 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 
 		# Memory is user-driven only (via /add or LEARN action tag)
 
+		safe_executed = [str(c) for c in executed_cmds]
+		safe_pending = [{"description": str(p.get("description", "Action")), "type": str(p.get("type", "UNKNOWN"))} for p in pending_actions]
+		
 		return {
 			"reply": _sanitise_reply_html(clean_reply),
-			"actions": executed_cmds,
-			"pending_actions": pending_actions,
+			"actions": safe_executed,
+			"pending_actions": safe_pending,
 			"model": last_model_used.get()
 		}
 	except Exception as e:
@@ -1251,22 +1258,34 @@ async def sync_operator():
 	- Tasks with '!' go to This Week.
 	- Inbox cards move to Backlog.
 	"""
-	result = await operator_service.sync_operator_tasks()
-	return {"status": "success", "message": result}
+	try:
+		result = await operator_service.sync_operator_tasks()
+		return {"status": "success", "message": result}
+	except Exception as e:
+		logger.error("Operator task sync failed: %s", e)
+		raise HTTPException(status_code=500, detail="Failed to sync tasks.") from None
 
 @router.post("/morning-briefing")
 async def trigger_morning_briefing():
 	"""Manually trigger the morning briefing generation."""
-	from app.tasks.morning import morning_briefing
-	content = await morning_briefing()
-	return {"status": "success", "content": content}
+	try:
+		from app.tasks.morning import morning_briefing
+		content = await morning_briefing()
+		return {"status": "success", "content": content}
+	except Exception as e:
+		logger.error("Manual morning briefing failed: %s", e)
+		raise HTTPException(status_code=500, detail="Failed to generate briefing.") from None
 
 @router.post("/follow-up")
 async def trigger_follow_up():
 	"""Manually trigger the proactive follow-up nudge."""
-	from app.services.follow_up import run_proactive_follow_up
-	await run_proactive_follow_up()
-	return {"status": "success"}
+	try:
+		from app.services.follow_up import run_proactive_follow_up
+		await run_proactive_follow_up()
+		return {"status": "success"}
+	except Exception as e:
+		logger.error("Manual follow-up failed: %s", e)
+		raise HTTPException(status_code=500, detail="Failed to trigger follow-up.") from None
 
 # --- Create Project ---
 class ProjectCreate(BaseModel):
