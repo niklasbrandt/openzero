@@ -294,6 +294,26 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		from app.tasks.yearly import yearly_review
 		report = await yearly_review()
 		return {"reply": report}
+	elif msg.startswith("/crew "):
+		crew_id = msg.replace("/crew", "").strip()
+		from app.services.dify import dify_client, crew_registry
+		from app.services.timezone import get_current_timezone
+		import pytz
+		
+		# Proactive check before calling tool logic
+		config = crew_registry.get(crew_id)
+		if not config:
+			return {"reply": f"❌ Error: Crew '{crew_id}' not found in the registry."}
+		if not config.dify_app_id:
+			return {"reply": f"❌ Error: Crew '{crew_id}' is not provisioned."}
+			
+		# Call run_crew tool logic manually
+		from app.services.agent_actions import run_crew
+		res = await run_crew.ainvoke({"crew_id": crew_id, "user_input": "Manual operator trigger via /run"})
+		
+		from app.models.db import save_global_message
+		await save_global_message("dashboard", "z", res, model="operator_override")
+		return {"reply": f"✅ {res}"}
 	elif msg == "/quarter":
 		from app.tasks.quarterly import quarterly_review
 		report = await quarterly_review()
@@ -391,6 +411,7 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 				"• `/day`, `/week`, `/month`, `/quarter`, `/year` — Strategic briefings\n\n"
 				f"**{sm}:**\n"
 				"• `/tree` — Life hierarchy & workspace overview\n"
+				"• `/crew <crew_id>` — Trigger specialized autonomous agent cycle\n"
 				"• `/think <query>` — Complex multi-step reasoning\n"
 				"• `/remind <text>` — Set a temporary recurring reminder\n"
 				"• `/custom <text>` — Create a persistent scheduled task\n"
@@ -689,6 +710,7 @@ async def get_protocols():
 		{"name": "/quarter", "description": "Quarterly Roadmap: 90-day trajectory analysis."},
 		{"name": "/year", "description": "Yearly Goal Review: Comprehensive annual alignment audit."},
 		{"name": "/tree", "description": "Life Tree: Visualize hierarchy and workspace overview."},
+		{"name": "/crew", "description": "Run Crew: Trigger a specialized autonomous agent cycle by ID."},
 		{"name": "/think", "description": "Deep Think: Multi-step chain-of-thought reasoning mode."},
 		{"name": "/remind", "description": "Quick Reminder: Set a temporary recurring nudge."},
 		{"name": "/custom", "description": "Persistent Task: Create a scheduled turnus (cron/interval)."},
