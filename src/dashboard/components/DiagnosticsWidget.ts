@@ -500,7 +500,6 @@ export class DiagnosticsWidget extends HTMLElement {
 			{ name: 'Database', status: sys.db_size ? 'online' : 'warning', detail: sys.db_size || '0 MB' },
 			{ name: 'Cache', status: sys.redis_stats ? 'online' : 'warning', detail: sys.redis_stats || 'offline' },
 			{ name: 'DNS', status: sys.dns_ok === true ? 'online' : 'warning', detail: sys.dns_detail || 'online' },
-			{ name: this.tr('diag_dify_name', 'Crews'), status: sys.dify_ok ? 'online' : (sys.dify_detail === 'off' ? 'offline' : 'warning'), detail: sys.dify_detail || 'off' },
 		];
 
 		const swGrid = swServices.map(s => {
@@ -508,9 +507,8 @@ export class DiagnosticsWidget extends HTMLElement {
 				'Memory': 'Status of the semantic memory vector store (Qdrant).',
 				'Database': 'Relational data storage (Postgres) health and size.',
 				'Cache': 'Fast transient storage (Redis) for sessions and coordination.',
-				'DNS': 'Local privacy-focused DNS resolver (Pi-hole) status.',
+				'DNS': 'Local privacy-focused DNS resolver (Pi-hole) status.'
 			};
-			tips[this.tr('diag_dify_name', 'Crews')] = this.tr('diag_dify_tip', 'Dify multi-agent orchestration bridge status.');
 			return `
 				<div class="svc-item has-tip">
 					<div class="svc-main">

@@ -528,10 +528,6 @@ Semantic Action Tags (Exact Format Required):
   (Use when the user wants to move a task to a specific column, e.g. "move X to In Progress")
 - Mark Done: `[ACTION: MARK_DONE | CARD: title fragment]`
   (Use when the user says a task is done/completed/sent/finished/submitted — moves the card to the "Done" column. Examples: "job application sent", "fixed the bug", "email sent")
-- Run Dify Crew: `[ACTION: RUN_CREW | NAME: crew_name | INPUT: text_goal]`
-  (Use when the user wants to trigger a complex multi-agent crew in Dify for research, analysis, or multi-step operations)
-- Schedule Crew Loop: `[ACTION: SCHEDULE_CREW | NAME: crew_name | SPEC: minutes=N | INPUT: goal]`
-  (Use to create a recurring "crew loop" that runs a Dify workflow autonomously)
 
 Bulk scaffolding: You can emit MULTIPLE action tags in one response to scaffold entire project structures.
 Example flow: CREATE_PROJECT -> CREATE_BOARD -> CREATE_LIST (x3) -> CREATE_TASK (x5)
