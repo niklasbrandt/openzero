@@ -1,5 +1,7 @@
 import re
 import logging
+import json
+from app.services.dify import dify_service
 from langchain_core.tools import tool
 from typing import Optional
 
@@ -398,6 +400,58 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
                 return f"\u26a0 Failed to add '{name}' to circle. Check database."
 
         await handle_action("ADD_PERSON", raw_tag, _exec_person, f"Add {name} ({rel}) to circle")
+        clean_reply = strip_tag(clean_reply, raw_tag)
+        
+    # 7b. Run Crew Tag
+    crew_pattern = r"\[?ACTION: RUN_CREW \| NAME: ([^\|\]]+) \| INPUT: ([^\|\]]+)\]?"
+    for match in re.finditer(crew_pattern, reply):
+        raw_tag = match.group(0)
+        crew_name, crew_input = match.groups()
+        crew_name, crew_input = crew_name.strip(), crew_input.strip()
+
+        async def _exec_crew(name=crew_name, inp=crew_input):
+            try:
+                # We assume the crew corresponds to a Dify Workflow or Agent.
+                # Here we use run_workflow as a default for "crews".
+                res = await dify_service.run_workflow(inputs={"query": inp})
+                if res.get("status") == "error":
+                    return f"\u26a0 Crew '{name}' failed: {res.get('message')}"
+                
+                # Extract result from Dify workflow output
+                outputs = res.get("data", {}).get("outputs", {})
+                result_text = outputs.get("text") or outputs.get("result") or str(outputs)
+                return f"🚀 *Crew '{name}' Result:*\n\n{result_text}"
+            except Exception as _e:
+                logger.error("RUN_CREW failed: %s", _e)
+                return f"\u26a0 Failed to run crew '{name}'. Check Dify connectivity."
+
+        await handle_action("RUN_CREW", raw_tag, _exec_crew, f"Run crew '{crew_name}'")
+        clean_reply = strip_tag(clean_reply, raw_tag)
+
+    # 7c. Schedule Crew Tag
+    sched_crew_pattern = r"\[?ACTION: SCHEDULE_CREW \| NAME: ([^\|\]]+) \| SPEC: ([^\|\]]+) \| INPUT: ([^\|\]]+)\]?"
+    for match in re.finditer(sched_crew_pattern, reply):
+        raw_tag = match.group(0)
+        crew_name, spec, crew_input = match.groups()
+        crew_name, spec, crew_input = crew_name.strip(), spec.strip(), crew_input.strip()
+
+        async def _exec_sched_crew(name=crew_name, sp=spec, inp=crew_input):
+            try:
+                from app.models.db import AsyncSessionLocal, CustomTask
+                # Map to RUN_CREW tag for persistent execution
+                tag_msg = f"[ACTION: RUN_CREW | NAME: {name} | INPUT: {inp}]"
+                async with AsyncSessionLocal() as session:
+                    task = CustomTask(name=f"Crew Loop: {name}", message=tag_msg, job_type="interval", spec=sp)
+                    session.add(task)
+                    await session.commit()
+                from app.tasks.scheduler import load_custom_tasks
+                await load_custom_tasks()
+                return f"Crew loop '{name}' scheduled ({sp})."
+            except Exception as _e:
+                logger.error("SCHEDULE_CREW failed: %s", _e)
+                return f"\u26a0 Failed to schedule crew loop '{name}'."
+
+        await handle_action("SCHEDULE_CREW", raw_tag, _exec_sched_crew, f"Schedule crew loop '{crew_name}'")
         clean_reply = strip_tag(clean_reply, raw_tag)
 
     # 5. Learn Memory Tag

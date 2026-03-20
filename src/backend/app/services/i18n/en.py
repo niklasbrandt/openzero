@@ -192,6 +192,8 @@ translations: dict[str, str] = {
 	"diag_hdd_free": "Free Space",
 	"diag_hdd_other": "OS & Host Files",
 	"diag_hdd_title": "System Storage (HDD)",
+	"diag_dify_name": "Crews",
+	"diag_dify_tip": "Dify multi-agent orchestration bridge status.",
 	"diag_integration": "Integration",
 	"diag_llm_cache_tip": "Allocated memory for reuse of earlier prompt parts. Limits RAM growth.",
 	"diag_llm_ctx": "CTX",

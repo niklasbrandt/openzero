@@ -283,9 +283,23 @@ async def load_custom_tasks():
 			for t in tasks:
 				# Use a wrapper to capture the specific message for this job
 				def make_task(msg):
-					async def notify_task():
+					async def execute_task():
+						from app.services.agent_actions import parse_and_execute_actions
+						from app.services.notifier import send_notification
+						
+						# Check if the message contains an action tag. 
+						# If it does, execute it. If not, treat as a simple notification.
+						if "[ACTION:" in msg.upper():
+							clean_reply, executed, _ = await parse_and_execute_actions(msg)
+							if executed:
+								# Only notify if there is a meaningful result to show
+								if clean_reply:
+									await send_notification(f"🔄 *Crew Loop Result*\n\n{clean_reply}")
+								return
+						
+						# Fallback for simple periodic reminders
 						await send_notification(f"\U0001f514 *Custom Turnus Alert*\n\n{msg}")
-					return notify_task
+					return execute_task
 
 				trigger = None
 				if t.job_type == "cron":
