@@ -57,6 +57,12 @@ export class AgentsWidget extends HTMLElement {
 		initGoo(this);
 		window.addEventListener('goo-changed', () => initGoo(this));
 		this.addEventListener('refresh-data', () => this.loadData());
+		window.addEventListener('identity-updated', () => {
+			this.loadTranslations().then(() => {
+				this.render();
+				this.loadData();
+			});
+		});
 	}
 
 	private async loadTranslations() {
@@ -183,29 +189,36 @@ export class AgentsWidget extends HTMLElement {
 					flex-direction: column;
 				}
 
-				.title-group h2 {
+				.section-header h2 {
 					margin: 0;
-					font-size: 1.1rem;
+					font-size: 1.5rem;
 					font-weight: 700;
 					display: flex;
 					align-items: center;
-					gap: 0.5rem;
-					background: var(--accent-gradient);
-					-webkit-background-clip: text;
-					-webkit-text-fill-color: transparent;
-				}
-
-				.title-group p {
-					margin: 0;
-					font-size: 0.75rem;
-					color: var(--text-tertiary);
-					display: flex;
-					align-items: center;
-					gap: 0.3rem;
+					gap: 0.8rem;
+					color: var(--text-primary);
 				}
 
 				.h-icon {
-					color: #fff !important;
+					flex-shrink: 0;
+				}
+
+				.h-icon-mini {
+					display: inline-flex;
+					color: var(--accent-primary);
+					opacity: 0.8;
+				}
+
+				.crew-id-tag {
+					font-family: var(--font-mono, monospace);
+					font-size: 0.7rem;
+					font-weight: 600;
+					color: var(--accent-primary);
+					margin-left: 0.5rem;
+					background: var(--surface-input);
+					padding: 0.15rem 0.4rem;
+					border-radius: 0.35rem;
+					border: 1px solid var(--border-accent);
 				}
 
 				/* Personality Overview Styles */
@@ -349,7 +362,7 @@ export class AgentsWidget extends HTMLElement {
 
 				.crew-details[open] {
 					background: rgba(255, 255, 255, 0.04);
-					border-color: rgba(239, 68, 68, 0.2);
+					border-color: var(--border-accent);
 				}
 
 				.crew-summary {
@@ -389,7 +402,7 @@ export class AgentsWidget extends HTMLElement {
 				.crew-chevron {
 					transition: transform 0.3s ease;
 					opacity: 0.3;
-					color: #ef4444;
+					color: var(--accent-primary);
 				}
 
 				.crew-details[open] .crew-chevron {
@@ -407,7 +420,7 @@ export class AgentsWidget extends HTMLElement {
 					white-space: nowrap;
 				}
 
-				.status-active { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); }
+				.status-active { background: var(--surface-accent-subtle, hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.1)); color: var(--accent-primary); border: 1px solid var(--border-accent); }
 				.status-inactive { display: none; }
 
 				.crew-content {
@@ -511,19 +524,14 @@ export class AgentsWidget extends HTMLElement {
 			</style>
 
 			<div class="agents-container">
-				<div class="section-header">
-					<div class="title-group">
-						<h2>
-							<span style="color:#ef4444">${this.renderIcon('users', '1.2rem')}</span>
-							Agents & Orchestration
-						</h2>
-						<p>
-							<span style="color:#ef4444">${this.renderIcon('activity', '0.7rem')}</span>
-							Autonomous cycles run on-schedule. Results appear in chat.
-						</p>
-					</div>
+				<div class="section-header" style="align-items: flex-start; width: 100%;">
+					<h2>
+						<span class="h-icon" aria-hidden="true">${this.renderIcon('users', '1.1rem')}</span>
+						${this.tr('agents_title', 'Agents & Orchestration')}
+						<span class="subtitle">${this.tr('agents_subtitle', 'Autonomous cycles run on-schedule. Results appear in chat.')}</span>
+					</h2>
 					${!this.isEditing ? `
-						<button class="edit-btn" id="edit-personality-btn" style="background:transparent; border:none; color:var(--text-tertiary); cursor:pointer; display:flex; align-items:center; gap:0.5rem; font-size:0.8rem;">
+						<button class="edit-btn" id="edit-personality-btn" style="background:transparent; border:none; color:var(--text-tertiary); cursor:pointer; display:flex; align-items:center; gap:0.5rem; font-size:0.8rem; margin-top: 0.4rem;">
 							${this.renderIcon('settings', '0.9rem')}
 							${this.tr('edit_personality', 'Configure Personality')}
 						</button>
@@ -588,35 +596,35 @@ export class AgentsWidget extends HTMLElement {
 		return `
 			<div class="personality-grid">
 				<div class="trait-badge">
-					<span class="trait-label">Communication</span>
-					<span class="trait-value">${p.directness > 3 ? 'Concise' : 'Elaborate'}</span>
+					<span class="trait-label">${this.tr('communication', 'Communication')}</span>
+					<span class="trait-value">${p.directness > 3 ? this.tr('concise', 'Concise') : this.tr('elaborate', 'Elaborate')}</span>
 				</div>
 				<div class="trait-badge">
-					<span class="trait-label">Emotional Tone</span>
-					<span class="trait-value">${p.warmth > 3 ? 'Empathetic' : 'Clinical'}</span>
+					<span class="trait-label">${this.tr('emotional_tone', 'Emotional Tone')}</span>
+					<span class="trait-value">${p.warmth > 3 ? this.tr('empathetic', 'Empathetic') : this.tr('clinical', 'Clinical')}</span>
 				</div>
 				<div class="trait-badge">
-					<span class="trait-label">Agency</span>
-					<span class="trait-value">${p.agency > 3 ? 'Proactive' : 'Reactive'}</span>
+					<span class="trait-label">${this.tr('agency', 'Agency')}</span>
+					<span class="trait-value">${p.agency > 3 ? this.tr('proactive', 'Proactive') : this.tr('reactive', 'Reactive')}</span>
 				</div>
 				<div class="trait-badge">
-					<span class="trait-label">Intellect</span>
-					<span class="trait-value">${p.critique > 3 ? 'Challenging' : 'Agreeable'}</span>
+					<span class="trait-label">${this.tr('intellect', 'Intellect')}</span>
+					<span class="trait-value">${p.critique > 3 ? this.tr('challenging', 'Challenging') : this.tr('agreeable', 'Agreeable')}</span>
 				</div>
 			</div>
 
 			<div class="identity-block">
 				<div class="identity-item">
-					<h4>Identity Archetype</h4>
-					<p>${p.role || 'Agent Operator'}</p>
+					<h4>${this.tr('identity_archetype', 'Identity Archetype')}</h4>
+					<p>${p.role || this.tr('agent_operator', 'Agent Operator')}</p>
 				</div>
 				<div class="identity-item">
-					<h4>Relational Context</h4>
-					<p>${p.relationship || 'System Intelligence'}</p>
+					<h4>${this.tr('relational_context', 'Relational Context')}</h4>
+					<p>${p.relationship || this.tr('system_intelligence', 'System Intelligence')}</p>
 				</div>
 				<div class="identity-item" style="grid-column: span 2">
-					<h4>Core Values</h4>
-					<p>${p.values || 'Efficiency, accuracy, and systemic integrity.'}</p>
+					<h4>${this.tr('core_values', 'Core Values')}</h4>
+					<p>${p.values || this.tr('default_values', 'Efficiency, accuracy, and systemic integrity.')}</p>
 				</div>
 			</div>
 		`;
@@ -629,11 +637,11 @@ export class AgentsWidget extends HTMLElement {
 			<div class="edit-form">
 				<div class="form-group" style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
 					<div>
-						<label>Core Identity / Archetype</label>
+						<label>${this.tr('identity_archetype', 'Core Identity / Archetype')}</label>
 						<input type="text" id="role-input" value="${this.esc(p.role)}">
 					</div>
 					<div>
-						<label>Relationship Context</label>
+						<label>${this.tr('relational_context', 'Relationship Context')}</label>
 						<input type="text" id="rel-input" value="${this.esc(p.relationship)}">
 					</div>
 				</div>
@@ -652,12 +660,12 @@ export class AgentsWidget extends HTMLElement {
 				</div>
 
 				<div class="form-group">
-					<label>Core Values & Principles</label>
+					<label>${this.tr('core_values', 'Core Values & Principles')}</label>
 					<textarea id="values-input" rows="3">${this.esc(p.values)}</textarea>
 				</div>
 
 				<div class="form-group">
-					<label>Behavioral Stylings</label>
+					<label>${this.tr('behavioral_stylings', 'Behavioral Stylings')}</label>
 					<textarea id="behavior-input" rows="3">${this.esc(p.behavior)}</textarea>
 				</div>
 
@@ -686,9 +694,9 @@ export class AgentsWidget extends HTMLElement {
 		return `
 			<div class="crews-container">
 				${this.crews.map(crew => {
-					let sched = crew.schedule || 'On-demand';
+					let sched = crew.schedule || this.tr('on_demand', 'On-demand');
 					if (crew.feeds_briefing) {
-						sched = `Pre-${crew.feeds_briefing.replace('/','')} briefing`;
+						sched = this.tr('pre_briefing', 'Pre-{feeds} briefing').replace('{feeds}', crew.feeds_briefing.replace('/',''));
 						if (crew.briefing_day) sched += ` (${crew.briefing_day})`;
 					}
 
@@ -698,8 +706,9 @@ export class AgentsWidget extends HTMLElement {
 								<div class="crew-summary-left">
 									<span class="crew-chevron">${this.renderIcon('chevron-right', '1rem')}</span>
 									<div class="crew-title">
-										<span style="color:#ef4444">${this.renderIcon('users', '1.1rem')}</span>
+										<span class="h-icon-mini">${this.renderIcon('users', '1rem')}</span>
 										${crew.name}
+										<span class="crew-id-tag" title="Crew ID">${crew.id}</span>
 									</div>
 									<div class="crew-meta" style="margin-left: auto; margin-right: 1.5rem;">
 										<div class="meta-item">
@@ -721,7 +730,7 @@ export class AgentsWidget extends HTMLElement {
 										${crew.characters.map(c => `
 											<div class="character-badge">
 												<div class="character-name">
-													<span style="opacity:0.8; color:#ef4444">${this.renderIcon('user', '0.8rem')}</span>
+													<span class="h-icon-mini" style="opacity:0.8;">${this.renderIcon('user', '0.8rem')}</span>
 													${this.esc(c.name)}
 												</div>
 												<div class="character-role">${this.esc(c.role)}</div>
@@ -731,12 +740,12 @@ export class AgentsWidget extends HTMLElement {
 								` : ''}
 
 								<div style="display:flex; justify-content:flex-end;">
-									<button class="run-crew-btn oz-btn oz-btn-ghost oz-btn-sm" data-id="${crew.id}" ${this.runningCrews.has(crew.id) ? 'disabled' : ''} style="display:flex; flex-direction:column; align-items:flex-end; padding: 0.2rem 0.6rem; min-width: 120px; border-color: rgba(239, 68, 68, 0.2);">
-										<div style="display:flex; align-items:center; gap:0.4rem; font-size:0.75rem; font-weight:700; color:#ef4444;">
+									<button class="run-crew-btn oz-btn oz-btn-ghost oz-btn-sm" data-id="${crew.id}" ${this.runningCrews.has(crew.id) ? 'disabled' : ''} style="display:flex; flex-direction:column; align-items:flex-end; padding: 0.2rem 0.6rem; min-width: 120px; border-color: var(--border-accent);">
+										<div style="display:flex; align-items:center; gap:0.4rem; font-size:0.75rem; font-weight:700; color:var(--accent-primary);">
 											${this.runningCrews.has(crew.id) ? this.renderIcon('loader', '0.8rem') : this.renderIcon('play', '0.8rem')}
 											${this.tr('run_now', 'TRIGGER AGENT')}
 										</div>
-										<span style="font-size:0.6rem; opacity:0.4; font-weight:400; color: #ef4444;">Autonomous Cycle</span>
+										<span style="font-size:0.6rem; opacity:0.4; font-weight:400; color: var(--accent-primary);">Autonomous Cycle</span>
 									</button>
 								</div>
 							</div>
