@@ -1,0 +1,117 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"title": "openZero Crew Configuration Schema",
+	"type": "object",
+	"properties": {
+		"crew_lead_time_minutes": {
+			"type": "integer",
+			"default": 90,
+			"description": "How many minutes before briefing time crews should start by default."
+		},
+		"crews": {
+			"type": "array",
+			"items": {
+				"$ref": "#/definitions/CrewConfig"
+			}
+		}
+	},
+	"required": [
+		"crews"
+	],
+	"definitions": {
+		"CrewCharacter": {
+			"type": "object",
+			"properties": {
+				"name": {
+					"type": "string"
+				},
+				"role": {
+					"type": "string"
+				},
+				"instructions": {
+					"type": "string"
+				}
+			},
+			"required": [
+				"name",
+				"role"
+			]
+		},
+		"CrewConfig": {
+			"type": "object",
+			"properties": {
+				"id": {
+					"type": "string",
+					"pattern": "^[a-zA-Z0-9_-]+$"
+				},
+				"name": {
+					"type": "string"
+				},
+				"description": {
+					"type": "string"
+				},
+				"dify_dsl_file": {
+					"type": "string",
+					"pattern": "\\.yml$"
+				},
+				"type": {
+					"type": "string",
+					"enum": [
+						"workflow",
+						"agent"
+					]
+				},
+				"enabled": {
+					"type": "boolean",
+					"default": true
+				},
+				"feeds_briefing": {
+					"type": "string",
+					"enum": [
+						"/day",
+						"/week",
+						"/month",
+						"/quarter",
+						"/year"
+					]
+				},
+				"briefing_day": {
+					"type": "string",
+					"enum": [
+						"MON",
+						"TUE",
+						"WED",
+						"THU",
+						"FRI",
+						"SAT",
+						"SUN"
+					]
+				},
+				"schedule": {
+					"type": "string",
+					"description": "Crontab expression (5 fields)"
+				},
+				"planka_board": {
+					"type": "string"
+				},
+				"planka_lists": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					}
+				},
+				"characters": {
+					"type": "array",
+					"items": {
+						"$ref": "#/definitions/CrewCharacter"
+					}
+				}
+			},
+			"required": [
+				"id",
+				"name",
+				"type"
+			]
+		}
+	}
+}
