@@ -54,7 +54,6 @@ translations: dict[str, str] = {
 	"town": "Citta",
 	"work_times": "Orario di Lavoro",
 	"user_profile": "User Profile",
-	"agents_subtitle": "Autonomous cycles run on-schedule. Results appear in chat.",
 	"concise": "Concise",
 	"elaborate": "Elaborate",
 	"empathetic": "Empathetic",
