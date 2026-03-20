@@ -86,12 +86,6 @@ class Settings(BaseSettings):
     # Briefing
     BRIEFING_CALIBRATION: bool = True
 
-    # Dify Integration (Multi-agent crews)
-    DIFY_API_URL: str = "http://dify-api:5001"
-    DIFY_API_KEY: Optional[str] = None
-    # Secure token used for Dify -> openZero callbacks
-    INTEGRATION_TOKEN: str = "CHANGE_ME_IN_PROD"
-
 
     model_config = SettingsConfigDict(
         env_file=os.path.join(os.path.dirname(__file__), "../../../.env"),
