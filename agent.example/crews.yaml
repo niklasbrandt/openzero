@@ -60,306 +60,382 @@ crew_lead_time_minutes: 90
 
 crews:
   # ==========================================
-  # UNIVERSAL CORE (Agentic Operating System)
+  # UNIVERSAL CORE
   # ==========================================
-  - id: "flow_optimizer"
-    name: "Stagnation Auditor & workflow Strategist"
-    description: "Detects digital bottlenecks in Planka and scaffolds 'Unblocker' micro-sequences."
-    dify_dsl_file: "flow_optimizer.yml"
-    type: "workflow"
+  - id: "flow"
+    name: "Productivity, Stagnation & Deep Work Engine"
+    description: "Unblocks stuck tasks and schedules deep work execution."
+    dify_dsl_file: "flow.yml"
+    type: "agent"
     instructions: |
-      Act as a Senior Productivity Architect.
-      Scan the input context for tasks that lack recent activity.
-      Categorize them and propose highly actionable tiny "unblocker" steps instead of large goals.
-      Always format your output in clean Markdown.
+      Act as a Senior Productivity Architect. Scan the input context for tasks that lack recent activity.
+      Propose actionable micro-tasks and identify optimal calendar blocks for deep work execution.
     feeds_briefing: "/week"
     briefing_day: "MON"
     characters:
       - name: "The Systems Auditor"
-        role: "Monitors cross-board activity for stagnant cards and deadlocks."
-      - name: "The Optimization Strategist"
-        role: "Synthesizes actionable 'Unblocker' tasks and assigns priority tokens."
+        role: "Flags deadlocked boards, deadline drift, and WIP violations."
+      - name: "The Dependency Cartographer"
+        role: "Maps circular blockers across internal and cross-functional projects."
+      - name: "The Unblocker Strategist"
+        role: "Outputs micro-tasks (under 25 min) to break inertia."
+      - name: "The Session Architect"
+        role: "Analyzes the calendar and schedules dedicated Pomodoro/Deep Work blocks into ideal energy windows."
 
-  - id: "context_researcher"
+  - id: "research"
     name: "Deep Intelligence Scholar & Synthesis Architect"
-    description: "Executes extreme-scale research and generates ground-truth 'White Papers' in memory."
-    dify_dsl_file: "context_researcher.yml"
+    description: "Executes extreme-scale research and generates ground-truth memory points."
+    dify_dsl_file: "research.yml"
     type: "agent"
-    # No schedule -- triggered on-demand via conversation.
-    # lead_time: 180  # Example override: deep research takes longer
+    instructions: |
+      Execute deep-dive research across multi-vector knowledge sources. Provide contrarian audits
+      and distill findings into timestamped, confidence-tagged memory points.
     characters:
       - name: "The Primary Scholar"
-        role: "Performs deep-dive recursive search across multi-vector knowledge sources."
+        role: "Recursively searches multi-vector knowledge bases with credibility scoring."
+      - name: "The Contrarian Auditor"
+        role: "Actively hunts for conflicting evidence to prevent confirmation bias."
       - name: "The Synthesis Architect"
-        role: "Abstracts raw data into high-density strategic executive summaries."
+        role: "Abstracts findings into dense executive summaries."
+      - name: "The Knowledge Archivist"
+        role: "Distills findings into timestamped, confidence-tagged memory points for Qdrant."
 
-  - id: "structure_architect"
+  - id: "workspace"
     name: "Systemic Workspace Architect"
-    description: "Automates the deployment of complex board hierarchies and card structures."
-    dify_dsl_file: "structure_architect.yml"
-    type: "workflow"
-    # No schedule -- triggered on-demand when Z detects a new project or goal.
+    description: "Auto-builds complex kanban structures via Planka API."
+    dify_dsl_file: "workspace.yml"
+    type: "agent"
+    instructions: |
+      Translate high-level requests into programmatic Planka API structures representing optimal workflow layouts.
     characters:
       - name: "The Blueprint Designer"
-        role: "Maps high-level goals into structural kanban nodes and list hierarchies."
-      - name: "The Logistics Automation Specialist"
-        role: "Executes the programmatic creation of cards and metadata labels."
+        role: "Maps high-level goals into structural board/list topologies."
+      - name: "The Methodology Advisor"
+        role: "Applies framework rules (e.g., Kanban vs. Scrum vs. GTD)."
+      - name: "The Scaffold Executor"
+        role: "Programmatically mints the boards, lists, and seed cards."
+
+  - id: "network"
+    name: "Relational Integrity & Hub Cultivator"
+    description: "Tends to the people in your database, preventing relationship decay."
+    dify_dsl_file: "network.yml"
+    type: "agent"
+    feeds_briefing: "/week"
+    briefing_day: "FRI"
+    instructions: |
+      Review relationship recency for Inner and Close circles. Prevent relationship decay by proposing meetups or gifts.
+    characters:
+      - name: "The Circle Manager"
+        role: "Monitors the recency of interactions for Inner and Close circles, flagging decay."
+      - name: "The Event Catalyst"
+        role: "Proposes contextual check-ins, coffee meetups, or gift triggers based on birthdays or life events."
+      - name: "The Context Archivist"
+        role: "Extracts and updates facts about people from casual chat into their profile."
 
   # ==========================================
-  # BUSINESS & OPERATIONS (Commented-out Templates)
+  # BUSINESS & OPERATIONS
   # ==========================================
-  # - id: "market_scout"
-  #   name: "Competitive Intelligence Scout"
-  #   description: "Monitors industry shifts and competitor signals for strategic logging."
-  #   dify_dsl_file: "market_scout.yml"
-  #   type: "workflow"
-  #   feeds_briefing: "/day"
-  #   characters:
-  #     - name: "The Trend Pulse Monitor"
-  #       role: "Tracks real-time industry signals and sentiment shifts."
-  #     - name: "The Strategic SWOT Analyst"
-  #       role: "Performs comparative analysis on competitor product releases."
+  - id: "market-intel"
+    name: "Competitive Intelligence Scout"
+    description: "Tracks industry shifts, competitor moves, and sentiment."
+    dify_dsl_file: "market-intel.yml"
+    type: "agent"
+    feeds_briefing: "/week"
+    briefing_day: "MON"
+    instructions: |
+      Track industry shifts and perform structured SWOT analysis on competitor moves.
+      Deliver a single-page exec brief on market sentiment.
+    characters:
+      - name: "The Trend Pulse Monitor"
+        role: "Tracks product launches, funding, and tech shifts."
+      - name: "The Competitive Analyst"
+        role: "Builds feature, pricing, and positioning matrices for direct competitors."
+      - name: "The Strategic Brief Compiler"
+        role: "Outputs a single-page 3-point briefing."
+      - name: "The Market Sentiment Reader"
+        role: "Aggregates public sentiment from social media, reviews, and forums."
 
-  # - id: "lead_engine"
-  #   name: "CRM Conversion & Lead Pipeline Engine"
-  #   description: "Qualifies inbound signals and populates the strategic deal funnel."
-  #   dify_dsl_file: "lead_engine.yml"
-  #   type: "workflow"
-  #   feeds_briefing: "/day"
-  #   schedule: "0 14 * * MON-FRI"  # Additional fixed afternoon run (not briefing-relative)
-  #   characters:
-  #     - name: "The Conversion Screener"
-  #       role: "Weighting lead quality based on predefined 'Ideal Client' metrics."
-  #     - name: "The Pipeline Liaison"
-  #       role: "Synchronizes qualified data into the high-intent Planka funnel."
+  - id: "leads"
+    name: "Pipeline & CRM Conversion Engine"
+    description: "Scores inbound requests and populates the deal funnel."
+    dify_dsl_file: "leads.yml"
+    type: "agent"
+    feeds_briefing: "/week"
+    briefing_day: "MON"
+    instructions: |
+      Assess lead quality against Ideal Client Profile. Output new lead targets and funnel movement suggestions.
+    characters:
+      - name: "The Signal Interceptor"
+        role: "Extracts CRM intent from incoming emails, chats, or forms."
+      - name: "The Qualification Screener"
+        role: "Scores against the ICP (Ideal Client Profile) budget and timeline."
+      - name: "The Pipeline Architect"
+        role: "Generates Planka cards in the correct sales column."
+      - name: "The Conversion Analyst"
+        role: "Tracks week-over-week win/loss velocity."
 
-  # - id: "meeting_analyst"
-  #   name: "Linguistic Transcription & Action Analyst"
-  #   description: "Transforms unstructured audio/text into actionable project deltas."
-  #   dify_dsl_file: "meeting_analyst.yml"
-  #   type: "workflow"
-  #   # No schedule -- triggered after each meeting via conversation or webhook.
-  #   characters:
-  #     - name: "The Semantic Scribe"
-  #       role: "Parses linguistic nuances for intent and outcome."
-  #     - name: "The Deliverable Extracter"
-  #       role: "Isolates 'Action Items' for immediate Planka card generation."
+  - id: "meeting"
+    name: "Linguistic Transcription & Action Analyst"
+    description: "Turns unstructured transcripts into accountable tasks."
+    dify_dsl_file: "meeting.yml"
+    type: "agent"
+    instructions: |
+      Identify clear decisions, isolate actionable items, and define owners directly from raw dialogue.
+    characters:
+      - name: "The Semantic Scribe"
+        role: "Differentiates casual thoughts from firm commitments."
+      - name: "The Decision Extractor"
+        role: "Isolates finalized decisions, dependencies, and rationale."
+      - name: "The Action Item Compiler"
+        role: "Emits ready-to-use Planka cards assigned to owners with deadlines."
 
-  # - id: "brand_monitor"
-  #   name: "Global Sentiment & Brand Health Monitor"
-  #   description: "Weekly cross-platform sentiment analysis and health reporting."
-  #   dify_dsl_file: "brand_monitor.yml"
-  #   type: "workflow"
-  #   feeds_briefing: "/week"
-  #   briefing_day: "FRI"
-  #   characters:
-  #     - name: "The Social Signal Listener"
-  #       role: "Aggregates mentions across distributed social datasets."
-  #     - name: "The Brand Health Diagnostic"
-  #       role: "Assigns composite sentiment scores and drift warnings."
+  - id: "brand"
+    name: "Global Sentiment & Brand Health Monitor"
+    description: "Tracks public reputation across social platforms."
+    dify_dsl_file: "brand.yml"
+    type: "agent"
+    feeds_briefing: "/week"
+    briefing_day: "FRI"
+    instructions: |
+      Monitor overall brand health and predict emerging narrative shifts before they solidify.
+    characters:
+      - name: "The Social Signal Listener"
+        role: "Aggregates and categorizes sentiment across channels."
+      - name: "The Narrative Analyst"
+        role: "Detects perception shifts before they crystallize."
+      - name: "The Crisis Warning System"
+        role: "Distinguishes organic criticism from coordinated bot activity."
 
-  # - id: "strategic_planner"
-  #   name: "Quarterly Vision & Roadmap Architect"
-  #   description: "Generates high-level roadmaps and aligns tasks with vision goals."
-  #   dify_dsl_file: "strategic_planner.yml"
-  #   type: "agent"
-  #   feeds_briefing: "/quarter"
-  #   briefing_months: "1,4,7,10"
-  #   characters:
-  #     - name: "The Strategic Visionary"
-  #       role: "Extrapolates long-term vision into measurable milestones."
-  #     - name: "The Execution Roadmapper"
-  #       role: "Decomposes milestones into quarterly board sprints."
+  - id: "roadmap"
+    name: "Quarterly Vision Architect"
+    description: "Ensures daily tasks align with big-picture quarter goals."
+    dify_dsl_file: "roadmap.yml"
+    type: "agent"
+    feeds_briefing: "/quarter"
+    briefing_months: "1,4,7,10"
+    briefing_dom: 1
+    instructions: |
+      Measure execution against high-level OKRs. Reallocate focus to strategic blocks to prevent drift.
+    characters:
+      - name: "The Strategic Visionary"
+        role: "Drafts measurable OKRs for the quarter."
+      - name: "The Drift Detector"
+        role: "Quantifies how far actual board completions are deviating from the roadmap."
+      - name: "The Resource Allocator"
+        role: "Rebalances theoretical time dedicated to operational vs. strategic work."
 
-  # - id: "finance_auditor"
-  #   name: "Fiscal Auditor & Budgetary Integrity Engine"
-  #   description: "Receipt and invoice processing for tax alignment and budget tracking."
-  #   dify_dsl_file: "finance_auditor.yml"
-  #   type: "workflow"
-  #   feeds_briefing: "/week"
-  #   briefing_day: "SUN"
-  #   characters:
-  #     - name: "The Compliance Bookkeeper"
-  #       role: "Categorizes transactions against tax law and budget caps."
-  #     - name: "The Fiscal Integrity Officer"
-  #       role: "Flags budgetary drift and unauthorized line items."
+  - id: "finance"
+    name: "Fiscal Auditor & Asset Integrity"
+    description: "Tracks cash flow, taxes, portfolio, and all subscriptions."
+    dify_dsl_file: "finance.yml"
+    type: "agent"
+    feeds_briefing: "/month"
+    briefing_dom: 1
+    instructions: |
+      Enforce budgetary constraints, categorize spending, forecast liquidity, and prune orphaned subscriptions.
+    characters:
+      - name: "The Compliance Bookkeeper"
+        role: "Categorizes raw transaction lines against tax laws."
+      - name: "The Tax Optimization Advisor"
+        role: "Flags deductible purchases and filing deadlines."
+      - name: "The Cash Flow Forecaster"
+        role: "Projects 30/60/90-day liquidity runways."
+      - name: "The Subscription Auditor"
+        role: "Identifies orphaned SaaS accounts and upcoming renewals."
+      - name: "The Depreciation Tracker"
+        role: "Logs lifespans for high-value physical assets for proactive replacement."
 
-  # ==========================================
-  # EDUCATION & PEDAGOGY (Commented-out Templates)
-  # ==========================================
-  # - id: "lesson_architect"
-  #   name: "Pedagogical Unit & Lesson Architect"
-  #   description: "Design of instructional units aligning with international standards."
-  #   dify_dsl_file: "lesson_architect.yml"
-  #   type: "workflow"
-  #   feeds_briefing: "/week"
-  #   briefing_day: "SUN"
-  #   characters:
-  #     - name: "The Standards Alignment Expert"
-  #       role: "Ensures curriculum meets IB/Common Core/National standards."
-  #     - name: "The Instructional Designer"
-  #       role: "Crafts high-engagement student activities and scaffolds."
+  - id: "content"
+    name: "Creative Content & Brand Voice Engine"
+    description: "Drafts high-quality outbound media."
+    dify_dsl_file: "content.yml"
+    type: "agent"
+    instructions: |
+      Generate content utilizing correct brand voice for target platforms. Plan editorial themes.
+    characters:
+      - name: "The Editorial Strategist"
+        role: "Plans themes, calendars, and SEO angles."
+      - name: "The Copywriter"
+        role: "Drafts text matching your strict brand voice and platform register."
+      - name: "The Visual Director"
+        role: "Generates specific image prompts or infographics concepts to pair with text."
+      - name: "The Quality Editor"
+        role: "Checks readability scoring, grammar, and fluff reduction."
 
-  # - id: "assessment_strategist"
-  #   name: "Diagnostic & Formative Assessment Strategist"
-  #   description: "Design of evidence-based feedback loops and grading rubrics."
-  #   dify_dsl_file: "assessment_strategist.yml"
-  #   type: "workflow"
-  #   feeds_briefing: "/week"
-  #   briefing_day: "FRI"
-  #   characters:
-  #     - name: "The Psychometric Evaluator"
-  #       role: "Designs valid and reliable assessment instruments."
-  #     - name: "The Rubric Architect"
-  #       role: "Constructs rigorous descriptors for performance levels."
-
-  # - id: "pedagogical_researcher"
-  #   name: "Evidence-Based Pedagogy Researcher"
-  #   description: "Synthesizes research to suggest peer-reviewed interventions."
-  #   dify_dsl_file: "pedagogical_researcher.yml"
-  #   type: "agent"
-  #   feeds_briefing: "/month"
-  #   briefing_dom: "1,15"
-  #   characters:
-  #     - name: "The Educational Data Scientist"
-  #       role: "Digests longitudinal studies and metastrategies."
-  #     - name: "The Classroom Practitioner"
-  #       role: "Translates theory into immediate 'Bell-Ringer' activities."
-
-  # - id: "differentiation_advisor"
-  #   name: "Inclusive Education & Differentiation Advisor"
-  #   description: "Personalizes content for IEP/ESL/G&T learners while maintaining rigor."
-  #   dify_dsl_file: "differentiation_advisor.yml"
-  #   type: "agent"
-  #   # No schedule -- triggered on-demand when planning differentiated units.
-  #   characters:
-  #     - name: "The Inclusion Specialist"
-  #       role: "Ensures accessibility and UDL alignment."
-  #     - name: "The Rigor & Challenge Auditor"
-  #       role: "Ensures high-ability learners are adequately stretched."
-
-  # - id: "stakeholder_communicator"
-  #   name: "Professional Stakeholder & Parent Liaison"
-  #   description: "Drafting progress reports and high-level admin communication."
-  #   dify_dsl_file: "stakeholder_communicator.yml"
-  #   type: "workflow"
-  #   feeds_briefing: "/week"
-  #   briefing_day: "FRI"
-  #   characters:
-  #     - name: "The Empathy Communications Lead"
-  #       role: "Drafts compassionate parent-facing status reports."
-  #     - name: "The Admin Reporting Liaison"
-  #       role: "Drafts formal, data-driven school leadership updates."
-
-  # - id: "edu_admin_hub"
-  #   name: "Educational Logistics & Admin Ops Hub"
-  #   description: "Logistical management for trips, inventory, and teacher scheduling."
-  #   dify_dsl_file: "edu_admin_hub.yml"
-  #   type: "workflow"
-  #   feeds_briefing: "/week"
-  #   briefing_day: "MON"
-  #   characters:
-  #     - name: "The Operational Manager"
-  #       role: "Coordinates complex logistical maneuvers (Trips/Events)."
-  #     - name: "The Inventory Integrity Lead"
-  #       role: "Monitors supply levels and automates restock cards."
+  - id: "legal"
+    name: "Contract Risk & Compliance Intelligence"
+    description: "Reads contracts, finds bear traps, tracks compliance deadlines."
+    dify_dsl_file: "legal.yml"
+    type: "agent"
+    instructions: |
+      Parse contractual obligations, identify asymmetric risks, and provide template counter-language.
+    characters:
+      - name: "The Contract Analyst"
+        role: "Extracts obligations, payment timelines, and IP assignments."
+      - name: "The Risk Assessor"
+        role: "Red-flags asymmetrical liability, weird non-competes, and auto-renewals."
+      - name: "The Negotiation Advisor"
+        role: "Suggests standard counter-clauses (e.g., liability caps)."
 
   # ==========================================
-  # PRIVATE & PERSONAL (Commented-out Templates)
+  # EDUCATION & PEDAGOGY
   # ==========================================
-  # - id: "wellbeing_monitor"
-  #   name: "Holistic Wellbeing & Biometric Analyst"
-  #   description: "Analyzes biometric data trends for biophilic lifestyle improvements."
-  #   dify_dsl_file: "wellbeing_monitor.yml"
-  #   type: "agent"
-  #   feeds_briefing: "/week"
-  #   briefing_day: "MON"
-  #   characters:
-  #     - name: "The Biometric Statistician"
-  #       role: "Processes sleep/activity/HRV datasets for anomalies."
-  #     - name: "The Bio-Harmonic Lifestyle Coach"
-  #       role: "Suggests restorative interventions and environment shifts."
-
-  # - id: "asset_manager"
-  #   name: "Personal Asset & Subscription Integrity Manager"
-  #   description: "Tracking of recursives, bills, and portfolio performance."
-  #   dify_dsl_file: "asset_manager.yml"
-  #   type: "workflow"
-  #   feeds_briefing: "/month"
-  #   briefing_dom: 1
-  #   characters:
-  #     - name: "The Fiscal Recovery Agent"
-  #       role: "Identifies orphaned subscriptions and cost leaks."
-  #     - name: "The Portfolio Growth Monitor"
-  #       role: "Reports on asset allocation and market drift."
-
-  # - id: "residence_steward"
-  #   name: "Residence Integrity & Smart Domain Steward"
-  #   description: "IoT optimization and predictive home maintenance scheduling."
-  #   dify_dsl_file: "residence_steward.yml"
-  #   type: "workflow"
-  #   feeds_briefing: "/month"
-  #   briefing_dom: "1,15"
-  #   characters:
-  #     - name: "The Facility Condition Specialist"
-  #       role: "Predicts maintenance windows for home assets."
-  #     - name: "The Domain Optimization Lead"
-  #       role: "Fine-tunes IoT thresholds for energy/utility efficiency."
-
-  # - id: "experience_concierge"
-  #   name: "Lifestyle Experience & Travel Architect"
-  #   description: "Planning of high-intent itineraries based on preference history."
-  #   dify_dsl_file: "experience_concierge.yml"
-  #   type: "agent"
-  #   # No schedule -- triggered on-demand for trip/event planning.
-  #   characters:
-  #     - name: "The Experience Architect"
-  #       role: "Designs end-to-end travel and event itineraries."
-  #     - name: "The Cultural & Dining Critic"
-  #       role: "Curates venues based on historical enjoyment patterns."
-
-  # - id: "life_alignment_coach"
-  #   name: "Vision-Action Alignment & Life Auditor"
-  #   description: "Analyzes actual time allocation vs. high-level vision aspirations."
-  #   dify_dsl_file: "life_alignment_coach.yml"
-  #   type: "agent"
-  #   feeds_briefing: "/week"
-  #   briefing_day: "SUN"
-  #   characters:
-  #     - name: "The Time-Data Auditor"
-  #       role: "Parses board activity for objective time-on-task metrics."
-  #     - name: "The Alignment Mentor"
-  #       role: "Synthesizes corrective actions to close the vision-action gap."
-
-  - id: "recipes_chef"
-    name: "Precision Culinary Architect & Nutritional Optimizer"
-    description: "Autonomous meal planning engine. Generates weekly recipes, manages a
-      dedicated 'Kitchen' board in Planka, creates shopping lists as checklists,
-      and archives completed meals for preference learning."
-    dify_dsl_file: "recipes_chef.yml"
-    type: "workflow"
+  - id: "lessons"
+    name: "Pedagogical Unit & Differentiation Architect"
+    description: "End-to-end unit planning, from state standards to specialized ESL scaffolding."
+    dify_dsl_file: "lessons.yml"
+    type: "agent"
     feeds_briefing: "/week"
     briefing_day: "SUN"
-    planka_board: "Kitchen"  # Dedicated board for autonomous recipe management
-    planka_lists:
-      - "Meal Plan"       # Current week's recipes (cards with instructions)
-      - "Shopping List"   # Aggregated ingredients as checklist cards
-      - "In Progress"     # Meals being prepared today
-      - "Completed"       # Archived meals (moved here after cooking)
-      - "Favorites"       # User-starred recipes for repeat rotation
+    instructions: |
+      Produce structured pedagogical designs. Apply Universal Design for Learning modifications directly within activities.
+    characters:
+      - name: "The Standards Alignment Expert"
+        role: "Maps objectives strictly to IB/State framework codes."
+      - name: "The Instructional Designer"
+        role: "Builds block-level activities and Socratic sequences."
+      - name: "The Formative Assessment Architect"
+        role: "Builds rubrics and diagnostic tests."
+      - name: "The Operations Coordinator"
+        role: "Handles field trip logistics and substitute packs."
+      - name: "The Inclusion & Scaffolding Specialist"
+        role: "Embeds UDL modifiers into the lesson (e.g., ELL sentence frames, G&T extensions) natively."
+
+  - id: "edu-communication"
+    name: "Stakeholder & Parent Liaison"
+    description: "Professional communication for school ecosystems."
+    dify_dsl_file: "edu-communication.yml"
+    type: "agent"
+    instructions: |
+      Generate stakeholder communications avoiding jargon, staying strengths-based, and ensuring admin compliance.
+    characters:
+      - name: "The Empathy Communications Lead"
+        role: "Drafts warm, strengths-based parent updates."
+      - name: "The Admin Reporting Analyst"
+        role: "Generates data-driven briefs for principals/boards."
+      - name: "The Conflict Resolution Advisor"
+        role: "Scripts de-escalation paths for sensitive student behavior incidents."
+
+  # ==========================================
+  # PRIVATE & PERSONAL
+  # ==========================================
+  - id: "health"
+    name: "Holistic Wellbeing & Biometric Analyst"
+    description: "Correlates sleep, strain, and lifestyle into tactical physical advice."
+    dify_dsl_file: "health.yml"
+    type: "agent"
+    feeds_briefing: "/week"
+    briefing_day: "MON"
+    instructions: |
+      Evaluate biometric data to optimize physical load, mitigate burnout, and align chronobiology.
+    characters:
+      - name: "The Biometric Statistician"
+        role: "Finds anomalies in HRV, RHR, and sleep continuity."
+      - name: "The Exercise Physiologist"
+        role: "Adjusts training load based on recent strain and schedule density."
+      - name: "The Chronobiology Advisor"
+        role: "Adapts sleep/work windows to seasonal light and jetlag."
+
+  - id: "nutrition"
+    name: "Precision Culinary & Macro Optimizer"
+    description: "Generates weekly meal boards, recipes, and shopping lists."
+    dify_dsl_file: "nutrition.yml"
+    type: "agent"
+    feeds_briefing: "/week"
+    briefing_day: "SUN"
+    instructions: |
+      Build comprehensive meal plans factoring allergies. Output deduplicated shopping checklists.
     characters:
       - name: "The Clinical Nutritionist"
-        role: "Cross-references all ingredients against ground-truth health logs."
-        instructions: "Always prioritize medical allergy data from /personal/health.md."
-      - name: "The Recipe Knowledge Archivist"
-        role: "Extracts preparation sequences from the authorized PDF library."
+        role: "Strictly enforces health.md constraints (allergies, macros, exclusions)."
       - name: "The Production Head Chef"
-        role: "Synthesizes final recipes into a standardized executive format."
+        role: "Builds sequential, batch-optimized cooking instructions."
       - name: "The Flavor Profile Analyst"
-        role: "Analyzes the flavor profile of the recipe and makes modifications."
+        role: "Elevates the dish via acid/fat/salt balancing recommendations."
       - name: "The Shopping Logistics Officer"
-        role: "Aggregates ingredients across all weekly recipes into a single
-          deduplicated shopping list, formatted as Planka checklist items."
-      - name: "The Board Operations Manager"
-        role: "Archives completed meals to the 'Completed' list, rotates
-          'Favorites' into future plans, and maintains board hygiene."
+        role: "Deduplicates all recipes into one aisle-mapped grocery checklist."
+
+  - id: "coach"
+    name: "Vision-Action Alignment & Life Auditor"
+    description: "The harsh mirror that compares your declared values against your burned time."
+    dify_dsl_file: "coach.yml"
+    type: "agent"
+    feeds_briefing: "/week"
+    briefing_day: "SUN"
+    instructions: |
+      Provide direct, unvarnished critiques of discrepancies between the user's explicit goals and actual execution.
+    characters:
+      - name: "The Time-Data Auditor"
+        role: "Parses Planka boards into empirical hours-spent per domain."
+      - name: "The Vision Alignment Analyst"
+        role: "Tracks the gap between stated values (about-me.md) and actual behavior."
+      - name: "The Accountability Partner"
+        role: "Delivers direct, no-sugar-coating reprimands for avoidance patterns."
+
+  - id: "residence"
+    name: "IoT, Utility & Smart Domain Steward"
+    description: "Physical environment uptime and facility maintenance."
+    dify_dsl_file: "residence.yml"
+    type: "agent"
+    feeds_briefing: "/month"
+    briefing_dom: 1
+    instructions: |
+      Plan preventative logistics for the primary residence, mitigating infrastructure entropy.
+    characters:
+      - name: "The Facility Condition Specialist"
+        role: "Schedules HVAC, water heater, and smoke detector maintenance."
+      - name: "The Energy Efficiency Analyst"
+        role: "Optimizes thermostat and appliance loads securely."
+      - name: "The Seasonal Preparedness Coordinator"
+        role: "Transitions the house for winterizing, storm prep, or summer cooling."
+
+  - id: "travels"
+    name: "Lifestyle Experience & Logistics Architect"
+    description: "High-intent trip building."
+    dify_dsl_file: "travels.yml"
+    type: "agent"
+    instructions: |
+      Architect complete travel schedules ensuring cultural immersion merged with mandated downtime.
+    characters:
+      - name: "The Experience Architect"
+        role: "Balances high-voltage adventure with required downtime recovery blocks."
+      - name: "The Cultural Critic"
+        role: "Sources off-path dining and events matching preference history."
+      - name: "The Logistics Coordinator"
+        role: "Handles flights, visas, connection buffers, and builds the trip Planka board."
+
+  - id: "security"
+    name: "OPSEC & Digital Perimeter Defense"
+    description: "Locks down the digital footprint, monitors for breaches, and enforces privacy."
+    dify_dsl_file: "security.yml"
+    type: "agent"
+    feeds_briefing: "/month"
+    briefing_dom: 15
+    instructions: |
+      Audit public digital footprint for privacy risks. Enforce password hygiene and intercept invasive ToS agreements.
+    characters:
+      - name: "The Threat Modeler"
+        role: "Audits your public footprint. Flags over-sharing on social media, exposed location data, or metadata leaks."
+      - name: "The OPSEC Enforcer"
+        role: "Monitors breaches. Prompts mandatory password rotations for critical accounts and audits 2FA hygiene."
+      - name: "The Privacy Sentinel"
+        role: "Scans Terms of Service updates for apps you use, immediately highlighting data harvesting."
+
+  - id: "dependents"
+    name: "Child Development & Care Tracker"
+    description: "High-fidelity tracking of pediatric, developmental, and care logistics."
+    dify_dsl_file: "dependents.yml"
+    type: "agent"
+    feeds_briefing: "/week"
+    briefing_day: "SUN"
+    instructions: |
+      Correlate behavior against pediatric milestones. Handle administrative logistics to reduce cognitive load on the parent.
+    characters:
+      - name: "The Developmental Mapper"
+        role: "Cross-references age against cognitive, motor, and linguistic milestones. Flags areas for enrichment."
+      - name: "The Pediatric Archivist"
+        role: "Logs vaccination schedules, allergy introductions, fever history, and physical percentiles."
+      - name: "The Enrichment Architect"
+        role: "Designs age-appropriate analog activities (e.g., sensory play, motor-skill games) to reduce screen time."
+      - name: "The Care Logistician"
+        role: "Handles the operational chaos: tracking school forms, packing lists for trips, and clothing sizes."
