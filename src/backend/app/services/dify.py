@@ -47,7 +47,7 @@ class DifyClient:
                 res = await client.get(f"{self.base_url}/info", headers=self._headers())
                 return res.status_code in (200, 401, 403, 404)
         except Exception as e:
-            logger.warning(f"Dify cluster unreachable: {e}")
+            logger.warning("Dify cluster unreachable: %s", e)
             return False
 
     async def import_dsl(self, file_path: Path) -> str:
@@ -69,7 +69,7 @@ class DifyClient:
                 data = res.json()
                 return data.get("app_id") or data.get("id")
         except Exception as e:
-            logger.error(f"Failed to import Dify DSL {file_path.name}: {e}")
+            logger.error("Failed to import Dify DSL %s: %s", file_path.name, e)
             raise
 
     @retry(
@@ -141,14 +141,14 @@ class CrewRegistry:
     async def load(self) -> None:
         """Parses crews.yaml and loads uncommented mappings."""
         if not self.crews_yaml_path.exists():
-            logger.warning(f"crews.yaml not found at {self.crews_yaml_path}")
+            logger.warning("crews.yaml not found at %s", self.crews_yaml_path)
             return
 
         try:
             with open(self.crews_yaml_path, "r", encoding="utf-8") as f:
                 raw_data = yaml.safe_load(f)
         except Exception as e:
-            logger.error(f"Failed to parse crews.yaml: {e}")
+            logger.error("Failed to parse crews.yaml: %s", e)
             return
 
         if not raw_data:
@@ -164,7 +164,7 @@ class CrewRegistry:
 
         for crew_data in crews_list:
             if not isinstance(crew_data, dict):
-                logger.error(f"Invalid crew entry in yaml (expected dict, got {type(crew_data).__name__}): {crew_data}")
+                logger.error("Invalid crew entry in yaml (expected dict, got %s): %s", type(crew_data).__name__, crew_data)
                 continue
             
             if not crew_data.get("enabled", True):
@@ -175,9 +175,9 @@ class CrewRegistry:
                 config = CrewConfig(**crew_data)
                 self._crews[config.id] = config
             except Exception as e:
-                logger.error(f"Failed to parse crew configuration for {crew_data.get('id', 'unknown')}: {e}")
+                logger.error("Failed to parse crew configuration for %s: %s", crew_data.get('id', 'unknown'), e)
             
-        logger.info(f"CrewRegistry loaded {len(self._crews)} active crews from configuration.")
+        logger.info("CrewRegistry loaded %d active crews from configuration.", len(self._crews))
 
     async def provision(self) -> None:
         """Idempotent auto-provisioning engine matching local DSLs to Dify Cloud App IDs."""
@@ -191,14 +191,14 @@ class CrewRegistry:
                 with open(self.manifest_path, "r", encoding="utf-8") as f:
                     self._manifest = json.load(f)
             except Exception as e:
-                logger.error(f"Failed to read manifest {self.manifest_path}: {e}")
+                logger.error("Failed to read manifest %s: %s", self.manifest_path, e)
 
         updates_made = False
 
         for crew_id, config in self._crews.items():
             mapped_uuid = self._manifest.get(crew_id)
             if not mapped_uuid:
-                logger.info(f"Crew '{crew_id}' lacks Dify mapping. Triggering Auto-Provisioning...")
+                logger.info("Crew '%s' lacks Dify mapping. Triggering Auto-Provisioning...", crew_id)
                 dsl_path = self.agent_dir / "dify" / config.dify_dsl_file
                 try:
                     new_id = await self.client.import_dsl(dsl_path)
@@ -206,9 +206,9 @@ class CrewRegistry:
                         self._manifest[crew_id] = new_id
                         config.dify_app_id = new_id
                         updates_made = True
-                        logger.info(f"Successfully provisioned Crew '{crew_id}' with App UUID {new_id}")
+                        logger.info("Successfully provisioned Crew '%s' with App UUID %s", crew_id, new_id)
                 except Exception as e:
-                    logger.error(f"Failed to provision {crew_id}: {e}")
+                    logger.error("Failed to provision %s: %s", crew_id, e)
             else:
                 config.dify_app_id = mapped_uuid
 

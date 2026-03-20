@@ -918,7 +918,7 @@ async def cmd_crews(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		
 		await safe_reply(update, "\n".join(msg_parts))
 	except Exception as e:
-		logger.error(f"Error fetching crews: {e}")
+		logger.error("Error fetching crews: %s", e)
 		await safe_reply(update, f"❌ {t.get('failed_fetch_crews', 'Failed to fetch Dify Crew registry status.')}")
 
 @owner_only
