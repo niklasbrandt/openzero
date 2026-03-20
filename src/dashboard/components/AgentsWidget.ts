@@ -222,9 +222,15 @@ export class AgentsWidget extends HTMLElement {
 					border: 1px solid var(--border-accent);
 				}
 
+				.crew-group-details {
+					margin-bottom: 0.5rem;
+				}
+
 				.crew-group-header {
-					margin: 1.5rem 0 0.8rem 0;
-					padding-bottom: 0.4rem;
+					margin: 0.5rem 0;
+					padding: 0.6rem 0.8rem;
+					border-radius: 0.6rem;
+					background: rgba(255, 255, 255, 0.02);
 					color: var(--text-tertiary);
 					font-size: 0.75rem;
 					font-weight: 700;
@@ -232,11 +238,22 @@ export class AgentsWidget extends HTMLElement {
 					letter-spacing: 0.08em;
 					display: flex;
 					align-items: center;
-					gap: 0.5rem;
+					gap: 0.75rem;
+					cursor: pointer;
+					list-style: none;
+					transition: all 0.2s ease;
+					user-select: none;
+					border: 1px solid transparent;
 				}
 
-				.crew-group-header:first-child {
-					margin-top: 0;
+				.crew-group-header:hover {
+					background: rgba(255, 255, 255, 0.05);
+					color: var(--text-primary);
+					border-color: rgba(255, 255, 255, 0.03);
+				}
+
+				.crew-group-header::-webkit-details-marker {
+					display: none;
 				}
 
 				.group-dot {
@@ -245,6 +262,45 @@ export class AgentsWidget extends HTMLElement {
 					border-radius: 50%;
 					background: var(--accent-primary);
 					box-shadow: 0 0 8px var(--accent-glow);
+					flex-shrink: 0;
+				}
+
+				.group-chevron {
+					margin-left: auto;
+					transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+					opacity: 0.3;
+					color: var(--accent-primary);
+					display: flex;
+				}
+
+				.crew-group-details[open] .group-chevron {
+					transform: rotate(90deg);
+					opacity: 0.8;
+				}
+
+				.group-count {
+					font-size: 0.65rem;
+					font-family: var(--font-mono, monospace);
+					background: rgba(255, 255, 255, 0.05);
+					padding: 0.15rem 0.5rem;
+					border-radius: 1rem;
+					opacity: 0.4;
+					color: var(--text-primary);
+				}
+
+				.group-content {
+					display: flex;
+					flex-direction: column;
+					gap: 0.5rem;
+					padding: 0.5rem 0 1rem 0.5rem;
+					margin-left: 1.1rem;
+					border-left: 1px solid rgba(255, 255, 255, 0.03);
+					animation: groupContentReveal 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+				}
+
+				@keyframes groupContentReveal {
+					from { opacity: 0; transform: translateY(-8px); }
+					to { opacity: 1; transform: translateY(0); }
 				}
 
 				/* Personality Overview Styles */
@@ -729,11 +785,15 @@ export class AgentsWidget extends HTMLElement {
 			if (crewsInGroup.length === 0) return '';
 
 			return `
-						<div class="crew-group-header">
-							<span class="group-dot"></span>
-							${this.tr('group_' + group, group.charAt(0).toUpperCase() + group.slice(1))}
-						</div>
-						${crewsInGroup.map(crew => {
+						<details class="crew-group-details" open>
+							<summary class="crew-group-header">
+								<span class="group-dot" aria-hidden="true"></span>
+								${this.tr('group_' + group, group.charAt(0).toUpperCase() + group.slice(1))}
+								<span class="group-count" title="${crewsInGroup.length} ${this.tr('crews', 'crews')}">${crewsInGroup.length}</span>
+								<span class="group-chevron">${this.renderIcon('chevron-right', '0.9rem')}</span>
+							</summary>
+							<div class="group-content">
+								${crewsInGroup.map(crew => {
 				let sched = crew.schedule || this.tr('on_demand', 'On-demand');
 				if (crew.feeds_briefing) {
 					sched = this.tr('pre_briefing', 'Pre-{feeds} briefing').replace('{feeds}', crew.feeds_briefing.replace('/', ''));
@@ -741,57 +801,59 @@ export class AgentsWidget extends HTMLElement {
 				}
 
 				return `
-								<details class="crew-details">
-									<summary class="crew-summary">
-										<div class="crew-summary-left">
-											<span class="crew-chevron">${this.renderIcon('chevron-right', '1rem')}</span>
-											<div class="crew-title">
-												<span class="h-icon-mini">${this.renderIcon('users', '1rem')}</span>
-												${crew.name}
-												<span class="crew-id-tag" title="Crew ID">${crew.id}</span>
-											</div>
-											<div class="crew-meta" style="margin-left: auto; margin-right: 1.5rem;">
-												<div class="meta-item">
-													${this.renderIcon('clock', '0.75rem')}
-													${sched}
-												</div>
-											</div>
-											<span class="status-badge ${crew.dify_app_id ? 'status-active' : 'status-inactive'}">
-												${crew.dify_app_id ? 'Active' : ''}
-											</span>
-										</div>
-									</summary>
-
-									<div class="crew-content">
-										<p class="crew-desc">${this.esc(crew.description)}</p>
-
-										${crew.characters && crew.characters.length > 0 ? `
-											<div class="characters-grid">
-												${crew.characters.map(c => `
-													<div class="character-badge">
-														<div class="character-name">
-															<span class="h-icon-mini" style="opacity:0.8;">${this.renderIcon('user', '0.8rem')}</span>
-															${this.esc(c.name)}
-														</div>
-														<div class="character-role">${this.esc(c.role)}</div>
+										<details class="crew-details">
+											<summary class="crew-summary">
+												<div class="crew-summary-left">
+													<span class="crew-chevron">${this.renderIcon('chevron-right', '1rem')}</span>
+													<div class="crew-title">
+														<span class="h-icon-mini">${this.renderIcon('users', '1rem')}</span>
+														${crew.name}
+														<span class="crew-id-tag" title="Crew ID">${crew.id}</span>
 													</div>
-												`).join('')}
-											</div>
-										` : ''}
-
-										<div style="display:flex; justify-content:flex-end;">
-											<button class="run-crew-btn oz-btn oz-btn-ghost oz-btn-sm" data-id="${crew.id}" ${this.runningCrews.has(crew.id) ? 'disabled' : ''} style="display:flex; flex-direction:column; align-items:flex-end; padding: 0.2rem 0.6rem; min-width: 120px; border-color: var(--border-accent);">
-												<div style="display:flex; align-items:center; gap:0.4rem; font-size:0.75rem; font-weight:700; color:var(--accent-primary);">
-													${this.runningCrews.has(crew.id) ? this.renderIcon('loader', '0.8rem') : this.renderIcon('play', '0.8rem')}
-													${this.tr('run_now', 'TRIGGER AGENT')}
+													<div class="crew-meta" style="margin-left: auto; margin-right: 1.5rem;">
+														<div class="meta-item">
+															${this.renderIcon('clock', '0.75rem')}
+															${sched}
+														</div>
+													</div>
+													<span class="status-badge ${crew.dify_app_id ? 'status-active' : 'status-inactive'}">
+														${crew.dify_app_id ? 'Active' : ''}
+													</span>
 												</div>
-												<span style="font-size:0.6rem; opacity:0.4; font-weight:400; color: var(--accent-primary);">Autonomous Cycle</span>
-											</button>
-										</div>
-									</div>
-								</details>
-							`;
+											</summary>
+
+											<div class="crew-content">
+												<p class="crew-desc">${this.esc(crew.description)}</p>
+
+												${crew.characters && crew.characters.length > 0 ? `
+													<div class="characters-grid">
+														${crew.characters.map(c => `
+															<div class="character-badge">
+																<div class="character-name">
+																	<span class="h-icon-mini" style="opacity:0.8;">${this.renderIcon('user', '0.8rem')}</span>
+																	${this.esc(c.name)}
+																</div>
+																<div class="character-role">${this.esc(c.role)}</div>
+															</div>
+														`).join('')}
+													</div>
+												` : ''}
+
+												<div style="display:flex; justify-content:flex-end;">
+													<button class="run-crew-btn oz-btn oz-btn-ghost oz-btn-sm" data-id="${crew.id}" ${this.runningCrews.has(crew.id) ? 'disabled' : ''} style="display:flex; flex-direction:column; align-items:flex-end; padding: 0.2rem 0.6rem; min-width: 120px; border-color: var(--border-accent);">
+														<div style="display:flex; align-items:center; gap:0.4rem; font-size:0.75rem; font-weight:700; color:var(--accent-primary);">
+															${this.runningCrews.has(crew.id) ? this.renderIcon('loader', '0.8rem') : this.renderIcon('play', '0.8rem')}
+															${this.tr('run_now', 'TRIGGER AGENT')}
+														</div>
+														<span style="font-size:0.6rem; opacity:0.4; font-weight:400; color: var(--accent-primary);">Autonomous Cycle</span>
+													</button>
+												</div>
+											</div>
+										</details>
+									`;
 			}).join('')}
+							</div>
+						</details>
 					`;
 		}).join('')}
 			</div>

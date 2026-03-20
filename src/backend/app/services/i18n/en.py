@@ -602,6 +602,7 @@ translations: dict[str, str] = {
 	"group_private": "Private & Personal",
 	"group_business": "Business & Execution",
 	"group_education": "Learning & Pedagogy",
+	"crews": "Crews",
 	"agents_title": "Agents & Crews",
 	"loading_crews": "Loading crews...",
 	"no_crews_found": "No Dify Crews provisioned or active.",
