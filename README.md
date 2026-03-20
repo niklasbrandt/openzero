@@ -249,6 +249,7 @@ All commands are available via the Telegram bot and the dashboard chat interface
 | `/custom`    | Create a persistent scheduled task with cron or interval syntax (e.g., every Monday at 10am). Survives restarts.                                                |
 | `/tree`      | Full life hierarchy: projects, boards, lists, and social circles.                                                                                               |
 | `/think`     | Deep reasoning using the 14B model with human-in-the-loop approval.                                                                                             |
+| `/board`     | Mission Context: Display the exact Planka project target for Z's operations.                                                                                    |
 | `/search`    | Semantic search of the knowledge vault -- finds by meaning, not keywords.                                                                                       |
 | `/memories`  | List all core knowledge currently in permanent memory.                                                                                                          |
 | `/crews`     | List all active Dify multi-agent crews and their statuses.                                                                                                      |

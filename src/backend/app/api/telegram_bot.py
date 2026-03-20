@@ -102,13 +102,16 @@ async def start_telegram_bot():
 	bot_app.add_handler(CommandHandler("quarter", cmd_quarter))
 	bot_app.add_handler(CommandHandler("year", cmd_year))
 	bot_app.add_handler(CommandHandler("day", cmd_day))
-	bot_app.add_handler(CommandHandler("add", cmd_add_topic))
+	bot_app.add_handler(CommandHandler("learn", cmd_learn))
+	bot_app.add_handler(CommandHandler("add", cmd_learn))
 	bot_app.add_handler(CommandHandler("protocols", cmd_protocols))
 	bot_app.add_handler(CommandHandler("remind", cmd_remind))
 	bot_app.add_handler(CommandHandler("custom", cmd_custom))
 	bot_app.add_handler(CommandHandler("think", cmd_think))
 	bot_app.add_handler(CommandHandler("personal", cmd_personal))
+	bot_app.add_handler(CommandHandler("skills", cmd_skills))
 	bot_app.add_handler(CommandHandler("crews", cmd_crews))
+	bot_app.add_handler(CommandHandler("crew", cmd_crews))
 	bot_app.add_handler(CallbackQueryHandler(handle_approval, pattern="^think_"))
 	bot_app.add_handler(CallbackQueryHandler(handle_unlearn_approval, pattern="^unlearn_"))
 	bot_app.add_handler(CallbackQueryHandler(handle_wipe_confirm, pattern="^wipe_"))
@@ -865,19 +868,22 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 			"/year -- Yearly goal setting based on project themes\n\n"
 			"*Mission Control*\n"
 			"/tree -- Full life hierarchy and workspace overview\n"
+			"/crews -- List all active Dify multi-agent crews and their statuses\n"
 			"/think -- Complex reasoning with human-in-the-loop approval\n"
 			"/remind -- Set a temporary recurring reminder\n"
-			"/custom -- Create a persistent scheduled task\n\n"
+			"/custom -- Create a persistent scheduled task\n"
+			"/protocols -- Inspect Z's agentic tools (action tags)\n"
+			"/board -- Show the exact Planka project target for Z's operations\n\n"
 			"*Memory & Intelligence*\n"
 			"/search -- Conceptual search of the semantic knowledge vault\n"
 			"/memories -- List all core knowledge in permanent memory\n"
-			"/add -- Commit specific facts to memory\n"
-			"/unlearn -- Evolve past points in the vault\n"
-			"/protocols -- Inspect Z's agentic tools\n\n"
+			"/learn -- Commit specific facts to long-term memory\n"
+			"/unlearn -- Evolve past points in the vault\n\n"
 			"*System*\n"
 			"/personal -- Show personal context Z loaded from /personal\n"
+			"/skills -- Show agent skill modules loaded from /agent\n"
 			"/status -- Deep integration health check\n"
-			"/crews -- View live Dify agent topology and registry status\n"
+			"/start -- System status check and heartbeat\n"
 			"/purge -- Permanently delete all memories\n\n"
 			"_Tap any command to execute it directly._"
 		)
@@ -923,8 +929,24 @@ async def handle_help_callback(update: Update, context: ContextTypes.DEFAULT_TYP
 	await cmd_help(update, context)
 
 @owner_only
-async def cmd_add_topic(update: Update, context: ContextTypes.DEFAULT_TYPE):
-	topic = update.message.text.replace("/add", "").strip()
+async def cmd_skills(update: Update, context: ContextTypes.DEFAULT_TYPE):
+	try:
+		from app.services.agent_context import refresh_agent_context, get_agent_skills_debug_report
+		await refresh_agent_context()
+		report = get_agent_skills_debug_report()
+		if len(report) > 3500:
+			report = report[:3500] + "\n... (truncated — use dashboard to view full skills list)"
+		await safe_reply(update, report)
+	except Exception as e:
+		await safe_reply(update, f"Agent skills report failed: {e}")
+
+@owner_only
+async def cmd_learn(update: Update, context: ContextTypes.DEFAULT_TYPE):
+	text = update.message.text
+	topic = text.replace("/learn", "").replace("/add", "").strip()
+	if not topic:
+		await safe_reply(update, "What should I learn? Usage: /learn <fact>")
+		return
 	from app.services.memory import store_memory
 	await store_memory(topic)
 	await safe_reply(update, f"Stored: {topic}")
