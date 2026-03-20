@@ -145,4 +145,5 @@ translations: dict[str, str] = {
 	"warming_up": "ローカルエンジンを起動中...",
 	"wed": "水曜日",
 	"work_times": "勤務時間",
+	"user_profile": "User Profile"
 }

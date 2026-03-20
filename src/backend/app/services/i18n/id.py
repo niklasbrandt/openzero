@@ -52,4 +52,5 @@ translations: dict[str, str] = {
 	"timezone_label": "Zona Waktu",
 	"town": "Kota",
 	"work_times": "Jam Kerja",
+	"user_profile": "User Profile"
 }

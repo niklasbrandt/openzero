@@ -42,4 +42,5 @@ translations: dict[str, str] = {
 	"slow": "ধীর",
 	"software": "সফটওয়্যার",
 	"town": "শহর",
+	"user_profile": "User Profile"
 }
