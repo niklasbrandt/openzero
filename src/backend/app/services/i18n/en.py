@@ -594,12 +594,14 @@ translations: dict[str, str] = {
 	"morning_greeting": "Good Morning!",
 	"audio_briefing_caption": "🎙️ Audio Briefing",
 	"work_times": "Typical Work Times",
-	"crews_title": "Dify Orchestration Crews",
+	"agents_title": "Agents & Autonomous Crews",
 	"loading_crews": "Loading crews...",
 	"no_crews_found": "No Dify Crews provisioned or active.",
 	"view_characters": "View Characters",
 	"running": "Running...",
 	"run_now": "Run Now",
 	"run_history": "Run History",
-	"nav_crews": "Crews"
+	"nav_agents": "Agents",
+	"edit_personality": "Configure Personality",
+	"save_personality": "Save Agents State"
 }

@@ -151,7 +151,7 @@
 			</svg>
 			<span data-tr="nav_protocols">Protocols</span>
 		</a>
-		<a href="#section-crews" data-section="section-crews" aria-label="Crews">
+		<a href="#section-agents" data-section="section-agents" aria-label="Agents">
 			<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
 				stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
 				<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -159,7 +159,7 @@
 				<path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
 				<path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
 			</svg>
-			<span data-tr="nav_crews">Crews</span>
+			<span data-tr="nav_agents">Agents</span>
 		</a>
 		<a href="#section-diagnostics" data-section="section-diagnostics" aria-label="Diagnostics">
 			<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -246,7 +246,7 @@
 				</svg>
 				<span data-tr="nav_protocols">Protocols</span>
 			</a>
-			<a href="#section-crews" data-section="section-crews" aria-label="Crews">
+			<a href="#section-agents" data-section="section-agents" aria-label="Agents">
 				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
 					stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
 					<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -254,7 +254,7 @@
 					<path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
 					<path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
 				</svg>
-				<span data-tr="nav_crews">Crews</span>
+				<span data-tr="nav_agents">Agents</span>
 			</a>
 			<div class="drawer-divider" role="separator" aria-hidden="true"></div>
 			<a href="#section-diagnostics" data-section="section-diagnostics" aria-label="Diagnostics">
@@ -319,8 +319,13 @@
 			</section>
 
 			<section class="dashboard-card full-width-card" id="section-identity" aria-label="Profile"
-				data-tr-aria="nav_profile">
+				data-tr-aria="nav_profile" style="order: 40;">
 				<user-card></user-card>
+			</section>
+
+			<section class="dashboard-card full-width-card" id="section-agents" aria-label="Agents"
+				data-tr-aria="nav_agents" style="order: 45;">
+				<agents-widget></agents-widget>
 			</section>
 
 			<section class="dashboard-card full-width-card" id="section-circles" aria-label="Relationships"
@@ -336,9 +341,6 @@
 				<z-protocols></z-protocols>
 			</section>
 
-			<section class="dashboard-card" id="section-crews" aria-label="Crews" data-tr-aria="nav_crews">
-				<crews-widget></crews-widget>
-			</section>
 
 			<section class="dashboard-card full-width-card" id="section-diagnostics" aria-label="Diagnostics"
 				data-tr-aria="nav_diagnostics">

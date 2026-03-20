@@ -8,8 +8,6 @@ import { initGoo } from '../services/gooStyles';
 export class UserCard extends HTMLElement {
 	private me: any = null;
 	private isEditing: boolean = false;
-	private personality: any = null;
-	private isLoadingPersonality: boolean = true;
 	private t: Record<string, string> = {};
 	private languages: Record<string, { native: string, eng: string }> = {
 		en: { native: 'English', eng: 'English' },
@@ -92,7 +90,6 @@ export class UserCard extends HTMLElement {
 	connectedCallback() {
 		this.loadTranslations().then(() => {
 			this.fetchIdentity();
-			this.fetchPersonality();
 		});
 		this.gooMode = localStorage.getItem('goo-mode') === 'true';
 		this.themeMode = (localStorage.getItem('theme-mode') as any) || 'dark';
@@ -117,11 +114,8 @@ export class UserCard extends HTMLElement {
 		if (this.themeMode === 'light') {
 			document.documentElement.setAttribute('data-theme', 'light');
 		} else if (this.themeMode === 'dark') {
-			// Explicit dark-mode attribute prevents @media(prefers-color-scheme:light)
-			// from overriding a manual dark preference when the OS theme is light.
 			document.documentElement.setAttribute('data-theme', 'dark');
 		} else {
-			// Auto/System: remove attribute so @media handles theme selection.
 			document.documentElement.removeAttribute('data-theme');
 		}
 	}
@@ -167,21 +161,6 @@ export class UserCard extends HTMLElement {
 		}
 	}
 
-	async fetchPersonality() {
-		this.isLoadingPersonality = true;
-		try {
-			const response = await fetch('/api/dashboard/personality');
-			if (response.ok) {
-				this.personality = await response.json();
-			}
-		} catch (e) {
-			console.error('Failed to fetch personality', e);
-		} finally {
-			this.isLoadingPersonality = false;
-			this.render();
-		}
-	}
-
 	async saveIdentity() {
 		const shadow = this.shadowRoot!;
 		const identityPayload = {
@@ -206,32 +185,16 @@ export class UserCard extends HTMLElement {
 			relationship: 'Self'
 		};
 
-		const perPayload: any = { ...this.personality };
-		delete perPayload.questions;
-		this.personality?.questions?.forEach((q: any) => {
-			const input = shadow.querySelector(`#per-input-${q.id}`) as any;
-			if (input) perPayload[q.id] = q.type === 'range' ? parseInt(input.value) : input.value;
-		});
-
 		try {
-			const [idRes, perRes] = await Promise.all([
-				fetch('/api/dashboard/people/identity', {
-					method: 'PUT',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify(identityPayload)
-				}),
-				fetch('/api/dashboard/personality', {
-					method: 'PUT',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify(perPayload)
-				})
-			]);
+			const res = await fetch('/api/dashboard/people/identity', {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(identityPayload)
+			});
 
-			if (idRes.ok && perRes.ok) {
-				const updatedMe = await idRes.json();
-				const updatedPer = await perRes.json();
+			if (res.ok) {
+				const updatedMe = await res.json();
 				this.me = updatedMe;
-				this.personality = { ...updatedPer.personality, questions: this.personality.questions };
 				this.isEditing = false;
 				this.render();
 				window.dispatchEvent(new CustomEvent('identity-updated'));
@@ -303,7 +266,6 @@ export class UserCard extends HTMLElement {
 		if (cs) applyColor('accent-secondary', cs);
 		if (ct) applyColor('accent-tertiary', ct);
 
-		// Update localStorage cache so next page load paints instantly
 		const cache: Record<string, string> = {};
 		if (cp) cache.accent = cp;
 		if (cs) cache.secondary = cs;
@@ -332,325 +294,79 @@ export class UserCard extends HTMLElement {
 				${EMPTY_STATE_STYLES}
 				:host { display: block; height: 100%; }
 				.card {
-					height: 100%;
-					display: flex;
-					flex-direction: column;
-					gap: 1.25rem;
+					height: 100%; display: flex; flex-direction: column; gap: 1.25rem;
 					color: var(--text-primary, hsla(0, 0%, 100%, 1));
 					font-family: var(--font-sans, 'Inter', sans-serif);
 				}
-
 				.header { display: flex; justify-content: space-between; align-items: center; }
 				.user-info { display: flex; align-items: center; gap: 1rem; }
 				.avatar {
 					width: 48px; height: 48px;
 					background: linear-gradient(135deg, var(--accent-primary, hsla(173, 80%, 40%, 1)), var(--accent-secondary, hsla(216, 100%, 50%, 1)));
-					border-radius: 0.4rem;
-					display: flex; align-items: center; justify-content: center;
+					border-radius: 0.4rem; display: flex; align-items: center; justify-content: center;
 					font-weight: 800; font-size: 1.25rem;
 					box-shadow: 0 4px 12px var(--surface-accent-subtle, hsla(173, 80%, 40%, 0.2));
-					color: #fff;
-					transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+					color: #fff; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 				}
 				:host(:hover) .avatar { transform: scale(1.1) rotate(-5deg); }
-
 				h2 { margin: 0; font-size: 1.1rem; }
-				
-				.content { 
-					flex: 1; 
-					overflow-y: auto; 
-					padding-right: 4px;
-					display: flex;
-					flex-direction: column;
-					gap: 1.5rem;
-				}
+				.content { flex: 1; overflow-y: auto; padding-right: 4px; display: flex; flex-direction: column; gap: 1.5rem; }
 				.content::-webkit-scrollbar { width: 6px; }
 				.content::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 3px; }
-
 				.edit-btn {
-					background: var(--surface-card, hsla(0,0%,100%,0.05));
-					border: 1px solid var(--border-subtle, hsla(0,0%,100%,0.1));
-					color: var(--accent-text, var(--accent-primary, hsla(173, 80%, 40%, 1)));
-					padding: 6px 12px;
-					font-size: 0.7rem;
-					cursor: pointer;
-					text-transform: uppercase;
-					letter-spacing: 0.05em;
-					border-radius: 0.4rem;
-					transition: all var(--duration-fast, 0.2s);
-					min-height: 32px;
-					display: flex;
-					align-items: center;
-					font-weight: 700;
+					background: var(--surface-card, hsla(0,0%,100%,0.05)); border: 1px solid var(--border-subtle, hsla(0,0%,100%,0.1));
+					color: var(--accent-text, var(--accent-primary, hsla(173, 80%, 40%, 1))); padding: 6px 12px; font-size: 0.7rem;
+					cursor: pointer; text-transform: uppercase; letter-spacing: 0.05em; border-radius: 0.4rem; transition: all 0.2s;
+					min-height: 32px; display: flex; align-items: center; font-weight: 700;
 				}
-				.edit-btn:hover {
-					background: var(--surface-card-hover, hsla(0,0%,100%,0.1));
-					border-color: var(--accent-primary, hsla(173, 80%, 40%, 1));
-					box-shadow: 0 0 15px var(--surface-accent-subtle, hsla(173, 80%, 40%, 0.2));
-				}
-
-				.grid {
-					display: grid;
-					grid-template-columns: 1fr 1fr;
-					gap: 1rem;
-				}
-
+				.edit-btn:hover { background: var(--surface-card-hover, hsla(0,0%,100%,0.1)); border-color: var(--accent-primary); box-shadow: 0 0 15px var(--surface-accent-subtle); }
+				.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 				.field { display: flex; flex-direction: column; gap: 4px; }
-				.label { 
-					font-size: 0.65rem; 
-					color: var(--text-muted, hsla(0,0%,100%,0.4)); 
-					text-transform: uppercase; 
-					letter-spacing: 0.05em; 
-					font-weight: 600;
-				}
-				.value { 
-					font-size: 0.9rem; 
-					color: var(--text-primary, hsla(0, 0%, 100%, 1)); 
-					font-weight: 500; 
-					min-height: 1.2rem;
-				}
-
+				.label { font-size: 0.65rem; color: var(--text-muted, hsla(0,0%,100%,0.4)); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+				.value { font-size: 0.9rem; color: var(--text-primary); font-weight: 500; min-height: 1.2rem; }
 				input, textarea, select {
-					background: var(--surface-card-subtle, hsla(0,0%,0%,0.3));
-					border: 1px solid var(--border-subtle, hsla(0,0%,100%,0.1));
-					border-radius: 0.5rem;
-					color: var(--text-primary, hsla(0, 0%, 100%, 1));
-					padding: 10px 12px;
-					font-size: 0.85rem;
-					width: 100%;
-					box-sizing: border-box;
-					transition: border-color var(--duration-fast, 0.2s);
-					min-height: 44px;
+					background: var(--surface-card-subtle, hsla(0,0%,0%,0.3)); border: 1px solid var(--border-subtle); border-radius: 0.5rem;
+					color: var(--text-primary); padding: 10px 12px; font-size: 0.85rem; width: 100%; box-sizing: border-box; transition: border-color 0.2s; min-height: 44px;
 				}
-				input:focus, textarea:focus, select:focus {
-					border-color: var(--accent-primary, hsla(173, 80%, 40%, 1));
-					outline: none;
-				}
-
+				input:focus, textarea:focus, select:focus { border-color: var(--accent-primary); outline: none; }
 				textarea { min-height: 100px; resize: vertical; line-height: 1.5; }
-
-				select {
-					cursor: pointer;
-					appearance: none;
-					background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2314B8A6' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-					background-repeat: no-repeat;
-					background-position: right 12px center;
-					padding-right: 32px;
-				}
-
-				select option {
-					background: hsla(240, 28%, 14%, 1);
-					color: var(--text-primary, hsla(0, 0%, 100%, 1));
-				}
-
-				.theme-cycle-btn {
-					background: var(--surface-card, hsla(0, 0%, 100%, 0.05));
-					border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.1));
-					color: var(--accent-primary, hsla(173, 80%, 40%, 1));
-					width: 32px;
-					height: 32px;
-					display: flex;
-					align-items: center;
-					justify-content: center;
-					border-radius: 0.4rem;
-					cursor: pointer;
-					transition: all var(--duration-fast, 0.2s);
-					font-size: 0.9rem;
-					flex-shrink: 0;
-					user-select: none;
-				}
-				.theme-cycle-btn:hover {
-					background: var(--surface-card-hover, hsla(0, 0%, 100%, 0.1));
-					border-color: var(--accent-primary, hsla(173, 80%, 40%, 1));
-					transform: scale(1.05);
-				}
-				.theme-cycle-btn:active {
-					transform: scale(0.95);
-				}
-
-				.goals-section h3, .personality-section h3 { 
-					font-size: 0.7rem; 
-					color: var(--accent-text, var(--accent-primary, hsla(173, 80%, 40%, 1))); 
-					text-transform: uppercase; 
-					margin: 0.5rem 0 0.5rem 0;
-					display: flex;
-					align-items: center;
-					gap: 8px;
-					font-weight: 700;
-					letter-spacing: 0.08em;
-				}
-				.goals-section h3::after, .personality-section h3::after {
-					content: ''; flex: 1; height: 1px; background: var(--surface-accent-subtle, hsla(173, 80%, 40%, 0.2));
-				}
-
+				select { cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2314B8A6' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+				select option { background: hsla(240, 28%, 14%, 1); color: var(--text-primary); }
+				.theme-cycle-btn { background: var(--surface-card, hsla(0, 0%, 100%, 0.05)); border: 1px solid var(--border-subtle); color: var(--accent-primary); width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 0.4rem; cursor: pointer; transition: all 0.2s; font-size: 0.9rem; flex-shrink: 0; user-select: none; }
+				.theme-cycle-btn:hover { background: var(--surface-card-hover, hsla(0, 0%, 100%, 0.1)); border-color: var(--accent-primary); transform: scale(1.05); }
+				.goals-section h3 { font-size: 0.7rem; color: var(--accent-text, var(--accent-primary, hsla(173, 80%, 40%, 1))); text-transform: uppercase; margin: 0.5rem 0; display: flex; align-items: center; gap: 8px; font-weight: 700; letter-spacing: 0.08em; }
+				.goals-section h3::after { content: ''; flex: 1; height: 1px; background: var(--surface-accent-subtle, hsla(173, 80%, 40%, 0.2)); }
 				ul { list-style: none; padding: 0; margin: 0; }
-				li { 
-					font-size: 0.85rem; 
-					color: var(--text-secondary, hsla(0,0%,100%,0.8)); 
-					margin-bottom: 0.6rem; 
-					position: relative; 
-					padding-left: 1.35rem; 
-					line-height: 1.5;
-				}
-				li::before { 
-					content: '◈'; 
-					position: absolute; 
-					left: 0; 
-					color: var(--accent-text, var(--accent-primary, hsla(173, 80%, 40%, 1))); 
-					font-size: 0.75rem; 
-					top: 0.1rem; 
-				}
-
+				li { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.6rem; position: relative; padding-left: 1.35rem; line-height: 1.5; }
+				li::before { content: '◈'; position: absolute; left: 0; color: var(--accent-text); font-size: 0.75rem; top: 0.1rem; }
 				.actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.25rem; }
-
-				.checkbox-group {
-					display: flex;
-					align-items: center;
-					gap: 0.75rem;
-					background: var(--surface-card, hsla(0, 0%, 100%, 0.05));
-					padding: 0.75rem 1rem;
-					border-radius: 0.5rem;
-					border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.1));
-					cursor: pointer;
-					transition: all 0.2s ease;
-				}
-				.checkbox-group:hover {
-					background: var(--surface-card-hover, hsla(0, 0%, 100%, 0.08));
-					border-color: var(--accent-primary);
-				}
-				.checkbox-group input { width: auto; min-height: auto; cursor: pointer; }
-				.checkbox-group label { cursor: pointer; font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); margin: 0; }
-
-				.three-way-toggle {
-					display: flex;
-					background: var(--surface-card-subtle, hsla(0, 0%, 0%, 0.3));
-					padding: 3px;
-					border-radius: 0.5rem;
-					border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.1));
-					margin-bottom: 0.5rem;
-				}
-				.toggle-opt {
-					flex: 1;
-					text-align: center;
-					padding: 6px;
-					font-size: 0.7rem;
-					font-weight: 700;
-					text-transform: uppercase;
-					cursor: pointer;
-					border-radius: 0.35rem;
-					transition: all 0.2s ease;
-					color: var(--text-muted);
-				}
-				.toggle-opt.active {
-					background: var(--accent-primary);
-					color: var(--on-accent-text, #ffffff);
-				}
-
-				button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { 
-					outline: 2px solid var(--accent-primary, hsla(173, 80%, 40%, 1)); 
-					outline-offset: 3px; 
-				}
-
-				/* Personality specific */
-				.trait-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.5rem; }
-				.trait-item { 
-					background: var(--surface-card-subtle, hsla(0,0%,0%,0.3)); padding: 0.75rem 1rem; border-radius: 0.75rem;
-					border: 1px solid var(--border-subtle, hsla(0,0%,100%,0.1));
-					position: relative;
-					overflow: hidden;
-				}
-				.trait-indicator {
-					position: absolute; bottom: 0; left: 0; height: 2px;
-					background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
-					width: 100%; opacity: 0.3;
-				}
-				.trait-label { font-size: 0.6rem; color: var(--text-muted, hsla(0,0%,100%,0.4)); text-transform: uppercase; margin-bottom: 4px; display: block; font-weight: 700; letter-spacing: 0.05em; }
-				.trait-value { font-size: 0.85rem; color: var(--text-primary, hsla(0, 0%, 100%, 1)); font-weight: 500; }
-
-				.range-container { display: flex; align-items: center; gap: 1rem; min-height: 44px; }
-				.range-tag { font-size: 0.65rem; color: var(--text-muted, hsla(0,0%,100%,0.4)); width: 60px; font-weight: 600; text-transform: uppercase; }
-				input[type="range"] { flex: 1; accent-color: var(--accent-primary, hsla(173, 80%, 40%, 1)); cursor: pointer; min-height: 44px; }
-
-				/* Color swatch buttons */
+				.checkbox-group { display: flex; align-items: center; gap: 0.75rem; background: var(--surface-card, hsla(0, 0%, 100%, 0.05)); padding: 0.75rem 1rem; border-radius: 0.5rem; border: 1px solid var(--border-subtle); cursor: pointer; transition: all 0.2s ease; }
+				.checkbox-group:hover { background: var(--surface-card-hover); border-color: var(--accent-primary); }
+				.checkbox-group input { width: auto; min-height: auto; }
+				.checkbox-group label { cursor: pointer; font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); }
+				.three-way-toggle { display: flex; background: var(--surface-card-subtle, hsla(0, 0%, 0%, 0.3)); padding: 3px; border-radius: 0.5rem; border: 1px solid var(--border-subtle); margin-bottom: 0.5rem; }
+				.toggle-opt { flex: 1; text-align: center; padding: 6px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; cursor: pointer; border-radius: 0.35rem; transition: all 0.2s ease; color: var(--text-muted); }
+				.toggle-opt.active { background: var(--accent-primary); color: var(--on-accent-text, #ffffff); }
 				.color-swatches { display: flex; gap: 0.5rem; }
-				.color-swatch {
-					flex: 1;
-					display: flex;
-					align-items: center;
-					gap: 0.5rem;
-					background: var(--surface-card, hsla(0,0%,100%,0.05));
-					border: 1px solid var(--border-subtle, hsla(0,0%,100%,0.1));
-					border-radius: 0.5rem;
-					padding: 8px 10px;
-					cursor: pointer;
-					transition: all 0.2s ease;
-					color: var(--text-secondary, hsla(0,0%,100%,0.7));
-					font-size: 0.7rem;
-					font-weight: 600;
-					text-transform: uppercase;
-					letter-spacing: 0.04em;
-					min-height: 44px;
-				}
-				.color-swatch:hover {
-					background: var(--surface-card-hover, hsla(0,0%,100%,0.1));
-					border-color: var(--accent-primary, hsla(173,80%,40%,1));
-				}
-				.swatch-dot {
-					width: 18px; height: 18px;
-					border-radius: 50%;
-					flex-shrink: 0;
-					border: 2px solid hsla(0,0%,100%,0.2);
-					display: inline-block;
-				}
-				/* HSLA picker overlay */
+				.color-swatch { flex: 1; display: flex; align-items: center; gap: 0.5rem; background: var(--surface-card); border: 1px solid var(--border-subtle); border-radius: 0.5rem; padding: 8px 10px; cursor: pointer; transition: all 0.2s; color: var(--text-secondary); font-size: 0.7rem; font-weight: 600; text-transform: uppercase; min-height: 44px; }
+				.color-swatch:hover { background: var(--surface-card-hover); border-color: var(--accent-primary); }
+				.swatch-dot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid hsla(0,0%,100%,0.2); }
 				.picker-wrap { position: relative; grid-column: span 2; }
-				.hsla-picker {
-					position: absolute;
-					z-index: 100;
-					top: 0; left: 0; right: 0;
-					background: var(--surface-overlay, hsla(240,28%,10%,0.97));
-					border: 1px solid var(--border-subtle, hsla(0,0%,100%,0.15));
-					border-radius: 0.75rem;
-					padding: 1rem;
-					box-shadow: 0 16px 48px hsla(0,0%,0%,0.5);
-					backdrop-filter: blur(20px);
-					display: flex;
-					flex-direction: column;
-					gap: 0.75rem;
-				}
+				.hsla-picker { position: absolute; z-index: 100; top: 0; left: 0; right: 0; background: var(--surface-overlay, hsla(240,28%,10%,0.97)); border: 1px solid var(--border-subtle); border-radius: 0.75rem; padding: 1rem; box-shadow: 0 16px 48px hsla(0,0%,0%,0.5); backdrop-filter: blur(20px); display: flex; flex-direction: column; gap: 0.75rem; }
 				.hsla-picker[hidden] { display: none; }
-				.picker-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.25rem; }
-				.picker-title { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted, hsla(0,0%,100%,0.4)); }
-				.picker-preview { width: 32px; height: 32px; border-radius: 50%; border: 2px solid hsla(0,0%,100%,0.3); flex-shrink: 0; }
+				.picker-header { display: flex; align-items: center; justify-content: space-between; }
+				.picker-title { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); }
+				.picker-preview { width: 32px; height: 32px; border-radius: 50%; border: 2px solid hsla(0,0%,100%,0.3); }
 				.picker-row { display: flex; align-items: center; gap: 0.5rem; }
-				.picker-row-label { font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted, hsla(0,0%,100%,0.4)); width: 72px; flex-shrink: 0; }
-				.picker-range {
-					flex: 1; height: 6px; border-radius: 3px; cursor: pointer;
-					min-height: auto; padding: 0; border: none;
-					-webkit-appearance: none; appearance: none; width: auto;
-				}
-				.picker-range::-webkit-slider-thumb {
-					-webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%;
-					background: #fff; cursor: pointer; border: 2px solid hsla(0,0%,0%,0.3); box-shadow: 0 1px 4px hsla(0,0%,0%,0.4);
-				}
+				.picker-row-label { font-size: 0.65rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); width: 72px; }
+				.picker-range { flex: 1; height: 6px; border-radius: 3px; cursor: pointer; -webkit-appearance: none; appearance: none; }
+				.picker-range::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 2px solid hsla(0,0%,0%,0.3); }
 				.picker-range-h { background: linear-gradient(to right, hsl(0,100%,50%), hsl(60,100%,50%), hsl(120,100%,50%), hsl(180,100%,50%), hsl(240,100%,50%), hsl(300,100%,50%), hsl(360,100%,50%)); }
 				.picker-range-s { background: linear-gradient(to right, hsl(0,0%,50%), hsl(180,100%,50%)); }
 				.picker-range-l { background: linear-gradient(to right, #000, hsl(180,100%,50%), #fff); }
 				.picker-range-a { background: linear-gradient(to right, transparent, currentColor); }
-				.picker-num { width: 52px; min-height: auto; padding: 4px 6px; font-size: 0.75rem; text-align: center; flex-shrink: 0; }
+				.picker-num { width: 52px; min-height: auto; padding: 4px 6px; font-size: 0.75rem; text-align: center; }
 				.picker-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
-
-				@media (prefers-reduced-motion: reduce) { .color-swatch { transition: none; } }
-
-				@media (forced-colors: active) {
-					.avatar { background: ButtonFace; border: 2px solid ButtonText; }
-					.edit-btn { color: LinkText; }
-					.theme-cycle-btn { border: 1px solid ButtonText; }
-					li::before { color: Highlight; }
-					.color-swatch { border: 1px solid ButtonText; }
-					.hsla-picker { border: 1px solid ButtonText; }
-					input[type="range"] { accent-color: Highlight; }
-				}
 			</style>
 
 			<div class="card">
@@ -785,23 +501,23 @@ export class UserCard extends HTMLElement {
 										</div>
 										<div class="picker-row">
 											<span class="picker-row-label">${this.tr('color_hue', 'Hue')}</span>
-											<input type="range" id="picker-h" min="0" max="360" step="1" class="picker-range picker-range-h" aria-label="${this.tr('color_hue', 'Hue')}">
-											<input type="number" id="picker-h-num" min="0" max="360" step="1" class="picker-num" aria-label="${this.tr('color_hue', 'Hue')} value">
+											<input type="range" id="picker-h" min="0" max="360" step="1" class="picker-range picker-range-h">
+											<input type="number" id="picker-h-num" min="0" max="360" step="1" class="picker-num">
 										</div>
 										<div class="picker-row">
 											<span class="picker-row-label">${this.tr('color_saturation', 'Saturation')}</span>
-											<input type="range" id="picker-s" min="0" max="100" step="1" class="picker-range picker-range-s" aria-label="${this.tr('color_saturation', 'Saturation')}">
-											<input type="number" id="picker-s-num" min="0" max="100" step="1" class="picker-num" aria-label="${this.tr('color_saturation', 'Saturation')} value">
+											<input type="range" id="picker-s" min="0" max="100" step="1" class="picker-range picker-range-s">
+											<input type="number" id="picker-s-num" min="0" max="100" step="1" class="picker-num">
 										</div>
 										<div class="picker-row">
 											<span class="picker-row-label">${this.tr('color_lightness', 'Lightness')}</span>
-											<input type="range" id="picker-l" min="0" max="100" step="1" class="picker-range picker-range-l" aria-label="${this.tr('color_lightness', 'Lightness')}">
-											<input type="number" id="picker-l-num" min="0" max="100" step="1" class="picker-num" aria-label="${this.tr('color_lightness', 'Lightness')} value">
+											<input type="range" id="picker-l" min="0" max="100" step="1" class="picker-range picker-range-l">
+											<input type="number" id="picker-l-num" min="0" max="100" step="1" class="picker-num">
 										</div>
 										<div class="picker-row">
 											<span class="picker-row-label">${this.tr('color_opacity', 'Opacity')}</span>
-											<input type="range" id="picker-a" min="0" max="1" step="0.01" class="picker-range picker-range-a" aria-label="${this.tr('color_opacity', 'Opacity')}">
-											<input type="number" id="picker-a-num" min="0" max="1" step="0.01" class="picker-num" aria-label="${this.tr('color_opacity', 'Opacity')} value">
+											<input type="range" id="picker-a" min="0" max="1" step="0.01" class="picker-range picker-range-a">
+											<input type="number" id="picker-a-num" min="0" max="1" step="0.01" class="picker-num">
 										</div>
 										<div class="picker-actions">
 											<button class="oz-btn oz-btn-secondary" id="picker-cancel">${this.tr('color_cancel', 'Cancel')}</button>
@@ -814,31 +530,6 @@ export class UserCard extends HTMLElement {
 									<label class="label" for="context-input">${this.tr('bio', 'Bio / Context')}</label>
 									<textarea id="context-input" rows="4">${me.context || ''}</textarea>
 								</div>
-							</div>
-						</div>
-
-						<div class="personality-section">
-							<h3>${this.tr('agent_personality', 'Agent Personality')}</h3>
-							<div class="grid" style="margin-top: 1rem;">
-								${this.isLoadingPersonality ? `<div class="empty-state">${this.tr('aligning', 'Aligning neural paths...')}</div>` : ''}
-								${!this.isLoadingPersonality && this.personality ? `
-									${this.personality.questions.map((q: any) => `
-										<div class="field" style="${q.type === 'textarea' || q.type === 'text' ? 'grid-column: span 2;' : ''}">
-											<label class="label">${q.label}</label>
-											${q.type === 'range' ? `
-												<div class="range-container">
-													<span class="range-tag" aria-hidden="true">${q.low}</span>
-													<input type="range" id="per-input-${q.id}" min="${q.min}" max="${q.max}" value="${this.personality[q.id] || 3}" aria-label="${q.label}">
-													<span class="range-tag" style="text-align: right;" aria-hidden="true">${q.high}</span>
-												</div>
-											` : q.type === 'textarea' ? `
-												<textarea id="per-input-${q.id}" placeholder="${q.placeholder}">${this.personality[q.id] || ''}</textarea>
-											` : `
-												<input type="text" id="per-input-${q.id}" placeholder="${q.placeholder}" value="${this.personality[q.id] || ''}">
-											`}
-										</div>
-									`).join('')}
-								` : ''}
 							</div>
 						</div>
 
@@ -865,62 +556,16 @@ export class UserCard extends HTMLElement {
 									<div class="label">${this.tr('briefing', 'Briefing')}</div>
 									<div class="value">${me.briefing_time || '08:00'}</div>
 								</div>
-								
 								<div class="field" style="grid-column: span 2;">
 									<div class="label">${this.tr('quiet_hours', 'Quiet Hours')}</div>
 									<div class="value">${me.quiet_hours_enabled ? `${me.quiet_hours_start || '00:00'} - ${me.quiet_hours_end || '06:00'}` : this.tr('disabled', 'Disabled')}</div>
 								</div>
 								<div class="goals-section" style="grid-column: span 2;">
 									<h3>${this.tr('life_goals', 'Life Goals & Ethics')}</h3>
-									<ul aria-label="${this.tr('aria_goals_list', 'Your life goals and values')}">
+									<ul>
 										${(me.context || '').split('\n').filter((l: string) => l.trim()).map((l: string) => `<li>${l.replace(/^#+\s*/, '')}</li>`).join('') || `<li>${this.tr('no_goals', 'No goals set.')}</li>`}
 									</ul>
 								</div>
-							</div>
-						</div>
-
-						<div class="personality-section">
-							<h3>${this.tr('agent_personality', 'Agent Personality')}</h3>
-							<div class="trait-grid">
-								${this.isLoadingPersonality ? `<div class="empty-state">${this.tr('aligning', 'Aligning neural paths...')}</div>` : ''}
-								${!this.isLoadingPersonality && this.personality ? `
-									${(() => {
-					const traits = [
-						{ label: this.tr('core_identity', 'Core Identity'), value: this.personality.role || this.tr('agent_operator', 'Agent Operator') },
-						{ label: this.tr('communication', 'Communication'), value: `${[
-							'', 
-							this.tr('trait_elaborate', 'Elaborate'), 
-							this.tr('trait_nuanced', 'Nuanced'), 
-							this.tr('trait_balanced', 'Balanced'), 
-							this.tr('trait_direct', 'Direct'), 
-							this.tr('trait_concise', 'Concise')
-						][this.personality.directness || 3]} (${this.personality.directness}/5)` },
-						{ label: this.tr('warmth', 'Emotional Tone'), value: `${[
-							'', 
-							this.tr('trait_clinical', 'Clinical'), 
-							this.tr('trait_reserved', 'Reserved'), 
-							this.tr('trait_balanced', 'Balanced'), 
-							this.tr('trait_friendly', 'Friendly'), 
-							this.tr('trait_empathetic', 'Empathetic')
-						][this.personality.warmth || 3]} (${this.personality.warmth}/5)` },
-						{ label: this.tr('agency', 'Agency Level'), value: `${[
-							'', 
-							this.tr('trait_reactive', 'Reactive'), 
-							this.tr('trait_passive', 'Passive'), 
-							this.tr('trait_balanced', 'Balanced'), 
-							this.tr('trait_helpful', 'Helpful'), 
-							this.tr('trait_proactive', 'Proactive')
-						][this.personality.agency || 3]} (${this.personality.agency}/5)` }
-					];
-					return traits.map(t => `
-											<div class="trait-item">
-												<span class="trait-label">${t.label}</span>
-												<div class="trait-value">${t.value}</div>
-												<div class="trait-indicator" aria-hidden="true"></div>
-											</div>
-										`).join('');
-				})()}
-								` : ''}
 							</div>
 						</div>
 					`}
@@ -990,26 +635,17 @@ export class UserCard extends HTMLElement {
 				presetSelect.value = nextKey;
 				localStorage.setItem('theme-preset', nextKey);
 
-				// Trigger the change event logic
 				const theme = this.themeOptions[nextKey] as any;
 				if (theme) {
 					(this.shadowRoot?.querySelector('#color-primary-input') as HTMLInputElement).value = theme.colors[0];
 					(this.shadowRoot?.querySelector('#color-secondary-input') as HTMLInputElement).value = theme.colors[1];
 					(this.shadowRoot?.querySelector('#color-tertiary-input') as HTMLInputElement).value = theme.colors[2];
-
 					applyColors();
 				}
 			};
 
-			this.shadowRoot?.querySelector('#theme-next')?.addEventListener('click', (e) => {
-				e.preventDefault();
-				cycleTheme('next');
-			});
-
-			this.shadowRoot?.querySelector('#theme-prev')?.addEventListener('click', (e) => {
-				e.preventDefault();
-				cycleTheme('prev');
-			});
+			this.shadowRoot?.querySelector('#theme-next')?.addEventListener('click', (e) => { e.preventDefault(); cycleTheme('next'); });
+			this.shadowRoot?.querySelector('#theme-prev')?.addEventListener('click', (e) => { e.preventDefault(); cycleTheme('prev'); });
 
 			presetSelect?.addEventListener('change', () => {
 				const opt = presetSelect.value;
@@ -1019,12 +655,10 @@ export class UserCard extends HTMLElement {
 					(this.shadowRoot?.querySelector('#color-primary-input') as HTMLInputElement).value = theme.colors[0];
 					(this.shadowRoot?.querySelector('#color-secondary-input') as HTMLInputElement).value = theme.colors[1];
 					(this.shadowRoot?.querySelector('#color-tertiary-input') as HTMLInputElement).value = theme.colors[2];
-
 					applyColors();
 				}
 			});
 
-			// HSLA picker setup
 			let _pickerTarget: string | null = null;
 			const picker = this.shadowRoot?.querySelector('#hsla-picker') as HTMLElement;
 			const preview = this.shadowRoot?.querySelector('#picker-preview') as HTMLElement;
@@ -1038,8 +672,7 @@ export class UserCard extends HTMLElement {
 			const pAn = this.shadowRoot?.querySelector('#picker-a-num') as HTMLInputElement;
 
 			const updatePickerPreview = () => {
-				const h = pH.value, s = pS.value, l = pL.value, a = pA.value;
-				const col = `hsla(${h}, ${s}%, ${l}%, ${a})`;
+				const col = `hsla(${pH.value}, ${pS.value}%, ${pL.value}%, ${pA.value})`;
 				if (preview) preview.style.background = col;
 			};
 
@@ -1047,46 +680,29 @@ export class UserCard extends HTMLElement {
 				slider.addEventListener('input', () => { num.value = slider.value; updatePickerPreview(); });
 				num.addEventListener('input', () => { slider.value = num.value; updatePickerPreview(); });
 			};
-			syncSliderNum(pH, pHn);
-			syncSliderNum(pS, pSn);
-			syncSliderNum(pL, pLn);
-			syncSliderNum(pA, pAn);
+			syncSliderNum(pH, pHn); syncSliderNum(pS, pSn); syncSliderNum(pL, pLn); syncSliderNum(pA, pAn);
 
 			const openPicker = (targetId: string) => {
 				_pickerTarget = targetId;
-				const hidden = this.shadowRoot?.querySelector(`#${targetId}`) as HTMLInputElement;
-				const val = hidden?.value || 'hsla(173, 80%, 40%, 1)';
+				const val = (this.shadowRoot?.querySelector(`#${targetId}`) as HTMLInputElement)?.value || 'hsla(173, 80%, 40%, 1)';
 				const parsed = this.parseColor(val);
-				pH.value = pHn.value = String(parsed.h);
-				pS.value = pSn.value = String(parsed.s);
-				pL.value = pLn.value = String(parsed.l);
-				pA.value = pAn.value = String(parsed.a);
+				pH.value = pHn.value = String(parsed.h); pS.value = pSn.value = String(parsed.s);
+				pL.value = pLn.value = String(parsed.l); pA.value = pAn.value = String(parsed.a);
 				updatePickerPreview();
 				picker?.removeAttribute('hidden');
-				pH.focus();
 			};
 
 			['swatch-primary', 'swatch-secondary', 'swatch-tertiary'].forEach(id => {
 				const btn = this.shadowRoot?.querySelector(`#${id}`) as HTMLButtonElement;
-				btn?.addEventListener('click', (e) => {
-					e.preventDefault();
-					const targetId = btn.getAttribute('data-target') || '';
-					openPicker(targetId);
-				});
+				btn?.addEventListener('click', (e) => { e.preventDefault(); openPicker(btn.getAttribute('data-target') || ''); });
 			});
 
 			this.shadowRoot?.querySelector('#picker-apply')?.addEventListener('click', () => {
 				if (!_pickerTarget) return;
-				const h = pH.value, s = pS.value, l = pL.value, a = pA.value;
-				const col = `hsla(${h}, ${s}%, ${l}%, ${a})`;
+				const col = `hsla(${pH.value}, ${pS.value}%, ${pL.value}%, ${pA.value})`;
 				const hidden = this.shadowRoot?.querySelector(`#${_pickerTarget}`) as HTMLInputElement;
 				if (hidden) hidden.value = col;
-				// Update swatch dot
-				const dotMap: Record<string, string> = {
-					'color-primary-input': 'swatch-dot-primary',
-					'color-secondary-input': 'swatch-dot-secondary',
-					'color-tertiary-input': 'swatch-dot-tertiary',
-				};
+				const dotMap: any = { 'color-primary-input': 'swatch-dot-primary', 'color-secondary-input': 'swatch-dot-secondary', 'color-tertiary-input': 'swatch-dot-tertiary' };
 				const dot = this.shadowRoot?.querySelector(`#${dotMap[_pickerTarget]}`) as HTMLElement;
 				if (dot) dot.style.background = col;
 				picker?.setAttribute('hidden', '');
@@ -1094,21 +710,12 @@ export class UserCard extends HTMLElement {
 				applyColors();
 			});
 
-			this.shadowRoot?.querySelector('#picker-cancel')?.addEventListener('click', () => {
-				picker?.setAttribute('hidden', '');
-				_pickerTarget = null;
-			});
+			this.shadowRoot?.querySelector('#picker-cancel')?.addEventListener('click', () => { picker?.setAttribute('hidden', ''); _pickerTarget = null; });
 		}
 
 		applyColors();
-
 		this.shadowRoot.querySelectorAll('input').forEach(el => {
-			el.addEventListener('keydown', (e: any) => {
-				if (e.key === 'Enter' && !e.shiftKey) {
-					e.preventDefault();
-					this.saveIdentity();
-				}
-			});
+			el.addEventListener('keydown', (e: any) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.saveIdentity(); } });
 		});
 	}
 }
