@@ -161,14 +161,14 @@ async def lifespan(app: FastAPI):
                     from app.services.dify import crew_registry
                     await crew_registry.load()
                     await crew_registry.provision()
-                    logging.info(f"\u2713 Dify Crews initialized ({len(crew_registry.list_active())} active).")
+                    logging.info("\u2713 Dify Crews initialized (%d active).", len(crew_registry.list_active()))
                 except Exception as _crew_err:
                     logging.warning("⚠ Warning: Dify Crew Provisioning failed: %s", _crew_err)
                     
                 # 4. Initial Operator Board Sync
                 from app.services.operator_board import operator_service
                 sync_res = await operator_service.sync_operator_tasks()
-                logging.info("✓ %s", sync_res)
+                logging.info("\u2713 %s", sync_res)
             except Exception as e:
                 logging.warning("⚠ Warning: Background startup tasks failed: %s", e)
 

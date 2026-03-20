@@ -60,7 +60,7 @@ async def create_planka_task(payload: PlankaTaskPayload):
         
         return {"status": "success", "path": path}
     except Exception as e:
-        logger.error(f"Dify Planka Integration Failed: {repr(e)}")
+        logger.error("Dify Planka Integration Failed: %r", e)
         raise HTTPException(status_code=500, detail="Planka integration failed.")
 
 # --- Memory Write-Back ---
@@ -84,7 +84,7 @@ async def learn_memory(payload: MemoryPayload):
         await store_memory(structured_content)
         return {"status": "success", "message": "Memory committed to vector space."}
     except Exception as e:
-        logger.error(f"Dify Memory Integration Failed: {repr(e)}")
+        logger.error("Dify Memory Integration Failed: %r", e)
         raise HTTPException(status_code=500, detail="Memory integration failed.")
 
 # --- Personal Context Bridge (Read-Only) ---
@@ -101,14 +101,20 @@ async def read_personal_file(filename: str):
     """
     try:
         # PATH TRAVERSAL GUARD
-        requested_path = os.path.abspath(os.path.join(PERSONAL_DIR, filename))
-        if not requested_path.startswith(str(PERSONAL_DIR) + os.sep) and requested_path != str(PERSONAL_DIR):
+        # Resolve the base directory and the target path to absolute paths
+        base_dir = PERSONAL_DIR.resolve()
+        try:
+            target_file = (base_dir / filename).resolve()
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid filename format.")
+
+        # Ensure the resolved path is still within the base directory
+        if not str(target_file).startswith(str(base_dir)):
             # Alert #370: Sanitize filename to prevent Log Injection
             sanitized_name = filename.replace("\n", "").replace("\r", "")[:200]
-            logger.warning(f"Path traversal attempted: {sanitized_name}")
+            logger.warning("Path traversal attempted: %s", sanitized_name)
             raise HTTPException(status_code=403, detail="Access denied. Path traversal detected.")
             
-        target_file = Path(requested_path)
         if not target_file.exists() or not target_file.is_file():
             raise HTTPException(status_code=404, detail="File not found.")
             
@@ -148,5 +154,5 @@ async def read_personal_file(filename: str):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Personal file access error: {e}")
+        logger.error("Personal file access error: %s", e)
         raise HTTPException(status_code=500, detail="Internal server error extracting file.")

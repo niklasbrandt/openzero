@@ -1,6 +1,6 @@
 import re
 import logging
-import datetime
+from datetime import datetime, timedelta
 from langchain_core.tools import tool
 from typing import Optional
 
@@ -38,15 +38,14 @@ async def create_event(title: str, start_time: str, end_time: Optional[str] = No
 	"""Create a new calendar event."""
 	from app.models.db import LocalEvent, AsyncSessionLocal
 	from app.services.calendar import create_caldav_event
-	import datetime
 	
 	# Validate and parse start datetime (M-A1)
 	try:
-		start_dt = datetime.datetime.fromisoformat(start_time.replace('Z', ''))
+		start_dt = datetime.fromisoformat(start_time.replace('Z', ''))
 	except ValueError:
 		return f"Error: invalid start date '{start_time}'. Use YYYY-MM-DDThh:mm or YYYY-MM-DD HH:MM format."
 	try:
-		end_dt = datetime.datetime.fromisoformat(end_time.replace('Z', '')) if end_time else start_dt + datetime.timedelta(hours=1)
+		end_dt = datetime.fromisoformat(end_time.replace('Z', '')) if end_time else start_dt + timedelta(hours=1)
 	except ValueError:
 		return f"Error: invalid end date '{end_time}'. Use YYYY-MM-DDThh:mm or YYYY-MM-DD HH:MM format."
 	
@@ -84,7 +83,6 @@ async def schedule_reminder(message: str, interval_minutes: int, duration_hours:
 	from app.common.scheduler_instance import scheduler
 	from app.services.notifier import send_notification
 	from apscheduler.triggers.interval import IntervalTrigger
-	from datetime import datetime, timedelta
 	import pytz
 	from app.services.timezone import get_current_timezone
 	import uuid
@@ -168,7 +166,6 @@ async def run_crew(crew_id: str, user_input: str = "Execute autonomous cycle") -
 	from app.services.dify import dify_client, crew_registry
 	from app.services.timezone import get_current_timezone
 	import pytz
-	from datetime import datetime
 	
 	config = crew_registry.get(crew_id)
 	if not config or not config.enabled:
@@ -197,7 +194,8 @@ async def run_crew(crew_id: str, user_input: str = "Execute autonomous cycle") -
 			ans = res.get('answer', 'Success')
 			return f"Crew '{crew_id}' agent finished: {ans[:200]}"
 	except Exception as e:
-		return f"Error executing crew '{crew_id}': {str(e)}"
+		logger.error("Error executing crew '%s': %s", crew_id, e)
+		return f"Error: Communication failure with crew '{crew_id}'."
 
 AVAILABLE_TOOLS = [create_task, create_project, create_event, learn_memory, schedule_reminder, schedule_persistent_custom, move_card, run_crew]
 
@@ -280,7 +278,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 				return f"\u26a0 Failed to create project '{name}'. Check Planka connection."
 			except Exception as _e:
 				logger.error("CREATE_PROJECT failed: %s", _e)
-				return f"\u26a0 Failed to create project '{name}'. Check Planka connection."
+				return f"\u26a0 Failed to create project '{name}'. System error."
 
 		await handle_action("CREATE_PROJECT", raw_tag, _exec_project, f"Create project '{name}'")
 		clean_reply = strip_tag(clean_reply, raw_tag)
@@ -314,7 +312,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 					return f"\u26a0 Project '{proj_name}' not found. Board not created."
 			except Exception as _e:
 				logger.error("CREATE_BOARD failed: %s", _e)
-				return f"\u26a0 Failed to create board '{board_name}'. Check Planka connection."
+				return f"\u26a0 Failed to create board '{board_name}'. System error."
 
 		await handle_action("CREATE_BOARD", raw_tag, _exec_board, f"Create board '{board_name}' in project '{proj_name}'")
 		clean_reply = strip_tag(clean_reply, raw_tag)
@@ -334,7 +332,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 				return f"\u26a0 Failed to create list '{list_name}' — board '{board_name}' not found or Planka error."
 			except Exception as _e:
 				logger.error("CREATE_LIST failed: %s", _e)
-				return f"\u26a0 Failed to create list '{list_name}'. Check Planka connection."
+				return f"\u26a0 Failed to create list '{list_name}'. System error."
 
 		await handle_action("CREATE_LIST", raw_tag, _exec_list, f"Create list '{list_name}' on board '{board_name}'")
 		clean_reply = strip_tag(clean_reply, raw_tag)
@@ -356,7 +354,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 				return f"Event '{title}' scheduled."
 			except Exception as _e:
 				logger.error("CREATE_EVENT failed: %s", _e)
-				return f"\u26a0 Failed to create event '{title}'. Check calendar configuration."
+				return f"\u26a0 Failed to create event '{title}'. Calendar sync error."
 
 		await handle_action("CREATE_EVENT", raw_tag, _exec_event, f"Schedule event: {title} ({start.strip()})")
 		clean_reply = strip_tag(clean_reply, raw_tag)
@@ -466,12 +464,11 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 		async def _exec_track(tasks=tasks, breakdown=breakdown, end_val=end_val):
 			try:
 				from app.models.db import TrackingSession, AsyncSessionLocal
-				import datetime
 				import json
 				async with AsyncSessionLocal() as session:
 					# 1. Parse milestones
 					milestones = []
-					now = datetime.datetime.now()
+					now = datetime.now()
 
 					# Simple splitter for "task name [ends HH:MM]"
 					items = [it.strip() for it in breakdown.split(';') if it.strip()]
@@ -485,16 +482,16 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 								h, m = map(int, due_val.strip().split(':'))
 								due_dt = now.replace(hour=h, minute=m, second=0, microsecond=0)
 								# Handle next-day rollover if needed (rare for short tracks)
-								if due_dt < now: due_dt += datetime.timedelta(days=1)
+								if due_dt < now: due_dt += timedelta(days=1)
 								milestones.append({"task": task_name.strip(), "due_at": due_dt.isoformat(), "sent": False})
 						except (ValueError, AttributeError): continue  # malformed HH:MM -- skip milestone
 
 					try:
 						# Handle YYYY-MM-DD HH:MM for overall END
-						end_dt = datetime.datetime.strptime(end_val, "%Y-%m-%d %H:%M")
+						end_dt = datetime.strptime(end_val, "%Y-%m-%d %H:%M")
 					except ValueError:
 						# Fallback
-						end_dt = datetime.datetime.now() + datetime.timedelta(hours=2)
+						end_dt = datetime.now() + timedelta(hours=2)
 
 					session.add(TrackingSession(
 						tasks=tasks,
@@ -522,12 +519,11 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 		async def _exec_run_crew(crew_id=crew_id, user_inputs=user_inputs):
 			from app.services.dify import dify_client, crew_registry
 			from app.services.timezone import get_current_timezone
-			from datetime import datetime
 			import pytz
 			
 			# Recursive vulnerability protection
 			if re.search(r'\[ACTION:', user_inputs, flags=re.IGNORECASE):
-				logger.warning(f"Recursive agentic execution prevented in RUN_CREW: {user_inputs}")
+				logger.warning("Recursive agentic execution prevented in RUN_CREW: %s", user_inputs)
 				return "\u26a0 Error: Nested ACTION tags are strictly prohibited."
 				
 			config = crew_registry.get(crew_id)
@@ -559,8 +555,8 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 					executed_cmds.append(f"__CREW_RUN__:{config.name}")
 					return f"Crew '{crew_id}' agent completed. Result: {res.get('answer', 'Success')}"
 			except Exception as e:
-				logger.error(f"RUN_CREW failed for '{crew_id}': {e}")
-				return f"\u26a0 Failed to execute crew '{crew_id}': {str(e)}"
+				logger.error("RUN_CREW failed for '%s': %s", crew_id, e)
+				return f"\u26a0 Error: Execution failure for crew '{crew_id}'."
 
 		await handle_action("RUN_CREW", raw_tag, _exec_run_crew, f"Run Crew: {crew_id} with input")
 		clean_reply = strip_tag(clean_reply, raw_tag)
@@ -597,7 +593,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 				trigger = CronTrigger(minute=fields[0], hour=fields[1], day=fields[2], month=fields[3], day_of_week=fields[4], timezone=tz)
 				# Since schedule isn't an async handler by default, we just define a simple task
 				async def run_scheduled_crew():
-					logger.info(f"Executing scheduled crew {crew_id}")
+					logger.info("Executing scheduled crew %s", crew_id)
 					try:
 						integrated_input = {
 							"user_input": user_inputs,
@@ -612,7 +608,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 						else:
 							await dify_client.run_agent(config.dify_app_id, user_inputs, None, integrated_input)
 					except Exception as e:
-						logger.error(f"Scheduled CREW execution failed: {e}")
+						logger.error("Scheduled CREW execution failed: %s", e)
 				
 				job_id = f"custom_crew_{crew_id}"
 				scheduler.add_job(
@@ -623,8 +619,8 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 				)
 				return f"Scheduled crew '{crew_id}' with cron '{cron_spec}'."
 			except Exception as e:
-				logger.error(f"SCHEDULE_CREW failed for '{crew_id}': {e}")
-				return f"\u26a0 Failed to schedule crew '{crew_id}': {e}"
+				logger.error("SCHEDULE_CREW failed for '%s': %s", crew_id, e)
+				return f"\u26a0 Error: Scheduling failure for crew '{crew_id}'."
 
 		await handle_action("SCHEDULE_CREW", raw_tag, _exec_schedule_crew, f"Schedule Crew {crew_id} at {cron_spec}")
 		clean_reply = strip_tag(clean_reply, raw_tag)
@@ -746,18 +742,17 @@ async def execute_crew_programmatically(crew_id: str, input_context: str = "Sche
 	Constructs an isolated execution envelope dynamically.
 	"""
 	from app.services.dify import dify_client, crew_registry
-	from datetime import datetime
 
 	config = crew_registry.get(crew_id)
 	if not config or not config.enabled:
-		logger.warning(f"Programmatic execution aborted: Crew '{crew_id}' not found or disabled.")
+		logger.warning("Programmatic execution aborted: Crew '%s' not found or disabled.", crew_id)
 		return
 
 	if not config.dify_app_id:
-		logger.warning(f"Programmatic execution aborted: Crew '{crew_id}' lacks provisioned App ID.")
+		logger.warning("Programmatic execution aborted: Crew '%s' lacks provisioned App ID.", crew_id)
 		return
 		
-	logger.info(f"Programmatically executing Dify Crew '{crew_id}'...")
+	logger.info("Programmatically executing Dify Crew '%s'...", crew_id)
 
 	try:
 		time_str = datetime.now().isoformat()
@@ -773,10 +768,10 @@ async def execute_crew_programmatically(crew_id: str, input_context: str = "Sche
 		if config.type == "workflow":
 			res = await dify_client.run_workflow(config.dify_app_id, integrated_input)
 			out = res.get("data", {}).get("outputs", {})
-			logger.info(f"Crew '{crew_id}' workflow completed. Output: {out}")
+			logger.info("Crew '%s' workflow completed. Output: %s", crew_id, out)
 		else:
 			res = await dify_client.run_agent(config.dify_app_id, input_context, conversation_id=None, inputs=integrated_input)
-			logger.info(f"Crew '{crew_id}' agent completed. Outcome: {res.get('answer', 'Success')}")
+			logger.info("Crew '%s' agent completed. Outcome: %s", crew_id, res.get('answer', 'Success'))
 			
 	except Exception as e:
-		logger.error(f"Programmatic execute_crew failed for '{crew_id}': {e}")
+		logger.error("Programmatic execute_crew failed for '%s': %s", crew_id, e)

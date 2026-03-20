@@ -22,6 +22,12 @@ from app.services.planka_common import get_planka_auth_token, _tree_cache
 import asyncio
 import time
 
+def _log_safe(text: str) -> str:
+	"""Sanitize input for logging to prevent CRLF injection."""
+	if not isinstance(text, str):
+		return str(text)
+	return text.replace("\n", "[\\n]").replace("\r", "[\\r]")[:255]
+
 async def get_project_tree(as_html: bool = True) -> str:
 	"""Recursively build a semantic text tree. Uses parallel requests and caching for speed."""
 	cache_key = f"tree_{as_html}"
@@ -145,7 +151,7 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 	if board_name.lower() in {n.lower() for n in all_board_names}:
 		board_name = "Operator Board"
 
-	logger.debug("create_task requested -> Board: %r, List: %r, Title: %r", board_name, list_name, title)
+	logger.debug("create_task requested -> Board: %r, List: %r, Title: %r", _log_safe(board_name), _log_safe(list_name), _log_safe(title))
 	try:
 		from app.services.operator_board import operator_service
 		token = await get_planka_auth_token()
@@ -173,7 +179,7 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 						break
 			
 			if not target_board:
-				logger.debug("Board %r not found. Defaulting to Operator Board.", board_name)
+				logger.debug("Board %r not found. Defaulting to Operator Board.", _log_safe(board_name))
 				_, b_id = await operator_service.initialize_board(client)
 				target_board = {"id": b_id, "name": "Operator Board"}
 
