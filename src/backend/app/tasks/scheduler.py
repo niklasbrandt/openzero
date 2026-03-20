@@ -71,38 +71,52 @@ async def start_scheduler():
 		scheduler.configure(timezone=pytz.utc)
 
 	brief_hour, brief_min = 7, 30 # Default
+	quiet_enabled = False
+	qh_start_hour, qh_end_hour = 22, 6
 	try:
 		async with AsyncSessionLocal() as session:
 			res = await session.execute(select(Person).where(Person.circle_type == "identity"))
 			me = res.scalar_one_or_none()
-			if me and me.briefing_time:
-				# Format: "HH:MM"
-				parts = me.briefing_time.split(":")
-				if len(parts) == 2:
-					brief_hour, brief_min = int(parts[0]), int(parts[1])
+			if me:
+				if me.briefing_time:
+					# Format: "HH:MM"
+					parts = me.briefing_time.split(":")
+					if len(parts) == 2:
+						brief_hour, brief_min = int(parts[0]), int(parts[1])
+				
+				if me.quiet_hours_enabled:
+					quiet_enabled = True
+					if me.quiet_hours_start:
+						qh_start_hour = int(me.quiet_hours_start.split(":")[0])
+					if me.quiet_hours_end:
+						qh_end_hour = int(me.quiet_hours_end.split(":")[0])
 	except Exception as e:
-		logger.warning("Failed to fetch dynamic briefing time: %s", e)
+		logger.warning("Failed to fetch dynamic schedule configurations: %s", e)
 
 	# Log the precise next triggers for debugging
 	tz = pytz.timezone(user_tz_str)
 	now = datetime.now(tz)
 	logger.info("System Time Check: %s (Offset: %s)", now.strftime('%Y-%m-%d %H:%M:%S %Z'), now.utcoffset())
 
-	# Morning Briefing — Every day at Configured Time
-	# Explicitly pass timezone so APScheduler never falls back to the VPS system
-	# timezone (typically UTC). Without this, CronTrigger(hour=6) fires at
-	# 06:00 UTC rather than 06:00 local, causing a 1-hour-late briefing in UTC+1.
+	# Morning Briefing — Early Fire to Mitigate Dify
+	# Fire exactly 15 minutes before user's explicitly requested delivery time.
+	# This ensures the LLM has already analyzed the overnight Dify crews.
+	from datetime import datetime, timedelta, time
+	target_time = datetime.combine(datetime.today(), time(hour=brief_hour, minute=brief_min))
+	fire_time = target_time - timedelta(minutes=15)
+	
 	scheduler.add_job(
 		morning_briefing,
-		CronTrigger(hour=brief_hour, minute=brief_min, timezone=tz),
+		CronTrigger(hour=fire_time.hour, minute=fire_time.minute, timezone=tz),
 		id="morning_briefing",
 		replace_existing=True,
 	)
 
-	# Weekly Review — Sunday at 10:00 (or slightly after briefing)
+	# Weekly Review — Trigger offset -15m to allow /week crews to resolve 
+	# User target: Sunday at 10:00. Fire at 09:45.
 	scheduler.add_job(
 		weekly_review,
-		CronTrigger(day_of_week="sun", hour=10, minute=0, timezone=tz),
+		CronTrigger(day_of_week="sun", hour=9, minute=45, timezone=tz),
 		id="weekly_review",
 		replace_existing=True,
 	)
@@ -166,12 +180,26 @@ async def start_scheduler():
 		replace_existing=True,
 	)
 
-	# Proactive Mission Follow-up — Every 10 minutes from 6 AM to Midnight
-	# Per-card urgency controls actual send cadence: urgent=10min, medium=60min, low=3h
+	# Proactive Mission Follow-up — Dynamic Activity Window
 	from app.services.follow_up import run_proactive_follow_up, check_active_tracking_sessions
+	
+	# Compute APScheduler hour ranges respecting Quiet Hours
+	if quiet_enabled and qh_start_hour != qh_end_hour:
+		if qh_end_hour < qh_start_hour:
+			# Quiet hours span midnight (e.g. 22 to 6). Active hours: 6 to 21
+			active_hours = f"{qh_end_hour}-{qh_start_hour - 1}"
+		else:
+			# Quiet hours in same day (e.g. 13 to 15). Active hours: 0-12, 16-23
+			# Note: APScheduler handles comma-separated ranges: "0-12,16-23"
+			p1 = f"0-{qh_start_hour - 1}" if qh_start_hour > 0 else ""
+			p2 = f"{(qh_end_hour + 1) % 24}-23" if qh_end_hour < 23 else ""
+			active_hours = f"{p1},{p2}".strip(",")
+	else:
+		active_hours = "6-23" # Fallback if disabled
+	
 	scheduler.add_job(
 		run_proactive_follow_up,
-		CronTrigger(hour="6-23", minute="*/10", timezone=tz),
+		CronTrigger(hour=active_hours, minute="*/10", timezone=tz),
 		id="proactive_follow_up",
 		replace_existing=True,
 	)
@@ -228,6 +256,47 @@ async def start_scheduler():
 		id="agent_context_scan",
 		replace_existing=True,
 	)
+
+	# 5. Load Active Dify Crews
+	from app.services.dify import crew_registry
+	from app.services.agent_actions import execute_crew_programmatically
+	active_crews = crew_registry.list_active()
+	for crew in active_crews:
+		trigger = None
+		# Determine dynamic briefing offset or legacy CRON schedule
+		if crew.feeds_briefing:
+			lead_time_m = crew.lead_time or 30
+			# Create a dummy anchor to test the offset
+			target_time = datetime.combine(datetime.today(), time(hour=brief_hour, minute=brief_min))
+			crew_time = target_time - timedelta(minutes=lead_time_m)
+			
+			day_shift = (crew_time.date() - target_time.date()).days  # 0 or -1
+			
+			if crew.feeds_briefing == "/day":
+				trigger = CronTrigger(hour=crew_time.hour, minute=crew_time.minute, timezone=tz)
+			elif crew.feeds_briefing == "/week" and crew.briefing_day:
+				# Convert "MON" string to 0-6 index, shift by day_shift, and map to apscheduler 'mon', 'tue' etc.
+				days = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+				target_idx = [d[:3].lower() for d in days].index(crew.briefing_day[:3].lower())
+				final_idx = (target_idx + day_shift) % 7
+				trigger = CronTrigger(day_of_week=days[final_idx], hour=crew_time.hour, minute=crew_time.minute, timezone=tz)
+			elif crew.feeds_briefing == "/month" and crew.briefing_dom:
+				# DOM parsing simplifies to integer, shifting if day_shift == -1
+				doms = [int(x.strip()) for x in str(crew.briefing_dom).split(",")]
+				shifted_doms = [(d + day_shift) if (d + day_shift) > 0 else 28 for d in doms]
+				trigger = CronTrigger(day=",".join(map(str, shifted_doms)), hour=crew_time.hour, minute=crew_time.minute, timezone=tz)
+				
+		elif crew.schedule:
+			trigger = CronTrigger.from_crontab(crew.schedule, timezone=tz)
+
+		if trigger:
+			scheduler.add_job(
+				execute_crew_programmatically,
+				trigger,
+				args=[crew.id, f"Scheduled chron context window initialized."],
+				id=f"dify_crew_{crew.id}",
+				replace_existing=True,
+			)
 
 	scheduler.start()
 	logger.info("Z: Missions scheduled. Morning Briefing set to %02d:%02d %s", brief_hour, brief_min, user_tz_str)

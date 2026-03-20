@@ -80,6 +80,12 @@ class Settings(BaseSettings):
     # Set to false to disable for all cloud providers globally.
     CLOUD_LLM_SANITIZE: bool = True
     
+    # Dify Crews & Orchestration
+    DIFY_API_URL: str = "http://dify-api:5001/v1"
+    DIFY_API_KEY: str = ""
+    INTEGRATION_TOKEN: str = "require_me_in_production"
+
+    
     # Scheduling
     TASK_BOARD_SYNC_INTERVAL_MINUTES: int = 5
 
@@ -104,7 +110,8 @@ class Settings(BaseSettings):
             "LLM_DEEP_URL": "http://llm-deep:8083",
             "WHISPER_BASE_URL": "http://whisper:9000",
             "TTS_BASE_URL": "http://tts:8000",
-            "PLANKA_BASE_URL": "http://planka:1337"
+            "PLANKA_BASE_URL": "http://planka:1337",
+            "DIFY_API_URL": "http://dify-api:5001/v1"
         }
 
         for attr, docker_val in host_map.items():

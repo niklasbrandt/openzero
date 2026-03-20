@@ -181,9 +181,13 @@ cp .env.example .env
 # REDIS_PASSWORD=your_strong_random_password  (protects the task queue)
 # BASE_URL=http://open.zero  (or http://YOUR_SERVER_IP — must match your access URL)
 
-# LLM Memory Management (RAM savings)
 # LLM_FAST_CACHE_RAM=256   (MiB for prompt cache - 0.6B tier)
 # LLM_DEEP_CACHE_RAM=1024  (MiB for prompt cache - 8B tier)
+
+# Dify Crews Integration
+# DIFY_API_URL=http://YOUR_DIFY_SERVER_IP/v1   (Must include /v1)
+# DIFY_API_KEY=app-your_dify_api_key           (App-specific API key)
+# INTEGRATION_TOKEN=your_secure_random_token   (Used by Dify to call back into openZero)
 ```
 
 > [!NOTE]
@@ -310,6 +314,14 @@ The `agent/` folder lets you drop in skill modules — methodology files, tool g
     ```
 
     Then copy your skill files to the server over your Tailscale connection.
+
+### 5f. Set Up Dify Crews
+
+The `agent/crews.yaml` file controls the execution of autonomous background crews via Dify.
+
+1. Ensure `DIFY_API_URL` and `DIFY_API_KEY` are set in your `.env`.
+2. Place Dify DSL `.yml` files in the `agent/dify/` folder.
+3. Open `agent/crews.yaml` and configure your active crews by aligning `dify_dsl_file` attributes with physical files. The backend's auto-provisioning engine will map them at startup.
 
 ### 5b. Restrict Dashboard to Tailscale Only (Optional, Recommended)
 

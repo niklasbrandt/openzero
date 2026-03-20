@@ -9,6 +9,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](./docker-compose.yml)
 [![Tailscale](https://img.shields.io/badge/Zero_Trust-Tailscale-black?logo=tailscale&logoColor=white)](https://tailscale.com/)
+[![Dify Crews](https://img.shields.io/badge/Dify-Crews_Integrated-155EEF?logo=dify&logoColor=white)](https://dify.ai/)
 
 ## Personal AI Operating System
 
@@ -64,6 +65,15 @@ A centralized **Operator Board** pulls high-priority tasks from all project boar
 | Custom  | user-specified (e.g. "remind me every 20 min") | as requested     |
 
 A custom interval can also be set directly from chat -- just tell Z "nudge me about the deploy task every 15 minutes" and it will emit a `SET_NUDGE_INTERVAL` action tag that overrides the automatic estimate. Task names can embed intervals inline using patterns like `[nudge:30m]` or `[2h]`.
+
+### Crews & Workflows
+
+openZero integrates **Dify** as a dedicated Multi-Agent Orchestration engine. While Z serves as the fast, generalized core operator, Dify provisions specialized "Crews" for deep, domain-specific labor.
+
+- **Zero-Config Provisioning** -- define your desired crews in `crews.yaml` (e.g., "Fiscal Auditor", "Brand Monitor"). OpenZero automatically builds the required Workflows and Agents inside your private Dify instance on boot.
+- **Dynamic Briefing Alignment** -- Crews are assigned to feed specific briefings (`/day`, `/week`, `/month`). OpenZero calculates precision offsets to ensure complex multi-agent research completes *exactly* before your briefing compiles.
+- **Planka & Semantic Bridge** -- Dify crews can read from Z's semantic vault (Qdrant) and autonomously create/move cards on your Planka boards via `external.py` webhooks.
+- **Semantic Priming** -- Crews strictly use hyper-specific personas ("The Biometric Statistician", "The Blueprint Designer") rather than generic roles, locking the underlying LLMs into rigorous, high-quality reasoning modalities.
 
 ### Dashboard
 
@@ -169,6 +179,7 @@ The stack is optimized for single-server CPU-only deployment with full privacy:
 | **Networking**   | ![Traefik](https://img.shields.io/badge/Traefik-2496ED?style=flat&logo=traefik&logoColor=white) ![Tailscale](https://img.shields.io/badge/Tailscale-4A23B6?style=flat&logo=tailscale&logoColor=white)                                                                                  | Zero Trust perimeter with automated internal routing.                                               |
 | **DNS**          | ![Pi-hole](https://img.shields.io/badge/Pi--hole-96060C?style=flat&logo=pi-hole&logoColor=white)                                                                                                                                                                                       | DNS sinkhole blocking container telemetry and enabling vanity domains.                              |
 | **Tasking**      | ![Planka](https://img.shields.io/badge/Planka-blue?style=flat)                                                                                                                                                                                                                         | Self-hosted Kanban engine accessible as a mobile PWA.                                               |
+| **Crews**        | ![Dify](https://img.shields.io/badge/Dify-155EEF?style=flat&logo=dify&logoColor=white)                                                                                                                                                                                                 | Deep multi-agent orchestration via auto-provisioned DSL declarative logic.                          |
 | **Voice**        | ![Whisper](https://img.shields.io/badge/Whisper-black?style=flat) ![TTS](https://img.shields.io/badge/openedai--speech-green?style=flat)                                                                                                                                               | Local speech-to-text and high-quality audio generation.                                             |
 | **Weather**      | ![Open-Meteo](https://img.shields.io/badge/Open--Meteo-blue?style=flat)                                                                                                                                                                                                                | Hourly forecasts with travel-aware location detection. No API key needed.                           |
 
@@ -211,10 +222,11 @@ The stack is optimized for single-server CPU-only deployment with full privacy:
 │   │  (STT)    │  │ (speech)│  │  (Kanban)    │  │
 │   └───────────┘  └─────────┘  └──────────────┘  │
 │                                                  │
-│   ┌───────────┐  ┌─────────┐                     │
-│   │   Redis   │  │ Celery  │  Background Workers │
-│   │  (Queue)  │  │ (Tasks) │                     │
-│   └───────────┘  └─────────┘                     │
+│   ┌───────────┐  ┌─────────┐  ┌──────────────┐  │
+│   │   Dify    │  │ Celery  │  │   Redis      │  │
+│   │ (Crews)   │  │ (Tasks) │  │  (Queue)     │  │
+│   └─────┬─────┘  └─────────┘  └──────────────┘  │
+│         └──────> Dify provisions from crews.yaml │
 │                                                  │
 │   External APIs (outbound only):                 │
 │     Gmail API, Google Calendar, Open-Meteo       │
@@ -239,6 +251,7 @@ All commands are available via the Telegram bot and the dashboard chat interface
 | `/think`     | Deep reasoning using the 14B model with human-in-the-loop approval.                                                                                             |
 | `/search`    | Semantic search of the knowledge vault -- finds by meaning, not keywords.                                                                                       |
 | `/memories`  | List all core knowledge currently in permanent memory.                                                                                                          |
+| `/crews`     | List all active Dify multi-agent crews and their statuses.                                                                                                      |
 | `/personal`  | Display the personal context files currently loaded from the `personal/` folder (about-me, requirements and more).                                              |
 | `/skills`    | Display the agent skill modules currently loaded from the `agent/` folder (kanban, planka, agent-rules and more).                                               |
 | `/unlearn`   | Refine Z's memory by evolving or removing specific points in the vault.                                                                                         |

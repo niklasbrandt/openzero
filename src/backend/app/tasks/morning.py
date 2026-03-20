@@ -9,7 +9,15 @@ logger = logging.getLogger(__name__)
 
 async def morning_briefing():
 	"""Generate and store the daily morning briefing."""
+	logger.info("Morning Briefing initialization started (T-15m offset applied).")
 	try:
+		from app.services.dify import dify_client
+		
+		# 1. Dify Pre-Compilation Yield: Await active /day crews
+		while await dify_client.get_active_runs(cadence="/day"):
+			logger.info("morning_briefing — Active Dify /day crews detected. Yielding thread for 60s...")
+			await asyncio.sleep(60)
+
 		from app.services.automation import run_contextual_automation
 		from app.services.llm import chat, last_model_used
 		from app.services.planka import get_project_tree
@@ -180,7 +188,30 @@ async def morning_briefing():
 			session.add(briefing)
 			await session.commit()
 
-		# 5. Send text notification to Telegram immediately (does not wait for TTS)
+		# 5. Precision Delivery SLEEP logic
+		# We kicked off 15m early. We now sleep the exact remaining delta seconds to hit the precise user configuration.
+		try:
+			from app.services.timezone import get_current_timezone
+			import pytz
+			tz_str = await get_current_timezone()
+			tz = pytz.timezone(tz_str)
+			now = datetime.datetime.now(tz)
+			
+			async with AsyncSessionLocal() as session:
+				res = await session.execute(select(Person).where(Person.circle_type == "identity"))
+				me = res.scalar_one_or_none()
+				if me and me.briefing_time:
+					parts = me.briefing_time.split(":")
+					if len(parts) == 2:
+						target = now.replace(hour=int(parts[0]), minute=int(parts[1]), second=0, microsecond=0)
+						delta = (target - now).total_seconds()
+						if 0 < delta < 1800: # Max 30 min sleep
+							logger.info("morning_briefing — Pre-compilation finished in %.1fs. Precision SLEEP for %.1fs until exact delivery time.", (now.timestamp() - _t1) if '_t1' in locals() else 0, delta)
+							await asyncio.sleep(delta)
+		except Exception as e:
+			logger.warning("morning_briefing — Precision SLEEP failed, falling back to immediate delivery: %s", e)
+
+		# 6. Send text notification to Telegram immediately (does not wait for TTS)
 		from app.services.notifier import send_notification, send_voice_message, get_nav_markup
 		lang = "en"
 		async with AsyncSessionLocal() as session:
