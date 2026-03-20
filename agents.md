@@ -2,11 +2,11 @@
 
 > This file contains instructions and rules for AI assistantsinteracting with this repository.
 
-> [strict!] always reference agents.md and AGENT_LOG.md and README.MD!
+> [strict!] always reference agents.md and README.MD!
 
 ## 0. Mandatory Initial Step
 
-- **CRITICAL:** At the beginning of EVERY interaction or whenever you are prompted for a new task, you MUST read and analyze **agents.md**, **AGENT_LOG.md**, **docs/artifacts/DESIGN.md** and **README.md**.
+- **CRITICAL:** At the beginning of EVERY interaction or whenever you are prompted for a new task, you MUST read and analyze **agents.md**, **docs/artifacts/DESIGN.md** and **README.md**.
 - You must use the context from these files to ensure your behavior aligns with the project's specific boundaries and that you do not repeat errors recorded in the log.
 - **Artifact Scan:** List the `docs/artifacts/` directory and read the first 20 lines of each artifact file to understand available context before starting work. Do not read entire artifacts unless the task directly requires their content.
 
@@ -41,9 +41,6 @@
 - **Always terminate local development processes** (e.g., `dev.sh`, local Docker containers) before or immediately after a cloud deployment.
 - This is critical to prevent conflicts, especially with the Telegram bot, which can only have one active polling instance at a time.
 
-## 8. Agent Behavior Log (AGENT_LOG.md)
-
-- **DO NOT include dates** in entries in `AGENT_LOG.md`. The log should be a continuous list of violations and corrections without time-stamping.
 
 ## 9. Data Sovereignty & Protection
 
