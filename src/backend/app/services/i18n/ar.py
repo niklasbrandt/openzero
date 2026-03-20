@@ -56,7 +56,6 @@ translations: dict[str, str] = {
 	"town": "المدينة",
 	"work_times": "أوقات العمل",
 	"user_profile": "User Profile",
-	"agents_subtitle": "دورات مستقلة تعمل حسب الجدول. تظهر النتائج في الدردشة.",
 	"concise": "مختصر",
 	"elaborate": "مفصل",
 	"empathetic": "متعاطف",
