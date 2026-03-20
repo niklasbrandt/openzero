@@ -146,7 +146,6 @@ translations: dict[str, str] = {
 	"wed": "水曜日",
 	"work_times": "勤務時間",
 	"user_profile": "User Profile",
-	"agents_subtitle": "Autonomous cycles run on-schedule. Results appear in chat.",
 	"concise": "Concise",
 	"elaborate": "Elaborate",
 	"empathetic": "Empathetic",

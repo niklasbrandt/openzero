@@ -2658,6 +2658,7 @@ async def get_crews():
             "name": c.name,
             "description": c.description,
             "type": c.type,
+            "group": c.group,
             "dify_app_id": c.dify_app_id,
             "is_running": False, 
             "characters": c.characters,

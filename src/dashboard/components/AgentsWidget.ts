@@ -554,13 +554,12 @@ export class AgentsWidget extends HTMLElement {
 				<div class="section-header" style="align-items: flex-start; width: 100%;">
 					<h2>
 						<span class="h-icon" aria-hidden="true">${this.renderIcon('users', '1.1rem')}</span>
-						${this.tr('agents_title', 'Agents & Orchestration')}
-						<span class="subtitle">${this.tr('agents_subtitle', 'Autonomous cycles run on-schedule. Results appear in chat.')}</span>
+						${this.tr('agents_title', 'Agents & Crews')}
 					</h2>
 					${!this.isEditing ? `
 						<button class="edit-btn" id="edit-personality-btn" style="background:transparent; border:none; color:var(--text-tertiary); cursor:pointer; display:flex; align-items:center; gap:0.5rem; font-size:0.8rem; margin-top: 0.4rem;">
 							${this.renderIcon('settings', '0.9rem')}
-							${this.tr('edit_personality', 'Configure Personality')}
+							${this.tr('edit_personality', 'Configure Z Identity & Behavior')}
 						</button>
 					` : ''}
 				</div>
