@@ -59,6 +59,20 @@ async def lifespan(app: FastAPI):
             if not res.fetchone():
                 await conn.execute(text("ALTER TABLE briefings ADD COLUMN model VARCHAR"))
 
+            # 6. Add quiet hours columns to 'people' if not exists
+            _people_quiet_cols = {
+                "quiet_hours_enabled": "ALTER TABLE people ADD COLUMN quiet_hours_enabled BOOLEAN DEFAULT TRUE",
+                "quiet_hours_start": "ALTER TABLE people ADD COLUMN quiet_hours_start VARCHAR DEFAULT '00:00'",
+                "quiet_hours_end": "ALTER TABLE people ADD COLUMN quiet_hours_end VARCHAR DEFAULT '06:00'",
+            }
+            for col, alter_sql in _people_quiet_cols.items():
+                res = await conn.execute(text(
+                    "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_name='people' AND column_name=:col"
+                ), {"col": col})
+                if not res.fetchone():
+                    await conn.execute(text(alter_sql))
+
         logging.info("✓ Postgres tables initialized and migrated.")
     except Exception as e:
         logging.warning("⚠ Warning: Could not connect to Postgres: %s", e)
@@ -141,6 +155,16 @@ async def lifespan(app: FastAPI):
                 # 3d. Load agent context folder into system prompt
                 await refresh_agent_context()
                 logging.info("\u2713 Agent context loaded from /agent folder.")
+                
+                # 3e. Load and Provision Dify Crews
+                try:
+                    from app.services.dify import crew_registry
+                    await crew_registry.load()
+                    await crew_registry.provision()
+                    logging.info(f"\u2713 Dify Crews initialized ({len(crew_registry.list_active())} active).")
+                except Exception as _crew_err:
+                    logging.warning("⚠ Warning: Dify Crew Provisioning failed: %s", _crew_err)
+                    
                 # 4. Initial Operator Board Sync
                 from app.services.operator_board import operator_service
                 sync_res = await operator_service.sync_operator_tasks()
@@ -243,6 +267,9 @@ app.add_middleware(
 app.add_middleware(CacheHeaderMiddleware)
 app.add_middleware(SecurityHeaderMiddleware)
 
+from app.api.external import router as external_router
+
+app.include_router(external_router, prefix="/api")
 app.include_router(auth_router)
 app.include_router(dashboard_router)
 app.include_router(health_router)
