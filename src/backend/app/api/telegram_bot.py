@@ -108,6 +108,7 @@ async def start_telegram_bot():
 	bot_app.add_handler(CommandHandler("custom", cmd_custom))
 	bot_app.add_handler(CommandHandler("think", cmd_think))
 	bot_app.add_handler(CommandHandler("personal", cmd_personal))
+	bot_app.add_handler(CommandHandler("crews", cmd_crews))
 	bot_app.add_handler(CallbackQueryHandler(handle_approval, pattern="^think_"))
 	bot_app.add_handler(CallbackQueryHandler(handle_unlearn_approval, pattern="^unlearn_"))
 	bot_app.add_handler(CallbackQueryHandler(handle_wipe_confirm, pattern="^wipe_"))
@@ -868,10 +869,40 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 			"*System*\n"
 			"/personal -- Show personal context Z loaded from /personal\n"
 			"/status -- Deep integration health check\n"
+			"/crews -- View live Dify agent topology and registry status\n"
 			"/purge -- Permanently delete all memories\n\n"
 			"_Tap any command to execute it directly._"
 		)
 	await safe_reply(update, help_text, reply_markup=get_nav_markup(t))
+
+@owner_only
+async def cmd_crews(update: Update, context: ContextTypes.DEFAULT_TYPE):
+	"""Interrogates CrewRegistry and formats a list of active crews."""
+	from app.services.dify import dify_client, crew_registry
+	await update.message.reply_text("<blockquote>📡 <i>Interrogating internal Crew topology...</i></blockquote>", parse_mode="HTML")
+	
+	try:
+		msg_parts = ["🛸 <b>Dify Crews Registry Status</b>\n"]
+		active_crews = crew_registry.list_active()
+		
+		if not active_crews:
+			msg_parts.append("<i>No active crews provisioned. Toggle enablement in agent/crews.yaml.</i>")
+		else:
+			for crew in active_crews:
+				cadence = crew.feeds_briefing or "On-Demand"
+				if crew.schedule: cadence += f" ({crew.schedule})"
+				
+				msg_parts.append(
+					f"• <b>{crew.id}</b>\n"
+					f"  ├ Type: <code>{crew.type.value}</code>\n"
+					f"  ├ Cadence: {cadence}\n"
+					f"  └ <i>{crew.description}</i>\n"
+				)
+		
+		await safe_reply(update, "\n".join(msg_parts), parse_mode="HTML")
+	except Exception as e:
+		logger.error(f"Error fetching crews: {e}")
+		await safe_reply(update, "❌ Failed to fetch Dify Crew registry status.")
 
 @owner_only
 async def handle_memories_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):

@@ -165,7 +165,7 @@ async def move_card(card_title_fragment: str, destination_list: str, board_name:
 
 AVAILABLE_TOOLS = [create_task, create_project, create_event, learn_memory, schedule_reminder, schedule_persistent_custom, move_card]
 
-SENSITIVE_ACTIONS = {"SCHEDULE_CUSTOM", "LEARN", "CREATE_PROJECT", "ADD_PERSON", "CREATE_BOARD", "CREATE_LIST", "PROXIMITY_TRACK"}
+SENSITIVE_ACTIONS = {"SCHEDULE_CUSTOM", "LEARN", "CREATE_PROJECT", "ADD_PERSON", "CREATE_BOARD", "CREATE_LIST", "PROXIMITY_TRACK", "RUN_CREW", "SCHEDULE_CREW"}
 
 async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = False):
     """
@@ -474,6 +474,121 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
         await handle_action("PROXIMITY_TRACK", raw_tag, _exec_track, f"Initiate tracking: {tasks}")
         clean_reply = strip_tag(clean_reply, raw_tag)
 
+    # 10. Run Crew Tag
+    crew_run_pattern = r"\[?ACTION:\s*RUN_CREW\s*\|\s*CREW:\s*([^\|\]]+)\s*\|\s*INPUT:\s*([^\]]+)\]?"
+    for match in re.finditer(crew_run_pattern, reply):
+        raw_tag = match.group(0)
+        crew_id, user_inputs = match.groups()
+        crew_id = crew_id.strip()
+        user_inputs = user_inputs.strip()
+
+        async def _exec_run_crew(crew_id=crew_id, user_inputs=user_inputs):
+            from app.services.dify import dify_client, crew_registry
+            from app.services.timezone import get_current_timezone
+            from datetime import datetime
+            import pytz
+            
+            # Recursive vulnerability protection
+            if re.search(r'\[ACTION:', user_inputs, flags=re.IGNORECASE):
+                logger.warning(f"Recursive agentic execution prevented in RUN_CREW: {user_inputs}")
+                return "\u26a0 Error: Nested ACTION tags are strictly prohibited."
+                
+            config = crew_registry.get(crew_id)
+            if not config or not config.enabled:
+                return f"\u26a0 Error: Crew '{crew_id}' is not found or is disabled."
+            if not config.dify_app_id:
+                return f"\u26a0 Error: Crew '{crew_id}' is not provisioned (missing dify_app_id)."
+                
+            tz_str = await get_current_timezone()
+            local_time = datetime.now(pytz.timezone(tz_str)).isoformat()
+            
+            integrated_input = {
+                "user_input": user_inputs,
+                "sys_time": local_time,
+                "sys_user": "Operator",
+                "memory_state": "Loaded via auto-context"
+            }
+            if config.instructions:
+                integrated_input["instructions"] = config.instructions
+            
+            try:
+                if config.type == "workflow":
+                    res = await dify_client.run_workflow(config.dify_app_id, integrated_input)
+                    out = res.get("data", {}).get("outputs", {})
+                    return f"Crew '{crew_id}' workflow completed. Result: {out}"
+                else:
+                    res = await dify_client.run_agent(config.dify_app_id, user_inputs, None, integrated_input)
+                    return f"Crew '{crew_id}' agent completed. Result: {res.get('answer', 'Success')}"
+            except Exception as e:
+                logger.error(f"RUN_CREW failed for '{crew_id}': {e}")
+                return f"\u26a0 Failed to execute crew '{crew_id}': {str(e)}"
+
+        await handle_action("RUN_CREW", raw_tag, _exec_run_crew, f"Run Crew: {crew_id} with input")
+        clean_reply = strip_tag(clean_reply, raw_tag)
+
+    # 11. Schedule Crew Tag
+    crew_sched_pattern = r"\[?ACTION:\s*SCHEDULE_CREW\s*\|\s*CREW:\s*([^\|\]]+)\s*\|\s*CRON:\s*([^\|\]]+)\s*\|\s*INPUT:\s*([^\]]+)\]?"
+    for match in re.finditer(crew_sched_pattern, reply):
+        raw_tag = match.group(0)
+        crew_id, cron_spec, user_inputs = match.groups()
+        crew_id, cron_spec, user_inputs = crew_id.strip(), cron_spec.strip(), user_inputs.strip()
+
+        async def _exec_schedule_crew(crew_id=crew_id, cron_spec=cron_spec, user_inputs=user_inputs):
+            from app.common.scheduler_instance import scheduler
+            from apscheduler.triggers.cron import CronTrigger
+            from app.services.timezone import get_current_timezone
+            from app.services.dify import dify_client, crew_registry
+            import pytz
+            
+            config = crew_registry.get(crew_id)
+            if not config or not config.enabled:
+                return f"\u26a0 Error: Crew '{crew_id}' is not found or is disabled."
+            if not config.dify_app_id:
+                return f"\u26a0 Error: Crew '{crew_id}' is not provisioned."
+                
+            fields = cron_spec.split()
+            if len(fields) != 5:
+                return "\u26a0 Error: CRON spec must be exactly 5 fields."
+            
+            tz_str = await get_current_timezone()
+            tz = pytz.timezone(tz_str)
+            
+            try:
+                trigger = CronTrigger(minute=fields[0], hour=fields[1], day=fields[2], month=fields[3], day_of_week=fields[4], timezone=tz)
+                # Since schedule isn't an async handler by default, we just define a simple task
+                async def run_scheduled_crew():
+                    logger.info(f"Executing scheduled crew {crew_id}")
+                    try:
+                        integrated_input = {
+                            "user_input": user_inputs,
+                            "sys_time": datetime.now(tz).isoformat(),
+                            "sys_user": "Operator",
+                            "memory_state": "Loaded via auto-context"
+                        }
+                        if config.instructions:
+                            integrated_input["instructions"] = config.instructions
+                        if config.type == "workflow":
+                            await dify_client.run_workflow(config.dify_app_id, integrated_input)
+                        else:
+                            await dify_client.run_agent(config.dify_app_id, user_inputs, None, integrated_input)
+                    except Exception as e:
+                        logger.error(f"Scheduled CREW execution failed: {e}")
+                
+                job_id = f"custom_crew_{crew_id}"
+                scheduler.add_job(
+                    run_scheduled_crew,
+                    trigger,
+                    id=job_id,
+                    replace_existing=True
+                )
+                return f"Scheduled crew '{crew_id}' with cron '{cron_spec}'."
+            except Exception as e:
+                logger.error(f"SCHEDULE_CREW failed for '{crew_id}': {e}")
+                return f"\u26a0 Failed to schedule crew '{crew_id}': {e}"
+
+        await handle_action("SCHEDULE_CREW", raw_tag, _exec_schedule_crew, f"Schedule Crew {crew_id} at {cron_spec}")
+        clean_reply = strip_tag(clean_reply, raw_tag)
+
     # 9. Move Card Tag
     move_card_pattern = r"\[?ACTION: MOVE_CARD \| CARD: ([^\|\]]+) \| LIST: ([^\|\]]+)(?: \| BOARD: ([^\|\]]+))?\]?"
     for match in re.finditer(move_card_pattern, reply):
@@ -584,3 +699,44 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
         clean_reply = "\n".join(parts)
 
     return clean_reply, executed_cmds, pending_actions
+
+async def execute_crew_programmatically(crew_id: str, input_context: str = "Scheduled execution sequence"):
+    """
+    Public API for the Scheduler to legitimately run Dify Crews without a raw LLM action tag.
+    Constructs an isolated execution envelope dynamically.
+    """
+    from app.services.dify import dify_client, crew_registry
+    from datetime import datetime
+
+    config = crew_registry.get(crew_id)
+    if not config or not config.enabled:
+        logger.warning(f"Programmatic execution aborted: Crew '{crew_id}' not found or disabled.")
+        return
+
+    if not config.dify_app_id:
+        logger.warning(f"Programmatic execution aborted: Crew '{crew_id}' lacks provisioned App ID.")
+        return
+        
+    logger.info(f"Programmatically executing Dify Crew '{crew_id}'...")
+
+    try:
+        time_str = datetime.now().isoformat()
+        integrated_input = {
+            "user_input": input_context,
+            "sys_time": time_str,
+            "sys_user": "Scheduler Daemon",
+            "memory_state": "Scheduler Execution - No active memory context"
+        }
+        if config.instructions:
+            integrated_input["instructions"] = config.instructions
+
+        if config.type == "workflow":
+            res = await dify_client.run_workflow(config.dify_app_id, integrated_input)
+            out = res.get("data", {}).get("outputs", {})
+            logger.info(f"Crew '{crew_id}' workflow completed. Output: {out}")
+        else:
+            res = await dify_client.run_agent(config.dify_app_id, input_context, conversation_id=None, inputs=integrated_input)
+            logger.info(f"Crew '{crew_id}' agent completed. Outcome: {res.get('answer', 'Success')}")
+            
+    except Exception as e:
+        logger.error(f"Programmatic execute_crew failed for '{crew_id}': {e}")
