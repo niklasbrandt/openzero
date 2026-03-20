@@ -24,6 +24,7 @@ interface Crew {
 	name: string;
 	description: string;
 	type: 'workflow' | 'agent';
+	group: string;
 	dify_app_id: string;
 	is_running: boolean;
 	characters: Array<{ name: string; role: string }>;
@@ -219,6 +220,32 @@ export class AgentsWidget extends HTMLElement {
 					padding: 0.15rem 0.4rem;
 					border-radius: 0.35rem;
 					border: 1px solid var(--border-accent);
+				}
+
+				.crew-group-header {
+					margin: 1.5rem 0 0.8rem 0;
+					padding-bottom: 0.4rem;
+					border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.05));
+					color: var(--text-tertiary);
+					font-size: 0.75rem;
+					font-weight: 700;
+					text-transform: uppercase;
+					letter-spacing: 0.08em;
+					display: flex;
+					align-items: center;
+					gap: 0.5rem;
+				}
+
+				.crew-group-header:first-child {
+					margin-top: 0;
+				}
+
+				.group-dot {
+					width: 6px;
+					height: 6px;
+					border-radius: 50%;
+					background: var(--accent-primary);
+					box-shadow: 0 0 8px var(--accent-glow);
 				}
 
 				/* Personality Overview Styles */
@@ -691,65 +718,82 @@ export class AgentsWidget extends HTMLElement {
 			`;
 		}
 
+		const groups = ['basic', 'business', 'education', 'private'];
+		const groupedCrews = groups.reduce((acc, group) => {
+			acc[group] = this.crews.filter(c => c.group === group);
+			return acc;
+		}, {} as Record<string, Crew[]>);
+
 		return `
 			<div class="crews-container">
-				${this.crews.map(crew => {
-					let sched = crew.schedule || this.tr('on_demand', 'On-demand');
-					if (crew.feeds_briefing) {
-						sched = this.tr('pre_briefing', 'Pre-{feeds} briefing').replace('{feeds}', crew.feeds_briefing.replace('/',''));
-						if (crew.briefing_day) sched += ` (${crew.briefing_day})`;
-					}
-
+				${groups.map(group => {
+					const crewsInGroup = groupedCrews[group];
+					if (crewsInGroup.length === 0) return '';
+					
 					return `
-						<details class="crew-details">
-							<summary class="crew-summary">
-								<div class="crew-summary-left">
-									<span class="crew-chevron">${this.renderIcon('chevron-right', '1rem')}</span>
-									<div class="crew-title">
-										<span class="h-icon-mini">${this.renderIcon('users', '1rem')}</span>
-										${crew.name}
-										<span class="crew-id-tag" title="Crew ID">${crew.id}</span>
-									</div>
-									<div class="crew-meta" style="margin-left: auto; margin-right: 1.5rem;">
-										<div class="meta-item">
-											${this.renderIcon('clock', '0.75rem')}
-											${sched}
-										</div>
-									</div>
-									<span class="status-badge ${crew.dify_app_id ? 'status-active' : 'status-inactive'}">
-										${crew.dify_app_id ? 'Active' : ''}
-									</span>
-								</div>
-							</summary>
+						<div class="crew-group-header">
+							<span class="group-dot"></span>
+							${this.tr('group_' + group, group.charAt(0).toUpperCase() + group.slice(1))}
+						</div>
+						${crewsInGroup.map(crew => {
+							let sched = crew.schedule || this.tr('on_demand', 'On-demand');
+							if (crew.feeds_briefing) {
+								sched = this.tr('pre_briefing', 'Pre-{feeds} briefing').replace('{feeds}', crew.feeds_briefing.replace('/',''));
+								if (crew.briefing_day) sched += ` (${crew.briefing_day})`;
+							}
 
-							<div class="crew-content">
-								<p class="crew-desc">${crew.description}</p>
-
-								${crew.characters && crew.characters.length > 0 ? `
-									<div class="characters-grid">
-										${crew.characters.map(c => `
-											<div class="character-badge">
-												<div class="character-name">
-													<span class="h-icon-mini" style="opacity:0.8;">${this.renderIcon('user', '0.8rem')}</span>
-													${this.esc(c.name)}
-												</div>
-												<div class="character-role">${this.esc(c.role)}</div>
+							return `
+								<details class="crew-details">
+									<summary class="crew-summary">
+										<div class="crew-summary-left">
+											<span class="crew-chevron">${this.renderIcon('chevron-right', '1rem')}</span>
+											<div class="crew-title">
+												<span class="h-icon-mini">${this.renderIcon('users', '1rem')}</span>
+												${crew.name}
+												<span class="crew-id-tag" title="Crew ID">${crew.id}</span>
 											</div>
-										`).join('')}
-									</div>
-								` : ''}
-
-								<div style="display:flex; justify-content:flex-end;">
-									<button class="run-crew-btn oz-btn oz-btn-ghost oz-btn-sm" data-id="${crew.id}" ${this.runningCrews.has(crew.id) ? 'disabled' : ''} style="display:flex; flex-direction:column; align-items:flex-end; padding: 0.2rem 0.6rem; min-width: 120px; border-color: var(--border-accent);">
-										<div style="display:flex; align-items:center; gap:0.4rem; font-size:0.75rem; font-weight:700; color:var(--accent-primary);">
-											${this.runningCrews.has(crew.id) ? this.renderIcon('loader', '0.8rem') : this.renderIcon('play', '0.8rem')}
-											${this.tr('run_now', 'TRIGGER AGENT')}
+											<div class="crew-meta" style="margin-left: auto; margin-right: 1.5rem;">
+												<div class="meta-item">
+													${this.renderIcon('clock', '0.75rem')}
+													${sched}
+												</div>
+											</div>
+											<span class="status-badge ${crew.dify_app_id ? 'status-active' : 'status-inactive'}">
+												${crew.dify_app_id ? 'Active' : ''}
+											</span>
 										</div>
-										<span style="font-size:0.6rem; opacity:0.4; font-weight:400; color: var(--accent-primary);">Autonomous Cycle</span>
-									</button>
-								</div>
-							</div>
-						</details>
+									</summary>
+
+									<div class="crew-content">
+										<p class="crew-desc">${this.esc(crew.description)}</p>
+
+										${crew.characters && crew.characters.length > 0 ? `
+											<div class="characters-grid">
+												${crew.characters.map(c => `
+													<div class="character-badge">
+														<div class="character-name">
+															<span class="h-icon-mini" style="opacity:0.8;">${this.renderIcon('user', '0.8rem')}</span>
+															${this.esc(c.name)}
+														</div>
+														<div class="character-role">${this.esc(c.role)}</div>
+													</div>
+												`).join('')}
+											</div>
+										` : ''}
+
+										<div style="display:flex; justify-content:flex-end;">
+											<button class="run-crew-btn oz-btn oz-btn-ghost oz-btn-sm" data-id="${crew.id}" ${this.runningCrews.has(crew.id) ? 'disabled' : ''} style="display:flex; flex-direction:column; align-items:flex-end; padding: 0.2rem 0.6rem; min-width: 120px; border-color: var(--border-accent);">
+												<div style="display:flex; align-items:center; gap:0.4rem; font-size:0.75rem; font-weight:700; color:var(--accent-primary);">
+													${this.runningCrews.has(crew.id) ? this.renderIcon('loader', '0.8rem') : this.renderIcon('play', '0.8rem')}
+													${this.tr('run_now', 'TRIGGER AGENT')}
+												</div>
+												<span style="font-size:0.6rem; opacity:0.4; font-weight:400; color: var(--accent-primary);">Autonomous Cycle</span>
+											</button>
+										</div>
+									</div>
+								</details>
+							`;
+						}).join('')}
 					`;
 				}).join('')}
 			</div>

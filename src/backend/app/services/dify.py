@@ -15,6 +15,7 @@ class CrewConfig(BaseModel):
     id: str
     name: str
     type: str  # "workflow" | "agent"
+    group: str
     description: str
     dify_dsl_file: str
     enabled: bool = True
