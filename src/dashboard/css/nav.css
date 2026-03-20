@@ -3,8 +3,7 @@
  * ---------------------------
  * Three adaptive navigation mechanisms:
  *   1. Sidebar (>= 1100px) -- fixed vertical rail, expands on hover
- *   2. Marquee (700px - 1099px) -- sticky horizontal pill row
- *   3. Hamburger + Drawer (< 700px) -- full-screen mobile overlay
+ *   2. Hamburger + Drawer (< 1100px) -- full-screen mobile overlay
  *
  * WCAG 2.4.1 / EN 301 549 SS9.2.4.1
  */
@@ -118,89 +117,9 @@
 	}
 }
 
-/* ================================================================
-   2. MARQUEE / CAROUSEL NAV (tablet: 700px - 1099px)
-   ================================================================ */
-/* Sticky horizontal scrollable pill row replacing the sidebar at mid viewports.
-   NOTE: only shown between 700px and 1099px.
-   Below 700px the hamburger drawer takes over; above 1099px the sidebar takes over. */
-.top-marquee-nav {
-	position: sticky;
-	top: 0;
-	z-index: 200;
-	display: none; /* shown only via media query below */
-	gap: 0.4rem;
-	padding: 0.6rem 1rem;
-	overflow-x: auto;
-	overflow-y: hidden;
-	-webkit-overflow-scrolling: touch; /* smooth momentum scroll on iOS */
-	overscroll-behavior-x: contain;   /* prevent page scroll hijack on touch */
-	touch-action: pan-x;              /* tell browser this is a horizontal scroll zone */
-	scrollbar-width: none;
-	-ms-overflow-style: none;
-	background: var(--nav-bg-hover);
-	backdrop-filter: blur(10px);
-	-webkit-backdrop-filter: blur(10px);
-	/* Own compositor layer so sticky backdrop does not force scroll-frame repaints */
-	will-change: transform;
-	border-bottom: 1px solid var(--border-color);
-	flex-wrap: nowrap;
-	align-items: center;
-}
-
-.top-marquee-nav::-webkit-scrollbar {
-	display: none;
-}
-
-.top-marquee-nav a {
-	display: inline-flex;
-	align-items: center;
-	gap: 5px;
-	flex-shrink: 0;
-	white-space: nowrap;
-	padding: 0.3rem 0.7rem;
-	border-radius: 9999px;
-	background: var(--surface-card);
-	color: var(--text-secondary);
-	text-decoration: none;
-	font-size: 0.76rem;
-	font-weight: 500;
-	border: 1px solid transparent;
-	transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
-	min-height: 30px;
-}
-
-.top-marquee-nav a:hover,
-.top-marquee-nav a.active {
-	background: rgba(var(--accent-color-rgb), 0.15);
-	color: var(--accent-color);
-	border-color: rgba(var(--accent-color-rgb), 0.35);
-}
-
-.top-marquee-nav a:focus-visible {
-	outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1));
-	outline-offset: 2px;
-}
-
-.top-marquee-nav .nav-sep {
-	flex-shrink: 0;
-	width: 1px;
-	height: 16px;
-	background: var(--border-subtle);
-	margin: 0 0.2rem;
-}
-
-/* Show marquee nav only in the mid-viewport band: 700px - 1099px.
-   Below 700px the hamburger button / drawer is the nav mechanism.
-   Above 1099px the fixed sidebar is visible. */
-@media (min-width: 700px) and (max-width: 1099px) {
-	.top-marquee-nav {
-		display: flex;
-	}
-}
 
 /* ================================================================
-   3. HAMBURGER + DRAWER (mobile: < 700px)
+   2. HAMBURGER + DRAWER (mobile: < 1100px)
    ================================================================ */
 .mobile-nav-toggle {
 	display: none;
@@ -227,7 +146,7 @@
 	outline-offset: 3px;
 }
 
-@media (max-width: 699px) {
+@media (max-width: 1099px) {
 	.mobile-nav-toggle {
 		display: flex;
 	}
@@ -338,7 +257,6 @@
    NAV ACCESSIBILITY OVERRIDES
    ================================================================ */
 @media (forced-colors: active) {
-	.top-marquee-nav a,
 	.mobile-nav-drawer a,
 	.mobile-nav-toggle {
 		forced-color-adjust: none;
@@ -346,7 +264,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.top-marquee-nav a,
 	.mobile-nav-drawer a,
 	.mobile-nav-toggle {
 		transition: none !important;

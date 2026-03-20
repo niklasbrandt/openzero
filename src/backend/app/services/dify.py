@@ -217,11 +217,14 @@ from app.config import settings
 dify_client = DifyClient(base_url=settings.DIFY_API_URL, api_key=settings.DIFY_API_KEY)
 
 # Path resolution — /app/agent in Docker, project root /agent locally
-try:
-    AGENT_FOLDER_PATH = Path(__file__).parents[3] / "agent"
-except IndexError:
-    # Fallback to absolute /app/agent if nesting is different
-    AGENT_FOLDER_PATH = Path("/app/agent")
+if Path("/app/agent").exists():
+	# Docker container path (WORKDIR /app)
+	AGENT_FOLDER_PATH = Path("/app/agent")
+else:
+	# Local development path (relative to src/backend/app/services/dify.py)
+	# Path(__file__).parents[4] maps:
+	# 0: services -> 1: app -> 2: backend -> 3: src -> 4: project_root
+	AGENT_FOLDER_PATH = Path(__file__).parents[4] / "agent"
 
 crew_registry = CrewRegistry(agent_dir=str(AGENT_FOLDER_PATH), client=dify_client)
 

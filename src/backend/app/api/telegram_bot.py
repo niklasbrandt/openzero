@@ -391,7 +391,12 @@ async def _recover_unanswered_messages():
 
 		async with AsyncSessionLocal() as db:
 			from app.services.agent_actions import parse_and_execute_actions
-			clean_reply, _, _ = await parse_and_execute_actions(response, db=db)
+			clean_reply, executed_cmds, _ = await parse_and_execute_actions(response, db=db)
+			
+			# Reasoning indicator
+			crews = [c.split(":", 1)[1] for c in executed_cmds if c.startswith("__CREW_RUN__:")]
+			if crews:
+				clean_reply += f"\n\n_(Reasoning supported by {', '.join(crews)})_"
 
 		from app.services.llm import last_model_used
 		await save_global_message("telegram", "z", clean_reply, model=last_model_used.get())
@@ -878,7 +883,7 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 @owner_only
 async def cmd_crews(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	"""Interrogates CrewRegistry and formats a list of active crews."""
-	from app.services.dify import dify_client, crew_registry
+	from app.services.dify import crew_registry
 	await update.message.reply_text("<blockquote>📡 <i>Interrogating internal Crew topology...</i></blockquote>", parse_mode="HTML")
 	
 	try:
@@ -1106,7 +1111,13 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 
 	async with AsyncSessionLocal() as db:
 		from app.services.agent_actions import parse_and_execute_actions
-		clean_reply, _, _ = await parse_and_execute_actions(response, db=db)
+		clean_reply, executed_cmds, _ = await parse_and_execute_actions(response, db=db)
+		
+		# Reasoning indicator
+		crews = [c.split(":", 1)[1] for c in executed_cmds if c.startswith("__CREW_RUN__:")]
+		executed_cmds = [c for c in executed_cmds if not c.startswith("__CREW_RUN__:")]
+		if crews:
+			clean_reply += f"\n\n_(Reasoning supported by {', '.join(crews)})_"
 
 	# Save Z's reply to global history
 	from app.services.llm import last_model_used
