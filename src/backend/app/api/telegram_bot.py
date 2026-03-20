@@ -457,6 +457,7 @@ def _md_to_html(text: str) -> str:
 	import html as _html
 	# Escape raw HTML chars BEFORE injecting intentional tags.
 	safe = _html.escape(text)
+
 	# Bold: **text** or *text* -> <b>text</b>
 	html = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', safe)
 	html = re.sub(r'\*(.+?)\*', r'<b>\1</b>', html)
@@ -464,6 +465,16 @@ def _md_to_html(text: str) -> str:
 	html = re.sub(r'(?<!\w)_(.+?)_(?!\w)', r'<i>\1</i>', html)
 	# Links: [text](url) -> <a href="url">text</a>
 	html = re.sub(r'\[(.+?)\]\((.+?)\)', r'<a href="\2">\1</a>', html)
+
+	# Support passthrough for common safe HTML tags that may be generated or
+	# injected by Z (e.g. footers).
+	for tag in ['b', 'i', 'code', 'u', 's', 'pre', 'blockquote']:
+		html = html.replace(f"&lt;{tag}&gt;", f"<{tag}>")
+		html = html.replace(f"&lt;/{tag}&gt;", f"</{tag}>")
+	
+	# Special case for <a> (requires attribute passthrough)
+	html = re.sub(r'&lt;a href="(.+?)"&gt;(.+?)&lt;/a&gt;', r'<a href="\1">\2</a>', html)
+
 	return html
 
 def strip_llm_time_header(text: str) -> str:

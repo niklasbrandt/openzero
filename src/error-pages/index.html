@@ -176,11 +176,11 @@
 		document.getElementById('status-label').textContent =
 			STATUS_LABELS[code] || (is5xx ? 'Server Error' : code >= 400 ? 'Client Error' : '');
 		if (is5xx) {
-			document.documentElement.style.setProperty('--glow-color', 'rgba(239,68,68,0.35)');
-			document.documentElement.style.setProperty('--spin-color', '#ef4444');
-			document.documentElement.style.setProperty('--accent-blue', '#ef4444');
-			document.documentElement.style.setProperty('--accent-glow', 'rgba(239,68,68,0.4)');
-			document.getElementById('status-code').style.color = '#ef4444';
+			document.documentElement.style.setProperty('--glow-color', 'rgba(59,130,246,0.3)');
+			document.documentElement.style.setProperty('--spin-color', '#3b82f6');
+			document.documentElement.style.setProperty('--accent-blue', '#3b82f6');
+			document.documentElement.style.setProperty('--accent-glow', 'rgba(59,130,246,0.4)');
+			document.getElementById('status-code').style.color = '#3b82f6';
 			document.getElementById('node-grid').removeAttribute('hidden');
 			var ids = ['node-core', 'node-memory', 'node-llm'], i = 0;
 			function cycle() {
