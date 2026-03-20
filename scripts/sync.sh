@@ -32,7 +32,6 @@ EXCLUDES=(
     --exclude 'dist/'
     --exclude '.DS_Store'
     --exclude 'personal/'
-    --exclude 'agent/'
     --exclude '*.log'
     --exclude '.env'
     --exclude '.env.planka'

@@ -21,6 +21,7 @@ function loadLazyComponents(): void {
 	import('../components/DiagnosticsWidget')
 	import('../components/ZProtocols')
 	import('../components/AgentsWidget')
+	import('../components/HardwareMonitor')
 }
 
 if ('requestIdleCallback' in window) {
