@@ -87,7 +87,7 @@ export class AgentsWidget extends HTMLElement {
 				fetch('/api/dashboard/personality'),
 				fetch('/api/dashboard/crews')
 			]);
-			
+
 			if (pRes.ok) this.personality = await pRes.json();
 			if (cRes.ok) {
 				const data = await cRes.json();
@@ -225,7 +225,6 @@ export class AgentsWidget extends HTMLElement {
 				.crew-group-header {
 					margin: 1.5rem 0 0.8rem 0;
 					padding-bottom: 0.4rem;
-					border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.05));
 					color: var(--text-tertiary);
 					font-size: 0.75rem;
 					font-weight: 700;
@@ -581,7 +580,7 @@ export class AgentsWidget extends HTMLElement {
 
 	private setupEventListeners() {
 		const shadow = this.shadowRoot!;
-		
+
 		shadow.querySelector('#edit-personality-btn')?.addEventListener('click', () => {
 			this.isEditing = true;
 			this.render();
@@ -673,7 +672,7 @@ export class AgentsWidget extends HTMLElement {
 				</div>
 
 				<div class="personality-grid">
-					${(p.questions || []).filter((q:any) => q.type === 'range').map((q: any) => `
+					${(p.questions || []).filter((q: any) => q.type === 'range').map((q: any) => `
 						<div class="form-group">
 							<label>${q.label}</label>
 							<input type="range" id="range-${q.id}" min="${q.min}" max="${q.max}" value="${(p as any)[q.id]}">
@@ -707,7 +706,7 @@ export class AgentsWidget extends HTMLElement {
 
 	private renderCrews(): string {
 		if (this.loading) return `<div class="loading-state">${this.tr('loading_crews', 'Hydrating Agent Registry...')}</div>`;
-		
+
 		if (this.crews.length === 0) {
 			return `
 				<div class="empty-state">
@@ -726,22 +725,22 @@ export class AgentsWidget extends HTMLElement {
 		return `
 			<div class="crews-container">
 				${groups.map(group => {
-					const crewsInGroup = groupedCrews[group];
-					if (crewsInGroup.length === 0) return '';
-					
-					return `
+			const crewsInGroup = groupedCrews[group];
+			if (crewsInGroup.length === 0) return '';
+
+			return `
 						<div class="crew-group-header">
 							<span class="group-dot"></span>
 							${this.tr('group_' + group, group.charAt(0).toUpperCase() + group.slice(1))}
 						</div>
 						${crewsInGroup.map(crew => {
-							let sched = crew.schedule || this.tr('on_demand', 'On-demand');
-							if (crew.feeds_briefing) {
-								sched = this.tr('pre_briefing', 'Pre-{feeds} briefing').replace('{feeds}', crew.feeds_briefing.replace('/',''));
-								if (crew.briefing_day) sched += ` (${crew.briefing_day})`;
-							}
+				let sched = crew.schedule || this.tr('on_demand', 'On-demand');
+				if (crew.feeds_briefing) {
+					sched = this.tr('pre_briefing', 'Pre-{feeds} briefing').replace('{feeds}', crew.feeds_briefing.replace('/', ''));
+					if (crew.briefing_day) sched += ` (${crew.briefing_day})`;
+				}
 
-							return `
+				return `
 								<details class="crew-details">
 									<summary class="crew-summary">
 										<div class="crew-summary-left">
@@ -792,9 +791,9 @@ export class AgentsWidget extends HTMLElement {
 									</div>
 								</details>
 							`;
-						}).join('')}
+			}).join('')}
 					`;
-				}).join('')}
+		}).join('')}
 			</div>
 		`;
 	}
