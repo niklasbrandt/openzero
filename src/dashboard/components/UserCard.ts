@@ -194,6 +194,9 @@ export class UserCard extends HTMLElement {
 			timezone: (shadow.querySelector('#timezone-input') as HTMLInputElement).value,
 			work_times: (shadow.querySelector('#work-input') as HTMLInputElement).value,
 			briefing_time: (shadow.querySelector('#brief-input') as HTMLInputElement).value,
+			quiet_hours_enabled: (shadow.querySelector('#quiet-hours-toggle') as HTMLInputElement).checked,
+			quiet_hours_start: (shadow.querySelector('#quiet-start-input') as HTMLInputElement).value,
+			quiet_hours_end: (shadow.querySelector('#quiet-end-input') as HTMLInputElement).value,
 			context: (shadow.querySelector('#context-input') as HTMLTextAreaElement).value,
 			language: (shadow.querySelector('#language-input') as HTMLSelectElement).value,
 			color_primary: (shadow.querySelector('#color-primary-input') as HTMLInputElement).value,
@@ -710,6 +713,23 @@ export class UserCard extends HTMLElement {
 									<label class="label" for="brief-input">${this.tr('briefing', 'Briefing')}</label>
 									<input id="brief-input" type="time" value="${me.briefing_time || '08:00'}">
 								</div>
+
+								<div class="field" style="grid-column: span 2; display: flex; flex-direction: column; gap: 0.5rem;">
+									<div class="checkbox-group">
+										<input type="checkbox" id="quiet-hours-toggle" ${me.quiet_hours_enabled ? 'checked' : ''} aria-label="${this.tr('aria_quiet_toggle', 'Enable Quiet Hours')}">
+										<label for="quiet-hours-toggle">${this.tr('quiet_hours', 'Quiet Hours')}</label>
+									</div>
+									<div style="display: flex; gap: 1rem; align-items: center; opacity: ${me.quiet_hours_enabled ? '1' : '0.5'}; pointer-events: ${me.quiet_hours_enabled ? 'auto' : 'none'};" id="quiet-hours-bounds">
+										<div class="field" style="flex: 1;">
+											<label class="label" for="quiet-start-input">${this.tr('quiet_start', 'Start Time')}</label>
+											<input id="quiet-start-input" type="time" value="${me.quiet_hours_start || '00:00'}">
+										</div>
+										<div class="field" style="flex: 1;">
+											<label class="label" for="quiet-end-input">${this.tr('quiet_end', 'End Time')}</label>
+											<input id="quiet-end-input" type="time" value="${me.quiet_hours_end || '06:00'}">
+										</div>
+									</div>
+								</div>
 								
 								<div class="field" style="grid-column: span 2;">
 									<label class="label">${this.tr('display_settings', 'Display Settings')}</label>
@@ -845,6 +865,11 @@ export class UserCard extends HTMLElement {
 									<div class="label">${this.tr('briefing', 'Briefing')}</div>
 									<div class="value">${me.briefing_time || '08:00'}</div>
 								</div>
+								
+								<div class="field" style="grid-column: span 2;">
+									<div class="label">${this.tr('quiet_hours', 'Quiet Hours')}</div>
+									<div class="value">${me.quiet_hours_enabled ? `${me.quiet_hours_start || '00:00'} - ${me.quiet_hours_end || '06:00'}` : this.tr('disabled', 'Disabled')}</div>
+								</div>
 								<div class="goals-section" style="grid-column: span 2;">
 									<h3>${this.tr('life_goals', 'Life Goals & Ethics')}</h3>
 									<ul aria-label="${this.tr('aria_goals_list', 'Your life goals and values')}">
@@ -921,6 +946,15 @@ export class UserCard extends HTMLElement {
 		};
 
 		if (this.isEditing) {
+			const quietToggle = this.shadowRoot?.querySelector('#quiet-hours-toggle') as HTMLInputElement;
+			const quietBounds = this.shadowRoot?.querySelector('#quiet-hours-bounds') as HTMLElement;
+			quietToggle?.addEventListener('change', () => {
+				if (quietBounds) {
+					quietBounds.style.opacity = quietToggle.checked ? '1' : '0.5';
+					quietBounds.style.pointerEvents = quietToggle.checked ? 'auto' : 'none';
+				}
+			});
+
 			const gooToggle = this.shadowRoot?.querySelector('#goo-mode-checkbox') as HTMLInputElement;
 			gooToggle?.addEventListener('change', () => {
 				this.gooMode = gooToggle.checked;

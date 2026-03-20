@@ -82,6 +82,9 @@ class Person(Base):
     country = Column(String) # e.g. "Germany"
     work_times = Column(String)
     briefing_time = Column(String) # e.g. "08:00"
+    quiet_hours_enabled = Column(Boolean, default=True)
+    quiet_hours_start = Column(String, default="00:00")
+    quiet_hours_end = Column(String, default="06:00")
     language = Column(String, default="en") # ISO 639-1 code: en, zh, hi, es, fr, ar, pt, ru, ja, de
     color_primary = Column(String)  # Favorite primary color
     color_secondary = Column(String) # Favorite secondary color

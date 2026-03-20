@@ -16,7 +16,7 @@ integrations, allowing the Web Components to stay lightweight and fast.
 
 import hmac
 import re
-from fastapi import APIRouter, Depends, HTTPException, Request, Header
+from fastapi import APIRouter, Depends, HTTPException, Request, Header, BackgroundTasks
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
@@ -1335,6 +1335,9 @@ class PersonCreate(BaseModel):
 	country: Optional[str] = None
 	work_times: Optional[str] = None
 	briefing_time: Optional[str] = "08:00"
+	quiet_hours_enabled: Optional[bool] = True
+	quiet_hours_start: Optional[str] = "00:00"
+	quiet_hours_end: Optional[str] = "06:00"
 	language: Optional[str] = "en"
 	color_primary: Optional[str] = None
 	color_secondary: Optional[str] = None
@@ -1364,6 +1367,9 @@ async def update_identity(person: PersonCreate, db: AsyncSession = Depends(get_d
 	me.country = person.country
 	me.work_times = person.work_times
 	me.briefing_time = person.briefing_time
+	me.quiet_hours_enabled = person.quiet_hours_enabled
+	me.quiet_hours_start = person.quiet_hours_start
+	me.quiet_hours_end = person.quiet_hours_end
 	me.language = person.language
 	me.color_primary = person.color_primary
 	me.color_secondary = person.color_secondary
@@ -1414,7 +1420,10 @@ async def create_person(person: PersonCreate, db: AsyncSession = Depends(get_db)
 		town=person.town,
 		country=person.country,
 		work_times=person.work_times,
-		briefing_time=person.briefing_time
+		briefing_time=person.briefing_time,
+		quiet_hours_enabled=person.quiet_hours_enabled,
+		quiet_hours_start=person.quiet_hours_start,
+		quiet_hours_end=person.quiet_hours_end
 	)
 	db.add(db_person)
 	await db.commit()
@@ -1449,6 +1458,9 @@ async def update_person(person_id: int, person: PersonCreate, db: AsyncSession =
 	db_p.country = person.country
 	db_p.work_times = person.work_times
 	db_p.briefing_time = person.briefing_time
+	db_p.quiet_hours_enabled = person.quiet_hours_enabled
+	db_p.quiet_hours_start = person.quiet_hours_start
+	db_p.quiet_hours_end = person.quiet_hours_end
 	
 	await db.commit()
 	await db.refresh(db_p)
@@ -2550,6 +2562,17 @@ async def get_system_status(db: AsyncSession = Depends(get_db)):
         logger.warning("DNS health check failed: %s", e)
         dns_detail = "check failed"
 
+    # Dify Engine Health
+    dify_ok = False
+    dify_detail = "offline"
+    try:
+        from app.services.dify import dify_client
+        dify_ok = await dify_client.health_check()
+        if dify_ok:
+            dify_detail = "online"
+    except Exception as e:
+        logger.debug("Dify health check failed: %s", e)
+
     return {
         "status": "online",
         "llm_provider": settings.LLM_PROVIDER,
@@ -2559,9 +2582,51 @@ async def get_system_status(db: AsyncSession = Depends(get_db)):
         "identity_active": identity_set,
         "dns_ok": dns_ok,
         "dns_detail": pihole_stats if dns_ok else dns_detail,
+        "dify_ok": dify_ok,
+        "dify_detail": dify_detail,
         "ram_total_gb": ram_total_gb,
         "ram_used_pct": ram_used_pct,
         "db_size": db_size_human,
         "redis_stats": redis_detail,
         "timestamp": datetime.datetime.now().isoformat()
     }
+
+
+# --- Dify Crews Management ---
+@router.get("/crews")
+async def get_crews():
+    """Returns all provisioned Dify Crews and their status."""
+    from app.services.dify import crew_registry, dify_client
+    crews = crew_registry.list_active()
+    
+    # Minimal representation for the frontend
+    payload = []
+    for c in crews:
+        # Check if actually running via Dify API (best-effort, fallback to disabled)
+        # Note: True active_runs checks are heavy, so we might just infer or use a lightweight check
+        payload.append({
+            "id": c.id,
+            "name": c.name,
+            "description": c.description,
+            "type": c.type,
+            "dify_app_id": c.dify_app_id,
+            "is_running": False, # Lightweight inference would go here
+            "characters": c.characters
+        })
+    return {"crews": payload}
+
+
+@router.post("/crews/{crew_id}/run")
+async def trigger_crew_run(crew_id: str, background_tasks: BackgroundTasks):
+    """Manually invoke a crew bypassing normal CRON constraints."""
+    from app.services.agent_actions import execute_crew_programmatically
+    background_tasks.add_task(execute_crew_programmatically, crew_id, "Manual invocation triggered from Dashboard UI.")
+    return {"status": "dispatched", "crew_id": crew_id}
+
+
+@router.get("/crews/history")
+async def get_crews_history():
+    """Returns the most recent crew executions."""
+    # Note: Full historical telemetry is typically pulled directly from Dify's log API.
+    # We return a stub or empty list pending the remote sync proxy.
+    return {"history": []}

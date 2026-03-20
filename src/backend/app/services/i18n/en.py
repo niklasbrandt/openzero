@@ -200,6 +200,8 @@ translations: dict[str, str] = {
 	"diag_llm_file_tip": "Physical size of the model file on disk.",
 	"diag_llm_mismatch": "MISMATCH",
 	"diag_llm_mismatch_desc": "CRITICAL: Live RAM usage ({live} GB) is significantly higher than expected ({est} GB + {cache} GB cache). This suggests a larger model is hiding under a smaller filename.",
+	"diag_llm_mismatch_tip": "The live hardware RAM signature is anomalously large.",
+	"diag_llm_model_mismatch_tip": "Physical model weight footprint exceeds canonical expectations.",
 	"diag_llm_prompt_cache": "Prompt Cache",
 	"diag_llm_threads_tip": "CPU threads allocated to this tier",
 	"diag_processor_info": "Processor Info",
@@ -591,5 +593,13 @@ translations: dict[str, str] = {
 	"welcome_subtitle": "Your private agent OS is online. Let's finish the setup to unlock Z's full potential.",
 	"morning_greeting": "Good Morning!",
 	"audio_briefing_caption": "🎙️ Audio Briefing",
-	"work_times": "Typical Work Times"
+	"work_times": "Typical Work Times",
+	"crews_title": "Dify Orchestration Crews",
+	"loading_crews": "Loading crews...",
+	"no_crews_found": "No Dify Crews provisioned or active.",
+	"view_characters": "View Characters",
+	"running": "Running...",
+	"run_now": "Run Now",
+	"run_history": "Run History",
+	"nav_crews": "Crews"
 }
