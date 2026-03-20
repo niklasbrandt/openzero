@@ -785,7 +785,7 @@ export class AgentsWidget extends HTMLElement {
 			if (crewsInGroup.length === 0) return '';
 
 			return `
-						<details class="crew-group-details" open>
+						<details class="crew-group-details">
 							<summary class="crew-group-header">
 								<span class="group-dot" aria-hidden="true"></span>
 								${this.tr('group_' + group, group.charAt(0).toUpperCase() + group.slice(1))}
