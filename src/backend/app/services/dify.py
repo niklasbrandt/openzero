@@ -149,10 +149,12 @@ class CrewRegistry:
             logger.error(f"Failed to parse crews.yaml: {e}")
             return
 
-        if not raw_data or "dify_crews" not in raw_data:
+        if not raw_data:
             return
 
-        crews_list = raw_data.get("dify_crews", [])
+        crews_list = raw_data.get("crews") or raw_data.get("dify_crews")
+        if not crews_list:
+            return
         for crew_data in crews_list:
             if not crew_data.get("enabled", True):
                 continue
