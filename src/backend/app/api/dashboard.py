@@ -411,19 +411,20 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 				"• `/day`, `/week`, `/month`, `/quarter`, `/year` — Strategic briefings\n\n"
 				f"**{sm}:**\n"
 				"• `/tree` — Life hierarchy & workspace overview\n"
-				"• `/crew <crew_id>` — Trigger specialized autonomous agent cycle\n"
+				"• `/crews` — List all active autonomous agents & their status\n"
 				"• `/think <query>` — Complex multi-step reasoning\n"
 				"• `/remind <text>` — Set a temporary recurring reminder\n"
 				"• `/custom <text>` — Create a persistent scheduled task\n"
-				"• `/protocols` — Inspect Z's agentic tools\n\n"
+				"• `/protocols` — Inspect Z's agentic tools (action tags)\n"
+				"• `/board` — Show the exact Planka project target for Z\n\n"
 				f"**{si}:**\n"
 				"• `/search <query>` — Semantic search\n"
 				"• `/memories` — List all stored facts\n"
 				"• `/learn <topic>` — Commit a fact to memory\n"
 				"• `/unlearn <query>` — Remove a fact from the vault\n\n"
 				f"**{ss}:**\n"
-				"• `/personal` — Show compressed personal context Z loaded from /personal\n"
-				"• `/agent` — Show agent skill modules loaded from /agent\n"
+				"• `/personal` — Show personal context loaded from /personal\n"
+				"• `/skills` — Show agent skill modules loaded from /agent\n"
 				"• `/status` — Deep integration health check\n"
 				"• `/purge` — Permanently wipe all semantic memory\n\n"
 				"Type any message to chat with Z directly."
@@ -540,7 +541,7 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		from app.services.personal_context import get_personal_context_debug_report
 		report = get_personal_context_debug_report()
 		return {"reply": report}
-	elif msg == "/agent":
+	elif msg == "/skills":
 		from app.services.agent_context import get_agent_skills_debug_report
 		report = get_agent_skills_debug_report()
 		return {"reply": report}
@@ -719,7 +720,7 @@ async def get_protocols():
 		{"name": "/learn", "description": "Learn Fact: Commit a specific fact to long-term memory."},
 		{"name": "/unlearn", "description": "Forget Fact: Remove a specific vector from the knowledge vault."},
 		{"name": "/personal", "description": "Personal Context: Inspect loaded user profile & mission data."},
-		{"name": "/agent", "description": "Agent Context: Inspect loaded modular expertise definitions."},
+		{"name": "/skills", "description": "Agent Skills: Inspect loaded modular expertise definitions."},
 		{"name": "/status", "description": "Health Check: Deep diagnostic report of all integrations."},
 		{"name": "/purge", "description": "Factory Reset: Permanently wipe ALL semantic memory."},
 	]
