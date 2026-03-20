@@ -215,7 +215,14 @@ class CrewRegistry:
 from app.config import settings
 
 dify_client = DifyClient(base_url=settings.DIFY_API_URL, api_key=settings.DIFY_API_KEY)
-agent_dir = Path(__file__).parent.parent.parent.parent / "agent"
-crew_registry = CrewRegistry(agent_dir=str(agent_dir), client=dify_client)
+
+# Path resolution — /app/agent in Docker, project root /agent locally
+try:
+    AGENT_FOLDER_PATH = Path(__file__).parents[3] / "agent"
+except IndexError:
+    # Fallback to absolute /app/agent if nesting is different
+    AGENT_FOLDER_PATH = Path("/app/agent")
+
+crew_registry = CrewRegistry(agent_dir=str(AGENT_FOLDER_PATH), client=dify_client)
 
 
