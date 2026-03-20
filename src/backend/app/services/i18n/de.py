@@ -182,6 +182,8 @@ translations: dict[str, str] = {
 	"diag_hdd_free": "Freier Speicher",
 	"diag_hdd_other": "OS & Host-Dateien",
 	"diag_hdd_title": "Massenspeicher (HDD)",
+	"diag_dify_name": "Crews",
+	"diag_dify_tip": "Status der Dify Multi-Agenten-Orchestrierung.",
 	"diag_integration": "Integration",
 	"diag_llm_cache_tip": "Zugeordneter Speicher zum Wiederverwenden früherer Prompt-Teile. Begrenzt das RAM-Wachstum.",
 	"diag_llm_ctx": "CTX",
