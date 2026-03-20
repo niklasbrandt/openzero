@@ -77,4 +77,5 @@ translations: dict[str, str] = {
 	"timezone_label": "समय क्षेत्र",
 	"town": "शहर",
 	"work_times": "कार्य समय",
+	"user_profile": "User Profile"
 }

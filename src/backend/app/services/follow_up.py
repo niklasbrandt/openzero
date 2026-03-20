@@ -223,7 +223,8 @@ async def run_proactive_follow_up() -> None:
 				"Keep it concise (1-2 sentences). No filler. Just the mission check."
 			)
 			from app.services.llm import chat
-			from app.services.notifier import send_notification, get_stats_footer as _get_stats_footer
+			from app.services.notifier import send_notification, get_stats_footer as _get_stats_footer, get_nav_markup
+			from app.services.translations import get_user_lang, get_translations
 			nudge = await chat(prompt)
 			# Guard: skip sending if the LLM returned an error string (e.g. still starting up)
 			_LLM_ERR = ("having trouble reaching", "still waking up", "warming up my local")
@@ -231,7 +232,9 @@ async def run_proactive_follow_up() -> None:
 				logger.warning("Follow-up: LLM unavailable, skipping nudge this cycle")
 				return
 			footer = await _get_stats_footer()
-			await send_notification(f"🎯 *Mission Check:*\n\n{nudge}{footer}")
+			lang = await get_user_lang()
+			t = get_translations(lang)
+			await send_notification(f"🎯 *Mission Check:*\n\n{nudge}{footer}", reply_markup=get_nav_markup(t))
 			logger.info("Follow-up: Sent nudge for %s tasks.", len(due_cards))
 
 	except Exception as e:
@@ -267,10 +270,13 @@ async def check_active_tracking_sessions() -> None:
 							"Keep it direct and professional."
 						)
 						from app.services.llm import chat
-						from app.services.notifier import send_notification, get_stats_footer as _get_stats_footer
+						from app.services.notifier import send_notification, get_stats_footer as _get_stats_footer, get_nav_markup
+						from app.services.translations import get_user_lang, get_translations
 						nudge = await chat(prompt)
 						footer = await _get_stats_footer()
-						await send_notification(f"⚖️ *Segment Check:* \n\n{nudge}{footer}")
+						lang = await get_user_lang()
+						t = get_translations(lang)
+						await send_notification(f"⚖️ *Segment Check:* \n\n{nudge}{footer}", reply_markup=get_nav_markup(t))
 						m["sent"] = True
 						modified = True
 				
@@ -283,10 +289,13 @@ async def check_active_tracking_sessions() -> None:
 						"Be direct. This is the final mission-wrap-up."
 					)
 					from app.services.llm import chat
-					from app.services.notifier import send_notification, get_stats_footer as _get_stats_footer
+					from app.services.notifier import send_notification, get_stats_footer as _get_stats_footer, get_nav_markup
+					from app.services.translations import get_user_lang, get_translations
 					nudge = await chat(prompt)
 					footer = await _get_stats_footer()
-					await send_notification(f"🏁 *Final Mission Wrap-up:* \n\n{nudge}{footer}")
+					lang = await get_user_lang()
+					t = get_translations(lang)
+					await send_notification(f"🏁 *Final Mission Wrap-up:* \n\n{nudge}{footer}", reply_markup=get_nav_markup(t))
 					session.final_nudge_sent = True
 					session.is_active = False
 					modified = True

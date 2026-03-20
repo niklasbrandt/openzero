@@ -85,4 +85,5 @@ translations: dict[str, str] = {
 	"timezone_label": "Zona Horaria",
 	"town": "Ciudad",
 	"work_times": "Horario Laboral Tipico",
+	"user_profile": "User Profile"
 }

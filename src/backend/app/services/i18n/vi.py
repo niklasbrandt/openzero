@@ -55,4 +55,5 @@ translations: dict[str, str] = {
 	"timezone_label": "Mui gio",
 	"town": "Thanh pho",
 	"work_times": "Gio lam viec",
+	"user_profile": "User Profile"
 }
