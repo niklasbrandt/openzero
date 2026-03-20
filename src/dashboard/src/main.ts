@@ -20,7 +20,7 @@ function loadLazyComponents(): void {
 	import('../components/WelcomeOnboarding')
 	import('../components/DiagnosticsWidget')
 	import('../components/ZProtocols')
-	import('../components/CrewsWidget')
+	import('../components/AgentsWidget')
 }
 
 if ('requestIdleCallback' in window) {
