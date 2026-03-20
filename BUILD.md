@@ -311,19 +311,6 @@ The `agent/` folder lets you drop in skill modules — methodology files, tool g
 
     Then copy your skill files to the server over your Tailscale connection.
 
-### 5f. Dify Integration (Optional)
-
-Dify enables complex, multi-agent "crews" and autonomous "crew loops".
-
-1. **Obtain Dify credentials**: If you are using a self-hosted Dify or Dify Cloud, get your API Key and URL.
-2. **Configure your local `.env`**:
-    ```env
-    DIFY_API_URL=http://your-dify-api:5001
-    DIFY_API_KEY=your_dify_api_key_here
-    INTEGRATION_TOKEN=your_secure_integration_token
-    ```
-3. **Integration Token**: Generate a secure 32-character string (e.g., `openssl rand -hex 32`) and set it as `INTEGRATION_TOKEN`. This will be used later for Dify-to-openZero callbacks.
-
 ### 5b. Restrict Dashboard to Tailscale Only (Optional, Recommended)
 
 By default, Traefik binds port 80 on all interfaces (`0.0.0.0`). If you are using Tailscale, you can restrict it to your server's Tailscale IP so the dashboard is unreachable from the public internet.

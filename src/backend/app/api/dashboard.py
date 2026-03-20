@@ -2513,17 +2513,6 @@ async def get_system_status(db: AsyncSession = Depends(get_db)):
     except Exception as e:
         logger.debug("Failed to get Pi-hole stats via API: %s", e)
 
-    # Software Metrics: Dify
-    dify_detail = "off"
-    dify_ok = False
-    if settings.DIFY_API_KEY:
-        try:
-            from app.services.dify import dify_service
-            dify_ok = await dify_service.check_health()
-            dify_detail = "connected" if dify_ok else "failed"
-        except Exception:
-            dify_detail = "error"
-
     # System RAM for health metrics
     ram = psutil.virtual_memory()
     ram_total_gb = round(ram.total / (1024**3), 1)
@@ -2574,8 +2563,5 @@ async def get_system_status(db: AsyncSession = Depends(get_db)):
         "ram_used_pct": ram_used_pct,
         "db_size": db_size_human,
         "redis_stats": redis_detail,
-        "pihole_stats": pihole_stats,
-        "dify_ok": dify_ok,
-        "dify_detail": dify_detail,
         "timestamp": datetime.datetime.now().isoformat()
     }

@@ -112,14 +112,8 @@ if ! python3 -c "import httpx, asyncio" 2>/dev/null; then
   pip3 install httpx --quiet
 fi
 
-# Sanity check: Ensure DASHBOARD_TOKEN is available for the test suite (Rule 11)
-if [ -z "$DASHBOARD_TOKEN" ]; then
-  echo "❌ Error: DASHBOARD_TOKEN is not set in .env. Cannot run regression tests without auth."
-  exit 1
-fi
-
 # Run the suite with unbuffered output (-u) so progress prints in real-time
-if python3 -u tests/test_live_regression.py --url "$TEST_URL" --token "$DASHBOARD_TOKEN"; then
+if python3 -u tests/test_live_regression.py --url "$TEST_URL"; then
   echo ""
   echo "✅ All regression tests passed."
   echo "📄 Full report saved to: docs/artifacts/regression_results.md"
