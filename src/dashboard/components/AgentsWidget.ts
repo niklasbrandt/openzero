@@ -141,6 +141,7 @@ export class AgentsWidget extends HTMLElement {
 			play: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>`,
 			loader: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spinning"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg>`,
 			x: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
+			'chevron-right': `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>`,
 			cloud_off: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.61 16.95A5 5 0 0 0 18 10h-1.26a8 8 0 0 0-7.05-6M5 5a8 8 0 0 0 4 15h9a5 5 0 0 0 1.7-.3"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`
 		};
 		return icons[name] || '';
@@ -334,40 +335,66 @@ export class AgentsWidget extends HTMLElement {
 				.crews-container {
 					display: flex;
 					flex-direction: column;
-					gap: 1rem;
+					gap: 0.5rem;
 					overflow-y: auto;
-					padding: 0.5rem;
 				}
 
-				.crew-card {
+				.crew-details {
 					background: rgba(255, 255, 255, 0.02);
-					border: 1px solid var(--border-color);
+					border: 1px solid rgba(255, 255, 255, 0.05);
 					border-radius: 0.75rem;
-					padding: 1.25rem;
-					display: flex;
-					flex-direction: column;
-					gap: 0.75rem;
-					transition: all 0.2s ease;
+					overflow: hidden;
+					transition: all 0.3s ease;
 				}
 
-				.crew-card:hover {
-					border-color: var(--accent-primary);
+				.crew-details[open] {
 					background: rgba(255, 255, 255, 0.04);
-					transform: translateY(-2px);
+					border-color: rgba(239, 68, 68, 0.2);
 				}
 
-				.crew-header {
+				.crew-summary {
+					padding: 1rem 1.25rem;
+					cursor: pointer;
 					display: flex;
+					align-items: center;
 					justify-content: space-between;
-					align-items: flex-start;
+					list-style: none;
+					user-select: none;
+				}
+
+				.crew-summary::-webkit-details-marker {
+					display: none;
+				}
+
+				.crew-summary-left {
+					display: flex;
+					align-items: center;
+					gap: 1rem;
+					flex: 1;
+					min-width: 0;
 				}
 
 				.crew-title {
+					font-size: 1rem;
+					font-weight: 700;
+					color: var(--text-primary);
 					display: flex;
 					align-items: center;
-					gap: 0.5rem;
-					font-weight: 600;
-					color: var(--text-primary);
+					gap: 0.75rem;
+					white-space: nowrap;
+					overflow: hidden;
+					text-overflow: ellipsis;
+				}
+
+				.crew-chevron {
+					transition: transform 0.3s ease;
+					opacity: 0.3;
+					color: #ef4444;
+				}
+
+				.crew-details[open] .crew-chevron {
+					transform: rotate(90deg);
+					opacity: 0.8;
 				}
 
 				.status-badge {
@@ -380,21 +407,28 @@ export class AgentsWidget extends HTMLElement {
 					white-space: nowrap;
 				}
 
-				.status-active { background: rgba(20, 184, 166, 0.1); color: #14B8A6; border: 1px solid rgba(20, 184, 166, 0.2); }
+				.status-active { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); }
 				.status-inactive { display: none; }
+
+				.crew-content {
+					padding: 0 1.25rem 1.5rem 1.25rem;
+					display: flex;
+					flex-direction: column;
+					gap: 1.5rem;
+					border-top: 1px solid rgba(255, 255, 255, 0.03);
+					padding-top: 1.5rem;
+				}
 
 				.crew-desc {
 					font-size: 0.85rem;
 					color: var(--text-secondary);
 					line-height: 1.5;
-					margin: 0;
 				}
-
 				.characters-grid {
 					display: flex;
-					flex-wrap: wrap;
-					gap: 0.5rem;
-					margin-top: 0.5rem;
+					flex-direction: column;
+					gap: 1rem;
+					margin-bottom: 2rem;
 				}
 
 				.character-badge {
@@ -406,8 +440,8 @@ export class AgentsWidget extends HTMLElement {
 					flex-direction: column;
 					gap: 0.2rem;
 					border: 1px solid rgba(255, 255, 255, 0.05);
-					flex: 0 1 auto;
-					min-width: 180px;
+					flex: 1 1 100%;
+					min-width: 0;
 				}
 
 				.character-name {
@@ -480,11 +514,11 @@ export class AgentsWidget extends HTMLElement {
 				<div class="section-header">
 					<div class="title-group">
 						<h2>
-							<span style="color:var(--accent-primary)">${this.renderIcon('users', '1.2rem')}</span>
+							<span style="color:#ef4444">${this.renderIcon('users', '1.2rem')}</span>
 							Agents & Orchestration
 						</h2>
 						<p>
-							${this.renderIcon('activity', '0.7rem')}
+							<span style="color:#ef4444">${this.renderIcon('activity', '0.7rem')}</span>
 							Autonomous cycles run on-schedule. Results appear in chat.
 						</p>
 					</div>
@@ -659,47 +693,54 @@ export class AgentsWidget extends HTMLElement {
 					}
 
 					return `
-						<div class="crew-card">
-							<div class="crew-header">
-								<div class="crew-title">
-									<span style="color:var(--accent-primary)">${this.renderIcon('users', '1.2rem')}</span>
-									${crew.name}
-								</div>
-								<span class="status-badge ${crew.dify_app_id ? 'status-active' : 'status-inactive'}">
-									${crew.dify_app_id ? 'Active' : ''}
-								</span>
-							</div>
-
-							<p class="crew-desc">${crew.description}</p>
-
-							${crew.characters && crew.characters.length > 0 ? `
-								<div class="characters-grid">
-									${crew.characters.map(c => `
-										<div class="character-badge">
-											<div class="character-name">
-												<span style="opacity:0.5; color:var(--accent-primary)">${this.renderIcon('user', '0.8rem')}</span>
-												${this.esc(c.name)}
-											</div>
-											<div class="character-role">${this.esc(c.role)}</div>
-										</div>
-									`).join('')}
-								</div>
-							` : ''}
-
-							<div class="crew-meta">
-								<div class="schedule-tag">
-									${this.renderIcon('clock', '0.8rem')}
-									${sched}
-								</div>
-								<button class="run-crew-btn oz-btn oz-btn-ghost oz-btn-sm" data-id="${crew.id}" ${this.runningCrews.has(crew.id) ? 'disabled' : ''} style="display:flex; flex-direction:column; align-items:flex-end; padding: 0.2rem 0.6rem; min-width: 100px;">
-									<div style="display:flex; align-items:center; gap:0.4rem; font-size:0.75rem; font-weight:700; color:var(--accent-primary);">
-										${this.runningCrews.has(crew.id) ? this.renderIcon('loader', '0.8rem') : this.renderIcon('play', '0.8rem')}
-										${this.tr('run_now', 'TRIGGER AGENT')}
+						<details class="crew-details">
+							<summary class="crew-summary">
+								<div class="crew-summary-left">
+									<span class="crew-chevron">${this.renderIcon('chevron-right', '1rem')}</span>
+									<div class="crew-title">
+										<span style="color:#ef4444">${this.renderIcon('users', '1.1rem')}</span>
+										${crew.name}
 									</div>
-									<span style="font-size:0.6rem; opacity:0.4; font-weight:400;">Autonomous Cycle</span>
-								</button>
+									<div class="crew-meta" style="margin-left: auto; margin-right: 1.5rem;">
+										<div class="meta-item">
+											${this.renderIcon('clock', '0.75rem')}
+											${sched}
+										</div>
+									</div>
+									<span class="status-badge ${crew.dify_app_id ? 'status-active' : 'status-inactive'}">
+										${crew.dify_app_id ? 'Active' : ''}
+									</span>
+								</div>
+							</summary>
+
+							<div class="crew-content">
+								<p class="crew-desc">${crew.description}</p>
+
+								${crew.characters && crew.characters.length > 0 ? `
+									<div class="characters-grid">
+										${crew.characters.map(c => `
+											<div class="character-badge">
+												<div class="character-name">
+													<span style="opacity:0.8; color:#ef4444">${this.renderIcon('user', '0.8rem')}</span>
+													${this.esc(c.name)}
+												</div>
+												<div class="character-role">${this.esc(c.role)}</div>
+											</div>
+										`).join('')}
+									</div>
+								` : ''}
+
+								<div style="display:flex; justify-content:flex-end;">
+									<button class="run-crew-btn oz-btn oz-btn-ghost oz-btn-sm" data-id="${crew.id}" ${this.runningCrews.has(crew.id) ? 'disabled' : ''} style="display:flex; flex-direction:column; align-items:flex-end; padding: 0.2rem 0.6rem; min-width: 120px; border-color: rgba(239, 68, 68, 0.2);">
+										<div style="display:flex; align-items:center; gap:0.4rem; font-size:0.75rem; font-weight:700; color:#ef4444;">
+											${this.runningCrews.has(crew.id) ? this.renderIcon('loader', '0.8rem') : this.renderIcon('play', '0.8rem')}
+											${this.tr('run_now', 'TRIGGER AGENT')}
+										</div>
+										<span style="font-size:0.6rem; opacity:0.4; font-weight:400; color: #ef4444;">Autonomous Cycle</span>
+									</button>
+								</div>
 							</div>
-						</div>
+						</details>
 					`;
 				}).join('')}
 			</div>
