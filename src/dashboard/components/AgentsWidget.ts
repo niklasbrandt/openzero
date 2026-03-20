@@ -134,8 +134,8 @@ export class AgentsWidget extends HTMLElement {
 	private renderIcon(name: string, size = '1rem'): string {
 		const icons: Record<string, string> = {
 			settings: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
-			users: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
-			user: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`,
+			users: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+			user: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`,
 			activity: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`,
 			clock: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`,
 			play: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>`,
@@ -160,16 +160,11 @@ export class AgentsWidget extends HTMLElement {
 					height: 100%;
 				}
 
-				.agents-card {
-					background: var(--bg-surface);
-					border: 1px solid var(--border-color);
-					border-radius: 1rem;
-					padding: 1.5rem;
+				.agents-container {
 					height: 100%;
 					display: flex;
 					flex-direction: column;
 					gap: 1.5rem;
-					box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
 					position: relative;
 					overflow: hidden;
 					box-sizing: border-box;
@@ -184,24 +179,32 @@ export class AgentsWidget extends HTMLElement {
 
 				.title-group {
 					display: flex;
-					align-items: center;
-					gap: 0.75rem;
+					flex-direction: column;
 				}
 
 				.title-group h2 {
 					margin: 0;
-					font-size: 1.25rem;
-					color: var(--text-primary);
-					font-weight: 600;
-					letter-spacing: -0.01em;
+					font-size: 1.1rem;
+					font-weight: 700;
+					display: flex;
+					align-items: center;
+					gap: 0.5rem;
+					background: var(--accent-gradient);
+					-webkit-background-clip: text;
+					-webkit-text-fill-color: transparent;
+				}
+
+				.title-group p {
+					margin: 0;
+					font-size: 0.75rem;
+					color: var(--text-tertiary);
+					display: flex;
+					align-items: center;
+					gap: 0.3rem;
 				}
 
 				.h-icon {
-					color: var(--accent-primary);
-					filter: drop-shadow(0 0 5px var(--accent-primary-glow));
-					display: flex;
-					align-items: center;
-					justify-content: center;
+					color: #fff !important;
 				}
 
 				/* Personality Overview Styles */
@@ -329,9 +332,11 @@ export class AgentsWidget extends HTMLElement {
 				}
 
 				.crews-container {
-					display: grid;
-					grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+					display: flex;
+					flex-direction: column;
 					gap: 1rem;
+					overflow-y: auto;
+					padding: 0.5rem;
 				}
 
 				.crew-card {
@@ -366,15 +371,17 @@ export class AgentsWidget extends HTMLElement {
 				}
 
 				.status-badge {
-					font-size: 0.65rem;
+					font-size: 0.6rem;
 					padding: 0.2rem 0.5rem;
-					border-radius: 1rem;
+					border-radius: 0.5rem;
 					text-transform: uppercase;
 					font-weight: 700;
+					flex-shrink: 0;
+					white-space: nowrap;
 				}
 
 				.status-active { background: rgba(20, 184, 166, 0.1); color: #14B8A6; border: 1px solid rgba(20, 184, 166, 0.2); }
-				.status-inactive { background: rgba(255, 255, 255, 0.05); color: var(--text-tertiary); border: 1px solid rgba(255, 255, 255, 0.1); }
+				.status-inactive { display: none; }
 
 				.crew-desc {
 					font-size: 0.85rem;
@@ -391,14 +398,30 @@ export class AgentsWidget extends HTMLElement {
 				}
 
 				.character-badge {
-					background: rgba(0, 0, 0, 0.3);
-					padding: 0.3rem 0.6rem;
-					border-radius: 0.5rem;
-					font-size: 0.75rem;
+					background: rgba(255, 255, 255, 0.03);
+					padding: 0.5rem 0.75rem;
+					border-radius: 0.75rem;
+					font-size: 0.8rem;
+					display: flex;
+					flex-direction: column;
+					gap: 0.2rem;
+					border: 1px solid rgba(255, 255, 255, 0.05);
+					flex: 0 1 auto;
+					min-width: 180px;
+				}
+
+				.character-name {
+					font-weight: 700;
+					color: var(--text-primary);
 					display: flex;
 					align-items: center;
-					gap: 0.3rem;
-					border: 1px solid rgba(255, 255, 255, 0.05);
+					gap: 0.4rem;
+				}
+
+				.character-role {
+					font-size: 0.7rem;
+					color: var(--text-tertiary);
+					line-height: 1.3;
 				}
 
 				.crew-meta {
@@ -453,11 +476,17 @@ export class AgentsWidget extends HTMLElement {
 				}
 			</style>
 
-			<div class="agents-card">
+			<div class="agents-container">
 				<div class="section-header">
 					<div class="title-group">
-						<span class="h-icon">${this.renderIcon('users', '1.2rem')}</span>
-						<h2>${this.tr('agents_title', 'Agents & Autonomous Crews')}</h2>
+						<h2>
+							<span style="color:var(--accent-primary)">${this.renderIcon('users', '1.2rem')}</span>
+							Agents & Orchestration
+						</h2>
+						<p>
+							${this.renderIcon('activity', '0.7rem')}
+							Autonomous cycles run on-schedule. Results appear in chat.
+						</p>
 					</div>
 					${!this.isEditing ? `
 						<button class="edit-btn" id="edit-personality-btn" style="background:transparent; border:none; color:var(--text-tertiary); cursor:pointer; display:flex; align-items:center; gap:0.5rem; font-size:0.8rem;">
@@ -633,11 +662,11 @@ export class AgentsWidget extends HTMLElement {
 						<div class="crew-card">
 							<div class="crew-header">
 								<div class="crew-title">
-									<span style="color:var(--text-tertiary)">${this.renderIcon(crew.type === 'workflow' ? 'activity' : 'user', '1.1rem')}</span>
+									<span style="color:var(--accent-primary)">${this.renderIcon('users', '1.2rem')}</span>
 									${crew.name}
 								</div>
 								<span class="status-badge ${crew.dify_app_id ? 'status-active' : 'status-inactive'}">
-									${crew.dify_app_id ? 'Active' : 'Standby'}
+									${crew.dify_app_id ? 'Active' : ''}
 								</span>
 							</div>
 
@@ -646,9 +675,12 @@ export class AgentsWidget extends HTMLElement {
 							${crew.characters && crew.characters.length > 0 ? `
 								<div class="characters-grid">
 									${crew.characters.map(c => `
-										<div class="character-badge" title="${this.esc(c.role)}">
-											<span style="opacity:0.5;">${this.renderIcon('user', '0.7rem')}</span>
-											${this.esc(c.name)}
+										<div class="character-badge">
+											<div class="character-name">
+												<span style="opacity:0.5; color:var(--accent-primary)">${this.renderIcon('user', '0.8rem')}</span>
+												${this.esc(c.name)}
+											</div>
+											<div class="character-role">${this.esc(c.role)}</div>
 										</div>
 									`).join('')}
 								</div>
@@ -659,9 +691,12 @@ export class AgentsWidget extends HTMLElement {
 									${this.renderIcon('clock', '0.8rem')}
 									${sched}
 								</div>
-								<button class="run-crew-btn" data-id="${crew.id}" ${this.runningCrews.has(crew.id) ? 'disabled' : ''} style="background:transparent; border:none; color:var(--accent-primary); cursor:pointer; display:flex; align-items:center; gap:0.4rem; font-size:0.8rem; font-weight:600;">
-									${this.runningCrews.has(crew.id) ? this.renderIcon('loader', '0.8rem') : this.renderIcon('play', '0.8rem')}
-									${this.tr('run_now', 'Run Now')}
+								<button class="run-crew-btn oz-btn oz-btn-ghost oz-btn-sm" data-id="${crew.id}" ${this.runningCrews.has(crew.id) ? 'disabled' : ''} style="display:flex; flex-direction:column; align-items:flex-end; padding: 0.2rem 0.6rem; min-width: 100px;">
+									<div style="display:flex; align-items:center; gap:0.4rem; font-size:0.75rem; font-weight:700; color:var(--accent-primary);">
+										${this.runningCrews.has(crew.id) ? this.renderIcon('loader', '0.8rem') : this.renderIcon('play', '0.8rem')}
+										${this.tr('run_now', 'TRIGGER AGENT')}
+									</div>
+									<span style="font-size:0.6rem; opacity:0.4; font-weight:400;">Autonomous Cycle</span>
 								</button>
 							</div>
 						</div>
