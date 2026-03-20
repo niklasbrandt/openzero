@@ -296,21 +296,13 @@ async def start_telegram_bot():
 			lang = await get_user_lang()
 			t = get_translations(lang)
 
-			# Mobile auth hint: tapping on Android (Chrome Custom Tab) saves the token
-			# directly. On iOS tap opens Telegram WebView — long-press → Open in Browser
-			# to save it to Safari's localStorage instead.
-			mobile_hint = ""
-			if settings.DASHBOARD_TOKEN:
-				base = settings.BASE_URL.rstrip('/')
-				auth_url = f"{base}/api/dashboard/auth?token={settings.DASHBOARD_TOKEN}"
-				mobile_hint = f'\n\n📲 <a href="{auth_url}">Open dashboard</a> — tap once to save access'
 
 			# Save greeting to DB so the dashboard and recovery logic see it in the timeline
 			from app.models.db import save_global_message as _sgm
 			await _sgm("telegram", "z", greeting_clean, model="deep")
 
 			await send_notification_html(
-				f"<blockquote><b>{real_time}</b>\n\n{_md_to_html(greeting_clean)}\n\n<i>{stats_text}</i>{mobile_hint}</blockquote>",
+				f"<blockquote><b>{real_time}</b>\n\n{_md_to_html(greeting_clean)}\n\n<i>{stats_text}</i></blockquote>",
 				reply_markup=get_nav_markup(t, token=settings.DASHBOARD_TOKEN)
 			)
 			logger.debug("Greeting Seq - Notification Delivered")
