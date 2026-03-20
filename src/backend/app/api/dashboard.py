@@ -2637,8 +2637,13 @@ async def get_crews():
             "description": c.description,
             "type": c.type,
             "dify_app_id": c.dify_app_id,
-            "is_running": False, # Lightweight inference would go here
-            "characters": c.characters
+            "is_running": False, 
+            "characters": c.characters,
+            "schedule": c.schedule,
+            "feeds_briefing": c.feeds_briefing,
+            "briefing_day": c.briefing_day,
+            "briefing_dom": c.briefing_dom,
+            "briefing_months": c.briefing_months
         })
     return {"crews": payload}
 
