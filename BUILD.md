@@ -288,6 +288,8 @@ The `personal/` folder is the highest-authority context source for Z. Files here
     ```
 
     Then copy your personal files to the server over your Tailscale connection if you want Z to have access to them there.
+    
+    *(Alternatively, you can run `./scripts/sync_overwrite_personal.sh` from your laptop to forcefully overwrite the remote personal directory with your local contents).*
 
 ### 5e. Set Up Agent Skills Folder
 
@@ -314,6 +316,8 @@ The `agent/` folder lets you drop in skill modules — methodology files, tool g
     ```
 
     Then copy your skill files to the server over your Tailscale connection.
+    
+    *(Alternatively, you can run `./scripts/sync_overwrite_agent.sh` from your laptop to forcefully overwrite the remote agent directory and auto-restart the backend to seamlessly load new crews).*
 
 ### 5f. Set Up Dify Crews
 
