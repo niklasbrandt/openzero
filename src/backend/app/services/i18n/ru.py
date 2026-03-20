@@ -55,4 +55,5 @@ translations: dict[str, str] = {
 	"timezone_label": "Часовой пояс",
 	"town": "Город",
 	"work_times": "Рабочее время",
+	"user_profile": "User Profile"
 }

@@ -145,4 +145,5 @@ translations: dict[str, str] = {
 	"warming_up": "正在启动本地引擎...",
 	"wed": "周三",
 	"work_times": "工作时间",
+	"user_profile": "User Profile"
 }

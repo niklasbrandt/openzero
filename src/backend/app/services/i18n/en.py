@@ -610,5 +610,6 @@ translations: dict[str, str] = {
 	"run_history": "Run History",
 	"nav_agents": "Agents",
 	"edit_personality": "Configure Personality",
-	"save_personality": "Save Agents State"
+	"save_personality": "Save Agents State",
+	"user_profile": "User Profile"
 }
