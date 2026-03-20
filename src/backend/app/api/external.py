@@ -60,8 +60,8 @@ async def create_planka_task(payload: PlankaTaskPayload):
         
         return {"status": "success", "path": path}
     except Exception as e:
-        logger.error(f"Dify Planka Integration Failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Dify Planka Integration Failed: {repr(e)}")
+        raise HTTPException(status_code=500, detail="Planka integration failed.")
 
 # --- Memory Write-Back ---
 
@@ -84,8 +84,8 @@ async def learn_memory(payload: MemoryPayload):
         await store_memory(structured_content)
         return {"status": "success", "message": "Memory committed to vector space."}
     except Exception as e:
-        logger.error(f"Dify Memory Integration Failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Dify Memory Integration Failed: {repr(e)}")
+        raise HTTPException(status_code=500, detail="Memory integration failed.")
 
 # --- Personal Context Bridge (Read-Only) ---
 
@@ -103,7 +103,9 @@ async def read_personal_file(filename: str):
         # PATH TRAVERSAL GUARD
         requested_path = os.path.abspath(os.path.join(PERSONAL_DIR, filename))
         if not requested_path.startswith(str(PERSONAL_DIR) + os.sep) and requested_path != str(PERSONAL_DIR):
-            logger.warning(f"Path traversal attempted: {filename}")
+            # Alert #370: Sanitize filename to prevent Log Injection
+            sanitized_name = filename.replace("\n", "").replace("\r", "")[:200]
+            logger.warning(f"Path traversal attempted: {sanitized_name}")
             raise HTTPException(status_code=403, detail="Access denied. Path traversal detected.")
             
         target_file = Path(requested_path)
