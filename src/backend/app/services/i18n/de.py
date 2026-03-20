@@ -541,5 +541,6 @@ translations: dict[str, str] = {
 	"run_history": "Ausführungsverlauf",
 	"nav_agents": "Agenten",
 	"edit_personality": "Persönlichkeit konfigurieren",
-	"save_personality": "Agenten-Zustand speichern"
+	"save_personality": "Agenten-Zustand speichern",
+	"user_profile": "Benutzerprofil"
 }

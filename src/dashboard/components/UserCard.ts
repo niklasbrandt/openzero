@@ -371,7 +371,7 @@ export class UserCard extends HTMLElement {
 			<div class="card">
 				<div class="header">
 					<div class="user-info">
-						<div class="avatar" aria-hidden="true" title="User Profile">
+						<div class="avatar" aria-hidden="true" title="${this.tr('user_profile', 'User Profile')}">
 							<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
 								<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
 								<circle cx="12" cy="7" r="4"></circle>

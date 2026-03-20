@@ -53,4 +53,5 @@ translations: dict[str, str] = {
 	"timezone_label": "Fuso Orario",
 	"town": "Citta",
 	"work_times": "Orario di Lavoro",
+	"user_profile": "User Profile"
 }

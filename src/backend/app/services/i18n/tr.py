@@ -55,4 +55,5 @@ translations: dict[str, str] = {
 	"timezone_label": "Saat Dilimi",
 	"town": "Sehir",
 	"work_times": "Calisma Saatleri",
+	"user_profile": "User Profile"
 }
