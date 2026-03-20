@@ -451,6 +451,13 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		)
 		response = await chat(prompt)
 		clean_reply, executed, pending = await parse_and_execute_actions(response, require_hitl=True)
+		
+		# Reasoning indicator extraction
+		crews = [c.split(":", 1)[1] for c in executed if c.startswith("__CREW_RUN__:")]
+		executed = [c for c in executed if not c.startswith("__CREW_RUN__:")]
+		if crews:
+			clean_reply += f"\n\n*(Reasoning supported by {', '.join(crews)})*"
+
 		if executed or pending:
 			msg = " ".join(executed)
 			if pending:
@@ -471,6 +478,13 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		)
 		response = await chat(prompt)
 		clean_reply, executed, pending = await parse_and_execute_actions(response, require_hitl=True)
+		
+		# Reasoning indicator extraction
+		crews = [c.split(":", 1)[1] for c in executed if c.startswith("__CREW_RUN__:")]
+		executed = [c for c in executed if not c.startswith("__CREW_RUN__:")]
+		if crews:
+			clean_reply += f"\n\n*(Reasoning supported by {', '.join(crews)})*"
+
 		if executed or pending:
 			msg = " ".join(executed)
 			if pending:
@@ -522,6 +536,13 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 	elif msg.startswith("[ACTION:"):
 		from app.services.agent_actions import parse_and_execute_actions
 		clean_reply, executed_cmds, pending_actions = await parse_and_execute_actions(msg, db=db, require_hitl=True)
+		
+		# Reasoning indicator extraction
+		crews = [c.split(":", 1)[1] for c in executed_cmds if c.startswith("__CREW_RUN__:")]
+		executed_cmds = [c for c in executed_cmds if not c.startswith("__CREW_RUN__:")]
+		if crews:
+			clean_reply += f"\n\n*(Reasoning supported by {', '.join(crews)})*"
+
 		return {
 			"reply": clean_reply or "Direct execution complete.",
 			"actions": executed_cmds,
@@ -545,6 +566,12 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		
 		from app.services.agent_actions import parse_and_execute_actions
 		clean_reply, executed_cmds, pending_actions = await parse_and_execute_actions(reply, db=db, require_hitl=True)
+
+		# Reasoning indicator extraction
+		crews = [c.split(":", 1)[1] for c in executed_cmds if c.startswith("__CREW_RUN__:")]
+		executed_cmds = [c for c in executed_cmds if not c.startswith("__CREW_RUN__:")]
+		if crews:
+			clean_reply += f"\n\n*(Reasoning supported by {', '.join(crews)})*"
 
 		# Sync to Global Central Memory
 		if not req.skip_history:
@@ -2596,7 +2623,7 @@ async def get_system_status(db: AsyncSession = Depends(get_db)):
 @router.get("/crews")
 async def get_crews():
     """Returns all provisioned Dify Crews and their status."""
-    from app.services.dify import crew_registry, dify_client
+    from app.services.dify import crew_registry
     crews = crew_registry.list_active()
     
     # Minimal representation for the frontend

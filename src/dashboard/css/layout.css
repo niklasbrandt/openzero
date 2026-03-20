@@ -201,16 +201,15 @@ welcome-onboarding {
 	flex: 1;
 }
 
-/* -- Tablet (700px - 1099px): two-column flex wrap below the marquee nav -- */
+/* -- Tablet / Large Mobile (700px - 1099px): transition zone -- */
 @media (min-width: 700px) and (max-width: 1099px) {
 	#app {
 		gap: 1.5rem;
-		padding: 1.5rem 1.5rem 5rem 1.5rem;
+		padding: 1rem 1.5rem 5rem 1.5rem;
 	}
 
 	.dashboard-card {
 		flex: 0 0 calc(50% - 0.75rem);
-		/* Phase 2 optimization: skip painting for off-screen cards */
 		content-visibility: auto;
 		contain-intrinsic-size: 1px 400px;
 	}
@@ -219,29 +218,23 @@ welcome-onboarding {
 	welcome-onboarding {
 		flex: 0 0 100% !important;
 	}
+}
 
-	.overview-grid {
-		grid-template-columns: 1fr;
-		grid-template-rows: auto;
-		gap: 2rem;
-	}
-
-	.chat-col,
-	.projects-col,
-	.calendar-col {
-		grid-column: 1 / -1;
-		grid-row: auto;
-	}
-
-	.overview-divider {
-		width: 100%;
-		height: 1px;
-		grid-column: 1 / -1;
-		grid-row: auto;
-	}
-
-	.v-divider {
-		display: none;
+/* -- Mobile / Tablet Sticky Header (< 1100px) -- */
+@media (max-width: 1099px) {
+	.dashboard-header {
+		position: sticky;
+		top: 0;
+		z-index: 400;
+		background: var(--nav-bg-hover);
+		backdrop-filter: blur(12px);
+		-webkit-backdrop-filter: blur(12px);
+		padding: 0.75rem 1.25rem;
+		margin-bottom: 2rem;
+		border-bottom: 1px solid var(--border-color);
+		width: calc(100% + 2.5rem); /* Compensate for #app padding */
+		margin: -1.5rem -1.25rem 2rem -1.25rem;
+		box-sizing: border-box;
 	}
 }
 
@@ -254,13 +247,6 @@ welcome-onboarding {
 
 	.dashboard-card {
 		flex: 0 0 100%;
-	}
-
-	.dashboard-header {
-		flex-direction: column;
-		align-items: flex-start;
-		gap: 0.75rem;
-		margin-bottom: 1rem;
 	}
 
 	.dashboard-header h1 {
