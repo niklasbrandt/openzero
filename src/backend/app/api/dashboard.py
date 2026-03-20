@@ -250,7 +250,7 @@ async def confirm_action(action_id: str, db: AsyncSession = Depends(get_db), aut
 		return {"status": "success", "executed": executed}
 	except Exception as e:
 		logger.error("Action confirmation failed: %s", e)
-		raise HTTPException(status_code=500, detail=str(e)) from None
+		raise HTTPException(status_code=500, detail="Action confirmation failed.") from None
 
 @router.post("/actions/cancel/{action_id}")
 async def cancel_action(action_id: str, auth: None = Depends(require_auth)):
@@ -294,6 +294,31 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		from app.tasks.yearly import yearly_review
 		report = await yearly_review()
 		return {"reply": report}
+	elif msg == "/crews":
+		from app.services.dify import crew_registry
+		from app.services.translations import get_user_lang, get_translations
+		lang = await get_user_lang()
+		t = get_translations(lang)
+		active_crews = crew_registry.list_active()
+		
+		title = t.get('crews_registry_status', 'Dify Crews Registry Status')
+		if not active_crews:
+			body = t.get('no_crews_found', 'No Dify Crews provisioned or active.')
+			return {"reply": f"🛸 **{title}**\n\n*{body}*"}
+		
+		msg_parts = [f"🛸 **{title}**\n"]
+		on_demand = t.get('on_demand', 'On-demand')
+		for crew in active_crews:
+			cadence = crew.feeds_briefing or on_demand
+			if crew.schedule: cadence += f" ({crew.schedule})"
+			
+			msg_parts.append(
+				f"• **{crew.id}**\n"
+				f"  ├ Type: `{crew.type}`\n"
+				f"  ├ Cadence: {cadence}\n"
+				f"  └ *{crew.description}*\n"
+			)
+		return {"reply": "\n".join(msg_parts)}
 	elif msg.startswith("/crew "):
 		crew_id = msg.replace("/crew", "").strip()
 		from app.services.dify import dify_client, crew_registry
