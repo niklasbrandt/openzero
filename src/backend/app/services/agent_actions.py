@@ -160,11 +160,46 @@ async def move_card(card_title_fragment: str, destination_list: str, board_name:
 		destination_list=destination_list,
 		board_name=board_name
 	)
-	if success:
-		return f"Card '{card_title_fragment}' moved to '{destination_list}'."
-	return f"Could not find card matching '{card_title_fragment}' to move."
+@tool
+async def run_crew(crew_id: str, user_input: str = "Execute autonomous cycle") -> str:
+	"""Trigger a specialized Dify crew or workflow by ID.
+	Example: crew_id='recipes_chef'
+	"""
+	from app.services.dify import dify_client, crew_registry
+	from app.services.timezone import get_current_timezone
+	import pytz
+	from datetime import datetime
+	
+	config = crew_registry.get(crew_id)
+	if not config or not config.enabled:
+		return f"Error: Crew '{crew_id}' not found or disabled."
+	if not config.dify_app_id:
+		return f"Error: Crew '{crew_id}' is not provisioned."
+		
+	tz_str = await get_current_timezone()
+	integrated_input = {
+		"user_input": user_input,
+		"sys_time": datetime.now(pytz.timezone(tz_str)).isoformat(),
+		"sys_user": "Operator",
+		"memory_state": "Triggered via Z Agent tool"
+	}
+	if config.instructions:
+		integrated_input["instructions"] = config.instructions
+		
+	try:
+		if config.type == "workflow":
+			res = await dify_client.run_workflow(config.dify_app_id, integrated_input)
+			out = res.get("data", {}).get("outputs", {})
+			# We don't return the full JSON, just a summary
+			return f"Crew '{crew_id}' workflow finished with result: {str(out)[:200]}"
+		else:
+			res = await dify_client.run_agent(config.dify_app_id, user_input, None, integrated_input)
+			ans = res.get('answer', 'Success')
+			return f"Crew '{crew_id}' agent finished: {ans[:200]}"
+	except Exception as e:
+		return f"Error executing crew '{crew_id}': {str(e)}"
 
-AVAILABLE_TOOLS = [create_task, create_project, create_event, learn_memory, schedule_reminder, schedule_persistent_custom, move_card]
+AVAILABLE_TOOLS = [create_task, create_project, create_event, learn_memory, schedule_reminder, schedule_persistent_custom, move_card, run_crew]
 
 SENSITIVE_ACTIONS = {"SCHEDULE_CUSTOM", "LEARN", "CREATE_PROJECT", "ADD_PERSON", "CREATE_BOARD", "CREATE_LIST", "PROXIMITY_TRACK", "RUN_CREW", "SCHEDULE_CREW"}
 
