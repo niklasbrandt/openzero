@@ -303,8 +303,7 @@ export class UserCard extends HTMLElement {
 				.avatar {
 					width: 48px; height: 48px;
 					background: linear-gradient(135deg, var(--accent-primary, hsla(173, 80%, 40%, 1)), var(--accent-secondary, hsla(216, 100%, 50%, 1)));
-					border-radius: 0.4rem; display: flex; align-items: center; justify-content: center;
-					font-weight: 800; font-size: 1.25rem;
+					border-radius: 0.6rem; display: flex; align-items: center; justify-content: center;
 					box-shadow: 0 4px 12px var(--surface-accent-subtle, hsla(173, 80%, 40%, 0.2));
 					color: #fff; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 				}
@@ -372,7 +371,12 @@ export class UserCard extends HTMLElement {
 			<div class="card">
 				<div class="header">
 					<div class="user-info">
-						<div class="avatar" aria-hidden="true">${(me.name || 'U')[0]}</div>
+						<div class="avatar" aria-hidden="true" title="User Profile">
+							<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+								<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+								<circle cx="12" cy="7" r="4"></circle>
+							</svg>
+						</div>
 						${this.isEditing
 				? `<div style="display:flex;flex-direction:column;gap:4px;"><label class="label" for="name-input" style="margin:0;">${this.tr('name_label', 'Name')}</label><input id="name-input" type="text" placeholder="${this.tr('ph_full_name', 'Full Name')}" value="${me.name || ''}" aria-label="${this.tr('aria_name_input', 'Your name')}" autocomplete="name"></div>`
 				: `<div>

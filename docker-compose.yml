@@ -209,9 +209,8 @@ services:
     volumes:
       - gmail_tokens:/app/tokens
       - /var/run/docker.sock:/var/run/docker.sock
-      - llm_models:/models:ro
-      - ./personal:/app/personal:ro
-      - ./agent:/app/agent:ro
+      - ./agent:/app/agent
+      - ./personal:/app/personal
       - ./docker-compose.yml:/app/compose.yml:ro
     group_add:
       - "988"  # docker socket GID on VPS host (getent group docker | cut -d: -f3)

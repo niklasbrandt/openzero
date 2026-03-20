@@ -26,6 +26,7 @@ class CrewConfig(BaseModel):
     briefing_day: Optional[str] = None
     briefing_dom: Optional[str] = None
     briefing_months: Optional[str] = None
+    characters: Optional[List[Dict[str, str]]] = None
 
 
 class DifyClient:
@@ -154,14 +155,26 @@ class CrewRegistry:
 
         crews_list = raw_data.get("crews") or raw_data.get("dify_crews")
         if not crews_list:
+            if "id" in raw_data or "name" in raw_data:
+                logger.error("⚠ CRITICAL: crews.yaml root contains 'id' or 'name'. Your indentation is probably broken! List members must be indented under 'crews:'.")
+            else:
+                logger.warning("No 'crews' key found in crews.yaml.")
             return
+
         for crew_data in crews_list:
+            if not isinstance(crew_data, dict):
+                logger.error(f"Invalid crew entry in yaml (expected dict, got {type(crew_data).__name__}): {crew_data}")
+                continue
+            
             if not crew_data.get("enabled", True):
                 continue
             
-            # Map YAML definition into internal config
-            config = CrewConfig(**crew_data)
-            self._crews[config.id] = config
+            try:
+                # Map YAML definition into internal config
+                config = CrewConfig(**crew_data)
+                self._crews[config.id] = config
+            except Exception as e:
+                logger.error(f"Failed to parse crew configuration for {crew_data.get('id', 'unknown')}: {e}")
             
         logger.info(f"CrewRegistry loaded {len(self._crews)} active crews from configuration.")
 
