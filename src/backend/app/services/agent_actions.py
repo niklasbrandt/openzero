@@ -511,7 +511,8 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 		clean_reply = strip_tag(clean_reply, raw_tag)
 
 	# 10. Run Crew Tag
-	crew_run_pattern = r"\[?ACTION:\s*RUN_CREW\s*\|\s*CREW:\s*([^\|\]]+)\s*\|\s*INPUT:\s*([^\]]+)\]?"
+	# Alert #379/380: Avoid polynomial backtracking (ReDoS) by simplifying whitespace
+	crew_run_pattern = r"\[?ACTION: RUN_CREW \| CREW: ([^\|\]]+) \| INPUT: ([^\]]+)\]?"
 	for match in re.finditer(crew_run_pattern, reply):
 		raw_tag = match.group(0)
 		crew_id, user_inputs = match.groups()
@@ -565,7 +566,8 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 		clean_reply = strip_tag(clean_reply, raw_tag)
 
 	# 11. Schedule Crew Tag
-	crew_sched_pattern = r"\[?ACTION:\s*SCHEDULE_CREW\s*\|\s*CREW:\s*([^\|\]]+)\s*\|\s*CRON:\s*([^\|\]]+)\s*\|\s*INPUT:\s*([^\]]+)\]?"
+	# Alert #380: Similar fix for SCHEDULE_CREW
+	crew_sched_pattern = r"\[?ACTION: SCHEDULE_CREW \| CREW: ([^\|\]]+) \| CRON: ([^\|\]]+) \| INPUT: ([^\]]+)\]?"
 	for match in re.finditer(crew_sched_pattern, reply):
 		raw_tag = match.group(0)
 		crew_id, cron_spec, user_inputs = match.groups()

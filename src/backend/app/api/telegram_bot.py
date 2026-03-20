@@ -893,30 +893,33 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cmd_crews(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	"""Interrogates CrewRegistry and formats a list of active crews."""
 	from app.services.dify import crew_registry
-	await update.message.reply_text("<blockquote>📡 <i>Interrogating internal Crew topology...</i></blockquote>", parse_mode="HTML")
+	lang = await get_user_lang()
+	t = get_translations(lang)
+	await update.message.reply_text(f"<blockquote>📡 <i>{t.get('interrogating_topology', 'Interrogating internal Crew topology...')}</i></blockquote>", parse_mode="HTML")
 	
 	try:
-		msg_parts = ["🛸 <b>Dify Crews Registry Status</b>\n"]
+		msg_parts = [f"🛸 <b>{t.get('crews_registry_status', 'Dify Crews Registry Status')}</b>\n"]
 		active_crews = crew_registry.list_active()
 		
 		if not active_crews:
-			msg_parts.append("<i>No active crews provisioned. Toggle enablement in agent/crews.yaml.</i>")
+			msg_parts.append(f"<i>{t.get('no_crews_found', 'No Dify Crews provisioned or active.')}</i>")
 		else:
 			for crew in active_crews:
-				cadence = crew.feeds_briefing or "On-Demand"
+				on_demand = t.get('on_demand', 'On-demand')
+				cadence = crew.feeds_briefing or on_demand
 				if crew.schedule: cadence += f" ({crew.schedule})"
 				
 				msg_parts.append(
 					f"• <b>{crew.id}</b>\n"
-					f"  ├ Type: <code>{crew.type.value}</code>\n"
+					f"  ├ Type: <code>{crew.type}</code>\n"
 					f"  ├ Cadence: {cadence}\n"
 					f"  └ <i>{crew.description}</i>\n"
 				)
 		
-		await safe_reply(update, "\n".join(msg_parts), parse_mode="HTML")
+		await safe_reply(update, "\n".join(msg_parts))
 	except Exception as e:
 		logger.error(f"Error fetching crews: {e}")
-		await safe_reply(update, "❌ Failed to fetch Dify Crew registry status.")
+		await safe_reply(update, f"❌ {t.get('failed_fetch_crews', 'Failed to fetch Dify Crew registry status.')}")
 
 @owner_only
 async def handle_memories_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):

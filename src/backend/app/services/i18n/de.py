@@ -304,7 +304,6 @@ translations: dict[str, str] = {
 	"nav_email": "E-Mail",
 	"nav_inner_circle": "Innerer Kreis",
 	"nav_life": "Leben",
-	"nav_memory": "Erinnerung",
 	"nav_outer_circle": "Weiterer Kreis",
 	"nav_overview": "Home",
 	"nav_chat": "Chat",
@@ -543,7 +542,6 @@ translations: dict[str, str] = {
 	"running": "Läuft...",
 	"run_now": "Jetzt ausführen",
 	"run_history": "Ausführungsverlauf",
-	"nav_agents": "Agenten",
 	"edit_personality": "Z Identität & Verhalten konfigurieren",
 	"save_personality": "Agenten-Zustand speichern",
 	"user_profile": "Benutzerprofil",
@@ -567,5 +565,8 @@ translations: dict[str, str] = {
 	"agency": "Handlungsfähigkeit",
 	"intellect": "Intellekt",
 	"on_demand": "Auf Abruf",
-	"pre_briefing": "Vor-{feeds}-Briefing"
+	"pre_briefing": "Vor-{feeds}-Briefing",
+	"crews_registry_status": "Dify-Crews-Registerstatus",
+	"interrogating_topology": "Interne Crew-Topologie wird abgefragt...",
+	"failed_fetch_crews": "Fehler beim Abruf des Dify-Crew-Registerstatus."
 }
