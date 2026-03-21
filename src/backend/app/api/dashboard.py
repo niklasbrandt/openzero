@@ -866,6 +866,12 @@ async def dashboard_chat_stream(req: ChatRequest, request: Request, _rl: None = 
 
 		async with AsyncSessionLocal() as db:
 			clean_reply, executed_cmds, pending_actions = await parse_and_execute_actions(full_response, db=db, require_hitl=True)
+			
+			# Reasoning indicator extraction
+			crews = [c.split(":", 1)[1] for c in executed_cmds if c.startswith("__CREW_RUN__:")]
+			executed_cmds = [c for c in executed_cmds if not c.startswith("__CREW_RUN__:")]
+			if crews:
+				clean_reply += f"\n\n*(Reasoning supported by {', '.join(crews)})*"
 
 		await save_global_message("dashboard", "user", msg)
 		model_label = last_model_used.get()
