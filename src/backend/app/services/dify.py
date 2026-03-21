@@ -77,7 +77,7 @@ class DifyClient:
     )
     async def run_workflow(self, app_id: str, inputs: dict) -> dict:
         """Executes a blocking workflow on Dify."""
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        async with httpx.AsyncClient(timeout=300.0) as client:
             payload = {
                 "inputs": inputs,
                 "response_mode": "blocking",
@@ -99,7 +99,7 @@ class DifyClient:
     )
     async def run_agent(self, app_id: str, query: str, conversation_id: Optional[str] = None, inputs: Optional[dict] = None) -> dict:
         """Executes a Chat/Agent invocation on Dify."""
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        async with httpx.AsyncClient(timeout=300.0) as client:
             payload = {
                 "inputs": inputs or {},
                 "query": query,

@@ -748,7 +748,7 @@ TIER_MAX_TOKENS = {
 # briefings and CoT blocks can legitimately take 3+ minutes on a single-board.
 TIER_TIMEOUTS = {
 	"fast": 25.0,
-	"deep": 180.0,
+	"deep": 600.0,
 }
 
 def select_tier(user_message: str, tier_override: Optional[str] = None) -> tuple[str, str, str]:
@@ -1290,7 +1290,7 @@ async def chat_with_context(
 				base_url=f"{agent_url}/v1",
 				api_key="not-needed",
 				model="local",
-				timeout=90,
+				timeout=300,
 				temperature=0.2,
 			)
 			from app.services.agent_actions import AVAILABLE_TOOLS  # lazy — avoids cyclic import with task modules
