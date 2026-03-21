@@ -136,3 +136,10 @@ All code written for the openZero dashboard **MUST** conform to **WCAG 2.1 Level
 - **Key Parity is Required:** Every key in `_EN` must exist in every non-empty language dict. Partial dicts are CI-blocked by `TestKeyCompleteness`. When filling out a language, use `_EN` as the canonical reference — never add keys to a language dict that do not exist in `_EN`.
 - **Umlaut / Unicode Correctness:** Language-specific characters (ä, ö, ü, ß, accents, non-Latin scripts) must be stored as literal Unicode in the source file, not as ASCII transliterations (`ae`, `oe`, `ue`) or escape sequences (`\u00e4`). This is enforced for `_DE` by `TestDE_NoAsciiUmlauts`; apply the same standard to any other language dict you write.
 - **Run the i18n Gate:** After any translation-related change, run `pytest tests/test_i18n_coverage.py -v` locally before committing. All six tests must pass (or intentional known-gap failures for partially translated languages must be explicitly documented).
+- **Avoid Regex Backtracking:** When writing or modifying regex for i18n checks, NEVER use overlapping patterns like `[^"]*\s[^"]{2,}` that cause catastrophic backtracking on long lines. Always prefer linear, non-overlapping patterns or Python-side string splitting.
+
+## 20. Python Script & Test Performance
+
+- **Static vs Dynamic Checks:** When performing codebase-wide analysis (like checking for missing translation keys or hardcoded strings), ALWAYS prefer static analysis (`ast.parse()`, `re.finditer()`) over dynamic imports (`import app...`). Dynamic imports trigger the entire backend configuration and DB engine, which is slow and prone to hangs in restricted environments.
+- **Terminal & Command Timeout:** If a terminal command (like `python3 /tmp/script.py` or `pytest`) takes more than 60 seconds without output, it is likely "stuck" due to quadratic regex backtracking or I/O blocking. Terminate the process immediately rather than waiting.
+- **Clean up /tmp/:** Do not leave scratch scripts in `/tmp/` that contain buggy or experimental logic that might be accidentally executed by other agents.
