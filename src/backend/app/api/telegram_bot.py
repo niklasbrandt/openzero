@@ -870,6 +870,7 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 			"*Mission Control*\n"
 			"/tree -- Full life hierarchy and workspace overview\n"
 			"/crews -- List all active Dify multi-agent crews and their statuses\n"
+			"/crew -- Execute a specialized autonomous agent (crew)\n"
 			"/think -- Complex reasoning with human-in-the-loop approval\n"
 			"/remind -- Set a temporary recurring reminder\n"
 			"/custom -- Create a persistent scheduled task\n"
@@ -937,7 +938,7 @@ async def cmd_crews(update: Update, context: ContextTypes.DEFAULT_TYPE):
 				if crew.schedule: cadence += f" ({crew.schedule})"
 				
 				msg_parts.append(
-					f"• <b>{crew.id}</b>\n"
+					f"• <b>{crew.id}: {crew.name}</b>\n"
 					f"  ├ Type: <code>{crew.type}</code>\n"
 					f"  ├ Cadence: {cadence}\n"
 					f"  └ <i>{crew.description}</i>\n"
