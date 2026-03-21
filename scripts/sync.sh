@@ -60,6 +60,11 @@ if [ -d .git ]; then
 fi
 
 echo "🚀 Syncing code to $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR..."
+echo "--------------------------------------------------------------------------------"
+echo "🛡️  Protection Mode: Active (Data Sovereignty Rule 9)"
+echo "Excluded from this sync: personal/, .env, *.log, databases, Docker volumes"
+echo "To sync personal context, use: bash scripts/sync_overwrite_personal.sh"
+echo "--------------------------------------------------------------------------------"
 
 # Sync source code (including LATEST_CHANGES.txt if it exists)
 rsync -avz --delete "${EXCLUDES[@]}" ./ $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/
@@ -83,6 +88,7 @@ ssh $REMOTE_USER@$REMOTE_HOST "cd $REMOTE_DIR \
 rm -f LATEST_CHANGES.txt
 
 echo "✅ Deployment complete."
+echo "💡 Reminder: Use 'bash scripts/sync-personal.sh' if you also need to update personal context."
 
 # ── Post-deploy regression tests ─────────────────────────────────────────────
 if [ "$RUN_TESTS" = false ]; then

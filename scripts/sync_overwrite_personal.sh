@@ -33,3 +33,9 @@ ssh $REMOTE_USER@$REMOTE_HOST "mkdir -p $REMOTE_DIR/personal/"
 rsync -avz --delete ./personal/ $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/personal/
 
 echo "✅ Personal context sync complete."
+
+# The backend caches personal context and refreshes every hour.
+# To ensure immediate effect, we restart the backend.
+echo "🔄 Restarting openZero backend to load new personal context..."
+ssh $REMOTE_USER@$REMOTE_HOST "cd $REMOTE_DIR && docker compose restart backend"
+echo "✅ Backend restarted successfully."

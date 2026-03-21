@@ -147,7 +147,8 @@ export class UserCard extends HTMLElement {
 				town: '',
 				country: '',
 				timezone: '',
-				work_times: '',
+				work_start: '09:00',
+				work_end: '17:00',
 				briefing_time: '08:00',
 				context: '',
 				color_primary: 'hsla(173, 80%, 40%, 1)',
@@ -171,7 +172,8 @@ export class UserCard extends HTMLElement {
 			town: (shadow.querySelector('#town-input') as HTMLInputElement).value,
 			country: (shadow.querySelector('#country-input') as HTMLInputElement).value,
 			timezone: (shadow.querySelector('#timezone-input') as HTMLInputElement).value,
-			work_times: (shadow.querySelector('#work-input') as HTMLInputElement).value,
+			work_start: (shadow.querySelector('#work-start-input') as HTMLInputElement).value,
+			work_end: (shadow.querySelector('#work-end-input') as HTMLInputElement).value,
 			briefing_time: (shadow.querySelector('#brief-input') as HTMLInputElement).value,
 			quiet_hours_enabled: (shadow.querySelector('#quiet-hours-toggle') as HTMLInputElement).checked,
 			quiet_hours_start: (shadow.querySelector('#quiet-start-input') as HTMLInputElement).value,
@@ -425,9 +427,15 @@ export class UserCard extends HTMLElement {
 									<label class="label" for="timezone-input">${this.tr('timezone_label', 'Timezone')}</label>
 									<input id="timezone-input" type="text" placeholder="Europe/Berlin" value="${me.timezone || ''}">
 								</div>
-								<div class="field">
-									<label class="label" for="work-input">${this.tr('work_times', 'Work Times')}</label>
-									<input id="work-input" type="text" placeholder="${this.tr('ph_work_times', 'e.g. 09:00 - 17:00')}" value="${me.work_times || ''}">
+								<div class="field" style="grid-column: span 2; display: flex; gap: 1rem; align-items: center;">
+									<div class="field" style="flex: 1;">
+										<label class="label" for="work-start-input">${this.tr('work_start', 'Work Start')}</label>
+										<input id="work-start-input" type="time" value="${me.work_start || '09:00'}">
+									</div>
+									<div class="field" style="flex: 1;">
+										<label class="label" for="work-end-input">${this.tr('work_end', 'Work End')}</label>
+										<input id="work-end-input" type="time" value="${me.work_end || '17:00'}">
+									</div>
 								</div>
 								<div class="field">
 									<label class="label" for="brief-input">${this.tr('briefing', 'Briefing')}</label>
@@ -552,9 +560,9 @@ export class UserCard extends HTMLElement {
 									<div class="label">${this.tr('timezone_label', 'Timezone')}</div>
 									<div class="value">${me.timezone || 'UTC'}</div>
 								</div>
-								<div class="field">
+								<div class="field" style="grid-column: span 2;">
 									<div class="label">${this.tr('work_times', 'Work Times')}</div>
-									<div class="value">${me.work_times || '—'}</div>
+									<div class="value">${me.work_start || '09:00'} - ${me.work_end || '17:00'}</div>
 								</div>
 								<div class="field">
 									<div class="label">${this.tr('briefing', 'Briefing')}</div>
