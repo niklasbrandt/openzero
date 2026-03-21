@@ -24,10 +24,11 @@ import time
 
 def _log_safe(text: str) -> str:
 	"""Sanitize input for logging to prevent CRLF injection (CWE-117)."""
-	if not isinstance(text, str):
-		return str(text)
-	# Completely remove newlines and carriage returns to satisfy CodeQL
-	return text.replace("\n", "").replace("\r", "")[:255]
+	if not text:
+		return ""
+	# CodeQL py/log-injection: neutralize newlines and carriage returns.
+	# We use an explicit character filter for maximum certainty across all environments.
+	return "".join(c for c in str(text) if c not in ('\r', '\n'))[:255]
 
 async def get_project_tree(as_html: bool = True) -> str:
 	"""Recursively build a semantic text tree. Uses parallel requests and caching for speed."""
@@ -152,7 +153,7 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 	if board_name.lower() in {n.lower() for n in all_board_names}:
 		board_name = "Operator Board"
 
-	logger.debug("create_task requested -> Board: %r, List: %r, Title: %r", _log_safe(board_name), _log_safe(list_name), _log_safe(title))
+	logger.debug("create_task requested -> Board: %s, List: %s, Title: %s", _log_safe(board_name), _log_safe(list_name), _log_safe(title))
 	try:
 		from app.services.operator_board import operator_service
 		token = await get_planka_auth_token()
@@ -180,7 +181,7 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 						break
 
 			if not target_board:
-				logger.debug("Board %r not found. Defaulting to Operator Board.", _log_safe(board_name))
+				logger.debug("Board %s not found. Defaulting to Operator Board.", _log_safe(board_name))
 				_, b_id = await operator_service.initialize_board(client)
 				target_board = {"id": b_id, "name": "Operator Board"}
 
@@ -343,7 +344,7 @@ async def move_card(card_title_fragment: str, destination_list: str, board_name:
 	card_title_fragment = card_title_fragment.strip().strip('"\'').lower()
 	destination_list = destination_list.strip().strip('"\'')
 	board_name = board_name.strip().strip('"\'')
-	logger.debug("move_card: fragment=%s, dest=%s, board=%s", card_title_fragment, destination_list, board_name)
+	logger.debug("move_card: fragment=%s, dest=%s, board=%s", _log_safe(card_title_fragment), _log_safe(destination_list), _log_safe(board_name))
 	try:
 		token = await get_planka_auth_token()
 		headers = {"Authorization": f"Bearer {token}"}
