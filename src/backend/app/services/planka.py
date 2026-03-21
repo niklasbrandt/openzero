@@ -1,8 +1,8 @@
 """
 Planka Integration Service
 --------------------------
-This service provides the low-level bridge between the openZero backend and the 
-Planka Kanban instance. It handles API communication for project tree fetching 
+This service provides the low-level bridge between the openZero backend and the
+Planka Kanban instance. It handles API communication for project tree fetching
 and task creation.
 
 Key Responsibilities:
@@ -23,10 +23,11 @@ import asyncio
 import time
 
 def _log_safe(text: str) -> str:
-	"""Sanitize input for logging to prevent CRLF injection."""
+	"""Sanitize input for logging to prevent CRLF injection (CWE-117)."""
 	if not isinstance(text, str):
 		return str(text)
-	return text.replace("\n", "[\\n]").replace("\r", "[\\r]")[:255]
+	# Completely remove newlines and carriage returns to satisfy CodeQL
+	return text.replace("\n", "").replace("\r", "")[:255]
 
 async def get_project_tree(as_html: bool = True) -> str:
 	"""Recursively build a semantic text tree. Uses parallel requests and caching for speed."""
@@ -39,19 +40,19 @@ async def get_project_tree(as_html: bool = True) -> str:
 	try:
 		token = await get_planka_auth_token()
 		headers = {"Authorization": f"Bearer {token}"}
-		
+
 		async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, timeout=15.0, headers=headers) as client:
 			resp = await client.get("/api/projects")
 			resp.raise_for_status()
 			projects = resp.json().get("items", [])
-			
+
 			if not projects:
 				return "No active projects found."
 
 			# Fetch all project details in parallel
 			project_tasks = [client.get(f"/api/projects/{p['id']}") for p in projects]
 			project_resps = await asyncio.gather(*project_tasks)
-			
+
 			tree_lines = []
 			board_tasks = []
 			board_metadata = [] # Keep track of which board task belongs to which project/name
@@ -60,10 +61,10 @@ async def get_project_tree(as_html: bool = True) -> str:
 				p_resp.raise_for_status()
 				detail = p_resp.json()
 				boards = detail.get("included", {}).get("boards", [])
-				
+
 				project = projects[i]
 				project_id = project['id']
-				
+
 				project_name = project['name']
 
 				# Make project names clickable
@@ -72,9 +73,9 @@ async def get_project_tree(as_html: bool = True) -> str:
 				else:
 					# Use version without underscores for Telegram Markdown
 					p_display = f"**[{project_name}]({settings.BASE_URL}/api/dashboard/planka-redirect?targetprojectid={project_id})**"
-				
+
 				tree_lines.append((i, "project", p_display))
-				
+
 				for board in boards:
 					task = client.get(f"/api/boards/{board['id']}", params={"included": "lists,cards"})
 					board_tasks.append(task)
@@ -82,7 +83,7 @@ async def get_project_tree(as_html: bool = True) -> str:
 
 			# Fetch all board details in parallel
 			board_resps = await asyncio.gather(*board_tasks, return_exceptions=True)
-			
+
 			# Map board responses back to their projects
 			project_boards: dict[int, list[str]] = {i: [] for i in range(len(projects))}
 			for meta, b_resp in zip(board_metadata, board_resps):
@@ -93,13 +94,13 @@ async def get_project_tree(as_html: bool = True) -> str:
 				b_detail = b_resp.json()
 				lists = b_detail.get("included", {}).get("lists", [])
 				cards = b_detail.get("included", {}).get("cards", [])
-				
+
 				total_cards = len(cards)
 				from app.services.translations import get_done_keywords
 				_done_kw = get_done_keywords()
 				done_list_ids = [l['id'] for l in lists if l.get('name') and l['name'].lower() in _done_kw]
 				done_cards = len([c for c in cards if c['listId'] in done_list_ids])
-				
+
 				progress_pct = int((done_cards / total_cards) * 100) if total_cards > 0 else 0
 				board_id = meta["id"]
 				board_name = meta["name"]
@@ -111,7 +112,7 @@ async def get_project_tree(as_html: bool = True) -> str:
 					progress_str = f" ({progress_pct}%)" if total_cards > 0 else ""
 					# Use version without underscores for Telegram Markdown
 					line = f" • [{board_name}]({settings.BASE_URL}/api/dashboard/planka-redirect?targetboardid={board_id}){progress_str}"
-				
+
 				project_boards[meta["project_idx"]].append(line)
 
 			# Assemble final tree
@@ -156,7 +157,7 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 		from app.services.operator_board import operator_service
 		token = await get_planka_auth_token()
 		headers = {"Authorization": f"Bearer {token}"}
-		
+
 		async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, timeout=10.0, headers=headers) as client:
 			# 1. SPECIAL CASE: Operator Board
 			target_board = None
@@ -177,7 +178,7 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 					if match:
 						target_board = match
 						break
-			
+
 			if not target_board:
 				logger.debug("Board %r not found. Defaulting to Operator Board.", _log_safe(board_name))
 				_, b_id = await operator_service.initialize_board(client)
@@ -234,7 +235,7 @@ async def create_project(name: str, description: str = "") -> dict:
 		# Try with 'type' first, then 'isPublic' if it fails
 		try:
 			resp = await client.post("/api/projects", json={
-				"name": name, 
+				"name": name,
 				"description": description,
 				"type": "private"
 			})
@@ -244,7 +245,7 @@ async def create_project(name: str, description: str = "") -> dict:
 		except Exception as e:
 			logger.debug("create_project failed with 'type', retrying with 'isPublic': %s", e)
 			resp = await client.post("/api/projects", json={
-				"name": name, 
+				"name": name,
 				"description": description,
 				"isPublic": False
 			})
@@ -262,7 +263,7 @@ async def delete_project(project_id: str) -> bool:
 			det = await client.get(f"/api/projects/{project_id}")
 			det.raise_for_status()
 			boards = det.json().get("included", {}).get("boards", [])
-			
+
 			for board in boards:
 				bid = board["id"]
 				# Get board contents
@@ -276,7 +277,7 @@ async def delete_project(project_id: str) -> bool:
 					for l in lists:
 						await client.delete(f"/api/lists/{l['id']}")
 				await client.delete(f"/api/boards/{bid}")
-			
+
 			# Now delete the empty project
 			resp = await client.delete(f"/api/projects/{project_id}")
 			resp.raise_for_status()
@@ -295,7 +296,7 @@ async def find_and_delete_projects_by_prefix(prefix: str) -> list:
 		resp = await client.get("/api/projects")
 		resp.raise_for_status()
 		projects = resp.json().get("items", [])
-	
+
 	for p in projects:
 		if p.get("name", "").startswith(prefix):
 			if await delete_project(p["id"]):
@@ -314,7 +315,7 @@ async def create_board(project_id: str, name: str) -> dict:
 		resp.raise_for_status()
 		data = resp.json()
 		board = data.get("item") or data
-		
+
 		# Also create a default 'Inbox' list
 		try:
 			await client.post(f"/api/boards/{board['id']}/lists", json={
@@ -331,7 +332,7 @@ async def create_board(project_id: str, name: str) -> dict:
 				})
 			except Exception as e2:
 				logger.debug("Failed to create default Inbox list: %s", e2)
-		
+
 		return board
 
 async def move_card(card_title_fragment: str, destination_list: str, board_name: str = "") -> bool:
@@ -405,7 +406,7 @@ async def create_list(board_name: str, list_name: str, project_name: Optional[st
 		resp = await client.get("/api/projects", headers=headers)
 		resp.raise_for_status()
 		projects = resp.json().get("items", [])
-		
+
 		board_id = None
 		for proj in projects:
 			if project_name and proj["name"].lower() != project_name.lower():
@@ -419,11 +420,11 @@ async def create_list(board_name: str, list_name: str, project_name: Optional[st
 					break
 			if board_id:
 				break
-		
+
 		if not board_id:
 			logger.debug("create_list - board '%s' not found", board_name)
 			return None
-		
+
 		try:
 			resp = await client.post(f"/api/boards/{board_id}/lists", json={
 				"name": list_name,
