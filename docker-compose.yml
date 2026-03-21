@@ -342,6 +342,9 @@ services:
       - STORAGE_TYPE=opendal
       - OPENDAL_SCHEME=fs
       - OPENDAL_FS_ROOT=/app/api/storage
+      # Zero-Config Offline Reasoning (Local LLM Peering)
+      - OPENAI_API_BASE=http://llm-deep:8083/v1
+      - OPENAI_API_KEY=offline-openzero
     volumes:
       - dify_storage:/app/api/storage
       - ./agent:/app/agent:ro
@@ -370,6 +373,9 @@ services:
       - STORAGE_TYPE=opendal
       - OPENDAL_SCHEME=fs
       - OPENDAL_FS_ROOT=/app/api/storage
+      # Zero-Config Offline Reasoning (Local LLM Peering)
+      - OPENAI_API_BASE=http://llm-deep:8083/v1
+      - OPENAI_API_KEY=offline-openzero
     volumes:
       - dify_storage:/app/api/storage
     networks:
