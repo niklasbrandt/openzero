@@ -1,11 +1,9 @@
-import os
 import json
 import logging
-import re
 from pathlib import Path
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, List
 import httpx
-import yaml
+import yaml # type: ignore
 from pydantic import BaseModel
 from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception_type
 
@@ -69,7 +67,7 @@ class DifyClient:
                 data = res.json()
                 return data.get("app_id") or data.get("id")
         except Exception as e:
-            logger.error("Failed to import Dify DSL %s: %s", file_path.name, e)
+            logger.error("Failed to import Dify DSL %s: %s", file_path.name, str(e))
             raise
 
     @retry(
@@ -119,7 +117,7 @@ class DifyClient:
             res.raise_for_status()
             return res.json()
 
-    async def get_active_runs(self, cadence: str = None) -> bool:
+    async def get_active_runs(self, cadence: Optional[str] = None) -> bool:
         """
         Interrogates Dify execution status.
         Currently mocked as False due to absence of specific `/runs` filtering API in Dify OS, 

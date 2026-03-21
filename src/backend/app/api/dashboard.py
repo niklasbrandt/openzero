@@ -320,9 +320,8 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		return {"reply": "\n".join(msg_parts)}
 	elif msg.startswith("/crew "):
 		crew_id = msg.replace("/crew", "").strip()
-		from app.services.dify import dify_client, crew_registry
+		from app.services.dify import crew_registry
 		from app.services.timezone import get_current_timezone
-		import pytz
 		
 		# Proactive check before calling tool logic
 		config = crew_registry.get(crew_id)

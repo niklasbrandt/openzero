@@ -1,7 +1,6 @@
-import os
 import secrets
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Any
 from fastapi import APIRouter, Depends, HTTPException, Header, Response
 from pydantic import BaseModel
 import logging
@@ -12,7 +11,7 @@ from app.services.memory import store_memory
 
 logger = logging.getLogger(__name__)
 
-def _log_safe(text: str) -> str:
+def _log_safe(text: Any) -> str:
 	"""Sanitize input for logging to prevent CRLF injection (CWE-117)."""
 	if not text:
 		return ""
@@ -67,8 +66,8 @@ async def create_planka_task(payload: PlankaTaskPayload):
 
 		return {"status": "success", "path": path}
 	except Exception as e:
-		logger.error("Dify Planka Integration Failed: %s", _log_safe(e))
-		raise HTTPException(status_code=500, detail="Planka integration failed.")
+		logger.error("Dify Planka Integration Failed: %s", _log_safe(str(e)))
+		raise HTTPException(status_code=500, detail="Planka integration failed.") from e
 
 # --- Memory Write-Back ---
 
@@ -91,8 +90,8 @@ async def learn_memory(payload: MemoryPayload):
 		await store_memory(structured_content)
 		return {"status": "success", "message": "Memory committed to vector space."}
 	except Exception as e:
-		logger.error("Dify Memory Integration Failed: %s", _log_safe(e))
-		raise HTTPException(status_code=500, detail="Memory integration failed.")
+		logger.error("Dify Memory Integration Failed: %s", _log_safe(str(e)))
+		raise HTTPException(status_code=500, detail="Memory integration failed.") from e
 
 # --- Personal Context Bridge (Read-Only) ---
 
@@ -112,23 +111,21 @@ async def read_personal_file(filename: str):
 		base_dir = PERSONAL_DIR.resolve()
 
 		# 1. Normalize the path and verify it stays within bounds
-		# We use Path.parts to ensure no '..' components are present before joining
 		requested_path = Path(filename)
 		if requested_path.is_absolute() or ".." in requested_path.parts or filename.startswith(("/", "\\")):
-			# For Log Injection prevention: sanitize failing input before logging
-			logger.warning("Dangerous filename rejected: %s", _log_safe(filename))
+			logger.warning("Dangerous filename rejected: %s", _log_safe(str(filename)))
 			raise HTTPException(status_code=400, detail="Invalid filename format.")
 
 		try:
 			# 2. Join and resolve to handle any other environment-specific traversal
-			target_file = base_dir.joinpath(requested_path).resolve()
+			target_file = (base_dir / requested_path).resolve()
 
 			# 3. Final safety check: must be within base_dir and must not be base_dir itself
 			if not target_file.is_relative_to(base_dir) or target_file == base_dir:
-				logger.warning("Path traversal or boundary escape attempted: %s", _log_safe(filename))
+				logger.warning("Path traversal or boundary escape attempted: %s", _log_safe(str(filename)))
 				raise HTTPException(status_code=403, detail="Access denied. Path traversal detected.")
-		except Exception:
-			raise HTTPException(status_code=400, detail="Invalid path structure.")
+		except Exception as e:
+			raise HTTPException(status_code=400, detail="Invalid path structure.") from e
 
 		if not target_file.exists() or not target_file.is_file():
 			raise HTTPException(status_code=404, detail="File not found.")
@@ -169,5 +166,5 @@ async def read_personal_file(filename: str):
 	except HTTPException:
 		raise
 	except Exception as e:
-		logger.error("Personal file access error: %s", _log_safe(e))
-		raise HTTPException(status_code=500, detail="Internal server error extracting file.")
+		logger.error("Personal file access error: %s", _log_safe(str(e)))
+		raise HTTPException(status_code=500, detail="Internal server error extracting file.") from e

@@ -293,7 +293,7 @@ async def start_scheduler():
 			scheduler.add_job(
 				execute_crew_programmatically,
 				trigger,
-				args=[crew.id, f"Scheduled chron context window initialized."],
+				args=[crew.id, "Scheduled chron context window initialized."],
 				id=f"dify_crew_{crew.id}",
 				replace_existing=True,
 			)

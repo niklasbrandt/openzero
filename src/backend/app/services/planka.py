@@ -11,9 +11,9 @@ Key Responsibilities:
 - Ensuring robust connection handling across different environments.
 """
 
-from typing import Optional
 import httpx
 import logging
+from typing import Optional, Any
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -22,7 +22,7 @@ from app.services.planka_common import get_planka_auth_token, _tree_cache
 import asyncio
 import time
 
-def _log_safe(text: str) -> str:
+def _log_safe(text: Any) -> str:
 	"""Sanitize input for logging to prevent CRLF injection (CWE-117)."""
 	if not text:
 		return ""
@@ -127,7 +127,7 @@ async def get_project_tree(as_html: bool = True) -> str:
 			_tree_cache[cache_key] = (time.time(), result)
 			return result
 	except Exception as e:
-		logger.error("Planka project tree error: %s", e)
+		logger.error("Planka project tree error: %s", _log_safe(e))
 		return "Planka connection issue."
 
 async def create_task(board_name: str, list_name: str, title: str, description: str = "") -> Optional[str]:
@@ -225,7 +225,7 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 			logger.debug("Card created successfully: %s", path)
 			return path
 	except Exception as e:
-		logger.warning("create_task failed: %s", e)
+		logger.warning("create_task failed: %s", _log_safe(e))
 		return None
 
 async def create_project(name: str, description: str = "") -> dict:
@@ -244,7 +244,7 @@ async def create_project(name: str, description: str = "") -> dict:
 			data = resp.json()
 			return data.get("item") or data
 		except Exception as e:
-			logger.debug("create_project failed with 'type', retrying with 'isPublic': %s", e)
+			logger.debug("create_project failed with 'type', retrying with 'isPublic': %s", _log_safe(e))
 			resp = await client.post("/api/projects", json={
 				"name": name,
 				"description": description,
@@ -285,7 +285,7 @@ async def delete_project(project_id: str) -> bool:
 			logger.debug("Deleted Planka project %s", project_id)
 			return True
 		except Exception as e:
-			logger.error("delete_project failed for %s: %s", project_id, e)
+			logger.error("delete_project failed for %s: %s", _log_safe(project_id), _log_safe(e))
 			return False
 
 async def find_and_delete_projects_by_prefix(prefix: str) -> list:
@@ -423,7 +423,7 @@ async def create_list(board_name: str, list_name: str, project_name: Optional[st
 				break
 
 		if not board_id:
-			logger.debug("create_list - board '%s' not found", board_name)
+			logger.debug("create_list - board '%s' not found", _log_safe(board_name))
 			return None
 
 		try:
@@ -435,5 +435,5 @@ async def create_list(board_name: str, list_name: str, project_name: Optional[st
 			data = resp.json()
 			return data.get("item") or data
 		except Exception as e:
-			logger.debug("create_list failed: %s", e)
+			logger.debug("create_list failed: %s", _log_safe(e))
 			return None
