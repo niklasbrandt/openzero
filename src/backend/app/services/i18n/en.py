@@ -336,5 +336,13 @@ translations: dict[str, str] = {
 	"help_section_briefings": "Briefings & Reviews",
 	"help_section_memory": "Memory & Intelligence",
 	"help_section_missions": "Mission Control",
-	"help_section_system": "System"
+	"help_section_system": "System",
+	"project_name": "Project Name",
+	"board_name": "Board Name",
+	"list_today": "Today",
+	"list_this_week": "This Week",
+	"list_backlog": "Backlog",
+	"list_done": "Done",
+	"list_inbox": "Inbox"
 }
+
