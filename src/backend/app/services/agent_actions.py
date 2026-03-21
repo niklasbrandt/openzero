@@ -158,6 +158,10 @@ async def move_card(card_title_fragment: str, destination_list: str, board_name:
 		destination_list=destination_list,
 		board_name=board_name
 	)
+	if success:
+		return f"Card '{card_title_fragment}' moved to '{destination_list}'."
+	return f"Failed to find card matching '{card_title_fragment}' on board '{board_name}'."
+
 @tool
 async def run_crew(crew_id: str, user_input: str = "Execute autonomous cycle") -> str:
 	"""Trigger a specialized Dify crew or workflow by ID.
