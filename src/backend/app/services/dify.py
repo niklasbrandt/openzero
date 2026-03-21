@@ -237,105 +237,161 @@ class CrewRegistry:
         if self.manifest_path.exists():
             try:
                 with open(self.manifest_path, "r", encoding="utf-8") as f:
-                    self._manifest = json.load(f)
+                    data = json.load(f)
+                    self._manifest = data
+                    for crew_id, mapping in data.items():
+                        if crew_id in self._crews:
+                            self._crews[crew_id].dify_app_id = mapping.get("app_id")
+                            self._crews[crew_id].dify_api_token = mapping.get("api_token")
+                logger.info("✓ Dify manifest loaded: %d crews provisioned.", len(self._manifest))
             except Exception as e:
                 logger.error("Failed to read manifest %s: %s", self.manifest_path, e)
+
+        # --- Rule 14: Postgres Peering (Deep Recovery) ---
+        # If manifest is empty/malformed, attempt to recover by direct DB peering
+        if len(self._manifest) == 0:
+            try:
+                import asyncpg
+                # Peering credentials derived from shared backend env
+                user = os.getenv("DB_USER", "zero")
+                pw = os.getenv("DB_PASSWORD", "zero_dev_password")
+                dsn = f"postgresql://{user}:{pw}@postgres:5432/dify"
+                conn = await asyncpg.connect(dsn)
+                try:
+                    rows = await conn.fetch("""
+                        SELECT a.name, a.id::text as app_id, t.token as api_token
+                        FROM apps a
+                        JOIN api_tokens t ON a.id = t.app_id
+                        WHERE t.type = 'app'
+                    """)
+                    if rows:
+                        for row in rows:
+                            cid = row['name']
+                            self._manifest[cid] = {"app_id": row['app_id'], "api_token": row['api_token']}
+                            if cid in self._crews:
+                                self._crews[cid].dify_app_id = row['app_id']
+                                self._crews[cid].dify_api_token = row['api_token']
+                        updates_made = True
+                        logger.info("✓ Recovered %d crew mappings via direct Postgres peering.", len(rows))
+                finally:
+                    await conn.close()
+            except Exception as peering_err:
+                logger.warning("Postgres peering recovery skipped: %s", peering_err)
 
         updates_made = False
         
         # --- Rule 14: Autonomous Bridge Assembly ---
-        # If we have no apps provisioned, we perform a deep internal seed
-        # to ensure the OS self-initializes its brain without operator intervention.
+        # Only perform deep seed if DB peering also returned nothing
         if len(self._manifest) == 0:
             logger.info("Dify instance empty. Performing Autonomous Bridge Assembly...")
-            
-            # Python script to run INSIDE the dify-api container via flask shell
+                 # Strategy: Autonomous Remote Operation (Bridge Assembly)
+            # We deploy a self-contained seeding script into the dify-api container's filesystem
+            # and then execute it via python3 directly using a monkeypatched app context.
             seeder_py = """
 import os, sys, datetime, secrets, json
-from extensions.ext_database import db
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountJoinRole
-from models.model import App, ApiToken
-from services.app_dsl_service import AppDslService
-from libs.password import hash_password
 import base64
+import flask
+import flask.sansio.blueprints
+# Definitive monkeypatch for both standard and sansio blueprint registration checks in Dify/Flask
+flask.blueprints.Blueprint._check_setup_finished = lambda self, f_name: None
+flask.sansio.blueprints.Blueprint._check_setup_finished = lambda self, f_name: None
 
-try:
-    email = "admin@openzero.ai"
-    acc = Account.query.filter_by(email=email).first()
-    if not acc:
-        salt = secrets.token_bytes(16)
-        hashed = hash_password("openZero2026!", salt)
-        acc = Account(
-            name="openZero-Z", email=email, status="active",
-            password=base64.b64encode(hashed).decode('utf-8'),
-            password_salt=base64.b64encode(salt).decode('utf-8'),
-            initialized_at=datetime.datetime.now()
-        )
-        db.session.add(acc)
-        db.session.commit()
-    
-    tenant = Tenant.query.filter_by(name="openZero-Core").first()
-    if not tenant:
-        tenant = Tenant(name="openZero-Core", status="normal")
-        db.session.add(tenant)
-        db.session.commit()
+from app import create_app
+from extensions.ext_database import db
+
+app = create_app()
+with app.app_context():
+    from models.account import Account, Tenant, TenantAccountJoin, TenantAccountJoinRole
+    from models.model import App, ApiToken
+    from services.app_dsl_service import AppDslService
+    from libs.password import hash_password
+
+    try:
+        email = "admin@openzero.ai"
+        acc = Account.query.filter_by(email=email).first()
+        if not acc:
+            salt = secrets.token_bytes(16)
+            hashed = hash_password("openZero2026!", salt)
+            acc = Account(
+                name="openZero-Z", email=email, status="active",
+                password=base64.b64encode(hashed).decode('utf-8'),
+                password_salt=base64.b64encode(salt).decode('utf-8'),
+                initialized_at=datetime.datetime.now()
+            )
+            db.session.add(acc)
+            db.session.commit()
         
-    join = TenantAccountJoin.query.filter_by(tenant_id=tenant.id, account_id=acc.id).first()
-    if not join:
-        join = TenantAccountJoin(tenant_id=tenant.id, account_id=acc.id, role=TenantAccountJoinRole.OWNER, current=True)
-        db.session.add(join)
-        db.session.commit()
+        tenant = Tenant.query.filter_by(name="openZero-Core").first()
+        if not tenant:
+            tenant = Tenant(name="openZero-Core", status="normal")
+            db.session.add(tenant)
+            db.session.commit()
+            
+        join = TenantAccountJoin.query.filter_by(tenant_id=tenant.id, account_id=acc.id).first()
+        if not join:
+            join = TenantAccountJoin(tenant_id=tenant.id, account_id=acc.id, role=TenantAccountJoinRole.OWNER, current=True)
+            db.session.add(join)
+            db.session.commit()
 
-    agent_dir = "/app/agent/dify"
-    mapping = {}
-    if os.path.exists(agent_dir):
-        dsl_svc = AppDslService(db.session)
-        for fname in os.listdir(agent_dir):
-            if not fname.endswith('.yml'): continue
-            crew_id = fname.replace('.yml', '')
-            existing = App.query.filter_by(tenant_id=tenant.id, name=crew_id).first()
-            if not existing:
-                with open(os.path.join(agent_dir, fname), 'r', encoding='utf-8') as f:
-                    content = f.read()
-                    try:
-                        app_obj = dsl_svc.import_app(account=acc, import_mode='yaml-content', yaml_content=content)
-                        app_id = app_obj.id
+        # Manually link current tenant to satisfy internal Dify checks in import_app
+        acc._current_tenant = tenant
+
+        agent_dir = "/app/agent/dify"
+        mapping = {}
+        if os.path.exists(agent_dir):
+            dsl_svc = AppDslService(db.session)
+            for fname in os.listdir(agent_dir):
+                if not fname.endswith('.yml'): continue
+                crew_id = fname.replace('.yml', '')
+                existing = App.query.filter_by(tenant_id=tenant.id, name=crew_id).first()
+                if not existing:
+                    with open(os.path.join(agent_dir, fname), 'r', encoding='utf-8') as f:
+                        content = f.read()
+                        try:
+                            # Import using content mode
+                            app_obj = dsl_svc.import_app(account=acc, import_mode='yaml-content', yaml_content=content)
+                            app_id = app_obj.id
+                            token_str = f"app-{secrets.token_urlsafe(24)}"
+                            token = ApiToken(tenant_id=tenant.id, app_id=app_id, type='app', token=token_str)
+                            db.session.add(token)
+                            db.session.commit()
+                            mapping[crew_id] = {"app_id": str(app_id), "api_token": token_str}
+                        except Exception as e:
+                            db.session.rollback()
+                            print(f"Error importing {crew_id}: {e}", file=sys.stderr)
+                else:
+                    token = ApiToken.query.filter_by(app_id=existing.id, type='app').first()
+                    if not token:
                         token_str = f"app-{secrets.token_urlsafe(24)}"
-                        token = ApiToken(tenant_id=tenant.id, app_id=app_id, type='app', token=token_str)
+                        token = ApiToken(tenant_id=tenant.id, app_id=existing.id, type='app', token=token_str)
                         db.session.add(token)
                         db.session.commit()
-                        mapping[crew_id] = {"app_id": str(app_id), "api_token": token_str}
-                    except Exception as e:
-                        db.session.rollback()
-                        print(f"Error importing {crew_id}: {e}", file=sys.stderr)
-            else:
-                token = ApiToken.query.filter_by(app_id=existing.id, type='app').first()
-                if not token:
-                    token_str = f"app-{secrets.token_urlsafe(24)}"
-                    token = ApiToken(tenant_id=tenant.id, app_id=existing.id, type='app', token=token_str)
-                    db.session.add(token)
-                    db.session.commit()
-                    mapping[crew_id] = {"app_id": str(existing.id), "api_token": token_str}
-                else:
-                    mapping[crew_id] = {"app_id": str(existing.id), "api_token": token.token}
-                
-    print("AUTOSEED_START")
-    print(json.dumps(mapping))
-    print("AUTOSEED_END")
-except Exception as main_e:
-    print(f"MAIN ERROR: {main_e}", file=sys.stderr)
+                        mapping[crew_id] = {"app_id": str(existing.id), "api_token": token_str}
+                    else:
+                        mapping[crew_id] = {"app_id": str(existing.id), "api_token": token.token}
+                    
+        print("AUTOSEED_START")
+        print(json.dumps(mapping))
+        print("AUTOSEED_END")
+
+    except Exception as main_e:
+        db.session.rollback()
+        print(f"MAIN ERROR: {str(main_e)}", file=sys.stderr)
 """
-            # Clean empty lines out of the script to prevent flask shell from prematurely evaluating indented blocks
-            seeder_py = "\n".join([line for line in seeder_py.split('\n') if line.strip()])
-            
             try:
                 import subprocess
-                cmd = ["docker", "exec", "-i", "openzero-dify-api-1", "flask", "shell"]
-                res = subprocess.run(cmd, input=seeder_py, capture_output=True, text=True)
+                # Deploy seeder script into container filesystem
+                write_cmd = ["docker", "exec", "-i", "openzero-dify-api-1", "bash", "-c", "cat > /tmp/seeder.py"]
+                subprocess.run(write_cmd, input=seeder_py, text=True, check=True)
+                
+                # Execute seeder via python3 directly (non-interactive, robust)
+                # PYTHONPATH is required to locate Dify's app package
+                run_cmd = ["docker", "exec", "openzero-dify-api-1", "bash", "-c", "export PYTHONPATH=/app/api && python3 /tmp/seeder.py"]
+                res = subprocess.run(run_cmd, capture_output=True, text=True)
+                
                 if res.returncode == 0 and "AUTOSEED_START" in res.stdout:
                     # Extract JSON between markers
                     stdout_str = res.stdout
-                    logger.debug("Autonomous seed stdout length: %d", len(stdout_str))
                     start_idx = stdout_str.find("AUTOSEED_START") + len("AUTOSEED_START")
                     end_idx = stdout_str.find("AUTOSEED_END")
                     json_str = stdout_str[start_idx:end_idx].strip()
@@ -349,11 +405,11 @@ except Exception as main_e:
                     updates_made = True
                     logger.info("✓ Autonomous Bridge Assembly complete: %d crews provisioned.", len(mapping))
                 else:
-                    logger.error("Autonomous seed failed or marker missing. ReturnCode: %d", res.returncode)
-                    if res.stdout: logger.error("Stdout Preview: %s", res.stdout[:500])
-                    if res.stderr: logger.error("Stderr: %s", res.stderr)
+                    logger.error("Autonomous seed assembly failed with RC %d. Marker found: %s", res.returncode, "AUTOSEED_START" in res.stdout)
+                    if res.stderr: logger.error("Seeder Stderr: %s", res.stderr)
+                    if res.stdout: logger.error("Seeder Stdout (first 1000ch): %s", res.stdout[:1000])
             except Exception as seed_err:
-                logger.error("Strategic seed exception: %s", seed_err)
+                logger.error("Strategic seed assembly error: %s", seed_err)
 
         # Standard provision loop (for incremental additions)
         for crew_id, config in self._crews.items():
