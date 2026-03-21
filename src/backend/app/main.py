@@ -73,6 +73,19 @@ async def lifespan(app: FastAPI):
                 if not res.fetchone():
                     await conn.execute(text(alter_sql))
 
+            # 7. Add work time columns to 'people' if not exists
+            _people_work_cols = {
+                "work_start": "ALTER TABLE people ADD COLUMN work_start VARCHAR DEFAULT '09:00'",
+                "work_end":   "ALTER TABLE people ADD COLUMN work_end VARCHAR DEFAULT '17:00'",
+            }
+            for col, alter_sql in _people_work_cols.items():
+                res = await conn.execute(text(
+                    "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_name='people' AND column_name=:col"
+                ), {"col": col})
+                if not res.fetchone():
+                    await conn.execute(text(alter_sql))
+
         logging.info("✓ Postgres tables initialized and migrated.")
     except Exception as e:
         logging.warning("⚠ Warning: Could not connect to Postgres: %s", e)

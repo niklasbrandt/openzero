@@ -319,7 +319,10 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 			)
 		return {"reply": "\n".join(msg_parts)}
 	elif msg.startswith("/crew "):
-		crew_id = msg.replace("/crew", "").strip()
+		parts = msg.split(" ", 2)
+		crew_id = parts[1]
+		user_input = parts[2] if len(parts) > 2 else "Manual operator trigger"
+		
 		from app.services.dify import crew_registry
 		from app.services.timezone import get_current_timezone
 		
@@ -332,7 +335,7 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 			
 		# Call run_crew tool logic manually
 		from app.services.agent_actions import run_crew
-		res = await run_crew.ainvoke({"crew_id": crew_id, "user_input": "Manual operator trigger via /run"})
+		res = await run_crew.ainvoke({"crew_id": crew_id, "user_input": user_input})
 		
 		from app.models.db import save_global_message
 		await save_global_message("dashboard", "z", res, model="operator_override")
@@ -446,8 +449,8 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 				"• `/learn <topic>` — Commit a fact to memory\n"
 				"• `/unlearn <query>` — Remove a fact from the vault\n\n"
 				f"**{ss}:**\n"
-				"• `/personal` — Show personal context loaded from /personal\n"
-				"• `/skills` — Show agent skill modules loaded from /agent\n"
+				"• `/personal` — Show personal context Z loaded from /personal\n"
+				"• `/agent` — Show agent skill modules loaded from /agent\n"
 				"• `/status` — Deep integration health check\n"
 				"• `/purge` — Permanently wipe all semantic memory\n\n"
 				"Type any message to chat with Z directly."
@@ -566,7 +569,7 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		from app.services.personal_context import get_personal_context_debug_report
 		report = get_personal_context_debug_report()
 		return {"reply": report}
-	elif msg == "/skills":
+	elif msg == "/agent":
 		from app.services.agent_context import get_agent_skills_debug_report
 		report = get_agent_skills_debug_report()
 		return {"reply": report}
@@ -751,7 +754,7 @@ async def get_protocols():
 		{"name": "/learn", "description": "Learn Fact: Commit a specific fact to long-term memory."},
 		{"name": "/unlearn", "description": "Forget Fact: Remove a specific vector from the knowledge vault."},
 		{"name": "/personal", "description": "Personal Context: Inspect loaded user profile & mission data."},
-		{"name": "/skills", "description": "Agent Skills: Inspect loaded modular expertise definitions."},
+		{"name": "/agent", "description": "Agent Skills: Inspect loaded modular expertise definitions."},
 		{"name": "/status", "description": "Health Check: Deep diagnostic report of all integrations."},
 		{"name": "/purge", "description": "Factory Reset: Permanently wipe ALL semantic memory."},
 	]
@@ -1433,6 +1436,8 @@ class PersonCreate(BaseModel):
 	town: Optional[str] = None
 	country: Optional[str] = None
 	work_times: Optional[str] = None
+	work_start: Optional[str] = "09:00"
+	work_end: Optional[str] = "17:00"
 	briefing_time: Optional[str] = "08:00"
 	quiet_hours_enabled: Optional[bool] = True
 	quiet_hours_start: Optional[str] = "00:00"
@@ -1465,6 +1470,8 @@ async def update_identity(person: PersonCreate, db: AsyncSession = Depends(get_d
 	me.town = person.town
 	me.country = person.country
 	me.work_times = person.work_times
+	me.work_start = person.work_start
+	me.work_end = person.work_end
 	me.briefing_time = person.briefing_time
 	me.quiet_hours_enabled = person.quiet_hours_enabled
 	me.quiet_hours_start = person.quiet_hours_start
@@ -1519,6 +1526,8 @@ async def create_person(person: PersonCreate, db: AsyncSession = Depends(get_db)
 		town=person.town,
 		country=person.country,
 		work_times=person.work_times,
+		work_start=person.work_start,
+		work_end=person.work_end,
 		briefing_time=person.briefing_time,
 		quiet_hours_enabled=person.quiet_hours_enabled,
 		quiet_hours_start=person.quiet_hours_start,
@@ -1556,6 +1565,8 @@ async def update_person(person_id: int, person: PersonCreate, db: AsyncSession =
 	db_p.town = person.town
 	db_p.country = person.country
 	db_p.work_times = person.work_times
+	db_p.work_start = person.work_start
+	db_p.work_end = person.work_end
 	db_p.briefing_time = person.briefing_time
 	db_p.quiet_hours_enabled = person.quiet_hours_enabled
 	db_p.quiet_hours_start = person.quiet_hours_start
