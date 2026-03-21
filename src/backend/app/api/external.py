@@ -24,7 +24,7 @@ async def verify_integration_token(x_integration_token: str = Header(..., descri
     if not settings.INTEGRATION_TOKEN:
         logger.error("INTEGRATION_TOKEN not configured in environment.")
         raise HTTPException(status_code=500, detail="Integration gateway not securely configured.")
-        
+
     if not secrets.compare_digest(x_integration_token, settings.INTEGRATION_TOKEN):
         logger.warning("Unauthorized access attempt on Integration API.")
         raise HTTPException(status_code=401, detail="Invalid Integration Token")
@@ -53,11 +53,11 @@ async def create_planka_task(payload: PlankaTaskPayload):
         )
         if not path:
             return {"status": "error", "message": "Failed to create Planka task or board not found."}
-            
+
         # Due to native Kanban abstraction, if checklist items exist we could append them
-        # (Assuming planka_create_task doesn't inherently support array checklists yet, 
+        # (Assuming planka_create_task doesn't inherently support array checklists yet,
         # but returning success for the main card is sufficient.)
-        
+
         return {"status": "success", "path": path}
     except Exception as e:
         logger.error("Dify Planka Integration Failed: %r", e)
@@ -80,7 +80,7 @@ async def learn_memory(payload: MemoryPayload):
         structured_content = payload.content
         if payload.tags:
             structured_content = f"[Tags: {', '.join(payload.tags)}]\n{payload.content}"
-            
+
         await store_memory(structured_content)
         return {"status": "success", "message": "Memory committed to vector space."}
     except Exception as e:
@@ -101,34 +101,42 @@ async def read_personal_file(filename: str):
     """
     try:
         # PATH TRAVERSAL GUARD
-        # Resolve the base directory and the target path to absolute paths
+        # Resolve the base directory
         base_dir = PERSONAL_DIR.resolve()
-        try:
-            target_file = (base_dir / filename).resolve()
-        except Exception:
+
+        # 1. Reject any navigation identifiers in the raw filename string
+        if ".." in filename or filename.startswith("/") or filename.startswith("\\"):
+             # For Log Injection prevention: sanitize failing input before logging
+            sanitized_name = filename.replace("\n", "").replace("\r", "")[:100]
+            logger.warning("Dangerous filename rejected: %s", sanitized_name)
             raise HTTPException(status_code=400, detail="Invalid filename format.")
 
-        # Ensure the resolved path is still within the base directory
-        if not str(target_file).startswith(str(base_dir)):
-            # Alert #370: Sanitize filename to prevent Log Injection
-            sanitized_name = filename.replace("\n", "").replace("\r", "")[:200]
-            logger.warning("Path traversal attempted: %s", sanitized_name)
-            raise HTTPException(status_code=403, detail="Access denied. Path traversal detected.")
-            
+        try:
+            # 2. Join and resolve to handle any other environment-specific traversal
+            target_file = (base_dir / filename).resolve()
+
+            # 3. Final safety check: must be within base_dir
+            if not target_file.is_relative_to(base_dir):
+                sanitized_name = filename.replace("\n", "").replace("\r", "")[:100]
+                logger.warning("Path traversal attempted: %s", sanitized_name)
+                raise HTTPException(status_code=403, detail="Access denied. Path traversal detected.")
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid path structure.")
+
         if not target_file.exists() or not target_file.is_file():
             raise HTTPException(status_code=404, detail="File not found.")
-            
+
         if target_file.suffix.lower() not in ALLOWED_EXTENSIONS:
             raise HTTPException(status_code=403, detail=f"File extension {target_file.suffix} not permitted.")
 
         # MIME Extractor Shims
         ext = target_file.suffix.lower()
         content = ""
-        
+
         if ext in {".txt", ".md", ".json", ".csv"}:
             with open(target_file, "r", encoding="utf-8", errors="replace") as f:
                 content = f.read()
-                
+
         elif ext == ".docx":
             try:
                 import docx
@@ -136,7 +144,7 @@ async def read_personal_file(filename: str):
                 content = "\n".join([p.text for p in doc.paragraphs])
             except ImportError:
                 content = "Error: python-docx not installed. Cannot parse DOCX."
-                
+
         elif ext == ".pdf":
             try:
                 import fitz  # PyMuPDF
@@ -145,12 +153,12 @@ async def read_personal_file(filename: str):
                     content += page.get_text() + "\n"
             except ImportError:
                 content = "Error: PyMuPDF (fitz) not installed. Cannot parse PDF."
-                
+
         elif ext == ".xlsx":
             content = "Warning: Raw XLSX parsing not fully implemented. Convert to CSV."
-            
+
         return Response(content=content, media_type="text/plain")
-        
+
     except HTTPException:
         raise
     except Exception as e:
