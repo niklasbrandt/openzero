@@ -9,6 +9,53 @@ from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_excep
 
 logger = logging.getLogger(__name__)
 
+# Canonical Dify Agent DSL Blueprint for openZero Zero-Config Provisioning
+BOOTSTRAP_DSL_TEMPLATE = """
+app:
+  description: '{description}'
+  icon: 🤖
+  icon_background: '#14B8A6'
+  mode: agent-chat
+  name: '{name}'
+  use_icon_as_answer_icon: false
+kind: app
+version: 0.1.2
+workflow:
+  features:
+    opening_statement: '🚀 Crew **{name}** initialized. Tactical reasoning budget: 5 iterations.'
+    retriever_resource: {{enabled: false}}
+    sensitive_word_avoidance: {{enabled: false}}
+    speech_to_text: {{enabled: false}}
+    suggested_questions: []
+    suggested_questions_after_answer: {{enabled: false}}
+    text_to_speech: {{enabled: false}}
+  nodes:
+  - data:
+      agent_mode:
+        enabled: true
+        options:
+          max_iteration: 5
+          strategy: function_call
+        tools: []
+      model:
+        completion_params: {{stop: [], temperature: 0.7, top_p: 1}}
+        name: gpt-4o
+        provider: openai
+      prompt_template:
+        system: |
+          {instructions}
+          
+          SYSTEM_PROTOCOL:
+          1. You are an autonomous Crew within the openZero ecosystem.
+          2. Execute the above mission with extreme precision.
+          3. Your results will be integrated into the Operator's universal context.
+        user: '{{{{query}}}}'
+      variables: []
+    id: '1742574620515'
+    position: {{x: 80, y: 80}}
+    type: custom
+"""
+
 class CrewConfig(BaseModel):
     id: str
     name: str
@@ -26,6 +73,8 @@ class CrewConfig(BaseModel):
     briefing_dom: Optional[str] = None
     briefing_months: Optional[str] = None
     characters: Optional[List[Dict[str, str]]] = None
+    # --- Auto-Provisioning Extension ---
+    dify_api_token: Optional[str] = None  # Per-app Service API key
 
 
 class DifyClient:
@@ -57,7 +106,6 @@ class DifyClient:
             
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
-                # Based on standard Dify app import specs
                 with open(file_path, "rb") as f:
                     file_payload = {"file": (file_path.name, f, "application/x-yaml")}
                     res = await client.post(
@@ -67,55 +115,54 @@ class DifyClient:
                     )
                 res.raise_for_status()
                 data = res.json()
-                return data.get("app_id") or data.get("id")
+                return data.get("id") or data.get("app", {}).get("id", "")
         except Exception as e:
-            logger.error("Failed to import Dify DSL %s: %s", file_path.name, str(e))
-            raise
+            logger.error("Dify import failed: %s", e)
+            return ""
 
     @retry(
         stop=stop_after_attempt(3), 
         wait=wait_exponential(multiplier=1, min=2, max=10), 
         retry=retry_if_exception_type((httpx.ConnectError, httpx.TimeoutException))
     )
-    async def run_workflow(self, app_id: str, inputs: dict) -> dict:
-        """Executes a blocking workflow on Dify."""
-        async with httpx.AsyncClient(timeout=300.0) as client:
-            payload = {
-                "inputs": inputs,
-                "response_mode": "blocking",
-                "user": "zero-system"
-            }
-            # Note: Dify execution endpoint is typically /workflows/run
-            res = await client.post(
-                f"{self.base_url}/workflows/run", 
-                headers=self._headers(),
-                json=payload
-            )
+    async def run_agent(self, app_id: str, user_input: str, user_id: str = None, inputs: dict = None, api_key: str = None) -> dict:
+        """Runs an autonomous agent cycle via the Service API."""
+        target_key = api_key or self.api_key
+        if not target_key:
+             raise ValueError("Dify API key missing (autonomous provisioning pending?)")
+        
+        headers = {
+            "Authorization": f"Bearer {target_key}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "inputs": inputs or {},
+            "query": user_input,
+            "response_mode": "blocking",
+            "user": user_id or "operator"
+        }
+        async with httpx.AsyncClient(timeout=90.0) as client:
+            res = await client.post(f"{self.base_url}/chat-messages", headers=headers, json=payload)
             res.raise_for_status()
             return res.json()
 
-    @retry(
-        stop=stop_after_attempt(3), 
-        wait=wait_exponential(multiplier=1, min=2, max=10), 
-        retry=retry_if_exception_type((httpx.ConnectError, httpx.TimeoutException))
-    )
-    async def run_agent(self, app_id: str, query: str, conversation_id: Optional[str] = None, inputs: Optional[dict] = None) -> dict:
-        """Executes a Chat/Agent invocation on Dify."""
-        async with httpx.AsyncClient(timeout=300.0) as client:
-            payload = {
-                "inputs": inputs or {},
-                "query": query,
-                "response_mode": "blocking",
-                "user": "zero-system"
-            }
-            if conversation_id:
-                payload["conversation_id"] = conversation_id
-                
-            res = await client.post(
-                f"{self.base_url}/chat-messages", 
-                headers=self._headers(),
-                json=payload
-            )
+    async def run_workflow(self, app_id: str, inputs: dict = None, user_id: str = None, api_key: str = None) -> dict:
+        """Runs a deterministic workflow via the Service API."""
+        target_key = api_key or self.api_key
+        if not target_key:
+             raise ValueError("Dify API key missing (autonomous provisioning pending?)")
+
+        headers = {
+            "Authorization": f"Bearer {target_key}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "inputs": inputs or {},
+            "response_mode": "blocking",
+            "user": user_id or "operator"
+        }
+        async with httpx.AsyncClient(timeout=90.0) as client:
+            res = await client.post(f"{self.base_url}/workflows/run", headers=headers, json=payload)
             res.raise_for_status()
             return res.json()
 
@@ -181,8 +228,9 @@ class CrewRegistry:
 
     async def provision(self) -> None:
         """Idempotent auto-provisioning engine matching local DSLs to Dify Cloud App IDs."""
-        if not self.client.api_key or "require_me" in self.client.api_key:
-            logger.warning("Dify API key missing or default. Skipping auto-provisioning.")
+        # Check Dify health first
+        if not await self.client.health_check():
+            logger.warning("Dify cluster unreachable. Deferring provisioning.")
             return
 
         # Load known mappings
@@ -194,29 +242,137 @@ class CrewRegistry:
                 logger.error("Failed to read manifest %s: %s", self.manifest_path, e)
 
         updates_made = False
+        
+        # --- Rule 14: Autonomous Bridge Assembly ---
+        # If we have no apps provisioned, we perform a deep internal seed
+        # to ensure the OS self-initializes its brain without operator intervention.
+        if len(self._manifest) == 0:
+            logger.info("Dify instance empty. Performing Autonomous Bridge Assembly...")
+            
+            # Python script to run INSIDE the dify-api container via flask shell
+            seeder_py = """
+import os, sys, datetime, secrets, json
+from extensions.ext_database import db
+from models.account import Account, Tenant, TenantAccountJoin, TenantAccountJoinRole
+from models.model import App, ApiToken
+from services.app_dsl_service import AppDslService
+from libs.password import hash_password
+import base64
 
-        for crew_id, config in self._crews.items():
-            mapped_uuid = self._manifest.get(crew_id)
-            if not mapped_uuid:
-                logger.info("Crew '%s' lacks Dify mapping. Triggering Auto-Provisioning...", crew_id)
-                dsl_path = self.agent_dir / "dify" / config.dify_dsl_file
-                try:
-                    new_id = await self.client.import_dsl(dsl_path)
-                    if new_id:
-                        self._manifest[crew_id] = new_id
-                        config.dify_app_id = new_id
-                        updates_made = True
-                        logger.info("Successfully provisioned Crew '%s' with App UUID %s", crew_id, new_id)
-                except Exception as e:
-                    logger.error("Failed to provision %s: %s", crew_id, e)
+try:
+    email = "admin@openzero.ai"
+    acc = Account.query.filter_by(email=email).first()
+    if not acc:
+        salt = secrets.token_bytes(16)
+        hashed = hash_password("openZero2026!", salt)
+        acc = Account(
+            name="openZero-Z", email=email, status="active",
+            password=base64.b64encode(hashed).decode('utf-8'),
+            password_salt=base64.b64encode(salt).decode('utf-8'),
+            initialized_at=datetime.datetime.now()
+        )
+        db.session.add(acc)
+        db.session.commit()
+    
+    tenant = Tenant.query.filter_by(name="openZero-Core").first()
+    if not tenant:
+        tenant = Tenant(name="openZero-Core", status="normal")
+        db.session.add(tenant)
+        db.session.commit()
+        
+    join = TenantAccountJoin.query.filter_by(tenant_id=tenant.id, account_id=acc.id).first()
+    if not join:
+        join = TenantAccountJoin(tenant_id=tenant.id, account_id=acc.id, role=TenantAccountJoinRole.OWNER, current=True)
+        db.session.add(join)
+        db.session.commit()
+
+    agent_dir = "/app/agent/dify"
+    mapping = {}
+    if os.path.exists(agent_dir):
+        dsl_svc = AppDslService(db.session)
+        for fname in os.listdir(agent_dir):
+            if not fname.endswith('.yml'): continue
+            crew_id = fname.replace('.yml', '')
+            existing = App.query.filter_by(tenant_id=tenant.id, name=crew_id).first()
+            if not existing:
+                with open(os.path.join(agent_dir, fname), 'r', encoding='utf-8') as f:
+                    content = f.read()
+                    try:
+                        app_obj = dsl_svc.import_app(account=acc, import_mode='yaml-content', yaml_content=content)
+                        app_id = app_obj.id
+                        token_str = f"app-{secrets.token_urlsafe(24)}"
+                        token = ApiToken(tenant_id=tenant.id, app_id=app_id, type='app', token=token_str)
+                        db.session.add(token)
+                        db.session.commit()
+                        mapping[crew_id] = {"app_id": str(app_id), "api_token": token_str}
+                    except Exception as e:
+                        db.session.rollback()
+                        print(f"Error importing {crew_id}: {e}", file=sys.stderr)
             else:
-                config.dify_app_id = mapped_uuid
+                token = ApiToken.query.filter_by(app_id=existing.id, type='app').first()
+                if not token:
+                    token_str = f"app-{secrets.token_urlsafe(24)}"
+                    token = ApiToken(tenant_id=tenant.id, app_id=existing.id, type='app', token=token_str)
+                    db.session.add(token)
+                    db.session.commit()
+                    mapping[crew_id] = {"app_id": str(existing.id), "api_token": token_str}
+                else:
+                    mapping[crew_id] = {"app_id": str(existing.id), "api_token": token.token}
+                
+    print("AUTOSEED_START")
+    print(json.dumps(mapping))
+    print("AUTOSEED_END")
+except Exception as main_e:
+    print(f"MAIN ERROR: {main_e}", file=sys.stderr)
+"""
+            # Clean empty lines out of the script to prevent flask shell from prematurely evaluating indented blocks
+            seeder_py = "\n".join([line for line in seeder_py.split('\n') if line.strip()])
+            
+            try:
+                import subprocess
+                cmd = ["docker", "exec", "-i", "openzero-dify-api-1", "flask", "shell"]
+                res = subprocess.run(cmd, input=seeder_py, capture_output=True, text=True)
+                if res.returncode == 0 and "AUTOSEED_START" in res.stdout:
+                    # Extract JSON between markers
+                    stdout_str = res.stdout
+                    logger.debug("Autonomous seed stdout length: %d", len(stdout_str))
+                    start_idx = stdout_str.find("AUTOSEED_START") + len("AUTOSEED_START")
+                    end_idx = stdout_str.find("AUTOSEED_END")
+                    json_str = stdout_str[start_idx:end_idx].strip()
+                    
+                    mapping = json.loads(json_str)
+                    for crew_id, data in mapping.items():
+                        self._manifest[crew_id] = data
+                        if crew_id in self._crews:
+                            self._crews[crew_id].dify_app_id = data["app_id"]
+                            self._crews[crew_id].dify_api_token = data["api_token"]
+                    updates_made = True
+                    logger.info("✓ Autonomous Bridge Assembly complete: %d crews provisioned.", len(mapping))
+                else:
+                    logger.error("Autonomous seed failed or marker missing. ReturnCode: %d", res.returncode)
+                    if res.stdout: logger.error("Stdout Preview: %s", res.stdout[:500])
+                    if res.stderr: logger.error("Stderr: %s", res.stderr)
+            except Exception as seed_err:
+                logger.error("Strategic seed exception: %s", seed_err)
+
+        # Standard provision loop (for incremental additions)
+        for crew_id, config in self._crews.items():
+            mapped_data = self._manifest.get(crew_id)
+            if not mapped_data:
+                logger.info("Crew '%s' lacks Dify mapping. Waiting for next bootstrapping cycle or manual provisioning.", crew_id)
+                pass
+            else:
+                if isinstance(mapped_data, dict):
+                    config.dify_app_id = mapped_data.get("app_id")
+                    config.dify_api_token = mapped_data.get("api_token", "")
+                else:
+                    config.dify_app_id = mapped_data
 
         # Persist new UUIDs to disk
         if updates_made:
             with open(self.manifest_path, "w", encoding="utf-8") as f:
                 json.dump(self._manifest, f, indent=4)
-                logger.info("Persisted updated .dify_app_ids.json manifest to disk.")
+                logger.info("Persisted updated .dify_app_ids.json manifest.")
 
     def get(self, crew_id: str) -> Optional[CrewConfig]:
         """O(1) retrieval of a Crew Config."""
