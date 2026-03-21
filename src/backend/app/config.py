@@ -37,8 +37,8 @@ class Settings(BaseSettings):
     LLM_FAST_URL: str = "http://llm-fast:8081"
     LLM_DEEP_URL: str = "http://llm-deep:8083"
     LLM_MODEL_FAST: str = "Qwen3-0.6B"
-    LLM_MODEL_DEEP: str = "Qwen3-8B"
-    DEEP_MODEL_TIMEOUT_S: int = 45
+    LLM_MODEL_DEEP: str = "Qwen3-8B-Q3"
+    DEEP_MODEL_TIMEOUT_S: int = 60
     SMART_MODEL_INTERACTIVE: bool = True
 
     # Whisper
