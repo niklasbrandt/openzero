@@ -1143,7 +1143,6 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 		
 		# Reasoning indicator
 		crews = [c.split(":", 1)[1] for c in executed_cmds if c.startswith("__CREW_RUN__:")]
-		executed_cmds = [c for c in executed_cmds if not c.startswith("__CREW_RUN__:")]
 		if crews:
 			clean_reply += f"\n\n_(Reasoning supported by {', '.join(crews)})_"
 
