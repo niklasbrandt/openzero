@@ -109,7 +109,8 @@ async def start_telegram_bot():
 	bot_app.add_handler(CommandHandler("custom", cmd_custom))
 	bot_app.add_handler(CommandHandler("think", cmd_think))
 	bot_app.add_handler(CommandHandler("personal", cmd_personal))
-	bot_app.add_handler(CommandHandler("skills", cmd_skills))
+	bot_app.add_handler(CommandHandler("agent", cmd_agent))
+	bot_app.add_handler(CommandHandler("skills", cmd_agent)) # Legacy support
 	bot_app.add_handler(CommandHandler("crews", cmd_crews))
 	bot_app.add_handler(CommandHandler("crew", cmd_crews))
 	bot_app.add_handler(CallbackQueryHandler(handle_approval, pattern="^think_"))
@@ -881,7 +882,7 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 			"/unlearn -- Evolve past points in the vault\n\n"
 			"*System*\n"
 			"/personal -- Show personal context Z loaded from /personal\n"
-			"/skills -- Show agent skill modules loaded from /agent\n"
+			"/agent -- Show agent skill modules loaded from /agent\n"
 			"/status -- Deep integration health check\n"
 			"/start -- System status check and heartbeat\n"
 			"/purge -- Permanently delete all memories\n\n"
@@ -891,10 +892,36 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 @owner_only
 async def cmd_crews(update: Update, context: ContextTypes.DEFAULT_TYPE):
-	"""Interrogates CrewRegistry and formats a list of active crews."""
+	"""Interrogates CrewRegistry and formats a list of active crews, or executes one."""
 	from app.services.dify import crew_registry
+	from app.services.translations import get_user_lang, get_translations
 	lang = await get_user_lang()
 	t = get_translations(lang)
+	
+	# Execution mode: /crew <id> <input>
+	if context.args:
+		crew_id = context.args[0]
+		user_input = " ".join(context.args[1:]) or "Execute autonomous cycle"
+		
+		config = crew_registry.get(crew_id)
+		if config and config.enabled:
+			await update.message.reply_text(f"<blockquote>🚀 <i>{t.get('executing_crew', 'Executing crew')} <b>{crew_id}</b>...</i></blockquote>", parse_mode="HTML")
+			from app.services.agent_actions import run_crew
+			result = await run_crew.ainvoke({"crew_id": crew_id, "user_input": user_input})
+			
+			# Clean any action tags if the crew leaked them (unlikely but possible)
+			from app.services.agent_actions import parse_and_execute_actions
+			clean_reply, _, _ = await parse_and_execute_actions(result)
+			
+			# Reasoning indicator
+			clean_reply += f"\n\n_(Reasoning supported by {config.name})_"
+			await safe_reply(update, clean_reply)
+			return
+		elif config and not config.enabled:
+			await update.message.reply_text(f"<blockquote>⚠️ <i>Crew '<b>{crew_id}</b>' {t.get('is_disabled', 'is disabled')}.</i></blockquote>", parse_mode="HTML")
+			return
+		# If first arg doesn't look like a crew ID, we fall through to list all (useful if user typed junk)
+
 	await update.message.reply_text(f"<blockquote>📡 <i>{t.get('interrogating_topology', 'Interrogating internal Crew topology...')}</i></blockquote>", parse_mode="HTML")
 	
 	try:
@@ -932,7 +959,7 @@ async def handle_help_callback(update: Update, context: ContextTypes.DEFAULT_TYP
 	await cmd_help(update, context)
 
 @owner_only
-async def cmd_skills(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def cmd_agent(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	try:
 		from app.services.agent_context import refresh_agent_context, get_agent_skills_debug_report
 		await refresh_agent_context()

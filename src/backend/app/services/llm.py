@@ -626,7 +626,10 @@ async def build_system_prompt(user_name: str, user_profile: dict) -> tuple[str, 
 		if user_profile.get("birthday"): fields.append(f"Birthday: {user_profile['birthday']}")
 		if user_profile.get("gender"): fields.append(f"Gender: {user_profile['gender']}")
 		if user_profile.get("residency"): fields.append(f"Residency: {user_profile['residency']}")
-		if user_profile.get("work_times"): fields.append(f"Work Schedule: {user_profile['work_times']}")
+		if user_profile.get("work_start") and user_profile.get("work_end"):
+			fields.append(f"Work Schedule: {user_profile['work_start']} - {user_profile['work_end']}")
+		elif user_profile.get("work_times"):
+			fields.append(f"Work Schedule: {user_profile['work_times']}")
 		if user_profile.get("briefing_time"): fields.append(f"Preferred Briefing: {user_profile['briefing_time']}")
 		if user_profile.get("context"):
 			ctx_safe = (user_profile["context"] or "").replace("\x00", "").strip()[:2000]
