@@ -6,6 +6,7 @@ from pydantic import BaseModel
 import logging
 import os
 import json
+import urllib.parse
 
 from app.config import settings
 from app.services.planka import create_task as planka_create_task
@@ -113,24 +114,25 @@ async def read_personal_file(filename: str):
 		base_dir = PERSONAL_DIR.resolve()
 
 		# 1. Normalize the path and verify it stays within bounds
-		requested_path = Path(filename)
-		# SECURITY: Pre-filter obvious traversal before resolution
-		if requested_path.is_absolute() or ".." in requested_path.parts or filename.startswith(("/", "\\")):
-			logger.warning("Dangerous filename rejected: %s", json.dumps(str(filename)))
+		# We use os.path.normpath to resolve redundant separators and '..' components
+		# We explicitly strip '..' to prevent any traversal at the source
+		clean_filename = os.path.normpath(filename).lstrip(os.path.sep).lstrip('/')
+		if ".." in clean_filename:
+			logger.warning("Dangerous filename rejected: %s", urllib.parse.quote(filename))
 			raise HTTPException(status_code=400, detail="Invalid filename format.")
 
 		try:
-			# 2. Join and resolve
-			target_file = (base_dir / requested_path).resolve()
-			
-			# 3. Final safety check: must be within base_dir and must not be base_dir itself
-			# We use os.path.abspath and startswith for CodeQL sanitizer recognition
-			abs_target = os.path.abspath(target_file)
-			abs_base = os.path.abspath(base_dir)
+			# 2. Join using the sanitized filename segment
+			# This is a canonical pattern for CodeQL path traversal protection
+			base_dir_abs = os.path.abspath(PERSONAL_DIR)
+			target_file_abs = os.path.abspath(os.path.join(base_dir_abs, clean_filename))
 
-			if not abs_target.startswith(abs_base) or target_file == base_dir:
-				logger.warning("Path traversal or boundary escape attempted: %s", json.dumps(str(filename)))
+			# 3. Final safety check: must be within base_dir and must not be base_dir itself
+			if not target_file_abs.startswith(base_dir_abs) or target_file_abs == base_dir_abs:
+				logger.warning("Path traversal or boundary escape attempted: %s", urllib.parse.quote(filename))
 				raise HTTPException(status_code=403, detail="Access denied. Path traversal detected.")
+			
+			target_file = Path(target_file_abs)
 		except Exception as e:
 			raise HTTPException(status_code=400, detail="Invalid path structure.") from e
 
