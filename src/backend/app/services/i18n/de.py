@@ -199,6 +199,8 @@ translations: dict[str, str] = {
 	"diag_ram_live_label": "RAM live",
 	"diag_ram_live_tip": "Live-RAM aus Docker-Stats: Modellgewichte + KV-Cache + Rechenpuffer",
 	"diag_ram_title": "Arbeitsspeicher (RAM)",
+	"diag_ram_weights_label": "RAM Gewichte",
+	"diag_ram_weights_tip": "Modellgewichte und Rechenpuffer im Arbeitsspeicher, exklusive KV-Cache.",
 	"diag_strategic_tools": "Strategische Werkzeuge",
 	"diag_system_commands": "Systembefehle",
 	"diag_vol_title": "Volume-Inventar",
