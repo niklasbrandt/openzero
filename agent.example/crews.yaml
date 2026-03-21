@@ -222,7 +222,7 @@ crews:
     type: "agent"
     feeds_briefing: "/quarter"
     briefing_months: "1,4,7,10"
-    briefing_dom: 1
+    briefing_dom: "1"
     instructions: |
       Measure execution against high-level OKRs. Reallocate focus to strategic blocks to prevent drift.
     characters:
@@ -240,7 +240,7 @@ crews:
     dify_dsl_file: "finance.yml"
     type: "agent"
     feeds_briefing: "/month"
-    briefing_dom: 1
+    briefing_dom: "1"
     instructions: |
       Enforce budgetary constraints, categorize spending, forecast liquidity, and prune orphaned subscriptions.
     characters:
@@ -396,7 +396,7 @@ crews:
     dify_dsl_file: "residence.yml"
     type: "agent"
     feeds_briefing: "/month"
-    briefing_dom: 1
+    briefing_dom: "1"
     instructions: |
       Plan preventative logistics for the primary residence, mitigating infrastructure entropy.
     characters:
@@ -430,7 +430,7 @@ crews:
     dify_dsl_file: "security.yml"
     type: "agent"
     feeds_briefing: "/month"
-    briefing_dom: 15
+    briefing_dom: "15"
     instructions: |
       Audit public digital footprint for privacy risks. Enforce password hygiene and intercept invasive ToS agreements.
     characters:
