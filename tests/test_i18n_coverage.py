@@ -362,18 +362,18 @@ _TR_CALL_RE = re.compile(r"""this\.tr\s*\(\s*['"][^'"]+['"]\s*,\s*['"]([^'"]+)['
 
 # aria-label / aria-description / aria-placeholder with literal (non-template) values
 _ARIA_ATTR_RE = re.compile(
-	r'aria-(?:label|description|placeholder)\s*=\s*"([^"$\n][^"\n]*\s[^"\n]{2,})"'
+	r'aria-(?:label|description|placeholder)\s*=\s*"([^"$\n]+)"'
 )
 
 # placeholder and title attributes
 _ATTR_RE = re.compile(
-	r'(?:placeholder|title)\s*=\s*"([^"$\n][^"\n]*\s[^"\n]{2,})"'
+	r'(?:placeholder|title)\s*=\s*"([^"$\n]+)"'
 )
 
 # Multi-word capitalised text between HTML tags in template literals.
 # Matches: >Some Multi Word Text< but not >${expr}< or >singleword<
 _VISIBLE_TEXT_RE = re.compile(
-	r">\s*([A-Z][a-zA-Z',.\-!?]{0,3}(?:\s+[a-zA-Z',.\-!?]{2,}){" + str(_MIN_WORDS - 1) + r",})\s*<(?!/)"
+	r">\s*([A-Z][a-zA-Z',.\-!?]*(?:\s+[a-zA-Z',.\-!?]{2,}){" + str(_MIN_WORDS - 1) + r",})\s*<(?!/)"
 )
 
 # Technical single-token identifiers that should not be flagged even if they
