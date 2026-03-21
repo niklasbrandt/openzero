@@ -333,7 +333,7 @@ translations: dict[str, str] = {
 	"is_disabled": '已禁用',
 	"failed_fetch_crews": '获取Dify团队注册状态失败。',
 	"help_msg": '我是Z。命令：/day, /week, /memory, /learn, /think',
-	"help_msg_full": '🤖 *Z — 操作员控制*\n\n*简报与复盘*\n/day — 主动晨间简报\n/week — 战略每周复盘\n/month — 30天高层复盘\n/quarter — 90天路线图复盘\n/year — 年度目标复盘\n\n*任务控制*\n/tree — 生活层级与工作区概览\n/crews — 列出所有活跃的自主智能体及其状态\n/think — 复杂多步推理\n/remind — 设置临时循环提醒\n/custom — 创建持久计划任务\n/protocols — 检查Z的智能体工具（动作标签）\n/board — 显示Z的确切Planka项目目标\n\n*记忆与智能*\n/search — 知识库语义搜索\n/memories — 列出所有永久存储的事实\n/learn — 将特定事实记入记忆\n/unlearn — 从库中移除事实\n\n*系统*\n/personal — 显示Z从/personal加载的个人背景\n/agent — 显示从/agent加载的智能体技能模块\n/status — 深度集成健康检查\n/start — 系统状态检查与心跳\n/purge — 永久删除所有记忆\n\n_点击任何命令即可直接执行。_',
+	"help_msg_full": '🤖 *Z — 操作员控制*\n\n*简报与复盘*\n/day — 主动晨间简报\n/week — 战略每周复盘\n/month — 30天高层复盘\n/quarter — 90天路线图复盘\n/year — 年度目标复盘\n\n*任务控制*\n/tree — 生活层级与工作区概览\n/crews — 列出所有活跃的自主智能体及其状态\n/crew — 执行特定自主智能体（团队）\n/think — 复杂多步推理\n/remind — 设置临时循环提醒\n/custom — 创建持久计划任务\n/protocols — 检查Z的智能体工具（动作标签）\n/board — 显示Z的确切Planka项目目标\n\n*记忆与智能*\n/search — 知识库语义搜索\n/memories — 列出所有永久存储的事实\n/learn — 将特定事实记入记忆\n/unlearn — 从库中移除事实\n\n*系统*\n/personal — 显示Z从/personal加载的个人背景\n/agent — 显示从/agent加载的智能体技能模块\n/status — 深度集成健康检查\n/start — 系统状态检查与心跳\n/purge — 永久删除所有记忆\n\n_点击任何命令即可直接执行。_',
 	"help_section_briefings": '简报与复盘',
 	"help_section_memory": '记忆与智能',
 	"help_section_missions": '任务控制',

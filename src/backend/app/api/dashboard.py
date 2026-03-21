@@ -312,7 +312,7 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 			if crew.schedule: cadence += f" ({crew.schedule})"
 			
 			msg_parts.append(
-				f"• **{crew.id}**\n"
+				f"• **{crew.id}: {crew.name}**\n"
 				f"  ├ Type: `{crew.type}`\n"
 				f"  ├ Cadence: {cadence}\n"
 				f"  └ *{crew.description}*\n"

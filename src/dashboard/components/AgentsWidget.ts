@@ -807,7 +807,7 @@ export class AgentsWidget extends HTMLElement {
 													<span class="crew-chevron">${this.renderIcon('chevron-right', '1rem')}</span>
 													<div class="crew-title">
 														<span class="h-icon-mini">${this.renderIcon('users', '1rem')}</span>
-														${crew.name}
+														${crew.id.charAt(0).toUpperCase() + crew.id.slice(1)}: ${crew.name}
 														<span class="crew-id-tag" title="Crew ID">${crew.id}</span>
 													</div>
 													<div class="crew-meta" style="margin-left: auto; margin-right: 1.5rem;">

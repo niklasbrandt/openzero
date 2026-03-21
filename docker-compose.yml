@@ -327,8 +327,14 @@ services:
     image: langgenius/dify-api:0.15.3
     restart: always
     environment:
-      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/dify
-      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/1
+      - DB_HOST=postgres
+      - DB_USERNAME=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_DATABASE=dify
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=1
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
       - CONSOLE_WEB_URL=http://${SERVER_IP}/dify
       - SERVICE_API_URL=http://dify-api:5001
       - APP_WEB_URL=http://${SERVER_IP}/dify
@@ -338,6 +344,7 @@ services:
       - OPENDAL_FS_ROOT=/app/api/storage
     volumes:
       - dify_storage:/app/api/storage
+      - ./agent:/app/agent:ro
     networks:
       - internal
     depends_on:
@@ -351,8 +358,14 @@ services:
     restart: always
     command: /usr/bin/supervisord -n -c /app/api/install/py/supervisord.conf
     environment:
-      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/dify
-      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/1
+      - DB_HOST=postgres
+      - DB_USERNAME=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_DATABASE=dify
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=1
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
       - SECRET_KEY=${REDIS_PASSWORD}
       - STORAGE_TYPE=opendal
       - OPENDAL_SCHEME=fs
