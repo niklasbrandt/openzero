@@ -366,7 +366,7 @@ async function initHeaderTranslations() {
 		// Nav labels — apply translations to all [data-tr] spans across
 		// sidebar-nav, top-marquee-nav, and mobile-nav-drawer.
 		document.querySelectorAll<HTMLElement>('[data-tr]').forEach(el => {
-			const key = el.getAttribute('data-tr')!;
+			const key = el.getAttribute('data-tr') || '';
 			const localised = t[key];
 			if (localised) el.textContent = localised;
 		});
@@ -382,14 +382,14 @@ async function initHeaderTranslations() {
 
 		// Translate aria-label on structural elements via [data-tr-aria].
 		document.querySelectorAll<HTMLElement>('[data-tr-aria]').forEach(el => {
-			const key = el.getAttribute('data-tr-aria')!;
+			const key = el.getAttribute('data-tr-aria') || '';
 			const localised = t[key];
 			if (localised) el.setAttribute('aria-label', localised);
 		});
 
 		// Translate visible text on structural elements via [data-tr-text].
 		document.querySelectorAll<HTMLElement>('[data-tr-text]').forEach(el => {
-			const key = el.getAttribute('data-tr-text')!;
+			const key = el.getAttribute('data-tr-text') || '';
 			const localised = t[key];
 			if (localised) el.textContent = localised;
 		});
@@ -413,7 +413,7 @@ function initScrollSpy() {
 	if (!allNavLinks.length) return;
 
 	const sectionIds = Array.from(
-		new Set(Array.from(allNavLinks).map(a => a.dataset.section!))
+		new Set(Array.from(allNavLinks).map(a => a.dataset.section || ''))
 	);
 	const sections = sectionIds
 		.map(id => document.getElementById(id))
@@ -519,7 +519,7 @@ function initScrollSpy() {
 	allNavLinks.forEach((link, idx) => {
 		link.addEventListener('click', (e) => {
 			e.preventDefault();
-			const id = link.dataset.section!;
+			const id = link.dataset.section || '';
 			const el = document.getElementById(id);
 			if (el) {
 				el.scrollIntoView({ behavior: 'smooth', block: 'start' });

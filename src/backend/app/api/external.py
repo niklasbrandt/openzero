@@ -5,6 +5,7 @@ from pydantic import BaseModel
 import logging
 import os
 import re
+import secrets
 
 from app.config import settings
 from app.services.planka import create_task as planka_create_task
@@ -129,7 +130,7 @@ async def read_personal_file(filename: str):
 				raise HTTPException(status_code=403, detail="Access denied. Path traversal detected.")
 			
 			target_file = Path(target_file_abs)
-		except Exception as e:
+		except Exception:
 			raise HTTPException(status_code=400, detail="Invalid path structure.") from None
 
 		if not target_file.exists() or not target_file.is_file():
