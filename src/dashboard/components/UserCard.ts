@@ -17,15 +17,10 @@ export class UserCard extends HTMLElement {
 		ko: { native: '한국어', eng: 'Korean' },
 		fr: { native: 'Français', eng: 'French' },
 		es: { native: 'Español', eng: 'Spanish' },
-		it: { native: 'Italiano', eng: 'Italian' },
-		tr: { native: 'Türkçe', eng: 'Turkish' },
 		ru: { native: 'Русский', eng: 'Russian' },
 		pt: { native: 'Português', eng: 'Portuguese' },
 		ar: { native: 'العربية', eng: 'Arabic' },
 		hi: { native: 'हिन्दी', eng: 'Hindi' },
-		bn: { native: 'বাংলা', eng: 'Bengali' },
-		id: { native: 'Bahasa Indonesia', eng: 'Indonesian' },
-		vi: { native: 'Tiếng Việt', eng: 'Vietnamese' },
 	};
 
 	private themeOptions: Record<string, { label: string, colors: string[] }> = {

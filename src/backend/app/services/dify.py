@@ -34,7 +34,9 @@ class DifyClient:
         self.api_key = api_key
 
     def _headers(self, include_json: bool = True) -> Dict[str, str]:
-        headers = {"Authorization": f"Bearer {self.api_key}"}
+        headers = {}
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
         if include_json:
             headers["Content-Type"] = "application/json"
         return headers

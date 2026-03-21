@@ -14,11 +14,6 @@ from app.services.i18n.zh import translations as _ZH
 from app.services.i18n.hi import translations as _HI
 from app.services.i18n.ru import translations as _RU
 from app.services.i18n.ko import translations as _KO
-from app.services.i18n.vi import translations as _VI
-from app.services.i18n.bn import translations as _BN
-from app.services.i18n.id import translations as _ID
-from app.services.i18n.it import translations as _IT
-from app.services.i18n.tr import translations as _TR
 from app.services.i18n.pt import translations as _PT
 from app.services.i18n.ar import translations as _AR
 
@@ -33,21 +28,7 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
 	"ar": _AR,
 	"pt": _PT,
 	"ru": _RU,
-	"it": _IT,
 	"ko": _KO,
-	"vi": _VI,
-	"bn": _BN,
-	"id": _ID,
-	"tr": _TR,
-	# Stub languages — no translations yet (fall back to English entirely)
-	"nl": {},
-	"pl": {},
-	"sv": {},
-	"el": {},
-	"ro": {},
-	"cs": {},
-	"da": {},
-	"no": {},
 }
 
 
