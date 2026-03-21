@@ -9,7 +9,7 @@ This guide is designed for anyone—even if you've never used a server before. F
 We recommend a VPS with **Ubuntu 24.04**. For best performance with Llama 8B, aim for at least **8 Cores** and **16GB RAM**.
 
 > [!IMPORTANT]
-> **Z uses a 2-tier LLM architecture** (Qwen3-0.6B fast + Qwen3-8B deep). A **12 GB VPS** is the minimum (use `Qwen3-8B-Q2_K.gguf` for the deep tier, ~3 GB total). A **24 GB VPS** comfortably runs the default Q4_K_M deep model (~5 GB total) with headroom for Whisper and TTS. **Swap space is still recommended as a safety buffer.**
+> **Z uses a 2-tier LLM architecture** (Qwen3-0.6B fast + Qwen3-8B deep). A **12 GB VPS** is the minimum (use `Qwen3-8B-Q3_K_M.gguf` for the deep tier, ~3.6 GB total; use `Q2_K` if RAM is very tight). A **24 GB VPS** comfortably runs the default `Q3_K_M` deep model with headroom for Whisper and TTS. **The default has been switched from Q4 to Q3_K_M to ensure faster response times and prevent timeouts on CPU-bound VPS instances.** **Swap space is still recommended as a safety buffer.**
 
 ### 0. Add Swap Space (MANDATORY first step)
 

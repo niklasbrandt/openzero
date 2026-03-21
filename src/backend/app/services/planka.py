@@ -153,7 +153,7 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 	if board_name.lower() in {n.lower() for n in all_board_names}:
 		board_name = "Operator Board"
 
-	logger.debug("create_task requested -> Board: %s, List: %s, Title: %s", _log_safe(board_name), _log_safe(list_name), _log_safe(title))
+	logger.debug("create_task requested -> Board: %r, List: %r, Title: %r", board_name, list_name, title)
 	try:
 		from app.services.operator_board import operator_service
 		token = await get_planka_auth_token()
@@ -181,7 +181,7 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 						break
 
 			if not target_board:
-				logger.debug("Board %s not found. Defaulting to Operator Board.", _log_safe(board_name))
+				logger.debug("Board %r not found. Defaulting to Operator Board.", board_name)
 				_, b_id = await operator_service.initialize_board(client)
 				target_board = {"id": b_id, "name": "Operator Board"}
 

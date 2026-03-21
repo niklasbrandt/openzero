@@ -4,6 +4,7 @@ from typing import List, Optional, Any
 from fastapi import APIRouter, Depends, HTTPException, Header, Response
 from pydantic import BaseModel
 import logging
+import os
 
 from app.config import settings
 from app.services.planka import create_task as planka_create_task
@@ -113,16 +114,18 @@ async def read_personal_file(filename: str):
 		# 1. Normalize the path and verify it stays within bounds
 		requested_path = Path(filename)
 		if requested_path.is_absolute() or ".." in requested_path.parts or filename.startswith(("/", "\\")):
-			logger.warning("Dangerous filename rejected: %s", _log_safe(str(filename)))
+			logger.warning("Dangerous filename rejected: %r", filename)
 			raise HTTPException(status_code=400, detail="Invalid filename format.")
 
 		try:
-			# 2. Join and resolve to handle any other environment-specific traversal
+			# 2. Join and resolve
 			target_file = (base_dir / requested_path).resolve()
+			abs_target = str(target_file)
+			abs_base = str(base_dir)
 
 			# 3. Final safety check: must be within base_dir and must not be base_dir itself
-			if not target_file.is_relative_to(base_dir) or target_file == base_dir:
-				logger.warning("Path traversal or boundary escape attempted: %s", _log_safe(str(filename)))
+			if os.path.commonpath([abs_base, abs_target]) != abs_base or target_file == base_dir:
+				logger.warning("Path traversal or boundary escape attempted: %r", filename)
 				raise HTTPException(status_code=403, detail="Access denied. Path traversal detected.")
 		except Exception as e:
 			raise HTTPException(status_code=400, detail="Invalid path structure.") from e
