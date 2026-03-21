@@ -7,10 +7,10 @@ import { GOO_STYLES, initGoo } from '../services/gooStyles';
 
 
 export class DiagnosticsWidget extends HTMLElement {
-	private cpuData: any = null;
-	private serverData: any = null;
-	private systemData: any = null;
-	private llmConfig: any = null;
+	private cpuData: Record<string, any> | null = null;
+	private serverData: Record<string, any> | null = null;
+	private systemData: Record<string, any> | null = null;
+	private llmConfig: Record<string, any> | null = null;
 	private benchResults: any[] = [];
 	private isBenchRunning: boolean = false;
 	private t: Record<string, string> = {};
