@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Any
 from qdrant_client import QdrantClient, models
 from app.config import settings
 import uuid
@@ -9,7 +9,7 @@ import datetime
 logger = logging.getLogger(__name__)
 
 
-def _log_safe(text: str, max_len: int = 80) -> str:
+def _log_safe(text: Any, max_len: int = 80) -> str:
 	"""Strip newlines from user-controlled strings before they reach the log.
 
 	Prevents log-injection attacks where an attacker embeds CRLF sequences
@@ -70,7 +70,7 @@ async def ensure_collection():
 				),
 			)
 	except Exception as e:
-		logger.warning("Error connecting to Qdrant: %s", e)
+		logger.warning("Error connecting to Qdrant: %s", _log_safe(e))
 
 async def store_memory(text: str, metadata: Optional[dict] = None):
 	"""
@@ -177,7 +177,7 @@ async def get_memory_stats() -> dict:
 			"vectors": count_result.count
 		}
 	except Exception as e:
-		logger.warning("Memory stats error: %s", e)
+		logger.warning("Memory stats error: %s", _log_safe(e))
 		return {"points": 0, "status": "error", "vectors": 0}
 
 async def delete_memory(point_id: str):
@@ -192,7 +192,7 @@ async def delete_memory(point_id: str):
 		)
 		return True
 	except Exception as e:
-		logger.error("Failed to delete memory: %s", e)
+		logger.error("Failed to delete memory: %s", _log_safe(e))
 		return False
 
 async def semantic_search_raw(query: str, top_k: int = 10) -> list[dict]:
@@ -250,7 +250,7 @@ async def list_memories(offset: int = 0, limit: int = 50) -> dict:
 		]
 		return {"items": items, "total": total, "next_offset": next_page_offset}
 	except Exception as e:
-		logger.error("list_memories failed: %s", e)
+		logger.error("list_memories failed: %s", _log_safe(e))
 		return {"items": [], "total": total, "next_offset": None}
 
 
@@ -286,5 +286,5 @@ async def get_recent_memories(hours: int = 24) -> list[dict]:
 		)
 		return [{"id": str(p.id), "text": p.payload.get("text", "")} for p in results]
 	except Exception as e:
-		logger.warning("get_recent_memories failed: %s", e)
+		logger.warning("get_recent_memories failed: %s", _log_safe(e))
 		return []
