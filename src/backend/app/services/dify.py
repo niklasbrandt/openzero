@@ -40,7 +40,7 @@ workflow:
         tools: []
       model:
         completion_params: {{stop: [], temperature: 0.7, top_p: 1}}
-        name: gpt-4o
+        name: deep
         provider: openai
       prompt_template:
         system: |
@@ -188,6 +188,7 @@ class CrewRegistry:
 
     async def load(self) -> None:
         """Parses crews.yaml and loads uncommented mappings."""
+        logger.info("Registry: Loading crews.yaml from %s", self.crews_yaml_path)
         if not self.crews_yaml_path.exists():
             logger.warning("crews.yaml not found at %s", self.crews_yaml_path)
             return
@@ -229,6 +230,7 @@ class CrewRegistry:
 
     async def provision(self) -> None:
         """Idempotent auto-provisioning engine matching local DSLs to Dify Cloud App IDs."""
+        logger.info("Registry: Provisioning Dify bridge (client: %s)", self.client.base_url)
         # Check Dify health first
         if not await self.client.health_check():
             logger.warning("Dify cluster unreachable. Deferring provisioning.")
