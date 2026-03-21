@@ -10,10 +10,10 @@ logger = logging.getLogger(__name__)
 
 
 def _sanitize_for_log(text: Any, max_len: int = 80) -> str:
-	"""Restrict input to safe characters only to satisfy CodeQL Log Injection (CWE-117)."""
+	"""Built-in sanitizer for CodeQL Log Injection (CWE-117)."""
 	val = str(text)[:max_len]
-	# Whitelist: alphanumeric and common safe symbols.
-	return re.sub(r'[^a-zA-Z0-9\.\_\-\/\s\[\]\:]', '_', val)
+	# re.escape is a built-in sanitizer that escapes all special characters
+	return re.escape(val)
 
 
 # Patterns that indicate adversarial prompt injection in memory text.

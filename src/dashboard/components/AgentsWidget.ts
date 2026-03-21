@@ -16,7 +16,7 @@ interface Personality {
 	relationship: string;
 	values: string;
 	behavior: string;
-	questions: any[];
+	questions: string[];
 }
 
 interface Crew {
@@ -93,7 +93,7 @@ export class AgentsWidget extends HTMLElement {
 				const data = await cRes.json();
 				this.crews = data.crews || [];
 			}
-		} catch (e) {
+		} catch (_e) {
 			console.error('Failed to load Agents data:', e);
 		} finally {
 			this.loading = false;
@@ -132,7 +132,7 @@ export class AgentsWidget extends HTMLElement {
 					this.render();
 				}, 3000);
 			}
-		} catch (e) {
+		} catch (_e) {
 			this.runningCrews.delete(crewId);
 			this.render();
 		}

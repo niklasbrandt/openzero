@@ -19,17 +19,15 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 from app.services.planka_common import get_planka_auth_token, _tree_cache
-import urllib.parse
-import json
 import asyncio
 import time
 
 import re
 def _sanitize_for_log(text: Any) -> str:
-	"""Restrict input to safe characters only to satisfy CodeQL Log Injection (CWE-117)."""
-	val = str(text)
-	# Whitelist: alphanumeric, dots, slashes, dashes, underscores, and brackets.
-	return re.sub(r'[^a-zA-Z0-9\.\_\-\/\s\[\]\:]', '_', val)[:255]
+	"""Built-in sanitizer for CodeQL Log Injection (CWE-117)."""
+	val = str(text)[:255]
+	# re.escape is a built-in sanitizer that escapes all special characters
+	return re.escape(val)
 
 async def get_project_tree(as_html: bool = True) -> str:
 	"""Recursively build a semantic text tree. Uses parallel requests and caching for speed."""
@@ -128,7 +126,7 @@ async def get_project_tree(as_html: bool = True) -> str:
 			_tree_cache[cache_key] = (time.time(), result)
 			return result
 	except Exception as e:
-		logger.error("Planka project tree error: %s", _log_safe(e))
+		logger.error("Planka project tree error: %s", _sanitize_for_log(e))
 		return "Planka connection issue."
 
 async def create_task(board_name: str, list_name: str, title: str, description: str = "") -> Optional[str]:
@@ -226,7 +224,7 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 			logger.debug("Card created successfully: %s", path)
 			return path
 	except Exception as e:
-		logger.warning("create_task failed: %s", _log_safe(e))
+		logger.warning("create_task failed: %s", _sanitize_for_log(e))
 		return None
 
 async def create_project(name: str, description: str = "") -> dict:
@@ -245,7 +243,7 @@ async def create_project(name: str, description: str = "") -> dict:
 			data = resp.json()
 			return data.get("item") or data
 		except Exception as e:
-			logger.debug("create_project failed with 'type', retrying with 'isPublic': %s", _log_safe(e))
+			logger.debug("create_project failed with 'type', retrying with 'isPublic': %s", _sanitize_for_log(e))
 			resp = await client.post("/api/projects", json={
 				"name": name,
 				"description": description,
@@ -286,7 +284,7 @@ async def delete_project(project_id: str) -> bool:
 			logger.debug("Deleted Planka project %s", project_id)
 			return True
 		except Exception as e:
-			logger.error("delete_project failed for %s: %s", _log_safe(project_id), _log_safe(e))
+			logger.error("delete_project failed for %s: %s", _sanitize_for_log(project_id), _sanitize_for_log(e))
 			return False
 
 async def find_and_delete_projects_by_prefix(prefix: str) -> list:
@@ -345,7 +343,7 @@ async def move_card(card_title_fragment: str, destination_list: str, board_name:
 	card_title_fragment = card_title_fragment.strip().strip('"\'').lower()
 	destination_list = destination_list.strip().strip('"\'')
 	board_name = board_name.strip().strip('"\'')
-	logger.debug("move_card: fragment=%s, dest=%s, board=%s", _log_safe(card_title_fragment), _log_safe(destination_list), _log_safe(board_name))
+	logger.debug("move_card: fragment=%s, dest=%s, board=%s", _sanitize_for_log(card_title_fragment), _sanitize_for_log(destination_list), _sanitize_for_log(board_name))
 	try:
 		token = await get_planka_auth_token()
 		headers = {"Authorization": f"Bearer {token}"}
@@ -424,7 +422,7 @@ async def create_list(board_name: str, list_name: str, project_name: Optional[st
 				break
 
 		if not board_id:
-			logger.debug("create_list - board '%s' not found", _log_safe(board_name))
+			logger.debug("create_list - board '%s' not found", _sanitize_for_log(board_name))
 			return None
 
 		try:
@@ -436,5 +434,5 @@ async def create_list(board_name: str, list_name: str, project_name: Optional[st
 			data = resp.json()
 			return data.get("item") or data
 		except Exception as e:
-			logger.debug("create_list failed: %s", _log_safe(e))
+			logger.debug("create_list failed: %s", _sanitize_for_log(e))
 			return None
