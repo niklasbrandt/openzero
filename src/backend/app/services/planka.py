@@ -19,6 +19,7 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 from app.services.planka_common import get_planka_auth_token, _tree_cache
+import urllib.parse
 import json
 import asyncio
 import time
@@ -154,7 +155,7 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 	if board_name.lower() in {n.lower() for n in all_board_names}:
 		board_name = "Operator Board"
 
-	logger.debug("create_task requested -> Board: %s, List: %s, Title: %s", json.dumps(str(board_name)), json.dumps(str(list_name)), json.dumps(str(title)))
+	logger.debug("create_task requested -> Board: %s, List: %s, Title: %s", urllib.parse.quote(str(board_name)), urllib.parse.quote(str(list_name)), urllib.parse.quote(str(title)))
 	try:
 		from app.services.operator_board import operator_service
 		token = await get_planka_auth_token()
@@ -182,7 +183,7 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 						break
 
 			if not target_board:
-				logger.debug("Board %s not found. Defaulting to Operator Board.", json.dumps(str(board_name)))
+				logger.debug("Board %s not found. Defaulting to Operator Board.", urllib.parse.quote(str(board_name)))
 				_, b_id = await operator_service.initialize_board(client)
 				target_board = {"id": b_id, "name": "Operator Board"}
 
