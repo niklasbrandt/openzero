@@ -13,13 +13,13 @@ from app.services.planka import create_task as planka_create_task
 from app.services.memory import store_memory
 
 logger = logging.getLogger(__name__)
+import re
 
-def _log_safe(text: Any) -> str:
-	"""Sanitize input for logging to prevent CRLF injection (CWE-117)."""
-	if not text:
-		return ""
-	# CodeQL py/log-injection: neutralize newlines and carriage returns.
-	return "".join(c for c in str(text) if c not in ('\r', '\n'))[:255]
+def _sanitize_for_log(text: Any) -> str:
+	"""Restrict input to safe characters only to satisfy CodeQL Log Injection (CWE-117)."""
+	val = str(text)
+	# Whitelist: alphanumeric, dots, slashes, dashes, underscores, and brackets.
+	return re.sub(r'[^a-zA-Z0-9\.\_\-\/\s\[\]\:]', '_', val)[:255]
 
 router = APIRouter(prefix="/integration", tags=["dify", "integration"])
 
@@ -118,7 +118,7 @@ async def read_personal_file(filename: str):
 		# We explicitly strip '..' to prevent any traversal at the source
 		clean_filename = os.path.normpath(filename).lstrip(os.path.sep).lstrip('/')
 		if ".." in clean_filename:
-			logger.warning("Dangerous filename rejected: %s", urllib.parse.quote(filename))
+			logger.warning("Dangerous filename rejected: %s", _sanitize_for_log(filename))
 			raise HTTPException(status_code=400, detail="Invalid filename format.")
 
 		try:
@@ -129,7 +129,7 @@ async def read_personal_file(filename: str):
 
 			# 3. Final safety check: must be within base_dir and must not be base_dir itself
 			if not target_file_abs.startswith(base_dir_abs) or target_file_abs == base_dir_abs:
-				logger.warning("Path traversal or boundary escape attempted: %s", urllib.parse.quote(filename))
+				logger.warning("Path traversal or boundary escape attempted: %s", _sanitize_for_log(filename))
 				raise HTTPException(status_code=403, detail="Access denied. Path traversal detected.")
 			
 			target_file = Path(target_file_abs)

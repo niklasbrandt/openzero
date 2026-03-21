@@ -24,13 +24,12 @@ import json
 import asyncio
 import time
 
-def _log_safe(text: Any) -> str:
-	"""Sanitize input for logging to prevent CRLF injection (CWE-117)."""
-	if not text:
-		return ""
-	# CodeQL py/log-injection: neutralize newlines and carriage returns.
-	# We use an explicit character filter for maximum certainty across all environments.
-	return "".join(c for c in str(text) if c not in ('\r', '\n'))[:255]
+import re
+def _sanitize_for_log(text: Any) -> str:
+	"""Restrict input to safe characters only to satisfy CodeQL Log Injection (CWE-117)."""
+	val = str(text)
+	# Whitelist: alphanumeric, dots, slashes, dashes, underscores, and brackets.
+	return re.sub(r'[^a-zA-Z0-9\.\_\-\/\s\[\]\:]', '_', val)[:255]
 
 async def get_project_tree(as_html: bool = True) -> str:
 	"""Recursively build a semantic text tree. Uses parallel requests and caching for speed."""
@@ -155,7 +154,7 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 	if board_name.lower() in {n.lower() for n in all_board_names}:
 		board_name = "Operator Board"
 
-	logger.debug("create_task requested -> Board: %s, List: %s, Title: %s", urllib.parse.quote(str(board_name)), urllib.parse.quote(str(list_name)), urllib.parse.quote(str(title)))
+	logger.debug("create_task requested -> Board: %s, List: %s, Title: %s", _sanitize_for_log(board_name), _sanitize_for_log(list_name), _sanitize_for_log(title))
 	try:
 		from app.services.operator_board import operator_service
 		token = await get_planka_auth_token()
@@ -183,7 +182,7 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 						break
 
 			if not target_board:
-				logger.debug("Board %s not found. Defaulting to Operator Board.", urllib.parse.quote(str(board_name)))
+				logger.debug("Board %s not found. Defaulting to Operator Board.", _sanitize_for_log(board_name))
 				_, b_id = await operator_service.initialize_board(client)
 				target_board = {"id": b_id, "name": "Operator Board"}
 
