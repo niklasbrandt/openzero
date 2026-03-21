@@ -3,6 +3,7 @@ import logging
 from datetime import datetime, timedelta
 from langchain_core.tools import tool
 from typing import Optional
+import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -197,6 +198,9 @@ async def run_crew(crew_id: str, user_input: str = "Execute autonomous cycle") -
 			res = await dify_client.run_agent(config.dify_app_id, user_input, None, integrated_input)
 			ans = res.get('answer', 'Success')
 			return f"Crew '{crew_id}' agent finished: {ans[:200]}"
+	except httpx.TimeoutException:
+		logger.warning("Crew '%s' timed out.", crew_id)
+		return f"⚠ Crew '{crew_id}' exceeded reasoning budget (timeout) and was skipped."
 	except Exception as e:
 		logger.error("Error executing crew '%s': %s", crew_id, e)
 		return f"Error: Communication failure with crew '{crew_id}'."
@@ -558,6 +562,9 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 					res = await dify_client.run_agent(config.dify_app_id, user_inputs, None, integrated_input)
 					executed_cmds.append(f"__CREW_RUN__:{config.name}")
 					return f"Crew '{crew_id}' agent completed. Result: {res.get('answer', 'Success')}"
+			except httpx.TimeoutException:
+				logger.warning("RUN_CREW timeout for '%s'", crew_id)
+				return f"\u26a0 Crew '{crew_id}' exceeded reasoning budget (timeout) and was skipped."
 			except Exception as e:
 				logger.error("RUN_CREW failed for '%s': %s", crew_id, e)
 				return f"\u26a0 Error: Execution failure for crew '{crew_id}'."
