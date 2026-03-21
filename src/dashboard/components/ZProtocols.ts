@@ -6,8 +6,8 @@ import { EMPTY_STATE_STYLES } from '../services/emptyStateStyles';
 import { LIST_ITEM_STYLES } from '../services/listItemStyles';
 
 export class ZProtocols extends HTMLElement {
-	private protocols: any[] = [];
-	private commands: any[] = [];
+	private protocols: Record<string, any>[] = [];
+	private commands: Record<string, any>[] = [];
 	private isLoading = true;
 	private t: Record<string, string> = {};
 	private openSections: Set<string> = new Set();

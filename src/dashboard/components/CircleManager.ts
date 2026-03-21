@@ -196,7 +196,7 @@ export class CircleManager extends HTMLElement {
 		container.querySelectorAll('.edit-btn').forEach(btn => {
 			btn.addEventListener('click', (e) => {
 				const id = (e.currentTarget as HTMLElement).getAttribute('data-id');
-				const p = this.currentPeople.find((px: any) => px.id === parseInt(id!));
+				const p = this.currentPeople.find((px: any) => px.id === parseInt(id || "0"));
 				if (p) {
 					this.editingId = p.id;
 					// Force circleType to the person's actual type during edit
