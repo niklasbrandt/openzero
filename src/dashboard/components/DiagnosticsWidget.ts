@@ -7,11 +7,11 @@ import { GOO_STYLES, initGoo } from '../services/gooStyles';
 
 
 export class DiagnosticsWidget extends HTMLElement {
-	private cpuData: unknown = null;
-	private serverData: unknown = null;
-	private systemData: unknown = null;
-	private llmConfig: unknown = null;
-	private benchResults: unknown[] = [];
+	private cpuData: any = null;
+	private serverData: any = null;
+	private systemData: any = null;
+	private llmConfig: any = null;
+	private benchResults: any[] = [];
 	private isBenchRunning: boolean = false;
 	private t: Record<string, string> = {};
 	private _refreshTimer: ReturnType<typeof setInterval> | null = null;

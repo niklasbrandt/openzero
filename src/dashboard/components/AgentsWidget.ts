@@ -94,7 +94,7 @@ export class AgentsWidget extends HTMLElement {
 				this.crews = data.crews || [];
 			}
 		} catch (_e) {
-			console.error('Failed to load Agents data:', e);
+			console.error('Failed to load Agents data:', _e);
 		} finally {
 			this.loading = false;
 			this.render();
