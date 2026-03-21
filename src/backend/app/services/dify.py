@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 from pathlib import Path
 from typing import Optional, Dict, List
 import httpx
@@ -281,12 +282,23 @@ class CrewRegistry:
         updates_made = False
         
         # --- Rule 14: Autonomous Bridge Assembly ---
-        # Only perform deep seed if DB peering also returned nothing
-        if len(self._manifest) == 0:
-            logger.info("Dify instance empty. Performing Autonomous Bridge Assembly...")
-                 # Strategy: Autonomous Remote Operation (Bridge Assembly)
-            # We deploy a self-contained seeding script into the dify-api container's filesystem
-            # and then execute it via python3 directly using a monkeypatched app context.
+        # Logic: If we have ANY active crews in config that are missing from our manifest,
+        # we perform a targeted assembly to fill the gaps autonomously.
+        missing_crews = [cid for cid in self._crews.keys() if cid not in self._manifest]
+        
+        if missing_crews:
+            logger.info("Dify brain incomplete (missing %d crews). Performing Autonomous Bridge Assembly...", len(missing_crews))
+            
+            # --- Rule 14: Strategic Crew Metadata (Filtered) ---
+            # Only pass metadata for the crews we actually need to provision
+            crew_metadata = json.dumps({
+                cid: {
+                    "name": self._crews[cid].name,
+                    "description": self._crews[cid].description,
+                    "instructions": self._crews[cid].instructions or "Execute mission with high autonomy."
+                } for cid in missing_crews
+            })
+
             seeder_py = """
 import os, sys, datetime, secrets, json
 import base64
@@ -298,6 +310,10 @@ flask.sansio.blueprints.Blueprint._check_setup_finished = lambda self, f_name: N
 
 from app import create_app
 from extensions.ext_database import db
+
+# Injected metadata from openZero Backend
+CREW_METADATA = __CREW_METADATA_JSON__
+DSL_TEMPLATE = \"\"\"__DSL_TEMPLATE_STR__\"\"\"
 
 app = create_app()
 with app.app_context():
@@ -338,37 +354,47 @@ with app.app_context():
 
         agent_dir = "/app/agent/dify"
         mapping = {}
-        if os.path.exists(agent_dir):
-            dsl_svc = AppDslService(db.session)
-            for fname in os.listdir(agent_dir):
-                if not fname.endswith('.yml'): continue
-                crew_id = fname.replace('.yml', '')
-                existing = App.query.filter_by(tenant_id=tenant.id, name=crew_id).first()
-                if not existing:
-                    with open(os.path.join(agent_dir, fname), 'r', encoding='utf-8') as f:
+        dsl_svc = AppDslService(db.session)
+
+        # Iterate over all defined crews to ensure provisioning
+        for crew_id, meta in CREW_METADATA.items():
+            existing = App.query.filter_by(tenant_id=tenant.id, name=crew_id).first()
+            if not existing:
+                # Self-Healing Layer: Try file first, then fallback to generation
+                yaml_path = os.path.join(agent_dir, f"{crew_id}.yml")
+                if os.path.exists(yaml_path):
+                    with open(yaml_path, 'r', encoding='utf-8') as f:
                         content = f.read()
-                        try:
-                            # Import using content mode
-                            app_obj = dsl_svc.import_app(account=acc, import_mode='yaml-content', yaml_content=content)
-                            app_id = app_obj.id
-                            token_str = f"app-{secrets.token_urlsafe(24)}"
-                            token = ApiToken(tenant_id=tenant.id, app_id=app_id, type='app', token=token_str)
-                            db.session.add(token)
-                            db.session.commit()
-                            mapping[crew_id] = {"app_id": str(app_id), "api_token": token_str}
-                        except Exception as e:
-                            db.session.rollback()
-                            print(f"Error importing {crew_id}: {e}", file=sys.stderr)
                 else:
-                    token = ApiToken.query.filter_by(app_id=existing.id, type='app').first()
-                    if not token:
-                        token_str = f"app-{secrets.token_urlsafe(24)}"
-                        token = ApiToken(tenant_id=tenant.id, app_id=existing.id, type='app', token=token_str)
-                        db.session.add(token)
-                        db.session.commit()
-                        mapping[crew_id] = {"app_id": str(existing.id), "api_token": token_str}
-                    else:
-                        mapping[crew_id] = {"app_id": str(existing.id), "api_token": token.token}
+                    # Generate DSL from template if file is missing
+                    content = DSL_TEMPLATE.format(
+                        name=meta["name"],
+                        description=meta["description"],
+                        instructions=meta["instructions"]
+                    )
+                
+                try:
+                    # Import using content mode
+                    app_obj = dsl_svc.import_app(account=acc, import_mode='yaml-content', yaml_content=content)
+                    app_id = app_obj.id
+                    token_str = f"app-{secrets.token_urlsafe(24)}"
+                    token = ApiToken(tenant_id=tenant.id, app_id=app_id, type='app', token=token_str)
+                    db.session.add(token)
+                    db.session.commit()
+                    mapping[crew_id] = {"app_id": str(app_id), "api_token": token_str}
+                except Exception as e:
+                    db.session.rollback()
+                    print(f"Error importing {crew_id}: {e}", file=sys.stderr)
+            else:
+                token = ApiToken.query.filter_by(app_id=existing.id, type='app').first()
+                if not token:
+                    token_str = f"app-{secrets.token_urlsafe(24)}"
+                    token = ApiToken(tenant_id=tenant.id, app_id=existing.id, type='app', token=token_str)
+                    db.session.add(token)
+                    db.session.commit()
+                    mapping[crew_id] = {"app_id": str(existing.id), "api_token": token_str}
+                else:
+                    mapping[crew_id] = {"app_id": str(existing.id), "api_token": token.token}
                     
         print("AUTOSEED_START")
         print(json.dumps(mapping))
@@ -378,6 +404,10 @@ with app.app_context():
         db.session.rollback()
         print(f"MAIN ERROR: {str(main_e)}", file=sys.stderr)
 """
+            # Inject metadata and template
+            seeder_py = seeder_py.replace("__CREW_METADATA_JSON__", crew_metadata)
+            seeder_py = seeder_py.replace("__DSL_TEMPLATE_STR__", BOOTSTRAP_DSL_TEMPLATE)
+
             try:
                 import subprocess
                 # Deploy seeder script into container filesystem
@@ -405,7 +435,7 @@ with app.app_context():
                     updates_made = True
                     logger.info("✓ Autonomous Bridge Assembly complete: %d crews provisioned.", len(mapping))
                 else:
-                    logger.error("Autonomous seed assembly failed with RC %d. Marker found: %s", res.returncode, "AUTOSEED_START" in res.stdout)
+                    logger.error("Autonomous seed assembly failed with RC %s. Marker found: %s", res.returncode, "AUTOSEED_START" in res.stdout)
                     if res.stderr: logger.error("Seeder Stderr: %s", res.stderr)
                     if res.stdout: logger.error("Seeder Stdout (first 1000ch): %s", res.stdout[:1000])
             except Exception as seed_err:
