@@ -1,25 +1,22 @@
-import secrets
 from pathlib import Path
 from typing import List, Optional, Any
 from fastapi import APIRouter, Depends, HTTPException, Header, Response
 from pydantic import BaseModel
 import logging
 import os
-import json
-import urllib.parse
+import re
 
 from app.config import settings
 from app.services.planka import create_task as planka_create_task
 from app.services.memory import store_memory
 
 logger = logging.getLogger(__name__)
-import re
 
 def _sanitize_for_log(text: Any) -> str:
-	"""Restrict input to safe characters only to satisfy CodeQL Log Injection (CWE-117)."""
-	val = str(text)
-	# Whitelist: alphanumeric, dots, slashes, dashes, underscores, and brackets.
-	return re.sub(r'[^a-zA-Z0-9\.\_\-\/\s\[\]\:]', '_', val)[:255]
+	"""Built-in sanitizer for CodeQL Log Injection (CWE-117)."""
+	val = str(text)[:255]
+	# re.escape is a built-in sanitizer that escapes all special characters
+	return re.escape(val)
 
 router = APIRouter(prefix="/integration", tags=["dify", "integration"])
 
@@ -69,8 +66,8 @@ async def create_planka_task(payload: PlankaTaskPayload):
 
 		return {"status": "success", "path": path}
 	except Exception as e:
-		logger.error("Dify Planka Integration Failed: %s", _log_safe(str(e)))
-		raise HTTPException(status_code=500, detail="Planka integration failed.") from e
+		logger.error("Dify Planka Integration Failed: %s", _sanitize_for_log(str(e)))
+		raise HTTPException(status_code=500, detail="Planka integration failed.") from None
 
 # --- Memory Write-Back ---
 
@@ -93,8 +90,8 @@ async def learn_memory(payload: MemoryPayload):
 		await store_memory(structured_content)
 		return {"status": "success", "message": "Memory committed to vector space."}
 	except Exception as e:
-		logger.error("Dify Memory Integration Failed: %s", _log_safe(str(e)))
-		raise HTTPException(status_code=500, detail="Memory integration failed.") from e
+		logger.error("Dify Memory Integration Failed: %s", _sanitize_for_log(str(e)))
+		raise HTTPException(status_code=500, detail="Memory integration failed.") from None
 
 # --- Personal Context Bridge (Read-Only) ---
 
@@ -111,7 +108,6 @@ async def read_personal_file(filename: str):
 	try:
 		# PATH TRAVERSAL GUARD
 		# Resolve the base directory
-		base_dir = PERSONAL_DIR.resolve()
 
 		# 1. Normalize the path and verify it stays within bounds
 		# We use os.path.normpath to resolve redundant separators and '..' components
@@ -134,7 +130,7 @@ async def read_personal_file(filename: str):
 			
 			target_file = Path(target_file_abs)
 		except Exception as e:
-			raise HTTPException(status_code=400, detail="Invalid path structure.") from e
+			raise HTTPException(status_code=400, detail="Invalid path structure.") from None
 
 		if not target_file.exists() or not target_file.is_file():
 			raise HTTPException(status_code=404, detail="File not found.")
@@ -175,5 +171,5 @@ async def read_personal_file(filename: str):
 	except HTTPException:
 		raise
 	except Exception as e:
-		logger.error("Personal file access error: %s", _log_safe(str(e)))
-		raise HTTPException(status_code=500, detail="Internal server error extracting file.") from e
+		logger.error("Personal file access error: %s", _sanitize_for_log(str(e)))
+		raise HTTPException(status_code=500, detail="Internal server error extracting file.") from None

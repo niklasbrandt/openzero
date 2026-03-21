@@ -13,7 +13,6 @@ async def test_yaml_parser_graceful_failure():
     """
     # Create a temporary registry
     with tempfile.TemporaryDirectory() as td:
-        map_path = os.path.join(td, ".dify_app_ids.json")
         crews_path = os.path.join(td, "crews.yaml")
         
         # Write invalid YAML
@@ -34,7 +33,6 @@ async def test_app_resolution_import_loop():
     Test missing UUIDs correctly trigger an import loop when provisioning.
     """
     with tempfile.TemporaryDirectory() as td:
-        map_path = os.path.join(td, ".dify_app_ids.json")
         crews_path = os.path.join(td, "crews.yaml")
         dify_agent_dir = os.path.join(td, "dify")
         os.makedirs(dify_agent_dir)
