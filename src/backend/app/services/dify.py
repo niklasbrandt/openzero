@@ -40,7 +40,7 @@ workflow:
         tools: []
       model:
         completion_params: {{stop: [], temperature: 0.7, top_p: 1}}
-        name: deep
+        name: Qwen3-8B-Q3_K_M.gguf
         provider: openai
       prompt_template:
         system: |
@@ -261,21 +261,28 @@ class CrewRegistry:
                 dsn = f"postgresql://{user}:{pw}@postgres:5432/dify"
                 conn = await asyncpg.connect(dsn)
                 try:
+                    # Tier 1: Direct Database Peering (High Availability Recovery)
+                    # We fetch all app names and their corresponding service tokens
                     rows = await conn.fetch("""
                         SELECT a.name, a.id::text as app_id, t.token as api_token
                         FROM apps a
                         JOIN api_tokens t ON a.id = t.app_id
                         WHERE t.type = 'app'
                     """)
+                    
                     if rows:
+                        # Match database apps back to our crew configuration
                         for row in rows:
-                            cid = row['name']
-                            self._manifest[cid] = {"app_id": row['app_id'], "api_token": row['api_token']}
-                            if cid in self._crews:
-                                self._crews[cid].dify_app_id = row['app_id']
-                                self._crews[cid].dify_api_token = row['api_token']
-                        updates_made = True
-                        logger.info("✓ Recovered %d crew mappings via direct Postgres peering.", len(rows))
+                            db_name = row['name']
+                            for cid, config in self._crews.items():
+                                # Match by stable crew_id (slug) OR human name
+                                if db_name == cid or db_name == config.name:
+                                    self._manifest[cid] = {"app_id": row['app_id'], "api_token": row['api_token']}
+                                    self._crews[cid].dify_app_id = row['app_id']
+                                    self._crews[cid].dify_api_token = row['api_token']
+                        
+                        if self._manifest:
+                            logger.info("✓ Recovered %d crew mappings via direct Postgres peering.", len(self._manifest))
                 finally:
                     await conn.close()
             except Exception as peering_err:
@@ -323,6 +330,10 @@ with app.app_context():
     from models.model import App, ApiToken
     from services.app_dsl_service import AppDslService
     from libs.password import hash_password
+    import time
+
+    # Step 0: Operational Readiness (Wait for Dify API)
+    time.sleep(30) 
 
     try:
         email = "admin@openzero.ai"
@@ -339,11 +350,15 @@ with app.app_context():
             db.session.add(acc)
             db.session.commit()
         
-        tenant = Tenant.query.filter_by(name="openZero-Core").first()
+        # Step 2: Tenant Configuration (Auto-Discovery)
+        tenant = Tenant.query.first()
         if not tenant:
             tenant = Tenant(name="openZero-Core", status="normal")
             db.session.add(tenant)
             db.session.commit()
+            print(f"Created new core tenant: {tenant.id}")
+        else:
+            print(f"Recovered existing tenant: {tenant.name} ({tenant.id})")
             
         join = TenantAccountJoin.query.filter_by(tenant_id=tenant.id, account_id=acc.id).first()
         if not join:
@@ -359,24 +374,29 @@ with app.app_context():
         dsl_svc = AppDslService(db.session)
 
         # Iterate over all defined crews to ensure provisioning
+        import time 
         for crew_id, meta in CREW_METADATA.items():
+            time.sleep(5)  # Backoff to avoid orchestrator saturation
+            # Robust Strategy: Use crew_id (slug) as the Dify app name
             existing = App.query.filter_by(tenant_id=tenant.id, name=crew_id).first()
+            
             if not existing:
-                # Self-Healing Layer: Try file first, then fallback to generation
+                # Fallback to human name lookup from legacy runs
+                existing = App.query.filter_by(tenant_id=tenant.id, name=meta["name"]).first()
+            
+            if not existing:
                 yaml_path = os.path.join(agent_dir, f"{crew_id}.yml")
                 if os.path.exists(yaml_path):
                     with open(yaml_path, 'r', encoding='utf-8') as f:
                         content = f.read()
                 else:
-                    # Generate DSL from template if file is missing
                     content = DSL_TEMPLATE.format(
-                        name=meta["name"],
+                        name=crew_id,
                         description=meta["description"],
                         instructions=meta["instructions"]
                     )
                 
                 try:
-                    # Import using content mode
                     app_obj = dsl_svc.import_app(account=acc, import_mode='yaml-content', yaml_content=content)
                     app_id = app_obj.id
                     token_str = f"app-{secrets.token_urlsafe(24)}"
@@ -436,6 +456,20 @@ with app.app_context():
                             self._crews[crew_id].dify_api_token = data["api_token"]
                     updates_made = True
                     logger.info("✓ Autonomous Bridge Assembly complete: %d crews provisioned.", len(mapping))
+                    
+                    # Proactive notification to Operator via Telegram (Hook)
+                    try:
+                        from app.api.telegram_bot import send_notification_html
+                        from app.services.timezone import format_time
+                        alert_text = (
+                            "🚀 <b>Tactical Brain Assembled</b>\n\n"
+                            f"- {len(mapping)} crews provisioned.\n"
+                            f"- Local Model: 8B Deep Tier\n\n"
+                            f"<i>Automated provisioning finalized at {format_time()}</i>"
+                        )
+                        asyncio.create_task(send_notification_html(alert_text))
+                    except Exception as alert_err:
+                        logger.debug("Bridge Notification skipped: %s", alert_err)
                 else:
                     logger.error("Autonomous seed assembly failed with RC %s. Marker found: %s", res.returncode, "AUTOSEED_START" in res.stdout)
                     if res.stderr: logger.error("Seeder Stderr: %s", res.stderr)
