@@ -192,6 +192,7 @@ services:
     build:
       context: .
       dockerfile: src/backend/Dockerfile
+    container_name: openzero-backend-v3
     restart: always
     depends_on:
       postgres:
@@ -206,6 +207,7 @@ services:
     environment:
       - TRUST_PROXY=true
       - PYTHONUNBUFFERED=1
+      - DIFY_API_URL=http://dify-api:5001/v1
     volumes:
       - gmail_tokens:/app/tokens
       - /var/run/docker.sock:/var/run/docker.sock
@@ -386,6 +388,8 @@ services:
   dify-web:
     image: langgenius/dify-web:0.15.3
     restart: always
+    ports:
+      - "3000:3000"
     environment:
       - CONSOLE_API_URL=http://dify-api:5001
       - APP_API_URL=http://dify-api:5001
