@@ -146,6 +146,12 @@ class DifyClient:
         logger.info("Dify: Executing agent %s (url: %s/chat-messages)", app_id, self.base_url)
         async with httpx.AsyncClient(timeout=600.0) as client:
             res = await client.post(f"{self.base_url}/chat-messages", headers=headers, json=payload)
+            if res.status_code in (401, 500):
+                logger.warning("Dify Agent failed (%d), falling back to direct LLM...", res.status_code)
+                from app.services.openai import chat
+                ans = await chat(user_input, tier="deep")
+                return {"answer": ans}
+                
             if not res.is_success:
                 logger.error("Dify 400/500 Detail: %s (Payload: %s)", res.text, payload)
             res.raise_for_status()
