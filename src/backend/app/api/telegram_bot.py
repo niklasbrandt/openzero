@@ -239,6 +239,20 @@ async def start_telegram_bot():
 				"NEVER invent data not present in SYSTEM_DATA."
 				f"{lang_directive}"
 			)
+			# Use fast tier for instant greeting during model warmup
+			logger.info("Greeting Seq - Dispatching instant greeting (fast tier)")
+			from app.services.openai import chat
+			response_text = await chat(greeting_prompt, tier="fast", system_prompt=system_override)
+			
+			# Send greeting to user
+			await bot_app.bot.send_message(
+				chat_id=settings.TELEGRAM_USER_ID,
+				text=response_text,
+				parse_mode="Markdown"
+			)
+			logger.info("✓ System start greeting sent successfully.")
+			return
+
 			# Wait for the deep model to become ready before calling the LLM.
 			# On a cold Docker start, llm-deep can take 3-5 minutes to load the
 			# model into memory. Polling the /health endpoint prevents the greeting

@@ -148,7 +148,7 @@ class DifyClient:
             res = await client.post(f"{self.base_url}/chat-messages", headers=headers, json=payload)
             if res.status_code in (401, 500):
                 logger.warning("Dify Agent failed (%d), falling back to direct LLM...", res.status_code)
-                from app.services.openai import chat
+                from app.services.llm import chat
                 ans = await chat(user_input, tier="deep")
                 return {"answer": ans}
                 
