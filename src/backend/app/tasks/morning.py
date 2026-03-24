@@ -112,17 +112,20 @@ async def morning_briefing():
 			emails = await fetch_unread_emails(max_results=5)
 			return "\n".join([f"- {e['from']}: {e['subject']}" for e in emails]) if emails else "No new emails."
 
-		weather_report, tree, email_summary, recent_memories = await asyncio.gather(
+		weather_report, tree, email_summary = await asyncio.gather(
 			get_weather_forecast(detected_location),
 			get_project_tree(as_html=False),
 			_get_email_summary(),
-			get_recent_memories(hours=24),
 		)
 		logger.debug("morning_briefing — batch-2 done in %.1fs", asyncio.get_event_loop().time() - _t2)
 
-		memory_review = ""
-		if recent_memories:
+		# 2. Get Recent Memories for context — handle failure gracefully
+		try:
+			recent_memories = await get_recent_memories(hours=24)
 			memory_review = "\n".join([f"• {m['text']}" for m in recent_memories])
+		except Exception as e:
+			logger.warning("Optional memory retrieval skipped for briefing: %s", e)
+			memory_review = "" # Ensure it's empty if retrieval fails
 
 		full_prompt = (
 			"Z, morning briefing. Summarize based ONLY on the CONTEXT below.\n"
