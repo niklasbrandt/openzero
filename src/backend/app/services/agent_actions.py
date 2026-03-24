@@ -190,12 +190,12 @@ async def run_crew(crew_id: str, user_input: str = "Execute autonomous cycle") -
 		
 	try:
 		if config.type == "workflow":
-			res = await dify_client.run_workflow(config.dify_app_id, integrated_input)
+			res = await dify_client.run_workflow(config.dify_app_id, integrated_input, api_key=config.dify_api_token)
 			out = res.get("data", {}).get("outputs", {})
 			# We don't return the full JSON, just a summary
 			return f"Crew '{crew_id}' workflow finished with result: {str(out)[:200]}"
 		else:
-			res = await dify_client.run_agent(config.dify_app_id, user_input, None, integrated_input)
+			res = await dify_client.run_agent(config.dify_app_id, user_input, None, integrated_input, api_key=config.dify_api_token)
 			ans = res.get('answer', 'Success')
 			return f"Crew '{crew_id}' agent finished: {ans[:200]}"
 	except httpx.TimeoutException:
@@ -777,11 +777,11 @@ async def execute_crew_programmatically(crew_id: str, input_context: str = "Sche
 			integrated_input["instructions"] = config.instructions
 
 		if config.type == "workflow":
-			res = await dify_client.run_workflow(config.dify_app_id, integrated_input)
+			res = await dify_client.run_workflow(config.dify_app_id, integrated_input, api_key=config.dify_api_token)
 			out = res.get("data", {}).get("outputs", {})
 			logger.info("Crew '%s' workflow completed. Output: %s", crew_id, out)
 		else:
-			res = await dify_client.run_agent(config.dify_app_id, input_context, conversation_id=None, inputs=integrated_input)
+			res = await dify_client.run_agent(config.dify_app_id, input_context, conversation_id=None, inputs=integrated_input, api_key=config.dify_api_token)
 			logger.info("Crew '%s' agent completed. Outcome: %s", crew_id, res.get('answer', 'Success'))
 			
 	except Exception as e:
