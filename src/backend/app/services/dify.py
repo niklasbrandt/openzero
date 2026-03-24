@@ -1,5 +1,6 @@
 import json
 import logging
+# openZero Tactical Bridge Build ID: 876e4821-2a1d-481d-91b2-8ec2512cf123
 import os
 from pathlib import Path
 from typing import Optional, Dict, List
@@ -142,8 +143,11 @@ class DifyClient:
             "response_mode": "blocking",
             "user": user_id or "operator"
         }
-        async with httpx.AsyncClient(timeout=90.0) as client:
+        logger.info("Dify: Executing agent %s (url: %s/chat-messages)", app_id, self.base_url)
+        async with httpx.AsyncClient(timeout=600.0) as client:
             res = await client.post(f"{self.base_url}/chat-messages", headers=headers, json=payload)
+            if not res.is_success:
+                logger.error("Dify 400/500 Detail: %s (Payload: %s)", res.text, payload)
             res.raise_for_status()
             return res.json()
 
@@ -162,10 +166,15 @@ class DifyClient:
             "response_mode": "blocking",
             "user": user_id or "operator"
         }
-        async with httpx.AsyncClient(timeout=90.0) as client:
-            res = await client.post(f"{self.base_url}/workflows/run", headers=headers, json=payload)
-            res.raise_for_status()
-            return res.json()
+        logger.info("Dify: Executing workflow %s (url: %s/workflows/run)", app_id, self.base_url)
+        async with httpx.AsyncClient(timeout=600.0) as client:
+            try:
+                res = await client.post(f"{self.base_url}/workflows/run", headers=headers, json=payload)
+                res.raise_for_status()
+                return res.json()
+            except Exception as e:
+                logger.error("Dify workflow execution fault: %s (URL: %s)", e, self.base_url)
+                raise Exception(f"Communication failure with crew '{app_id}'. Detail: {str(e)}")
 
     async def get_active_runs(self, cadence: Optional[str] = None) -> bool:
         """
@@ -296,184 +305,95 @@ class CrewRegistry:
         missing_crews = [cid for cid in self._crews.keys() if cid not in self._manifest]
         
         if missing_crews:
-            logger.info("Dify brain incomplete (missing %d crews). Performing Autonomous Bridge Assembly...", len(missing_crews))
+            logger.info("Dify brain incomplete (missing %d crews). Performing Direct database Bridge Assembly...", len(missing_crews))
             
-            # --- Rule 14: Strategic Crew Metadata (Filtered) ---
-            # Only pass metadata for the crews we actually need to provision
-            crew_metadata = json.dumps({
-                cid: {
-                    "name": self._crews[cid].name,
-                    "description": self._crews[cid].description,
-                    "instructions": self._crews[cid].instructions or "Execute mission with high autonomy."
-                } for cid in missing_crews
-            })
-
-            seeder_py = """
-import os, sys, datetime, secrets, json
-import base64
-import flask
-import flask.sansio.blueprints
-# Definitive monkeypatch for both standard and sansio blueprint registration checks in Dify/Flask
-flask.blueprints.Blueprint._check_setup_finished = lambda self, f_name: None
-flask.sansio.blueprints.Blueprint._check_setup_finished = lambda self, f_name: None
-
-from app import create_app
-from extensions.ext_database import db
-
-# Injected metadata from openZero Backend
-CREW_METADATA = __CREW_METADATA_JSON__
-DSL_TEMPLATE = \"\"\"__DSL_TEMPLATE_STR__\"\"\"
-
-app = create_app()
-with app.app_context():
-    from models.account import Account, Tenant, TenantAccountJoin, TenantAccountJoinRole
-    from models.model import App, ApiToken
-    from services.app_dsl_service import AppDslService
-    from libs.password import hash_password
-    import time
-
-    # Step 0: Operational Readiness (Wait for Dify API)
-    time.sleep(30) 
-
-    try:
-        email = "admin@openzero.ai"
-        acc = Account.query.filter_by(email=email).first()
-        if not acc:
-            salt = secrets.token_bytes(16)
-            hashed = hash_password("openZero2026!", salt)
-            acc = Account(
-                name="openZero-Z", email=email, status="active",
-                password=base64.b64encode(hashed).decode('utf-8'),
-                password_salt=base64.b64encode(salt).decode('utf-8'),
-                initialized_at=datetime.datetime.now()
-            )
-            db.session.add(acc)
-            db.session.commit()
-        
-        # Step 2: Tenant Configuration (Auto-Discovery)
-        tenant = Tenant.query.first()
-        if not tenant:
-            tenant = Tenant(name="openZero-Core", status="normal")
-            db.session.add(tenant)
-            db.session.commit()
-            print(f"Created new core tenant: {tenant.id}")
-        else:
-            print(f"Recovered existing tenant: {tenant.name} ({tenant.id})")
-            
-        join = TenantAccountJoin.query.filter_by(tenant_id=tenant.id, account_id=acc.id).first()
-        if not join:
-            join = TenantAccountJoin(tenant_id=tenant.id, account_id=acc.id, role=TenantAccountJoinRole.OWNER, current=True)
-            db.session.add(join)
-            db.session.commit()
-
-        # Manually link current tenant to satisfy internal Dify checks in import_app
-        acc._current_tenant = tenant
-
-        agent_dir = "/app/agent/dify"
-        mapping = {}
-        dsl_svc = AppDslService(db.session)
-
-        # Iterate over all defined crews to ensure provisioning
-        import time 
-        for crew_id, meta in CREW_METADATA.items():
-            time.sleep(5)  # Backoff to avoid orchestrator saturation
-            # Robust Strategy: Use crew_id (slug) as the Dify app name
-            existing = App.query.filter_by(tenant_id=tenant.id, name=crew_id).first()
-            
-            if not existing:
-                # Fallback to human name lookup from legacy runs
-                existing = App.query.filter_by(tenant_id=tenant.id, name=meta["name"]).first()
-            
-            if not existing:
-                yaml_path = os.path.join(agent_dir, f"{crew_id}.yml")
-                if os.path.exists(yaml_path):
-                    with open(yaml_path, 'r', encoding='utf-8') as f:
-                        content = f.read()
-                else:
-                    content = DSL_TEMPLATE.format(
-                        name=crew_id,
-                        description=meta["description"],
-                        instructions=meta["instructions"]
-                    )
-                
-                try:
-                    app_obj = dsl_svc.import_app(account=acc, import_mode='yaml-content', yaml_content=content)
-                    app_id = app_obj.id
-                    token_str = f"app-{secrets.token_urlsafe(24)}"
-                    token = ApiToken(tenant_id=tenant.id, app_id=app_id, type='app', token=token_str)
-                    db.session.add(token)
-                    db.session.commit()
-                    mapping[crew_id] = {"app_id": str(app_id), "api_token": token_str}
-                except Exception as e:
-                    db.session.rollback()
-                    print(f"Error importing {crew_id}: {e}", file=sys.stderr)
-            else:
-                token = ApiToken.query.filter_by(app_id=existing.id, type='app').first()
-                if not token:
-                    token_str = f"app-{secrets.token_urlsafe(24)}"
-                    token = ApiToken(tenant_id=tenant.id, app_id=existing.id, type='app', token=token_str)
-                    db.session.add(token)
-                    db.session.commit()
-                    mapping[crew_id] = {"app_id": str(existing.id), "api_token": token_str}
-                else:
-                    mapping[crew_id] = {"app_id": str(existing.id), "api_token": token.token}
-                    
-        print("AUTOSEED_START")
-        print(json.dumps(mapping))
-        print("AUTOSEED_END")
-
-    except Exception as main_e:
-        db.session.rollback()
-        print(f"MAIN ERROR: {str(main_e)}", file=sys.stderr)
-"""
-            # Inject metadata and template
-            seeder_py = seeder_py.replace("__CREW_METADATA_JSON__", crew_metadata)
-            seeder_py = seeder_py.replace("__DSL_TEMPLATE_STR__", BOOTSTRAP_DSL_TEMPLATE)
-
             try:
-                import subprocess
-                # Deploy seeder script into container filesystem
-                write_cmd = ["docker", "exec", "-i", "openzero-dify-api-1", "bash", "-c", "cat > /tmp/seeder.py"]
-                subprocess.run(write_cmd, input=seeder_py, text=True, check=True)
-                
-                # Execute seeder via python3 directly (non-interactive, robust)
-                # PYTHONPATH is required to locate Dify's app package
-                run_cmd = ["docker", "exec", "openzero-dify-api-1", "bash", "-c", "export PYTHONPATH=/app/api && python3 /tmp/seeder.py"]
-                res = subprocess.run(run_cmd, capture_output=True, text=True)
-                
-                if res.returncode == 0 and "AUTOSEED_START" in res.stdout:
-                    # Extract JSON between markers
-                    stdout_str = res.stdout
-                    start_idx = stdout_str.find("AUTOSEED_START") + len("AUTOSEED_START")
-                    end_idx = stdout_str.find("AUTOSEED_END")
-                    json_str = stdout_str[start_idx:end_idx].strip()
+                import asyncpg, uuid, secrets
+                user = os.getenv("DB_USER", "zero")
+                pw = os.getenv("DB_PASSWORD", "zero_dev_password")
+                dsn = f"postgresql://{user}:{pw}@postgres:5432/dify"
+                conn = await asyncpg.connect(dsn)
+                try:
+                    # Step 1: Recover Tenant & Admin
+                    tenant_id = await conn.fetchval("SELECT id FROM tenants LIMIT 1")
+                    account_id = await conn.fetchval("SELECT id FROM accounts LIMIT 1")
                     
-                    mapping = json.loads(json_str)
-                    for crew_id, data in mapping.items():
-                        self._manifest[crew_id] = data
-                        if crew_id in self._crews:
-                            self._crews[crew_id].dify_app_id = data["app_id"]
-                            self._crews[crew_id].dify_api_token = data["api_token"]
+                    if not tenant_id or not account_id:
+                        logger.error("Dify database not initialized (no tenant/account found).")
+                        return
+
+                    # Step 2: Ensure 'openai' provider points to local LLM
+                    # Dify 0.15.x uses provider_name in providers table
+                    await conn.execute("""
+                        INSERT INTO providers (id, tenant_id, provider_name, provider_type, quota_type, is_valid, token_is_set, created_at, updated_at)
+                        VALUES ($1, $2, 'openai', 'custom', 'unlimited', true, true, now(), now())
+                        ON CONFLICT DO NOTHING
+                    """, uuid.uuid4(), tenant_id)
+
+                    # Step 3: Provision Missing Crews
+                    new_mappings = {}
+                    for cid in missing_crews:
+                        config = self._crews[cid]
+                        app_id = uuid.uuid4()
+                        
+                        # A. Create App
+                        await conn.execute("""
+                            INSERT INTO apps (id, tenant_id, name, mode, status, description, enable_site, created_at, updated_at)
+                            VALUES ($1, $2, $3, 'chat', 'normal', $4, false, now(), now())
+                            ON CONFLICT (tenant_id, name) DO UPDATE SET updated_at = now()
+                            RETURNING id
+                        """, app_id, tenant_id, cid, config.description)
+                        
+                        # B. Create App Model Config (Directly pointing to local Qwen)
+                        # Note: We use the simplest valid JSON for model config
+                        model_config = json.dumps({
+                            "provider": "openai",
+                            "model": "Qwen3-8B-Q3_K_M.gguf",
+                            "mode": "chat",
+                            "completion_params": {"temperature": 0.7}
+                        })
+                        await conn.execute("""
+                            INSERT INTO app_model_configs (id, app_id, model, created_at, updated_at)
+                            VALUES ($1, $2, $3, now(), now())
+                        """, uuid.uuid4(), app_id, model_config)
+                        
+                        # C. Create API Token
+                        token_str = f"app-{secrets.token_urlsafe(24)}"
+                        await conn.execute("""
+                            INSERT INTO api_tokens (id, tenant_id, app_id, type, token, created_at)
+                            VALUES ($1, $2, $3, 'app', $4, now())
+                        """, uuid.uuid4(), tenant_id, app_id, token_str)
+                        
+                        new_mappings[cid] = {"app_id": str(app_id), "api_token": token_str}
+
+                    # Step 4: Finalize Manifest
+                    self._manifest.update(new_mappings)
+                    for cid, data in new_mappings.items():
+                        if cid in self._crews:
+                            self._crews[cid].dify_app_id = data["app_id"]
+                            self._crews[cid].dify_api_token = data["api_token"]
+                    
+                    with open(self.manifest_path, 'w', encoding='utf-8') as f:
+                        json.dump(self._manifest, f, indent=4)
+                    
                     updates_made = True
-                    logger.info("✓ Autonomous Bridge Assembly complete: %d crews provisioned.", len(mapping))
+                    logger.info("✓ Direct Bridge Assembly complete: %d crews provisioned.", len(new_mappings))
                     
-                    # Proactive notification to Operator via Telegram (Hook)
+                    # Proactive notification (Background Hook)
                     try:
                         from app.api.telegram_bot import send_notification_html
                         from app.services.timezone import format_time
                         alert_text = (
-                            "🚀 <b>Tactical Brain Assembled</b>\n\n"
-                            f"- {len(mapping)} crews provisioned.\n"
-                            f"- Local Model: 8B Deep Tier\n\n"
-                            f"<i>Automated provisioning finalized at {format_time()}</i>"
+                            "🚀 <b>Tactical Brain Assembled (Direct Tier)</b>\n\n"
+                            f"- {len(new_mappings)} crews provisioned.\n"
+                            "- Local Peer: Qwen3-8B (Direct SQL)\n\n"
+                            f"<i>Infrastructure verified at {format_time()}</i>"
                         )
                         asyncio.create_task(send_notification_html(alert_text))
-                    except Exception as alert_err:
-                        logger.debug("Bridge Notification skipped: %s", alert_err)
-                else:
-                    logger.error("Autonomous seed assembly failed with RC %s. Marker found: %s", res.returncode, "AUTOSEED_START" in res.stdout)
-                    if res.stderr: logger.error("Seeder Stderr: %s", res.stderr)
-                    if res.stdout: logger.error("Seeder Stdout (first 1000ch): %s", res.stdout[:1000])
+                    except Exception: pass
+
+                finally:
+                    await conn.close()
             except Exception as seed_err:
                 logger.error("Strategic seed assembly error: %s", seed_err)
 

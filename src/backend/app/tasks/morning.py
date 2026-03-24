@@ -140,13 +140,14 @@ async def morning_briefing():
 			f"LATEST EMAILS:\n{email_summary}\n"
 		)
 
-		# 3. Generate Briefing — deep tier with 90s hard timeout, retry on failure
+		# 3. Generate Briefing — deep tier with 600s hard timeout, retry on failure
 		logger.debug("morning_briefing — starting LLM generation")
 		_t3 = asyncio.get_event_loop().time()
 		try:
-			raw_content = await asyncio.wait_for(chat(full_prompt, tier="deep"), timeout=90.0)
+			logger.info("Generating morning briefing (600s budget)...")
+			raw_content = await asyncio.wait_for(chat(full_prompt, tier="deep"), timeout=600.0)
 		except asyncio.TimeoutError:
-			logger.warning("morning_briefing — deep tier timed out after 90s, retrying")
+			logger.warning("morning_briefing — deep tier timed out after 600s, retrying")
 			raw_content = await chat(full_prompt, tier="deep")
 		logger.debug("morning_briefing — LLM done in %.1fs", asyncio.get_event_loop().time() - _t3)
 

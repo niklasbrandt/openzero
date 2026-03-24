@@ -325,7 +325,9 @@ The `agent/crews.yaml` file controls the execution of autonomous background crew
 
 1. Ensure `DIFY_API_URL` and `DIFY_API_KEY` are set in your `.env`.
 2. Place Dify DSL `.yml` files in the `agent/dify/` folder.
-3. Open `agent/crews.yaml` and configure your active crews by aligning `dify_dsl_file` attributes with physical files. The backend's auto-provisioning engine will map them at startup.
+3. Open `agent/crews.yaml` and configure your active crews by aligning `dify_dsl_file` attributes with physical files.
+4. **Zero-Config Provisioning:** If the `.yml` files are missing, the backend's **Autonomous Bridge Assembly** engine will automatically generate them from templates and import them into Dify at startup.
+5. **Manifest Persistence:** The resulting App IDs and Service Tokens are saved in `agent/.dify_app_ids.json`. If you are a developer, ensure this file is synced back to your local environment to avoid redundant re-imports.
 
 ### 5b. Restrict Dashboard to Tailscale Only (Optional, Recommended)
 

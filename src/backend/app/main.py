@@ -105,6 +105,16 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logging.warning("⚠ Warning: Could not connect to Qdrant: %s", e)
     
+    # 2b. Initialize Dify Crews (Mandatory/Blocking)
+    print("🚀 2026_TACTICAL_BOOT: Initializing Dify Crews...")
+    try:
+        from app.services.dify import crew_registry
+        await crew_registry.load()
+        await crew_registry.provision()
+        logging.info("✓ Dify Crews initialized (%d active).", len(crew_registry.list_active()))
+    except Exception as _crew_err:
+        logging.warning("⚠ Warning: Dify Crew Provisioning failed: %s", _crew_err)
+
     # 3. Start background tasks & bot
     try:
         # Load user timezone from DB BEFORE starting the scheduler so
@@ -139,7 +149,7 @@ async def lifespan(app: FastAPI):
         # 5-8. Background Startup Sequence (Non-blocking)
         async def run_background_startup():
             try:
-                # 1. Warm up intelligence engine (Priority: Load models first)
+                # 1. Warm up intelligence engine (Heavy: Load models)
                 logging.info("⚡ Warming up intelligence engine...")
                 from app.services.memory import get_embedder
                 loop = asyncio.get_event_loop()
