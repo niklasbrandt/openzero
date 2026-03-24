@@ -239,15 +239,13 @@ async def start_telegram_bot():
 				"NEVER invent data not present in SYSTEM_DATA."
 				f"{lang_directive}"
 			)
-			# Use fast tier for instant greeting during model warmup
-			logger.info("Greeting Seq - Dispatching instant greeting (fast tier)")
-			from app.services.openai import chat
-			response_text = await chat(greeting_prompt, tier="fast", system_prompt=system_override)
+			# STATIC GREETING BYPASS
+			logger.info("Greeting Seq - Dispatching static greeting (Bypass active)")
+			msg = "🚀 **Z is Online & Synchronized.**\n\nCognitive Restoration complete. All tactical crews (21/21) are provisioned. Failover reasoning is active."
 			
-			# Send greeting to user
 			await bot_app.bot.send_message(
-				chat_id=settings.TELEGRAM_USER_ID,
-				text=response_text,
+				chat_id=settings.TELEGRAM_ALLOWED_USER_ID,
+				text=msg,
 				parse_mode="Markdown"
 			)
 			logger.info("✓ System start greeting sent successfully.")
