@@ -178,6 +178,10 @@ async def run_crew(crew_id: str, user_input: str = "Execute autonomous cycle") -
 	if not config.dify_app_id:
 		return f"Error: Crew '{crew_id}' is not provisioned."
 		
+	# LOG_TRACE: Check if token is actually present
+	token_peek = (config.dify_api_token[:10] + "...") if config.dify_api_token else "NONE"
+	logger.info("Crew execution bridge: id=%s app=%s token=%s", crew_id, config.dify_app_id, token_peek)
+		
 	tz_str = await get_current_timezone()
 	integrated_input = {
 		"user_input": user_input,
@@ -190,11 +194,13 @@ async def run_crew(crew_id: str, user_input: str = "Execute autonomous cycle") -
 		
 	try:
 		if config.type == "workflow":
+			logger.info("Dify Workflow: app=%s key=%s", config.dify_app_id, token_peek)
 			res = await dify_client.run_workflow(config.dify_app_id, integrated_input, api_key=config.dify_api_token)
 			out = res.get("data", {}).get("outputs", {})
 			# We don't return the full JSON, just a summary
 			return f"Crew '{crew_id}' workflow finished with result: {str(out)[:200]}"
 		else:
+			logger.info("Dify Agent: app=%s key=%s", config.dify_app_id, token_peek)
 			res = await dify_client.run_agent(config.dify_app_id, user_input, None, integrated_input, api_key=config.dify_api_token)
 			ans = res.get('answer', 'Success')
 			return f"Crew '{crew_id}' agent finished: {ans[:200]}"
