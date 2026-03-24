@@ -119,7 +119,7 @@ async def store_memory(text: str, metadata: Optional[dict] = None):
 		logger.debug("Memory dedup check failed: %s", _e) # optional; proceed with upsert if it fails
 
 	# 4. Final Upsert
-	final_metadata = {**(metadata or {}), "text": distilled_text, "stored_at": datetime.datetime.utcnow().isoformat()}
+	final_metadata = {**(metadata or {}), "text": distilled_text, "stored_at": datetime.datetime.utcnow().timestamp()}
 	client.upsert(
 		collection_name=COLLECTION_NAME,
 		points=[
@@ -267,20 +267,25 @@ async def get_recent_memories(hours: int = 24) -> list[dict]:
 	"""Fetch memories stored within the last N hours for briefing review."""
 	client = get_qdrant()
 	try:
-		cutoff = (datetime.datetime.utcnow() - datetime.timedelta(hours=hours)).isoformat()
+		cutoff = (datetime.datetime.utcnow() - datetime.timedelta(hours=hours)).timestamp()
 		# Scroll all points and filter by stored_at
-		results, _ = client.scroll(
-			collection_name=COLLECTION_NAME,
-			scroll_filter=models.Filter(
-				must=[
-					models.FieldCondition(
-						key="stored_at",
-						range=models.Range(gte=cutoff)
-					)
-				]
-			),
-			limit=20,
-		)
+		try:
+			results, _ = client.scroll(
+				collection_name=COLLECTION_NAME,
+				scroll_filter=models.Filter(
+					must=[
+						models.FieldCondition(
+							key="stored_at",
+							range=models.Range(gte=cutoff)
+						)
+					]
+				),
+				limit=20,
+			)
+		except Exception as inner_e:
+			logger.warning("Filtered scroll failed (schema mismatch?), falling back to unfiltered: %s", inner_e)
+			results, _ = client.scroll(collection_name=COLLECTION_NAME, limit=20)
+			
 		return [{"id": str(p.id), "text": p.payload.get("text", "")} for p in results]
 	except Exception as e:
 		logger.warning("get_recent_memories failed: %s", _sanitize_for_log(e))
