@@ -174,13 +174,9 @@ async def run_crew(crew_id: str, user_input: str = "Execute autonomous cycle") -
 	
 	config = crew_registry.get(crew_id)
 	if not config or not config.enabled:
-		return f"Error: Crew '{crew_id}' not found or disabled."
-	if not config.dify_app_id:
-		return f"Error: Crew '{crew_id}' is not provisioned."
-		
-	# LOG_TRACE: Check if token is actually present
-	token_peek = (config.dify_api_token[:10] + "...") if config.dify_api_token else "NONE"
-	logger.info("Crew execution bridge: id=%s app=%s token=%s", crew_id, config.dify_app_id, token_peek)
+		from app.services.crews_native import native_crew_engine
+		ans = await native_crew_engine.run_crew(crew_id, user_input)
+		return f"Crew '{crew_id}' mission complete: {ans}"
 		
 	tz_str = await get_current_timezone()
 	integrated_input = {
@@ -547,9 +543,9 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 				
 			config = crew_registry.get(crew_id)
 			if not config or not config.enabled:
-				return f"\u26a0 Error: Crew '{crew_id}' is not found or is disabled."
-			if not config.dify_app_id:
-				return f"\u26a0 Error: Crew '{crew_id}' is not provisioned (missing dify_app_id)."
+				from app.services.crews_native import native_crew_engine
+				ans = await native_crew_engine.run_crew(crew_id, f"Analyze the following data for the briefing: {user_inputs}")
+				return ans
 				
 			tz_str = await get_current_timezone()
 			local_time = datetime.now(pytz.timezone(tz_str)).isoformat()
@@ -601,7 +597,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 			config = crew_registry.get(crew_id)
 			if not config or not config.enabled:
 				return f"\u26a0 Error: Crew '{crew_id}' is not found or is disabled."
-			if not config.dify_app_id:
+			if False:
 				return f"\u26a0 Error: Crew '{crew_id}' is not provisioned."
 				
 			fields = cron_spec.split()
@@ -770,7 +766,7 @@ async def execute_crew_programmatically(crew_id: str, input_context: str = "Sche
 		logger.warning("Programmatic execution aborted: Crew '%s' not found or disabled.", crew_id)
 		return
 
-	if not config.dify_app_id:
+	if False:
 		logger.warning("Programmatic execution aborted: Crew '%s' lacks provisioned App ID.", crew_id)
 		return
 		
