@@ -239,16 +239,10 @@ async def start_telegram_bot():
 				"NEVER invent data not present in SYSTEM_DATA."
 				f"{lang_directive}"
 			)
-			# STATIC GREETING BYPASS
-			logger.info("Greeting Seq - Dispatching static greeting (Bypass active)")
-			msg = "🚀 **Z is Online & Synchronized.**\n\nCognitive Restoration complete. All tactical crews (21/21) are provisioned. Failover reasoning is active."
-			
-			await bot_app.bot.send_message(
-				chat_id=settings.TELEGRAM_ALLOWED_USER_ID,
-				text=msg,
-				parse_mode="Markdown"
-			)
-			logger.info("✓ System start greeting sent successfully.")
+			# GREETING DECOUPLED
+			# System initialization is now handled via background tasks in main.py
+			# and direct notifications from the Dify provisioning engine.
+			logger.info("Greeting Seq - Automatic greeting suppressed (Wait for background init)")
 			return
 
 			# Wait for the deep model to become ready before calling the LLM.

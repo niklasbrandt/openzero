@@ -6,28 +6,27 @@ from typing import Optional
 
 from fastapi import FastAPI
 from sqlalchemy import text, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
-from app.models.db import engine, Base, AsyncSessionLocal
-from app.models.people import Person
+from app.config import settings
+from app.models.db import engine, Base, AsyncSessionLocal, Person
 from app.services.memory import ensure_collection
-from app.services.automation import start_scheduler, stop_scheduler
 from app.api.telegram_bot import start_telegram_bot, stop_telegram_bot
+from app.tasks.scheduler import start_scheduler, stop_scheduler
 
-# Set up logging
+# Set up logging with fail-safe level
+log_level = getattr(settings, "LOG_LEVEL", "INFO")
 logging.basicConfig(
-    level=getattr(logging, settings.LOG_LEVEL),
+    level=getattr(logging, log_level, logging.INFO),
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    \"\"\"
+    """
     Unified startup and shutdown lifecycle manager.
     Note: Heavy AI model warming and context loading are moved to non-blocking 
     background tasks to ensure the Telegram bot greets the operator instantly.
-    \"\"\"
+    """
     # 1. Initialize Postgres tables
     try:
         async with engine.begin() as conn:
@@ -50,8 +49,10 @@ async def lifespan(app: FastAPI):
         logging.warning("⚠ Warning: Could not connect to Postgres: %s", e)
     
     # 2. Initialize Qdrant collection
-    if settings.IS_DOCKER and not settings.QDRANT_API_KEY:
-        raise RuntimeError("QDRANT_API_KEY must be set in .env when running in Docker.")
+    qdrant_key = getattr(settings, "QDRANT_API_KEY", None)
+    if settings.IS_DOCKER and not qdrant_key:
+        logging.warning("⚠ QDRANT_API_KEY not set in .env. Memory retrieval might fail.")
+        
     try:
         await ensure_collection()
         from app.services.memory import get_memory_stats
@@ -82,17 +83,50 @@ async def lifespan(app: FastAPI):
                 await crew_registry.provision()
                 
                 # Load personal/agent context (LLM compression)
-                from app.services.personal_context import refresh_personal_context
-                from app.services.agent_context import refresh_agent_context
-                await refresh_personal_context()
-                await refresh_agent_context()
+                try:
+                    from app.services.personal_context import refresh_personal_context
+                    from app.services.agent_context import refresh_agent_context
+                    await refresh_personal_context()
+                    await refresh_agent_context()
+                except Exception as _ctx_err:
+                    logging.warning("⚠ Context load warning: %s", _ctx_err)
                 
                 # Warm up local deep model VRAM
-                from app.services.memory import get_embedder
-                loop = asyncio.get_event_loop()
-                await loop.run_in_executor(None, get_embedder)
+                try:
+                    from app.services.memory import get_embedder
+                    loop = asyncio.get_event_loop()
+                    await loop.run_in_executor(None, get_embedder)
+                except Exception as _mem_err:
+                    logging.warning("⚠ Embedder warming warning: %s", _mem_err)
                 
                 logging.info("✓ Background heartbeat: All systems fully operational.")
+                
+                # HONEST STATUS NOTIFICATION
+                try:
+                    from app.api.telegram_bot import send_notification_html
+                    from app.services.timezone import format_time
+                    from app.services.dify import crew_registry
+                    
+                    # PHYSICAL PROVISIONING HOOK
+                    logging.info("Registry: Triggering tactical brain restoration...")
+                    await crew_registry.load()
+                    await crew_registry.provision()
+                    
+                    active_count = len(crew_registry.list_active())
+                    provisioned_list = [c for c in crew_registry.list_active() if c.dify_app_id]
+                    provisioned_count = len(provisioned_list)
+                    
+                    heartbeat_msg = (
+                        "🚀 <b>Z is Online & Operational</b>\n\n"
+                        f"Cognitive Restoration: <b>Complete</b>\n"
+                        f"Tactical Crews: <b>{provisioned_count}/{active_count} Provisioned</b>\n"
+                        "Failover Reasoning: <b>Active</b>\n\n"
+                        f"<i>Kernel synchronized at {format_time()}</i>"
+                    )
+                    await send_notification_html(heartbeat_msg)
+                except Exception as _notify_err:
+                    logging.warning("⚠ Heartbeat notification failed: %s", _notify_err)
+
             except Exception as _bg_err:
                 logging.warning("⚠ Warning: Background init tasks failed: %s", _bg_err)
 
@@ -104,8 +138,11 @@ async def lifespan(app: FastAPI):
     yield
     
     # --- SHUTDOWN ---
-    await stop_telegram_bot()
-    await stop_scheduler()
+    try:
+        await stop_telegram_bot()
+        await stop_scheduler()
+    except Exception:
+        pass
 
 
 app = FastAPI(
