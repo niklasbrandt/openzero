@@ -120,9 +120,9 @@ if ! python3 -c "import httpx, asyncio" 2>/dev/null; then
 fi
 
 # Run the suite with unbuffered output (-u) so progress prints in real-time
-if python3 -u tests/test_live_regression.py --url "$TEST_URL"; then
+if python3 -u tests/test_live_regression.py --url "$TEST_URL" && python3 -u tests/test_native_crew.py; then
   echo ""
-  echo "✅ All regression tests passed."
+  echo "✅ All regression tests passed (including Native Tactical Brain)."
   echo "📄 Full report saved to: docs/artifacts/regression_results.md"
 else
   echo ""

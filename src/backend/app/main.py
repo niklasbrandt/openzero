@@ -107,20 +107,17 @@ async def lifespan(app: FastAPI):
                     from app.services.timezone import format_time
                     from app.services.dify import crew_registry
                     
-                    # PHYSICAL PROVISIONING HOOK
-                    logging.info("Registry: Triggering tactical brain restoration...")
+                    # NATIVE TACTICAL RESTORATION
+                    logging.info("Registry: Loading Native Tactical crews...")
                     await crew_registry.load()
-                    await crew_registry.provision()
                     
                     active_count = len(crew_registry.list_active())
-                    provisioned_list = [c for c in crew_registry.list_active() if c.dify_app_id]
-                    provisioned_count = len(provisioned_list)
                     
                     heartbeat_msg = (
                         "🚀 <b>Z is Online & Operational</b>\n\n"
                         f"Cognitive Restoration: <b>Complete</b>\n"
-                        f"Tactical Crews: <b>{provisioned_count}/{active_count} Provisioned</b>\n"
-                        "Failover Reasoning: <b>Active</b>\n\n"
+                        f"Tactical Crews: <b>{active_count}/{active_count} Online (Native)</b>\n"
+                        "Architecture: <b>Strictly Native</b>\n\n"
                         f"<i>Kernel synchronized at {format_time()}</i>"
                     )
                     await send_notification_html(heartbeat_msg)
