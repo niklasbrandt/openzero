@@ -203,29 +203,38 @@ async def run_crew(crew_id: str, user_input: str = "Execute autonomous cycle") -
 		integrated_input["instructions"] = config.instructions
 		
 	try:
-		if config.type == "workflow":
+		if config.type == "workflow" and config.dify_app_id:
 			logger.info("Dify Workflow: app=%s key=%s", config.dify_app_id, token_peek)
 			res = await dify_client.run_workflow(config.dify_app_id, integrated_input, api_key=config.dify_api_token)
 			out = res.get("data", {}).get("outputs", {})
-			# We don't return the full JSON, just a summary
 			return f"Crew '{crew_id}' workflow finished with result: {str(out)[:200]}"
-		else:
-			logger.info("Dify Agent: app=%s key=%s", config.dify_app_id, token_peek)
-			res = await dify_client.run_agent(
-				app_id=config.dify_app_id,
-				user_input=user_input,
-				user_id="operator",
-				inputs=integrated_input,
-				api_key=config.dify_api_token
-			)
-			ans = res.get('answer', 'Success')
-		return f"Crew '{crew_id}' agent finished: {ans[:200]}"
+		elif config.dify_app_id:
+			# Primary Attempt: Dify Agent
+			try:
+				logger.info("Dify Agent: app=%s key=%s", config.dify_app_id, token_peek)
+				res = await dify_client.run_agent(
+					app_id=config.dify_app_id,
+					user_input=user_input,
+					user_id="operator",
+					inputs=integrated_input,
+					api_key=config.dify_api_token
+				)
+				ans = res.get('answer', 'Success')
+				return f"Crew '{crew_id}' agent finished: {ans[:200]}"
+			except Exception as de:
+				logger.warning(f"Dify unavailable for '{crew_id}', falling back to Native engine: {de}")
+
+		# Elegant Native Fallback (Direct LLM Peering)
+		from app.services.crews_native import native_crew_engine
+		ans = await native_crew_engine.run_crew(crew_id, user_input)
+		return f"Crew '{crew_id}' mission complete: {ans[:200]}"
+
 	except httpx.TimeoutException:
 		logger.warning("Crew '%s' timed out.", crew_id)
 		return f"⚠ Crew '{crew_id}' exceeded reasoning budget (timeout) and was skipped."
 	except Exception as e:
 		import traceback
-		logger.error("Crew '%s' runtime failure: %s\n%s", crew_id, e, traceback.format_exc())
+		logger.error("Crew '%s' total runtime failure: %s\n%s", crew_id, e, traceback.format_exc())
 		return f"Error: Communication failure with crew '{crew_id}'."
 
 AVAILABLE_TOOLS = [create_task, create_project, create_event, learn_memory, schedule_reminder, schedule_persistent_custom, move_card, run_crew]
