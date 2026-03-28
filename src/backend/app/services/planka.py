@@ -436,3 +436,54 @@ async def create_list(board_name: str, list_name: str, project_name: Optional[st
 		except Exception as e:
 			logger.debug("create_list failed: %s", _sanitize_for_log(e))
 			return None
+
+async def get_board_summary(board_name: str = "Operator Board") -> str:
+	"""Fetches a structured text summary of all active cards and lists on a specific board.
+	Used to inject live operational context into tactical Dify crews.
+	"""
+	from app.services.planka_common import get_planka_auth_token
+	token = await get_planka_auth_token()
+	headers = {"Authorization": f"Bearer {token}"}
+	
+	try:
+		async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, timeout=10.0, headers=headers) as client:
+			# 1. Resolve Board ID
+			projects_resp = await client.get("/api/projects")
+			projects = projects_resp.json().get("items", [])
+			board_id = None
+			
+			for p in projects:
+				p_det = await client.get(f"/api/projects/{p['id']}")
+				boards = p_det.json().get("included", {}).get("boards", [])
+				match = next((b for b in boards if b["name"].lower() == board_name.lower()), None)
+				if match:
+					board_id = match["id"]
+					break
+				if board_id: break
+			
+			if not board_id:
+				return f"Board '{board_name}' not found."
+				
+			# 2. Fetch Lists and Cards
+			b_detail_resp = await client.get(f"/api/boards/{board_id}", params={"included": "lists,cards"})
+			b_detail = b_detail_resp.json()
+			lists = b_detail.get("included", {}).get("lists", [])
+			cards = b_detail.get("included", {}).get("cards", [])
+			
+			# Sort by position
+			lists.sort(key=lambda x: x.get("position", 0))
+			
+			summary_lines = [f"### Planka Board: {board_name} Summary ###"]
+			for lst in lists:
+				lst_cards = [c for c in cards if c["listId"] == lst["id"]]
+				lst_cards.sort(key=lambda x: x.get("position", 0))
+				summary_lines.append(f"\n[List: {lst['name']}]")
+				if not lst_cards:
+					summary_lines.append("  (Empty)")
+				for c in lst_cards:
+					summary_lines.append(f"  - {c['name']}")
+			
+			return "\n".join(summary_lines)
+	except Exception as e:
+		logger.warning("get_board_summary error: %s", e)
+		return "Planka context unavailable."
