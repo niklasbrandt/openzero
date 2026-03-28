@@ -189,6 +189,16 @@ async def run_crew(crew_id: str, user_input: str = "Execute autonomous cycle") -
 		"sys_user": "Operator",
 		"memory_state": "Triggered via Z Agent tool"
 	}
+
+	# Tier 1 Context Injection: Planka (Specific to Coach)
+	if crew_id == "coach":
+		try:
+			from app.services.planka import get_board_summary
+			board_sum = await get_board_summary() # Fetches main board from env
+			integrated_input["planka_context"] = board_sum
+		except Exception as _plk_err:
+			logger.warning("Planka context injection failed for coach: %s", _plk_err)
+
 	if config.instructions:
 		integrated_input["instructions"] = config.instructions
 		
@@ -201,14 +211,21 @@ async def run_crew(crew_id: str, user_input: str = "Execute autonomous cycle") -
 			return f"Crew '{crew_id}' workflow finished with result: {str(out)[:200]}"
 		else:
 			logger.info("Dify Agent: app=%s key=%s", config.dify_app_id, token_peek)
-			res = await dify_client.run_agent(config.dify_app_id, user_input, None, integrated_input, api_key=config.dify_api_token)
+			res = await dify_client.run_agent(
+				app_id=config.dify_app_id,
+				user_input=user_input,
+				user_id="operator",
+				inputs=integrated_input,
+				api_key=config.dify_api_token
+			)
 			ans = res.get('answer', 'Success')
-			return f"Crew '{crew_id}' agent finished: {ans[:200]}"
+		return f"Crew '{crew_id}' agent finished: {ans[:200]}"
 	except httpx.TimeoutException:
 		logger.warning("Crew '%s' timed out.", crew_id)
 		return f"⚠ Crew '{crew_id}' exceeded reasoning budget (timeout) and was skipped."
 	except Exception as e:
-		logger.error("Error executing crew '%s': %s", crew_id, e)
+		import traceback
+		logger.error("Crew '%s' runtime failure: %s\n%s", crew_id, e, traceback.format_exc())
 		return f"Error: Communication failure with crew '{crew_id}'."
 
 AVAILABLE_TOOLS = [create_task, create_project, create_event, learn_memory, schedule_reminder, schedule_persistent_custom, move_card, run_crew]
