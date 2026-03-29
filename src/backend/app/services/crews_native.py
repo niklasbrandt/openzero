@@ -2,7 +2,7 @@ import logging
 import json
 import httpx
 from typing import Optional, Dict, List
-from app.services.dify import crew_registry, SYSTEM_TEMPLATE
+from app.services.crews import crew_registry, SYSTEM_TEMPLATE
 
 logger = logging.getLogger(__name__)
 

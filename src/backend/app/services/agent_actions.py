@@ -168,7 +168,7 @@ async def run_crew(crew_id: str, user_input: str = "Execute autonomous cycle") -
 	"""Trigger a specialized Dify crew or workflow by ID.
 	Example: crew_id='recipes_chef'
 	"""
-	from app.services.dify import dify_client, crew_registry
+	from app.services.crews import dify_client, crew_registry
 	from app.services.timezone import get_current_timezone
 	import pytz
 	
@@ -532,7 +532,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 		user_inputs = user_inputs.strip()
 
 		async def _exec_run_crew(crew_id=crew_id, user_inputs=user_inputs):
-			from app.services.dify import dify_client, crew_registry
+			from app.services.crews import dify_client, crew_registry
 			from app.services.timezone import get_current_timezone
 			import pytz
 			
@@ -591,7 +591,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 			from app.common.scheduler_instance import scheduler
 			from apscheduler.triggers.cron import CronTrigger
 			from app.services.timezone import get_current_timezone
-			from app.services.dify import dify_client, crew_registry
+			from app.services.crews import dify_client, crew_registry
 			import pytz
 			
 			config = crew_registry.get(crew_id)
@@ -759,7 +759,7 @@ async def execute_crew_programmatically(crew_id: str, input_context: str = "Sche
 	Public API for the Scheduler to legitimately run Dify Crews without a raw LLM action tag.
 	Constructs an isolated execution envelope dynamically.
 	"""
-	from app.services.dify import dify_client, crew_registry
+	from app.services.crews import dify_client, crew_registry
 
 	config = crew_registry.get(crew_id)
 	if not config or not config.enabled:
