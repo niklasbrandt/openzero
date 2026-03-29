@@ -30,7 +30,7 @@ class NativeCrewEngine:
 
 		logger.info(f"Native Engine: Executing mission for '{crew_id}'...")
 		
-		async with httpx.AsyncClient(timeout=300.0) as client:
+		async with httpx.AsyncClient(timeout=600.0) as client:
 			try:
 				res = await client.post(f"{self.llm_url}/chat/completions", json=payload)
 				res.raise_for_status()
