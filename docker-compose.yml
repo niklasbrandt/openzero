@@ -83,7 +83,7 @@ services:
       - MODEL_URL=${LLM_DEEP_MODEL_URL}
       - MODEL_FILE=${LLM_DEEP_MODEL_FILE:-Qwen3-8B-Q3_K_M.gguf}
       - KEEP_MODELS=${LLM_FAST_MODEL_FILE:-Qwen3-0.6B-Q4_K_M.gguf},${LLM_DEEP_MODEL_FILE:-Qwen3-8B-Q3_K_M.gguf}
-      - PORT=8083
+      - PORT=8000
       - THREADS=${LLM_DEEP_THREADS:-4}
       - CTX_SIZE=${LLM_DEEP_CTX:-6144}
       - N_PREDICT=${LLM_DEEP_PREDICT:-4096}
@@ -324,84 +324,7 @@ services:
       - "traefik.http.middlewares.pihole-restrict.ipallowlist.sourcerange=100.64.0.0/10"
       - "traefik.http.routers.pihole.middlewares=pihole-restrict"
 
-  # --- Dify Engine (Crews Orchestration) ---
-  dify-api:
-    image: langgenius/dify-api:0.15.3
-    restart: always
-    environment:
-      - DB_HOST=postgres
-      - DB_USERNAME=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - DB_DATABASE=dify
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_DB=1
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
-      - CONSOLE_WEB_URL=http://${SERVER_IP}/dify
-      - SERVICE_API_URL=http://dify-api:5001
-      - APP_WEB_URL=http://${SERVER_IP}/dify
-      - SECRET_KEY=${REDIS_PASSWORD}
-      - STORAGE_TYPE=opendal
-      - OPENDAL_SCHEME=fs
-      - OPENDAL_FS_ROOT=/app/api/storage
-      # Zero-Config Offline Reasoning (Local LLM Peering)
-      - OPENAI_API_BASE=http://llm-deep:8083/v1
-      - OPENAI_API_KEY=offline-openzero
-    volumes:
-      - dify_storage:/app/api/storage
-      - ./agent:/app/agent:ro
-    networks:
-      - internal
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_started
-
-  dify-worker:
-    image: langgenius/dify-api:0.15.3
-    restart: always
-    command: /usr/bin/supervisord -n -c /app/api/install/py/supervisord.conf
-    environment:
-      - DB_HOST=postgres
-      - DB_USERNAME=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - DB_DATABASE=dify
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_DB=1
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
-      - SECRET_KEY=${REDIS_PASSWORD}
-      - STORAGE_TYPE=opendal
-      - OPENDAL_SCHEME=fs
-      - OPENDAL_FS_ROOT=/app/api/storage
-      # Zero-Config Offline Reasoning (Local LLM Peering)
-      - OPENAI_API_BASE=http://llm-deep:8083/v1
-      - OPENAI_API_KEY=offline-openzero
-    volumes:
-      - dify_storage:/app/api/storage
-    networks:
-      - internal
-    depends_on:
-      - dify-api
-
-  dify-web:
-    image: langgenius/dify-web:0.15.3
-    restart: always
-    ports:
-      - "3000:3000"
-    environment:
-      - CONSOLE_API_URL=http://dify-api:5001
-      - APP_API_URL=http://dify-api:5001
-    networks:
-      - internal
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.dify.rule=PathPrefix(`/dify`)"
-      - "traefik.http.routers.dify.entrypoints=web"
-      - "traefik.http.services.dify.loadbalancer.server.port=3000"
-    depends_on:
-      - dify-api
+  # Native Crews Orchestration replaces Dify
 
 
 networks:
@@ -425,4 +348,3 @@ volumes:
   redis_data:
   pihole_config:
   pihole_dnsmasq:
-  dify_storage:
