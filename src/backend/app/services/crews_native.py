@@ -7,7 +7,7 @@ from app.services.dify import crew_registry, SYSTEM_TEMPLATE
 logger = logging.getLogger(__name__)
 
 class NativeCrewEngine:
-	def __init__(self, llm_url: str = "http://openzero-llm-v2:8000/v1"):
+	def __init__(self, llm_url: str = "http://openzero-llm-deep:8000/v1"):
 		self.llm_url = llm_url.rstrip('/')
 
 	async def run_crew(self, crew_id: str, user_input: str) -> str:
