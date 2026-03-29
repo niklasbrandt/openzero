@@ -900,7 +900,7 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 @owner_only
 async def cmd_crews(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	"""Interrogates CrewRegistry and formats a list of active crews, or executes one."""
-	from app.services.dify import crew_registry
+	from app.services.crews import crew_registry
 	from app.services.translations import get_user_lang, get_translations
 	lang = await get_user_lang()
 	t = get_translations(lang)
