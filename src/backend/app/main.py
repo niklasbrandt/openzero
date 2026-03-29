@@ -78,7 +78,7 @@ async def lifespan(app: FastAPI):
             try:
                 logging.info("⚡ Background: Provisioning crews and context...")
                 # Provision Dify Crews
-                from app.services.dify import crew_registry
+                from app.services.crews import crew_registry
                 await crew_registry.load()
                 await crew_registry.provision()
                 
@@ -105,7 +105,7 @@ async def lifespan(app: FastAPI):
                 try:
                     from app.api.telegram_bot import send_notification_html
                     from app.services.timezone import format_time
-                    from app.services.dify import crew_registry
+                    from app.services.crews import crew_registry
                     
                     # NATIVE TACTICAL RESTORATION
                     logging.info("Registry: Loading Native Tactical crews...")
