@@ -61,14 +61,19 @@ class CrewRegistry:
 		self._manifest: Dict[str, dict] = {}
 
 	async def load(self) -> None:
-		if not self.crews_yaml_path.exists(): return
+		logger.info("Registry: Loading crews from %s", self.crews_yaml_path)
+		if not self.crews_yaml_path.exists():
+			logger.warning("Registry: %s NOT FOUND", self.crews_yaml_path)
+			return
 		with open(self.crews_yaml_path, "r", encoding="utf-8") as f:
 			raw_data = yaml.safe_load(f)
 		crews_list = raw_data.get("crews") or raw_data.get("dify_crews") or []
+		logger.info("Registry: Found %d potential crews in YAML", len(crews_list))
 		for c in crews_list:
 			if not isinstance(c, dict) or not c.get("enabled", True): continue
 			config = CrewConfig(**c)
 			self._crews[config.id] = config
+		logger.info("Registry: Successfully loaded %d active crews.", len(self._crews))
 
 	async def provision(self) -> None:
 		from app.config import settings
