@@ -932,16 +932,15 @@ async def cmd_crews(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	await update.message.reply_text(f"<blockquote>📡 <i>{t.get('interrogating_topology', 'Interrogating internal Crew topology...')}</i></blockquote>", parse_mode="HTML")
 	
 	try:
-		msg_parts = [f"🛸 <b>{t.get('crews_registry_status', 'Dify Crews Registry Status')}</b>\n"]
+		msg_parts = [f"🛸 <b>{t.get('crews_registry_status', 'Native Tactical Crews Status')}</b>\n"]
 		active_crews = crew_registry.list_active()
 		
 		if not active_crews:
-			msg_parts.append(f"<i>{t.get('no_crews_found', 'No Dify Crews provisioned or active.')}</i>")
+			msg_parts.append(f"<i>{t.get('no_crews_found', 'No Native Crews provisioned or active.')}</i>")
 		else:
 			for crew in active_crews:
 				on_demand = t.get('on_demand', 'On-demand')
 				cadence = crew.feeds_briefing or on_demand
-				if crew.schedule: cadence += f" ({crew.schedule})"
 				
 				msg_parts.append(
 					f"• <b>{crew.id}: {crew.name}</b>\n"
