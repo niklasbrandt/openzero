@@ -204,10 +204,10 @@ async def run_crew(crew_id: str, user_input: str = "Execute autonomous cycle") -
 		ans = await native_crew_engine.run_crew(crew_id, user_input)
 		return f"Crew '{crew_id}' mission complete: {ans}"
 
-	except httpx.TimeoutException:
-		logger.warning("Crew '%s' timed out.", crew_id)
-		return f"⚠ Crew '{crew_id}' exceeded reasoning budget (timeout) and was skipped."
 	except Exception as e:
+		if "timeout" in str(e).lower():
+			logger.warning("Crew '%s' exceeded the massive budget (1h).", crew_id)
+			return f"⚠ Crew '{crew_id}' exceeded massive reasoning budget (1h) and was skipped."
 		import traceback
 		logger.error("Crew '{crew_id}' total runtime failure: %s\n%s", e, traceback.format_exc())
 		return f"Error: Communication failure with crew '{crew_id}'."
@@ -311,7 +311,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 				import httpx
 				from app.config import settings
 				token = await get_planka_auth_token()
-				async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, headers={"Authorization": f"Bearer {token}"}) as client:
+				async with httpx.AsyncClient(timeout=3600.0, base_url=settings.PLANKA_BASE_URL, headers={"Authorization": f"Bearer {token}"}) as client:
 					resp = await client.get("/api/projects")
 					projects = resp.json().get("items", [])
 					proj_id = None
