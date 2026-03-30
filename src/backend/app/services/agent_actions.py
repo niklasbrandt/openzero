@@ -3,7 +3,6 @@ import logging
 from datetime import datetime, timedelta
 from langchain_core.tools import tool
 from typing import Optional
-import httpx
 
 logger = logging.getLogger(__name__)
 

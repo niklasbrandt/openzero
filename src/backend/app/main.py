@@ -2,13 +2,12 @@ import logging
 import asyncio
 import os
 from contextlib import asynccontextmanager
-from typing import Optional
 
 from fastapi import FastAPI
-from sqlalchemy import text, select
+from sqlalchemy import text
 
 from app.config import settings
-from app.models.db import engine, Base, AsyncSessionLocal, Person
+from app.models.db import engine, Base
 from app.services.memory import ensure_collection
 from app.api.telegram_bot import start_telegram_bot, stop_telegram_bot
 from app.tasks.scheduler import start_scheduler, stop_scheduler
