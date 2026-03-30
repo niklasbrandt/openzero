@@ -76,11 +76,9 @@ async def lifespan(app: FastAPI):
         # 4. Background Startup Sequence (Non-blocking)
         async def run_delayed_init():
             try:
-                logging.info("⚡ Background: Provisioning crews and context...")
-                # Provision Dify Crews
+                logging.info("⚡ Background: Loading crew context...")
                 from app.services.crews import crew_registry
                 await crew_registry.load()
-                await crew_registry.provision()
                 
                 # Load personal/agent context (LLM compression)
                 try:
@@ -184,9 +182,7 @@ app.add_middleware(
 app.add_middleware(CacheHeaderMiddleware)
 app.add_middleware(SecurityHeaderMiddleware)
 
-from app.api.external import router as external_router
-
-app.include_router(external_router, prefix="/api")
+# External Integration (Retired Dify Logic)
 app.include_router(auth_router)
 app.include_router(dashboard_router)
 app.include_router(health_router)

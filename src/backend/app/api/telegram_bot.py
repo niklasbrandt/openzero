@@ -912,17 +912,7 @@ async def cmd_crews(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		
 		config = crew_registry.get(crew_id)
 		if config and config.enabled:
-			await update.message.reply_text(f"<blockquote>🚀 <i>{t.get('executing_crew', 'Executing crew')} <b>{crew_id}</b>...</i></blockquote>", parse_mode="HTML")
-			from app.services.agent_actions import run_crew
-			result = await run_crew.ainvoke({"crew_id": crew_id, "user_input": user_input})
-			
-			# Clean any action tags if the crew leaked them (unlikely but possible)
-			from app.services.agent_actions import parse_and_execute_actions
-			clean_reply, _, _ = await parse_and_execute_actions(result)
-			
-			# Reasoning indicator
-			clean_reply += f"\n\n_(Reasoning supported by {config.name})_"
-			await safe_reply(update, clean_reply)
+			await _process_crew_stream(update, context, crew_id, user_input, t)
 			return
 		elif config and not config.enabled:
 			await update.message.reply_text(f"<blockquote>⚠️ <i>Crew '<b>{crew_id}</b>' {t.get('is_disabled', 'is disabled')}.</i></blockquote>", parse_mode="HTML")
@@ -1245,6 +1235,51 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	except Exception as e:
 		logger.error("handle_voice failed: %s", e)
 		await safe_reply(update, "Voice processing failed. There might be an issue with the transcription or intelligence layer.")
+
+async def _process_crew_stream(update: Update, context: ContextTypes.DEFAULT_TYPE, crew_id: str, user_input: str, t: dict):
+	"""Executes a crew mission with progressive Telegram message updates."""
+	from app.services.crews_native import native_crew_engine
+	from app.services.agent_actions import parse_and_execute_actions
+	import time
+
+	thinking_msg = await update.message.reply_text(f"<blockquote>🚀 <i>{t.get('executing_crew', 'Executing crew')} <b>{crew_id}</b>...</i></blockquote>", parse_mode="HTML")
+
+	chunks = []
+	last_edit_time = time.time()
+	EDIT_INTERVAL = 1.5
+
+	try:
+		async for chunk in native_crew_engine.run_crew_stream(crew_id, user_input):
+			chunks.append(chunk)
+			now = time.time()
+			if now - last_edit_time >= EDIT_INTERVAL:
+				partial_text = "".join(chunks)
+				if len(partial_text.strip()) > 3:
+					try:
+						# Escape and convert to HTML
+						display = f"<blockquote>🚀 <i><b>{crew_id}</b>: {_md_to_html(partial_text)}...</i></blockquote>"
+						await safe_edit(thinking_msg, display, parse_mode="HTML")
+					except Exception: pass
+					last_edit_time = now
+
+		full_res = "".join(chunks)
+		async with AsyncSessionLocal() as db:
+			clean_reply, _, _ = await parse_and_execute_actions(full_res, db=db)
+		
+		# Reasoning indicator
+		from app.services.crews import crew_registry
+		config = crew_registry.get(crew_id)
+		clean_reply += f"\n\n_(Reasoning supported by {config.name if config else crew_id})_"
+		
+		display_final = f"<b>{format_time()}</b>\n\n{_md_to_html(clean_reply)}"
+		await safe_edit(thinking_msg, f"<blockquote>{display_final}</blockquote>", parse_mode="HTML", reply_markup=get_nav_markup(t))
+		
+	except Exception as e:
+		logger.error(f"Telegram Crew Stream Failed: {e}")
+		try:
+			await safe_edit(thinking_msg, f"<blockquote>❌ <i>Crew execution failed: {e}</i></blockquote>", parse_mode="HTML")
+		except Exception: pass
+
 
 @owner_only
 async def cmd_think(update: Update, context: ContextTypes.DEFAULT_TYPE):

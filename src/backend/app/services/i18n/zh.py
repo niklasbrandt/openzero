@@ -204,6 +204,7 @@ translations: dict[str, str] = {
 	"new_briefing": '已生成',
 	"new_rule": '新分拣规则',
 	"no_crews": '没有活动的自主团队。',
+	"no_crews_found": '注册表中未找到 Native 团队。',
 	"no_email_rules": '未配置邮件规则。',
 	"no_memories": '库中未找到匹配项。',
 	"no_results": '未找到相关模式。',
