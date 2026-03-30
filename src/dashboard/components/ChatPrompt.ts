@@ -193,7 +193,7 @@ export class ChatPrompt extends HTMLElement {
 		msgEl.innerHTML = `
 			<div class="bubble">
 				<div class="bubble-content" id="${messageId}-content">
-					${isCrew ? `<i style="opacity:0.7">Executing crew <b>${crewId}</b>...</i><br><br>` : ''}
+					${isCrew ? `<i style="opacity:0.7">${this.tr('executing_crew', 'Executing crew')} <b>${crewId}</b>...</i><br><br>` : ''}
 					<span class="tokens"></span>
 				</div>
 				<div class="bubble-footer">
