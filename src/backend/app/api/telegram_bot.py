@@ -16,6 +16,7 @@ import re
 from datetime import datetime, timezone as _tz
 import logging
 from app.services.translations import get_translations, get_user_lang
+from app.models.db import AsyncSessionLocal
 
 logger = logging.getLogger(__name__)
 
@@ -139,190 +140,17 @@ async def start_telegram_bot():
 	# Proactive greeting with Context & Stats (Run in background to avoid blocking startup)
 	async def send_startup_greeting():
 		try:
-			from app.services.llm import chat
-			from app.services.memory import get_memory_stats
-			from app.models.db import AsyncSessionLocal, Person
-			from sqlalchemy import select
-			import os
-			
-			logger.debug("start_telegram_bot - step 7: Fetching stats for greeting")
-			stats = await get_memory_stats()
-			stats_text = f"Memories: {stats['points']}" if stats['status'] != 'error' else "Memory: Offline"
-			
-			# 1. Release Notes (Deployment Detection)
-			release_info = ""
-			notes_file = "LATEST_CHANGES.txt"
-			if os.path.exists(notes_file):
-				logger.debug("Greeting Seq - Step 1: Release Notes detected")
-				try:
-					with open(notes_file, "r") as f:
-						changes = f.read().strip()
-					if changes:
-						release_info = f"DEPLOYMENT UPDATE - TECHNICAL DIFF SUMMARY:\n{changes[:2000]}\n"
-					os.remove(notes_file)
-				except Exception as _ne:
-					logger.debug("Greeting Seq - Release notes read fail: %s", _ne)
-			# Unified Context gathering
-			event_summary_parts = []
+			if not settings.TELEGRAM_AUTO_GREET:
+				logger.info("Greeting Seq - Automatic greeting suppressed (Wait for background init)")
+				return
 
-			logger.debug("Greeting Seq - Step 2: Fetching Unified Calendar")
-			try:
-				from app.services.calendar import fetch_unified_events
-				# Use a safe timeout to prevent blocking the greeting forever if CalDAV is slow
-				all_events = await asyncio.wait_for(fetch_unified_events(days_ahead=1), timeout=10.0)
-				
-				if all_events:
-					for e in all_events:
-						# All events from unified source have 'start' as ISO string YYYY-MM-DDTHH:MM:SSZ
-						time_str = e['start'].split('T')[1][:5] if 'T' in e['start'] else None
-						if time_str == "00:00": time_str = None
-						
-						source_tag = f" [{e.get('source', '?')}]"
-						display_item = f"• {e['summary']}{source_tag}"
-						if time_str: display_item += f" ({time_str})"
-						event_summary_parts.append(display_item)
-			except Exception as cal_err:
-				logger.warning("Calendar Greeting Error: %s", cal_err)
-
-			# 2. Birthdays & user language
-			logger.debug("Greeting Seq - Step 3: Local People/Birthdays")
-			user_lang = "en"
-			async with AsyncSessionLocal() as session:
-				# Get user language from identity record
-				res_ident = await session.execute(select(Person).where(Person.circle_type == "identity"))
-				ident = res_ident.scalar_one_or_none()
-				if ident and ident.language:
-					user_lang = ident.language
-
-				# Birthdays
-				from app.services.timezone import get_birthday_proximity
-				res_people = await session.execute(select(Person).where(Person.birthday.isnot(None)))
-				for p in res_people.scalars().all():
-					tag = get_birthday_proximity(p.birthday)
-					if tag == "TODAY":
-						event_summary_parts.append(f"🎂 Today is {p.name}'s Birthday!")
-					elif tag == "TOMORROW":
-						event_summary_parts.append(f"🎂 Tomorrow: {p.name}'s Birthday")
-					elif tag:
-						event_summary_parts.append(f"🎂 {p.name}'s Birthday {tag}")
-
-			event_summary = "\n".join(event_summary_parts) if event_summary_parts else "No upcoming events scheduled."
-			logger.debug("Greeting Seq - Context Ready (%d items)", len(event_summary_parts))
-			
-			has_events = bool(event_summary_parts)
-			events_block = f"Events:\n{event_summary}" if has_events else ""
-
-			greeting_prompt = (
-				f"SYSTEM_DATA:\n"
-				f"Status: {stats_text}\n"
-				f"Changes: {release_info or 'No recent changes'}\n"
-				f"{events_block}\n\n"
-				"TASK: As Z (the agent), write a concise but informative greeting.\n"
-				"1. Brief welcome back (1 sentence).\n"
-				"2. If 'Changes' has updates: add a 'Recent Logic Updates' section. "
-				"For each change, write 1-2 sentences explaining what it does in plain language — not just repeating the commit title.\n"
-				"3. ONLY mention events if event data is listed above. If no events data is present, do not mention events at all.\n"
-				"Be direct, professional, and human. No filler. No invented content."
-			)
-
-			# Build language directive for non-English users
-			from app.services.llm import LANGUAGE_NAMES
-			lang_name = LANGUAGE_NAMES.get(user_lang, "English")
-			lang_directive = ""
-			if user_lang != "en":
-				lang_directive = f" You MUST respond entirely in {lang_name}. Do NOT translate or include any other language."
-
-			system_override = (
-				"You are Z. Output ONLY the greeting. "
-				"ALWAYS begin your response with the formatted current time and day on the first line "
-				"(e.g. '16:40 - Tuesday 2nd'), followed by a blank line, then your message. "
-				"NEVER invent data not present in SYSTEM_DATA."
-				f"{lang_directive}"
-			)
-			# GREETING DECOUPLED
-			# System initialization is now handled via background tasks in main.py
-			# and direct notifications from the Dify provisioning engine.
-			logger.info("Greeting Seq - Automatic greeting suppressed (Wait for background init)")
-			return
-
-			# Wait for the deep model to become ready before calling the LLM.
-			# On a cold Docker start, llm-deep can take 3-5 minutes to load the
-			# model into memory. Polling the /health endpoint prevents the greeting
-			# from using all its retry budget on immediate ConnectErrors.
-			import httpx as _httpx
-			logger.debug("Greeting Seq - Polling deep model for readiness...")
-			_model_ready = False
-			for _poll in range(20):  # up to 5 minutes (20 × 15 s)
-				try:
-					async with _httpx.AsyncClient(timeout=_httpx.Timeout(5.0, connect=3.0)) as _hc:
-						if (await _hc.get(f"{settings.LLM_DEEP_URL}/health")).status_code == 200:
-							_model_ready = True
-							break
-				except Exception as _exc:
-					logger.debug("Greeting Seq - Health poll failed: %s", _exc)
-				logger.debug("Greeting - Deep model not ready yet (poll %d/20), waiting 15s...", _poll + 1)
-				await asyncio.sleep(15)
-			if not _model_ready:
-				logger.warning("Greeting - Deep model never became ready after 5 minutes")
-
-			logger.debug("Greeting Seq - Calling LLM (deep tier)")
-
-			# Error strings returned by llm.py's chat_stream() on connection/timeout
-			# failure. Must be kept in sync with the yield strings in llm.py.
-			_ERROR_INDICATORS = [
-				"still waking up", "still warming up", "having trouble reaching",
-				"initializing my local core", "synchronize my reasoning",
-				"Error connecting", "No response from",
-			]
-			def _is_error(text: str) -> bool:
-				return not text or any(ind.lower() in text.lower() for ind in _ERROR_INDICATORS)
-
-			raw_greeting = await chat(greeting_prompt, system_override=system_override, tier="deep")
-
-			# Fallback 1: deep tier returned an error string — wait briefly then retry
-			if _is_error(raw_greeting):
-				logger.debug("Greeting - Deep tier returned error, waiting 30s then retrying")
-				await asyncio.sleep(30)
-				raw_greeting = await chat(greeting_prompt, system_override=system_override, tier="deep")
-
-			# Fallback 2: both models failed — send clean static greeting
-			if _is_error(raw_greeting):
-				logger.warning("Greeting - Both models unavailable, using static greeting")
-				time_str = format_time() + "\n"
-				
-				changes_note = f"\n\n🔄 *Recent Logic Updates:*\n{release_info.strip()}" if release_info else ""
-				events_note = f"\n\n📅 *Events:*\n{event_summary}" if has_events else ""
-				raw_greeting = f"{time_str}\nBack online. {stats_text}.{changes_note}{events_note}"
-
-			# Clean action tags from output
-			from app.services.agent_actions import parse_and_execute_actions
-			greeting, _, _ = await parse_and_execute_actions(raw_greeting)
-			logger.debug("Greeting Seq - OK")
-
-			# Prepend real current time (don't trust LLM for timestamps)
-			greeting_clean = strip_llm_time_header(greeting)
-			real_time = format_time()
-
-			lang = await get_user_lang()
-			t = get_translations(lang)
-
-
-			# Save greeting to DB so the dashboard and recovery logic see it in the timeline
-			from app.models.db import save_global_message as _sgm
-			await _sgm("telegram", "z", greeting_clean, model="deep")
-
-			await send_notification_html(
-				f"<blockquote><b>{real_time}</b>\n\n{_md_to_html(greeting_clean)}\n\n<i>{stats_text}</i></blockquote>",
-				reply_markup=get_nav_markup(t, token=settings.DASHBOARD_TOKEN)
-			)
-			logger.debug("Greeting Seq - Notification Delivered")
-
+			# Note: Extensive greeting logic removed as it is now DECOUPLED
+			# and direct notifications are handled via background tasks in main.py.
 			# --- Restart Recovery: respond to unanswered user messages ---
 			await _recover_unanswered_messages()
 
-		except Exception as e:
-			import traceback as _tb
-			logging.error("FAILED to send Telegram startup greeting: %s\n%s", e, _tb.format_exc())
+		except Exception:
+			logger.exception("FAILED to complete Telegram startup recovery")
 
 	# Register send functions with the notifier shim so task modules can use them
 	# without importing this module directly (breaks circular import cycles).
@@ -379,7 +207,6 @@ async def _recover_unanswered_messages():
 		logger.info("Restart recovery: %d unanswered user message(s) found. Responding now.", len(unanswered))
 
 		from app.services.llm import chat_with_context
-		from app.models.db import AsyncSessionLocal
 
 		merged_history = await get_global_history(limit=10)
 		prompt = f"[These messages were sent before a restart and never received a response. Respond naturally as if continuing the conversation.]\n\n{combined}"
@@ -901,7 +728,6 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cmd_crews(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	"""Interrogates CrewRegistry and formats a list of active crews, or executes one."""
 	from app.services.crews import crew_registry
-	from app.services.translations import get_user_lang, get_translations
 	lang = await get_user_lang()
 	t = get_translations(lang)
 	
@@ -940,7 +766,7 @@ async def cmd_crews(update: Update, context: ContextTypes.DEFAULT_TYPE):
 				)
 		
 		await safe_reply(update, "\n".join(msg_parts))
-	except Exception as e:
+	except Exception:
 		await safe_reply(update, f"❌ {t.get('failed_fetch_crews', 'Failed to fetch Native Crew registry status.')}")
 
 @owner_only
@@ -1123,7 +949,6 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 	else:
 		thinking_msg = await update.message.reply_text(f"<blockquote><i>{t.get('thinking', 'Thinking...')}</i></blockquote>", parse_mode="HTML")
 
-	from app.models.db import AsyncSessionLocal
 
 	# Recover Merged History (cross-channel context -- last 10 messages)
 	merged_history = await get_global_history(limit=10)
@@ -1206,7 +1031,7 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		
 		# 3. Process as text
 		from app.services.llm import chat_with_context, last_model_used
-		from app.models.db import get_global_history, save_global_message, AsyncSessionLocal
+		from app.models.db import get_global_history, save_global_message
 
 		# Persist transcript so the dashboard and future LLM calls see this voice message.
 		await save_global_message("telegram", "user", transcript)
@@ -1259,7 +1084,8 @@ async def _process_crew_stream(update: Update, context: ContextTypes.DEFAULT_TYP
 						# Escape and convert to HTML
 						display = f"<blockquote>🚀 <i><b>{crew_id}</b>: {_md_to_html(partial_text)}...</i></blockquote>"
 						await safe_edit(thinking_msg, display, parse_mode="HTML")
-					except Exception: pass
+					except Exception:
+						pass
 					last_edit_time = now
 
 		full_res = "".join(chunks)
@@ -1275,7 +1101,7 @@ async def _process_crew_stream(update: Update, context: ContextTypes.DEFAULT_TYP
 		await safe_edit(thinking_msg, f"<blockquote>{display_final}</blockquote>", parse_mode="HTML", reply_markup=get_nav_markup(t))
 		
 	except Exception as e:
-		logger.error(f"Telegram Crew Stream Failed: {e}")
+		logger.error("Telegram Crew Stream Failed: %s", e)
 		try:
 			await safe_edit(thinking_msg, f"<blockquote>❌ <i>Crew execution failed: {e}</i></blockquote>", parse_mode="HTML")
 		except Exception: pass
@@ -1371,7 +1197,7 @@ async def handle_calendar_approval(update: Update, context: ContextTypes.DEFAULT
 		await query.edit_message_text("✅ Event ignored.")
 		return
 
-	from app.models.db import get_pending_thought, AsyncSessionLocal, LocalEvent
+	from app.models.db import get_pending_thought, LocalEvent
 	import json
 	
 	thought = await get_pending_thought(event_id)
