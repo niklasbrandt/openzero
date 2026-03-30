@@ -905,7 +905,7 @@ async def dashboard_crew_stream(crew_id: str, req: ChatRequest, db: AsyncSession
 				yield f"data: {json.dumps({'token': chunk})}\n\n"
 			yield f"data: {json.dumps({'done': True})}\n\n"
 		except Exception as e:
-			logger.error(f"Dashboard Crew Stream Error: {e}")
+			logger.error("Dashboard Crew Stream Error: %s", e)
 			yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
 	return StreamingResponse(
