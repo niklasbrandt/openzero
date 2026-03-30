@@ -35,13 +35,13 @@ export class ChatPrompt extends HTMLElement {
 			this.loadTranslations().then(() => this.render());
 		});
 
-		// Poll every 20 s while the tab is visible so Telegram messages appear
+		// Poll every 5 s while the tab is visible so Telegram messages appear
 		// in the dashboard without needing the user to re-focus the window.
 		this._pollTimer = setInterval(() => {
 			if (document.visibilityState === 'visible' && this.pendingRequests === 0) {
 				this.loadHistory();
 			}
-		}, 20_000);
+		}, 5_000);
 	}
 
 	private async loadTranslations() {
@@ -153,7 +153,7 @@ export class ChatPrompt extends HTMLElement {
 	private async handleSend() {
 		const input = this.shadowRoot?.querySelector<HTMLTextAreaElement>('#chat-input');
 		const message = input?.value.trim();
-		if (!message) return; // Removed isLoading check to allow concurrent messages
+		if (!message) return;
 
 		// Add user message
 		this.messages.push({ role: 'user', content: message, timestamp: new Date() });
@@ -161,129 +161,159 @@ export class ChatPrompt extends HTMLElement {
 		// Clear local state
 		this.draft = '';
 		localStorage.removeItem('z_chat_draft');
-		if (input) {
-			input.value = '';
-		}
+		if (input) input.value = '';
+		
 		this.renderMessages();
 		this.scrollToBottom();
 
-		// Send to API
+		await this.streamResponse('/api/dashboard/chat/stream', {
+			message,
+			history: this.messages.slice(0, -1).map(m => ({
+				role: m.role,
+				content: m.content,
+			})),
+		});
+	}
+
+	private async streamResponse(url: string, body: any, isCrew = false, crewId?: string) {
 		this.pendingRequests++;
 		this.updateSendButton();
-		this.showTypingIndicator();
+		
+		// 1. Create a "Live" Assistant Bubble
+		const container = this.shadowRoot?.querySelector('#messages');
+		if (!container) return;
+
+		// Remove typing indicator if present
+		this.hideTypingIndicator();
+
+		const messageId = `msg-${Date.now()}`;
+		const msgEl = document.createElement('div');
+		msgEl.className = `message assistant live animate`;
+		msgEl.id = messageId;
+		msgEl.innerHTML = `
+			<div class="bubble">
+				<div class="bubble-content" id="${messageId}-content">
+					${isCrew ? `<i style="opacity:0.7">Executing crew <b>${crewId}</b>...</i><br><br>` : ''}
+					<span class="tokens"></span>
+				</div>
+				<div class="bubble-footer">
+					<span class="model-tag">${isCrew ? 'deep' : '...'}</span>
+					<span class="time">${this.formatDateTime(new Date())}</span>
+				</div>
+			</div>
+		`;
+		container.prepend(msgEl);
+		this.applyBubbleTextColor();
+		this.scrollToBottom();
+
+		const contentArea = msgEl.querySelector('.tokens') as HTMLElement;
+		const modelTag = msgEl.querySelector('.model-tag') as HTMLElement;
+		let fullText = '';
 
 		try {
-			const response = await fetch('/api/dashboard/chat', {
+			const response = await fetch(url, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					message,
-					history: this.messages.slice(0, -1).map(m => ({
-						role: m.role,
-						content: m.content,
-					})),
-				}),
+				body: JSON.stringify(body),
 			});
 
-			if (!response.ok) {
-				// Treat HTTP errors the same as network failures:
-				// the user message was not saved to DB, so we must NOT call
-				// loadHistory() which would wipe it from the local display.
-				throw new Error(`HTTP ${response.status}`);
-			}
-			const data = await response.json();
-			this.hideTypingIndicator();
-			this.pendingRetry = null; // Success — clear any retry state
-			this.messages.push({
-				role: 'assistant',
-				content: data.reply || this.tr('no_response', 'No response received.'),
-				timestamp: new Date(),
-				model: data.model,
-			});
+			if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-			// Re-sync with DB so any interleaved Telegram messages appear in correct order.
-			// Non-blocking: fires in background while notification + refresh-data continue.
-			this.loadHistory();
+			const reader = response.body?.getReader();
+			const decoder = new TextDecoder();
+			if (!reader) throw new Error('No reader available');
 
-			// Notification sound
-			try {
-				const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3');
-				audio.volume = 0.4;
-				audio.play();
-			} catch (_) { }
+			while (true) {
+				const { done, value } = await reader.read();
+				if (done) break;
 
-			if (data.actions && data.actions.length > 0) {
-				// Map human-readable action strings to widget refresh keys.
-				// parse_and_execute_actions returns strings like "Event 'X' scheduled."
-				// but CalendarAgenda listens for the keyword 'calendar'.
-				const actionTypes: string[] = [];
-				for (const act of data.actions as string[]) {
-					if (/event|scheduled|calendar/i.test(act)) actionTypes.push('calendar');
-					if (/task/i.test(act)) actionTypes.push('task');
-					if (/project/i.test(act)) actionTypes.push('projects');
-					if (/memory|learned/i.test(act)) actionTypes.push('memory');
+				const chunk = decoder.decode(value);
+				const lines = chunk.split('\n');
+
+				for (const line of lines) {
+					if (!line.startsWith('data: ')) continue;
+					const dataStr = line.slice(6).trim();
+					if (!dataStr) continue;
+
+					try {
+						const data = JSON.parse(dataStr);
+						if (data.token) {
+							fullText += data.token;
+							contentArea.innerHTML = this.renderContent(fullText);
+						}
+						if (data.done) {
+							if (data.model) modelTag.textContent = data.model;
+							
+							// Finalize message in local state
+							const reply = data.reply || fullText;
+							this.messages.push({
+								role: 'assistant',
+								content: reply,
+								timestamp: new Date(),
+								model: data.model
+							});
+							
+							// Handle Actions (Auto-refresh UI)
+							if (data.actions && data.actions.length > 0) {
+								this.triggerUIUpdate(data.actions);
+							}
+
+							// Check for PENDING CREW ACTIONS
+							if (data.pending && data.pending.length > 0) {
+								for (const action of data.pending) {
+									if (action.type === 'RUN_CREW') {
+										// Recursive crew stream
+										const match = action.description.match(/Run Crew: ([^ ]+)/);
+										const cId = match ? match[1] : 'unknown';
+										const cInput = body.message; // Use same user input
+										
+										// Short delay for visual clarity
+										setTimeout(() => {
+											this.streamResponse(`/api/dashboard/crew/stream/${cId}`, { message: cInput }, true, cId);
+										}, 800);
+									}
+								}
+							}
+						}
+					} catch (e) {
+						console.error("SSE parse error", e);
+					}
 				}
-				window.dispatchEvent(new CustomEvent('refresh-data', {
-					detail: { actions: actionTypes.length ? actionTypes : data.actions }
-				}));
 			}
-		} catch (_e) {
-			this.pendingRequests--;
-			if (this.pendingRequests <= 0) this.hideTypingIndicator();
-
-			// Store for retry on tab re-entry
-			this.pendingRetry = message;
-
-			this.messages.push({
-				role: 'assistant',
-				content: `⚡ ${this.tr('backend_unreachable', 'Backend unreachable.')} ${this.tr('retry_on_return', 'Will auto-retry when you return.')}\n\n_${this.tr('tap_to_retry', 'Tap here to retry now.')}_`,
-				timestamp: new Date(),
-			});
+		} catch (err) {
+			console.error("Streaming failed", err);
+			contentArea.innerHTML += `<br><br><span style="color:var(--text-error)">⚡ Connection failed. Response truncated.</span>`;
 		} finally {
 			this.pendingRequests = Math.max(0, this.pendingRequests - 1);
 			this.updateSendButton();
-			if (this.pendingRequests <= 0) this.hideTypingIndicator();
-			this.renderMessages();
-			this.scrollToBottom();
-			input?.focus();
-
-			// Attach retry click handler if there's a pending message.
-			// In column-reverse layout the newest message is the FIRST DOM child,
-			// so :first-child is the correct selector (not :last-child).
-			if (this.pendingRetry) {
-				const lastBubble = this.shadowRoot?.querySelector('.message.assistant:first-child .bubble');
-				if (lastBubble) {
-					(lastBubble as HTMLElement).style.cursor = 'pointer';
-					lastBubble.addEventListener('click', () => this.retryPending(), { once: true });
-				}
-			}
+			msgEl.classList.remove('live');
+			this.loadHistory(); // Final sync
 		}
+	}
+
+	private triggerUIUpdate(actions: string[]) {
+		const actionTypes: string[] = [];
+		for (const act of actions) {
+			if (/event|scheduled|calendar/i.test(act)) actionTypes.push('calendar');
+			if (/task/i.test(act)) actionTypes.push('task');
+			if (/project/i.test(act)) actionTypes.push('projects');
+			if (/memory|learned/i.test(act)) actionTypes.push('memory');
+		}
+		window.dispatchEvent(new CustomEvent('refresh-data', {
+			detail: { actions: actionTypes.length ? actionTypes : actions }
+		}));
 	}
 
 	private async retryPending() {
 		if (!this.pendingRetry) return;
 		const msg = this.pendingRetry;
 		this.pendingRetry = null;
-
-		// Remove the error bubble
-		const lastMsg = this.messages[this.messages.length - 1];
-		if (lastMsg?.role === 'assistant' && (lastMsg.content.includes('Backend unreachable') || lastMsg.content.includes(this.tr('backend_unreachable', 'Backend unreachable')))) {
-			this.messages.pop();
-		}
-
-		// Also remove the original user message since handleSend will re-add it
-		const lastUser = this.messages[this.messages.length - 1];
-		if (lastUser?.role === 'user' && lastUser.content === msg) {
-			this.messages.pop();
-		}
-
-		this.renderMessages();
-
-		// Re-inject the message into the input and send
+		this.loadHistory();
 		const input = this.shadowRoot?.querySelector<HTMLTextAreaElement>('#chat-input');
 		if (input) input.value = msg;
 		await this.handleSend();
 	}
+
 
 	private scrollToBottom() {
 		requestAnimationFrame(() => {
@@ -292,32 +322,6 @@ export class ChatPrompt extends HTMLElement {
 				container.scrollTop = 0; // In column-reverse, 0 is bottom
 			}
 		});
-	}
-
-	private showTypingIndicator() {
-		const container = this.shadowRoot?.querySelector('#messages');
-		if (!container) return;
-
-		// Remove existing typing if somehow present
-		this.shadowRoot?.querySelector('#typing')?.remove();
-
-		const indicator = document.createElement('div');
-		indicator.id = 'typing';
-		indicator.className = 'message assistant';
-		indicator.setAttribute('role', 'status');
-		indicator.setAttribute('aria-label', this.tr('thinking', 'Z is composing a response'));
-		indicator.setAttribute('aria-live', 'polite');
-		indicator.innerHTML = `
-			<div class="bubble typing-bubble" aria-hidden="true">
-				<span class="dot"></span>
-				<span class="dot"></span>
-				<span class="dot"></span>
-			</div>
-		`;
-
-		// Prepend so it's at the bottom in column-reverse
-		container.prepend(indicator);
-		this.scrollToBottom();
 	}
 
 	private hideTypingIndicator() {

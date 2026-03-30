@@ -204,6 +204,7 @@ translations: dict[str, str] = {
 	"new_briefing": 'Generiert',
 	"new_rule": 'Neue Triage-Regel',
 	"no_crews": 'Keine autonomen Crews aktiv.',
+	"no_crews_found": 'Keine Native Crews im Register gefunden.',
 	"no_email_rules": 'Keine E-Mail-Regeln konfiguriert.',
 	"no_memories": 'Keine passenden Fakten im Vault gefunden.',
 	"no_results": 'Keine relevanten Muster gefunden.',
