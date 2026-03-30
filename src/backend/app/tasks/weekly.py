@@ -11,7 +11,7 @@ async def weekly_review():
 	logger.info("Weekly Review initialization started (T-15m offset).")
 	
 	try:
-		from app.services.dify import dify_client
+		from app.services.crews import dify_client
 		import asyncio
 		
 		# 1. Dify Pre-Compilation Yield: Await active /week crews
