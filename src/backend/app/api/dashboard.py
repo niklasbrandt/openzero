@@ -294,7 +294,7 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		report = await yearly_review()
 		return {"reply": report}
 	elif msg == "/crews":
-		from app.services.dify import crew_registry
+		from app.services.crews import crew_registry
 		from app.services.translations import get_user_lang, get_translations
 		lang = await get_user_lang()
 		t = get_translations(lang)
@@ -323,7 +323,7 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		crew_id = parts[1]
 		user_input = parts[2] if len(parts) > 2 else "Manual operator trigger"
 		
-		from app.services.dify import crew_registry
+		from app.services.crews import crew_registry
 		from app.services.timezone import get_current_timezone
 		
 		# Proactive check before calling tool logic
@@ -2676,7 +2676,7 @@ async def get_system_status(db: AsyncSession = Depends(get_db)):
     dify_ok = False
     dify_detail = "offline"
     try:
-        from app.services.dify import dify_client
+        from app.services.crews import dify_client
         dify_ok = await dify_client.health_check()
         if dify_ok:
             dify_detail = "online"
@@ -2706,7 +2706,7 @@ async def get_system_status(db: AsyncSession = Depends(get_db)):
 @router.get("/crews")
 async def get_crews():
     """Returns all provisioned Dify Crews and their status."""
-    from app.services.dify import crew_registry
+    from app.services.crews import crew_registry
     crews = crew_registry.list_active()
     
     # Minimal representation for the frontend
