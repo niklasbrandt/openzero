@@ -83,7 +83,7 @@ services:
       - MODEL_URL=${LLM_DEEP_MODEL_URL}
       - MODEL_FILE=${LLM_DEEP_MODEL_FILE:-Qwen3-8B-Q3_K_M.gguf}
       - KEEP_MODELS=${LLM_FAST_MODEL_FILE:-Qwen3-0.6B-Q4_K_M.gguf},${LLM_DEEP_MODEL_FILE:-Qwen3-8B-Q3_K_M.gguf}
-      - PORT=8000
+      - PORT=8083
       - THREADS=${LLM_DEEP_THREADS:-4}
       - CTX_SIZE=${LLM_DEEP_CTX:-8192}
       - N_PREDICT=${LLM_DEEP_PREDICT:-4096}
@@ -207,7 +207,6 @@ services:
     environment:
       - TRUST_PROXY=true
       - PYTHONUNBUFFERED=1
-      - DIFY_API_URL=http://dify-api:5001/v1
     volumes:
       - gmail_tokens:/app/tokens
       - /var/run/docker.sock:/var/run/docker.sock

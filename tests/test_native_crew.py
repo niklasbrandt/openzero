@@ -1,6 +1,11 @@
+import sys
+import os
 import asyncio
 import logging
 import httpx
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../src/backend")))
+
 from app.services.crews_native import native_crew_engine
 
 logging.basicConfig(level=logging.INFO)
