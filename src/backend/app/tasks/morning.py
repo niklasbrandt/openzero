@@ -11,7 +11,7 @@ async def morning_briefing():
 	"""Generate and store the daily morning briefing."""
 	logger.info("Morning Briefing initialization started (T-15m offset applied).")
 	try:
-		from app.services.dify import dify_client
+		from app.services.crews import dify_client
 		
 		# 1. Dify Pre-Compilation Yield: Await active /day crews
 		while await dify_client.get_active_runs(cadence="/day"):
