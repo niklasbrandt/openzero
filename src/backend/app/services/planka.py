@@ -441,7 +441,7 @@ async def get_board_summary(board_name: str = "Operator Board") -> str:
 	"""Fetches a structured text summary of all active cards and lists on a specific board.
 	Used to inject live operational context into tactical Dify crews.
 	"""
-	from app.services.planka_common import get_planka_auth_token
+	# get_planka_auth_token imported from planka_common at module level
 	token = await get_planka_auth_token()
 	headers = {"Authorization": f"Bearer {token}"}
 	
@@ -459,7 +459,7 @@ async def get_board_summary(board_name: str = "Operator Board") -> str:
 				if match:
 					board_id = match["id"]
 					break
-				if board_id: break
+
 			
 			if not board_id:
 				return f"Board '{board_name}' not found."

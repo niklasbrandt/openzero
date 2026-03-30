@@ -79,7 +79,7 @@ class NativeCrewEngine:
 			"stream": True       # Enable llama.cpp streaming
 		}
 
-		logger.info(f"Native Engine: Executing streaming mission for '{crew_id}'...")
+		logger.info("Native Engine: Executing streaming mission for '%s'...", crew_id)
 		
 		async with httpx.AsyncClient(timeout=3600.0) as client:
 			try:
@@ -102,7 +102,7 @@ class NativeCrewEngine:
 						except Exception as je:
 							logger.debug("Stream Chunk Parse Error (non-fatal): %s", je)
 			except Exception as e:
-				logger.error(f"Native Engine Streaming Failure: {e}")
+				logger.error("Native Engine Streaming Failure: %s", e)
 				raise
 
 
