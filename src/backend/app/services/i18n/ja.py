@@ -204,6 +204,7 @@ translations: dict[str, str] = {
 	"new_briefing": '生成完了',
 	"new_rule": '新しいトリアージルール',
 	"no_crews": 'アクティブな自律クルーなし。',
+	"no_crews_found": 'レジストリにNativeクルーが見つかりませんでした。',
 	"no_email_rules": 'メールルールが設定されていません。',
 	"no_memories": 'ボルトに一致するものが見つかりませんでした。',
 	"no_results": '関連するパターンが見つかりませんでした。',

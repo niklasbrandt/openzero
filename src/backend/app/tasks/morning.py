@@ -11,12 +11,11 @@ async def morning_briefing():
 	"""Generate and store the daily morning briefing."""
 	logger.info("Morning Briefing initialization started (T-15m offset applied).")
 	try:
-		from app.services.crews import dify_client
+		from app.services.crews import crew_registry
 		
-		# 1. Dify Pre-Compilation Yield: Await active /day crews
-		while await dify_client.get_active_runs(cadence="/day"):
-			logger.info("morning_briefing — Active Dify /day crews detected. Yielding thread for 60s...")
-			await asyncio.sleep(60)
+		# 1. Native Pre-Compilation Yield: Await active /day crews (if any were started in background)
+		# While true 'active' tracking for native is lightweight, we sync with the registry loader.
+		await crew_registry.load()
 
 		from app.services.automation import run_contextual_automation
 		from app.services.llm import chat, last_model_used

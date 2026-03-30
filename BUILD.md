@@ -184,10 +184,7 @@ cp .env.example .env
 # LLM_FAST_CACHE_RAM=256   (MiB for prompt cache - 0.6B tier)
 # LLM_DEEP_CACHE_RAM=1024  (MiB for prompt cache - 8B tier)
 
-# Dify Crews Integration
-# DIFY_API_URL=http://YOUR_DIFY_SERVER_IP/v1   (Must include /v1)
-# DIFY_API_KEY=app-your_dify_api_key           (App-specific API key)
-# INTEGRATION_TOKEN=your_secure_random_token   (Used by Dify to call back into openZero)
+# [DASHBOARD_TOKEN=your_secure_random_token] (Required for API access)
 ```
 
 > [!NOTE]
@@ -319,15 +316,14 @@ The `agent/` folder lets you drop in skill modules — methodology files, tool g
     
     *(Alternatively, you can run `./scripts/sync_overwrite_agent.sh` from your laptop to forcefully overwrite the remote agent directory and auto-restart the backend to seamlessly load new crews).*
 
-### 5f. Set Up Dify Crews
+### 5f. Set Up Native Crews
 
-The `agent/crews.yaml` file controls the execution of autonomous background crews via Dify.
+The `agent/crews.yaml` file controls the execution of autonomous background crews via the **Native Crew Engine**.
 
-1. Ensure `DIFY_API_URL` and `DIFY_API_KEY` are set in your `.env`.
-2. Place Dify DSL `.yml` files in the `agent/dify/` folder.
-3. Open `agent/crews.yaml` and configure your active crews by aligning `dify_dsl_file` attributes with physical files.
-4. **Zero-Config Provisioning:** If the `.yml` files are missing, the backend's **Autonomous Bridge Assembly** engine will automatically generate them from templates and import them into Dify at startup.
-5. **Manifest Persistence:** The resulting App IDs and Service Tokens are saved in `agent/.dify_app_ids.json`. If you are a developer, ensure this file is synced back to your local environment to avoid redundant re-imports.
+1. **No External Dependencies:** You do not need a Dify server. All agents run locally using your configured LLM tiers.
+2. **Simplified Configuration:** Edit `agent/crews.yaml` to define your active crews, their instructions, and their schedules. Use the `/crews` dashboard command to verify the registry.
+3. **Character Priming:** Use specific archetypes in the `characters` list to prime the LLM for higher-quality reasoning.
+4. **Registry Sync:** The backend automatically loads this manifest at startup. Any logic changes in the YAML are applied immediately on the next execution cycle.
 
 ### 5b. Restrict Dashboard to Tailscale Only (Optional, Recommended)
 

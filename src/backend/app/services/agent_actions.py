@@ -165,42 +165,18 @@ async def move_card(card_title_fragment: str, destination_list: str, board_name:
 
 @tool
 async def run_crew(crew_id: str, user_input: str = "Execute autonomous cycle") -> str:
-	"""Trigger a specialized Dify crew or workflow by ID.
-	Example: crew_id='recipes_chef'
+	"""Trigger a specialized autonomous native crew or workflow by ID.
+	Example: crew_id='nutrition'
 	"""
-	from app.services.crews import dify_client, crew_registry
-	from app.services.timezone import get_current_timezone
-	import pytz
+	from app.services.crews import crew_registry
+	from app.services.crews_native import native_crew_engine
 	
 	config = crew_registry.get(crew_id)
 	if not config or not config.enabled:
-		from app.services.crews_native import native_crew_engine
-		ans = await native_crew_engine.run_crew(crew_id, user_input)
-		return f"Crew '{crew_id}' mission complete: {ans}"
-		
-	tz_str = await get_current_timezone()
-	integrated_input = {
-		"user_input": user_input,
-		"sys_time": datetime.now(pytz.timezone(tz_str)).isoformat(),
-		"sys_user": "Operator",
-		"memory_state": "Triggered via Z Agent tool"
-	}
+		return f"Error: Crew '{crew_id}' is not defined or is disabled."
 
-	# Tier 1 Context Injection: Planka (Specific to Coach)
-	if crew_id == "coach":
-		try:
-			from app.services.planka import get_board_summary
-			board_sum = await get_board_summary() # Fetches main board from env
-			integrated_input["planka_context"] = board_sum
-		except Exception as _plk_err:
-			logger.warning("Planka context injection failed for coach: %s", _plk_err)
-
-	if config.instructions:
-		integrated_input["instructions"] = config.instructions
-		
 	try:
 		# Strictly Native Direct-LLM Engine (Elegant, Zero-Maintenance)
-		from app.services.crews_native import native_crew_engine
 		ans = await native_crew_engine.run_crew(crew_id, user_input)
 		return f"Crew '{crew_id}' mission complete: {ans}"
 
@@ -532,9 +508,8 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 		user_inputs = user_inputs.strip()
 
 		async def _exec_run_crew(crew_id=crew_id, user_inputs=user_inputs):
-			from app.services.crews import dify_client, crew_registry
-			from app.services.timezone import get_current_timezone
-			import pytz
+			from app.services.crews import crew_registry
+			from app.services.crews_native import native_crew_engine
 			
 			# Recursive vulnerability protection
 			if re.search(r'\[ACTION:', user_inputs, flags=re.IGNORECASE):
@@ -543,40 +518,17 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 				
 			config = crew_registry.get(crew_id)
 			if not config or not config.enabled:
-				from app.services.crews_native import native_crew_engine
-				ans = await native_crew_engine.run_crew(crew_id, f"Analyze the following data for the briefing: {user_inputs}")
-				return ans
+				return f"\u26a0 Error: Crew '{crew_id}' is not defined or is disabled."
 				
-			tz_str = await get_current_timezone()
-			local_time = datetime.now(pytz.timezone(tz_str)).isoformat()
-			
-			integrated_input = {
-				"user_input": user_inputs,
-				"sys_time": local_time,
-				"sys_user": "Operator",
-				"memory_state": "Loaded via auto-context"
-			}
-			if config.instructions:
-				integrated_input["instructions"] = config.instructions
-			
 			try:
-				if config.type == "workflow":
-					res = await dify_client.run_workflow(config.dify_app_id, integrated_input)
-					out = res.get("data", {}).get("outputs", {})
-					executed_cmds.append(f"__CREW_RUN__:{config.name}")
-					return f"Crew '{crew_id}' workflow completed. Result: {out}"
-				else:
-					res = await dify_client.run_agent(config.dify_app_id, user_inputs, None, integrated_input)
-					executed_cmds.append(f"__CREW_RUN__:{config.name}")
-					return f"Crew '{crew_id}' agent completed. Result: {res.get('answer', 'Success')}"
-			except httpx.TimeoutException:
-				logger.warning("RUN_CREW timeout for '%s'", crew_id)
-				return f"\u26a0 Crew '{crew_id}' exceeded reasoning budget (timeout) and was skipped."
+				ans = await native_crew_engine.run_crew(crew_id, user_inputs)
+				executed_cmds.append(f"__CREW_RUN__:{config.name}")
+				return ans
 			except Exception as e:
 				logger.error("RUN_CREW failed for '%s': %s", crew_id, e)
 				return f"\u26a0 Error: Execution failure for crew '{crew_id}'."
 
-		await handle_action("RUN_CREW", raw_tag, _exec_run_crew, f"Run Crew: {crew_id} with input")
+		await handle_action("RUN_CREW", raw_tag, _exec_run_crew, f"Run Crew: {crew_id}")
 		clean_reply = strip_tag(clean_reply, raw_tag)
 
 	# 11. Schedule Crew Tag
@@ -591,14 +543,13 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 			from app.common.scheduler_instance import scheduler
 			from apscheduler.triggers.cron import CronTrigger
 			from app.services.timezone import get_current_timezone
-			from app.services.crews import dify_client, crew_registry
+			from app.services.crews import crew_registry
+			from app.services.crews_native import native_crew_engine
 			import pytz
 			
 			config = crew_registry.get(crew_id)
 			if not config or not config.enabled:
 				return f"\u26a0 Error: Crew '{crew_id}' is not found or is disabled."
-			if False:
-				return f"\u26a0 Error: Crew '{crew_id}' is not provisioned."
 				
 			fields = cron_spec.split()
 			if len(fields) != 5:
@@ -609,22 +560,11 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 			
 			try:
 				trigger = CronTrigger(minute=fields[0], hour=fields[1], day=fields[2], month=fields[3], day_of_week=fields[4], timezone=tz)
-				# Since schedule isn't an async handler by default, we just define a simple task
+				
 				async def run_scheduled_crew():
 					logger.info("Executing scheduled crew %s", crew_id)
 					try:
-						integrated_input = {
-							"user_input": user_inputs,
-							"sys_time": datetime.now(tz).isoformat(),
-							"sys_user": "Operator",
-							"memory_state": "Loaded via auto-context"
-						}
-						if config.instructions:
-							integrated_input["instructions"] = config.instructions
-						if config.type == "workflow":
-							await dify_client.run_workflow(config.dify_app_id, integrated_input)
-						else:
-							await dify_client.run_agent(config.dify_app_id, user_inputs, None, integrated_input)
+						await native_crew_engine.run_crew(crew_id, user_inputs)
 					except Exception as e:
 						logger.error("Scheduled CREW execution failed: %s", e)
 				
@@ -756,40 +696,21 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 
 async def execute_crew_programmatically(crew_id: str, input_context: str = "Scheduled execution sequence"):
 	"""
-	Public API for the Scheduler to legitimately run Dify Crews without a raw LLM action tag.
-	Constructs an isolated execution envelope dynamically.
+	Public API for the Scheduler to legitimately run Crews without a raw LLM action tag.
+	Uses the native crew engine.
 	"""
-	from app.services.crews import dify_client, crew_registry
+	from app.services.crews import crew_registry
+	from app.services.crews_native import native_crew_engine
 
 	config = crew_registry.get(crew_id)
 	if not config or not config.enabled:
 		logger.warning("Programmatic execution aborted: Crew '%s' not found or disabled.", crew_id)
 		return
 
-	if False:
-		logger.warning("Programmatic execution aborted: Crew '%s' lacks provisioned App ID.", crew_id)
-		return
-		
-	logger.info("Programmatically executing Dify Crew '%s'...", crew_id)
+	logger.info("Programmatically executing Crew '%s'...", crew_id)
 
 	try:
-		time_str = datetime.now().isoformat()
-		integrated_input = {
-			"user_input": input_context,
-			"sys_time": time_str,
-			"sys_user": "Scheduler Daemon",
-			"memory_state": "Scheduler Execution - No active memory context"
-		}
-		if config.instructions:
-			integrated_input["instructions"] = config.instructions
-
-		if config.type == "workflow":
-			res = await dify_client.run_workflow(config.dify_app_id, integrated_input, api_key=config.dify_api_token)
-			out = res.get("data", {}).get("outputs", {})
-			logger.info("Crew '%s' workflow completed. Output: %s", crew_id, out)
-		else:
-			res = await dify_client.run_agent(config.dify_app_id, input_context, conversation_id=None, inputs=integrated_input, api_key=config.dify_api_token)
-			logger.info("Crew '%s' agent completed. Outcome: %s", crew_id, res.get('answer', 'Success'))
-			
+		ans = await native_crew_engine.run_crew(crew_id, input_context)
+		logger.info("Crew '%s' completed. Output length: %d", crew_id, len(ans))
 	except Exception as e:
 		logger.error("Programmatic execute_crew failed for '%s': %s", crew_id, e)

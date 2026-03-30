@@ -50,10 +50,6 @@
 				"description": {
 					"type": "string"
 				},
-				"dify_dsl_file": {
-					"type": "string",
-					"pattern": "\\.yml$"
-				},
 				"type": {
 					"type": "string",
 					"enum": [

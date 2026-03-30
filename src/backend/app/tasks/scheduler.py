@@ -98,9 +98,9 @@ async def start_scheduler():
 	now = datetime.now(tz)
 	logger.info("System Time Check: %s (Offset: %s)", now.strftime('%Y-%m-%d %H:%M:%S %Z'), now.utcoffset())
 
-	# Morning Briefing — Early Fire to Mitigate Dify
+	# Morning Briefing
 	# Fire exactly 15 minutes before user's explicitly requested delivery time.
-	# This ensures the LLM has already analyzed the overnight Dify crews.
+	# This ensures the LLM has already analyzed the overnight crew results.
 	from datetime import datetime, timedelta, time
 	target_time = datetime.combine(datetime.today(), time(hour=brief_hour, minute=brief_min))
 	fire_time = target_time - timedelta(minutes=15)
@@ -257,7 +257,7 @@ async def start_scheduler():
 		replace_existing=True,
 	)
 
-	# 5. Load Active Dify Crews
+	# 5. Load Active Crews
 	from app.services.crews import crew_registry
 	from app.services.agent_actions import execute_crew_programmatically
 	active_crews = crew_registry.list_active()
@@ -293,8 +293,8 @@ async def start_scheduler():
 			scheduler.add_job(
 				execute_crew_programmatically,
 				trigger,
-				args=[crew.id, "Scheduled chron context window initialized."],
-				id=f"dify_crew_{crew.id}",
+				args=[crew.id, "Scheduled cron context window initialized."],
+				id=f"crew_{crew.id}",
 				replace_existing=True,
 			)
 

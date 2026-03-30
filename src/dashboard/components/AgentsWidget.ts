@@ -25,7 +25,6 @@ interface Crew {
 	description: string;
 	type: 'workflow' | 'agent';
 	group: string;
-	dify_app_id: string;
 	is_running: boolean;
 	characters: Array<{ name: string; role: string }>;
 	schedule?: string;
@@ -767,7 +766,7 @@ export class AgentsWidget extends HTMLElement {
 			return `
 				<div class="empty-state">
 					<span style="opacity:0.2;">${this.renderIcon('cloud_off', '3rem')}</span>
-					<p>${this.tr('no_crews_found', 'No Dify Crews provisioned or active.')}</p>
+					<p>${this.tr('no_crews_found', 'No Native Crews actived in the registry.')}</p>
 				</div>
 			`;
 		}
@@ -816,8 +815,8 @@ export class AgentsWidget extends HTMLElement {
 															${sched}
 														</div>
 													</div>
-													<span class="status-badge ${crew.dify_app_id ? 'status-active' : 'status-inactive'}">
-														${crew.dify_app_id ? 'Active' : ''}
+													<span class="status-badge status-active">
+														Active
 													</span>
 												</div>
 											</summary>

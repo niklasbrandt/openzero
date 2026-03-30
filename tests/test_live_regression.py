@@ -71,6 +71,7 @@ class RegressionSuite:
 			await self.test_protocols_command()
 			await self.test_tree_command()
 			await self.test_life_tree_api()
+			await self.test_crew_commands()
 
 			# Memory commands: /learn, /search, /memories, /unlearn
 			await self.test_memory_commands()
@@ -174,6 +175,20 @@ class RegressionSuite:
 		assert resp.status_code == 200, f"/api/dashboard/life-tree returned {resp.status_code}"
 		assert isinstance(resp.json(), (dict, list)), "Life-tree response is not valid JSON"
 		self._log("✅ Life-tree API OK")
+	
+	async def test_crew_commands(self):
+		print("🧪 Crew commands (/crews, /crew)...")
+		# 1. /crews
+		resp = await self._request("POST", "/api/dashboard/chat", {"message": "/crews", "history": [], "skip_history": True})
+		assert resp.status_code == 200, f"/crews returned {resp.status_code}"
+		reply = resp.json().get("reply", "")
+		assert "Native" in reply or "Registry" in reply, "/crews output missing expected terms"
+		
+		# 2. /crew nutrition (should return a result or acknowledge execution)
+		resp2 = await self._request("POST", "/api/dashboard/chat", {"message": "/crew nutrition What are the benefits of magnesium?", "history": [], "skip_history": True})
+		assert resp2.status_code == 200, f"/crew nutrition returned {resp2.status_code}"
+		assert resp2.json().get("reply"), "/crew nutrition returned empty reply"
+		self._log("✅ /crews & /crew OK")
 
 	# ------------------------------------------------------------------
 	# Memory commands

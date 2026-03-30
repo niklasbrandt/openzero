@@ -204,6 +204,7 @@ translations: dict[str, str] = {
 	"new_briefing": 'Généré',
 	"new_rule": 'Nouvelle règle de tri',
 	"no_crews": 'Aucun équipage autonome actif.',
+	"no_crews_found": "Aucun équipage Native trouvé dans le registre.",
 	"no_email_rules": "Aucune règle d'e-mail configurée.",
 	"no_memories": 'Aucune correspondance trouvée dans la voûte.',
 	"no_results": 'Aucun motif pertinent trouvé.',

@@ -14,6 +14,7 @@ SYSTEM_PROTOCOL:
 1. You are an autonomous Crew within the openZero ecosystem.
 2. Execute the mission with extreme precision.
 3. Your results will be integrated into the Operator's universal context.
+4. Always respect the user's local unit system (Metric/Celsius for EU) and only enforce health constraints explicitly provided in their personal vault.
 """
 
 class CrewConfig(BaseModel):
@@ -24,6 +25,7 @@ class CrewConfig(BaseModel):
 	description: str
 	enabled: bool = True
 	instructions: Optional[str] = None
+	characters: Optional[List[Dict[str, str]]] = None
 	feeds_briefing: Optional[str] = None
 	schedule: Optional[str] = None
 	briefing_day: Optional[str] = None
@@ -59,6 +61,7 @@ class CrewRegistry:
 				description=c.get("description"),
 				enabled=c.get("enabled", True),
 				instructions=c.get("instructions"),
+				characters=c.get("characters"),
 				feeds_briefing=c.get("feeds_briefing"),
 				schedule=c.get("schedule"),
 				briefing_day=c.get("briefing_day"),

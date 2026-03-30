@@ -204,6 +204,7 @@ translations: dict[str, str] = {
 	"new_briefing": 'Generado',
 	"new_rule": 'Nueva Regla de Clasificación',
 	"no_crews": 'Sin equipos autónomos activos.',
+	"no_crews_found": 'No se encontraron equipos Native en el registro.',
 	"no_email_rules": 'Sin reglas de email configuradas.',
 	"no_memories": 'No se encontraron coincidencias en la bóveda.',
 	"no_results": 'No se encontraron patrones relevantes.',
