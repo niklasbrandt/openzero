@@ -104,6 +104,7 @@ async def lifespan(app: FastAPI):
                     from app.api.telegram_bot import send_notification_html
                     from app.services.timezone import format_time
                     from app.services.crews import crew_registry
+                    from app.services.translations import get_user_lang, get_translations
                     
                     # NATIVE TACTICAL RESTORATION
                     logging.info("Registry: Loading Native Tactical crews...")
@@ -111,11 +112,14 @@ async def lifespan(app: FastAPI):
                     
                     active_count = len(crew_registry.list_active())
                     
+                    # Localization
+                    lang = await get_user_lang()
+                    t = get_translations(lang)
+                    
                     heartbeat_msg = (
                         "🚀 <b>Z is Online & Operational</b>\n\n"
-                        f"Cognitive Restoration: <b>Complete</b>\n"
-                        f"Tactical Crews: <b>{active_count}/{active_count} Online (Native)</b>\n"
-                        "Architecture: <b>Strictly Native</b>\n\n"
+                        f"{t.get('hb_cognition', 'Cognition')}: <b>{t.get('hb_complete', 'Complete')}</b>\n"
+                        f"{t.get('hb_crews', 'Crews')}: <b>{active_count}/{active_count}</b>\n\n"
                         f"<i>Kernel synchronized at {format_time()}</i>"
                     )
                     await send_notification_html(heartbeat_msg)
