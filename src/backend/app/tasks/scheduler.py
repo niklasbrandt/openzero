@@ -258,7 +258,7 @@ async def start_scheduler():
 	)
 
 	# 5. Load Active Dify Crews
-	from app.services.dify import crew_registry
+	from app.services.crews import crew_registry
 	from app.services.agent_actions import execute_crew_programmatically
 	active_crews = crew_registry.list_active()
 	for crew in active_crews:
