@@ -35,8 +35,6 @@ EXCLUDES=(
     --exclude '*.log'
     --exclude '.env'
     --exclude '.env.planka'
-    --exclude 'agent/.dify_app_ids.json'
-    --exclude 'agent/dify/'
     --exclude 'static/'
 )
 

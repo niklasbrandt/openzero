@@ -33,6 +33,7 @@ DASHBOARD_TOKEN=your_token python3 tests/test_live_regression.py --url http://YO
 | /protocols | Verifies action tag documentation is returned |
 | /tree | Life-tree overview command -- project tree + inner circle + timeline |
 | Life-tree API | `GET /api/dashboard/life-tree` -- raw endpoint used by the dashboard widget |
+| Crews: /crews + /crew | Lists autonomous agents, executes `nutrition` crew, verifies 200 in chat |
 | Memory: /add + /search | Stores `TEST_MEMORY_TOKEN_991823`, recalls via `/search`, verifies Qdrant round-trip |
 | Memory: /memories | Lists all stored facts, verifies non-empty reply |
 | Memory: /unlearn | Stores `TEST_UNLEARN_TOKEN_887712`, then removes it, verifies confirmation |

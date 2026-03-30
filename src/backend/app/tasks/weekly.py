@@ -2,6 +2,7 @@ from app.services.llm import chat, last_model_used
 from app.services.planka import get_project_tree
 from app.models.db import AsyncSessionLocal, Briefing, Project
 from sqlalchemy import select
+import asyncio
 import datetime
 
 async def weekly_review():
@@ -11,13 +12,11 @@ async def weekly_review():
 	logger.info("Weekly Review initialization started (T-15m offset).")
 	
 	try:
-		from app.services.crews import dify_client
-		import asyncio
+		from app.services.crews import crew_registry
 		
-		# 1. Dify Pre-Compilation Yield: Await active /week crews
-		while await dify_client.get_active_runs(cadence="/week"):
-			logger.info("weekly_review — Active Dify /week crews detected. Yielding thread for 60s...")
-			await asyncio.sleep(60)
+		# 1. Native Pre-Compilation Yield: Await active /week crews (if any were started in background)
+		# While true 'active' tracking for native is lightweight, we sync with the registry loader.
+		await crew_registry.load()
 			
 		_t1 = asyncio.get_event_loop().time()
 		

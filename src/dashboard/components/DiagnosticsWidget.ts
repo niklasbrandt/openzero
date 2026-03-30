@@ -44,7 +44,6 @@ export class DiagnosticsWidget extends HTMLElement {
 		'planka': 'Planka kanban board image (attachments are in the separate Project Files segment).',
 		'traefik': 'Traefik reverse proxy image — routes all incoming HTTP traffic.',
 		'redis': 'Redis in-memory cache image (data is in the separate Redis Cache segment).',
-		'dify': 'Dify orchestration engine image.',
 		'whisper': 'Whisper automatic speech recognition image for voice input.',
 		'tts': 'Text-to-speech inference image for voice output.',
 		'openedai-speech': 'Text-to-speech inference image for voice output.',
@@ -220,7 +219,6 @@ export class DiagnosticsWidget extends HTMLElement {
 			'dashboard': 'hsl(200,80%,55%)',
 			'traefik': 'hsl(190,70%,50%)',
 			'planka': 'hsl(210,80%,55%)',
-			'dify': '#1C64F2',
 		};
 		return colors[name] || 'hsl(220,15%,50%)';
 	}
@@ -502,7 +500,7 @@ export class DiagnosticsWidget extends HTMLElement {
 			{ name: 'Database', status: sys.db_size ? 'online' : 'warning', detail: sys.db_size || '0 MB' },
 			{ name: 'Cache', status: sys.redis_stats ? 'online' : 'warning', detail: sys.redis_stats || 'offline' },
 			{ name: 'DNS', status: sys.dns_ok === true ? 'online' : 'warning', detail: sys.dns_detail || 'online' },
-			{ name: 'Crews', status: sys.dify_ok === true ? 'online' : 'warning', detail: sys.dify_detail || 'offline' },
+			{ name: 'Crews', status: sys.native_ok === true ? 'online' : 'warning', detail: sys.native_detail || 'offline' },
 		];
 
 		const swGrid = swServices.map(s => {
@@ -511,7 +509,7 @@ export class DiagnosticsWidget extends HTMLElement {
 				'Database': 'Relational data storage (Postgres) health and size.',
 				'Cache': 'Fast transient storage (Redis) for sessions and coordination.',
 				'DNS': 'Local privacy-focused DNS resolver (Pi-hole) status.',
-				'Crews': 'Dify multi-agent orchestration engine status.'
+				'Crews': 'Native multi-agent orchestration engine status.'
 			};
 			return `
 				<div class="svc-item has-tip">

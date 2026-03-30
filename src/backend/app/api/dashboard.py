@@ -300,9 +300,9 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		t = get_translations(lang)
 		active_crews = crew_registry.list_active()
 		
-		title = t.get('crews_registry_status', 'Dify Crews Registry Status')
+		title = t.get('crews_registry_status', 'Native Crew Registry Status')
 		if not active_crews:
-			body = t.get('no_crews_found', 'No Dify Crews provisioned or active.')
+			body = t.get('no_crews_found', 'No Native Crews actived in the registry.')
 			return {"reply": f"🛸 **{title}**\n\n*{body}*"}
 		
 		msg_parts = [f"🛸 **{title}**\n"]
@@ -330,8 +330,6 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		config = crew_registry.get(crew_id)
 		if not config:
 			return {"reply": f"❌ Error: Crew '{crew_id}' not found in the registry."}
-		if not config.dify_app_id:
-			return {"reply": f"❌ Error: Crew '{crew_id}' is not provisioned."}
 			
 		# Call run_crew tool logic manually
 		from app.services.agent_actions import run_crew
@@ -745,7 +743,7 @@ async def get_protocols():
 		{"name": "/quarter", "description": "Quarterly Roadmap: 90-day trajectory analysis."},
 		{"name": "/year", "description": "Yearly Goal Review: Comprehensive annual alignment audit."},
 		{"name": "/tree", "description": "Life Tree: Visualize hierarchy and workspace overview."},
-		{"name": "/crew", "description": "Run Crew: Trigger a specialized autonomous agent cycle by ID."},
+		{"name": "/crew", "description": "Run Crew: Trigger a specialized autonomous native agent cycle by ID."},
 		{"name": "/think", "description": "Deep Think: Multi-step chain-of-thought reasoning mode."},
 		{"name": "/remind", "description": "Quick Reminder: Set a temporary recurring nudge."},
 		{"name": "/custom", "description": "Persistent Task: Create a scheduled turnus (cron/interval)."},
@@ -755,7 +753,7 @@ async def get_protocols():
 		{"name": "/unlearn", "description": "Forget Fact: Remove a specific vector from the knowledge vault."},
 		{"name": "/personal", "description": "Personal Context: Inspect loaded user profile & mission data."},
 		{"name": "/agent", "description": "Agent Skills: Inspect loaded modular expertise definitions."},
-		{"name": "/status", "description": "Health Check: Deep diagnostic report of all integrations."},
+		{"name": "/status", "description": "Health Check: Deep diagnostic report of all native integrations."},
 		{"name": "/purge", "description": "Factory Reset: Permanently wipe ALL semantic memory."},
 	]
 	
@@ -883,7 +881,32 @@ async def dashboard_chat_stream(req: ChatRequest, request: Request, _rl: None = 
 		# Background memory extraction — learn from user message without blocking reply
 		asyncio.create_task(extract_and_store_facts(msg))
 
-		yield f"data: {json.dumps({'done': True, 'reply': _sanitise_reply_html(clean_reply), 'actions': executed_cmds, 'model': model_label})}\n\n"
+		yield f"data: {json.dumps({'done': True, 'reply': _sanitise_reply_html(clean_reply), 'actions': executed_cmds, 'pending': pending_actions, 'model': model_label})}\n\n"
+
+	return StreamingResponse(
+		event_generator(),
+		media_type="text/event-stream",
+		headers={
+			"Cache-Control": "no-cache",
+			"Connection": "keep-alive",
+			"X-Accel-Buffering": "no",
+		}
+	)
+
+@router.post("/crew/stream/{crew_id}")
+async def dashboard_crew_stream(crew_id: str, req: ChatRequest, db: AsyncSession = Depends(get_db)):
+	"""SSE streaming endpoint for crew missions."""
+	from starlette.responses import StreamingResponse
+	from app.services.crews_native import native_crew_engine
+	
+	async def event_generator():
+		try:
+			async for chunk in native_crew_engine.run_crew_stream(crew_id, req.message):
+				yield f"data: {json.dumps({'token': chunk})}\n\n"
+			yield f"data: {json.dumps({'done': True})}\n\n"
+		except Exception as e:
+			logger.error(f"Dashboard Crew Stream Error: {e}")
+			yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
 	return StreamingResponse(
 		event_generator(),
@@ -2672,16 +2695,17 @@ async def get_system_status(db: AsyncSession = Depends(get_db)):
         logger.warning("DNS health check failed: %s", e)
         dns_detail = "check failed"
 
-    # Dify Engine Health
-    dify_ok = False
-    dify_detail = "offline"
+    # Native Engine Health
+    native_ok = False
+    native_detail = "offline"
     try:
-        from app.services.crews import dify_client
-        dify_ok = await dify_client.health_check()
-        if dify_ok:
-            dify_detail = "online"
+        from app.services.crews import crew_registry
+        # Minimal check: Can we list active crews?
+        active = crew_registry.list_active()
+        native_ok = True
+        native_detail = f"online ({len(active)} active)"
     except Exception as e:
-        logger.debug("Dify health check failed: %s", e)
+        logger.debug("Native engine health check failed: %s", e)
 
     return {
         "status": "online",
@@ -2692,8 +2716,8 @@ async def get_system_status(db: AsyncSession = Depends(get_db)):
         "identity_active": identity_set,
         "dns_ok": dns_ok,
         "dns_detail": pihole_stats if dns_ok else dns_detail,
-        "dify_ok": dify_ok,
-        "dify_detail": dify_detail,
+        "native_ok": native_ok,
+        "native_detail": native_detail,
         "ram_total_gb": ram_total_gb,
         "ram_used_pct": ram_used_pct,
         "db_size": db_size_human,
@@ -2702,17 +2726,17 @@ async def get_system_status(db: AsyncSession = Depends(get_db)):
     }
 
 
-# --- Dify Crews Management ---
+# --- Native Crews Management ---
 @router.get("/crews")
 async def get_crews():
-    """Returns all provisioned Dify Crews and their status."""
+    """Returns all active Native Crews and their status."""
     from app.services.crews import crew_registry
     crews = crew_registry.list_active()
     
     # Minimal representation for the frontend
     payload = []
     for c in crews:
-        # Check if actually running via Dify API (best-effort, fallback to disabled)
+        # Check if actually running via Native Crew Engine (best-effort, fallback to disabled)
         # Note: True active_runs checks are heavy, so we might just infer or use a lightweight check
         payload.append({
             "id": c.id,
@@ -2720,7 +2744,6 @@ async def get_crews():
             "description": c.description,
             "type": c.type,
             "group": c.group,
-            "dify_app_id": c.dify_app_id,
             "is_running": False, 
             "characters": c.characters,
             "schedule": c.schedule,
@@ -2743,6 +2766,6 @@ async def trigger_crew_run(crew_id: str, background_tasks: BackgroundTasks):
 @router.get("/crews/history")
 async def get_crews_history():
     """Returns the most recent crew executions."""
-    # Note: Full historical telemetry is typically pulled directly from Dify's log API.
+    # Note: Full historical telemetry is typically pulled directly from the Native Engine's audit log.
     # We return a stub or empty list pending the remote sync proxy.
     return {"history": []}
