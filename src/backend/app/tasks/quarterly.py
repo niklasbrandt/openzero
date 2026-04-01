@@ -3,19 +3,21 @@ from app.models.db import AsyncSessionLocal, Briefing
 async def quarterly_review():
 	"""Generate and store the quarterly strategic review."""
 	from app.services.llm import chat, last_model_used
-	from app.services.planka import get_project_tree
+	from app.services.planka import get_project_tree, get_activity_report
 
 	tree = await get_project_tree(as_html=False)
+	activity = await get_activity_report(days=90)
 
 	prompt = (
 		"Z, QUARTERLY STRATEGIC REVIEW. \n\n"
-		"Analyze the past 90 days. Focus on:\n"
-		"1. Major mission completions.\n"
-		"2. Long-term trajectory shifts (Are we following the 'Universal Context'?)\n"
-		"3. High-level roadblocks needing architectural changes.\n"
-		"4. Strategic roadmap for the next 3 months.\n\n"
-		"Format this as a professional high-level report for the operator.\n\n"
-		f"PROJECTS:\n{tree}"
+		"OPERATIONAL DATA (PAST 90 DAYS ACTIVITY):\n"
+		f"{activity}\n\n"
+		f"FULL PROJECT TREE:\n{tree}\n\n"
+		"INSTRUCTIONS:\n"
+		"1. Analyze the past 90 days based ONLY on the data above.\n"
+		"2. Focus on major mission completions and long-term trajectory.\n"
+		"3. CRITICAL: Ignore any placeholder or '[e.g., ...]' values in your personal context.\n"
+		"4. Be professional and high-level."
 	)
 	
 	content = await chat(prompt)
