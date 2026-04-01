@@ -22,6 +22,7 @@ async def weekly_review():
 			f"PROJECT TREE:\n{tree}\n\n"
 			"INSTRUCTIONS:\n"
 			"- Base your summary ONLY on the OPERATIONAL DATA and TREE provided above.\n"
+			"- If OPERATIONAL DATA shows an 'OPERATIONAL DATA FAILURE/EMPTY' state, do NOT guess task status. Report the disconnection.\n"
 			"- Do not report placeholder examples from personal files (like Acme Studio).\n"
 			"- Be concise and professional."
 		)

@@ -502,7 +502,7 @@ async def get_activity_report(days: int = 30) -> str:
 			resp = await client.get("/api/projects")
 			projects = resp.json().get("items", [])
 			if not projects:
-				return "No active projects found."
+				return "### OPERATIONAL DATA EMPTY ###\nNo active project boards or missions found in the legal database. System is standing by."
 
 			all_details_tasks = [client.get(f"/api/projects/{p['id']}") for p in projects]
 			all_details_resps = await asyncio.gather(*all_details_tasks)
@@ -617,4 +617,4 @@ async def get_activity_report(days: int = 30) -> str:
 			return report
 	except Exception:
 		logger.exception("get_activity_report failed")
-		return "Error fetching monthly activity: connection failure or data empty."
+		return "### OPERATIONAL DATA FAILURE ###\n⚠️ Connection to Planka disrupted. Mission status is UNVERIFIED. DO NOT SIMULATE LIVE STATE."
