@@ -111,10 +111,12 @@ async def morning_briefing():
 			emails = await fetch_unread_emails(max_results=5)
 			return "\n".join([f"- {e['from']}: {e['subject']}" for e in emails]) if emails else "No new emails."
 
-		weather_report, tree, email_summary = await asyncio.gather(
+		from app.services.planka import get_project_tree, get_activity_report
+		weather_report, tree, email_summary, activity = await asyncio.gather(
 			get_weather_forecast(detected_location),
 			get_project_tree(as_html=False),
 			_get_email_summary(),
+			get_activity_report(days=1),
 		)
 		logger.debug("morning_briefing — batch-2 done in %.1fs", asyncio.get_event_loop().time() - _t2)
 
@@ -130,6 +132,7 @@ async def morning_briefing():
 			"Z, morning briefing. Summarize based ONLY on the CONTEXT below.\n"
 			"STRICT RULES:\n"
 			"- NEVER invent names, tasks, projects, or events not present in CONTEXT.\n"
+			"- IGNORE any placeholder or '[e.g., ...]' values in your personal files.\n"
 			"- ONLY mention a birthday if CONTEXT explicitly contains '⚠️ BIRTHDAY IN EXACTLY'.\n"
 			"- If a section is empty, skip it or say 'nothing to report'.\n"
 			"- Do NOT summarize the NEW MEMORIES section — it will be appended separately.\n\n"
@@ -138,7 +141,8 @@ async def morning_briefing():
 			f"CLOSE CIRCLE (Friends/Social):\n{close_context}\n\n"
 			f"CALENDAR TODAY:\n{calendar_summary}\n\n"
 			f"WEATHER FORECAST:\n{weather_report}\n\n"
-			f"PROJECTS:\n{tree}\n\n"
+			f"RECENT ACTIVITY (LAST 24H):\n{activity}\n\n"
+			f"PROJECT TREE:\n{tree}\n\n"
 			f"LATEST EMAILS:\n{email_summary}\n"
 		)
 
