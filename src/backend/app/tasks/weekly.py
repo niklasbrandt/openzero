@@ -1,49 +1,29 @@
 from app.services.llm import chat, last_model_used
-from app.services.planka import get_project_tree
+from app.services.planka import get_project_tree, get_activity_report
 from app.models.db import AsyncSessionLocal, Briefing, Project
 from sqlalchemy import select
 import asyncio
 import datetime
 
 async def weekly_review():
-	"""Generate and store the weekly review with project stagnation checks."""
+	"""Generate and store the weekly review based on live Planka activity."""
 	import logging
 	logger = logging.getLogger(__name__)
-	logger.info("Weekly Review initialization started (T-15m offset).")
+	logger.info("Weekly Review started...")
 	
 	try:
-		from app.services.crews import crew_registry
-		
-		# 1. Native Pre-Compilation Yield: Await active /week crews (if any were started in background)
-		# While true 'active' tracking for native is lightweight, we sync with the registry loader.
-		await crew_registry.load()
-			
-		_t1 = asyncio.get_event_loop().time()
-		
 		tree = await get_project_tree(as_html=False)
-	
-		# Identify stagnant projects (Active but not updated in > 7 days)
-		stagnant_list = []
-		async with AsyncSessionLocal() as session:
-			today = datetime.datetime.utcnow()
-			week_ago = today - datetime.timedelta(days=7)
-			
-			result = await session.execute(
-				select(Project).where(
-					Project.status == "active",
-					Project.updated_at < week_ago
-				)
-			)
-			stagnant_projects = result.scalars().all()
-			stagnant_list = [f"- {p.name} (Stagnant for {(today - p.updated_at).days} days)" for p in stagnant_projects]
-
-		stagnant_text = "\n".join(stagnant_list) if stagnant_list else "All active projects show recent momentum."
+		activity = await get_activity_report(days=7)
 		
 		prompt = (
-			"Z, weekly review. Summarize progress, roadblocks, and 3 goals for next week. "
-			"Identify STAGNANT PROJECTS and suggest micro-tasks to unblock them.\n\n"
+			"Z, weekly review. Summarize progress, roadblocks, and 3 goals for next week.\n\n"
+			"OPERATIONAL DATA (7-DAY ACTIVITY):\n"
+			f"{activity}\n\n"
 			f"PROJECT TREE:\n{tree}\n\n"
-			f"STAGNANT PROJECTS (DATA-DRIVEN):\n{stagnant_text}\n"
+			"INSTRUCTIONS:\n"
+			"- Base your summary ONLY on the OPERATIONAL DATA and TREE provided above.\n"
+			"- Do not report placeholder examples from personal files (like Acme Studio).\n"
+			"- Be concise and professional."
 		)
 		
 		content = await chat(prompt)
@@ -54,8 +34,7 @@ async def weekly_review():
 			session.add(briefing)
 			await session.commit()
 			
-		# 5. Precision Delivery SLEEP logic
-		# We kicked off exactly 15m early to provide LLM lead time.
+		# Precision Delivery SLEEP logic
 		try:
 			from app.services.timezone import get_current_timezone
 			import pytz
@@ -65,7 +44,7 @@ async def weekly_review():
 			target = now.replace(hour=10, minute=0, second=0, microsecond=0)
 			delta = (target - now).total_seconds()
 			if 0 < delta < 1800:
-				logger.info("weekly_review — Pre-compilation finished in %.1fs. Precision SLEEP for %.1fs until exact 10:00AM delivery.", (now.timestamp() - _t1) if '_t1' in locals() else 0, delta)
+				logger.info("weekly_review — Precision SLEEP for %.1fs.", delta)
 				await asyncio.sleep(delta)
 		except Exception as e:
 			logger.warning("weekly_review — Precision SLEEP failed: %s", e)

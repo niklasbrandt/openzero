@@ -77,7 +77,8 @@ async def get_project_tree(as_html: bool = True) -> str:
 				tree_lines.append((i, "project", p_display))
 
 				for board in boards:
-					task = client.get(f"/api/boards/{board['id']}", params={"included": "lists,cards"})
+					# Include labels and cardLabels for class-of-service/blocker detection
+					task = client.get(f"/api/boards/{board['id']}", params={"included": "lists,cards,labels,cardLabels"})
 					board_tasks.append(task)
 					board_metadata.append({"project_idx": i, "name": board['name'], "id": board['id']})
 
@@ -487,3 +488,133 @@ async def get_board_summary(board_name: str = "Operator Board") -> str:
 	except Exception as e:
 		logger.warning("get_board_summary error: %s", e)
 		return "Planka context unavailable."
+
+async def get_activity_report(days: int = 30) -> str:
+	"""Fetch a detailed record of cards finished vs. cards stalled vs. WIP state.
+	This is the 'truth' used by the Review tasks to prevent hallucinations.
+	"""
+	token = await get_planka_auth_token()
+	headers = {"Authorization": f"Bearer {token}"}
+	cutoff = datetime.now() - timedelta(days=days)
+	
+	try:
+		async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, timeout=20.0, headers=headers) as client:
+			resp = await client.get("/api/projects")
+			projects = resp.json().get("items", [])
+			if not projects:
+				return "No active projects found."
+
+			all_details_tasks = [client.get(f"/api/projects/{p['id']}") for p in projects]
+			all_details_resps = await asyncio.gather(*all_details_tasks)
+			
+			board_tasks = []
+			board_names = []
+			for r in all_details_resps:
+				d = r.json()
+				boards = d.get("included", {}).get("boards", []) or d.get("boards", [])
+				for b in boards:
+					board_tasks.append(client.get(f"/api/boards/{b['id']}", params={"included": "lists,cards,labels,cardLabels"}))
+					board_names.append(b["name"])
+			
+			board_details = await asyncio.gather(*board_tasks)
+			
+			from app.services.translations import get_done_keywords
+			_done_kw = get_done_keywords()
+			
+			# Categories
+			completed_cards = []
+			in_progress_cards = []
+			blocked_cards = []
+			stalled_cards = [] # Incomplete and not updated for 7+ days
+			
+			wip_violations = [] # List of (board, list, count)
+			
+			for b_idx, b_resp in enumerate(board_details):
+				b_data = b_resp.json()
+				b_name = board_names[b_idx]
+				lists = b_data.get("included", {}).get("lists", [])
+				cards = b_data.get("included", {}).get("cards", [])
+				labels = b_data.get("included", {}).get("labels", [])
+				card_labels = b_data.get("included", {}).get("cardLabels", [])
+				
+				# Map labels for lookups
+				label_map = {l["id"]: l for l in labels}
+				card_to_labels = {}
+				for cl in card_labels:
+					cid = cl["cardId"]
+					lid = cl["labelId"]
+					if cid not in card_to_labels: card_to_labels[cid] = []
+					if lid in label_map: card_to_labels[cid].append(label_map[lid])
+
+				done_list_ids = {l['id'] for l in lists if l.get('name') and l['name'].lower() in _done_kw}
+				
+				# Define "In Progress" lists (e.g. "Doing", "In Progress", "Today")
+				in_progress_kw = {"in progress", "doing", "active", "today", "im gang", "en curso"}
+				ip_list_ids = {l['id'] for l in lists if l.get('name') and l['name'].lower() in in_progress_kw}
+				
+				for lst in lists:
+					lst_cards = [c for c in cards if c["listId"] == lst["id"]]
+					if lst["id"] in ip_list_ids and len(lst_cards) > 3:
+						wip_violations.append(f"{b_name} → {lst['name']} ({len(lst_cards)} cards, limit 3)")
+				
+				for card in cards:
+					c_name = card["name"]
+					c_updated = datetime.fromisoformat(card["updatedAt"].replace('Z', ''))
+					c_labels = card_to_labels.get(card["id"], [])
+					c_label_names = [l["name"].lower() for l in c_labels]
+					
+					is_done = card["listId"] in done_list_ids
+					is_ip = card["listId"] in ip_list_ids
+					is_blocked = "blocked" in c_label_names or "block" in c_name.lower()
+					
+					# Class of Service detection
+					is_expedite = "expedite" in c_label_names or "!!" in c_name
+					is_fixed_date = "fixed date" in c_label_names or "!" in c_name
+					cos_tag = ""
+					if is_expedite: cos_tag = " [EXPEDITE]"
+					elif is_fixed_date: cos_tag = " [FIXED DATE]"
+					
+					if is_done:
+						if c_updated > cutoff:
+							completed_cards.append(f"- {c_name}{cos_tag} ({b_name})")
+					else:
+						if is_blocked:
+							blocked_cards.append(f"- {c_name}{cos_tag} ({b_name})")
+						elif is_ip:
+							age = (datetime.now() - c_updated).days
+							in_progress_cards.append(f"- {c_name}{cos_tag} ({b_name}, {age} days active)")
+						elif c_updated < (datetime.now() - timedelta(days=7)):
+							stalled_cards.append(f"- {c_name}{cos_tag} ({b_name}, last activity {c_updated.strftime('%Y-%m-%d')})")
+
+			report = "### 30-DAY OPERATIONAL ACTIVITY REPORT ###\n\n"
+			
+			report += "COMPLETED IN LAST 30 DAYS:\n"
+			if completed_cards:
+				report += "\n".join(completed_cards[:30]) # Cap at 30
+				if len(completed_cards) > 30: report += f"\n...and {len(completed_cards)-30} more."
+			else:
+				report += "(None found in Done lists)"
+			
+			report += "\n\nCURRENTLY IN PROGRESS:\n"
+			if in_progress_cards:
+				report += "\n".join(in_progress_cards)
+			else:
+				report += "(No tasks in active columns)"
+				
+			report += "\n\nBLOCKED / STALLED INITIATIVES:\n"
+			if blocked_cards or stalled_cards:
+				if blocked_cards:
+					report += "BLOCKED:\n" + "\n".join(blocked_cards) + "\n"
+				if stalled_cards:
+					report += "STALLED (>7 days inactive):\n" + "\n".join(stalled_cards[:15])
+			else:
+				report += "(None detected)"
+				
+			if wip_violations:
+				report += "\n\nWIP LIMIT VIOLATIONS (Limit=3):\n"
+				report += "\n".join(wip_violations)
+
+			return report
+	except Exception:
+		logger.exception("get_activity_report failed")
+		return "Error fetching monthly activity: connection failure or data empty."

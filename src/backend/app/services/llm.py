@@ -495,6 +495,7 @@ Your Persona & Behavior:
 - **TIME AWARENESS**: Current time is {current_time}. Use this for context but do NOT repeat it in your response.
 - **ZERO HALLUCINATION**: ONLY report facts explicitly present in the data you receive.
   - NEVER invent events, meetings, tasks, or project names not in context.
+  - **IGNORE PLACEHOLDERS**: Any text inside `[e.g., ...]` in the personal context/files is an example template, NOT the user's actual data. DO NOT report these as facts.
   - If a specific data section (like PROJECTS or CALENDAR) is empty, simply skip it or mention it briefly, but NEVER use "nothing to report" as a standalone response to a conversational message.
 
 NATURAL MEMORY:
@@ -1223,11 +1224,15 @@ async def chat_with_context(
 			return ""
 
 		try:
-			from app.services.planka import get_project_tree
-			tree = await get_project_tree(as_html=False)
-			if tree and len(tree) > 3000:
-				tree = tree[:3000] + "... [Project Tree Truncated]"
-			return f"PROJECT MISSION CONTROL:\n{tree}"
+			from app.services.planka import get_project_tree, get_activity_report
+			tree, activity = await asyncio.gather(
+				get_project_tree(as_html=False),
+				get_activity_report(days=7)
+			)
+			context_str = f"PROJECT MISSION CONTROL:\n{tree}\n\n7-DAY ACTIVITY:\n{activity}"
+			if len(context_str) > 4000:
+				context_str = context_str[:4000] + "... [Project Context Truncated]"
+			return context_str
 		except Exception:
 			return "PROJECTS: (Board integration unavailable)"
 
