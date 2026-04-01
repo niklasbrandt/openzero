@@ -79,7 +79,9 @@ class NativeCrewEngine:
 			"stream": True       # Enable llama.cpp streaming
 		}
 
-		logger.info("Native Engine: Executing streaming mission for '%s'...", crew_id)
+		# Sanitize crew_id for logging to prevent CRLF injection (CodeQL)
+		safe_crew_id = crew_id.replace("\n", "\\n").replace("\r", "\\r")
+		logger.info("Native Engine: Executing streaming mission for '%s'...", safe_crew_id)
 		
 		async with httpx.AsyncClient(timeout=3600.0) as client:
 			try:
