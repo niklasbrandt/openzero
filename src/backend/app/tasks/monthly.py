@@ -15,7 +15,7 @@ async def monthly_review():
 		f"FULL PROJECT TREE:\n{tree}\n\n"
 		"INSTRUCTIONS:\n"
 		"1. Respond ONLY based on the OPERATIONAL DATA and PROJECT TREE above.\n"
-		"2. If the OPERATIONAL DATA lists card names, use them specifically.\n"
+		"2. If OPERATIONAL DATA starts with '### OPERATIONAL DATA FAILURE', report the failure to the user and DO NOT list specific card names from your own memory or personal files.\n"
 		"3. CRITICAL: Ignore any placeholder or '[e.g., ...]' values found in your personal/business context (like Acme Studio, WebGPU, etc.). If you see them, they are NOT your user's data.\n"
 		"4. Be sharp, direct, and data-driven. No filler.\n"
 		"5. Format with clear headers: ### 1. 30-Day Progress | ### 2. 3 Major Goals for Next Month"
