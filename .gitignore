@@ -26,6 +26,7 @@ personal/
 # ===========================
 # Runtime & build artifacts
 # ===========================
+src/backend/app/VERSION
 node_modules/
 dist/
 .venv/

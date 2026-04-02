@@ -19,6 +19,14 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 
+# Log deployed commit hash so version mismatches are immediately visible in logs
+try:
+    _version_file = os.path.join(os.path.dirname(__file__), "VERSION")
+    _deployed_commit = open(_version_file).read().strip() if os.path.exists(_version_file) else "unknown"
+except Exception:
+    _deployed_commit = "unknown"
+logging.info("openZero backend starting — commit: %s", _deployed_commit)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
