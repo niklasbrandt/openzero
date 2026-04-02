@@ -188,27 +188,19 @@ def _is_system_message(text: str) -> bool:
 	return any(lower.startswith(p) for p in _SYSTEM_MESSAGE_PREFIXES)
 
 async def _send_online_notification(recovery_html: str = ""):
-	"""Send the 'Z is Online & Operational' banner once startup is fully done.
-	If recovery_html is provided, the banner is prepended to the recovery reply
-	so the user receives a single combined message instead of two."""
+	"""Notify the user that Z is back. If there are recovered messages the LLM
+	reply is the whole message — no stiff banner. When idle, send a short casual
+	note so the user knows Z is alive without any formal ceremony."""
 	try:
-		from app.services.crews import crew_registry
-		from app.services.timezone import format_time
 		from app.services.translations import get_user_lang, get_translations
-		await crew_registry.load()
-		active_count = len(crew_registry.list_active())
 		lang = await get_user_lang()
 		t = get_translations(lang)
-		banner = (
-			"🚀 <b>Z is Online & Operational</b>\n\n"
-			f"{t.get('hb_cognition', 'Cognition')}: <b>{t.get('hb_complete', 'Complete')}</b>\n"
-			f"{t.get('hb_crews', 'Crews')}: <b>{active_count}/{active_count}</b>\n\n"
-			f"<i>Kernel synchronized at {format_time()}</i>"
-		)
 		if recovery_html:
-			msg = f"{banner}\n\n{recovery_html}"
+			# LLM response already carries the greeting — send it as-is.
+			msg = recovery_html
 		else:
-			msg = banner
+			# Nothing to recover — just a quiet "I'm back".
+			msg = "<i>back.</i>"
 		await send_notification_html(msg, reply_markup=get_nav_markup(t))
 	except Exception as _e:
 		logger.warning("Online notification failed: %s", _e)
@@ -292,7 +284,7 @@ async def _recover_unanswered_messages():
 		# knows these were pre-restart messages, without overriding personality.
 		merged_history = list(merged_history) + [{
 			"role": "assistant",
-			"content": "(You restarted and never replied to the following messages. Respond in your usual character.)",
+			"content": "(You were offline and just came back. These messages came in while you were down — pick up like a friend would, naturally, no announcements.)",
 		}]
 		prompt = combined
 
@@ -325,8 +317,7 @@ async def _recover_unanswered_messages():
 
 		clean_reply = strip_llm_time_header(clean_reply)
 		html_reply = _md_to_html(clean_reply)
-		footer = await _get_stats_footer()
-		recovery_html = f"<blockquote><b>{format_time()}</b>\n\n{html_reply}{footer}</blockquote>"
+		recovery_html = html_reply
 
 		logger.info("Restart recovery: response delivered — sending combined online notification.")
 		await _send_online_notification(recovery_html=recovery_html)
