@@ -74,13 +74,15 @@ if [ -d .git ]; then
   git rev-parse HEAD > "$LAST_SYNC_FILE"
 fi
 
-# Rebuild and restart using docker compose, then prune stale build cache and
-# dangling images left behind by the build. This prevents the build cache from
-# silently accumulating GBs between deployments (7+ GB observed after ~10 syncs).
+# Rebuild or restart based on flags. Default to fast 'restart' for 
+# logic-only changes (enabled by the live volume mount in compose).
+REBUILD_CMD="docker compose restart backend"
+for arg in "$@"; do
+  [[ "$arg" == "--rebuild" ]] && REBUILD_CMD="docker compose build backend && docker compose rm -f --stop backend && docker compose up -d"
+done
+
 ssh $REMOTE_USER@$REMOTE_HOST "cd $REMOTE_DIR \
-  && docker compose build backend \
-  && docker compose rm -f --stop backend \
-  && docker compose up -d \
+  && $REBUILD_CMD \
   && docker builder prune -f \
   && docker image prune -f"
 

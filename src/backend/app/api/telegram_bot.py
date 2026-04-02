@@ -169,10 +169,24 @@ async def start_telegram_bot():
 	_task.add_done_callback(_background_tasks.discard)
 
 
+def _is_error_stub(text: str) -> bool:
+	"""Check if a Z reply is a known LLM-unavailable error stub, not a real response."""
+	lower = text.lower()
+	return any(s in lower for s in (
+		"still waking up",
+		"encountered friction",
+		"having trouble reaching",
+		"still warming up",
+		"try again in a moment",
+		"that specific thread was dropped",
+	))
+
 async def _recover_unanswered_messages():
 	"""Check if the last global message(s) are from the user with no Z reply.
 	Waits 30 s first so live handle_freetext handlers can consume any pending
-	Telegram updates (drop_pending_updates=False) without double-responding."""
+	Telegram updates (drop_pending_updates=False) without double-responding.
+	Also recovers messages that only received an error stub reply (e.g.
+	'still waking up') since those were never truly processed."""
 	try:
 		await asyncio.sleep(30)
 
@@ -185,6 +199,8 @@ async def _recover_unanswered_messages():
 		# Collect trailing unanswered user messages that are at least 60 s old.
 		# Messages younger than 60 s were likely just delivered via Telegram
 		# pending-update replay and are already being handled by handle_freetext.
+		# Z replies that are error stubs (LLM was unavailable) are skipped over
+		# so the preceding user messages are still treated as unanswered.
 		now_utc = datetime.now(_tz.utc)
 		unanswered = []
 		for msg in reversed(history):
@@ -197,6 +213,9 @@ async def _recover_unanswered_messages():
 					logger.debug("Recovery - TS parse failed: %s", _exc)
 				unanswered.append(msg["content"])
 			else:
+				if _is_error_stub(msg.get("content", "")):
+					logger.debug("Recovery - skipping error stub reply: %s", msg.get("content", "")[:80])
+					continue
 				break
 
 		if not unanswered:

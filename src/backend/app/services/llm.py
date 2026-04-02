@@ -466,8 +466,7 @@ async def _get_user_lang() -> str:
 	return _cached_user_lang
 
 # Lean system prompt for conversational messages (no action tag docs)
-SYSTEM_PROMPT_CHAT = """You are Z — the privacy first personal AI agent.
-You are not a generic assistant. You are an agent operator — sharp, warm, and direct.
+SYSTEM_PROMPT_CHAT = """You are an agent operator. Apply your persona and expertise to every response.
 
 CORE RESPONSE RULE:
 - **DO NOT output a timestamp.** The system adds the time automatically.
@@ -477,9 +476,9 @@ CORE RESPONSE RULE:
   - For **creative/speculative requests**: give a real, engaged, thoughtful response.
   - For **questions**: answer directly and specifically.
   - For **conversation**: be warm and human.
-- **ZERO FILLER**: No "Of course!", "I understand", "Sure".
+- **ZERO FILLER**: No "Of course!", "I understand", "Sure" (Unless personality directives explicitly dictate otherwise).
 - **NO TAG TALK**: Never explain what you have stored or learned unless explicitly asked.
-- **NO EMOJIS**: Never use emojis in your responses. Communicate with words only.
+- **NO EMOJIS**: Never use emojis in your responses (Unless personality directives explicitly dictate otherwise). Communicate with words only.
 - **NO ECHO**: NEVER repeat or echo the user's message back. NEVER generate slash commands (like /deep, /help, /start). Your output is a RESPONSE, not a transcript.
 - **NO ROLE-PLAY**: Do not simulate both sides of a conversation. You are Z only.
 
@@ -564,21 +563,21 @@ async def get_agent_personality() -> str:
 			res = await session.execute(select(Preference).where(Preference.key == "agent_personality"))
 			pref = res.scalar_one_or_none()
 			if not pref:
-				return ""
+				return "You are Z — the privacy first personal AI agent. You are an agent operator — sharp, warm, and direct."
 			
 			traits = json.loads(pref.value)
 			a_name = traits.get("agent_name", "Z")
 			prompt = f"You are {a_name}. "
 			if traits.get("role"): prompt += f"Your role is {traits['role']}. "
-			prompt += "Follow these refined behavioral directives:\n"
+			prompt += "Follow these refined behavioral directives (these ALWAYS override any generic baseline character traits):\n"
 			
 			d = traits.get("directness", 3)
-			if d >= 4: prompt += "- Communication: Be direct, concise, and mission-oriented. Minimal filler.\n"
-			elif d <= 2: prompt += "- Communication: Provide detailed, elaborate explanations. Use descriptive language.\n"
+			if d >= 4: prompt += "- Communication Style: Be direct, concise, and mission-oriented. Minimal filler.\n"
+			elif d <= 2: prompt += "- Communication Style: Provide detailed, elaborate explanations. Use descriptive language.\n"
 			
 			w = traits.get("warmth", 3)
-			if w >= 4: prompt += "- Tone: Warm, empathetic, and supportive. Use person-centered language.\n"
-			elif w <= 2: prompt += "- Tone: Clinical, objective, and detached. Logic-first delivery.\n"
+			if w >= 4: prompt += "- Emotional Tone: Warm, empathetic, and supportive. Use person-centered language.\n"
+			elif w <= 2: prompt += "- Emotional Tone: Clinical, objective, and detached. Logic-first delivery.\n"
 			
 			a = traits.get("agency", 3)
 			if a >= 4: prompt += "- Agency: Drive mission outcomes proactively. Push for excellence and efficiency.\n"
@@ -674,10 +673,10 @@ async def build_system_prompt(user_name: str, user_profile: dict) -> tuple[str, 
 			logger.debug("chat_with_context: agent context refresh failed", exc_info=True)
 	agent_skills_block = ("\n\n" + agent_ctx) if agent_ctx else ""
 
-	formatted_system_prompt = SYSTEM_PROMPT_CHAT.format(
+	formatted_system_prompt = personality_directive + "\n\n" + SYSTEM_PROMPT_CHAT.format(
 		current_time=simplified_time,
 		user_name=user_name
-	) + personal_block + agent_skills_block + user_id_context + lang_directive + personality_directive
+	) + personal_block + agent_skills_block + user_id_context + lang_directive
 
 	context_header = f"Current Local Time (Raw): {format_date_full(now)}\n"
 	context_header += f"Current Formatted Time (Use This): {simplified_time}\n\n"
