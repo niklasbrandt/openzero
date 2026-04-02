@@ -137,18 +137,11 @@ async def start_telegram_bot():
 	await bot_app.updater.start_polling(drop_pending_updates=False)
 	logger.debug("start_telegram_bot - step 6: Polling started")
 
-	# Proactive greeting with Context & Stats (Run in background to avoid blocking startup)
+	# On every startup, check if the user sent messages that were never answered
+	# (e.g. the previous process crashed or the LLM was still loading).
 	async def send_startup_greeting():
 		try:
-			if not settings.TELEGRAM_AUTO_GREET:
-				logger.info("Greeting Seq - Automatic greeting suppressed (Wait for background init)")
-				return
-
-			# Note: Extensive greeting logic removed as it is now DECOUPLED
-			# and direct notifications are handled via background tasks in main.py.
-			# --- Restart Recovery: respond to unanswered user messages ---
 			await _recover_unanswered_messages()
-
 		except Exception:
 			logger.exception("FAILED to complete Telegram startup recovery")
 
