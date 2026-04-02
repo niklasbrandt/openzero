@@ -309,13 +309,17 @@ async def _recover_unanswered_messages():
 		}]
 		prompt = combined
 
-		logger.info("Restart recovery: calling chat_with_context...")
-		response = await chat_with_context(
-			prompt,
-			history=merged_history,
-			include_projects=True,
-			include_people=True,
-			use_agent=False,
+		logger.info("Restart recovery: calling chat_with_context (deep tier, 300 s timeout)...")
+		response = await asyncio.wait_for(
+			chat_with_context(
+				prompt,
+				history=merged_history,
+				include_projects=True,
+				include_people=True,
+				use_agent=False,
+				tier_override="deep",
+			),
+			timeout=300,
 		)
 		logger.info(
 			"Restart recovery: LLM responded (%d chars): %s",
