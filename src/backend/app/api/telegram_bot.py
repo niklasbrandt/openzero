@@ -266,22 +266,31 @@ async def _recover_unanswered_messages():
 			+ combined
 		)
 
+		logger.info("Restart recovery: calling chat_with_context...")
 		response = await chat_with_context(
 			prompt,
 			history=merged_history,
 			include_projects=True,
 			include_people=True,
 		)
+		logger.info(
+			"Restart recovery: LLM responded (%d chars): %s",
+			len(response or ""),
+			(response or "")[:120],
+		)
 
+		logger.info("Restart recovery: running parse_and_execute_actions...")
 		async with AsyncSessionLocal() as db:
 			from app.services.agent_actions import parse_and_execute_actions
 			clean_reply, executed_cmds, _ = await parse_and_execute_actions(response, db=db)
 			crews = [c.split(":", 1)[1] for c in executed_cmds if c.startswith("__CREW_RUN__:")]
 			if crews:
 				clean_reply += f"\n\n_(Reasoning supported by {', '.join(crews)})_"
+		logger.info("Restart recovery: actions parsed, saving to DB...")
 
 		from app.services.llm import last_model_used
 		await save_global_message("telegram", "z", clean_reply, model=last_model_used.get())
+		logger.info("Restart recovery: saved to DB, sending Telegram notification...")
 
 		clean_reply = strip_llm_time_header(clean_reply)
 		html_reply = _md_to_html(clean_reply)
@@ -295,8 +304,8 @@ async def _recover_unanswered_messages():
 			reply_markup=get_nav_markup(t),
 		)
 		logger.info("Restart recovery: response delivered.")
-	except Exception as e:
-		logging.error("Restart recovery failed: %s", e)
+	except BaseException as e:
+		logging.exception("Restart recovery failed: %s", e)
 
 async def stop_telegram_bot():
 	"""Gracefully stop the bot."""
