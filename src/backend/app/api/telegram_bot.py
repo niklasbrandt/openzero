@@ -187,6 +187,27 @@ def _is_system_message(text: str) -> bool:
 	lower = text.lower().strip()
 	return any(lower.startswith(p) for p in _SYSTEM_MESSAGE_PREFIXES)
 
+async def _send_online_notification():
+	"""Send the 'Z is Online & Operational' heartbeat exactly once, after all
+	startup work (context load + recovery) has finished."""
+	try:
+		from app.services.crews import crew_registry
+		from app.services.timezone import format_time
+		from app.services.translations import get_user_lang, get_translations
+		await crew_registry.load()
+		active_count = len(crew_registry.list_active())
+		lang = await get_user_lang()
+		t = get_translations(lang)
+		msg = (
+			"🚀 <b>Z is Online & Operational</b>\n\n"
+			f"{t.get('hb_cognition', 'Cognition')}: <b>{t.get('hb_complete', 'Complete')}</b>\n"
+			f"{t.get('hb_crews', 'Crews')}: <b>{active_count}/{active_count}</b>\n\n"
+			f"<i>Kernel synchronized at {format_time()}</i>"
+		)
+		await send_notification_html(msg)
+	except Exception as _e:
+		logger.warning("Online notification failed: %s", _e)
+
 async def _recover_unanswered_messages():
 	"""Deterministic restart recovery: scans up to 30 global messages to find
 	user messages that have no real Z reply after them.
@@ -248,7 +269,8 @@ async def _recover_unanswered_messages():
 			unanswered.append(content)
 
 		if not unanswered:
-			logger.info("Restart recovery: nothing to recover.")
+			logger.info("Restart recovery: nothing to recover — sending online notification.")
+			await _send_online_notification()
 			return
 
 		unanswered.reverse()  # chronological order
@@ -306,9 +328,11 @@ async def _recover_unanswered_messages():
 			f"<blockquote>{display_reply}{footer}</blockquote>",
 			reply_markup=get_nav_markup(t),
 		)
-		logger.info("Restart recovery: response delivered.")
+		logger.info("Restart recovery: response delivered — sending online notification.")
+		await _send_online_notification()
 	except BaseException as e:
 		logging.exception("Restart recovery failed: %s", e)
+		await _send_online_notification()
 
 async def stop_telegram_bot():
 	"""Gracefully stop the bot."""
