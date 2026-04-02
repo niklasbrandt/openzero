@@ -231,7 +231,7 @@ async def morning_briefing():
 
 		separator = "---"
 		await send_notification(
-			f"{separator}\n☀️ *{greeting_text}*\n\n{content}",
+			f"{separator}\n*{greeting_text}*\n\n{content}",
 			reply_markup=get_nav_markup(t)
 		)
 
