@@ -69,16 +69,19 @@ echo "--------------------------------------------------------------------------
 # Sync source code (including LATEST_CHANGES.txt if it exists)
 rsync -avz --delete "${EXCLUDES[@]}" ./ $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/
 
-# Update sync marker
+# Update sync marker and write VERSION file so the backend can log the deployed commit
 if [ -d .git ]; then
   git rev-parse HEAD > "$LAST_SYNC_FILE"
+  git rev-parse HEAD > src/backend/app/VERSION
+  rsync -az src/backend/app/VERSION $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/src/backend/app/VERSION
 fi
 
-# Restart backend to load any rsync'd Python file changes from the volume mount.
-# Pass --rebuild to also rebuild the Docker image (e.g. new requirements.txt).
-REBUILD_CMD="docker compose restart backend"
+# --force-recreate: always recreates the container so both compose.yml changes
+# (e.g. new volume mounts) and rsync'd Python file changes are picked up.
+# This is safe and fast — no image rebuild unless --rebuild is passed.
+REBUILD_CMD="docker compose up -d --force-recreate backend"
 for arg in "$@"; do
-  [[ "$arg" == "--rebuild" ]] && REBUILD_CMD="docker compose build backend && docker compose rm -f --stop backend && docker compose up -d"
+  [[ "$arg" == "--rebuild" ]] && REBUILD_CMD="docker compose build backend && docker compose up -d --force-recreate backend"
 done
 
 ssh $REMOTE_USER@$REMOTE_HOST "cd $REMOTE_DIR \
