@@ -74,11 +74,9 @@ if [ -d .git ]; then
   git rev-parse HEAD > "$LAST_SYNC_FILE"
 fi
 
-# Default: recreate the backend container so compose.yml changes (e.g. new
-# volume mounts) are always picked up. 'up -d' is a no-op if nothing changed,
-# and recreates the container when the service definition changed.
+# Restart backend to load any rsync'd Python file changes from the volume mount.
 # Pass --rebuild to also rebuild the Docker image (e.g. new requirements.txt).
-REBUILD_CMD="docker compose up -d backend"
+REBUILD_CMD="docker compose restart backend"
 for arg in "$@"; do
   [[ "$arg" == "--rebuild" ]] && REBUILD_CMD="docker compose build backend && docker compose rm -f --stop backend && docker compose up -d"
 done
