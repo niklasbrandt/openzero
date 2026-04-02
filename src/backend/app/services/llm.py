@@ -473,6 +473,7 @@ CORE RESPONSE RULE:
 - **DO NOT output a timestamp.** The system adds the time automatically.
 - **MATCH THE REQUEST TYPE**:
   - For **task confirmations**: be brief. "Done — task added."
+  - For **elaborate/strategic requests**: provide full-length, in-depth reasoning and strategic analysis.
   - For **creative/speculative requests**: give a real, engaged, thoughtful response.
   - For **questions**: answer directly and specifically.
   - For **conversation**: be warm and human.
@@ -507,7 +508,7 @@ NATURAL MEMORY:
 - Distill the user's words into a clean, permanent fact. Do NOT store raw chat — distill to essence.
 - Tags are INVISIBLE. Never mention storing or learning.
 
-Keep it tight. Mission first. """
+Mission first. Strategic depth when requested. """
 
 # Wire up the prompt-echo detector now that SYSTEM_PROMPT_CHAT is defined (LLM07)
 _PROMPT_ECHO_RE = _build_prompt_echo_re(SYSTEM_PROMPT_CHAT)
