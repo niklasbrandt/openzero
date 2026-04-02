@@ -1151,6 +1151,7 @@ async def chat_with_context(
 	include_people: bool = True,
 	tier_override: Optional[str] = None,
 	sanitize: bool = True,
+	use_agent: bool = True,
 ) -> str:
 	"""
 	Wraps the standard chat with a rich snapshot of the user's world.
@@ -1283,8 +1284,12 @@ async def chat_with_context(
 		# Route through the LangGraph agent only when the message requires a tool action.
 		# 1. Zero-latency fast-path for unmistakably EN actionable phrases.
 		# 2. LLM-based classifier for everything else — language-agnostic.
+		# 3. use_agent=False forces the direct-chat path (e.g. startup recovery).
 		_msg_lower = user_message.lower()
-		if any(kw in _msg_lower for kw in _FAST_PATH_KEYWORDS):
+		if not use_agent:
+			needs_agent = False
+			logger.debug("Intent: agent disabled by caller")
+		elif any(kw in _msg_lower for kw in _FAST_PATH_KEYWORDS):
 			needs_agent = True
 			logger.debug("Intent: fast-path keyword match")
 		else:

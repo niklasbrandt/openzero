@@ -272,6 +272,7 @@ async def _recover_unanswered_messages():
 			history=merged_history,
 			include_projects=True,
 			include_people=True,
+			use_agent=False,
 		)
 		logger.info(
 			"Restart recovery: LLM responded (%d chars): %s",
