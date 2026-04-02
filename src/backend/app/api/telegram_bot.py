@@ -214,12 +214,33 @@ async def _recover_unanswered_messages():
 	Heartbeats and nudges are sent via send_notification without being saved
 	to global_messages, so they never appear in history.
 
-	Waits 120 s first so run_delayed_init (personal context + embedder warmup,
-	~70 s) finishes and the LLM is fully warm before the recovery call fires.
-	Keeping recovery after delayed-init prevents every chat_with_context call
-	from racing with the startup LLM load, which caused cascade timeouts."""
+	Waits until the fast LLM responds to a health ping (up to 240 s) so
+	chat_with_context never races against a cold model load.
+	A 15 s base delay is kept so live handle_freetext can consume any
+	pending Telegram updates first."""
 	try:
-		await asyncio.sleep(120)
+		await asyncio.sleep(15)
+
+		# Wait for LLM to be actually ready — probe every 10 s up to 240 s total.
+		from app.config import settings
+		import httpx as _httpx
+		_deadline = asyncio.get_event_loop().time() + 240
+		while asyncio.get_event_loop().time() < _deadline:
+			try:
+				async with _httpx.AsyncClient(timeout=8.0) as _c:
+					_r = await _c.post(
+						f"{settings.LLM_FAST_URL}/v1/chat/completions",
+						json={"messages": [{"role": "user", "content": "ping"}],
+							"max_tokens": 1, "stream": False},
+					)
+					if _r.status_code == 200:
+						logger.info("Restart recovery: LLM ready — scanning now.")
+						break
+			except Exception:
+				pass
+			await asyncio.sleep(10)
+		else:
+			logger.warning("Restart recovery: LLM probe timed out after 240 s — proceeding anyway.")
 		logger.info("Restart recovery: scanning message history...")
 
 		from app.models.db import get_global_history, save_global_message
