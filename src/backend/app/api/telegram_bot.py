@@ -288,12 +288,13 @@ async def _recover_unanswered_messages():
 		from app.services.llm import chat_with_context
 
 		merged_history = await get_global_history(limit=15)
-		prompt = (
-			"[SYSTEM: The following user message(s) were sent before a restart and never "
-			"received a proper response. Respond naturally and execute any requested actions "
-			"(create tasks, events, etc.) as you normally would.]\n\n"
-			+ combined
-		)
+		# Inject a silent context note as the last assistant turn so the model
+		# knows these were pre-restart messages, without overriding personality.
+		merged_history = list(merged_history) + [{
+			"role": "assistant",
+			"content": "(You restarted and never replied to the following messages. Respond in your usual character.)",
+		}]
+		prompt = combined
 
 		logger.info("Restart recovery: calling chat_with_context...")
 		response = await chat_with_context(
