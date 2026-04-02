@@ -196,10 +196,12 @@ async def _recover_unanswered_messages():
 	Heartbeats and nudges are sent via send_notification without being saved
 	to global_messages, so they never appear in history.
 
-	Waits 30 s first so live handle_freetext handlers can consume any pending
-	Telegram updates (drop_pending_updates=False) without double-responding."""
+	Waits 120 s first so run_delayed_init (personal context + embedder warmup,
+	~70 s) finishes and the LLM is fully warm before the recovery call fires.
+	Keeping recovery after delayed-init prevents every chat_with_context call
+	from racing with the startup LLM load, which caused cascade timeouts."""
 	try:
-		await asyncio.sleep(30)
+		await asyncio.sleep(120)
 		logger.info("Restart recovery: scanning message history...")
 
 		from app.models.db import get_global_history, save_global_message
