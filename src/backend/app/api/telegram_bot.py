@@ -188,103 +188,82 @@ def _is_system_message(text: str) -> bool:
 	return any(lower.startswith(p) for p in _SYSTEM_MESSAGE_PREFIXES)
 
 async def _recover_unanswered_messages():
-	"""LLM-assisted restart recovery: looks back ~1000 tokens of conversation
-	history and uses an analysis pass to identify user messages that were never
-	properly addressed (error stubs, missing replies, or automated system messages
-	don't count as real answers).
+	"""Deterministic restart recovery: scans up to 30 global messages to find
+	user messages that have no real Z reply after them.
+
+	Error stubs ('still waking up', 'encountered friction') and automated
+	system messages (heartbeats, nudges) do NOT count as real answers.
+	Heartbeats and nudges are sent via send_notification without being saved
+	to global_messages, so they never appear in history.
 
 	Waits 30 s first so live handle_freetext handlers can consume any pending
 	Telegram updates (drop_pending_updates=False) without double-responding."""
 	try:
 		await asyncio.sleep(30)
+		logger.info("Restart recovery: scanning message history...")
 
 		from app.models.db import get_global_history, save_global_message
 
 		history = await get_global_history(limit=30)
+		logger.info("Restart recovery: found %d messages in history.", len(history))
 		if not history:
 			return
 
 		now_utc = datetime.now(_tz.utc)
+		unanswered = []
 
-		# --- Build a token-budget snapshot for LLM analysis ---
-		# Annotate each message so the model can distinguish stubs and system messages.
-		# Budget: ~4000 chars (~1000 tokens) scanning newest-first, then reverse.
-		TOKEN_BUDGET = 4000
-		MSG_PREVIEW = 300  # max chars per individual message
-
-		snapshot_lines = []
-		total_chars = 0
+		# Walk history newest-first. Collect user messages that have no real
+		# Z reply after them. Stop as soon as we hit a real Z reply.
 		for msg in reversed(history):
 			role = msg["role"]
 			content = msg.get("content", "")
-			ts = msg.get("at", "")[:16]
 
 			if role == "z":
-				if _is_error_stub(content):
-					label = "Z [STARTUP ERROR - not a real answer]"
-				elif _is_system_message(content):
-					label = "Z [AUTOMATED SYSTEM MESSAGE - not a response to user]"
-				else:
-					label = "Z"
-			else:
-				# Skip user messages sent in the last 60 s — handle_freetext
-				# is likely still processing them.
-				try:
-					msg_ts = datetime.fromisoformat(msg["at"]).replace(tzinfo=_tz.utc)
-					if (now_utc - msg_ts).total_seconds() < 60:
-						continue
-				except Exception as _exc:
-					logger.debug("Recovery - TS parse failed: %s", _exc)
-				label = "User"
-
-			preview = content[:MSG_PREVIEW] + ("..." if len(content) > MSG_PREVIEW else "")
-			line = f"[{ts}] {label}: {preview}"
-			if total_chars + len(line) > TOKEN_BUDGET:
+				if _is_error_stub(content) or _is_system_message(content):
+					logger.debug(
+						"Recovery: skipping non-answer Z message: %s",
+						content[:60],
+					)
+					continue
+				# Real Z reply — everything before this is answered
+				logger.info("Recovery: found real Z reply, stopping scan.")
 				break
-			snapshot_lines.insert(0, line)
-			total_chars += len(line)
 
-		if not snapshot_lines:
+			# role == "user"
+			try:
+				msg_ts = datetime.fromisoformat(msg["at"]).replace(tzinfo=_tz.utc)
+				age_s = (now_utc - msg_ts).total_seconds()
+				if age_s < 60:
+					logger.info(
+						"Recovery: user message too recent (%ds), skipping (handle_freetext in flight).",
+						int(age_s),
+					)
+					continue
+			except Exception as _exc:
+				logger.debug("Recovery - TS parse failed: %s", _exc)
+
+			logger.info("Recovery: found unanswered user message: %s", content[:80])
+			unanswered.append(content)
+
+		if not unanswered:
+			logger.info("Restart recovery: nothing to recover.")
 			return
 
-		# Check if there are any user messages in the snapshot at all
-		if not any(l.startswith("[") and "] User:" in l for l in snapshot_lines):
-			return
-
-		snapshot = "\n".join(snapshot_lines)
-
-		# --- LLM analysis pass (fast tier — simple classification task) ---
-		analysis_system = (
-			"You are a conversation auditor. Analyse the provided chat log and identify "
-			"user messages that were NOT properly answered. "
-			"Messages labelled [STARTUP ERROR] or [AUTOMATED SYSTEM MESSAGE] do NOT count "
-			"as real answers to the user. "
-			"If there are unanswered user messages, output ONLY the combined verbatim text "
-			"of what the user said or asked that was not addressed. "
-			"If everything has been properly answered, output exactly: NOTHING_TO_RECOVER"
+		unanswered.reverse()  # chronological order
+		combined = "\n".join(unanswered)
+		logger.info(
+			"Restart recovery: %d unanswered message(s) — responding now.",
+			len(unanswered),
 		)
-		from app.services.llm import chat, chat_with_context
-		analysis = await chat(
-			snapshot,
-			system_override=analysis_system,
-			tier="fast",
-			sanitize=False,
-		)
-		analysis = (analysis or "").strip()
 
-		if not analysis or "NOTHING_TO_RECOVER" in analysis.upper() or _is_error_stub(analysis):
-			logger.info("Restart recovery: analysis found no unanswered messages.")
-			return
+		from app.services.llm import chat_with_context
 
-		logger.info("Restart recovery: unanswered content identified — responding now.")
-
-		# --- Full response with projects/people context and action tag support ---
 		merged_history = await get_global_history(limit=15)
 		prompt = (
 			"[SYSTEM: The following user message(s) were sent before a restart and never "
 			"received a proper response. Respond naturally and execute any requested actions "
 			"(create tasks, events, etc.) as you normally would.]\n\n"
-			+ analysis
+			+ combined
 		)
 
 		response = await chat_with_context(
