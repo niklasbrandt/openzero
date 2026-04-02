@@ -105,33 +105,6 @@ async def lifespan(app: FastAPI):
                     logging.warning("⚠ Embedder warming warning: %s", _mem_err)
                 
                 logging.info("✓ Background heartbeat: All systems fully operational.")
-                
-                # HONEST STATUS NOTIFICATION
-                try:
-                    from app.api.telegram_bot import send_notification_html
-                    from app.services.timezone import format_time
-                    from app.services.crews import crew_registry
-                    from app.services.translations import get_user_lang, get_translations
-                    
-                    # NATIVE TACTICAL RESTORATION
-                    logging.info("Registry: Loading Native Tactical crews...")
-                    await crew_registry.load()
-                    
-                    active_count = len(crew_registry.list_active())
-                    
-                    # Localization
-                    lang = await get_user_lang()
-                    t = get_translations(lang)
-                    
-                    heartbeat_msg = (
-                        "🚀 <b>Z is Online & Operational</b>\n\n"
-                        f"{t.get('hb_cognition', 'Cognition')}: <b>{t.get('hb_complete', 'Complete')}</b>\n"
-                        f"{t.get('hb_crews', 'Crews')}: <b>{active_count}/{active_count}</b>\n\n"
-                        f"<i>Kernel synchronized at {format_time()}</i>"
-                    )
-                    await send_notification_html(heartbeat_msg)
-                except Exception as _notify_err:
-                    logging.warning("⚠ Heartbeat notification failed: %s", _notify_err)
 
             except Exception as _bg_err:
                 logging.warning("⚠ Warning: Background init tasks failed: %s", _bg_err)
