@@ -138,9 +138,30 @@ async def lifespan(app: FastAPI):
 
         asyncio.create_task(run_delayed_init())
 
+        # --- Auto-reload watcher ---
+        # Polls VERSION every 30 s. When sync.sh writes a new commit hash,
+        # the process exits cleanly and Docker (restart: always) brings it
+        # back up with the fresh code — no manual intervention needed.
+        async def _watch_version():
+            _vfile = os.path.join(os.path.dirname(__file__), "VERSION")
+            while True:
+                await asyncio.sleep(30)
+                try:
+                    current = open(_vfile).read().strip() if os.path.exists(_vfile) else "unknown"
+                    if current not in ("unknown", _deployed_commit):
+                        logging.info(
+                            "New deployment detected (%s → %s) — reloading.",
+                            _deployed_commit, current,
+                        )
+                        os._exit(0)
+                except Exception:
+                    pass
+
+        asyncio.create_task(_watch_version())
+
     except Exception as e:
         logging.error("CRITICAL: Core startup failed: %s", e)
-        
+
     yield
     
     # --- SHUTDOWN ---
