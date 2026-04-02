@@ -181,67 +181,129 @@ def _is_error_stub(text: str) -> bool:
 		"that specific thread was dropped",
 	))
 
+# Automated system messages that Z sends proactively (not in response to a user
+# message). The recovery analysis must not treat these as real answers.
+_SYSTEM_MESSAGE_PREFIXES = (
+	"z is online",
+	"🚀",
+	"🎯 mission check",
+)
+
+def _is_system_message(text: str) -> bool:
+	"""True for heartbeats, startup banners, and proactive nudges."""
+	lower = text.lower().strip()
+	return any(lower.startswith(p) for p in _SYSTEM_MESSAGE_PREFIXES)
+
 async def _recover_unanswered_messages():
-	"""Check if the last global message(s) are from the user with no Z reply.
+	"""LLM-assisted restart recovery: looks back ~1000 tokens of conversation
+	history and uses an analysis pass to identify user messages that were never
+	properly addressed (error stubs, missing replies, or automated system messages
+	don't count as real answers).
+
 	Waits 30 s first so live handle_freetext handlers can consume any pending
-	Telegram updates (drop_pending_updates=False) without double-responding.
-	Also recovers messages that only received an error stub reply (e.g.
-	'still waking up') since those were never truly processed."""
+	Telegram updates (drop_pending_updates=False) without double-responding."""
 	try:
 		await asyncio.sleep(30)
 
 		from app.models.db import get_global_history, save_global_message
-		# Re-import of datetime removed as it is now at module level
-		history = await get_global_history(limit=10)
+
+		history = await get_global_history(limit=30)
 		if not history:
 			return
 
-		# Collect trailing unanswered user messages that are at least 60 s old.
-		# Messages younger than 60 s were likely just delivered via Telegram
-		# pending-update replay and are already being handled by handle_freetext.
-		# Z replies that are error stubs (LLM was unavailable) are skipped over
-		# so the preceding user messages are still treated as unanswered.
 		now_utc = datetime.now(_tz.utc)
-		unanswered = []
+
+		# --- Build a token-budget snapshot for LLM analysis ---
+		# Annotate each message so the model can distinguish stubs and system messages.
+		# Budget: ~4000 chars (~1000 tokens) scanning newest-first, then reverse.
+		TOKEN_BUDGET = 4000
+		MSG_PREVIEW = 300  # max chars per individual message
+
+		snapshot_lines = []
+		total_chars = 0
 		for msg in reversed(history):
-			if msg["role"] == "user":
+			role = msg["role"]
+			content = msg.get("content", "")
+			ts = msg.get("at", "")[:16]
+
+			if role == "z":
+				if _is_error_stub(content):
+					label = "Z [STARTUP ERROR - not a real answer]"
+				elif _is_system_message(content):
+					label = "Z [AUTOMATED SYSTEM MESSAGE - not a response to user]"
+				else:
+					label = "Z"
+			else:
+				# Skip user messages sent in the last 60 s — handle_freetext
+				# is likely still processing them.
 				try:
 					msg_ts = datetime.fromisoformat(msg["at"]).replace(tzinfo=_tz.utc)
 					if (now_utc - msg_ts).total_seconds() < 60:
-						break  # too recent — handle_freetext is likely handling it
+						continue
 				except Exception as _exc:
 					logger.debug("Recovery - TS parse failed: %s", _exc)
-				unanswered.append(msg["content"])
-			else:
-				if _is_error_stub(msg.get("content", "")):
-					logger.debug("Recovery - skipping error stub reply: %s", msg.get("content", "")[:80])
-					continue
-				break
+				label = "User"
 
-		if not unanswered:
+			preview = content[:MSG_PREVIEW] + ("..." if len(content) > MSG_PREVIEW else "")
+			line = f"[{ts}] {label}: {preview}"
+			if total_chars + len(line) > TOKEN_BUDGET:
+				break
+			snapshot_lines.insert(0, line)
+			total_chars += len(line)
+
+		if not snapshot_lines:
 			return
 
-		unanswered.reverse()  # chronological order
-		combined = "\n".join(unanswered)
-		logger.info("Restart recovery: %d unanswered user message(s) found. Responding now.", len(unanswered))
+		# Check if there are any user messages in the snapshot at all
+		if not any(l.startswith("[") and "] User:" in l for l in snapshot_lines):
+			return
 
-		from app.services.llm import chat_with_context
+		snapshot = "\n".join(snapshot_lines)
 
-		merged_history = await get_global_history(limit=10)
-		prompt = f"[These messages were sent before a restart and never received a response. Respond naturally as if continuing the conversation.]\n\n{combined}"
+		# --- LLM analysis pass (fast tier — simple classification task) ---
+		analysis_system = (
+			"You are a conversation auditor. Analyse the provided chat log and identify "
+			"user messages that were NOT properly answered. "
+			"Messages labelled [STARTUP ERROR] or [AUTOMATED SYSTEM MESSAGE] do NOT count "
+			"as real answers to the user. "
+			"If there are unanswered user messages, output ONLY the combined verbatim text "
+			"of what the user said or asked that was not addressed. "
+			"If everything has been properly answered, output exactly: NOTHING_TO_RECOVER"
+		)
+		from app.services.llm import chat, chat_with_context
+		analysis = await chat(
+			snapshot,
+			system_override=analysis_system,
+			tier="fast",
+			sanitize=False,
+		)
+		analysis = (analysis or "").strip()
+
+		if not analysis or "NOTHING_TO_RECOVER" in analysis.upper() or _is_error_stub(analysis):
+			logger.info("Restart recovery: analysis found no unanswered messages.")
+			return
+
+		logger.info("Restart recovery: unanswered content identified — responding now.")
+
+		# --- Full response with projects/people context and action tag support ---
+		merged_history = await get_global_history(limit=15)
+		prompt = (
+			"[SYSTEM: The following user message(s) were sent before a restart and never "
+			"received a proper response. Respond naturally and execute any requested actions "
+			"(create tasks, events, etc.) as you normally would.]\n\n"
+			+ analysis
+		)
 
 		response = await chat_with_context(
 			prompt,
 			history=merged_history,
 			include_projects=True,
-			include_people=True
+			include_people=True,
 		)
 
 		async with AsyncSessionLocal() as db:
 			from app.services.agent_actions import parse_and_execute_actions
 			clean_reply, executed_cmds, _ = await parse_and_execute_actions(response, db=db)
-			
-			# Reasoning indicator
 			crews = [c.split(":", 1)[1] for c in executed_cmds if c.startswith("__CREW_RUN__:")]
 			if crews:
 				clean_reply += f"\n\n_(Reasoning supported by {', '.join(crews)})_"
@@ -258,7 +320,7 @@ async def _recover_unanswered_messages():
 		t = get_translations(lang)
 		await send_notification_html(
 			f"<blockquote>{display_reply}{footer}</blockquote>",
-			reply_markup=get_nav_markup(t)
+			reply_markup=get_nav_markup(t),
 		)
 		logger.info("Restart recovery: response delivered.")
 	except Exception as e:
