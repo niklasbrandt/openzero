@@ -1,6 +1,8 @@
 from typing import Optional, Any
 from qdrant_client import QdrantClient, models
 from app.config import settings
+import asyncio
+import threading
 import uuid
 import logging
 import re
@@ -35,14 +37,26 @@ _ADVERSARIAL_PATTERNS = re.compile(
 
 # Embedder will be loaded lazily to prevent startup crashes if libraries are broken
 embedder = None
+_embedder_lock = threading.Lock()
 COLLECTION_NAME = "personal_memory"
 
 def get_embedder():
 	global embedder
 	if embedder is None:
-		from sentence_transformers import SentenceTransformer
-		embedder = SentenceTransformer("all-MiniLM-L6-v2")
+		with _embedder_lock:
+			if embedder is None:
+				from sentence_transformers import SentenceTransformer
+				embedder = SentenceTransformer("all-MiniLM-L6-v2")
 	return embedder
+
+def _encode_sync(text: str) -> list:
+	"""Run embedding synchronously — intended to be called via run_in_executor."""
+	return get_embedder().encode(text).tolist()
+
+async def encode_async(text: str) -> list:
+	"""Embed text without blocking the event loop."""
+	loop = asyncio.get_event_loop()
+	return await loop.run_in_executor(None, _encode_sync, text)
 
 def get_qdrant() -> QdrantClient:
 	return QdrantClient(
@@ -103,7 +117,7 @@ async def store_memory(text: str, metadata: Optional[dict] = None):
 
 	# 3. Semantic Deduplication
 	client = get_qdrant()
-	embedding = get_embedder().encode(distilled_text).tolist()
+	embedding = await encode_async(distilled_text)
 	
 	try:
 		# Search for existing duplicates with extremely high threshold
@@ -137,7 +151,7 @@ async def store_memory(text: str, metadata: Optional[dict] = None):
 async def semantic_search(query: str, top_k: int = 5) -> str:
 	"""Search memory and return formatted results."""
 	client = get_qdrant()
-	query_vector = get_embedder().encode(query).tolist()
+	query_vector = await encode_async(query)
 	try:
 		# Use modern query_points API which is more robust
 		response = client.query_points(
@@ -195,7 +209,7 @@ async def delete_memory(point_id: str):
 async def semantic_search_raw(query: str, top_k: int = 10) -> list[dict]:
 	"""Search memory and return raw structured results with IDs."""
 	client = get_qdrant()
-	query_vector = get_embedder().encode(query).tolist()
+	query_vector = await encode_async(query)
 	try:
 		response = client.query_points(
 			collection_name=COLLECTION_NAME,
