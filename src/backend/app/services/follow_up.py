@@ -234,7 +234,7 @@ async def run_proactive_follow_up() -> None:
 			footer = await _get_stats_footer()
 			lang = await get_user_lang()
 			t = get_translations(lang)
-			await send_notification(f"🎯 *Mission Check:*\n\n{nudge}{footer}", reply_markup=get_nav_markup(t))
+			await send_notification(f"*Mission Check:*\n\n{nudge}{footer}", reply_markup=get_nav_markup(t))
 			logger.info("Follow-up: Sent nudge for %s tasks.", len(due_cards))
 
 	except Exception as e:

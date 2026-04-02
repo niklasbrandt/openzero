@@ -53,7 +53,7 @@ async def weekly_review():
 		# Send Telegram Notification
 		from app.services.notifier import send_notification
 		from app.config import settings
-		await send_notification(f"📊 *Weekly Review Ready*\n\n{content}\n\n🔗 [Dashboard]({settings.BASE_URL}/dashboard)")
+		await send_notification(f"*Weekly Review Ready*\n\n{content}\n\n[Dashboard]({settings.BASE_URL}/dashboard)")
 		
 		return content
 

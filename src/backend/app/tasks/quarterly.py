@@ -30,6 +30,6 @@ async def quarterly_review():
 	
 	# Send Telegram Notification
 	from app.services.notifier import send_notification
-	await send_notification(f"📊 *Quarterly Strategic Review*\n\n{content}")
+	await send_notification(f"*Quarterly Strategic Review*\n\n{content}")
 	
 	return content
