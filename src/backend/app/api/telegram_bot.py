@@ -187,9 +187,10 @@ def _is_system_message(text: str) -> bool:
 	lower = text.lower().strip()
 	return any(lower.startswith(p) for p in _SYSTEM_MESSAGE_PREFIXES)
 
-async def _send_online_notification():
-	"""Send the 'Z is Online & Operational' heartbeat exactly once, after all
-	startup work (context load + recovery) has finished."""
+async def _send_online_notification(recovery_html: str = ""):
+	"""Send the 'Z is Online & Operational' banner once startup is fully done.
+	If recovery_html is provided, the banner is prepended to the recovery reply
+	so the user receives a single combined message instead of two."""
 	try:
 		from app.services.crews import crew_registry
 		from app.services.timezone import format_time
@@ -198,13 +199,17 @@ async def _send_online_notification():
 		active_count = len(crew_registry.list_active())
 		lang = await get_user_lang()
 		t = get_translations(lang)
-		msg = (
+		banner = (
 			"🚀 <b>Z is Online & Operational</b>\n\n"
 			f"{t.get('hb_cognition', 'Cognition')}: <b>{t.get('hb_complete', 'Complete')}</b>\n"
 			f"{t.get('hb_crews', 'Crews')}: <b>{active_count}/{active_count}</b>\n\n"
 			f"<i>Kernel synchronized at {format_time()}</i>"
 		)
-		await send_notification_html(msg)
+		if recovery_html:
+			msg = f"{banner}\n\n{recovery_html}"
+		else:
+			msg = banner
+		await send_notification_html(msg, reply_markup=get_nav_markup(t))
 	except Exception as _e:
 		logger.warning("Online notification failed: %s", _e)
 
@@ -319,17 +324,11 @@ async def _recover_unanswered_messages():
 
 		clean_reply = strip_llm_time_header(clean_reply)
 		html_reply = _md_to_html(clean_reply)
-		display_reply = f"<b>{format_time()}</b>\n\n{html_reply}"
-
 		footer = await _get_stats_footer()
-		lang = await get_user_lang()
-		t = get_translations(lang)
-		await send_notification_html(
-			f"<blockquote>{display_reply}{footer}</blockquote>",
-			reply_markup=get_nav_markup(t),
-		)
-		logger.info("Restart recovery: response delivered — sending online notification.")
-		await _send_online_notification()
+		recovery_html = f"<blockquote><b>{format_time()}</b>\n\n{html_reply}{footer}</blockquote>"
+
+		logger.info("Restart recovery: response delivered — sending combined online notification.")
+		await _send_online_notification(recovery_html=recovery_html)
 	except BaseException as e:
 		logging.exception("Restart recovery failed: %s", e)
 		await _send_online_notification()
