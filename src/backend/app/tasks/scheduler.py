@@ -353,7 +353,7 @@ async def load_custom_tasks():
 				# Use a wrapper to capture the specific message for this job
 				def make_task(msg):
 					async def notify_task():
-						await send_notification(f"\U0001f514 *Custom Turnus Alert*\n\n{msg}")
+						await send_notification(f"*Custom Turnus Alert*\n\n{msg}")
 					return notify_task
 
 				trigger = None
