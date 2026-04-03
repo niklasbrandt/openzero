@@ -286,9 +286,7 @@ async def _recover_unanswered_messages():
 		}]
 		# /no_think disables Qwen3 chain-of-thought mode — prevents 1000+ thinking
 		# tokens which push total generation time past the 900 s hard cap.
-		prompt = combined + "\n/no_think"
-
-		logger.info("Restart recovery: calling chat_with_context (deep tier, 900 s timeout)...")
+			prompt = combined
 		response = await asyncio.wait_for(
 			chat_with_context(
 				prompt,
@@ -297,6 +295,7 @@ async def _recover_unanswered_messages():
 				include_people=True,
 				use_agent=False,
 				tier_override="deep",
+				thinking=False,
 			),
 			timeout=900,
 		)
