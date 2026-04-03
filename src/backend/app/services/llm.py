@@ -613,13 +613,22 @@ async def get_agent_personality() -> str:
 			traits = json.loads(pref.value)
 			a_name = traits.get("agent_name", "Z")
 			prompt = f"You are {a_name}. "
-			if traits.get("role"):
+			role = traits.get("role", "")
+			behavior = traits.get("behavior", "")
+			if role or behavior:
+				prompt += f"\n\n{'='*50}\n"
+				prompt += "PERSONA DIRECTIVE — HIGHEST PRIORITY\n"
+				if role:
+					prompt += f"You are embodying the archetype: \"{role}\".\n"
+				if behavior:
+					prompt += (
+						f"Speech style and behavioral identity (LITERAL — apply this to every sentence you write):\n"
+						f"\"{behavior}\"\n"
+						f"This is not a suggestion. Write every response AS this character. "
+						f"The vocabulary, cadence, and attitude defined above must be present in every message.\n"
+					)
 				prompt += (
-					f"\n\n{'='*50}\n"
-					f"PERSONA DIRECTIVE — HIGHEST PRIORITY\n"
-					f"You are embodying the archetype: \"{traits['role']}\".\n"
-					f"This defines your voice, tone, and character above ALL else.\n"
-					f"It OVERRIDES any default conversational warmth, professionalism, or neutrality guidelines below.\n"
+					f"This OVERRIDES any default conversational warmth, professionalism, or neutrality guidelines below.\n"
 					f"Stay in character at all times — in briefings, task confirmations, and every response.\n"
 					f"{'='*50}\n\n"
 				)
@@ -665,7 +674,6 @@ async def get_agent_personality() -> str:
 			
 			if traits.get("relationship"): prompt += f"- Relationship to User: {traits['relationship']}\n"
 			if traits.get("values"): prompt += f"- Core Principles: {traits['values']}\n"
-			if traits.get("behavior"): prompt += f"- Personality & Style Nuance: {traits['behavior']}\n"
 			
 			return prompt
 	except Exception:
