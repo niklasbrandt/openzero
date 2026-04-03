@@ -45,7 +45,8 @@ openZero is not a chatbot wrapper. It is an operational layer for a personal com
 │                 Your Devices                     │
 │      (Phone / Laptop / Tablet)                   │
 │                                                  │
-│   Telegram Bot ──── Chat, Voice, Commands        │
+│   Telegram     ──── Chat, Voice, Commands        │
+│   WhatsApp     ──── Chat, Commands               │
 │   Dashboard    ──── Web UI, Benchmark, Config    │
 │   Planka PWA   ──── Kanban Boards                │
 └───────────────┬──────────────────────────────────┘
@@ -61,7 +62,8 @@ openZero is not a chatbot wrapper. It is an operational layer for a personal com
 │                  ▼                               │
 │   ┌──────────────────────────────────────────┐   │
 │   │   FastAPI Backend + APScheduler          │   │
-│   │     ├── Telegram Bot (long-polling)      │   │
+│   │     ├── Telegram (long-polling)          │   │
+│   │     ├── WhatsApp Cloud API (webhooks)    │   │
 │   │     ├── Semantic Action Tag Engine       │   │
 │   │     ├── Email Polling + Rule Engine      │   │
 │   │     ├── Morning Briefing Generator       │   │
@@ -99,7 +101,7 @@ cp config.example.yaml config.yaml && cp .env.example .env
 docker compose up -d
 ```
 
-DB migrations run automatically on first boot. The Telegram bot starts as soon as `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` are set.
+DB migrations run automatically on first boot. Telegram starts as soon as `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` are set. WhatsApp requires a Meta Cloud API webhook — see [BUILD.md](BUILD.md).
 
 See [BUILD.md](BUILD.md) for a complete variable reference.
 
@@ -118,7 +120,11 @@ These files are injected into every system prompt alongside live memory retrieva
 
 ---
 
-## Telegram commands
+## Messaging channels
+
+Both Telegram and WhatsApp route to the same Z agent with full context: memory retrieval, personal context, and LLM generation.
+
+### Telegram commands
 
 | Command           | Effect                        |
 | ----------------- | ----------------------------- |
@@ -132,7 +138,9 @@ These files are injected into every system prompt alongside live memory retrieva
 | `/status`         | Hardware and container health |
 | `/lang <code>`    | Switch language               |
 
-Free-form messages use full context: memory retrieval, personal context, and LLM generation.
+### WhatsApp
+
+Free-form messages work identically. Slash commands are not available on WhatsApp — send plain text instead (e.g. `briefing`, `status`, `crew daily_briefing`).
 
 ---
 
@@ -146,7 +154,7 @@ Crews are YAML-defined task sequences in `agent/crews.yaml`. No code changes nee
   steps: [weather, calendar, email, memory_summary]
 ```
 
-Triggers: `cron` · `interval` · `on: <event>` · manual via Telegram or dashboard
+Triggers: `cron` · `interval` · `on: <event>` · manual via Telegram, WhatsApp, or dashboard
 
 ---
 
