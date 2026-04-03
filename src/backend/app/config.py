@@ -33,13 +33,26 @@ class Settings(BaseSettings):
     TELEGRAM_BOT_TOKEN: str = ""
     TELEGRAM_ALLOWED_USER_ID: str = ""
 
-    # Local LLM (llama-server / llama.cpp) — 2-Tier Intelligence
-    LLM_FAST_URL: str = "http://llm-fast:8081"
-    LLM_DEEP_URL: str = "http://llm-deep:8083"
-    LLM_MODEL_FAST: str = "Qwen3-1.7B"
-    LLM_MODEL_DEEP: str = "Qwen3-4B"
-    DEEP_MODEL_TIMEOUT_S: int = 60
-    SMART_MODEL_INTERACTIVE: bool = True
+    # Local LLM (llama-server / llama.cpp) — always-on CPU inference
+    LLM_LOCAL_URL: str = "http://llm-local:8081"
+    LLM_MODEL_LOCAL: str = "Qwen3-0.6B"
+
+    # Cloud LLM — optional OpenAI-compatible inference provider (Groq, Together, OpenRouter, …)
+    # Leave LLM_CLOUD_API_KEY empty to disable cloud tier; all cloud calls fall back to local.
+    LLM_CLOUD_BASE_URL: str = ""
+    LLM_CLOUD_API_KEY: str = ""
+    LLM_MODEL_CLOUD: str = ""
+
+    # Cloud routing: 2s first-token race — if local responds, use it; else escalate to cloud.
+    # Set False to disable cloud for all interactive chat (air-gapped / cost-zero mode).
+    SMART_CLOUD_ROUTING: bool = True
+
+    # Timeout for cloud API responses (seconds). External APIs are fast; 30s is generous.
+    CLOUD_MODEL_TIMEOUT_S: int = 30
+
+    # Deep thinking provider (optional, for /think command)
+    CLOUD_THINK_PROVIDER: Optional[str] = None
+    CLOUD_THINK_MODEL: Optional[str] = None
 
     # Whisper
     WHISPER_BASE_URL: str = "http://whisper:9000"
@@ -74,8 +87,6 @@ class Settings(BaseSettings):
     LLM_PROVIDER: str = "local"
     GROQ_API_KEY: Optional[str] = None
     OPENAI_API_KEY: Optional[str] = None
-    DEEP_THINK_PROVIDER: Optional[str] = None
-    DEEP_THINK_MODEL: Optional[str] = None
     # PII sanitization for outbound cloud LLM calls (Groq, OpenAI)
     # Set to false to disable for all cloud providers globally.
     CLOUD_LLM_SANITIZE: bool = True
@@ -93,16 +104,20 @@ class Settings(BaseSettings):
         extra="ignore"
     )
 
+    @property
+    def cloud_configured(self) -> bool:
+        """True when a cloud inference provider is fully configured."""
+        return bool(self.LLM_CLOUD_API_KEY and self.LLM_CLOUD_BASE_URL and self.LLM_MODEL_CLOUD)
+
     def __init__(self, **values):
         super().__init__(**values)
-        
+
         # --- Smart Host Normalization ---
         # Map: Localhost <-> Docker Service Name
         host_map = {
             "DB_HOST": "postgres",
             "QDRANT_HOST": "qdrant",
-            "LLM_FAST_URL": "http://llm-fast:8081",
-            "LLM_DEEP_URL": "http://llm-deep:8083",
+            "LLM_LOCAL_URL": "http://llm-local:8081",
             "WHISPER_BASE_URL": "http://whisper:9000",
             "TTS_BASE_URL": "http://tts:8000",
             "PLANKA_BASE_URL": "http://planka:1337"

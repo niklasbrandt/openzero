@@ -2,13 +2,19 @@
 Intelligence Service (LLM Integration)
 --------------------------------------
 This module acts as the 'brain' of openZero. It abstracts away the complexity
-of different LLM providers (local llama-server, Groq, OpenAI) and manages the
-system persona 'Z'.
+of different LLM providers and manages the system persona 'Z'.
 
-Architecture: 3-Tier Local Intelligence
-- Fast (Qwen3-0.6B): greetings, confirmations, trivial Q&A, memory distillation
-- Standard (8B): normal conversation, moderate reasoning, tool-intent
-- Deep (14B+): complex analysis, briefings, planning, creative writing
+Architecture: Local + Cloud 2-Tier Intelligence
+- Local (Qwen3-0.6B or similar): always-on CPU inference for chat, confirmations,
+  memory distillation. Zero cost, works offline.
+- Cloud (any OpenAI-compatible API): optional, used for briefings, crew tasks,
+  and as fallback when local exceeds 2s first-token latency.
+  Configure via LLM_CLOUD_BASE_URL + LLM_CLOUD_API_KEY + LLM_MODEL_CLOUD.
+
+Routing:
+- Interactive chat: local first (2s race); escalate to cloud if slow (when configured).
+- Crews / briefings: cloud directly if configured, local fallback if not.
+- SMART_CLOUD_ROUTING=False: always local (air-gapped / cost-zero mode).
 
 Core Functions:
 - Context preparation: Merging memory, calendar, and project status.
@@ -395,7 +401,7 @@ last_model_used: ContextVar[str] = ContextVar("last_model_used", default="local"
 
 # Active inference timestamps — updated every time a token is yielded.
 # Used by /api/dashboard/llm-active to drive the dashboard card animation.
-# Key: tier name ("fast" / "deep"), Value: time.monotonic() of last token yield.
+# Key: tier name ("local" / "cloud"), Value: time.monotonic() of last token yield.
 _tier_last_active: dict[str, float] = {}
 
 # ---------------------------------------------------------------------------
@@ -426,13 +432,13 @@ async def record_llm_metric(
 		logger.debug("record_llm_metric: write failed (non-blocking)", exc_info=True)
 
 # ---------------------------------------------------------------------------
-# Minimal fast-path keyword list (EN only, obvious triggers).
+# Minimal local-path keyword list (EN only, obvious triggers).
 # Used as a zero-latency short-circuit BEFORE calling the LLM classifier so
 # that unmistakably-actionable messages never wait for the classifier round-trip.
 # Everything else — including all non-English messages — goes through
 # _classify_intent() below which is language-agnostic.
 # ---------------------------------------------------------------------------
-_FAST_PATH_KEYWORDS: list[str] = [
+_LOCAL_PATH_KEYWORDS: list[str] = [
 	"create task", "add task", "new task", "remind me",
 	"create event", "create project", "add person",
 	"[action:", "fact: ",
@@ -445,7 +451,7 @@ _FAST_PATH_KEYWORDS: list[str] = [
 # so the direct-chat path still runs with ACTION_TAG_DOCS injected.
 # ---------------------------------------------------------------------------
 async def _classify_intent(user_message: str) -> bool:
-	"""Ask the fast model whether the message requires a tool action."""
+	"""Ask the local model whether the message requires a tool action."""
 	_ci_start = time.time()
 	classifier_system = (
 		"You are an intent classifier. "
@@ -459,7 +465,7 @@ async def _classify_intent(user_message: str) -> bool:
 	try:
 		async with httpx.AsyncClient(timeout=httpx.Timeout(8.0, connect=5.0)) as client:
 			resp = await client.post(
-				f"{settings.LLM_FAST_URL}/v1/chat/completions",
+				f"{settings.LLM_LOCAL_URL}/v1/chat/completions",
 				json={
 					"messages": [
 						{"role": "system", "content": classifier_system},
@@ -476,8 +482,8 @@ async def _classify_intent(user_message: str) -> bool:
 			result = token.startswith("yes")
 			logger.debug("Intent classifier: %r -> needs_agent=%s", token, result)
 			asyncio.ensure_future(record_llm_metric(
-				tier="fast", feature="intent_classify",
-				model=settings.LLM_MODEL_FAST, tokens=1,
+				tier="local", feature="intent_classify",
+				model=settings.LLM_MODEL_LOCAL, tokens=1,
 				latency_ms=int((time.time() - _ci_start) * 1000),
 				prompt_len=len(user_message),
 			))
@@ -797,19 +803,18 @@ SMART_KEYWORDS = [
 ]
 
 # Per-tier max_tokens caps — prevents runaway generation on CPU.
-# These are request-level caps; server-side N_PREDICT acts as a hard ceiling.
-# At 4-10 tok/s on this VPS, 2000 tokens = ~200-500s max — still long but bounded.
+# Cloud tier is uncapped here (external provider enforces its own limits).
 TIER_MAX_TOKENS = {
-	"fast": 250,
-	"deep": 2000,
+	"local": 250,
+	"cloud": 6000,
 }
 
-# Per-tier read timeouts (seconds). Fast must fail fast so the UI never
-# hangs for minutes when the CPU is under load.  Deep is generous because
-# briefings and CoT blocks can legitimately take 3+ minutes on a single-board.
+# Per-tier read timeouts (seconds).
+# Local: 25s — must fail fast if CPU is overloaded so UI doesn't hang.
+# Cloud: 30s — external API should respond well within this window.
 TIER_TIMEOUTS = {
-	"fast": 25.0,
-	"deep": 600.0,
+	"local": 25.0,
+	"cloud": 30.0,
 }
 
 def select_tier(user_message: str, tier_override: Optional[str] = None) -> tuple[str, str, str]:
@@ -817,20 +822,31 @@ def select_tier(user_message: str, tier_override: Optional[str] = None) -> tuple
 	if tier_override:
 		tier = tier_override
 	else:
-		# Phase 2 (12 GB profile): fast tier (Qwen3-1.7B) handles ALL interactive requests.
-		# Deep tier (Qwen3-4B) is only reached via explicit tier='deep' override,
-		# used by scheduled briefings and crew tasks where quality > latency.
-		tier = "fast"
+		# Default: local tier handles all interactive requests.
+		# Cloud tier is reached via explicit tier='cloud' override (briefings, crews)
+		# or via smart routing in chat_with_context() when cloud is configured.
+		tier = "local"
 
-	# Normalise any legacy "standard" references to "deep"
-	if tier == "standard":
-		tier = "deep"
+	# Normalise legacy tier names
+	if tier in ("standard", "deep"):
+		tier = "cloud"
+	if tier == "fast":
+		tier = "local"
 
-	tier_map = {
-		"fast": (settings.LLM_FAST_URL, settings.LLM_MODEL_FAST),
-		"deep": (settings.LLM_DEEP_URL, settings.LLM_MODEL_DEEP),
-	}
-	base_url, model_name = tier_map.get(tier, tier_map["deep"])
+	if tier == "cloud":
+		if settings.cloud_configured:
+			base_url = settings.LLM_CLOUD_BASE_URL.rstrip("/")
+			model_name = settings.LLM_MODEL_CLOUD
+		else:
+			# Cloud not configured — transparently fall back to local
+			logger.debug("Cloud tier requested but not configured — falling back to local")
+			tier = "local"
+			base_url = settings.LLM_LOCAL_URL
+			model_name = settings.LLM_MODEL_LOCAL
+	else:
+		base_url = settings.LLM_LOCAL_URL
+		model_name = settings.LLM_MODEL_LOCAL
+
 	display_name = f"{tier.capitalize()}: {model_name}"
 	return tier, base_url, display_name
 
@@ -881,7 +897,7 @@ async def chat_stream(
 
 	provider = (provider or settings.LLM_PROVIDER).lower()
 
-	# --- Option A: Local llama-server (3-tier) ---
+	# --- Option A: Local llama-server / Cloud OpenAI-compatible provider ---
 	if provider == "local":
 		tier_name, base_url, display_name = select_tier(user_message, tier)
 		last_model_used.set(display_name)
@@ -895,39 +911,61 @@ async def chat_stream(
 		# Request-level token cap prevents runaway generation
 		max_tok = kwargs.get("max_tokens") or TIER_MAX_TOKENS.get(tier_name, 400)
 
-		# CoT disabled on ALL tiers — 4B model at ~4 tok/s makes thinking
-		# unacceptably slow (2000 think tokens = ~8 min before first response word).
-		# Callers can override via thinking=True for tasks that explicitly need CoT.
+		# CoT: disabled by default. Callers can override via thinking=True.
 		request_thinking = kwargs.get("thinking", False)
 
-		# Qwen3 /no_think injection: suppress reasoning when thinking is off.
-		# Must target the USER message (messages[-1]), not the system prompt —
-		# Qwen3's chat template only recognises /no_think in the user turn.
-		if not request_thinking:
+		# Qwen3 /no_think injection: only for local tier (llama.cpp).
+		# Cloud providers don't use Qwen3 directives.
+		if tier_name == "local" and not request_thinking:
 			messages[-1]["content"] = messages[-1]["content"] + "\n/no_think"
 
-		# Tier-aware read timeout — fast must fail fast, not hang for minutes.
+		# Cloud tier: PII sanitization before sending off-VPS
+		rep_map: dict[str, str] = {}
+		if tier_name == "cloud" and sanitize and settings.CLOUD_LLM_SANITIZE:
+			_counters: dict = {}
+			messages[1]["content"], _m1 = sanitize_prompt(user_message, _counters)
+			messages[0]["content"], _m2 = sanitize_prompt(system_prompt, _counters, _seen_map=_m1)
+			rep_map = {**_m1, **_m2}
+			logger.debug("cloud_sanitize[local-cloud]: %d entities replaced", len(rep_map))
+
+		# Cloud tier uses a short timeout (external API is fast).
+		# Local tier: 25s, fail fast when CPU is loaded.
 		read_timeout = TIER_TIMEOUTS.get(tier_name, 180.0)
-		# Fast tier: single attempt then fall back to deep (CPU may be loaded).
-		# Deep tier: up to 3 retries as before.
-		max_attempts = 1 if tier_name == "fast" else 3
+		# Single attempt for both tiers; cloud has its own retry semantics.
+		max_attempts = 1 if tier_name == "local" else 3
+
+		# Build request headers — cloud needs Bearer auth
+		request_headers: dict = {}
+		if tier_name == "cloud" and settings.LLM_CLOUD_API_KEY:
+			request_headers["Authorization"] = f"Bearer {settings.LLM_CLOUD_API_KEY}"
+
+		# Cloud API endpoint: base_url already ends without /v1 — add it if missing
+		if tier_name == "cloud":
+			api_url = base_url if base_url.endswith("/v1") else f"{base_url}/v1"
+			api_url = f"{api_url}/chat/completions"
+		else:
+			api_url = f"{base_url}/v1/chat/completions"
 
 		last_err = None
 		for attempt in range(max_attempts):
 			try:
 				async with httpx.AsyncClient(timeout=httpx.Timeout(read_timeout, connect=10.0)) as client:
+					_req_json: dict = {
+						"model": settings.LLM_MODEL_CLOUD if tier_name == "cloud" else "local",
+						"messages": messages,
+						"stream": True,
+						"temperature": 0.2,
+						"top_p": 0.9,
+						"max_tokens": max_tok,
+					}
+					if tier_name == "local":
+						# Qwen3 thinking mode control (ignored by non-Qwen3 models)
+						_req_json["thinking"] = request_thinking
 					async with client.stream(
 						"POST",
-						f"{base_url}/v1/chat/completions",
-						json={
-							"messages": messages,
-							"stream": True,
-							"temperature": 0.2,
-							"top_p": 0.9,
-							"max_tokens": max_tok,
-							# Qwen3 thinking mode control (ignored by non-Qwen3 models)
-							"thinking": request_thinking,
-						},
+						api_url,
+						headers=request_headers,
+						json=_req_json,
 					) as response:
 						response.raise_for_status()
 						# Qwen3 think-block filter: buffer content to strip <think>…</think>
@@ -969,148 +1007,43 @@ async def chat_stream(
 								continue
 						return
 			except httpx.ReadTimeout:
-				if tier_name == "fast":
-					# Fast model is overloaded — fall back to deep silently.
-					logger.warning("LLM fast timeout after %.0fs — falling back to deep", read_timeout)
-					_, fallback_url, fallback_name = select_tier(user_message, "deep")
-					last_model_used.set(f"Deep: {settings.LLM_MODEL_DEEP} (fallback)")
-					fall_messages = messages
-					fall_max_tok = TIER_MAX_TOKENS["deep"]
-					fall_timeout = TIER_TIMEOUTS["deep"]
-					try:
-						async with httpx.AsyncClient(timeout=httpx.Timeout(fall_timeout, connect=10.0)) as fc:
-							async with fc.stream(
-								"POST",
-								f"{fallback_url}/v1/chat/completions",
-								json={
-									"messages": fall_messages,
-									"stream": True,
-									"temperature": 0.2,
-									"top_p": 0.9,
-									"max_tokens": fall_max_tok,
-									"thinking": False,
-								},
-							) as fr:
-								fr.raise_for_status()
-								async for line in fr.aiter_lines():
-									if not line.startswith("data: "):
-										continue
-									ds = line[6:]
-									if ds.strip() == "[DONE]":
-										return
-									try:
-										d = json.loads(ds)
-										ch = d.get("choices", [{}])[0].get("delta", {}).get("content")
-										if ch:
-											yield ch
-									except json.JSONDecodeError:
-										continue
-								return
-					except Exception as fb_err:
-						logger.error("Fast fallback (deep) also failed [%s]: %s", type(fb_err).__name__, fb_err)
-						yield "I'm still waking up. Try again in a moment."
+				if tier_name == "local":
+					# Local is overloaded — keep waiting (caller controls upper timeout).
+					logger.warning("LLM local timeout after %.0fs", read_timeout)
+					yield "I'm still thinking. Try again in a moment."
 					return
 				else:
-					last_err = "I'm still warming up my local intelligence. One moment."
+					# Cloud timeout — retry with backoff
+					last_err = "Cloud model timed out. Try again in a moment."
 					if attempt < max_attempts - 1:
-						logger.debug("LLM timeout (attempt %d/%d, %s). Retrying in 3s...", attempt + 1, max_attempts, tier_name)
+						logger.debug("LLM cloud timeout (attempt %d/%d). Retrying in 3s...", attempt + 1, max_attempts)
 						await asyncio.sleep(3)
 					continue
 			except httpx.HTTPStatusError as http_err:
-				if http_err.response.status_code == 400 and tier_name == "fast":
-					# Context overflow on fast tier — fall back to deep silently.
-					logger.warning("LLM fast 400 (context overflow) — falling back to deep")
-					_, fallback_url, _ = select_tier(user_message, "deep")
-					last_model_used.set(f"Deep: {settings.LLM_MODEL_DEEP} (fallback)")
-					fall_messages = messages
-					fall_max_tok = TIER_MAX_TOKENS["deep"]
-					fall_timeout = TIER_TIMEOUTS["deep"]
-					try:
-						async with httpx.AsyncClient(timeout=httpx.Timeout(fall_timeout, connect=10.0)) as fc:
-							async with fc.stream(
-								"POST",
-								f"{fallback_url}/v1/chat/completions",
-								json={
-									"messages": fall_messages,
-									"stream": True,
-									"temperature": 0.2,
-									"top_p": 0.9,
-									"max_tokens": fall_max_tok,
-									"thinking": False,
-								},
-							) as fr:
-								fr.raise_for_status()
-								async for line in fr.aiter_lines():
-									if not line.startswith("data: "):
-										continue
-									ds = line[6:]
-									if ds.strip() == "[DONE]":
-										return
-									try:
-										d = json.loads(ds)
-										ch = d.get("choices", [{}])[0].get("delta", {}).get("content")
-										if ch:
-											yield ch
-									except json.JSONDecodeError:
-										continue
-								return
-					except Exception as fb_err:
-						logger.error("Fast fallback (deep) also failed after 400 [%s]: %s", type(fb_err).__name__, fb_err)
-						yield "I'm still waking up. Try again in a moment."
-					return
-				else:
-					logger.error("Local LLM HTTP %d error: %s", http_err.response.status_code, http_err)
-					yield "I'm having trouble reaching the local model. Please try again."
-					return
+				logger.error("LLM HTTP %d error (%s): %s", http_err.response.status_code, tier_name, http_err)
+				yield "I'm having trouble reaching the model. Please try again."
+				return
 			except Exception as e:
-				if tier_name == "fast":
-					logger.warning("LLM fast connection error (%s) — falling back to deep", type(e).__name__)
-					_, fallback_url, _ = select_tier(user_message, "deep")
-					last_model_used.set(f"Deep: {settings.LLM_MODEL_DEEP} (fallback)")
-					fall_messages = messages
-					fall_max_tok = TIER_MAX_TOKENS["deep"]
-					fall_timeout = TIER_TIMEOUTS["deep"]
-					try:
-						async with httpx.AsyncClient(timeout=httpx.Timeout(fall_timeout, connect=10.0)) as fc:
-							async with fc.stream(
-								"POST",
-								f"{fallback_url}/v1/chat/completions",
-								json={
-									"messages": fall_messages,
-									"stream": True,
-									"temperature": 0.2,
-									"top_p": 0.9,
-									"max_tokens": fall_max_tok,
-									"thinking": False,
-								},
-							) as fr:
-								fr.raise_for_status()
-								async for line in fr.aiter_lines():
-									if not line.startswith("data: "):
-										continue
-									ds = line[6:]
-									if ds.strip() == "[DONE]":
-										return
-									try:
-										d = json.loads(ds)
-										ch = d.get("choices", [{}])[0].get("delta", {}).get("content")
-										if ch:
-											yield ch
-									except json.JSONDecodeError:
-										continue
-								return
-					except Exception as fb_err:
-						logger.error("Fast fallback (deep) also failed after ConnectError [%s]: %s", type(fb_err).__name__, fb_err)
-						yield "I'm still waking up. Try again in a moment."
+				if tier_name == "cloud":
+					# Cloud connection error — fall back to local silently
+					logger.warning("Cloud LLM error (%s) — falling back to local", type(e).__name__)
+					last_model_used.set(f"Local: {settings.LLM_MODEL_LOCAL} (fallback)")
+					async for chunk in chat_stream(
+						user_message,
+						system_override=system_prompt,
+						tier="local",
+						sanitize=False,
+						**{k: v for k, v in kwargs.items() if k not in ("thinking",)},
+					):
+						yield chunk
 					return
 				else:
-					# Standard / deep: retry with backoff (same pattern as ReadTimeout)
 					last_err = "I'm having trouble reaching the local model. Please try again."
 					if attempt < max_attempts - 1:
 						wait_secs = 5 * (attempt + 1)
 						logger.warning(
-							"LLM connection error (attempt %d/%d, %s tier, %s). Retrying in %ds.",
-							attempt + 1, max_attempts, tier_name, type(e).__name__, wait_secs,
+							"LLM connection error (attempt %d/%d, local, %s). Retrying in %ds.",
+							attempt + 1, max_attempts, type(e).__name__, wait_secs,
 						)
 						await asyncio.sleep(wait_secs)
 						continue
@@ -1337,32 +1270,44 @@ async def chat_with_context(
 		last_model_used.set(display_name)
 
 		# Route through the LangGraph agent only when the message requires a tool action.
-		# 1. Zero-latency fast-path for unmistakably EN actionable phrases.
+		# 1. Zero-latency local-path for unmistakably EN actionable phrases.
 		# 2. LLM-based classifier for everything else — language-agnostic.
+		#    Skip classifier if cloud not configured (it doesn't change the outcome).
 		# 3. use_agent=False forces the direct-chat path (e.g. startup recovery).
 		_msg_lower = user_message.lower()
 		if not use_agent:
 			needs_agent = False
 			logger.debug("Intent: agent disabled by caller")
-		elif any(kw in _msg_lower for kw in _FAST_PATH_KEYWORDS):
+		elif any(kw in _msg_lower for kw in _LOCAL_PATH_KEYWORDS):
 			needs_agent = True
-			logger.debug("Intent: fast-path keyword match")
-		else:
+			logger.debug("Intent: local-path keyword match")
+		elif settings.cloud_configured or settings.SMART_CLOUD_ROUTING:
 			needs_agent = await _classify_intent(user_message)
+		else:
+			needs_agent = False
 
 		if needs_agent:
-			# Agent path uses deep tier
-			agent_url = settings.LLM_DEEP_URL
-			agent_display = f"Deep: {settings.LLM_MODEL_DEEP}"
+			# Agent path: use cloud tier if configured, otherwise local
+			agent_url = settings.LLM_CLOUD_BASE_URL.rstrip("/") if settings.cloud_configured else settings.LLM_LOCAL_URL
+			if settings.cloud_configured:
+				if not agent_url.endswith("/v1"):
+					agent_url = f"{agent_url}/v1"
+				agent_display = f"Cloud: {settings.LLM_MODEL_CLOUD}"
+				agent_model = settings.LLM_MODEL_CLOUD
+			else:
+				agent_url = f"{settings.LLM_LOCAL_URL}/v1"
+				agent_display = f"Local: {settings.LLM_MODEL_LOCAL}"
+				agent_model = "local"
 			last_model_used.set(agent_display)
 			logger.debug("Tool intent detected -- using LangGraph agent (%s)", agent_display)
-			llm = ChatOpenAI(
-				base_url=f"{agent_url}/v1",
-				api_key="not-needed",
-				model="local",
-				timeout=300,
-				temperature=0.2,
-			)
+			_agent_kwargs: dict = {
+				"base_url": agent_url,
+				"api_key": settings.LLM_CLOUD_API_KEY if settings.cloud_configured else "not-needed",
+				"model": agent_model,
+				"timeout": 300,
+				"temperature": 0.2,
+			}
+			llm = ChatOpenAI(**_agent_kwargs)
 			from app.services.agent_actions import AVAILABLE_TOOLS  # lazy — avoids cyclic import with task modules
 			agent_executor = create_react_agent(llm, AVAILABLE_TOOLS)
 			# Include action tag docs only for agent path
@@ -1409,14 +1354,14 @@ async def chat_with_context(
 					if tool_failures:
 						failure_block = "\n\n" + "\n".join(f"⚠ {f}" for f in tool_failures)
 						asyncio.ensure_future(record_llm_metric(
-							tier="deep", feature="agent_tool_call",
-							model=settings.LLM_MODEL_DEEP, tokens=len(reply),
+							tier="cloud" if settings.cloud_configured else "local", feature="agent_tool_call",
+							model=settings.LLM_MODEL_CLOUD or settings.LLM_MODEL_LOCAL, tokens=len(reply),
 							latency_ms=_agent_latency, prompt_len=len(user_message),
 						))
 						return sanitise_output(reply + failure_block)
 					asyncio.ensure_future(record_llm_metric(
-						tier="deep", feature="agent_tool_call",
-						model=settings.LLM_MODEL_DEEP, tokens=len(reply),
+						tier="cloud" if settings.cloud_configured else "local", feature="agent_tool_call",
+						model=settings.LLM_MODEL_CLOUD or settings.LLM_MODEL_LOCAL, tokens=len(reply),
 						latency_ms=_agent_latency, prompt_len=len(user_message),
 					))
 					return sanitise_output(reply)
@@ -1441,52 +1386,62 @@ async def chat_with_context(
 			# Always include docs — the model emits tags only when appropriate.
 			_action_docs_block = f"\n{ACTION_TAG_DOCS}"
 
-		# Timeout-racing for deep tier: try deep first, fall back to fast.
-		# Skip when use_agent=False (recovery paths) because long prompts exceed
-		# DEEP_MODEL_TIMEOUT_S, leaving a zombie streaming connection that blocks
-		# the single-threaded model while a second request queues behind it.
-		if tier_name == "deep" and settings.SMART_MODEL_INTERACTIVE and use_agent:
-			logger.debug("Racing deep model with %ds timeout", settings.DEEP_MODEL_TIMEOUT_S)
+		# Smart cloud routing: try local first with 2s first-token race.
+		# If local is too slow AND cloud is configured, escalate to cloud.
+		# Skip race when use_agent=False (recovery paths) or SMART_CLOUD_ROUTING=False.
+		if settings.SMART_CLOUD_ROUTING and settings.cloud_configured and use_agent and tier_name != "cloud":
+			logger.debug("Racing local model with 2s first-token timeout")
 			history_text = _build_history_text(history)
 			context_injection = "\n\n".join(filter(None, [full_prompt, history_text]))
 			system_with_context = f"{formatted_system_prompt}{_action_docs_block}\n\n{context_injection}" if context_injection else f"{formatted_system_prompt}{_action_docs_block}"
 
 			try:
-				# Try to get first token from deep model within timeout
-				_deep_t0 = time.time()
+				_local_t0 = time.time()
 				stream = chat_stream(
 					user_message,
 					system_override=system_with_context,
-					tier="deep",
+					tier="local",
 					user_name=user_name,
 					user_profile=user_profile,
 				)
-				first_chunk = await asyncio.wait_for(stream.__anext__(), timeout=settings.DEEP_MODEL_TIMEOUT_S)
-				# Deep model responded fast enough -- collect the rest
+				first_chunk = await asyncio.wait_for(stream.__anext__(), timeout=2.0)
+				# Local responded in time -- collect the rest
 				chunks = [first_chunk]
 				async for chunk in stream:
 					chunks.append(chunk)
 				asyncio.ensure_future(record_llm_metric(
-					tier="deep", feature="user_chat",
-					model=settings.LLM_MODEL_DEEP, tokens=len(chunks),
-					latency_ms=int((time.time() - _deep_t0) * 1000),
+					tier="local", feature="user_chat",
+					model=settings.LLM_MODEL_LOCAL, tokens=len(chunks),
+					latency_ms=int((time.time() - _local_t0) * 1000),
 					prompt_len=len(user_message),
 				))
 				return sanitise_output("".join(chunks))
-			except Exception as deep_err:
-				logger.warning("Deep model unavailable (%s) -- falling back to fast", type(deep_err).__name__)
-				last_model_used.set(f"Deep: {settings.LLM_MODEL_DEEP}")
+			except asyncio.TimeoutError:
+				logger.debug("Local model exceeded 2s first-token — escalating to cloud")
+				last_model_used.set(f"Cloud: {settings.LLM_MODEL_CLOUD}")
 				return sanitise_output(await chat(
 					user_message,
 					system_override=system_with_context,
-					tier="fast",
+					tier="cloud",
+					sanitize=sanitize,
+					user_name=user_name,
+					user_profile=user_profile,
+					_feature="user_chat_cloud_escalation",
+				))
+			except Exception as local_err:
+				logger.warning("Local model unavailable (%s) -- falling back to cloud", type(local_err).__name__)
+				last_model_used.set(f"Cloud: {settings.LLM_MODEL_CLOUD}")
+				return sanitise_output(await chat(
+					user_message,
+					system_override=system_with_context,
+					tier="cloud",
 					sanitize=sanitize,
 					user_name=user_name,
 					user_profile=user_profile,
 					_feature="user_chat_fallback",
 				))
 
-		# Standard / Fast direct path
+		# Direct path (no race needed: cloud not configured, or explicit tier, or recovery mode)
 		logger.debug("Direct chat [%s] -> %s", tier_name, display_name)
 		history_text = _build_history_text(history)
 		context_injection = "\n\n".join(filter(None, [full_prompt, history_text]))
@@ -1511,7 +1466,7 @@ async def chat_with_context(
 		return sanitise_output(await chat(
 			user_message,
 			system_override=formatted_system_prompt if 'formatted_system_prompt' in locals() else None,
-tier="fast",
+			tier="local",
 			sanitize=sanitize,
 			user_name=user_name if 'user_name' in locals() else "User",
 			user_profile=user_profile if 'user_profile' in locals() else {},
@@ -1635,13 +1590,13 @@ async def chat_stream_with_context(
 		if len(user_message.strip()) < 30:
 			system_with_context += "\n\nRespond in 1-2 sentences. Ensure logical consistency (e.g. do not say 'Today is tomorrow')."
 
-		# Timeout racing for deep tier
-		if tier_name == "deep" and settings.SMART_MODEL_INTERACTIVE:
+		# Smart cloud routing for streaming path
+		if settings.SMART_CLOUD_ROUTING and settings.cloud_configured and tier_name != "cloud":
 			try:
 				stream = chat_stream(
 					user_message,
 					system_override=system_with_context,
-					tier="deep",
+					tier="local",
 					sanitize=sanitize,
 					user_name=user_name,
 					user_profile=user_profile,
@@ -1655,10 +1610,10 @@ async def chat_stream_with_context(
 					if cleaned:
 						yield cleaned
 				return
-			except Exception as deep_err:
-				logger.warning("Deep stream unavailable (%s) -- falling back to fast", type(deep_err).__name__)
-				last_model_used.set(f"Deep: {settings.LLM_MODEL_DEEP}")
-				tier_name = "fast"
+			except Exception as stream_err:
+				logger.warning("Local stream unavailable (%s) -- falling back to cloud", type(stream_err).__name__)
+				last_model_used.set(f"Cloud: {settings.LLM_MODEL_CLOUD}")
+				tier_name = "cloud"
 
 		async for chunk in chat_stream(
 			user_message,
@@ -1675,7 +1630,7 @@ async def chat_stream_with_context(
 		logger.warning("chat_stream_with_context setup failed (%s) -- falling back to bare stream", type(e).__name__)
 		# Context setup failed (e.g. DB unreachable for build_system_prompt).
 		# Fall back to a bare stream without context so the user still gets a response.
-		async for chunk in chat_stream(user_message, tier="fast"):
+		async for chunk in chat_stream(user_message, tier="local"):
 			cleaned = _strip_emoji(chunk)
 			if cleaned:
 				yield cleaned

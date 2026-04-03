@@ -53,8 +53,7 @@ async def health_check_detailed():
 
 	llm_status = {}
 	for name, url in [
-		("llm_fast", settings.LLM_FAST_URL),
-		("llm_deep", settings.LLM_DEEP_URL),
+		("llm_local", settings.LLM_LOCAL_URL),
 	]:
 		try:
 			async with httpx.AsyncClient(timeout=3) as client:
