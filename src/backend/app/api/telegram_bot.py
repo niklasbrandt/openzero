@@ -221,25 +221,30 @@ async def _recover_unanswered_messages():
 	try:
 		await asyncio.sleep(15)
 
-		# Wait for the deep LLM to be ready — recovery uses deep tier directly.
-		# Probe every 10 s up to 360 s total (deep model warms slower than fast).
-		_deadline = asyncio.get_event_loop().time() + 360
+		# Wait for the fast LLM to be available (reliable proxy for general startup).
+		# Probe every 10 s up to 180 s total, then add a 60 s buffer for the deep
+		# model queue to drain before recovery makes its own deep-tier request.
+		_deadline = asyncio.get_event_loop().time() + 180
+		_fast_ready = False
 		while asyncio.get_event_loop().time() < _deadline:
 			try:
-				async with _httpx.AsyncClient(timeout=8.0) as _c:
+				async with _httpx.AsyncClient(timeout=20.0) as _c:
 					_r = await _c.post(
-						f"{settings.LLM_DEEP_URL}/v1/chat/completions",
+						f"{settings.LLM_FAST_URL}/v1/chat/completions",
 						json={"messages": [{"role": "user", "content": "ping"}],
 							"max_tokens": 1, "stream": False},
 					)
 					if _r.status_code == 200:
-						logger.info("Restart recovery: deep LLM ready — scanning now.")
+						logger.info("Restart recovery: fast LLM ready — waiting 60 s for deep queue to drain...")
+						_fast_ready = True
 						break
-			except Exception:
-				pass
+			except Exception as _probe_err:
+				logger.debug("Recovery probe exception: %s: %s", type(_probe_err).__name__, _probe_err)
 			await asyncio.sleep(10)
+		if not _fast_ready:
+			logger.warning("Restart recovery: fast LLM probe timed out after 180 s — proceeding anyway.")
 		else:
-			logger.warning("Restart recovery: deep LLM probe timed out after 360 s — proceeding anyway.")
+			await asyncio.sleep(60)
 		logger.info("Restart recovery: scanning message history...")
 
 		from app.models.db import get_global_history, save_global_message
