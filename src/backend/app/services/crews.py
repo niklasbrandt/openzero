@@ -27,6 +27,13 @@ PLANKA PERSISTENCE (mandatory for all crews):
 - If the user asks to add a new column or restructure the board, comply immediately with CREATE_LIST / MOVE_CARD.
 - NEVER place content from prior chat history (task names, project names, unrelated cards) into a domain-specific column (e.g. do not put a software task name into a Recipes column).
 - ALWAYS write a clear human-readable summary of what you did FIRST (e.g. "Added 3 recipes to your Nutrition board"), then emit the action tags on new lines at the end. The user must see a confirmation — never produce action tags with no accompanying text.
+
+CREW-SAFE ACTION TAGS ONLY:
+- Crews are strictly limited to Planka scaffolding tags: CREATE_PROJECT, CREATE_BOARD, CREATE_LIST, CREATE_TASK, MOVE_CARD, MARK_DONE.
+- NEVER emit ADD_PERSON, LEARN, REMIND, SCHEDULE_CUSTOM, SCHEDULE_CREW, PROXIMITY_TRACK, or RUN_CREW tags.
+  ADD_PERSON and LEARN are reserved for the user-facing agent only — emitting them from a crew is a hallucination error.
+- The people, facts, and names you see in persona or conversation context are provided for domain awareness only.
+  Do NOT add users, operators, or anyone to the circle of trust. Do NOT store memories.
 """
 
 class CrewConfig(BaseModel):

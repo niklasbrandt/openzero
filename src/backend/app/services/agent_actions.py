@@ -253,8 +253,14 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 		await handle_action("CREATE_TASK", raw_tag, _exec_task, f"Create task '{title}' on {board}")
 		clean_reply = strip_tag(clean_reply, raw_tag)
 
-	# 2. Create Project Tag — DESCRIPTION is optional (LLM may omit it)
-	proj_pattern = r"\[?ACTION: CREATE_PROJECT \| NAME: ([^\|\]]+?)(?:\s*\|\s*DESCRIPTION:\s*([^\|\]]+?))?\s*\]?"
+	# newly_created_projects maps project_name.lower() -> project_id so _exec_board
+	# can find the project by ID without a second GET /api/projects after creation.
+	newly_created_projects: dict[str, str] = {}
+
+	# 2. Create Project Tag — DESCRIPTION is optional (LLM may omit it).
+	# IMPORTANT: use greedy [^\|\]]+ (NOT lazy +?) — lazy combined with optional \]?
+	# causes the group to match only the first character of the project name.
+	proj_pattern = r"\[?ACTION: CREATE_PROJECT \| NAME: ([^\|\]]+)(?:\s*\|\s*DESCRIPTION:\s*([^\|\]]+))?\]?"
 	for match in re.finditer(proj_pattern, reply):
 		raw_tag = match.group(0)
 		name = match.group(1).strip().strip('"\'')
@@ -264,6 +270,9 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 			try:
 				result = await planka_create_project(name=name, description=desc)
 				if result:
+					proj_id = result.get("id") if isinstance(result, dict) else None
+					if proj_id:
+						newly_created_projects[name.lower()] = proj_id
 					return f"Project '{name}' created."
 				return f"\u26a0 Failed to create project '{name}'. Check Planka connection."
 			except Exception as _e:
@@ -292,13 +301,15 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 				from app.config import settings
 				token = await get_planka_auth_token()
 				async with httpx.AsyncClient(timeout=30.0, base_url=settings.PLANKA_BASE_URL, headers={"Authorization": f"Bearer {token}"}) as client:
-					resp = await client.get("/api/projects")
-					projects = resp.json().get("items", [])
-					proj_id = None
-					for p in projects:
-						if p["name"].lower() == proj_name.lower():
-							proj_id = p["id"]
-							break
+					# Fast path: project just created in this same response
+					proj_id = newly_created_projects.get(proj_name.lower())
+					if not proj_id:
+						resp = await client.get("/api/projects")
+						projects = resp.json().get("items", [])
+						for p in projects:
+							if p["name"].lower() == proj_name.lower():
+								proj_id = p["id"]
+								break
 					if not proj_id:
 						return f"\u26a0 Project '{proj_name}' not found. Board not created."
 					board_result = await planka_create_board(project_id=proj_id, name=board_name)
