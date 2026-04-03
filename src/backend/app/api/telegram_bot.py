@@ -220,7 +220,7 @@ async def _recover_unanswered_messages():
 		await asyncio.sleep(15)
 		logger.info("Restart recovery: scanning message history...")
 
-		from app.models.db import get_global_history, save_global_message
+		from app.models.db import get_global_history
 
 		history = await get_global_history(limit=30)
 		logger.info("Restart recovery: found %d messages in history.", len(history))
@@ -317,18 +317,18 @@ async def _recover_unanswered_messages():
 			await _send_online_notification()
 			return
 
-		logger.info("Restart recovery: running parse_and_execute_actions...")
-		async with AsyncSessionLocal() as db:
-			from app.services.agent_actions import parse_and_execute_actions
-			clean_reply, executed_cmds, _ = await parse_and_execute_actions(response, db=db)
-			crews = [c.split(":", 1)[1] for c in executed_cmds if c.startswith("__CREW_RUN__:")]
-			if crews:
-				clean_reply += f"\n\n_(Reasoning supported by {', '.join(crews)})_"
-		logger.info("Restart recovery: actions parsed, saving to DB...")
-
+		logger.info("Restart recovery: running parse_and_execute_actions via bus...")
+		from app.services.message_bus import bus
 		from app.services.llm import last_model_used
-		await save_global_message("telegram", "z", clean_reply, model=last_model_used.get())
-		logger.info("Restart recovery: saved to DB, sending Telegram notification...")
+		clean_reply, executed_cmds, _ = await bus.commit_reply(
+			channel="telegram",
+			raw_reply=response,
+			model=last_model_used.get(),
+		)
+		crews = [c.split(":", 1)[1] for c in executed_cmds if c.startswith("__CREW_RUN__:")]
+		if crews:
+			clean_reply += f"\n\n_(Reasoning supported by {', '.join(crews)})_"
+		logger.info("Restart recovery: actions parsed and saved to DB via bus...")
 
 		clean_reply = strip_llm_time_header(clean_reply)
 		html_reply = _md_to_html(clean_reply)
@@ -967,17 +967,16 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
 			if quoted:
 				user_text = f"[Replying to: \"{quoted[:500]}\"]\n\n{user_text}"
 
-		from app.models.db import save_global_message, get_global_history
-		# Save user message FIRST so rapid follow-up messages see the context
-		await save_global_message("telegram", "user", user_text)
+		from app.services.message_bus import bus
+		# Save user message FIRST via the bus — guarantees persistence even if
+		# the LLM times out, and returns cross-channel history in one call.
+		_hist = await bus.ingest("telegram", user_text)
 
 		# --- "Coming back" detection: inject return context for long silences ---
 		# If the last Z reply was >2 h ago, annotate the LLM prompt so Z
 		# acknowledges the gap. The raw user_text stays in the DB unchanged.
 		llm_user_text = user_text
 		try:
-			# Re-import of datetime removed as it is now at module level
-			_hist = await get_global_history(limit=15)
 			_last_z = next((m for m in reversed(_hist) if m["role"] == "z"), None)
 			if _last_z:
 				_last_ts = datetime.fromisoformat(_last_z["at"]).replace(tzinfo=_tz.utc)
@@ -1006,17 +1005,18 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
 			return
 
 		async with lock:
-			await _process_freetext(update, context, chat_id, llm_user_text)
+			await _process_freetext(update, context, chat_id, llm_user_text, history=_hist)
 
 			# After responding, check if messages arrived while we were thinking
 			while _pending_messages.get(chat_id):
 				buffered = _pending_messages.pop(chat_id)
 				combined = "\n".join(buffered)
 				# Save the raw user messages (no internal framing) for dashboard display
-				await save_global_message("telegram", "user", combined)
+				# and retrieve updated history including this exchange.
+				_follow_hist = await bus.ingest("telegram", combined)
 				# Add context hint only for the LLM so it knows these arrived mid-thought
 				llm_text = f"[Follow-up messages sent while you were thinking:]\n{combined}"
-				await _process_freetext(update, context, chat_id, llm_text, is_followup=True)
+				await _process_freetext(update, context, chat_id, llm_text, is_followup=True, history=_follow_hist)
 
 	except Exception as e:
 		logger.error("handle_freetext failed: %s", e)
@@ -1025,10 +1025,10 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		except Exception as _se:
 			logger.debug("handle_freetext error reporting failed: %s", _se)
 
-async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, user_text: str, is_followup: bool = False):
+async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, user_text: str, is_followup: bool = False, history: list | None = None):
 	"""Core freetext processing logic with streaming progressive updates."""
 	from app.services.llm import chat_stream_with_context
-	from app.models.db import get_global_history, save_global_message
+	from app.services.message_bus import bus
 	import time
 
 	lang = await get_user_lang()
@@ -1045,8 +1045,14 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 		thinking_msg = await update.message.reply_text(f"<blockquote><i>{t.get('thinking', 'Thinking...')}</i></blockquote>", parse_mode="HTML")
 
 
-	# Recover Merged History (cross-channel context -- last 10 messages)
-	merged_history = await get_global_history(limit=10)
+	# Use cross-channel history provided by the caller (already fetched via bus.ingest).
+	# Fall back to a fresh fetch only when called from a path that has no history yet
+	# (e.g. voice, direct internal calls).
+	if history is None:
+		from app.models.db import get_global_history
+		merged_history = await get_global_history(limit=10)
+	else:
+		merged_history = history
 
 	# Stream tokens with progressive Telegram message updates
 	chunks = []
@@ -1076,25 +1082,21 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 	response = "".join(chunks)
 
 	# Sanitise output: strip emojis, model-generated slash commands, etc.
-	from app.services.llm import sanitise_output
+	from app.services.llm import sanitise_output, last_model_used
 	response = sanitise_output(response)
 
-	async with AsyncSessionLocal() as db:
-		from app.services.agent_actions import parse_and_execute_actions
-		clean_reply, executed_cmds, _ = await parse_and_execute_actions(response, db=db)
-		
-		# Reasoning indicator
-		crews = [c.split(":", 1)[1] for c in executed_cmds if c.startswith("__CREW_RUN__:")]
-		if crews:
-			clean_reply += f"\n\n_(Reasoning supported by {', '.join(crews)})_"
+	# Parse action tags, save Z reply, schedule background memory — all via bus.
+	clean_reply, executed_cmds, _ = await bus.commit_reply(
+		channel="telegram",
+		raw_reply=response,
+		model=last_model_used.get(),
+		user_text=user_text,
+	)
 
-	# Save Z's reply to global history
-	from app.services.llm import last_model_used
-	await save_global_message("telegram", "z", clean_reply, model=last_model_used.get())
-
-	# Background memory extraction -- learn from user message without blocking reply
-	from app.services.memory import extract_and_store_facts
-	asyncio.create_task(extract_and_store_facts(user_text))
+	# Reasoning indicator
+	crews = [c.split(":", 1)[1] for c in executed_cmds if c.startswith("__CREW_RUN__:")]
+	if crews:
+		clean_reply += f"\n\n_(Reasoning supported by {', '.join(crews)})_"
 
 	# Prepend real time (strip any LLM-generated time header)
 	clean_reply = strip_llm_time_header(clean_reply)
@@ -1126,12 +1128,10 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		
 		# 3. Process as text
 		from app.services.llm import chat_with_context, last_model_used
-		from app.models.db import get_global_history, save_global_message
+		from app.services.message_bus import bus
 
-		# Persist transcript so the dashboard and future LLM calls see this voice message.
-		await save_global_message("telegram", "user", transcript)
-
-		merged_history = await get_global_history(limit=10)
+		# Persist transcript via the bus so the dashboard and future LLM calls see it.
+		merged_history = await bus.ingest("telegram", transcript)
 
 		response = await chat_with_context(
 			transcript,
@@ -1139,12 +1139,13 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 			include_projects=True,
 			include_people=True
 		)
-		
-		async with AsyncSessionLocal() as db:
-			from app.services.agent_actions import parse_and_execute_actions
-			clean_reply, _, _ = await parse_and_execute_actions(response, db=db)
 
-		await save_global_message("telegram", "z", clean_reply, model=last_model_used.get())
+		clean_reply, _, _ = await bus.commit_reply(
+			channel="telegram",
+			raw_reply=response,
+			model=last_model_used.get(),
+			user_text=transcript,
+		)
 		
 		clean_reply = strip_llm_time_header(clean_reply)
 		html_reply = _md_to_html(clean_reply)

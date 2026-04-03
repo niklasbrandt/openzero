@@ -166,6 +166,59 @@ The stack is optimized for single-server CPU-only deployment with full privacy:
 - **Network:** Traefik manages routing and Pi-hole blocks tracking. Tailscale secures the perimeter with a Zero Trust mesh.
 - **Async Execution:** Redis powers the Celery task queue. Background reasoning keeps the UI responsive during long-running LLM operations.
 
+### Channel Bridge (Universal Message Bus)
+
+All inbound messages — regardless of origin — funnel through a single persistence layer
+defined in `src/backend/app/services/message_bus.py`.
+
+```
+Telegram adapter ──┐
+Dashboard adapter ──┤──► bus.ingest(channel, text)   → saves user turn FIRST
+(future adapters) ──┘          │
+                           user message persisted to global_messages
+                                │
+                         <channel runs its LLM call>
+                                │
+                    bus.commit_reply(channel, raw_reply) → saves Z reply + executes action tags
+                                │
+                    ┌───────────┴──────────────┐
+                Telegram push   HTTP return   SSE stream   (future: WhatsApp, Signal, …)
+```
+
+Every channel sees the same cross-channel history because all messages go to the same
+`global_messages` table.
+
+**Adding a new messenger (WhatsApp, Signal, …):**
+
+1. Create `src/backend/app/api/<messenger>.py`
+
+2. Register your push function at startup so proactive notifications (recovery, follow-up
+   nudges) reach the channel:
+
+        from app.services.message_bus import bus
+        bus.register_channel("whatsapp", push_fn=send_whatsapp_message)
+
+3. In your inbound message handler use the two bus calls:
+
+        from app.services.message_bus import bus
+        from app.services.llm import chat_with_context, last_model_used
+
+        history  = await bus.ingest("whatsapp", user_text)       # saves + returns history
+        raw      = await chat_with_context(user_text, history=history)
+        reply, actions, _ = await bus.commit_reply(
+            channel="whatsapp",
+            raw_reply=raw,
+            model=last_model_used.get(),
+            user_text=user_text,          # triggers background memory extraction
+        )
+        await send_whatsapp_message(reply)
+
+4. Done. History, action execution, and memory extraction are handled automatically.
+   The reply is immediately visible in the Dashboard and any other registered channel.
+
+See `src/backend/app/services/message_bus.py` for the full API reference and wire
+diagram in the module docstring.
+
 ## Tech Stack
 
 | Component        | Technology                                                                                                                                                                                                                                                                             | Purpose                                                                                             |
