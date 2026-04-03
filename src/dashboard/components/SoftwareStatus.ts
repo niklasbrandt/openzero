@@ -118,7 +118,7 @@ export class SoftwareStatus extends HTMLElement {
 		const services = [
 			{
 				name: 'Intelligence',
-				status: (tiers.fast || {}).status === 'online' || d.status === 'online' ? 'online' : 'offline',
+				status: (tiers.local || {}).status === 'online' || d.status === 'online' ? 'online' : 'offline',
 				detail: d.llm_model_short || 'Deep',
 				tip: `Active Provider: ${d.llm_provider}. Model: ${d.llm_model_full}`,
 				icon: 'brain'
@@ -186,16 +186,16 @@ export class SoftwareStatus extends HTMLElement {
 			</div>
 		`).join('');
 
-		// 3-Tier summary
+		// Intelligence summary
 		const intelHtml = `
 			<div class="intel-stats">
 				<div class="intel-stat">
-					<span class="intel-label">Fast</span>
-					<span class="intel-value">0.6B / ${(tiers.fast || {}).threads || 7}T</span>
+					<span class="intel-label">Local</span>
+					<span class="intel-value">0.6B / ${(tiers.local || {}).threads || 7}T</span>
 				</div>
 				<div class="intel-stat">
-					<span class="intel-label">Deep</span>
-					<span class="intel-value">8B-Q4 / ${(tiers.deep || {}).threads || 7}T</span>
+					<span class="intel-label">Cloud</span>
+					<span class="intel-value">${d.llm_config?.cloud_configured ? 'Connected' : 'Not configured'}</span>
 				</div>
 			</div>
 		`;
