@@ -113,6 +113,17 @@ class GlobalMessage(Base):
     model = Column(String, nullable=True)  # LLM tier + model used for Z responses
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
+class LLMMetric(Base):
+    __tablename__ = "llm_metrics"
+    id = Column(Integer, primary_key=True)
+    tier = Column(String, nullable=False)       # "fast" or "deep"
+    feature = Column(String, nullable=False)     # "user_chat", "memory_extraction", "urgency_classify", etc.
+    model = Column(String)                       # e.g. "Qwen3-0.6B", "Qwen3-8B-Q3"
+    tokens = Column(Integer)                     # estimated output tokens (chunk count)
+    latency_ms = Column(Integer)                 # wall-clock milliseconds
+    prompt_len = Column(Integer)                 # approximate input length (chars)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
 class LocalEvent(Base):
     __tablename__ = "local_events"
     id = Column(Integer, primary_key=True)

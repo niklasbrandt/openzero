@@ -106,7 +106,7 @@ async def _llm_classify_urgency(task_titles: list[str]) -> dict[str, str]:
 	)
 	try:
 		from app.services.llm import chat
-		result = await chat(prompt, tier="fast")
+		result = await chat(prompt, tier="fast", _feature="urgency_classify")
 		mapping: dict[str, str] = {}
 		for line in result.strip().splitlines():
 			if ':' not in line:
@@ -241,7 +241,7 @@ async def run_proactive_follow_up() -> None:
 			from app.services.llm import chat
 			from app.services.notifier import send_notification, get_stats_footer as _get_stats_footer, get_nav_markup
 			from app.services.translations import get_user_lang, get_translations
-			nudge = await chat(prompt)
+			nudge = await chat(prompt, _feature="follow_up_nudge")
 			# Guard: skip sending if the LLM returned an error string (e.g. still starting up)
 			_LLM_ERR = ("having trouble reaching", "still waking up", "warming up my local")
 			if any(err in nudge for err in _LLM_ERR):

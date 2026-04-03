@@ -102,7 +102,7 @@ async def prepare_draft_reply(email: dict):
 		f"<email>\nFrom: {email['from']}\nSubject: {email['subject']}\n\n{email['snippet']}\n</email>"
 	)
 
-	reply_body = await chat(prompt)
+	reply_body = await chat(prompt, _feature="email_draft")
 
 	# Store for approval rather than auto-creating (H6)
 	context_data = json.dumps({

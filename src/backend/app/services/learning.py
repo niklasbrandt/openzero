@@ -46,7 +46,7 @@ async def extract_and_store_facts(user_message: str):
 			f"Message: {clean_input}"
 		)
 
-		result = await chat(extraction_prompt, tier="fast")
+		result = await chat(extraction_prompt, tier="fast", _feature="memory_extraction")
 		result = result.strip()
 
 		# Parse result
