@@ -798,9 +798,10 @@ SMART_KEYWORDS = [
 
 # Per-tier max_tokens caps — prevents runaway generation on CPU.
 # These are request-level caps; server-side N_PREDICT acts as a hard ceiling.
+# At 4-10 tok/s on this VPS, 2000 tokens = ~200-500s max — still long but bounded.
 TIER_MAX_TOKENS = {
 	"fast": 250,
-	"deep": 4000,
+	"deep": 2000,
 }
 
 # Per-tier read timeouts (seconds). Fast must fail fast so the UI never
@@ -894,10 +895,10 @@ async def chat_stream(
 		# Request-level token cap prevents runaway generation
 		max_tok = kwargs.get("max_tokens") or TIER_MAX_TOKENS.get(tier_name, 400)
 
-		# Qwen3: disable thinking for fast (latency critical);
-		# deep tier can think — CoT improves briefing quality, blocks get stripped.
-		# Callers can override via thinking=False kwarg (e.g. recovery paths).
-		request_thinking = kwargs.get("thinking", tier_name == "deep")
+		# CoT disabled on ALL tiers — 4B model at ~4 tok/s makes thinking
+		# unacceptably slow (2000 think tokens = ~8 min before first response word).
+		# Callers can override via thinking=True for tasks that explicitly need CoT.
+		request_thinking = kwargs.get("thinking", False)
 
 		# Qwen3 /no_think injection: suppress reasoning when thinking is off.
 		# Must target the USER message (messages[-1]), not the system prompt —
