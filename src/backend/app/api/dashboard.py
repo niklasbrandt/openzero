@@ -2886,3 +2886,15 @@ async def get_llm_metrics():
 	except Exception as e:
 		logger.error("get_llm_metrics failed: %s", e)
 		return {"total_recorded": 0, "by_tier": {}, "by_feature": []}
+
+
+@router.get("/llm-active")
+async def get_llm_active():
+	"""Return which LLM tiers are currently streaming tokens (for dashboard card animation)."""
+	from app.services.llm import _tier_last_active
+	import time as _t
+	now = _t.monotonic()
+	return {
+		"fast": now - _tier_last_active.get("fast", 0) < 8.0,
+		"deep": now - _tier_last_active.get("deep", 0) < 8.0,
+	}
