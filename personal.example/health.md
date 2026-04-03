@@ -20,3 +20,13 @@
 - **Primary Goals:** [e.g., Muscle hypertrophy, cardiovascular endurance]
 - **Weekly Activity:** [e.g., 3x Strength, 2x HIIT]
 - **Injuries/Limitations:** [e.g., Left knee sensitivity]
+
+## Workout Preferences
+<!-- Populated by the fitness crew during onboarding. Do not edit manually unless updating a preference. -->
+- **Preferred Training Days:** [e.g., Mon, Wed, Fri]
+- **Preferred Training Times:** [e.g., Morning 07:00]
+- **Favourite Modalities:** [e.g., Barbell lifting, trail running]
+- **Disliked Modalities:** [e.g., Group classes, treadmill]
+- **Available Equipment:** [e.g., Full gym, pull-up bar at home]
+- **Outdoor Training:** [e.g., Yes — running and cycling]
+- **Notes:** [e.g., Prefer shorter sessions on workdays, longer on weekends]
