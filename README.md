@@ -96,18 +96,16 @@ A **TypeScript** web application built with native Web Components (Shadow DOM) a
 
 ### Local Intelligence
 
-A 2-tier **llama.cpp** architecture runs optimized GGUF models directly on your CPU:
+A **llama.cpp** model runs directly on your CPU for all interactive tasks. An optional cloud API can handle complex reasoning:
 
-| Tier     | Model               | Purpose                                                                | Context | RAM  |
-| :------- | :------------------ | :--------------------------------------------------------------------- | :------ | :--- |
-| **Fast** | Qwen3-0.6B (Q4_K_M) | Greetings, confirmations, trivial Q&A, memory distillation             | 4,096   | 0.4G |
-| **Deep** | Qwen3-8B (Q4_K_M)   | Conversation, reasoning, creative tasks, briefings, strategic analysis | 8,192   | 4.7G |
+| Tier      | Default Model        | Purpose                                                                | Context | RAM  |
+| :-------- | :------------------- | :--------------------------------------------------------------------- | :------ | :--- |
+| **Local** | Qwen3-0.6B (Q4_K_M) | All interactive chat, memory distillation, quick tasks                 | 4,096   | 0.4G |
+| **Cloud** | Configurable         | Optional: complex reasoning, briefings, crew tasks (external API)      | —      | —    |
 
-The default profile targets a **24 GB VPS** (5 GB system overhead, leaving ~19 GB for models and services). On a **12 GB VPS** swap the Deep model to `Qwen3-8B-Q2_K.gguf` (~2.6 GB, ~5-8 tok/s on 8-core) for a total model footprint of ~3 GB. On 32-64 GB systems the Deep tier can be upgraded to Qwen3-14B-Q4_K_M (~8.7 GB) for higher reasoning quality. See `.env` for model URL variables.
+The default profile targets a **12 GB VPS** using only the local tier. To add cloud reasoning, set `LLM_CLOUD_BASE_URL`, `LLM_CLOUD_API_KEY`, and `LLM_MODEL_CLOUD` in `.env`.
 
-All tiers use the Qwen3 generation (Apache 2.0). Qwen3-8B benchmarks on-par with Qwen2.5-14B; Qwen3-14B on-par with Qwen2.5-32B — at the same RAM footprint as their predecessors. Qwen3-14B also supports hybrid thinking mode (CoT blocks are stripped from user-facing output automatically).
-
-Cloud reasoning is only engaged via a "Disclosure Proposal" workflow for shared memories -- never silently.
+All local models use the Qwen3 generation (Apache 2.0). Cloud can be any OpenAI-compatible API.
 
 ### Proactive Automation
 
@@ -375,9 +373,9 @@ python -m pytest tests/test_security_prompt_injection.py tests/test_static_analy
 
 ## Setting it up
 
-A VPS with **24 GB RAM** or a local Mac Mini/homelab is recommended. The entire stack is optimized for **CPU-only inference** using quantized GGUF models with llama.cpp. No GPU required -- both tiers run with 8 threads. Since tiers run sequentially (one request at a time, no parallelism), each active model gets full access to all CPU cores. Use the built-in benchmark widget to measure actual throughput on your hardware.
+A VPS with **12 GB RAM** or a local Mac Mini/homelab is recommended. The stack is optimized for **CPU-only inference** using quantized GGUF models with llama.cpp. No GPU required. Use the built-in benchmark widget to measure actual throughput on your hardware.
 
-Typical throughput on an 8-core EPYC VPS: 10-20 tok/s (fast tier), 3-5 tok/s (deep tier).
+Typical throughput on an 8-core EPYC VPS: 10-20 tok/s (local tier, Qwen3-0.6B).
 
 1. **Deploy:** Run `docker compose up -d`. First-time model downloads happen automatically per tier.
 2. **Secure:** Link the server to the Tailscale network. Configure Pi-hole Split DNS for your vanity domain.

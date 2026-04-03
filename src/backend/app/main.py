@@ -96,7 +96,7 @@ async def lifespan(app: FastAPI):
                 except Exception as _ctx_err:
                     logging.warning("⚠ Context load warning: %s", _ctx_err)
                 
-                # Warm up local deep model VRAM
+                # Warm up local model embedder
                 try:
                     from app.services.memory import get_embedder
                     loop = asyncio.get_event_loop()

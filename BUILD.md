@@ -6,23 +6,23 @@ This guide is designed for anyone—even if you've never used a server before. F
 
 ## Hardware Profiles — Choose Your Configuration
 
-Z uses a 2-tier LLM architecture. Pick the profile that matches your hardware and set the corresponding `.env` overrides.
+Z uses a **local + optional cloud** LLM architecture. A local llama.cpp model runs on your server for all interactive tasks. An optional cloud API (OpenAI-compatible) can be configured for complex reasoning tasks.
 
-| Profile | RAM | Fast tier | Deep tier | Notes |
-|---------|-----|-----------|-----------|-------|
-| A — Minimal | 8 GB | Qwen3-0.6B Q4_K_M | Qwen3-1.7B Q4_K_M | Deep = async tasks only (`smart_model_interactive: false`) |
-| B — Standard (default) | 12 GB | Qwen3-1.7B Q4_K_M | Qwen3-4B Q4_K_M | Default docker-compose settings |
-| C — Comfortable | 24 GB | Qwen3-1.7B Q4_K_M | Qwen3-8B Q4_K_M | Set `LLM_DEEP_CTX=8192`, `LLM_DEEP_CACHE_RAM=2048` |
-| D — High-end | 64 GB+ | Qwen3-4B Q4_K_M | Qwen3-14B Q4_K_M | GPU or large-RAM homelab |
+| Profile | RAM | Local tier model | Notes |
+|---------|-----|-------------------|---------|
+| A — Minimal | 8 GB | Qwen3-0.6B Q4_K_M | Tight but functional |
+| B — Standard (default) | 12 GB | Qwen3-0.6B Q4_K_M | Default docker-compose settings |
+| C — Comfortable | 24 GB | Qwen3-1.7B Q4_K_M | Set `LLM_LOCAL_CTX=8192`, `LLM_LOCAL_CACHE_RAM=2048` |
+| D — High-end | 64 GB+ | Qwen3-4B Q4_K_M | GPU or large-RAM homelab |
 
-The defaults in `docker-compose.yml` target **Profile B (12 GB)**. Override via `.env` for other profiles.
+To use a cloud API for complex tasks, set `LLM_CLOUD_BASE_URL`, `LLM_CLOUD_API_KEY`, and `LLM_MODEL_CLOUD` in your `.env`.
 
 ## 🏗️ Phase 1: Prepare your VPS (Server)
 
 We recommend a VPS with **Ubuntu 24.04**. For the default 12 GB profile, aim for at least **8 Cores** and **12 GB RAM**.
 
 > [!IMPORTANT]
-> **Z uses a 2-tier LLM architecture** (Qwen3-1.7B fast + Qwen3-4B deep — default 12 GB profile). All interactive chat uses the fast tier; deep tier handles scheduled briefings and crew tasks. See the hardware profiles table above to choose models for your RAM budget. **Swap space is still recommended as a safety buffer.**
+> **Z runs a local llama.cpp model on your server** (default: Qwen3-0.6B Q4_K_M). All interactive chat uses the local tier; an optional cloud API handles complex reasoning when configured. See the hardware profiles table above to choose the right model for your RAM budget. **Swap space is still recommended as a safety buffer.**
 
 ### 0. Add Swap Space (MANDATORY first step)
 
@@ -194,8 +194,9 @@ cp .env.example .env
 # REDIS_PASSWORD=your_strong_random_password  (protects the task queue)
 # BASE_URL=http://open.zero  (or http://YOUR_SERVER_IP — must match your access URL)
 
-# LLM_FAST_CACHE_RAM=256   (MiB for prompt cache - 1.7B fast tier)
-# LLM_DEEP_CACHE_RAM=1024  (MiB for prompt cache - 4B deep tier)
+# LLM_LOCAL_CACHE_RAM=256  (MiB for prompt cache - local tier)
+# LLM_CLOUD_BASE_URL=       (optional cloud API base URL)
+# LLM_CLOUD_API_KEY=        (optional cloud API key)
 
 # [DASHBOARD_TOKEN=your_secure_random_token] (Required for API access)
 ```
@@ -370,7 +371,7 @@ Z will now package itself, fly to your server, build its brain (llama-server), a
 > **AI Models are downloaded automatically** on first start. The entrypoint script downloads GGUF models from HuggingFace for both tiers. This can take **5-15 minutes** on first boot. Monitor with:
 >
 > ```bash
-> docker compose logs -f llm-deep
+> docker compose logs -f llm-local
 > ```
 
 > [!NOTE]

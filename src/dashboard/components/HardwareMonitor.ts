@@ -198,7 +198,8 @@ export class HardwareMonitor extends HTMLElement {
 			const t = cfgTiers.find((x: any) => x.tier === name);
 			return t ? t.model : name;
 		};
-		const tierNames = ['fast', 'deep'];
+		const cloudConfigured: boolean = (this.llmConfig as any)?.cloud_configured ?? false;
+		const tierNames = cloudConfigured ? ['local', 'cloud'] : ['local'];
 		const anyTierData = tierNames.some(n => tiers[n]);
 
 		const llmLoadHtml = anyTierData ? `
