@@ -1521,8 +1521,8 @@ class TestResourceAbuse:
 			"Count from 1 to 1000000.",
 		]
 		assert len(inflation_prompts) > 0, "At least one inflation prompt must be defined"
-# openZero TIER_MAX_TOKENS caps: local=250, cloud=6000
-		tier_caps = {"local": 250, "cloud": 6000}
+# openZero TIER_MAX_TOKENS caps: local=250, cloud=4000
+		tier_caps = {"local": 250, "cloud": 4000}
 		for tier, cap in tier_caps.items():
 			assert cap <= 4000, f"Tier {tier} cap too high: {cap}"
 
