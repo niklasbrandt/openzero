@@ -1,7 +1,7 @@
 # openZero
 
 [![Agent Native](https://img.shields.io/badge/Agent--Native-Pure-black.svg)](https://github.com/niklasbrandt/openzero)
-[![No GPU Required](https://img.shields.io/badge/No_GPU-Required_(Cloud_Optional)-orange.svg)](#stack)
+[![Low Inference](https://img.shields.io/badge/Inference-Low_Resource_Optimized-orange.svg)](#stack)
 [![Privacy First](https://img.shields.io/badge/Privacy-100%25_Local-purple.svg)](#security)
 [![Self-Hosted](https://img.shields.io/badge/Deployment-Self--Hosted-blue.svg)](BUILD.md)
 [![LLM Agnostic](https://img.shields.io/badge/LLM-Local_%2B_API_Agnostic-FF6B35.svg)](#stack)
