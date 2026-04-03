@@ -780,7 +780,7 @@ TRIVIAL_PATTERNS = {
 	"bye", "cya", "later", "cheers", "np", "k", "kk", "yea", "yeah",
 }
 
-# Short messages that require social/creative reasoning — must not hit fast tier
+# Short messages that require social/creative reasoning — must not hit cloud tier
 # even when they fall under the length threshold.
 BANTER_PATTERNS = [
 	"roast me", "roast", "joke", "tell me a joke", "be mean", "be rude",
@@ -1145,7 +1145,7 @@ async def chat_with_context(
 	Wraps the standard chat with a rich snapshot of the user's world.
 	This ensures Z always knows who matters and what's being built.
 
-	Supports 3-tier intelligence scaling with timeout-racing for the deep tier.
+	Supports 2-tier intelligence scaling: local (always on) + cloud (optional, configured via env).
 	"""
 	from app.services.memory import semantic_search
 

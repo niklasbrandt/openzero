@@ -119,7 +119,7 @@ export class SoftwareStatus extends HTMLElement {
 			{
 				name: 'Intelligence',
 				status: (tiers.local || {}).status === 'online' || d.status === 'online' ? 'online' : 'offline',
-				detail: d.llm_model_short || 'Deep',
+				detail: d.llm_model_short || 'Local',
 				tip: `Active Provider: ${d.llm_provider}. Model: ${d.llm_model_full}`,
 				icon: 'brain'
 			},
