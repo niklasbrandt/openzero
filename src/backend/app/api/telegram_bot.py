@@ -1169,7 +1169,7 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def _process_crew_stream(update: Update, context: ContextTypes.DEFAULT_TYPE, crew_id: str, user_input: str, t: dict):
 	"""Executes a crew mission with progressive Telegram message updates."""
 	from app.services.crews_native import native_crew_engine
-	from app.services.agent_actions import parse_and_execute_actions
+	from app.services.message_bus import bus
 	import time
 
 	thinking_msg = await update.message.reply_text(f"<blockquote>🚀 <i>{t.get('executing_crew', 'Executing crew')} <b>{crew_id}</b>...</i></blockquote>", parse_mode="HTML")
@@ -1186,7 +1186,6 @@ async def _process_crew_stream(update: Update, context: ContextTypes.DEFAULT_TYP
 				partial_text = "".join(chunks)
 				if len(partial_text.strip()) > 3:
 					try:
-						# Escape and convert to HTML
 						display = f"<blockquote>🚀 <i><b>{crew_id}</b>: {_md_to_html(partial_text)}...</i></blockquote>"
 						await safe_edit(thinking_msg, display, parse_mode="HTML")
 					except Exception:
@@ -1194,17 +1193,25 @@ async def _process_crew_stream(update: Update, context: ContextTypes.DEFAULT_TYP
 					last_edit_time = now
 
 		full_res = "".join(chunks)
-		async with AsyncSessionLocal() as db:
-			clean_reply, _, _ = await parse_and_execute_actions(full_res, db=db)
-		
-		# Reasoning indicator
-		from app.services.crews import crew_registry
-		config = crew_registry.get(crew_id)
+		logger.info("Crew '%s' raw output (%d chars): %s", crew_id, len(full_res), full_res[:500])
+
+		clean_reply, executed_cmds, pending_actions = await bus.commit_reply(
+			channel="telegram",
+			raw_reply=full_res,
+			model=f"crew:{crew_id}",
+			user_text=user_input,
+		)
+
+		if executed_cmds:
+			logger.info("Crew '%s' executed actions: %s", crew_id, executed_cmds)
+		if pending_actions:
+			logger.info("Crew '%s' pending actions: %s", crew_id, pending_actions)
+
 		clean_reply += f"\n\n_(Reasoning by crew {crew_id})_"
-		
+
 		display_final = f"<b>{format_time()}</b>\n\n{_md_to_html(clean_reply)}"
 		await safe_edit(thinking_msg, f"<blockquote>{display_final}</blockquote>", parse_mode="HTML", reply_markup=get_nav_markup(t))
-		
+
 	except Exception as e:
 		logger.error("Telegram Crew Stream Failed: %s", e)
 		try:
