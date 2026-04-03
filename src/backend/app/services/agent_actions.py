@@ -326,14 +326,26 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 				async def _post_list_on_board(bid: str) -> str:
 					token = await get_planka_auth_token()
 					async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, timeout=15.0, headers={"Authorization": f"Bearer {token}"}) as client:
-						resp = await client.post(f"/api/boards/{bid}/lists", json={"name": list_name, "position": 65535})
-						resp.raise_for_status()
-					return f"List '{list_name}' created in '{board_name}'."
+						try:
+							resp = await client.post(f"/api/boards/{bid}/lists", json={"name": list_name, "type": "active", "position": 65535})
+							resp.raise_for_status()
+							return f"List '{list_name}' created in '{board_name}'."
+						except Exception:
+							pass
+						try:
+							resp = await client.post(f"/api/boards/{bid}/lists", json={"name": list_name, "position": 65535})
+							resp.raise_for_status()
+							return f"List '{list_name}' created in '{board_name}'."
+						except Exception as _le:
+							logger.error("_post_list_on_board failed for bid=%s list=%s: %s", bid, list_name, _le)
+							return None
 
 				# Fast path A: board was just created in this response
 				board_id = newly_created_boards.get(board_name.lower())
 				if board_id:
-					return await _post_list_on_board(board_id)
+					_r = await _post_list_on_board(board_id)
+					if _r:
+						return _r
 
 				# Fast path B: board pre-existed — global search
 				result = await planka_create_list(board_name=board_name, list_name=list_name)
@@ -349,7 +361,9 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 					if board_result and board_result.get("id"):
 						bid = board_result["id"]
 						newly_created_boards[board_name.lower()] = bid
-						return await _post_list_on_board(bid)
+						_r1 = await _post_list_on_board(bid)
+						if _r1:
+							return _r1
 
 				# Fallback C2: search existing Planka projects by name
 				_tok2 = await get_planka_auth_token()
@@ -369,7 +383,9 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 					if _br and _br.get("id"):
 						_bid = _br["id"]
 						newly_created_boards[board_name.lower()] = _bid
-						return await _post_list_on_board(_bid)
+						_r2 = await _post_list_on_board(_bid)
+						if _r2:
+							return _r2
 
 				# Fallback C3: no matching project — auto-create project + board + list
 				_np = await planka_create_project(name=board_name, description="")
@@ -381,7 +397,9 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 						if _br2 and _br2.get("id"):
 							_bid2 = _br2["id"]
 							newly_created_boards[board_name.lower()] = _bid2
-							return await _post_list_on_board(_bid2)
+							_r3 = await _post_list_on_board(_bid2)
+							if _r3:
+								return _r3
 
 				return f"\u26a0 Failed to create list '{list_name}' \u2014 board '{board_name}' not found."
 			except Exception as _e:
