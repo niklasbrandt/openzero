@@ -228,6 +228,14 @@ async def start_scheduler():
 		replace_existing=True,
 	)
 
+	# LLM Metrics Cleanup — Keep only last 2000 rows (every 24 hours)
+	scheduler.add_job(
+		cleanup_llm_metrics,
+		IntervalTrigger(hours=24),
+		id="cleanup_llm_metrics",
+		replace_existing=True,
+	)
+
 	# DNS Watchdog — test Pi-hole DNS every 5 minutes, alert + auto-fix on failure
 	scheduler.add_job(
 		check_pihole_dns,
@@ -336,6 +344,26 @@ async def cleanup_global_messages():
 			logger.info("Cleanup: trimmed GlobalMessage table to 500 rows.")
 	except Exception as e:
 		logger.error("cleanup_global_messages failed: %s", e)
+
+
+async def cleanup_llm_metrics():
+	"""Keep only the most recent 2000 LLMMetric rows."""
+	from app.models.db import AsyncSessionLocal
+	from sqlalchemy import text
+	try:
+		async with AsyncSessionLocal() as session:
+			await session.execute(text("""
+				DELETE FROM llm_metrics
+				WHERE id NOT IN (
+					SELECT id FROM llm_metrics
+					ORDER BY created_at DESC
+					LIMIT 2000
+				)
+			"""))
+			await session.commit()
+			logger.info("Cleanup: trimmed llm_metrics table to 2000 rows.")
+	except Exception as e:
+		logger.error("cleanup_llm_metrics failed: %s", e)
 
 
 async def load_custom_tasks():

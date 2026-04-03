@@ -21,7 +21,7 @@ async def monthly_review():
 		"5. Format with clear headers: ### 1. 30-Day Progress | ### 2. 3 Major Goals for Next Month"
 	)
 	
-	content = await chat(prompt)
+	content = await chat(prompt, _feature="monthly_review")
 	
 	# Store in Database
 	async with AsyncSessionLocal() as session:
