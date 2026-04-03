@@ -56,7 +56,7 @@ class NativeCrewEngine:
 
 		# 1. Base Instructions and Protocol
 		instructions = SYSTEM_TEMPLATE.format(instructions=config.instructions or "Tactical Steward.")
-		
+
 		# 2. Semantic Priming: Character Roles
 		if config.characters:
 			char_block = "\nCREW COMPOSITION & ROLES:\n"
@@ -69,13 +69,25 @@ class NativeCrewEngine:
 		if context_block:
 			instructions += f"\n\n{context_block}"
 
+		# 4. Recent conversation history (cross-channel) so crew has full context
+		from app.models.db import get_global_history
+		history_messages = []
+		try:
+			recent = await get_global_history(limit=10)
+			for m in recent:
+				role = "assistant" if m["role"] == "z" else "user"
+				history_messages.append({"role": role, "content": m["content"]})
+		except Exception as e:
+			logger.debug("Native Engine: Could not fetch conversation history: %s", e)
+
+		messages = [{"role": "system", "content": instructions}]
+		messages.extend(history_messages)
+		# /no_think suppresses CoT for local Qwen3; ignored harmlessly by cloud APIs.
+		messages.append({"role": "user", "content": user_input + "\n/no_think"})
+
 		payload = {
 			"model": settings.LLM_MODEL_CLOUD if settings.cloud_configured else "local",
-			"messages": [
-				{"role": "system", "content": instructions},
-				# /no_think suppresses CoT for local Qwen3; ignored harmlessly by cloud APIs.
-				{"role": "user", "content": user_input + "\n/no_think"}
-			],
+			"messages": messages,
 			"temperature": 0.7,
 			"max_tokens": 6000,
 			"stream": True
