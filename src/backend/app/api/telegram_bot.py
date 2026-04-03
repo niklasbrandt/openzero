@@ -221,26 +221,25 @@ async def _recover_unanswered_messages():
 	try:
 		await asyncio.sleep(15)
 
-		# Wait for LLM to be actually ready — probe every 10 s up to 240 s total.
-		from app.config import settings
-		import httpx as _httpx
-		_deadline = asyncio.get_event_loop().time() + 240
+		# Wait for the deep LLM to be ready — recovery uses deep tier directly.
+		# Probe every 10 s up to 360 s total (deep model warms slower than fast).
+		_deadline = asyncio.get_event_loop().time() + 360
 		while asyncio.get_event_loop().time() < _deadline:
 			try:
 				async with _httpx.AsyncClient(timeout=8.0) as _c:
 					_r = await _c.post(
-						f"{settings.LLM_FAST_URL}/v1/chat/completions",
+						f"{settings.LLM_DEEP_URL}/v1/chat/completions",
 						json={"messages": [{"role": "user", "content": "ping"}],
 							"max_tokens": 1, "stream": False},
 					)
 					if _r.status_code == 200:
-						logger.info("Restart recovery: LLM ready — scanning now.")
+						logger.info("Restart recovery: deep LLM ready — scanning now.")
 						break
 			except Exception:
 				pass
 			await asyncio.sleep(10)
 		else:
-			logger.warning("Restart recovery: LLM probe timed out after 240 s — proceeding anyway.")
+			logger.warning("Restart recovery: deep LLM probe timed out after 360 s — proceeding anyway.")
 		logger.info("Restart recovery: scanning message history...")
 
 		from app.models.db import get_global_history, save_global_message
@@ -309,7 +308,7 @@ async def _recover_unanswered_messages():
 		}]
 		prompt = combined
 
-		logger.info("Restart recovery: calling chat_with_context (deep tier, 300 s timeout)...")
+		logger.info("Restart recovery: calling chat_with_context (deep tier, 480 s timeout)...")
 		response = await asyncio.wait_for(
 			chat_with_context(
 				prompt,
@@ -319,7 +318,7 @@ async def _recover_unanswered_messages():
 				use_agent=False,
 				tier_override="deep",
 			),
-			timeout=300,
+			timeout=480,
 		)
 		logger.info(
 			"Restart recovery: LLM responded (%d chars): %s",
