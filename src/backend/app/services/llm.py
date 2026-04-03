@@ -810,10 +810,10 @@ TIER_MAX_TOKENS = {
 }
 
 # Per-tier read timeouts (seconds).
-# Local: 25s — must fail fast if CPU is overloaded so UI doesn't hang.
+# Local: 120s — single tier with no fallback; wait for first token rather than failing fast.
 # Cloud: 30s — external API should respond well within this window.
 TIER_TIMEOUTS = {
-	"local": 25.0,
+	"local": 120.0,
 	"cloud": 30.0,
 }
 
@@ -929,7 +929,7 @@ async def chat_stream(
 			logger.debug("cloud_sanitize[local-cloud]: %d entities replaced", len(rep_map))
 
 		# Cloud tier uses a short timeout (external API is fast).
-		# Local tier: 25s, fail fast when CPU is loaded.
+		# Local tier: 120s — single tier with no fallback, wait for first token.
 		read_timeout = TIER_TIMEOUTS.get(tier_name, 180.0)
 		# Single attempt for both tiers; cloud has its own retry semantics.
 		max_attempts = 1 if tier_name == "local" else 3
