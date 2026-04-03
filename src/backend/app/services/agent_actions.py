@@ -340,19 +340,48 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 				if result:
 					return f"List '{list_name}' created in '{board_name}'."
 
-				# Auto-create fallback: LLM referenced a board that doesn't exist yet.
-				# Case 1 — board_name is exactly a project name (LLM confusion)
-				# Case 2 — only one project was created this response; use it
+				# Fallback C1: board_name matches a project created this response
 				proj_id: str | None = newly_created_projects.get(board_name.lower())
 				if not proj_id and len(newly_created_projects) == 1:
 					proj_id = next(iter(newly_created_projects.values()))
-
 				if proj_id:
 					board_result = await planka_create_board(project_id=proj_id, name=board_name)
 					if board_result and board_result.get("id"):
 						bid = board_result["id"]
 						newly_created_boards[board_name.lower()] = bid
 						return await _post_list_on_board(bid)
+
+				# Fallback C2: search existing Planka projects by name
+				_tok2 = await get_planka_auth_token()
+				async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, timeout=30.0, headers={"Authorization": f"Bearer {_tok2}"}) as _c2:
+					_pr = await _c2.get("/api/projects")
+					_pr.raise_for_status()
+					_live = _pr.json().get("items", [])
+				live_proj_id: str | None = None
+				for _lp in _live:
+					if _lp["name"].lower() == board_name.lower():
+						live_proj_id = _lp["id"]
+						break
+				if not live_proj_id and len(_live) == 1:
+					live_proj_id = _live[0]["id"]
+				if live_proj_id:
+					_br = await planka_create_board(project_id=live_proj_id, name=board_name)
+					if _br and _br.get("id"):
+						_bid = _br["id"]
+						newly_created_boards[board_name.lower()] = _bid
+						return await _post_list_on_board(_bid)
+
+				# Fallback C3: no matching project — auto-create project + board + list
+				_np = await planka_create_project(name=board_name, description="")
+				if _np:
+					_npid = _np.get("id") if isinstance(_np, dict) else None
+					if _npid:
+						newly_created_projects[board_name.lower()] = _npid
+						_br2 = await planka_create_board(project_id=_npid, name=board_name)
+						if _br2 and _br2.get("id"):
+							_bid2 = _br2["id"]
+							newly_created_boards[board_name.lower()] = _bid2
+							return await _post_list_on_board(_bid2)
 
 				return f"\u26a0 Failed to create list '{list_name}' \u2014 board '{board_name}' not found."
 			except Exception as _e:
@@ -385,7 +414,11 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 		title, start, end = match.groups()
 		# Clean potential quotes from model output
 		title = title.strip().strip('"').strip("'")
-		
+		# Skip events where the LLM emitted a format placeholder (e.g. YYYY-MM-DD HH:MM)
+		if re.search(r'YYYY|MM-DD|HH:MM', start.strip()):
+			clean_reply = strip_tag(clean_reply, raw_tag)
+			continue
+
 		async def _exec_event(title=title, start=start, end=end):
 			try:
 				event_result = await create_event.ainvoke({"title": title, "start_time": start.strip(), "end_time": end.strip()})
