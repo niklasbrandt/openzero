@@ -57,12 +57,12 @@ Planka provides the **Kanban engine**, accessible as a mobile-first PWA. Z creat
 
 A centralized **Operator Board** pulls high-priority tasks from all project boards into a single "Today" view. The board auto-syncs on a configurable interval and Z sends **proactive follow-up nudges** during work hours (09:00-21:50) for any uncompleted items. Nudge frequency adapts to task urgency -- Z estimates each task's urgency using keyword heuristics and LLM reasoning, then selects an appropriate cadence:
 
-| Urgency | Examples                                       | Nudge interval   |
-| :------ | :--------------------------------------------- | :--------------- |
-| Urgent  | deadline, asap, outage, critical, blocker      | every hour       |
-| Medium  | general tasks without urgency signals          | every 6 hours    |
-| Low     | backlog, someday, wishlist, nice to have       | every 12 hours   |
-| Custom  | user-specified (e.g. "remind me every 20 min") | as requested     |
+| Urgency | Examples                                       | Nudge interval |
+| :------ | :--------------------------------------------- | :------------- |
+| Urgent  | deadline, asap, outage, critical, blocker      | every hour     |
+| Medium  | general tasks without urgency signals          | every 6 hours  |
+| Low     | backlog, someday, wishlist, nice to have       | every 12 hours |
+| Custom  | user-specified (e.g. "remind me every 20 min") | as requested   |
 
 A custom interval can also be set directly from chat -- just tell Z "nudge me about the deploy task every 15 minutes" and it will emit a `SET_NUDGE_INTERVAL` action tag that overrides the automatic estimate. Task names can embed intervals inline using patterns like `[nudge:30m]` or `[2h]`.
 
@@ -72,7 +72,7 @@ openZero features a built-in **Native Tactical Engine** for deep, domain-specifi
 
 - **Zero-Maintenance Orchestration** -- Define your desired crews in `crews.yaml` (e.g., "Fiscal Auditor", "Brand Monitor"). OpenZero automatically loads these specialists into the tactical brain on boot with zero database setup required.
 - **Direct LLM Peering** -- Crews communicate directly with the local LLM engine (`openzero-llm-v2`), bypassing heavy middleware and administrative setup loops.
-- **Dynamic Briefing Alignment** -- Crews are assigned to feed specific briefings (`/day`, `/week`, `/month`). OpenZero calculates precision offsets to ensure complex multi-agent research completes *exactly* before your briefing compiles.
+- **Dynamic Briefing Alignment** -- Crews are assigned to feed specific briefings (`/day`, `/week`, `/month`). OpenZero calculates precision offsets to ensure complex multi-agent research completes _exactly_ before your briefing compiles.
 - **Planka & Semantic Bridge** -- Tactical crews can read from Z's semantic vault (Qdrant) and autonomously create/move cards on your Planka boards via native internal hooks.
 - **Semantic Priming** -- Crews strictly use hyper-specific personas ("The Biometric Statistician", "The Blueprint Designer") rather than generic roles, locking the underlying LLMs into rigorous, high-quality reasoning modalities.
 
@@ -98,10 +98,10 @@ A **TypeScript** web application built with native Web Components (Shadow DOM) a
 
 A 2-tier **llama.cpp** architecture runs optimized GGUF models directly on your CPU:
 
-| Tier        | Model               | Purpose                                                         | Context | RAM  |
-| :---------- | :------------------ | :-------------------------------------------------------------- | :------ | :--- |
-| **Fast** | Qwen3-0.6B (Q4_K_M) | Greetings, confirmations, trivial Q&A, memory distillation      | 4,096   | 0.4G |
-| **Deep**    | Qwen3-8B (Q4_K_M)   | Conversation, reasoning, creative tasks, briefings, strategic analysis | 8,192   | 4.7G |
+| Tier     | Model               | Purpose                                                                | Context | RAM  |
+| :------- | :------------------ | :--------------------------------------------------------------------- | :------ | :--- |
+| **Fast** | Qwen3-0.6B (Q4_K_M) | Greetings, confirmations, trivial Q&A, memory distillation             | 4,096   | 0.4G |
+| **Deep** | Qwen3-8B (Q4_K_M)   | Conversation, reasoning, creative tasks, briefings, strategic analysis | 8,192   | 4.7G |
 
 The default profile targets a **24 GB VPS** (5 GB system overhead, leaving ~19 GB for models and services). On a **12 GB VPS** swap the Deep model to `Qwen3-8B-Q2_K.gguf` (~2.6 GB, ~5-8 tok/s on 8-core) for a total model footprint of ~3 GB. On 32-64 GB systems the Deep tier can be upgraded to Qwen3-14B-Q4_K_M (~8.7 GB) for higher reasoning quality. See `.env` for model URL variables.
 
@@ -190,15 +190,15 @@ Every channel sees the same cross-channel history because all messages go to the
 
 **Adding a new messenger (WhatsApp, Signal, …):**
 
-1. Create `src/backend/app/api/<messenger>.py`
+1.  Create `src/backend/app/api/<messenger>.py`
 
-2. Register your push function at startup so proactive notifications (recovery, follow-up
-   nudges) reach the channel:
+2.  Register your push function at startup so proactive notifications (recovery, follow-up
+    nudges) reach the channel:
 
-        from app.services.message_bus import bus
-        bus.register_channel("whatsapp", push_fn=send_whatsapp_message)
+         from app.services.message_bus import bus
+         bus.register_channel("whatsapp", push_fn=send_whatsapp_message)
 
-3. In your inbound message handler use the two bus calls:
+3.  In your inbound message handler use the two bus calls:
 
         from app.services.message_bus import bus
         from app.services.llm import chat_with_context, last_model_used
@@ -213,29 +213,29 @@ Every channel sees the same cross-channel history because all messages go to the
         )
         await send_whatsapp_message(reply)
 
-4. Done. History, action execution, and memory extraction are handled automatically.
-   The reply is immediately visible in the Dashboard and any other registered channel.
+4.  Done. History, action execution, and memory extraction are handled automatically.
+    The reply is immediately visible in the Dashboard and any other registered channel.
 
 See `src/backend/app/services/message_bus.py` for the full API reference and wire
 diagram in the module docstring.
 
 ## Tech Stack
 
-| Component        | Technology                                                                                                                                                                                                                                                                             | Purpose                                                                                             |
-| :--------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------- |
-| **Core OS**      | ![Ubuntu](https://img.shields.io/badge/Ubuntu-E9433F?style=flat&logo=ubuntu&logoColor=white) ![Python](https://img.shields.io/badge/Python-3776AB?style=flat&logo=python&logoColor=white) ![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white) | Containerized foundation on Linux with Python backend.                                              |
+| Component        | Technology                                                                                                                                                                                                                                                                             | Purpose                                                                                 |
+| :--------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------- |
+| **Core OS**      | ![Ubuntu](https://img.shields.io/badge/Ubuntu-E9433F?style=flat&logo=ubuntu&logoColor=white) ![Python](https://img.shields.io/badge/Python-3776AB?style=flat&logo=python&logoColor=white) ![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white) | Containerized foundation on Linux with Python backend.                                  |
 | **Intelligence** | ![llama.cpp](https://img.shields.io/badge/llama.cpp-black?style=flat)                                                                                                                                                                                                                  | 2-tier local LLM (fast/deep) via llama-server with streaming. CPU-only, SIMD-optimized. |
-| **Dashboard**    | ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white) ![Vite](https://img.shields.io/badge/Vite-646CFF?style=flat&logo=vite&logoColor=white)                                                                                        | Native Web Components (Shadow DOM) with hot-reload development.                                     |
-| **Messenger**    | ![Telegram](https://img.shields.io/badge/Telegram-2CA5E0?style=flat&logo=telegram&logoColor=white)                                                                                                                                                                                     | Messenger interface (Telegram implemented); architecture supports additional platforms.             |
-| **Storage**      | ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=flat&logo=postgresql&logoColor=white) ![Qdrant](https://img.shields.io/badge/Qdrant-red?style=flat)                                                                                                                 | Relational data paired with high-dimensional semantic vector memory.                                |
-| **Execution**    | ![Redis](https://img.shields.io/badge/Redis-DC382D?style=flat&logo=redis&logoColor=white) ![Celery](https://img.shields.io/badge/Celery-37814A?style=flat&logo=celery&logoColor=white)                                                                                                 | Asynchronous task delegation and high-speed message brokering.                                      |
-| **Scheduling**   | ![APScheduler](https://img.shields.io/badge/APScheduler-green?style=flat)                                                                                                                                                                                                              | Timezone-aware cron/interval job scheduler with DST handling.                                       |
-| **Networking**   | ![Traefik](https://img.shields.io/badge/Traefik-2496ED?style=flat&logo=traefik&logoColor=white) ![Tailscale](https://img.shields.io/badge/Tailscale-4A23B6?style=flat&logo=tailscale&logoColor=white)                                                                                  | Zero Trust perimeter with automated internal routing.                                               |
-| **DNS**          | ![Pi-hole](https://img.shields.io/badge/Pi--hole-96060C?style=flat&logo=pi-hole&logoColor=white)                                                                                                                                                                                       | DNS sinkhole blocking container telemetry and enabling vanity domains.                              |
-| **Tasking**      | ![Planka](https://img.shields.io/badge/Planka-blue?style=flat)                                                                                                                                                                                                                         | Self-hosted Kanban engine accessible as a mobile PWA.                                               |
-| **Crews**        | ![Native](https://img.shields.io/badge/Native_Python-3776AB?style=flat&logo=python&logoColor=white)                                                                                                                                                                                                 | Deep multi-agent orchestration via declarative logic in `crews.yaml`.                          |
-| **Voice**        | ![Whisper](https://img.shields.io/badge/Whisper-black?style=flat) ![TTS](https://img.shields.io/badge/openedai--speech-green?style=flat)                                                                                                                                               | Local speech-to-text and high-quality audio generation.                                             |
-| **Weather**      | ![Open-Meteo](https://img.shields.io/badge/Open--Meteo-blue?style=flat)                                                                                                                                                                                                                | Hourly forecasts with travel-aware location detection. No API key needed.                           |
+| **Dashboard**    | ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white) ![Vite](https://img.shields.io/badge/Vite-646CFF?style=flat&logo=vite&logoColor=white)                                                                                        | Native Web Components (Shadow DOM) with hot-reload development.                         |
+| **Messenger**    | ![Telegram](https://img.shields.io/badge/Telegram-2CA5E0?style=flat&logo=telegram&logoColor=white)                                                                                                                                                                                     | Messenger interface (Telegram implemented); architecture supports additional platforms. |
+| **Storage**      | ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=flat&logo=postgresql&logoColor=white) ![Qdrant](https://img.shields.io/badge/Qdrant-red?style=flat)                                                                                                                 | Relational data paired with high-dimensional semantic vector memory.                    |
+| **Execution**    | ![Redis](https://img.shields.io/badge/Redis-DC382D?style=flat&logo=redis&logoColor=white) ![Celery](https://img.shields.io/badge/Celery-37814A?style=flat&logo=celery&logoColor=white)                                                                                                 | Asynchronous task delegation and high-speed message brokering.                          |
+| **Scheduling**   | ![APScheduler](https://img.shields.io/badge/APScheduler-green?style=flat)                                                                                                                                                                                                              | Timezone-aware cron/interval job scheduler with DST handling.                           |
+| **Networking**   | ![Traefik](https://img.shields.io/badge/Traefik-2496ED?style=flat&logo=traefik&logoColor=white) ![Tailscale](https://img.shields.io/badge/Tailscale-4A23B6?style=flat&logo=tailscale&logoColor=white)                                                                                  | Zero Trust perimeter with automated internal routing.                                   |
+| **DNS**          | ![Pi-hole](https://img.shields.io/badge/Pi--hole-96060C?style=flat&logo=pi-hole&logoColor=white)                                                                                                                                                                                       | DNS sinkhole blocking container telemetry and enabling vanity domains.                  |
+| **Tasking**      | ![Planka](https://img.shields.io/badge/Planka-blue?style=flat)                                                                                                                                                                                                                         | Self-hosted Kanban engine accessible as a mobile PWA.                                   |
+| **Crews**        | ![Native](https://img.shields.io/badge/Native_Python-3776AB?style=flat&logo=python&logoColor=white)                                                                                                                                                                                    | Deep multi-agent orchestration via declarative logic in `crews.yaml`.                   |
+| **Voice**        | ![Whisper](https://img.shields.io/badge/Whisper-black?style=flat) ![TTS](https://img.shields.io/badge/openedai--speech-green?style=flat)                                                                                                                                               | Local speech-to-text and high-quality audio generation.                                 |
+| **Weather**      | ![Open-Meteo](https://img.shields.io/badge/Open--Meteo-blue?style=flat)                                                                                                                                                                                                                | Hourly forecasts with travel-aware location detection. No API key needed.               |
 
 ```
 ┌──────────────────────────────────────────────────┐
@@ -460,20 +460,21 @@ Edit the files in `agent/` to tailor Z's expertise and rules to your workflow. T
 
 The full stack (all services running, models downloaded, media engines cached) uses approximately **60-80 GB** of disk. A minimum of **100 GB** is strongly recommended to leave room for build cache, log rotation, and database growth.
 
-| Component | Typical size | Notes |
-| :--- | :--- | :--- |
-| Docker images (active) | ~25 GB | TTS ~12 GB, Whisper ~8 GB, llama.cpp ~0.2 GB, the rest combined ~5 GB |
-| LLM models volume | ~5 GB | Qwen3-0.6B (~0.4 GB) + Qwen3-8B-Q4_K_M (~4.7 GB) |
-| TTS models (openedai-speech) | ~6 GB | Piper/Kokoro voice models downloaded on first run |
-| PostgreSQL data | ~100 MB | Grows slowly with calendar events, tasks, email history |
-| Qdrant semantic memory | ~50 MB | Grows with learned facts; small even after years of use |
-| Redis data | negligible | Ephemeral task queue; flushed on restart |
-| Planka uploads | variable | Depends on card attachments |
-| Docker build cache | 0-40 GB | Accumulates across rebuilds; fully reclaimable at any time |
-| **Total (no build cache)** | **~60-80 GB** | After `docker builder prune -a` |
-| **Total (with build cache)** | **up to 120 GB** | Left uncleaned after many deployments |
+| Component                    | Typical size     | Notes                                                                 |
+| :--------------------------- | :--------------- | :-------------------------------------------------------------------- |
+| Docker images (active)       | ~25 GB           | TTS ~12 GB, Whisper ~8 GB, llama.cpp ~0.2 GB, the rest combined ~5 GB |
+| LLM models volume            | ~5 GB            | Qwen3-0.6B (~0.4 GB) + Qwen3-8B-Q4_K_M (~4.7 GB)                      |
+| TTS models (openedai-speech) | ~6 GB            | Piper/Kokoro voice models downloaded on first run                     |
+| PostgreSQL data              | ~100 MB          | Grows slowly with calendar events, tasks, email history               |
+| Qdrant semantic memory       | ~50 MB           | Grows with learned facts; small even after years of use               |
+| Redis data                   | negligible       | Ephemeral task queue; flushed on restart                              |
+| Planka uploads               | variable         | Depends on card attachments                                           |
+| Docker build cache           | 0-40 GB          | Accumulates across rebuilds; fully reclaimable at any time            |
+| **Total (no build cache)**   | **~60-80 GB**    | After `docker builder prune -a`                                       |
+| **Total (with build cache)** | **up to 120 GB** | Left uncleaned after many deployments                                 |
 
 **Keeping storage healthy:**
+
 - Run `docker builder prune -a` after every major deployment — build cache is 100% reclaimable.
 - Run `docker image prune -a` (or `docker system prune -a`) periodically to remove old image tags after upgrades.
 - Orphan volumes (named volumes left behind by removed services) are flagged in the Diagnostics widget with cleanup commands.

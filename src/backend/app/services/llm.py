@@ -393,6 +393,11 @@ from langgraph.prebuilt import create_react_agent
 # Track the model used for the current request context
 last_model_used: ContextVar[str] = ContextVar("last_model_used", default="local")
 
+# Active inference timestamps — updated every time a token is yielded.
+# Used by /api/dashboard/llm-active to drive the dashboard card animation.
+# Key: tier name ("fast" / "deep"), Value: time.monotonic() of last token yield.
+_tier_last_active: dict[str, float] = {}
+
 # ---------------------------------------------------------------------------
 # LLM Usage Metrics — lightweight, fire-and-forget recording.
 # ---------------------------------------------------------------------------
@@ -512,7 +517,7 @@ CORE RESPONSE RULE:
   - For **conversation**: be warm and human.
 - **ZERO FILLER**: No "Of course!", "I understand", "Sure" (Unless personality directives explicitly dictate otherwise).
 - **NO TAG TALK**: Never explain what you have stored or learned unless explicitly asked.
-- **NO EMOJIS**: Never use Unicode emoji characters (🚀, ✅, 💡, etc.) in your responses. ASCII/kaomoji expressions are fine when they fit the moment — (╯°□°）╯︵ ┻━┻, ¯\_(ツ)_/¯, etc. — but use them sparingly, not as decoration on every message.
+- **NO EMOJIS**: Never use Unicode emoji characters (🚀, ✅, 💡, etc.) in your responses (Unless personality directives explicitly dictate otherwise). ASCII expressions are fine when they fit the moment, but use them sparingly, not as decoration on every message.
 - **NO ECHO**: NEVER repeat or echo the user's message back. NEVER generate slash commands (like /deep, /help, /start). Your output is a RESPONSE, not a transcript.
 - **NO ROLE-PLAY**: Do not simulate both sides of a conversation. You are Z only.
 
@@ -811,15 +816,10 @@ def select_tier(user_message: str, tier_override: Optional[str] = None) -> tuple
 	if tier_override:
 		tier = tier_override
 	else:
-		msg_lower = (user_message or "").lower().strip()
-		msg_len = len(user_message) if user_message else 0
-
-		# Fast: truly trivial (pure greetings / ack / very short and not complex)
-		if (msg_len < 15 or msg_lower in TRIVIAL_PATTERNS) and not any(kw in msg_lower for kw in SMART_KEYWORDS):
-			tier = "fast"
-		# Deep: everything else (conversation, banter, reasoning, briefings, code)
-		else:
-			tier = "deep"
+		# Phase 2 (12 GB profile): fast tier (Qwen3-1.7B) handles ALL interactive requests.
+		# Deep tier (Qwen3-4B) is only reached via explicit tier='deep' override,
+		# used by scheduled briefings and crew tasks where quality > latency.
+		tier = "fast"
 
 	# Normalise any legacy "standard" references to "deep"
 	if tier == "standard":
@@ -944,6 +944,8 @@ async def chat_stream(
 								content = delta.get("content")
 								if not content:
 									continue
+								# Stamp timestamp so /api/dashboard/llm-active drives card animation
+								_tier_last_active[tier_name] = time.monotonic()
 								# Filter Qwen3 <think> blocks from the stream
 								if _in_think:
 									_think_buf += content

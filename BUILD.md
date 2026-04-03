@@ -4,12 +4,25 @@ This guide is designed for anyone—even if you've never used a server before. F
 
 ---
 
+## Hardware Profiles — Choose Your Configuration
+
+Z uses a 2-tier LLM architecture. Pick the profile that matches your hardware and set the corresponding `.env` overrides.
+
+| Profile | RAM | Fast tier | Deep tier | Notes |
+|---------|-----|-----------|-----------|-------|
+| A — Minimal | 8 GB | Qwen3-0.6B Q4_K_M | Qwen3-1.7B Q4_K_M | Deep = async tasks only (`smart_model_interactive: false`) |
+| B — Standard (default) | 12 GB | Qwen3-1.7B Q4_K_M | Qwen3-4B Q4_K_M | Default docker-compose settings |
+| C — Comfortable | 24 GB | Qwen3-1.7B Q4_K_M | Qwen3-8B Q4_K_M | Set `LLM_DEEP_CTX=8192`, `LLM_DEEP_CACHE_RAM=2048` |
+| D — High-end | 64 GB+ | Qwen3-4B Q4_K_M | Qwen3-14B Q4_K_M | GPU or large-RAM homelab |
+
+The defaults in `docker-compose.yml` target **Profile B (12 GB)**. Override via `.env` for other profiles.
+
 ## 🏗️ Phase 1: Prepare your VPS (Server)
 
-We recommend a VPS with **Ubuntu 24.04**. For best performance with Llama 8B, aim for at least **8 Cores** and **16GB RAM**.
+We recommend a VPS with **Ubuntu 24.04**. For the default 12 GB profile, aim for at least **8 Cores** and **12 GB RAM**.
 
 > [!IMPORTANT]
-> **Z uses a 2-tier LLM architecture** (Qwen3-0.6B fast + Qwen3-8B deep). A **12 GB VPS** is the minimum (use `Qwen3-8B-Q3_K_M.gguf` for the deep tier, ~3.6 GB total; use `Q2_K` if RAM is very tight). A **24 GB VPS** comfortably runs the default `Q3_K_M` deep model with headroom for Whisper and TTS. **The default has been switched from Q4 to Q3_K_M to ensure faster response times and prevent timeouts on CPU-bound VPS instances.** **Swap space is still recommended as a safety buffer.**
+> **Z uses a 2-tier LLM architecture** (Qwen3-1.7B fast + Qwen3-4B deep — default 12 GB profile). All interactive chat uses the fast tier; deep tier handles scheduled briefings and crew tasks. See the hardware profiles table above to choose models for your RAM budget. **Swap space is still recommended as a safety buffer.**
 
 ### 0. Add Swap Space (MANDATORY first step)
 
@@ -181,8 +194,8 @@ cp .env.example .env
 # REDIS_PASSWORD=your_strong_random_password  (protects the task queue)
 # BASE_URL=http://open.zero  (or http://YOUR_SERVER_IP — must match your access URL)
 
-# LLM_FAST_CACHE_RAM=256   (MiB for prompt cache - 0.6B tier)
-# LLM_DEEP_CACHE_RAM=1024  (MiB for prompt cache - 8B tier)
+# LLM_FAST_CACHE_RAM=256   (MiB for prompt cache - 1.7B fast tier)
+# LLM_DEEP_CACHE_RAM=1024  (MiB for prompt cache - 4B deep tier)
 
 # [DASHBOARD_TOKEN=your_secure_random_token] (Required for API access)
 ```
