@@ -1521,8 +1521,8 @@ class TestResourceAbuse:
 			"Count from 1 to 1000000.",
 		]
 		assert len(inflation_prompts) > 0, "At least one inflation prompt must be defined"
-# openZero TIER_MAX_TOKENS caps: fast=250, deep=4000
-		tier_caps = {"fast": 250, "deep": 4000}
+# openZero TIER_MAX_TOKENS caps: local=250, cloud=6000
+		tier_caps = {"local": 250, "cloud": 6000}
 		for tier, cap in tier_caps.items():
 			assert cap <= 4000, f"Tier {tier} cap too high: {cap}"
 
@@ -1730,14 +1730,13 @@ def _install_backend_mocks():
 
 	mock_settings = types.SimpleNamespace(
 		LLM_PROVIDER="local",
-		LLM_FAST_URL="http://localhost:8081",
-		LLM_STANDARD_URL="http://localhost:8082",
-		LLM_DEEP_URL="http://localhost:8083",
-		LLM_MODEL_FAST="phi-4-mini",
-		LLM_MODEL_STANDARD="llama-8b",
-		LLM_MODEL_DEEP="qwen-14b",
-		SMART_MODEL_INTERACTIVE=False,
-		DEEP_MODEL_TIMEOUT_S=10,
+		LLM_LOCAL_URL="http://localhost:8081",
+		LLM_CLOUD_BASE_URL="",
+		LLM_CLOUD_API_KEY="",
+		LLM_MODEL_LOCAL="qwen3-0.6b",
+		LLM_MODEL_CLOUD="",
+		SMART_CLOUD_ROUTING=False,
+		CLOUD_MODEL_TIMEOUT_S=30,
 		OPENAI_API_KEY="",
 		QDRANT_HOST="localhost",
 		QDRANT_PORT=6333,

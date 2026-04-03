@@ -29,11 +29,11 @@ services:
     networks:
       - internal
 
-  # --- 2-Tier Local Intelligence (llama-server / llama.cpp) ---
-  # fast: small fast model for trivial tasks; deep: full 8B for everything else.
+  # --- Local LLM Inference (llama-server / llama.cpp) ---
+  # small fast model for all on-device inference; cloud tier is external API.
   # See .env.example for hardware sizing guide and model recommendations.
 
-  llm-fast:
+  llm-local:
     image: ghcr.io/ggml-org/llama.cpp:server
     restart: always
     volumes:
@@ -47,55 +47,22 @@ services:
         soft: -1
         hard: -1
     environment:
-      - MODEL_URL=${LLM_FAST_MODEL_URL}
-      - MODEL_FILE=${LLM_FAST_MODEL_FILE:-Qwen3-1.7B-Q4_K_M.gguf}
-      - KEEP_MODELS=${LLM_FAST_MODEL_FILE:-Qwen3-1.7B-Q4_K_M.gguf},${LLM_DEEP_MODEL_FILE:-Qwen3-4B-Q4_K_M.gguf}
+      - MODEL_URL=${LLM_LOCAL_MODEL_URL}
+      - MODEL_FILE=${LLM_LOCAL_MODEL_FILE:-Qwen3-0.6B-Q4_K_M.gguf}
+      - KEEP_MODELS=${LLM_LOCAL_MODEL_FILE:-Qwen3-0.6B-Q4_K_M.gguf}
       - PORT=8081
-      - THREADS=${LLM_FAST_THREADS:-4}
-      - CTX_SIZE=${LLM_FAST_CTX:-4096}
-      - N_PREDICT=${LLM_FAST_PREDICT:-512}
-      - BATCH_SIZE=${LLM_FAST_BATCH:-512}
-      - PARALLEL=${LLM_FAST_PARALLEL:-1}
-      - LLM_CACHE_RAM=${LLM_FAST_CACHE_RAM:-256}
+      - THREADS=${LLM_LOCAL_THREADS:-7}
+      - CTX_SIZE=${LLM_LOCAL_CTX:-4096}
+      - N_PREDICT=${LLM_LOCAL_PREDICT:-512}
+      - BATCH_SIZE=${LLM_LOCAL_BATCH:-512}
+      - PARALLEL=${LLM_LOCAL_PARALLEL:-1}
+      - LLM_CACHE_RAM=${LLM_LOCAL_CACHE_RAM:-256}
     healthcheck:
       test: [ "CMD", "curl", "-sf", "http://localhost:8081/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 120s
-    networks:
-      - llm
-
-  llm-deep:
-    image: ghcr.io/ggml-org/llama.cpp:server
-    restart: always
-    volumes:
-      - llm_models:/models
-      - ./scripts/llm-entrypoint.sh:/entrypoint.sh
-    entrypoint: [ "/bin/bash", "/entrypoint.sh" ]
-    cap_add:
-      - IPC_LOCK
-    ulimits:
-      memlock:
-        soft: -1
-        hard: -1
-    environment:
-      - MODEL_URL=${LLM_DEEP_MODEL_URL}
-      - MODEL_FILE=${LLM_DEEP_MODEL_FILE:-Qwen3-4B-Q4_K_M.gguf}
-      - KEEP_MODELS=${LLM_FAST_MODEL_FILE:-Qwen3-1.7B-Q4_K_M.gguf},${LLM_DEEP_MODEL_FILE:-Qwen3-4B-Q4_K_M.gguf}
-      - PORT=8083
-      - THREADS=${LLM_DEEP_THREADS:-6}
-      - CTX_SIZE=${LLM_DEEP_CTX:-6144}
-      - N_PREDICT=${LLM_DEEP_PREDICT:-8192}
-      - BATCH_SIZE=${LLM_DEEP_BATCH:-1024}
-      - PARALLEL=${LLM_DEEP_PARALLEL:-1}
-      - LLM_CACHE_RAM=${LLM_DEEP_CACHE_RAM:-1024}
-    healthcheck:
-      test: [ "CMD", "curl", "-sf", "http://localhost:8083/health" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 240s
     networks:
       - llm
 
@@ -199,9 +166,7 @@ services:
         condition: service_healthy
       qdrant:
         condition: service_started
-      llm-fast:
-        condition: service_started
-      llm-deep:
+      llm-local:
         condition: service_started
     env_file: .env
     environment:

@@ -60,13 +60,13 @@ preferences:
 # 4. Intelligence Configuration
 # ------------------------------------------------------------------------------
 intelligence:
-  # 2-Tier architecture: fast / deep
+  # 2-Tier architecture: local / cloud
   # Tier routing is automatic based on message complexity.
-  # Override defaults in .env (LLM_MODEL_FAST, LLM_MODEL_DEEP)
+  # Override defaults in .env (LLM_MODEL_LOCAL, LLM_CLOUD_BASE_URL, etc.)
 
-  # Deep tier timeout (seconds) — fast falls back to deep on timeout
-  deep_timeout_seconds: 12
+  # First-token timeout (seconds) before escalating local → cloud
+  cloud_timeout_seconds: 2
 
-  # Whether to attempt the deep tier for interactive messages at all
-  # Set to false on low-RAM systems to skip the deep tier entirely
-  smart_model_interactive: true
+  # Whether to attempt cloud routing for interactive messages
+  # Set to false for fully air-gapped / offline deployments
+  smart_cloud_routing: true

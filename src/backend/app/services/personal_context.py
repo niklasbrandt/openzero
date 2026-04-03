@@ -213,7 +213,7 @@ async def _llm_compress(filename: str, text: str) -> str:
 				"behavioral rules, and explicit instructions. Remove only redundancy and formatting noise. "
 				"Output only the compressed text, nothing else."
 			),
-			tier="fast",
+			tier="local",
 			_feature="context_compress",
 		)
 		logger.debug("personal_context: LLM-compressed %s (%d→%d chars)", filename, len(text), len(compressed))

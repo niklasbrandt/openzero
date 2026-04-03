@@ -1940,8 +1940,7 @@ async def server_info() -> dict:
 
 	# --- Per-tier LLM props (threads, ctx, etc.) ---
 	tier_urls = {
-		"fast": settings.LLM_FAST_URL,
-		"deep": settings.LLM_DEEP_URL,
+		"local": settings.LLM_LOCAL_URL,
 	}
 	physical_cores = os.cpu_count() or 0
 
@@ -1999,8 +1998,7 @@ async def server_info() -> dict:
 				except Exception:
 					# Fallback to configured value if /slots probe fails
 					env_ctx_map = {
-						"fast": os.environ.get("LLM_FAST_CTX", "4096"),
-						"deep": os.environ.get("LLM_DEEP_CTX", "6144"),
+						"local": os.environ.get("LLM_LOCAL_CTX", "4096"),
 					}
 					tier_info["ctx_size"] = int(env_ctx_map.get(tier_name, "4096"))
 			except Exception:
@@ -2008,16 +2006,14 @@ async def server_info() -> dict:
 
 			# Thread detection from env (the actual configured value)
 			env_thread_map = {
-				"fast": os.environ.get("LLM_FAST_THREADS", "7"),
-				"deep": os.environ.get("LLM_DEEP_THREADS", "7"),
+				"local": os.environ.get("LLM_LOCAL_THREADS", "7"),
 			}
 			configured_threads = int(env_thread_map.get(tier_name, "4"))
 			tier_info["threads"] = configured_threads
 
 			# Cache RAM detection from env (as passed to container)
 			env_cache_map = {
-				"fast": os.environ.get("LLM_FAST_CACHE_RAM", "256"),
-				"deep": os.environ.get("LLM_DEEP_CACHE_RAM", "1024"),
+				"local": os.environ.get("LLM_LOCAL_CACHE_RAM", "256"),
 			}
 			tier_info["cache_ram_mb"] = int(env_cache_map.get(tier_name, "256"))
 
@@ -2206,7 +2202,7 @@ async def server_info() -> dict:
 				# models volume disk usage — exec `du -sb /models` in any running LLM container
 				_llm_containers = [
 					c for c in containers
-					if c.get("Labels", {}).get("com.docker.compose.service", "") in ("llm-fast", "llm-deep")
+					if c.get("Labels", {}).get("com.docker.compose.service", "") in ("llm-local",)
 				]
 				if _llm_containers:
 					try:
@@ -2461,31 +2457,35 @@ async def get_llm_config() -> dict:
 	return {
 		"tiers": [
 			{
-				"tier": "fast",
-				"label": _tier_label("fast", "LLM_FAST_MODEL_FILE", settings.LLM_MODEL_FAST),
+				"tier": "local",
+				"label": _tier_label("local", "LLM_LOCAL_MODEL_FILE", settings.LLM_MODEL_LOCAL),
 				"icon": "zap",
-				"model": _model_display("LLM_FAST_MODEL_FILE", settings.LLM_MODEL_FAST),
-				"use_case": "Greetings, confirmations, trivial Q&A, memory distillation",
-				"threads": int(os.environ.get("LLM_FAST_THREADS", "7")),
-				"ctx": int(os.environ.get("LLM_FAST_CTX", "4096")),
-				"batch": int(os.environ.get("LLM_FAST_BATCH", "512")),
-				"predict": int(os.environ.get("LLM_FAST_PREDICT", "512")),
-				"ram_est_gb": _ram_est("LLM_FAST_MODEL_FILE", settings.LLM_MODEL_FAST),
+				"model": _model_display("LLM_LOCAL_MODEL_FILE", settings.LLM_MODEL_LOCAL),
+				"use_case": "Always-on CPU inference: chat, confirmations, memory distillation",
+				"threads": int(os.environ.get("LLM_LOCAL_THREADS", "7")),
+				"ctx": int(os.environ.get("LLM_LOCAL_CTX", "4096")),
+				"batch": int(os.environ.get("LLM_LOCAL_BATCH", "512")),
+				"predict": int(os.environ.get("LLM_LOCAL_PREDICT", "512")),
+				"ram_est_gb": _ram_est("LLM_LOCAL_MODEL_FILE", settings.LLM_MODEL_LOCAL),
 			},
 			{
-				"tier": "deep",
-				"label": _tier_label("deep", "LLM_DEEP_MODEL_FILE", settings.LLM_MODEL_DEEP),
-				"model": _model_display("LLM_DEEP_MODEL_FILE", settings.LLM_MODEL_DEEP),
-				"use_case": "Conversation, reasoning, creative tasks, briefings, strategic analysis",
-				"threads": int(os.environ.get("LLM_DEEP_THREADS", "7")),
-				"ctx": int(os.environ.get("LLM_DEEP_CTX", "6144")),
-				"batch": int(os.environ.get("LLM_DEEP_BATCH", "512")),
-				"predict": int(os.environ.get("LLM_DEEP_PREDICT", "4096")),
-				"ram_est_gb": _ram_est("LLM_DEEP_MODEL_FILE", settings.LLM_MODEL_DEEP),
+				"tier": "cloud",
+				"label": "Cloud" + (f" ({settings.LLM_MODEL_CLOUD})" if settings.LLM_MODEL_CLOUD else ""),
+				"model": settings.LLM_MODEL_CLOUD or "Not configured",
+				"use_case": "Optional: briefings, crew tasks, reasoning escalation",
+				"threads": None,
+				"ctx": None,
+				"batch": None,
+				"predict": None,
+				"ram_est_gb": 0,
+				"cloud_configured": settings.cloud_configured,
+				"cloud_base_url": settings.LLM_CLOUD_BASE_URL if settings.cloud_configured else "",
 			},
 		],
 		"provider": settings.LLM_PROVIDER,
-		"deep_timeout_s": settings.DEEP_MODEL_TIMEOUT_S,
+		"cloud_configured": settings.cloud_configured,
+		"cloud_routing": settings.SMART_CLOUD_ROUTING,
+		"cloud_timeout_s": settings.CLOUD_MODEL_TIMEOUT_S,
 	}
 @router.get("/benchmark/cpu")
 async def benchmark_cpu() -> dict:
@@ -2552,18 +2552,30 @@ async def benchmark_cpu() -> dict:
 
 
 @router.post("/benchmark/llm")
-async def benchmark_llm(tier: str = "fast"):
+async def benchmark_llm(tier: str = "local"):
 	"""Run a fixed-prompt benchmark against a specific LLM tier and measure tokens/second."""
 	import time
 
-	tier_map = {
-		"fast": (settings.LLM_FAST_URL, settings.LLM_MODEL_FAST),
-		"deep": (settings.LLM_DEEP_URL, settings.LLM_MODEL_DEEP),
-	}
-	if tier not in tier_map:
-		raise HTTPException(status_code=400, detail="Invalid tier")
+	valid_tiers = ["local"]
+	if settings.cloud_configured:
+		valid_tiers.append("cloud")
+	if tier not in valid_tiers:
+		raise HTTPException(status_code=400, detail=f"Invalid tier. Valid: {valid_tiers}")
 
-	base_url, model_name = tier_map[tier]
+	if tier == "cloud":
+		base_url = settings.LLM_CLOUD_BASE_URL.rstrip("/")
+		if not base_url.endswith("/v1"):
+			base_url = f"{base_url}/v1"
+		model_name = settings.LLM_MODEL_CLOUD
+		request_headers = {"Authorization": f"Bearer {settings.LLM_CLOUD_API_KEY}"}
+		request_model = settings.LLM_MODEL_CLOUD
+		api_url = f"{base_url}/chat/completions"
+	else:
+		base_url = settings.LLM_LOCAL_URL
+		model_name = settings.LLM_MODEL_LOCAL
+		request_headers = {}
+		request_model = "local"
+		api_url = f"{base_url}/v1/chat/completions"
 	# Short, deterministic prompt -- produces ~30-50 tokens for reliable measurement
 	# without wasting time on runaway generation.
 	prompt = "List the planets of our solar system in order from the Sun, one per line."
@@ -2573,21 +2585,24 @@ async def benchmark_llm(tier: str = "fast"):
 		first_token_time = None
 		token_count = 0
 
-		# Qwen3 models consume all tokens in the reasoning phase if thinking is
-		# Suppress Qwen3 thinking for all tiers — benchmarks measure raw generation
-		# speed.  The "thinking" API parameter is not honoured by the current
-		# llama.cpp build; /no_think is the only reliable way to disable CoT.
-		bench_messages: list[dict] = [
-			{"role": "system", "content": "/no_think"},
-			{"role": "user", "content": prompt},
-		]
+		# Suppress Qwen3 thinking for local tier (cloud APIs don't use this directive)
+		if tier == "local":
+			bench_messages: list[dict] = [
+				{"role": "system", "content": "/no_think"},
+				{"role": "user", "content": prompt + "\n/no_think"},
+			]
+		else:
+			bench_messages = [
+				{"role": "user", "content": prompt},
+			]
 
 		async with httpx.AsyncClient(timeout=300) as client:
 			async with client.stream(
 				"POST",
-				f"{base_url}/v1/chat/completions",
+				api_url,
+				headers=request_headers,
 				json={
-					"model": "local",
+					"model": request_model,
 					"messages": bench_messages,
 					"stream": True,
 					"max_tokens": 80,
@@ -2623,13 +2638,12 @@ async def benchmark_llm(tier: str = "fast"):
 		if token_count == 0:
 			return {"tier": tier, "model": model_name, "error": "No tokens received — model may be loading or unavailable"}
 
-		# Fetch thread config for this tier
+		# Fetch thread config for this tier (local only)
 		import os
 		thread_env_map = {
-			"fast": "LLM_FAST_THREADS",
-			"deep": "LLM_DEEP_THREADS",
+			"local": "LLM_LOCAL_THREADS",
 		}
-		configured_threads = int(os.environ.get(thread_env_map.get(tier, ""), "0"))
+		configured_threads = int(os.environ.get(thread_env_map.get(tier, ""), "0")) if tier == "local" else 0
 		physical_cores = os.cpu_count() or 0
 		thread_warning = ""
 		if configured_threads and configured_threads < 2:
@@ -2895,6 +2909,6 @@ async def get_llm_active():
 	import time as _t
 	now = _t.monotonic()
 	return {
-		"fast": now - _tier_last_active.get("fast", 0) < 8.0,
-		"deep": now - _tier_last_active.get("deep", 0) < 8.0,
-	}
+			"local": now - _tier_last_active.get("local", 0) < 8.0,
+			"cloud": now - _tier_last_active.get("cloud", 0) < 8.0,
+		}

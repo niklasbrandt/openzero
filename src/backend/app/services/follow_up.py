@@ -106,7 +106,7 @@ async def _llm_classify_urgency(task_titles: list[str]) -> dict[str, str]:
 	)
 	try:
 		from app.services.llm import chat
-		result = await chat(prompt, tier="fast", _feature="urgency_classify")
+		result = await chat(prompt, tier="local", _feature="urgency_classify")
 		mapping: dict[str, str] = {}
 		for line in result.strip().splitlines():
 			if ':' not in line:
