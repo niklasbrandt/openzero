@@ -296,17 +296,17 @@ async def _recover_unanswered_messages():
 		}]
 		prompt = combined
 
-		logger.info("Restart recovery: calling chat_with_context (deep tier, 480 s timeout)...")
+		logger.info("Restart recovery: calling chat_with_context (deep tier, 900 s timeout)...")
 		response = await asyncio.wait_for(
 			chat_with_context(
 				prompt,
 				history=merged_history,
-				include_projects=True,
+				include_projects=False,
 				include_people=True,
 				use_agent=False,
 				tier_override="deep",
 			),
-			timeout=480,
+			timeout=900,
 		)
 		logger.info(
 			"Restart recovery: LLM responded (%d chars): %s",
@@ -639,7 +639,7 @@ async def cmd_remind(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		f"Input: {msg}"
 	)
 	
-	response = await chat(prompt)
+	response = await chat(prompt, _feature="remind_parse")
 	from app.services.agent_actions import parse_and_execute_actions
 	_, executed, _ = await parse_and_execute_actions(response)
 	
@@ -665,7 +665,7 @@ async def cmd_custom(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		f"Input: {msg}"
 	)
 	
-	response = await chat(prompt)
+	response = await chat(prompt, _feature="custom_schedule_parse")
 	from app.services.agent_actions import parse_and_execute_actions
 	_, executed, _ = await parse_and_execute_actions(response)
 	
@@ -1272,7 +1272,8 @@ async def handle_approval(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	response = await chat(
 		full_prompt, 
 		provider=settings.DEEP_THINK_PROVIDER,
-		model=settings.DEEP_THINK_MODEL
+		model=settings.DEEP_THINK_MODEL,
+		_feature="deep_think",
 	)
 	
 	# Deliver the heavy-weight answer
