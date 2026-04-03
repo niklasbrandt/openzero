@@ -140,7 +140,7 @@ Both Telegram and WhatsApp route to the same Z agent with full context: memory r
 
 ### WhatsApp
 
-Free-form messages work identically. Slash commands are not available on WhatsApp — send plain text instead (e.g. `briefing`, `status`, `crew daily_briefing`).
+Free-form messages work identically — every message goes through the full Z context pipeline. There are no slash commands; just write naturally (e.g. "give me my briefing", "what's on my calendar today").
 
 ---
 
