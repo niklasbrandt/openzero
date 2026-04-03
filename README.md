@@ -142,7 +142,14 @@ Both Telegram and WhatsApp route to the same Z agent with full context: memory r
 
 Free-form messages work identically — every message goes through the full Z context pipeline. There are no slash commands; just write naturally.
 
-Crews with keyword triggers activate automatically when your message matches. For example, the `nutrition` crew listens for words like `recipe`, `meal`, `cook`, `grocery`, `macro` — so sending "make me a high-protein dinner recipe for tonight" will route directly to it, run the full multi-character crew, and output a structured Planka board with the recipe and shopping list.
+Z reads every message and decides whether to answer directly or delegate to a specialist crew. The decision has two layers:
+
+1. **Keyword routing** — each crew in `agent/crews.yaml` declares a `keywords` list. If any keyword appears in the message (case-insensitive), Z routes to that crew without invoking the main language model at all. This keeps latency near-zero for predictable domains.
+2. **LLM routing** — if no keyword matches, Z passes the message to the fast-tier model with the full crew registry as context. The model returns the best-fit crew ID, or `none` to handle the message itself. This catches paraphrased intent that keywords would miss.
+
+If multiple crews match, keyword specificity wins; ties go to the crew listed first in the YAML. The routing decision is always logged, so you can tune keywords or add crews without touching code.
+
+For example, the `nutrition` crew listens for words like `recipe`, `meal`, `cook`, `grocery`, `macro` — so sending "make me a high-protein dinner recipe for tonight" routes directly to it, runs the full multi-character crew, and outputs a structured Planka board with the recipe and shopping list. A message like "what should I eat to hit 180g protein today?" contains no exact keyword but the fast-tier model correctly identifies `nutrition` as the best crew and delegates accordingly.
 
 ---
 
@@ -151,19 +158,53 @@ Crews with keyword triggers activate automatically when your message matches. Fo
 Crews are YAML-defined agent task sequences in `agent/crews.yaml`. No code changes needed to add one.
 
 ```yaml
-- id: "market-intel"
-  name: "Competitive Intelligence Scout"
-  description: "Tracks industry shifts, competitor moves, and sentiment."
-  group: "business"
+- id: "flow"
+  name: "Productivity, Stagnation & Deep Work Engine"
+  description: "Unblocks stuck tasks and schedules deep work execution."
+  group: "basic"
   type: "agent"
   feeds_briefing: "/week"
   briefing_day: "MON"
   instructions: |
-    Track industry shifts and perform structured SWOT analysis.
-    Deliver a single-page exec brief on market sentiment.
+    Scan Planka boards for tasks that lack recent activity.
+    Propose actionable micro-tasks and identify optimal calendar blocks for deep work.
   characters:
-    - name: "The Trend Pulse Monitor"
-      role: "Tracks product launches, funding, and tech shifts."
+    - name: "The Systems Auditor"
+      role: "Flags deadlocked boards, deadline drift, and WIP violations."
+    - name: "The Unblocker Strategist"
+      role: "Outputs micro-tasks under 25 min to break inertia."
+    - name: "The Session Architect"
+      role: "Schedules dedicated deep work blocks into ideal energy windows."
+```
+
+```yaml
+- id: "nutrition"
+  name: "Precision Culinary & Macro Optimizer"
+  description: "Generates weekly meal boards, recipes, and shopping lists."
+  group: "private"
+  type: "agent"
+  feeds_briefing: "/week"
+  briefing_day: "SUN"
+  keywords:
+    - recipe
+    - meal
+    - cook
+    - grocery
+    - macro
+    - calories
+    - ingredient
+    - shopping list
+  instructions: |
+    Build comprehensive meal plans adhering to constraints in personal/health.md.
+    Use metric units. Output deduplicated shopping checklists.
+    Persist all output to Planka — board structure should fit the content.
+  characters:
+    - name: "The Clinical Nutritionist"
+      role: "Strictly enforces health.md constraints (allergies, macros, exclusions)."
+    - name: "The Production Head Chef"
+      role: "Builds sequential, batch-optimized cooking instructions."
+    - name: "The Shopping Logistics Officer"
+      role: "Deduplicates all recipes into one aisle-mapped grocery checklist."
 ```
 
 Scheduling: `feeds_briefing: /day|/week|/month|/quarter` (briefing-relative, recommended) · `schedule: "0 7 * * *"` (fixed cron)

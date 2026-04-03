@@ -208,7 +208,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 	executed_cmds = []
 	pending_actions = []
 	clean_reply = reply
-	
+
 	# helper to clean tag from reply
 	def strip_tag(text, tag_match):
 		return text.replace(tag_match, "").strip()
@@ -237,27 +237,14 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 					executed_cmds.append(f"{action_type} executed.")
 			return True
 
-	# 1. Create Task Tag
-	task_pattern = r"\[?ACTION: CREATE_TASK \| BOARD: ([^\|\]]+) \| LIST: ([^\|\]]+) \| TITLE: ([^\|\]]+)\]?"
-	for match in re.finditer(task_pattern, reply):
-		raw_tag = match.group(0)
-		board, llist, title = match.groups()
-		board, llist, title = board.strip(), llist.strip(), title.strip()
-		
-		async def _exec_task(board=board, llist=llist, title=title):
-			path = await planka_create_task(board_name=board, list_name=llist, title=title)
-			if path:
-				return f"Task '{title}' created in {path}."
-			return f"\u26a0 Failed to create task '{title}'. Check Planka connection."
+	# ── Scaffolding tags run FIRST so CREATE_TASK can land on the right board ──
 
-		await handle_action("CREATE_TASK", raw_tag, _exec_task, f"Create task '{title}' on {board}")
-		clean_reply = strip_tag(clean_reply, raw_tag)
-
-	# newly_created_projects maps project_name.lower() -> project_id so _exec_board
-	# can find the project by ID without a second GET /api/projects after creation.
+	# newly_created_projects: project_name.lower() -> project_id
 	newly_created_projects: dict[str, str] = {}
+	# newly_created_boards: board_name.lower() -> board_id
+	newly_created_boards: dict[str, str] = {}
 
-	# 2. Create Project Tag — DESCRIPTION is optional (LLM may omit it).
+	# 1. Create Project Tag — DESCRIPTION is optional (LLM may omit it).
 	# IMPORTANT: use greedy [^\|\]]+ (NOT lazy +?) — lazy combined with optional \]?
 	# causes the group to match only the first character of the project name.
 	proj_pattern = r"\[?ACTION: CREATE_PROJECT \| NAME: ([^\|\]]+)(?:\s*\|\s*DESCRIPTION:\s*([^\|\]]+))?\]?"
@@ -282,11 +269,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 		await handle_action("CREATE_PROJECT", raw_tag, _exec_project, f"Create project '{name}'")
 		clean_reply = strip_tag(clean_reply, raw_tag)
 
-	# 2b. Create Board Tag
-	# newly_created_boards maps board_name.lower() -> board_id so CREATE_LIST can
-	# resolve boards that were just created in this same response without a second
-	# round-trip search (which can fail if Planka hasn't committed the object yet).
-	newly_created_boards: dict[str, str] = {}
+	# 2. Create Board Tag — uses newly_created_projects as a fast path.
 	board_pattern = r"\[?ACTION: CREATE_BOARD \| PROJECT: ([^\|\]]+) \| NAME: ([^\|\]]+)\]?"
 	for match in re.finditer(board_pattern, reply):
 		raw_tag = match.group(0)
@@ -324,7 +307,9 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 		await handle_action("CREATE_BOARD", raw_tag, _exec_board, f"Create board '{board_name}' in project '{proj_name}'")
 		clean_reply = strip_tag(clean_reply, raw_tag)
 
-	# 2c. Create List (Column) Tag
+	# 3. Create List (Column) Tag — with auto-board-creation fallback.
+	# LLMs often skip CREATE_BOARD and reference the project name as the board name.
+	# If the board is not found, we try to auto-create it inside the project.
 	list_pattern = r"\[?ACTION: CREATE_LIST \| BOARD: ([^\|\]]+) \| NAME: ([^\|\]]+)\]?"
 	for match in re.finditer(list_pattern, reply):
 		raw_tag = match.group(0)
@@ -334,27 +319,63 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 
 		async def _exec_list(board_name=board_name, list_name=list_name):
 			try:
-				# Fast path: board was just created in this response — use its ID directly
-				board_id = newly_created_boards.get(board_name.lower())
-				if board_id:
-					from app.services.planka_common import get_planka_auth_token
-					import httpx
-					from app.config import settings
+				from app.services.planka_common import get_planka_auth_token
+				import httpx
+				from app.config import settings
+
+				async def _post_list_on_board(bid: str) -> str:
 					token = await get_planka_auth_token()
 					async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, timeout=15.0, headers={"Authorization": f"Bearer {token}"}) as client:
-						resp = await client.post(f"/api/boards/{board_id}/lists", json={"name": list_name, "position": 65535})
+						resp = await client.post(f"/api/boards/{bid}/lists", json={"name": list_name, "position": 65535})
 						resp.raise_for_status()
-						return f"List '{list_name}' created in '{board_name}'."
-				# Fallback: global board search (board pre-existed)
+					return f"List '{list_name}' created in '{board_name}'."
+
+				# Fast path A: board was just created in this response
+				board_id = newly_created_boards.get(board_name.lower())
+				if board_id:
+					return await _post_list_on_board(board_id)
+
+				# Fast path B: board pre-existed — global search
 				result = await planka_create_list(board_name=board_name, list_name=list_name)
 				if result:
 					return f"List '{list_name}' created in '{board_name}'."
-				return f"\u26a0 Failed to create list '{list_name}' \u2014 board '{board_name}' not found or Planka error."
+
+				# Auto-create fallback: LLM referenced a board that doesn't exist yet.
+				# Case 1 — board_name is exactly a project name (LLM confusion)
+				# Case 2 — only one project was created this response; use it
+				proj_id: str | None = newly_created_projects.get(board_name.lower())
+				if not proj_id and len(newly_created_projects) == 1:
+					proj_id = next(iter(newly_created_projects.values()))
+
+				if proj_id:
+					board_result = await planka_create_board(project_id=proj_id, name=board_name)
+					if board_result and board_result.get("id"):
+						bid = board_result["id"]
+						newly_created_boards[board_name.lower()] = bid
+						return await _post_list_on_board(bid)
+
+				return f"\u26a0 Failed to create list '{list_name}' \u2014 board '{board_name}' not found."
 			except Exception as _e:
 				logger.error("CREATE_LIST failed: %s", _e)
 				return f"\u26a0 Failed to create list '{list_name}'. System error."
 
 		await handle_action("CREATE_LIST", raw_tag, _exec_list, f"Create list '{list_name}' on board '{board_name}'")
+		clean_reply = strip_tag(clean_reply, raw_tag)
+
+	# 4. Create Task Tag — runs AFTER scaffolding so the board/list already exists.
+	task_pattern = r"\[?ACTION: CREATE_TASK \| BOARD: ([^\|\]]+) \| LIST: ([^\|\]]+) \| TITLE: ([^\|\]]+)\]?"
+	for match in re.finditer(task_pattern, reply):
+		raw_tag = match.group(0)
+		board, llist, title = match.groups()
+		board, llist, title = board.strip().strip('"\''), llist.strip().strip('"\''), title.strip().strip('"\'')
+
+		async def _exec_task(board=board, llist=llist, title=title):
+			path = await planka_create_task(board_name=board, list_name=llist, title=title)
+			if path:
+				return f"Task '{title}' created in {path}."
+			return f"\u26a0 Failed to create task '{title}'. Check Planka connection."
+
+		await handle_action("CREATE_TASK", raw_tag, _exec_task, f"Create task '{title}' on {board}")
 		clean_reply = strip_tag(clean_reply, raw_tag)
 
 	# 3. Create Event Tag

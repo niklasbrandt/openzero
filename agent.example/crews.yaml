@@ -99,23 +99,6 @@ crews:
       - name: "The Scaffold Executor"
         role: "Programmatically mints the boards, lists, and seed cards."
 
-  - id: "network"
-    name: "Relational Integrity & Hub Cultivator"
-    description: "Tends to the people in your database, preventing relationship decay."
-    group: "basic"
-    type: "agent"
-    feeds_briefing: "/week"
-    briefing_day: "FRI"
-    instructions: |
-      Review relationship recency for Inner and Close circles. Prevent relationship decay by proposing meetups or gifts.
-    characters:
-      - name: "The Circle Manager"
-        role: "Monitors the recency of interactions for Inner and Close circles, flagging decay."
-      - name: "The Event Catalyst"
-        role: "Proposes contextual check-ins, coffee meetups, or gift triggers based on birthdays or life events."
-      - name: "The Context Archivist"
-        role: "Extracts and updates facts about people from casual chat into their profile."
-
   # ==========================================
   # BUSINESS & OPERATIONS
   # ==========================================
@@ -172,62 +155,6 @@ crews:
         role: "Isolates finalized decisions, dependencies, and rationale."
       - name: "The Action Item Compiler"
         role: "Emits ready-to-use Planka cards assigned to owners with deadlines."
-
-  - id: "brand"
-    name: "Global Sentiment & Brand Health Monitor"
-    description: "Tracks public reputation across social platforms."
-    group: "business"
-    type: "agent"
-    feeds_briefing: "/week"
-    briefing_day: "FRI"
-    instructions: |
-      Monitor overall brand health and predict emerging narrative shifts before they solidify.
-    characters:
-      - name: "The Social Signal Listener"
-        role: "Aggregates and categorizes sentiment across channels."
-      - name: "The Narrative Analyst"
-        role: "Detects perception shifts before they crystallize."
-      - name: "The Crisis Warning System"
-        role: "Distinguishes organic criticism from coordinated bot activity."
-
-  - id: "roadmap"
-    name: "Quarterly Vision Architect"
-    description: "Ensures daily tasks align with big-picture quarter goals."
-    group: "business"
-    type: "agent"
-    feeds_briefing: "/quarter"
-    briefing_months: "1,4,7,10"
-    briefing_dom: "1"
-    instructions: |
-      Measure execution against high-level OKRs. Reallocate focus to strategic blocks to prevent drift.
-    characters:
-      - name: "The Strategic Visionary"
-        role: "Drafts measurable OKRs for the quarter."
-      - name: "The Drift Detector"
-        role: "Quantifies how far actual board completions are deviating from the roadmap."
-      - name: "The Resource Allocator"
-        role: "Rebalances theoretical time dedicated to operational vs. strategic work."
-
-  - id: "finance"
-    name: "Fiscal Auditor & Asset Integrity"
-    description: "Tracks cash flow, taxes, portfolio, and all subscriptions."
-    group: "business"
-    type: "agent"
-    feeds_briefing: "/month"
-    briefing_dom: "1"
-    instructions: |
-      Enforce budgetary constraints, categorize spending, forecast liquidity, and prune orphaned subscriptions.
-    characters:
-      - name: "The Compliance Bookkeeper"
-        role: "Categorizes raw transaction lines against tax laws."
-      - name: "The Tax Optimization Advisor"
-        role: "Flags deductible purchases and filing deadlines."
-      - name: "The Cash Flow Forecaster"
-        role: "Projects 30/60/90-day liquidity runways."
-      - name: "The Subscription Auditor"
-        role: "Identifies orphaned SaaS accounts and upcoming renewals."
-      - name: "The Depreciation Tracker"
-        role: "Logs lifespans for high-value physical assets for proactive replacement."
 
   - id: "content"
     name: "Creative Content & Brand Voice Engine"
