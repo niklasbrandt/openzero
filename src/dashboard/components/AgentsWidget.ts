@@ -718,7 +718,7 @@ export class AgentsWidget extends HTMLElement {
 				<div class="form-group" style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
 					<div>
 						<label>${this.tr('identity_archetype', 'Core Identity / Archetype')}</label>
-						<input type="text" id="role-input" value="${this.esc(p.role)}">
+						<input type="text" id="role-input" placeholder="${this.tr('archetype_placeholder', 'e.g. Ruthless operator. Blunt, zero warmth, no patience for excuses.')}" value="${this.esc(p.role)}">
 					</div>
 					<div>
 						<label>${this.tr('relational_context', 'Relationship Context')}</label>
