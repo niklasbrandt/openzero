@@ -339,6 +339,59 @@ The `agent/crews.yaml` file controls the execution of autonomous background crew
 3. **Character Priming:** Use specific archetypes in the `characters` list to prime the LLM for higher-quality reasoning.
 4. **Registry Sync:** The backend automatically loads this manifest at startup. Any logic changes in the YAML are applied immediately on the next execution cycle.
 
+### 5g. Enable WhatsApp Channel (Optional)
+
+openZero supports WhatsApp as a second messaging channel alongside Telegram. Messages sent to your WhatsApp number are routed through the same universal message bus — replies appear in both the WhatsApp thread and the dashboard conversation view.
+
+This uses the **Meta WhatsApp Cloud API** (free tier, no monthly fee). You need a Meta developer account and a phone number enrolled in the WhatsApp Business Platform.
+
+#### Prerequisites
+
+- A Meta developer account at [developers.facebook.com](https://developers.facebook.com)
+- A phone number that is **not already on personal WhatsApp** (use the Meta test number for dev, or register a dedicated SIM)
+- Your openZero VPS must be publicly reachable over HTTPS (Traefik + a domain, or a Tailscale funnel)
+
+#### Step-by-step
+
+1. **Create a Meta App:**
+   - Go to developers.facebook.com > My Apps > Create App.
+   - Choose "Business" type.
+   - Add the "WhatsApp" product to your app.
+
+2. **Get your credentials** (from the WhatsApp > API Setup page):
+   - **Phone Number ID** — shown on the API Setup page next to your number. Copy it.
+   - **Access Token** — generate a permanent System User token in the Business Manager (Settings > System Users > Generate Token, scope: `whatsapp_business_messaging`).
+   - **App Secret** — from your app's Settings > Basic page.
+
+3. **Add to your `.env`:**
+
+	```env
+	WHATSAPP_PHONE_NUMBER_ID=your_phone_number_id
+	WHATSAPP_ACCESS_TOKEN=your_permanent_system_user_token
+	WHATSAPP_APP_SECRET=your_app_secret
+	WHATSAPP_WEBHOOK_VERIFY_TOKEN=pick_any_random_secret_string
+	WHATSAPP_ALLOWED_PHONE=15551234567   # Your personal WhatsApp number in E.164 without '+'
+	```
+
+4. **Register the webhook in the Meta developer portal:**
+   - Go to WhatsApp > Configuration > Webhook.
+   - Set the **Callback URL** to:  `https://your-domain-or-ip/api/whatsapp/webhook`
+   - Set the **Verify Token** to the same value as `WHATSAPP_WEBHOOK_VERIFY_TOKEN` above.
+   - Click **Verify and Save**.
+   - Subscribe to the **messages** field.
+
+5. **Deploy:** Run `bash scripts/sync.sh` from your laptop. The backend will log `WhatsApp channel registered.` on startup if the credentials are present.
+
+6. **Test:** Send a WhatsApp message from your personal number (`WHATSAPP_ALLOWED_PHONE`) to the registered business number. Z will reply within a few seconds.
+
+> [!NOTE]
+> The webhook URL must be reachable over **HTTPS** for the Meta portal to accept it. If your VPS only has HTTP (no domain/TLS), use [Tailscale Funnel](https://tailscale.com/kb/1223/funnel) to expose the endpoint temporarily during initial setup.
+
+> [!NOTE]
+> Messages from any phone number other than `WHATSAPP_ALLOWED_PHONE` are silently discarded. This is enforced at the adapter level before any LLM call is made.
+
+---
+
 ### 5b. Restrict Dashboard to Tailscale Only (Optional, Recommended)
 
 By default, Traefik binds port 80 on all interfaces (`0.0.0.0`). If you are using Tailscale, you can restrict it to your server's Tailscale IP so the dashboard is unreachable from the public internet.
