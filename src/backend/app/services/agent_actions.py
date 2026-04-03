@@ -521,7 +521,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 				
 			try:
 				ans = await native_crew_engine.run_crew(crew_id, user_inputs)
-				executed_cmds.append(f"__CREW_RUN__:{config.name}")
+				executed_cmds.append(f"__CREW_RUN__:{config.id}")
 				return ans
 			except Exception as e:
 				logger.error("RUN_CREW failed for '%s': %s", crew_id, e)
