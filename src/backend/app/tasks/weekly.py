@@ -27,7 +27,7 @@ async def weekly_review():
 			"- Be concise and professional."
 		)
 		
-		content = await chat(prompt)
+		content = await chat(prompt, _feature="weekly_review")
 		
 		# Store in Database
 		async with AsyncSessionLocal() as session:

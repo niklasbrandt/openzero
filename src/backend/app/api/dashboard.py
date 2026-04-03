@@ -2769,3 +2769,63 @@ async def get_crews_history():
     # Note: Full historical telemetry is typically pulled directly from the Native Engine's audit log.
     # We return a stub or empty list pending the remote sync proxy.
     return {"history": []}
+
+
+@router.get("/llm-metrics")
+async def get_llm_metrics():
+	"""Return LLM usage analytics: per-feature call counts, avg latency, tier distribution."""
+	from app.models.db import AsyncSessionLocal, LLMMetric
+	from sqlalchemy import select, func
+	try:
+		async with AsyncSessionLocal() as session:
+			# Per-feature aggregates
+			rows = await session.execute(
+				select(
+					LLMMetric.feature,
+					LLMMetric.tier,
+					LLMMetric.model,
+					func.count(LLMMetric.id).label("calls"),
+					func.avg(LLMMetric.latency_ms).label("avg_latency_ms"),
+					func.sum(LLMMetric.tokens).label("total_tokens"),
+					func.max(LLMMetric.latency_ms).label("max_latency_ms"),
+				)
+				.group_by(LLMMetric.feature, LLMMetric.tier, LLMMetric.model)
+				.order_by(func.count(LLMMetric.id).desc())
+			)
+			feature_rows = rows.all()
+
+			# Tier totals
+			tier_rows = await session.execute(
+				select(
+					LLMMetric.tier,
+					func.count(LLMMetric.id).label("calls"),
+					func.avg(LLMMetric.latency_ms).label("avg_latency_ms"),
+				)
+				.group_by(LLMMetric.tier)
+			)
+			tier_totals = {r.tier: {"calls": r.calls, "avg_latency_ms": round(r.avg_latency_ms or 0)} for r in tier_rows.all()}
+
+			# Total recorded
+			total_result = await session.execute(select(func.count(LLMMetric.id)))
+			total = total_result.scalar() or 0
+
+		features = [
+			{
+				"feature": r.feature,
+				"tier": r.tier,
+				"model": r.model or "",
+				"calls": r.calls,
+				"avg_latency_ms": round(r.avg_latency_ms or 0),
+				"max_latency_ms": r.max_latency_ms or 0,
+				"total_tokens": r.total_tokens or 0,
+			}
+			for r in feature_rows
+		]
+		return {
+			"total_recorded": total,
+			"by_tier": tier_totals,
+			"by_feature": features,
+		}
+	except Exception as e:
+		logger.error("get_llm_metrics failed: %s", e)
+		return {"total_recorded": 0, "by_tier": {}, "by_feature": []}

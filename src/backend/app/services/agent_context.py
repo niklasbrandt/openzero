@@ -217,6 +217,7 @@ async def _llm_compress(filename: str, text: str) -> str:
 				"Output only the compressed text, nothing else."
 			),
 			tier="fast",
+			_feature="context_compress",
 		)
 		logger.debug("agent_context: LLM-compressed %s (%d→%d chars)", filename, len(text), len(compressed))
 		return compressed.strip()
