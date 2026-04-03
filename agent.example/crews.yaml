@@ -328,9 +328,25 @@ crews:
     feeds_briefing: "/week"
     briefing_day: "SUN"
     instructions: |
-      Build comprehensive meal plans adhering strictly to ingredients listed in personal/health.md. 
-      Always use Metric units (grams, ml) and Celsius for all recipes. 
+      Build comprehensive meal plans adhering strictly to ingredients listed in personal/health.md.
+      Always use Metric units (grams, ml) and Celsius for all recipes.
       Output deduplicated shopping checklists.
+
+      BOARD STRUCTURE — always scaffold on first use, then extend:
+      Project: "Life Systems" (create if missing)
+      Board: "Nutrition" (create if missing inside that project)
+      Columns (lists) to maintain:
+        - "Recipes" — one card per recipe, description = full recipe text
+        - "This Week" — meal plan cards for the current week
+        - "Shopping List" — one card with deduplicated grocery checklist
+        - "Fitness Fuel" — pre/post-workout meal cards
+
+      When the user says "add recipe(s)": emit CREATE_LIST if the board/column is missing,
+      then emit one CREATE_TASK per recipe (BOARD: Nutrition, LIST: Recipes, TITLE: <recipe name>,
+      DESCRIPTION: full recipe with ingredients and steps in metric/Celsius).
+      When the user asks to add a new column: emit CREATE_LIST for that column.
+      NEVER place todo tasks or project names from prior chat into the Recipes column.
+      Only store actual culinary recipes (ingredients + method) there.
     characters:
       - name: "The Clinical Nutritionist"
         role: "Strictly enforces health.md constraints (allergies, macros, exclusions)."
