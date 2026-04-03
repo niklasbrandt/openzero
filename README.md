@@ -10,7 +10,7 @@ Meet Z — a self-hosted personal AI operating system. Deploy on a VPS or homela
 
 ## What it does
 
-openZero is a private, composable AI system designed to run on a single VPS without a GPU. It bundles an autonomous AI agent named Z with local LLM inference, semantic long-term memory, a real-time dashboard, calendar intelligence, unified messaging, and a Kanban task engine — all self-hosted and air-gap compatible via Tailscale.
+openZero is a private, composable AI system built around a single agent named Z. It bundles local LLM inference, semantic long-term memory, a real-time web dashboard, calendar and email intelligence, multi-channel messaging (Telegram, WhatsApp, ...), autonomous background crews, and a Kanban task engine — all running on your own hardware and reachable through a Tailscale private network.
 
 The system is built with no proprietary lock-in: the LLM is swappable (llama.cpp, any OpenAI-compatible endpoint), the memory backend is open-source (Qdrant), and every service is a standard Docker container. Data never leaves your infrastructure unless you explicitly configure an external inference provider.
 
