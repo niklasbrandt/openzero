@@ -1094,6 +1094,14 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 	from app.services.llm import sanitise_output, last_model_used
 	response = sanitise_output(response)
 
+	# If the LLM timed out or returned nothing, silently remove the thinking message.
+	if not response.strip():
+		try:
+			await thinking_msg.delete()
+		except Exception:
+			pass
+		return
+
 	# Parse action tags, save Z reply, schedule background memory — all via bus.
 	clean_reply, executed_cmds, _ = await bus.commit_reply(
 		channel="telegram",
