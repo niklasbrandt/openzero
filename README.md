@@ -6,7 +6,7 @@
 [![Self-Hosted](https://img.shields.io/badge/Deployment-Self--Hosted-blue.svg)](BUILD.md)
 [![LLM Agnostic](https://img.shields.io/badge/LLM-Local_%2B_API_Agnostic-FF6B35.svg)](#stack)
 [![Dual LLM Tier](https://img.shields.io/badge/Routing-Fast_%2B_Deep_Tier-blueviolet.svg)](#stack)
-[![Autonomous Crews](https://img.shields.io/badge/Crews-40%2B_YAML_Scheduled-brightgreen.svg)](#autonomous-crews)
+[![Autonomous Crews](https://img.shields.io/badge/Crews-YAML_Scheduled-brightgreen.svg)](#autonomous-crews)
 [![Crew Output](https://img.shields.io/badge/Crew_Output-Planka_Kanban-0079BF.svg)](#autonomous-crews)
 [![Semantic Memory](https://img.shields.io/badge/Memory-Qdrant_Vector-8e44ad.svg)](#memory--learning)
 [![Multi-Channel](https://img.shields.io/badge/Messaging-Telegram_%C2%B7_WhatsApp-25D366.svg)](#channels)
