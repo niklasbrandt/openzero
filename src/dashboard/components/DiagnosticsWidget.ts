@@ -619,16 +619,17 @@ export class DiagnosticsWidget extends HTMLElement {
 							}
 						}
 						if (!model) {
-						const cfgTier = cfgTiers.find((x: any) => x.tier === name);
-						if (name === 'local') {
-							model = cfgTier?.model || 'Qwen3-0.6B';
-						} else {
-							model = cfgTier?.cloud_configured ? (cfgTier?.model || 'Connected') : 'Not configured';
+							const cfgTier = cfgTiers.find((x: any) => x.tier === name);
+							if (name === 'local') {
+								model = cfgTier?.model || 'Qwen3-0.6B';
+							} else {
+								model = cfgTier?.cloud_configured ? (cfgTier?.model || 'Connected') : 'Not configured';
+							}
 						}
 
 						const ctx = ctxFor(name);
 						const threads = threadsFor(name);
-							const liveRamGb = ((srv.container_ram || []).find((c: any) => c.name === 'llm-' + name) || {}).gb || 0;
+						const liveRamGb = ((srv.container_ram || []).find((c: any) => c.name === 'llm-' + name) || {}).gb || 0;
 						
 						// Enhanced metadata from tier data (td)
 						const fileSizeGb = td.model_size_gb || 0;
