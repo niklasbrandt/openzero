@@ -284,7 +284,14 @@ async def _recover_unanswered_messages():
 			"role": "assistant",
 			"content": "(You were offline and just came back. These messages came in while you were down — pick up like a friend would, naturally, no announcements.)",
 		}]
-		prompt = combined
+		# Append action tag imperative so the model emits CREATE_TASK tags
+		# even on the use_agent=False path (which skips the CRITICAL imperative).
+		prompt = (
+			combined
+			+ "\n\nCRITICAL: For EVERY todo or task mentioned above, you MUST emit a "
+			"[ACTION: CREATE_TASK | BOARD: Personal | LIST: Todo | TITLE: <task>] tag "
+			"at the END of your reply. Do NOT just describe — emit the tag."
+		)
 		response = await asyncio.wait_for(
 			chat_with_context(
 				prompt,
