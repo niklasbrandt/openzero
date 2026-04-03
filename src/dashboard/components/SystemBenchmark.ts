@@ -15,8 +15,8 @@ export class SystemBenchmark extends HTMLElement {
 
 	// Expected tok/s ranges per tier on CPU-only (Q4_K_M quantized)
 	private static readonly EXPECTATIONS: Record<string, { model: string; fast: number; good: number; ok: number }> = {
-		fast: { model: '~0.6B', fast: 15, good: 8, ok: 3 },
-		deep: { model: '~8B', fast: 10, good: 5, ok: 2 },
+		local: { model: '~0.6B', fast: 20, good: 14, ok: 7 },
+		cloud: { model: 'cloud', fast: 40, good: 20, ok: 8 },
 	};
 
 	constructor() {
@@ -95,7 +95,7 @@ export class SystemBenchmark extends HTMLElement {
 		}
 
 		try {
-			const tiers = ['fast', 'deep'];
+			const tiers = ['local', 'cloud'];
 			for (const tier of tiers) {
 				await this.runBenchmark(tier);
 			}
@@ -120,7 +120,7 @@ export class SystemBenchmark extends HTMLElement {
 	}
 
 	private getRating(tps: number, tier: string): { cls: string; icon: string; label: string; hint: string } {
-		const exp = SystemBenchmark.EXPECTATIONS[tier] || SystemBenchmark.EXPECTATIONS['deep'];
+		const exp = SystemBenchmark.EXPECTATIONS[tier] || SystemBenchmark.EXPECTATIONS['local'];
 		if (tps >= exp.fast) return {
 			cls: 'excellent',
 			icon: '\uD83D\uDE80',
@@ -176,7 +176,7 @@ export class SystemBenchmark extends HTMLElement {
 
 			const rating = this.getRating(r.tokens_per_second, r.tier);
 			const ttftHint = this.getTtftHint(parseFloat(r.time_to_first_token));
-			const exp = SystemBenchmark.EXPECTATIONS[r.tier] || SystemBenchmark.EXPECTATIONS['deep'];
+			const exp = SystemBenchmark.EXPECTATIONS[r.tier] || SystemBenchmark.EXPECTATIONS['local'];
 
 			// Thread utilization warning
 			const warningHtml = r.thread_warning
@@ -573,8 +573,8 @@ export class SystemBenchmark extends HTMLElement {
 
 			<div class="bench-header-bar">
 				<div class="bench-actions" aria-actions_for="${this.tr('bench_subtitle', 'Throughput & Performance Rating')}">
-					<button class="bench-btn has-tip" id="bench-fast" data-tip="${this.tr('tip_bench_fast', 'Benchmark the fast tier (~0.6B model). Used for quick tasks like greetings and memory distillation.')}" aria-label="${this.tr('bench_fast', 'Bench fast')}">${this.tr('bench_fast', 'Bench fast')}</button>
-					<button class="bench-btn has-tip" id="bench-deep" data-tip="${this.tr('tip_bench_deep', 'Benchmark the deep tier (~8B model). Used for complex analysis and strategic thought.')}" aria-label="${this.tr('bench_deep', 'Bench deep')}">${this.tr('bench_deep', 'Bench deep')}</button>
+					<button class="bench-btn has-tip" id="bench-local" data-tip="${this.tr('tip_bench_local', 'Benchmark the local tier (~0.6B model). Used for quick tasks like greetings and memory distillation.')}" aria-label="${this.tr('bench_local', 'Bench local')}">${this.tr('bench_local', 'Bench local')}</button>
+					<button class="bench-btn has-tip" id="bench-cloud" data-tip="${this.tr('tip_bench_cloud', 'Benchmark the cloud tier. Used for complex analysis and reasoning tasks.')}" aria-label="${this.tr('bench_cloud', 'Bench cloud')}">${this.tr('bench_cloud', 'Bench cloud')}</button>
 					<button class="bench-btn all has-tip" id="bench-all" data-tip="${this.tr('tip_bench_all', 'Run both tier benchmarks sequentially to get a complete performance picture.')}" aria-label="${this.tr('bench_run_all', 'Run All')}">${this.tr('bench_run_all', 'Run All')}</button>
 				</div>
 			</div>
@@ -591,8 +591,8 @@ export class SystemBenchmark extends HTMLElement {
 			</div>
 		`;
 
-		this.shadowRoot?.querySelector('#bench-fast')?.addEventListener('click', () => this.runBenchmark('fast'));
-		this.shadowRoot?.querySelector('#bench-deep')?.addEventListener('click', () => this.runBenchmark('deep'));
+		this.shadowRoot?.querySelector('#bench-local')?.addEventListener('click', () => this.runBenchmark('local'));
+		this.shadowRoot?.querySelector('#bench-cloud')?.addEventListener('click', () => this.runBenchmark('cloud'));
 		this.shadowRoot?.querySelector('#bench-all')?.addEventListener('click', () => this.runAllBenchmarks());
 		this.updateBenchPanel();
 		this.injectTooltips();

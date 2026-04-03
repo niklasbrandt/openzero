@@ -197,7 +197,7 @@ export class ChatPrompt extends HTMLElement {
 					<span class="tokens"></span>
 				</div>
 				<div class="bubble-footer">
-					<span class="model-tag">${isCrew ? 'deep' : '...'}</span>
+					<span class="model-tag">${isCrew ? 'cloud' : '...'}</span>
 					<span class="time">${this.formatDateTime(new Date())}</span>
 				</div>
 			</div>
