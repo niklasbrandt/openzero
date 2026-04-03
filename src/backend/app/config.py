@@ -78,6 +78,17 @@ class Settings(BaseSettings):
     PLANKA_ADMIN_EMAIL: str = ""
     PLANKA_ADMIN_PASSWORD: str = ""
 
+    # WhatsApp Cloud API (optional — leave empty to disable)
+    # See BUILD.md "WhatsApp" section for setup instructions.
+    WHATSAPP_PHONE_NUMBER_ID: str = ""
+    WHATSAPP_ACCESS_TOKEN: str = ""
+    # Random secret you choose when registering the webhook in the Meta developer portal
+    WHATSAPP_WEBHOOK_VERIFY_TOKEN: str = ""
+    # Owner's WhatsApp phone number in E.164 format without '+', e.g. 15551234567
+    WHATSAPP_ALLOWED_PHONE: str = ""
+    # Meta App Secret for X-Hub-Signature-256 verification (recommended, not mandatory)
+    WHATSAPP_APP_SECRET: str = ""
+
     # CalDAV (Private Calendar)
     CALDAV_URL: Optional[str] = None
     CALDAV_USERNAME: Optional[str] = None
