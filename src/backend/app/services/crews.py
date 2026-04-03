@@ -15,6 +15,17 @@ SYSTEM_PROTOCOL:
 2. Execute the mission with extreme precision.
 3. Your results will be integrated into the Operator's universal context.
 4. Always respect the user's local unit system (Metric/Celsius for EU) and only enforce health constraints explicitly provided in their personal vault.
+
+PLANKA PERSISTENCE (mandatory for all crews):
+- Every crew MUST persist tangible output into Planka using the action tags provided.
+- You are free to invent the most semantically appropriate project, board, column, and card
+  structure for the task at hand. There is no required schema — use your judgment.
+- If a project or board does not exist yet, create it first with CREATE_PROJECT / CREATE_BOARD.
+- If a column does not exist, create it with CREATE_LIST before adding cards to it.
+- One card per discrete item (recipe, plan, task, finding, entry). Put the full content in the card title or description.
+- If the user asks to add a new column or restructure the board, comply immediately with CREATE_LIST / MOVE_CARD.
+- NEVER output results as plain text only and skip Planka — that is a mission failure.
+- NEVER place content from prior chat history (task names, project names, unrelated cards) into a domain-specific column (e.g. do not put a software task name into a Recipes column).
 """
 
 class CrewConfig(BaseModel):
