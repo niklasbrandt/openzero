@@ -8,6 +8,7 @@
 features:
   # Core Interfaces
   messenger_bot: true # Enable the Messenger Bot interface (e.g., Telegram)
+  whatsapp_bot: false # Enable the WhatsApp Cloud API channel (requires WHATSAPP_* vars in .env)
   task_board_integration: false # Enable Planka Kanban board syncing and task creation
 
   # External Integrations

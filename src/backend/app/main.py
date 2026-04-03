@@ -79,6 +79,14 @@ async def lifespan(app: FastAPI):
         logging.info("Starting Telegram bot...")
         await start_telegram_bot()
         logging.info("✓ Telegram bot online.")
+
+        # Register WhatsApp channel with the message bus (webhook-based; no polling needed)
+        if settings.WHATSAPP_PHONE_NUMBER_ID and settings.WHATSAPP_ACCESS_TOKEN:
+            from app.services.message_bus import bus
+            bus.register_channel("whatsapp", push_fn=send_whatsapp_message)
+            logging.info("✓ WhatsApp channel registered.")
+        else:
+            logging.info("WhatsApp not configured — channel inactive (set WHATSAPP_* vars to enable).")
         
         # 4. Background Startup Sequence (Non-blocking)
         async def run_delayed_init():
@@ -159,6 +167,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from app.api.dashboard import router as dashboard_router, auth_router
 from app.api.health import router as health_router
+from app.api.whatsapp import router as whatsapp_router, send_whatsapp_message
 
 class SecurityHeaderMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
@@ -191,6 +200,7 @@ app.add_middleware(SecurityHeaderMiddleware)
 app.include_router(auth_router)
 app.include_router(dashboard_router)
 app.include_router(health_router)
+app.include_router(whatsapp_router)
 
 @app.get("/calendar", include_in_schema=False)
 async def calendar_redirect():
