@@ -1040,7 +1040,7 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 		routed_crew = resolve_active_crew(_h, user_text)
 		if routed_crew:
 			logger.info("Auto-routing '%s...' to crew '%s'", user_text[:40], routed_crew)
-			await _process_crew_stream(update, context, routed_crew, user_text, t)
+			await _process_crew_stream(update, context, routed_crew, user_text, t, already_ingested=True)
 			return
 
 	# Show initial acknowledgment
@@ -1166,14 +1166,16 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		logger.error("handle_voice failed: %s", e)
 		await safe_reply(update, "Voice processing failed. There might be an issue with the transcription or intelligence layer.")
 
-async def _process_crew_stream(update: Update, context: ContextTypes.DEFAULT_TYPE, crew_id: str, user_input: str, t: dict):
+async def _process_crew_stream(update: Update, context: ContextTypes.DEFAULT_TYPE, crew_id: str, user_input: str, t: dict, already_ingested: bool = False):
 	"""Executes a crew mission with progressive Telegram message updates."""
 	from app.services.crews_native import native_crew_engine
 	from app.services.message_bus import bus
 	import time
 
-	# Persist the user's crew invocation to global_messages so dashboard stays in sync
-	await bus.ingest("telegram", f"/crew {crew_id} {user_input}".strip())
+	# Persist the user's crew invocation to global_messages so dashboard stays in sync.
+	# Skip if the caller already called bus.ingest (e.g. auto-routing from handle_freetext).
+	if not already_ingested:
+		await bus.ingest("telegram", f"/crew {crew_id} {user_input}".strip())
 
 	thinking_msg = await update.message.reply_text(f"<blockquote>🚀 <i>{t.get('executing_crew', 'Executing crew')} <b>{crew_id}</b>...</i></blockquote>", parse_mode="HTML")
 
