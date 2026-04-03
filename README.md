@@ -140,7 +140,9 @@ Both Telegram and WhatsApp route to the same Z agent with full context: memory r
 
 ### WhatsApp
 
-Free-form messages work identically — every message goes through the full Z context pipeline. There are no slash commands; just write naturally (e.g. "give me my briefing", "what's on my calendar today").
+Free-form messages work identically — every message goes through the full Z context pipeline. There are no slash commands; just write naturally.
+
+Crews with keyword triggers activate automatically when your message matches. For example, the `nutrition` crew listens for words like `recipe`, `meal`, `cook`, `grocery`, `macro` — so sending "make me a high-protein dinner recipe for tonight" will route directly to it, run the full multi-character crew, and output a structured Planka board with the recipe and shopping list.
 
 ---
 
