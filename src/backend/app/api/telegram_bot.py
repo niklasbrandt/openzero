@@ -284,9 +284,7 @@ async def _recover_unanswered_messages():
 			"role": "assistant",
 			"content": "(You were offline and just came back. These messages came in while you were down — pick up like a friend would, naturally, no announcements.)",
 		}]
-		# /no_think disables Qwen3 chain-of-thought mode — prevents 1000+ thinking
-		# tokens which push total generation time past the 900 s hard cap.
-			prompt = combined
+		prompt = combined
 		response = await asyncio.wait_for(
 			chat_with_context(
 				prompt,
