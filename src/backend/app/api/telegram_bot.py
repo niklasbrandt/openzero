@@ -214,37 +214,20 @@ async def _recover_unanswered_messages():
 	Heartbeats and nudges are sent via send_notification without being saved
 	to global_messages, so they never appear in history.
 
-	Waits until the fast LLM responds to a health ping (up to 240 s) so
-	chat_with_context never races against a cold model load.
+	Waits 3 minutes after startup for background LLM init tasks (agent_context,
+	personal_context, heartbeat) to finish before making the recovery call.
 	A 15 s base delay is kept so live handle_freetext can consume any
 	pending Telegram updates first."""
 	try:
 		await asyncio.sleep(15)
 
-		# Wait for the fast LLM to be available (reliable proxy for general startup).
-		# Probe every 10 s up to 180 s total, then add a 60 s buffer for the deep
-		# model queue to drain before recovery makes its own deep-tier request.
-		_deadline = asyncio.get_event_loop().time() + 180
-		_fast_ready = False
-		while asyncio.get_event_loop().time() < _deadline:
-			try:
-				async with _httpx.AsyncClient(timeout=20.0) as _c:
-					_r = await _c.post(
-						f"{settings.LLM_FAST_URL}/v1/chat/completions",
-						json={"messages": [{"role": "user", "content": "ping"}],
-							"max_tokens": 1, "stream": False},
-					)
-					if _r.status_code == 200:
-						logger.info("Restart recovery: fast LLM ready — waiting 60 s for deep queue to drain...")
-						_fast_ready = True
-						break
-			except Exception as _probe_err:
-				logger.debug("Recovery probe exception: %s: %s", type(_probe_err).__name__, _probe_err)
-			await asyncio.sleep(10)
-		if not _fast_ready:
-			logger.warning("Restart recovery: fast LLM probe timed out after 180 s — proceeding anyway.")
-		else:
-			await asyncio.sleep(60)
+		# Wait for startup LLM tasks (agent_context, personal_context, heartbeat)
+		# to complete before recovery makes its own deep-tier request. These tasks
+		# reliably finish within ~2 minutes; 3 minutes gives a safe margin.
+		# A probe-based approach is unreliable because the single-threaded LLM
+		# server is always busy with those init tasks for the first 2-3 minutes.
+		logger.info("Restart recovery: waiting 3 minutes for startup LLM tasks to complete...")
+		await asyncio.sleep(180)
 		logger.info("Restart recovery: scanning message history...")
 
 		from app.models.db import get_global_history, save_global_message
