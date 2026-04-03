@@ -1,7 +1,13 @@
 import re
+import time
 import datetime
 import logging
 import json
+
+# Record when this module was first loaded (proxy for container startup time).
+_STARTUP_TIME: float = time.monotonic()
+# Silence follow-up for this many seconds after startup so recovery has clear LLM access.
+_STARTUP_QUIET_SECONDS: int = 15 * 60
 
 logger = logging.getLogger(__name__)
 
@@ -133,6 +139,16 @@ async def run_proactive_follow_up() -> None:
 	State is kept in the module-level _nudge_state dict so cards are only nudged
 	when their individual interval has elapsed.
 	"""
+	# Quiet window: skip the first 15 minutes after startup so recovery can
+	# use the LLM without contention from follow-up calls.
+	uptime = time.monotonic() - _STARTUP_TIME
+	if uptime < _STARTUP_QUIET_SECONDS:
+		logger.info(
+			"Proactive Follow-up: skipping (startup quiet window, %.0fs remaining).",
+			_STARTUP_QUIET_SECONDS - uptime,
+		)
+		return
+
 	from app.services.operator_board import operator_service
 	try:
 		logger.info("Proactive Follow-up: Checking mission status...")
