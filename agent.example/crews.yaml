@@ -327,6 +327,28 @@ crews:
     type: "agent"
     feeds_briefing: "/week"
     briefing_day: "SUN"
+    keywords:
+      - recipe
+      - recipes
+      - meal
+      - meals
+      - food
+      - cook
+      - cooking
+      - ingredient
+      - ingredients
+      - nutrition
+      - macro
+      - macros
+      - calories
+      - eat
+      - eating
+      - shopping list
+      - grocery
+      - dinner
+      - lunch
+      - breakfast
+      - snack
     instructions: |
       Build comprehensive meal plans adhering strictly to ingredients listed in personal/health.md.
       Always use Metric units (grams, ml) and Celsius for all recipes.

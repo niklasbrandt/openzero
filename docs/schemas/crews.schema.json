@@ -101,6 +101,13 @@
 					"items": {
 						"$ref": "#/definitions/CrewCharacter"
 					}
+				},
+				"keywords": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					},
+					"description": "Words/phrases that trigger automatic routing of free-text messages to this crew."
 				}
 			},
 			"required": [

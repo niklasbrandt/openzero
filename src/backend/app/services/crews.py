@@ -1,4 +1,5 @@
 import logging
+import re
 from pathlib import Path
 from typing import Optional, Dict, List
 import yaml # type: ignore
@@ -37,6 +38,7 @@ class CrewConfig(BaseModel):
 	enabled: bool = True
 	instructions: Optional[str] = None
 	characters: Optional[List[Dict[str, str]]] = None
+	keywords: Optional[List[str]] = None  # trigger words for auto-routing from free-text
 	feeds_briefing: Optional[str] = None
 	schedule: Optional[str] = None
 	briefing_day: Optional[str] = None
@@ -73,6 +75,7 @@ class CrewRegistry:
 				enabled=c.get("enabled", True),
 				instructions=c.get("instructions"),
 				characters=c.get("characters"),
+				keywords=c.get("keywords"),
 				feeds_briefing=c.get("feeds_briefing"),
 				schedule=c.get("schedule"),
 				briefing_day=c.get("briefing_day"),
@@ -91,3 +94,37 @@ class CrewRegistry:
 
 AGENT_FOLDER_PATH = Path("/app/agent") if Path("/app/agent").exists() else Path(__file__).parents[4] / "agent"
 crew_registry = CrewRegistry(agent_dir=str(AGENT_FOLDER_PATH))
+
+# Regex that matches the crew attribution footer Z appends to every crew reply.
+_CREW_ATTRIBUTION_RE = re.compile(r"Reasoning supported by (.+?)\)", re.IGNORECASE)
+
+def resolve_active_crew(history: list, user_text: str) -> Optional[str]:
+	"""Return a crew_id if the message should be routed to a crew automatically.
+
+	Priority:
+	1. If Z's most recent reply in history was from a crew (has attribution footer),
+	   continue with that same crew — the user is mid-session.
+	2. Keyword match against any crew's keywords list.
+	Returns crew_id string or None (meaning let Z handle it normally).
+	"""
+	# 1. Continuation: find the last Z reply and check for crew attribution.
+	for msg in reversed(history):
+		if msg.get("role") == "z":
+			m = _CREW_ATTRIBUTION_RE.search(msg.get("content", ""))
+			if m:
+				attributed_name = m.group(1).strip()
+				# Match attributed name back to a crew id via its config name.
+				for crew in crew_registry.list_active():
+					if crew.name.lower() == attributed_name.lower():
+						return crew.id
+			break  # only check the last Z message
+
+	# 2. Keyword match against the current user message.
+	lower_text = user_text.lower()
+	for crew in crew_registry.list_active():
+		if not crew.keywords:
+			continue
+		if any(kw.lower() in lower_text for kw in crew.keywords):
+			return crew.id
+
+	return None
