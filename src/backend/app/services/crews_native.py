@@ -73,23 +73,28 @@ class NativeCrewEngine:
 		# 4. Action tag vocabulary — crew must emit these to write to Planka boards
 		instructions += f"\n\n{ACTION_TAG_DOCS}"
 
-		# 5. Recent conversation history (cross-channel) — for reference only
-		# Messages are labelled so the crew does not confuse task/board names with domain content.
+		# 5. Recent user messages from conversation history so the crew can reference
+		# what the user shared (e.g. recipes, plans). Z's own prior responses are
+		# excluded — they add noise and cause the crew to echo stale output.
 		from app.models.db import get_global_history
 		history_messages = []
 		try:
-			recent = await get_global_history(limit=10)
+			recent = await get_global_history(limit=20)
 			for m in recent:
-				role = "assistant" if m["role"] == "z" else "user"
-				# Prefix each historical turn so the crew understands it is past chat context,
-				# not domain content (prevents task card names being mistaken for e.g. recipes).
-				prefix = "[PRIOR CHAT — Z]: " if role == "assistant" else "[PRIOR CHAT — User]: "
-				history_messages.append({"role": role, "content": prefix + m["content"]})
+				if m["role"] != "user":
+					continue
+				history_messages.append({"role": "user", "content": m["content"]})
 		except Exception as e:
 			logger.debug("Native Engine: Could not fetch conversation history: %s", e)
 
 		messages = [{"role": "system", "content": instructions}]
-		messages.extend(history_messages)
+		if history_messages:
+			# Summarise scope so the crew knows these are prior user messages
+			messages.append({
+				"role": "system",
+				"content": "PRIOR USER MESSAGES (conversation history — use only as reference to find content the user shared, do not echo or repeat them):"
+			})
+			messages.extend(history_messages)
 		# /no_think suppresses CoT for local Qwen3; ignored harmlessly by cloud APIs.
 		messages.append({"role": "user", "content": user_input + "\n/no_think"})
 
