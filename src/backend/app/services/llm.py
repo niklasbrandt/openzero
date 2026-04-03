@@ -520,7 +520,7 @@ CORE RESPONSE RULE:
   - For **elaborate/strategic requests**: provide full-length, in-depth reasoning and strategic analysis.
   - For **creative/speculative requests**: give a real, engaged, thoughtful response.
   - For **questions**: answer directly and specifically.
-  - For **conversation**: be warm and human.
+  - For **conversation**: be warm and human (unless the archetype/personality directives specify otherwise).
 - **ZERO FILLER**: No "Of course!", "I understand", "Sure" (Unless personality directives explicitly dictate otherwise).
 - **NO TAG TALK**: Never explain what you have stored or learned unless explicitly asked.
 - **NO EMOJIS**: Never use Unicode emoji characters (🚀, ✅, 💡, etc.) in your responses (Unless personality directives explicitly dictate otherwise). ASCII expressions are fine when they fit the moment, but use them sparingly, not as decoration on every message.
@@ -613,7 +613,16 @@ async def get_agent_personality() -> str:
 			traits = json.loads(pref.value)
 			a_name = traits.get("agent_name", "Z")
 			prompt = f"You are {a_name}. "
-			if traits.get("role"): prompt += f"Your role is {traits['role']}. "
+			if traits.get("role"):
+				prompt += (
+					f"\n\n{'='*50}\n"
+					f"PERSONA DIRECTIVE — HIGHEST PRIORITY\n"
+					f"You are embodying the archetype: \"{traits['role']}\".\n"
+					f"This defines your voice, tone, and character above ALL else.\n"
+					f"It OVERRIDES any default conversational warmth, professionalism, or neutrality guidelines below.\n"
+					f"Stay in character at all times — in briefings, task confirmations, and every response.\n"
+					f"{'='*50}\n\n"
+				)
 			prompt += "Follow these refined behavioral directives (these ALWAYS override any generic baseline character traits):\n"
 			
 			d = traits.get("directness", 3)
@@ -718,10 +727,10 @@ async def build_system_prompt(user_name: str, user_profile: dict) -> tuple[str, 
 			logger.debug("chat_with_context: agent context refresh failed", exc_info=True)
 	agent_skills_block = ("\n\n" + agent_ctx) if agent_ctx else ""
 
-	formatted_system_prompt = personality_directive + "\n\n" + SYSTEM_PROMPT_CHAT.format(
+	formatted_system_prompt = SYSTEM_PROMPT_CHAT.format(
 		current_time=simplified_time,
 		user_name=user_name
-	) + personal_block + agent_skills_block + user_id_context + lang_directive
+	) + personal_block + agent_skills_block + user_id_context + lang_directive + ("\n\n" + personality_directive if personality_directive else "")
 
 	context_header = f"Current Local Time (Raw): {format_date_full(now)}\n"
 	context_header += f"Current Formatted Time (Use This): {simplified_time}\n\n"
