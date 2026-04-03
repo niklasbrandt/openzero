@@ -146,15 +146,27 @@ Free-form messages work identically — every message goes through the full Z co
 
 ## Autonomous crews
 
-Crews are YAML-defined task sequences in `agent/crews.yaml`. No code changes needed to add one.
+Crews are YAML-defined agent task sequences in `agent/crews.yaml`. No code changes needed to add one.
 
 ```yaml
-- name: daily_briefing
-  schedule: "0 7 * * *"
-  steps: [weather, calendar, email, memory_summary]
+- id: "market-intel"
+  name: "Competitive Intelligence Scout"
+  description: "Tracks industry shifts, competitor moves, and sentiment."
+  group: "business"
+  type: "agent"
+  feeds_briefing: "/week"
+  briefing_day: "MON"
+  instructions: |
+    Track industry shifts and perform structured SWOT analysis.
+    Deliver a single-page exec brief on market sentiment.
+  characters:
+    - name: "The Trend Pulse Monitor"
+      role: "Tracks product launches, funding, and tech shifts."
 ```
 
-Triggers: `cron` · `interval` · `on: <event>` · manual via Telegram, WhatsApp, or dashboard
+Scheduling: `feeds_briefing: /day|/week|/month|/quarter` (briefing-relative, recommended) · `schedule: "0 7 * * *"` (fixed cron)
+
+Triggers: briefing-relative · fixed cron · manual via `/crew <id>` on Telegram or dashboard
 
 ---
 
