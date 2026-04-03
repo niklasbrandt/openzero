@@ -253,12 +253,12 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 		await handle_action("CREATE_TASK", raw_tag, _exec_task, f"Create task '{title}' on {board}")
 		clean_reply = strip_tag(clean_reply, raw_tag)
 
-	# 2. Create Project Tag
-	proj_pattern = r"\[?ACTION: CREATE_PROJECT \| NAME: ([^\|\]]+) \| DESCRIPTION: ([^\|\]]+)\]?"
+	# 2. Create Project Tag — DESCRIPTION is optional (LLM may omit it)
+	proj_pattern = r"\[?ACTION: CREATE_PROJECT \| NAME: ([^\|\]]+?)(?:\s*\|\s*DESCRIPTION:\s*([^\|\]]+?))?\s*\]?"
 	for match in re.finditer(proj_pattern, reply):
 		raw_tag = match.group(0)
-		name, desc = match.groups()
-		name, desc = name.strip(), desc.strip()
+		name = match.group(1).strip().strip('"\'')
+		desc = (match.group(2) or "").strip().strip('"\'')
 
 		async def _exec_project(name=name, desc=desc):
 			try:
@@ -274,11 +274,16 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 		clean_reply = strip_tag(clean_reply, raw_tag)
 
 	# 2b. Create Board Tag
+	# newly_created_boards maps board_name.lower() -> board_id so CREATE_LIST can
+	# resolve boards that were just created in this same response without a second
+	# round-trip search (which can fail if Planka hasn't committed the object yet).
+	newly_created_boards: dict[str, str] = {}
 	board_pattern = r"\[?ACTION: CREATE_BOARD \| PROJECT: ([^\|\]]+) \| NAME: ([^\|\]]+)\]?"
 	for match in re.finditer(board_pattern, reply):
 		raw_tag = match.group(0)
 		proj_name, board_name = match.groups()
-		proj_name, board_name = proj_name.strip(), board_name.strip()
+		proj_name = proj_name.strip().strip('"\'')
+		board_name = board_name.strip().strip('"\'')
 
 		async def _exec_board(proj_name=proj_name, board_name=board_name):
 			try:
@@ -286,7 +291,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 				import httpx
 				from app.config import settings
 				token = await get_planka_auth_token()
-				async with httpx.AsyncClient(timeout=3600.0, base_url=settings.PLANKA_BASE_URL, headers={"Authorization": f"Bearer {token}"}) as client:
+				async with httpx.AsyncClient(timeout=30.0, base_url=settings.PLANKA_BASE_URL, headers={"Authorization": f"Bearer {token}"}) as client:
 					resp = await client.get("/api/projects")
 					projects = resp.json().get("items", [])
 					proj_id = None
@@ -294,12 +299,13 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 						if p["name"].lower() == proj_name.lower():
 							proj_id = p["id"]
 							break
-					if proj_id:
-						board_result = await planka_create_board(project_id=proj_id, name=board_name)
-						if board_result:
-							return f"Board '{board_name}' created in '{proj_name}'."
-						return f"\u26a0 Failed to create board '{board_name}'. Check Planka."
-					return f"\u26a0 Project '{proj_name}' not found. Board not created."
+					if not proj_id:
+						return f"\u26a0 Project '{proj_name}' not found. Board not created."
+					board_result = await planka_create_board(project_id=proj_id, name=board_name)
+					if board_result and board_result.get("id"):
+						newly_created_boards[board_name.lower()] = board_result["id"]
+						return f"Board '{board_name}' created in '{proj_name}'."
+					return f"\u26a0 Failed to create board '{board_name}'. Check Planka."
 			except Exception as _e:
 				logger.error("CREATE_BOARD failed: %s", _e)
 				return f"\u26a0 Failed to create board '{board_name}'. System error."
@@ -312,14 +318,27 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 	for match in re.finditer(list_pattern, reply):
 		raw_tag = match.group(0)
 		board_name, list_name = match.groups()
-		board_name, list_name = board_name.strip(), list_name.strip()
+		board_name = board_name.strip().strip('"\'')
+		list_name = list_name.strip().strip('"\'')
 
 		async def _exec_list(board_name=board_name, list_name=list_name):
 			try:
+				# Fast path: board was just created in this response — use its ID directly
+				board_id = newly_created_boards.get(board_name.lower())
+				if board_id:
+					from app.services.planka_common import get_planka_auth_token
+					import httpx
+					from app.config import settings
+					token = await get_planka_auth_token()
+					async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, timeout=15.0, headers={"Authorization": f"Bearer {token}"}) as client:
+						resp = await client.post(f"/api/boards/{board_id}/lists", json={"name": list_name, "position": 65535})
+						resp.raise_for_status()
+						return f"List '{list_name}' created in '{board_name}'."
+				# Fallback: global board search (board pre-existed)
 				result = await planka_create_list(board_name=board_name, list_name=list_name)
 				if result:
 					return f"List '{list_name}' created in '{board_name}'."
-				return f"\u26a0 Failed to create list '{list_name}' — board '{board_name}' not found or Planka error."
+				return f"\u26a0 Failed to create list '{list_name}' \u2014 board '{board_name}' not found or Planka error."
 			except Exception as _e:
 				logger.error("CREATE_LIST failed: %s", _e)
 				return f"\u26a0 Failed to create list '{list_name}'. System error."
