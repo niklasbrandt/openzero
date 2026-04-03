@@ -160,7 +160,7 @@ async def webhook_verify(
 
 	logger.warning(
 		"WhatsApp webhook verification failed: mode=%r token_match=%s",
-		hub_mode,
+		str(hub_mode).replace('\n', ' ').replace('\r', ' '),
 		hub_verify_token == settings.WHATSAPP_WEBHOOK_VERIFY_TOKEN,
 	)
 	raise HTTPException(status_code=403, detail="Verification failed.")
@@ -200,7 +200,7 @@ async def webhook_receive(
 				if settings.WHATSAPP_ALLOWED_PHONE and sender != settings.WHATSAPP_ALLOWED_PHONE:
 					logger.warning(
 						"WhatsApp: message from unallowed number %s — ignored.",
-						sender,
+						sender.replace('\n', ' ').replace('\r', ' '),
 					)
 					continue
 
@@ -208,13 +208,13 @@ async def webhook_receive(
 				if msg_type == "text":
 					text = msg.get("text", {}).get("body", "").strip()
 					if text:
-						logger.info("WhatsApp inbound from %s: %s", sender, text[:80])
+						logger.info("WhatsApp inbound from %s: %s", sender.replace('\n', ' ').replace('\r', ' '), text[:80].replace('\n', ' ').replace('\r', ' '))
 						background_tasks.add_task(_handle_inbound, sender, text)
 				else:
 					logger.info(
 						"WhatsApp: unsupported message type %r from %s — skipped.",
-						msg_type,
-						sender,
+						str(msg_type).replace('\n', ' ').replace('\r', ' '),
+						sender.replace('\n', ' ').replace('\r', ' '),
 					)
 
 	return {"status": "ok"}
