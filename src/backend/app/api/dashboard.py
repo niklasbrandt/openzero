@@ -955,12 +955,28 @@ async def dashboard_crew_stream(crew_id: str, req: ChatRequest, db: AsyncSession
 	"""SSE streaming endpoint for crew missions."""
 	from starlette.responses import StreamingResponse
 	from app.services.crews_native import native_crew_engine
-	
+	from app.services.message_bus import bus
+
 	async def event_generator():
+		chunks = []
 		try:
 			async for chunk in native_crew_engine.run_crew_stream(crew_id, req.message):
+				chunks.append(chunk)
 				yield f"data: {json.dumps({'token': chunk})}\n\n"
-			yield f"data: {json.dumps({'done': True})}\n\n"
+
+			full_res = "".join(chunks)
+			logger.info("Dashboard crew '%s' raw output (%d chars): %s", crew_id, len(full_res), full_res[:500])
+
+			clean_reply, executed_cmds, pending_actions = await bus.commit_reply(
+				channel="dashboard",
+				raw_reply=full_res,
+				model=f"crew:{crew_id}",
+				user_text=req.message,
+			)
+			if executed_cmds:
+				logger.info("Dashboard crew '%s' executed actions: %s", crew_id, executed_cmds)
+			clean_reply += f"\n\n*(Reasoning by crew {crew_id})*"
+			yield f"data: {json.dumps({'done': True, 'reply': clean_reply, 'actions': executed_cmds, 'pending': pending_actions})}\n\n"
 		except Exception as e:
 			logger.error("Dashboard Crew Stream Error: %s", e)
 			yield f"data: {json.dumps({'error': str(e)})}\n\n"
