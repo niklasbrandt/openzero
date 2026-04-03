@@ -25,8 +25,8 @@ PLANKA PERSISTENCE (mandatory for all crews):
 - If a column does not exist, create it with CREATE_LIST before adding cards to it.
 - One card per discrete item (recipe, plan, task, finding, entry). Put the full content in the card title or description.
 - If the user asks to add a new column or restructure the board, comply immediately with CREATE_LIST / MOVE_CARD.
-- NEVER output results as plain text only and skip Planka — that is a mission failure.
 - NEVER place content from prior chat history (task names, project names, unrelated cards) into a domain-specific column (e.g. do not put a software task name into a Recipes column).
+- ALWAYS write a clear human-readable summary of what you did FIRST (e.g. "Added 3 recipes to your Nutrition board"), then emit the action tags on new lines at the end. The user must see a confirmation — never produce action tags with no accompanying text.
 """
 
 class CrewConfig(BaseModel):
