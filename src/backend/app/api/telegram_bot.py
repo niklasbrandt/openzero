@@ -326,6 +326,13 @@ async def _recover_unanswered_messages():
 			(response or "")[:120],
 		)
 
+		# If the LLM returned an error stub (models were still overloaded),
+		# don't save it to DB — fall back to the plain "back." notification.
+		if not response or _is_error_stub(response):
+			logger.warning("Restart recovery: LLM returned error stub — sending plain notification.")
+			await _send_online_notification()
+			return
+
 		logger.info("Restart recovery: running parse_and_execute_actions...")
 		async with AsyncSessionLocal() as db:
 			from app.services.agent_actions import parse_and_execute_actions
