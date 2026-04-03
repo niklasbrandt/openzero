@@ -146,7 +146,7 @@ async def morning_briefing():
 			f"LATEST EMAILS:\n{email_summary}\n"
 		)
 
-		# 3. Generate Briefing — deep tier with 600s hard timeout, retry on failure
+		# 3. Generate Briefing — cloud tier with 600s hard timeout, retry on failure
 		logger.debug("morning_briefing — starting LLM generation")
 		_t3 = asyncio.get_event_loop().time()
 		try:

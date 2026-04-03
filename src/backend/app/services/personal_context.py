@@ -202,7 +202,7 @@ def _security_sanitise(text: str) -> str:
 # ---------------------------------------------------------------------------
 
 async def _llm_compress(filename: str, text: str) -> str:
-	"""Compress via fast-tier LLM. Falls back to deterministic on failure."""
+	"""Compress via local-tier LLM. Falls back to deterministic on failure."""
 	try:
 		from app.services.llm import chat
 		compressed = await chat(
