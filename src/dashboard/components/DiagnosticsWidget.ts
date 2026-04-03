@@ -562,7 +562,7 @@ export class DiagnosticsWidget extends HTMLElement {
 		};
 
 		const cloudConfigured: boolean = (this.llmConfig as any)?.cloud_configured ?? false;
-		const tierNames = cloudConfigured ? ['cloud', 'local'] : ['local'];
+		const tierNames = ['cloud', 'local'];
 		const tierColorMap: Record<string, string> = { cloud: 'hsl(260,70%,65%)', local: 'var(--accent-primary)' };
 		const ctxFor = (name: string): number => { const t = cfgTiers.find((x: any) => x.tier === name); return t?.ctx || 0; };
 		const threadsFor = (name: string): number => { const t = cfgTiers.find((x: any) => x.tier === name); return t?.threads || 0; };
@@ -609,6 +609,14 @@ export class DiagnosticsWidget extends HTMLElement {
 						const td = tiers[name] || {};
 						const color = tierColorMap[name] || 'var(--accent-primary)';
 						const ramGb = ramEstFor(name);
+
+						if (name === 'cloud' && !cloudConfigured) {
+							return `<div class="llm-tier-card disabled" style="--tier-color:${color}" data-tier="cloud" aria-disabled="true">
+								<div class="ltc-header"><span class="ltc-name" style="color:${color}">${this.displayTier('cloud')}</span></div>
+								<div class="ltc-model">${this.tr('diag_cloud_not_configured', 'Not configured')}</div>
+								<div class="ltc-specs"><span class="ltc-spec-hint">${this.tr('diag_cloud_set_env', 'Set LLM_CLOUD_BASE_URL + API key in .env')}</span></div>
+							</div>`;
+						}
 
 						// Model identification: Prefer live reporter from /props, then env config, then hardcoded fallback
 						let model = td.model_file || '';
@@ -953,6 +961,8 @@ export class DiagnosticsWidget extends HTMLElement {
 				.llm-ram-breakdown { margin-bottom: 0.75rem; display: flex; flex-wrap: wrap; gap: 0.6rem; }
 				.llm-ram-bd-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); font-weight: 700; margin-bottom: 0.1rem; }
 				.llm-tier-card { flex: 1; min-width: 200px; background: hsla(0,0%,100%,0.025); border: 1px solid hsla(0,0%,100%,0.05); border-left: 2px solid var(--tier-color, var(--accent-primary)); border-radius: 0.4rem; padding: 0.45rem 0.6rem; display: flex; flex-direction: column; gap: 0.25rem; }
+				.llm-tier-card.disabled { opacity: 0.35; filter: grayscale(0.6); border-left-color: hsla(0,0%,100%,0.12); }
+				.ltc-spec-hint { font-size: 0.5rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); font-style: italic; }
 
 				@property --llm-spin-angle { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
 				@keyframes llm-border-spin { to { --llm-spin-angle: 360deg; } }
