@@ -13,15 +13,17 @@ export class DiagnosticsWidget extends HTMLElement {
 	private llmConfig: Record<string, any> | null = null;
 	private benchResults: any[] = [];
 	private isBenchRunning: boolean = false;
+	private _activeInference: Record<string, boolean> = { fast: false, deep: false };
 	private t: Record<string, string> = {};
 	private _refreshTimer: ReturnType<typeof setInterval> | null = null;
+	private _activeTimer: ReturnType<typeof setInterval> | null = null;
 	private _observer: IntersectionObserver | null = null;
 	private _visible = false;
 	private _onVisChange = () => this._handleVisibilityChange();
 
 	private static readonly EXPECTATIONS: Record<string, { model: string; fast: number; good: number; ok: number }> = {
-		fast: { model: '~0.6B', fast: 15, good: 8, ok: 3 },
-		deep: { model: '~8B', fast: 10, good: 5, ok: 2 },
+		fast: { model: '~1.7B', fast: 12, good: 6, ok: 2 },
+		deep: { model: '~4B', fast: 5, good: 2.5, ok: 1 },
 	};
 
 	private static readonly HDD_SEG_TIPS: Record<string, string> = {
@@ -110,12 +112,42 @@ export class DiagnosticsWidget extends HTMLElement {
 	private _startPolling() {
 		if (this._refreshTimer) return;
 		this._refreshTimer = setInterval(() => this.fetchAll(), 8000);
+		if (!this._activeTimer) {
+			this._activeTimer = setInterval(() => this._fetchActiveInference(), 2000);
+		}
 	}
 
 	private _stopPolling() {
 		if (this._refreshTimer) {
 			clearInterval(this._refreshTimer);
 			this._refreshTimer = null;
+		}
+		if (this._activeTimer) {
+			clearInterval(this._activeTimer);
+			this._activeTimer = null;
+		}
+	}
+
+	private async _fetchActiveInference() {
+		try {
+			const r = await fetch('/api/dashboard/llm-active');
+			if (!r.ok) return;
+			const data = await r.json();
+			const changed =
+				this._activeInference.fast !== !!data.fast ||
+				this._activeInference.deep !== !!data.deep;
+			this._activeInference = { fast: !!data.fast, deep: !!data.deep };
+			if (changed) this._updateInferringState();
+		} catch { /* silent */ }
+	}
+
+	private _updateInferringState() {
+		const root = this.shadowRoot;
+		if (!root) return;
+		for (const tier of ['fast', 'deep'] as const) {
+			root.querySelectorAll<HTMLElement>(`.llm-tier-card[data-tier="${tier}"]`).forEach(card => {
+				card.classList.toggle('inferring', this._activeInference[tier]);
+			});
 		}
 	}
 
@@ -587,7 +619,7 @@ export class DiagnosticsWidget extends HTMLElement {
 							}
 						}
 						if (!model) {
-							model = name === 'fast' ? 'Qwen3-0.6B' : 'Qwen3-8B';
+							model = name === 'fast' ? 'Qwen3-1.7B' : 'Qwen3-4B';
 						}
 
 						const ctx = ctxFor(name);
@@ -607,7 +639,7 @@ export class DiagnosticsWidget extends HTMLElement {
 						
 						const mismatchDesc = this.tr('diag_llm_mismatch_desc', 'CRITICAL: Live RAM usage ({live} GB) is significantly higher than expected ({est} GB + {cache} GB cache). This suggests a larger model is hiding under a smaller filename.').replace('{live}', liveRamGb.toFixed(1)).replace('{est}', ramGb.toFixed(1)).replace('{cache}', cacheGb.toFixed(1));
 						
-						return `<div class="llm-tier-card" style="--tier-color:${color}">
+						return `<div class="llm-tier-card" style="--tier-color:${color}" data-tier="${name}">
 							<div class="ltc-header">
 								<span class="ltc-name" style="color:${color}">${this.displayTier(name)}</span>
 								${isMismatch ? `<span class="ltc-badge mismatch has-tip">${this.tr('diag_llm_mismatch', 'MISMATCH')}
@@ -915,6 +947,17 @@ export class DiagnosticsWidget extends HTMLElement {
 				.llm-ram-breakdown { margin-bottom: 0.75rem; display: flex; flex-wrap: wrap; gap: 0.6rem; }
 				.llm-ram-bd-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); font-weight: 700; margin-bottom: 0.1rem; }
 				.llm-tier-card { flex: 1; min-width: 200px; background: hsla(0,0%,100%,0.025); border: 1px solid hsla(0,0%,100%,0.05); border-left: 2px solid var(--tier-color, var(--accent-primary)); border-radius: 0.4rem; padding: 0.45rem 0.6rem; display: flex; flex-direction: column; gap: 0.25rem; }
+
+				@property --llm-spin-angle { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+				@keyframes llm-border-spin { to { --llm-spin-angle: 360deg; } }
+				.llm-tier-card.inferring {
+					border: 1.5px solid transparent !important;
+					background:
+						linear-gradient(hsla(0,0%,100%,0.025), hsla(0,0%,100%,0.025)) padding-box,
+						conic-gradient(from var(--llm-spin-angle), transparent 78%, var(--tier-color, var(--accent-primary)) 90%, transparent 100%) border-box;
+					animation: llm-border-spin 2s linear infinite;
+				}
+				@media (prefers-reduced-motion: reduce) { .llm-tier-card.inferring { animation: none; border-color: var(--tier-color, var(--accent-primary)) !important; } }
 				.ltc-header { display: flex; align-items: center; gap: 0.4rem; }
 				.ltc-name { font-size: 0.6rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.07em; }
 				.ltc-status { font-size: 0.5rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; margin-left: auto; }
