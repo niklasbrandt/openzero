@@ -147,6 +147,8 @@ translations: dict[str, str] = {
 	"decoding": "Decoding...",
 	"diag_bench_cloud_tip": "Test throughput of the cloud tier.",
 	"diag_bench_local_tip": "Test latency of the local tier.",
+	"diag_cloud_not_configured": "Not configured",
+	"diag_cloud_set_env": "Set LLM_CLOUD_BASE_URL + API key in .env",
 	"delete": "Delete",
 	"delete_board": "Delete Board",
 	"developer_mode": "Developer Mode",
