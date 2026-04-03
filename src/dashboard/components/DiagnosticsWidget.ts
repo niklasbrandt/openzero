@@ -22,8 +22,8 @@ export class DiagnosticsWidget extends HTMLElement {
 	private _onVisChange = () => this._handleVisibilityChange();
 
 	private static readonly EXPECTATIONS: Record<string, { model: string; fast: number; good: number; ok: number }> = {
-		fast: { model: '~1.7B', fast: 12, good: 6, ok: 2 },
-		deep: { model: '~4B', fast: 5, good: 2.5, ok: 1 },
+		fast: { model: '~1.7B', fast: 25, good: 15, ok: 7 },
+		deep: { model: '~4B', fast: 10, good: 5, ok: 2 },
 	};
 
 	private static readonly HDD_SEG_TIPS: Record<string, string> = {
@@ -234,10 +234,10 @@ export class DiagnosticsWidget extends HTMLElement {
 
 	private getRating(tps: number, tier: string): { cls: string; icon: string; label: string; hint: string } {
 		const exp = DiagnosticsWidget.EXPECTATIONS[tier] || DiagnosticsWidget.EXPECTATIONS['deep'];
-		if (tps >= exp.fast) return { cls: 'excellent', icon: '🚀', label: this.tr('excellent', 'Excellent'), hint: `Fast. ${exp.model} running well.` };
-		if (tps >= exp.good) return { cls: 'good', icon: '✅', label: this.tr('good', 'Good'), hint: `Interactive. Typical for ${exp.model}.` };
-		if (tps >= exp.ok) return { cls: 'moderate', icon: '⚠️', label: this.tr('moderate', 'Moderate'), hint: `Noticeable latency.` };
-		return { cls: 'slow', icon: '🐌', label: this.tr('slow', 'Slow'), hint: `Below expected for ${exp.model}.` };
+		if (tps >= exp.fast) return { cls: 'excellent', icon: '++', label: this.tr('excellent', 'Excellent'), hint: `${tps.toFixed(1)} tok/s — well above target for ${exp.model}. Responses feel instant.` };
+		if (tps >= exp.good) return { cls: 'good', icon: 'ok', label: this.tr('good', 'Good'), hint: `${tps.toFixed(1)} tok/s — comfortable for interactive use with ${exp.model}.` };
+		if (tps >= exp.ok) return { cls: 'moderate', icon: '!', label: this.tr('moderate', 'Moderate'), hint: `${tps.toFixed(1)} tok/s — noticeable latency. Check thread count and CPU load.` };
+		return { cls: 'slow', icon: '--', label: this.tr('slow', 'Slow'), hint: `${tps.toFixed(1)} tok/s — below minimum for ${exp.model}. Possible CPU contention or wrong thread count.` };
 	}
 
 	private _svcColor(name: string): string {
