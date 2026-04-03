@@ -6,6 +6,7 @@ from app.config import settings
 from app.services.crews import crew_registry, SYSTEM_TEMPLATE
 from app.services.personal_context import get_personal_context_for_prompt, refresh_personal_context
 from app.services.agent_context import get_agent_skills_for_prompt, refresh_agent_context
+from app.services.llm import ACTION_TAG_DOCS
 
 logger = logging.getLogger(__name__)
 
@@ -69,14 +70,21 @@ class NativeCrewEngine:
 		if context_block:
 			instructions += f"\n\n{context_block}"
 
-		# 4. Recent conversation history (cross-channel) so crew has full context
+		# 4. Action tag vocabulary — crew must emit these to write to Planka boards
+		instructions += f"\n\n{ACTION_TAG_DOCS}"
+
+		# 5. Recent conversation history (cross-channel) — for reference only
+		# Messages are labelled so the crew does not confuse task/board names with domain content.
 		from app.models.db import get_global_history
 		history_messages = []
 		try:
 			recent = await get_global_history(limit=10)
 			for m in recent:
 				role = "assistant" if m["role"] == "z" else "user"
-				history_messages.append({"role": role, "content": m["content"]})
+				# Prefix each historical turn so the crew understands it is past chat context,
+				# not domain content (prevents task card names being mistaken for e.g. recipes).
+				prefix = "[PRIOR CHAT — Z]: " if role == "assistant" else "[PRIOR CHAT — User]: "
+				history_messages.append({"role": role, "content": prefix + m["content"]})
 		except Exception as e:
 			logger.debug("Native Engine: Could not fetch conversation history: %s", e)
 
