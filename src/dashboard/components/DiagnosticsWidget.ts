@@ -22,8 +22,8 @@ export class DiagnosticsWidget extends HTMLElement {
 	private _onVisChange = () => this._handleVisibilityChange();
 
 	private static readonly EXPECTATIONS: Record<string, { model: string; fast: number; good: number; ok: number }> = {
-		fast: { model: '~1.7B', fast: 25, good: 15, ok: 7 },
-		deep: { model: '~4B', fast: 10, good: 5, ok: 2 },
+		fast: { model: '~1.7B', fast: 12, good: 8, ok: 4 },
+		deep: { model: '~4B', fast: 6, good: 3.5, ok: 1.5 },
 	};
 
 	private static readonly HDD_SEG_TIPS: Record<string, string> = {
