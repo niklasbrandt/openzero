@@ -896,10 +896,10 @@ async def chat_stream(
 
 		# Qwen3: disable thinking for fast (latency critical);
 		# deep tier can think — CoT improves briefing quality, blocks get stripped.
-		request_thinking = tier_name == "deep"
+		# Callers can override via thinking=False kwarg (e.g. recovery paths).
+		request_thinking = kwargs.get("thinking", tier_name == "deep")
 
-		# Qwen3 /no_think injection: suppress reasoning for fast so content
-		# tokens are not eaten by CoT.
+		# Qwen3 /no_think injection: suppress reasoning when thinking is off.
 		if not request_thinking:
 			messages[0]["content"] = messages[0]["content"] + "\n/no_think"
 
@@ -1201,6 +1201,7 @@ async def chat_with_context(
 	tier_override: Optional[str] = None,
 	sanitize: bool = True,
 	use_agent: bool = True,
+	thinking: Optional[bool] = None,
 ) -> str:
 	"""
 	Wraps the standard chat with a rich snapshot of the user's world.
@@ -1498,6 +1499,7 @@ async def chat_with_context(
 			user_name=user_name,
 			user_profile=user_profile,
 			_feature="user_chat",
+			**(({"thinking": thinking}) if thinking is not None else {}),
 		))
 	except Exception as e:
 		logger.warning("chat_with_context failed, falling back to bare chat: %s", e)
