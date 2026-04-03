@@ -216,7 +216,7 @@ export class DiagnosticsWidget extends HTMLElement {
 		this.isBenchRunning = true;
 		this.updatePanel();
 		try {
-			for (const tier of ['local', 'cloud']) {
+			for (const tier of ['local', ...(this.llmConfig?.cloud_configured ? ['cloud'] : [])]) {
 				await this._runBenchmarkCore(tier);
 				this.updatePanel();
 			}
@@ -561,8 +561,9 @@ export class DiagnosticsWidget extends HTMLElement {
 			return t?.ram_est_gb || 0;
 		};
 
-		const tierNames = ['cloud', 'local'];
-		const tierColors = ['hsl(260,70%,65%)', 'var(--accent-primary)'];
+		const cloudConfigured: boolean = (this.llmConfig as any)?.cloud_configured ?? false;
+		const tierNames = cloudConfigured ? ['cloud', 'local'] : ['local'];
+		const tierColorMap: Record<string, string> = { cloud: 'hsl(260,70%,65%)', local: 'var(--accent-primary)' };
 		const ctxFor = (name: string): number => { const t = cfgTiers.find((x: any) => x.tier === name); return t?.ctx || 0; };
 		const threadsFor = (name: string): number => { const t = cfgTiers.find((x: any) => x.tier === name); return t?.threads || 0; };
 
@@ -604,9 +605,9 @@ export class DiagnosticsWidget extends HTMLElement {
 
 				${cfgTiers.length > 0 ? `
 				<div class="llm-ram-breakdown">
-					${tierNames.map((name, idx) => {
+					${tierNames.map((name) => {
 						const td = tiers[name] || {};
-						const color = tierColors[idx];
+						const color = tierColorMap[name] || 'var(--accent-primary)';
 						const ramGb = ramEstFor(name);
 
 						// Model identification: Prefer live reporter from /props, then env config, then hardcoded fallback
@@ -771,13 +772,13 @@ export class DiagnosticsWidget extends HTMLElement {
 						</button>
 						<div class="b-row">
 							<button class="b-btn sm tier-local has-tip ${this.isBenchRunning ? 'running' : ''}" ${this.isBenchRunning ? 'disabled' : ''} data-tier="local">
-								Local
-								<span class="glass-tooltip">Test latency of the local tier.</span>
+								${this.displayTier('local')}
+								<span class="glass-tooltip">${this.tr('diag_bench_local_tip', 'Test latency of the local tier.')}</span>
 							</button>
-							<button class="b-btn sm tier-cloud has-tip ${this.isBenchRunning ? 'running' : ''}" ${this.isBenchRunning ? 'disabled' : ''} data-tier="cloud">
-								Cloud
-								<span class="glass-tooltip">Test throughput of the cloud tier.</span>
-							</button>
+							${cloudConfigured ? `<button class="b-btn sm tier-cloud has-tip ${this.isBenchRunning ? 'running' : ''}" ${this.isBenchRunning ? 'disabled' : ''} data-tier="cloud">
+								${this.displayTier('cloud')}
+								<span class="glass-tooltip">${this.tr('diag_bench_cloud_tip', 'Test throughput of the cloud tier.')}</span>
+							</button>` : ''}
 						</div>
 					</div>
 					<div class="bench-results-list" style="margin-top: 0.5rem">${benchHtml}</div>
