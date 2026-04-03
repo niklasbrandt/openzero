@@ -415,7 +415,8 @@ async def create_list(board_name: str, list_name: str, project_name: Optional[st
 				continue
 			det = await client.get(f"/api/projects/{proj['id']}")
 			det.raise_for_status()
-			boards = det.json().get("included", {}).get("boards", [])
+			det_data = det.json()
+			boards = det_data.get("included", {}).get("boards", []) or det_data.get("boards", [])
 			for b in boards:
 				if b["name"].lower() == board_name.lower():
 					board_id = b["id"]
