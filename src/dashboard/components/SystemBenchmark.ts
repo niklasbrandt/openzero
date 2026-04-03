@@ -11,6 +11,7 @@ export class SystemBenchmark extends HTMLElement {
 	private benchResults: any[] = [];
 	private isRunning: boolean = false;
 	private isRunningAll: boolean = false;
+	private cloudConfigured: boolean = false;
 	private t: Record<string, string> = {};
 
 	// Expected tok/s ranges per tier on CPU-only (Q4_K_M quantized)
@@ -25,12 +26,22 @@ export class SystemBenchmark extends HTMLElement {
 	}
 
 	connectedCallback() {
-		this.loadTranslations().then(() => this.render());
+		Promise.all([this.loadTranslations(), this.fetchLlmConfig()]).then(() => this.render());
 		initGoo(this);
 		window.addEventListener('goo-changed', () => initGoo(this));
 		window.addEventListener('identity-updated', () => {
 			this.loadTranslations().then(() => this.render());
 		});
+	}
+
+	private async fetchLlmConfig() {
+		try {
+			const res = await fetch('/api/dashboard/llm-config');
+			if (res.ok) {
+				const data = await res.json();
+				this.cloudConfigured = data.cloud_configured ?? false;
+			}
+		} catch (_) { }
 	}
 
 	private async loadTranslations() {
@@ -95,7 +106,7 @@ export class SystemBenchmark extends HTMLElement {
 		}
 
 		try {
-			const tiers = ['local', 'cloud'];
+			const tiers = ['local', ...(this.cloudConfigured ? ['cloud'] : [])];
 			for (const tier of tiers) {
 				await this.runBenchmark(tier);
 			}
@@ -574,7 +585,7 @@ export class SystemBenchmark extends HTMLElement {
 			<div class="bench-header-bar">
 				<div class="bench-actions" aria-actions_for="${this.tr('bench_subtitle', 'Throughput & Performance Rating')}">
 					<button class="bench-btn has-tip" id="bench-local" data-tip="${this.tr('tip_bench_local', 'Benchmark the local tier (~0.6B model). Used for quick tasks like greetings and memory distillation.')}" aria-label="${this.tr('bench_local', 'Bench local')}">${this.tr('bench_local', 'Bench local')}</button>
-					<button class="bench-btn has-tip" id="bench-cloud" data-tip="${this.tr('tip_bench_cloud', 'Benchmark the cloud tier. Used for complex analysis and reasoning tasks.')}" aria-label="${this.tr('bench_cloud', 'Bench cloud')}">${this.tr('bench_cloud', 'Bench cloud')}</button>
+					${this.cloudConfigured ? `<button class="bench-btn has-tip" id="bench-cloud" data-tip="${this.tr('tip_bench_cloud', 'Benchmark the cloud tier. Used for complex analysis and reasoning tasks.')}" aria-label="${this.tr('bench_cloud', 'Bench cloud')}">${this.tr('bench_cloud', 'Bench cloud')}</button>` : ''}
 					<button class="bench-btn all has-tip" id="bench-all" data-tip="${this.tr('tip_bench_all', 'Run both tier benchmarks sequentially to get a complete performance picture.')}" aria-label="${this.tr('bench_run_all', 'Run All')}">${this.tr('bench_run_all', 'Run All')}</button>
 				</div>
 			</div>
