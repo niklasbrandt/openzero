@@ -87,7 +87,7 @@ def _keyword_urgency(text: str) -> str | None:
 
 
 async def _llm_classify_urgency(task_titles: list[str]) -> dict[str, str]:
-	"""Use the fast LLM tier to classify urgency for tasks not caught by keywords.
+	"""Use the local LLM tier to classify urgency for tasks not caught by keywords.
 
 	Returns a dict mapping task title → 'urgent' | 'medium' | 'low'.
 	Falls back to 'medium' for any title that cannot be matched.

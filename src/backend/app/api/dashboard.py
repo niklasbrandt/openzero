@@ -591,7 +591,7 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		# For now, let the LLM handle it, but we identify it in the help.
 		# If we want a special mode, we'd trigger it here. 
 		# Let's just return a placeholder for now since the LLM already handles general chat.
-		_r = "🤖 **Z Thinking Mode** initiated. Processing complex multi-step reasoning for: " + query + "\n\n(This is handled by the Deep LLM tier with elevated context limits.)"
+		_r = "🤖 **Z Thinking Mode** initiated. Processing complex multi-step reasoning for: " + query + "\n\n(This is handled by the cloud LLM tier when configured, or local tier otherwise.)"
 		await _reply(_r)
 		return {"reply": _r}
 	elif msg == "/protocols":
