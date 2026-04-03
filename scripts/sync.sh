@@ -29,7 +29,6 @@ EXCLUDES=(
     --exclude 'node_modules/'
     --exclude '__pycache__/'
     --exclude '.venv/'
-    --exclude 'dist/'
     --exclude '.DS_Store'
     --exclude 'personal/'
     --exclude '*.log'
@@ -59,14 +58,21 @@ if [ -d .git ]; then
   fi
 fi
 
-echo "🚀 Syncing code to $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR..."
+# Build dashboard before syncing so the compiled dist is always up to date
+if [ -d src/dashboard ] && [ -f src/dashboard/package.json ]; then
+  echo "Building dashboard..."
+  (cd src/dashboard && npm run build --silent)
+  echo "Dashboard build complete."
+fi
+
+echo "Syncing code to $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR..."
 echo "--------------------------------------------------------------------------------"
-echo "🛡️  Protection Mode: Active (Data Sovereignty Rule 9)"
+echo "Protection Mode: Active (Data Sovereignty Rule 9)"
 echo "Excluded from this sync: personal/, .env, *.log, databases, Docker volumes"
 echo "To sync personal context, use: bash scripts/sync_overwrite_personal.sh"
 echo "--------------------------------------------------------------------------------"
 
-# Sync source code (including LATEST_CHANGES.txt if it exists)
+# Sync source code (including LATEST_CHANGES.txt and compiled dashboard dist)
 rsync -avz --delete "${EXCLUDES[@]}" ./ $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/
 
 # Update sync marker and write VERSION file so the backend can log the deployed commit
@@ -92,12 +98,12 @@ ssh $REMOTE_USER@$REMOTE_HOST "cd $REMOTE_DIR \
 # Clean up local temporary file
 rm -f LATEST_CHANGES.txt
 
-echo "✅ Deployment complete."
-echo "💡 Reminder: Use 'bash scripts/sync-personal.sh' if you also need to update personal context."
+echo "Deployment complete."
+echo "Reminder: Use 'bash scripts/sync-personal.sh' if you also need to update personal context."
 
 # ── Post-deploy regression tests ─────────────────────────────────────────────
 if [ "$RUN_TESTS" = false ]; then
-  echo "⏭  Tests skipped (pass --test to run regression suite)."
+  echo "Tests skipped (pass --test to run regression suite)."
   exit 0
 fi
 
