@@ -1027,11 +1027,22 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 	"""Core freetext processing logic with streaming progressive updates."""
 	from app.services.llm import chat_stream_with_context
 	from app.services.message_bus import bus
+	from app.services.crews import resolve_active_crew
 	import time
 
 	lang = await get_user_lang()
 	t = get_translations(lang)
-	
+
+	# Auto-route to a crew if the last Z reply was from one (continuation)
+	# or if the user's message matches a crew's keyword list.
+	if not is_followup:
+		_h = history or []
+		routed_crew = resolve_active_crew(_h, user_text)
+		if routed_crew:
+			logger.info("Auto-routing '%s...' to crew '%s'", user_text[:40], routed_crew)
+			await _process_crew_stream(update, context, routed_crew, user_text, t)
+			return
+
 	# Show initial acknowledgment
 	if is_followup:
 		thinking_msg = await context.bot.send_message(
