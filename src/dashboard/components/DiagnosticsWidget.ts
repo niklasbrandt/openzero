@@ -603,7 +603,7 @@ export class DiagnosticsWidget extends HTMLElement {
 
 				${this._ramAlertHtml(srv)}
 
-				${cfgTiers.length > 0 ? `
+				${(cfgTiers.length > 0 || !cloudConfigured) ? `
 				<div class="llm-ram-breakdown">
 					${tierNames.map((name) => {
 						const td = tiers[name] || {};
@@ -617,6 +617,8 @@ export class DiagnosticsWidget extends HTMLElement {
 								<div class="ltc-specs"><span class="ltc-spec-hint">${this.tr('diag_cloud_set_env', 'Set LLM_CLOUD_BASE_URL + API key in .env')}</span></div>
 							</div>`;
 						}
+
+						if (name === 'local' && cfgTiers.length === 0) return '';
 
 						// Model identification: Prefer live reporter from /props, then env config, then hardcoded fallback
 						let model = td.model_file || '';
