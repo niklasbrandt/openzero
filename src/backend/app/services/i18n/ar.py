@@ -316,6 +316,7 @@ translations: dict[str, str] = {
 	"agreeable": 'موافق',
 	"challenging": 'متحدٍ',
 	"identity_archetype": 'نموذج الهوية',
+	"archetype_placeholder": 'مثال: مشغّل لا يرحم. مباشر، لا دفء، لا صبر على الأعذار.',
 	"core_values": 'القيم الأساسية',
 	"behavioral_stylings": 'الأنماط السلوكية',
 	"system_intelligence": 'ذكاء النظام',

@@ -317,6 +317,7 @@ translations: dict[str, str] = {
 	"agreeable": '随和',
 	"challenging": '挑战',
 	"identity_archetype": '身份原型',
+	"archetype_placeholder": '例如：冷酷的操作者。直接，无温度，不容任何借口.',
 	"core_values": '核心价值观',
 	"behavioral_stylings": '行为风格',
 	"system_intelligence": '系统智能',

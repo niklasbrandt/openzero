@@ -316,6 +316,7 @@ translations: dict[str, str] = {
 	"agreeable": '우호적',
 	"challenging": '도전적',
 	"identity_archetype": 'ID 원형',
+	"archetype_placeholder": '예: 냉혹한 오퍼레이터. 직접적이고, 따뜻함 없이, 변명에는 참을성 없음.',
 	"core_values": '핵심 가치',
 	"behavioral_stylings": '행동 스타일링',
 	"system_intelligence": '시스템 지능',

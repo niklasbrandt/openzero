@@ -329,6 +329,7 @@ translations: dict[str, str] = {
 	"agreeable": 'Zustimmend',
 	"challenging": 'Hinterfragend',
 	"identity_archetype": 'Identitäts-Archetyp',
+	"archetype_placeholder": 'z.B. Gnadenloser Operator. Direkt, keine Wärme, null Geduld für Ausreden.',
 	"core_values": 'Grundwerte',
 	"behavioral_stylings": 'Verhaltensmuster',
 	"system_intelligence": 'System-Intelligenz',
