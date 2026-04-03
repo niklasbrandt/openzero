@@ -246,14 +246,18 @@ async def create_project(name: str, description: str = "") -> dict:
 			return data.get("item") or data
 		except Exception as e:
 			logger.debug("create_project failed with 'type', retrying with 'isPublic': %s", _sanitize_for_log(e))
-			resp = await client.post("/api/projects", json={
-				"name": name,
-				"description": description,
-				"isPublic": False
-			})
-			resp.raise_for_status()
-			data = resp.json()
-			return data.get("item") or data
+			try:
+				resp = await client.post("/api/projects", json={
+					"name": name,
+					"description": description,
+					"isPublic": False
+				})
+				resp.raise_for_status()
+				data = resp.json()
+				return data.get("item") or data
+			except Exception as e2:
+				logger.debug("create_project retry also failed: %s", _sanitize_for_log(e2))
+				return None
 
 async def delete_project(project_id: str) -> bool:
 	"""Cascade-delete a Planka project: cards → lists → boards → project."""
@@ -310,13 +314,17 @@ async def create_board(project_id: str, name: str) -> dict:
 	token = await get_planka_auth_token()
 	headers = {"Authorization": f"Bearer {token}"}
 	async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, headers=headers) as client:
-		resp = await client.post(f"/api/projects/{project_id}/boards", json={
-			"name": name,
-			"position": 65535
-		})
-		resp.raise_for_status()
-		data = resp.json()
-		board = data.get("item") or data
+		try:
+			resp = await client.post(f"/api/projects/{project_id}/boards", json={
+				"name": name,
+				"position": 65535
+			})
+			resp.raise_for_status()
+			data = resp.json()
+			board = data.get("item") or data
+		except Exception as e:
+			logger.debug("create_board failed for project %s: %s", _sanitize_for_log(project_id), _sanitize_for_log(e))
+			return None
 
 		# Also create a default 'Inbox' list
 		try:
