@@ -900,8 +900,10 @@ async def chat_stream(
 		request_thinking = kwargs.get("thinking", tier_name == "deep")
 
 		# Qwen3 /no_think injection: suppress reasoning when thinking is off.
+		# Must target the USER message (messages[-1]), not the system prompt —
+		# Qwen3's chat template only recognises /no_think in the user turn.
 		if not request_thinking:
-			messages[0]["content"] = messages[0]["content"] + "\n/no_think"
+			messages[-1]["content"] = messages[-1]["content"] + "\n/no_think"
 
 		# Tier-aware read timeout — fast must fail fast, not hang for minutes.
 		read_timeout = TIER_TIMEOUTS.get(tier_name, 180.0)
