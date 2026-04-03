@@ -214,20 +214,10 @@ async def _recover_unanswered_messages():
 	Heartbeats and nudges are sent via send_notification without being saved
 	to global_messages, so they never appear in history.
 
-	Waits 3 minutes after startup for background LLM init tasks (agent_context,
-	personal_context, heartbeat) to finish before making the recovery call.
-	A 15 s base delay is kept so live handle_freetext can consume any
-	pending Telegram updates first."""
+	Waits 15 s after startup so live handle_freetext can consume any pending
+	Telegram updates before recovery scans history."""
 	try:
 		await asyncio.sleep(15)
-
-		# Wait for startup LLM tasks (agent_context, personal_context, heartbeat)
-		# to complete before recovery makes its own deep-tier request. These tasks
-		# reliably finish within ~2 minutes; 3 minutes gives a safe margin.
-		# A probe-based approach is unreliable because the single-threaded LLM
-		# server is always busy with those init tasks for the first 2-3 minutes.
-		logger.info("Restart recovery: waiting 3 minutes for startup LLM tasks to complete...")
-		await asyncio.sleep(180)
 		logger.info("Restart recovery: scanning message history...")
 
 		from app.models.db import get_global_history, save_global_message
