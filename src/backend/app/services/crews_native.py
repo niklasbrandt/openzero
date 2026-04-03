@@ -72,11 +72,13 @@ class NativeCrewEngine:
 			"model": settings.LLM_MODEL_DEEP,
 			"messages": [
 				{"role": "system", "content": instructions},
-				{"role": "user", "content": user_input}
+				# /no_think must be in the user turn — Qwen3 ignores it in system prompt.
+				# Without this the model generates a full think block before any output.
+				{"role": "user", "content": user_input + "\n/no_think"}
 			],
 			"temperature": 0.7,
-			"max_tokens": 8192,  # Increased to prevent truncation
-			"stream": True       # Enable llama.cpp streaming
+			"max_tokens": 2000,
+			"stream": True
 		}
 
 		# Sanitize crew_id for logging to prevent CRLF injection (CodeQL)
