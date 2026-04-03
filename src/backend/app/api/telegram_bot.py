@@ -327,7 +327,7 @@ async def _recover_unanswered_messages():
 		)
 		crews = [c.split(":", 1)[1] for c in executed_cmds if c.startswith("__CREW_RUN__:")]
 		if crews:
-			clean_reply += f"\n\n_(Reasoning supported by {', '.join(crews)})_"
+			clean_reply += f"\n\n_(Reasoning by crew {', '.join(crews)})_"
 		logger.info("Restart recovery: actions parsed and saved to DB via bus...")
 
 		clean_reply = strip_llm_time_header(clean_reply)
@@ -1105,7 +1105,7 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 	# Reasoning indicator
 	crews = [c.split(":", 1)[1] for c in executed_cmds if c.startswith("__CREW_RUN__:")]
 	if crews:
-		clean_reply += f"\n\n_(Reasoning supported by {', '.join(crews)})_"
+		clean_reply += f"\n\n_(Reasoning by crew {', '.join(crews)})_"
 
 	# Prepend real time (strip any LLM-generated time header)
 	clean_reply = strip_llm_time_header(clean_reply)
@@ -1200,7 +1200,7 @@ async def _process_crew_stream(update: Update, context: ContextTypes.DEFAULT_TYP
 		# Reasoning indicator
 		from app.services.crews import crew_registry
 		config = crew_registry.get(crew_id)
-		clean_reply += f"\n\n_(Reasoning supported by {config.name if config else crew_id})_"
+		clean_reply += f"\n\n_(Reasoning by crew {crew_id})_"
 		
 		display_final = f"<b>{format_time()}</b>\n\n{_md_to_html(clean_reply)}"
 		await safe_edit(thinking_msg, f"<blockquote>{display_final}</blockquote>", parse_mode="HTML", reply_markup=get_nav_markup(t))

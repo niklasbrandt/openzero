@@ -96,35 +96,48 @@ AGENT_FOLDER_PATH = Path("/app/agent") if Path("/app/agent").exists() else Path(
 crew_registry = CrewRegistry(agent_dir=str(AGENT_FOLDER_PATH))
 
 # Regex that matches the crew attribution footer Z appends to every crew reply.
-_CREW_ATTRIBUTION_RE = re.compile(r"Reasoning supported by (.+?)\)", re.IGNORECASE)
+# Format: "Reasoning by crew <id>"
+_CREW_ATTRIBUTION_RE = re.compile(r"Reasoning by crew ([a-zA-Z0-9_-]+)", re.IGNORECASE)
 
 def resolve_active_crew(history: list, user_text: str) -> Optional[str]:
-	"""Return a crew_id if the message should be routed to a crew automatically.
+	"""Return a crew_id if this message should be routed to a crew automatically.
 
-	Priority:
-	1. If Z's most recent reply in history was from a crew (has attribution footer),
-	   continue with that same crew — the user is mid-session.
-	2. Keyword match against any crew's keywords list.
-	Returns crew_id string or None (meaning let Z handle it normally).
+	Algorithm (in order of priority):
+	1. Direct keyword match in current message — strongest signal, route immediately.
+	2. Score the last ~8 history entries (user + Z) holistically:
+	   - A Z reply with crew attribution footer scores +3 for that crew.
+	   - A user message whose content matches a crew's keywords scores +1.
+	   Highest-scoring crew wins if score >= 2. This lets a crew session
+	   survive an unrelated message in between without needing an explicit command.
+	Returns crew_id string or None (let Z handle it normally).
 	"""
-	# 1. Continuation: find the last Z reply and check for crew attribution.
-	for msg in reversed(history):
-		if msg.get("role") == "z":
-			m = _CREW_ATTRIBUTION_RE.search(msg.get("content", ""))
-			if m:
-				attributed_name = m.group(1).strip()
-				# Match attributed name back to a crew id via its config name.
-				for crew in crew_registry.list_active():
-					if crew.name.lower() == attributed_name.lower():
-						return crew.id
-			break  # only check the last Z message
-
-	# 2. Keyword match against the current user message.
+	# 1. Immediate keyword match on current message.
 	lower_text = user_text.lower()
 	for crew in crew_registry.list_active():
-		if not crew.keywords:
-			continue
-		if any(kw.lower() in lower_text for kw in crew.keywords):
+		if crew.keywords and any(kw.lower() in lower_text for kw in crew.keywords):
 			return crew.id
+
+	# 2. Holistic scoring over recent history.
+	recent = history[-8:] if len(history) > 8 else history
+	scores: dict[str, int] = {}
+	for msg in recent:
+		content = msg.get("content", "")
+		role = msg.get("role", "")
+		if role == "z":
+			m = _CREW_ATTRIBUTION_RE.search(content)
+			if m:
+				crew_id = m.group(1).strip()
+				if crew_registry.get(crew_id):
+					scores[crew_id] = scores.get(crew_id, 0) + 3
+		elif role == "user":
+			lower_content = content.lower()
+			for crew in crew_registry.list_active():
+				if crew.keywords and any(kw.lower() in lower_content for kw in crew.keywords):
+					scores[crew.id] = scores.get(crew.id, 0) + 1
+
+	if scores:
+		best = max(scores, key=lambda k: scores[k])
+		if scores[best] >= 2:
+			return best
 
 	return None
