@@ -2590,7 +2590,7 @@ async def benchmark_llm(tier: str = "fast"):
 					"model": "local",
 					"messages": bench_messages,
 					"stream": True,
-					"max_tokens": 60,
+					"max_tokens": 80,
 					"temperature": 0.0,
 				},
 			) as resp:
