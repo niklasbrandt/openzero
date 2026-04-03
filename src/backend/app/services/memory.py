@@ -45,8 +45,14 @@ def get_embedder():
 	if embedder is None:
 		with _embedder_lock:
 			if embedder is None:
+				import os
 				from sentence_transformers import SentenceTransformer
-				embedder = SentenceTransformer("all-MiniLM-L6-v2")
+				# local_files_only=True skips all HuggingFace network checks — model
+				# is already cached in the container. Falls back to online if not cached.
+				try:
+					embedder = SentenceTransformer("all-MiniLM-L6-v2", local_files_only=True)
+				except Exception:
+					embedder = SentenceTransformer("all-MiniLM-L6-v2")
 	return embedder
 
 def _encode_sync(text: str) -> list:
