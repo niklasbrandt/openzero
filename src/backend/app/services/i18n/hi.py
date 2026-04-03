@@ -316,6 +316,7 @@ translations: dict[str, str] = {
 	"agreeable": 'सहमत',
 	"challenging": 'चुनौतीपूर्ण',
 	"identity_archetype": 'पहचान प्रोटोटाइप',
+	"archetype_placeholder": 'उदा. निर्दयी ऑपरेटर। सीधा, कोई गर्मजोशी नहीं, बहानों के लिए कोई धैर्य नहीं।',
 	"core_values": 'मूल मूल्य',
 	"behavioral_stylings": 'व्यवहार शैली',
 	"system_intelligence": 'सिस्टम बुद्धिमत्ता',

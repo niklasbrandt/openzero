@@ -316,6 +316,7 @@ translations: dict[str, str] = {
 	"agreeable": 'Agradável',
 	"challenging": 'Desafiador',
 	"identity_archetype": 'Arquétipo de Identidade',
+	"archetype_placeholder": 'ex. Operador implacável. Direto, sem calor, sem paciência para desculpas.',
 	"core_values": 'Valores Fundamentais',
 	"behavioral_stylings": 'Estilos Comportamentais',
 	"system_intelligence": 'Inteligência do Sistema',

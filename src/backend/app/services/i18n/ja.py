@@ -317,6 +317,7 @@ translations: dict[str, str] = {
 	"agreeable": '親しみやすい',
 	"challenging": '挑戦的',
 	"identity_archetype": 'アイデンティティ原型',
+	"archetype_placeholder": '例：容赦ない操作者。率直で、温かみなし、言い訳への忍耐もなし.',
 	"core_values": 'コアバリュー',
 	"behavioral_stylings": '行動のスタイリング',
 	"system_intelligence": 'システム・インテリジェンス',

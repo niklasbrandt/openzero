@@ -316,6 +316,7 @@ translations: dict[str, str] = {
 	"agreeable": 'Agreeable',
 	"challenging": 'Challenging',
 	"identity_archetype": 'Identity Archetype',
+	"archetype_placeholder": 'vd. Người vận hành tàn nhẫn. Thẳng thắn, không ấm áp, không kiên nhẫn với lý do.',
 	"core_values": 'Core Values',
 	"behavioral_stylings": 'Behavioral Stylings',
 	"system_intelligence": 'System Intelligence',
