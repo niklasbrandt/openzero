@@ -1008,9 +1008,8 @@ async def chat_stream(
 						return
 			except httpx.ReadTimeout:
 				if tier_name == "local":
-					# Local is overloaded — keep waiting (caller controls upper timeout).
-					logger.warning("LLM local timeout after %.0fs", read_timeout)
-					yield "I'm still thinking. Try again in a moment."
+					# Timed out — yield nothing; caller cleans up the thinking indicator.
+					logger.warning("LLM local timeout after %.0fs — no response sent", read_timeout)
 					return
 				else:
 					# Cloud timeout — retry with backoff
