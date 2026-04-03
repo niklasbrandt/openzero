@@ -31,10 +31,10 @@ if ! docker info > /dev/null 2>&1; then
 fi
 
 # Attempt to pull and start, with a repair retry if it fails (common on Mac)
-if ! docker compose up -d postgres qdrant llm-fast llm-deep planka 2>&1; then
+if ! docker compose up -d postgres qdrant llm-local planka 2>&1; then
     echo -e "${RED}󱙝 Potential Docker corruption detected. Attempting repair...${RESET}"
     docker system prune -f > /dev/null 2>&1
-    docker compose up -d postgres qdrant llm-fast llm-deep planka
+    docker compose up -d postgres qdrant llm-local planka
 fi
 
 cleanup() {
@@ -42,7 +42,7 @@ cleanup() {
     echo -e "${DIM}Shutting down...${RESET}"
     kill $BACKEND_PID $DASHBOARD_PID 2>/dev/null
     # Stop containers gracefully
-    docker compose stop postgres qdrant llm-fast llm-deep planka > /dev/null 2>&1
+		docker compose stop postgres qdrant llm-local planka > /dev/null 2>&1
     wait $BACKEND_PID $DASHBOARD_PID 2>/dev/null
     echo -e "${GREEN}✓ All services stopped.${RESET}"
 }

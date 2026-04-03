@@ -299,7 +299,7 @@ async def _recover_unanswered_messages():
 				include_projects=False,
 				include_people=True,
 				use_agent=False,
-				tier_override="deep",
+				tier_override="cloud",
 				thinking=False,
 			),
 			timeout=900,
@@ -530,15 +530,13 @@ async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
 			except Exception:
 				return False
 
-		fast_ok, deep_ok = await asyncio.gather(
-			_ping_tier(_s.LLM_FAST_URL),
-			_ping_tier(_s.LLM_DEEP_URL),
-		)
+		local_ok = await _ping_tier(_s.LLM_LOCAL_URL)
+		cloud_ok = _s.cloud_configured
 		def dot(ok):
 			return "🟢" if ok else "🔴"
 		l_text = (
-			f"{dot(fast_ok)} Fast  "
-			f"{dot(deep_ok)} Deep"
+			f"{dot(local_ok)} Local  "
+			f"{dot(cloud_ok)} Cloud"
 		)
 		lang = await get_user_lang()
 		t = get_translations(lang)

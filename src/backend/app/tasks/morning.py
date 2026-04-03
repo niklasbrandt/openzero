@@ -151,10 +151,10 @@ async def morning_briefing():
 		_t3 = asyncio.get_event_loop().time()
 		try:
 			logger.info("Generating morning briefing (600s budget)...")
-			raw_content = await asyncio.wait_for(chat(full_prompt, tier="deep", _feature="morning_briefing"), timeout=600.0)
+			raw_content = await asyncio.wait_for(chat(full_prompt, tier="cloud", _feature="morning_briefing"), timeout=600.0)
 		except asyncio.TimeoutError:
-			logger.warning("morning_briefing — deep tier timed out after 600s, retrying")
-			raw_content = await chat(full_prompt, tier="deep", _feature="morning_briefing")
+			logger.warning("morning_briefing — cloud tier timed out after 600s, retrying")
+			raw_content = await chat(full_prompt, tier="cloud", _feature="morning_briefing")
 		logger.debug("morning_briefing — LLM done in %.1fs", asyncio.get_event_loop().time() - _t3)
 
 		# 3.2 Post-Processing & Cleanup

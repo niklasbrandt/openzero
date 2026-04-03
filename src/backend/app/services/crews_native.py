@@ -11,7 +11,8 @@ logger = logging.getLogger(__name__)
 
 class NativeCrewEngine:
 	def __init__(self, llm_url: Optional[str] = None):
-		self.llm_url = (llm_url or settings.LLM_DEEP_URL).rstrip('/')
+		default_url = settings.LLM_CLOUD_BASE_URL if settings.cloud_configured else settings.LLM_LOCAL_URL
+		self.llm_url = (llm_url or default_url).rstrip('/')
 		if not self.llm_url.endswith("/v1"):
 			self.llm_url += "/v1"
 
@@ -69,25 +70,28 @@ class NativeCrewEngine:
 			instructions += f"\n\n{context_block}"
 
 		payload = {
-			"model": settings.LLM_MODEL_DEEP,
+			"model": settings.LLM_MODEL_CLOUD if settings.cloud_configured else "local",
 			"messages": [
 				{"role": "system", "content": instructions},
-				# /no_think must be in the user turn — Qwen3 ignores it in system prompt.
-				# Without this the model generates a full think block before any output.
+				# /no_think suppresses CoT for local Qwen3; ignored harmlessly by cloud APIs.
 				{"role": "user", "content": user_input + "\n/no_think"}
 			],
 			"temperature": 0.7,
-			"max_tokens": 2000,
+			"max_tokens": 6000,
 			"stream": True
 		}
 
 		# Sanitize crew_id for logging to prevent CRLF injection (CodeQL)
 		safe_crew_id = crew_id.replace("\n", "\\n").replace("\r", "\\r")
 		logger.info("Native Engine: Executing streaming mission for '%s'...", safe_crew_id)
-		
+
+		req_headers = {}
+		if settings.cloud_configured:
+			req_headers["Authorization"] = f"Bearer {settings.LLM_CLOUD_API_KEY}"
+
 		async with httpx.AsyncClient(timeout=3600.0) as client:
 			try:
-				async with client.stream("POST", f"{self.llm_url}/chat/completions", json=payload) as response:
+				async with client.stream("POST", f"{self.llm_url}/chat/completions", headers=req_headers, json=payload) as response:
 					response.raise_for_status()
 					async for line in response.aiter_lines():
 						if not line or not line.startswith("data: "):

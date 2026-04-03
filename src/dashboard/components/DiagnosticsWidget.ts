@@ -13,7 +13,7 @@ export class DiagnosticsWidget extends HTMLElement {
 	private llmConfig: Record<string, any> | null = null;
 	private benchResults: any[] = [];
 	private isBenchRunning: boolean = false;
-	private _activeInference: Record<string, boolean> = { fast: false, deep: false };
+	private _activeInference: Record<string, boolean> = { local: false, cloud: false };
 	private t: Record<string, string> = {};
 	private _refreshTimer: ReturnType<typeof setInterval> | null = null;
 	private _activeTimer: ReturnType<typeof setInterval> | null = null;
@@ -22,8 +22,8 @@ export class DiagnosticsWidget extends HTMLElement {
 	private _onVisChange = () => this._handleVisibilityChange();
 
 	private static readonly EXPECTATIONS: Record<string, { model: string; fast: number; good: number; ok: number }> = {
-		fast: { model: '~1.7B', fast: 12, good: 8, ok: 4 },
-		deep: { model: '~4B', fast: 6, good: 3.5, ok: 1.5 },
+		local: { model: '~0.6B', fast: 20, good: 14, ok: 7 },
+		cloud: { model: 'cloud', fast: 40, good: 20, ok: 8 },
 	};
 
 	private static readonly HDD_SEG_TIPS: Record<string, string> = {
@@ -52,7 +52,7 @@ export class DiagnosticsWidget extends HTMLElement {
 		'openai-whisper-asr-webservice': 'Whisper speech-to-text webservice image.',
 		'pihole': 'Pi-hole DNS-level ad and tracker blocking server image.',
 		'nginx': 'Nginx HTTP server image (used for error pages).',
-		'llama.cpp': 'llama.cpp inference server image — shared by the fast and deep LLM tiers.',
+		'llama.cpp': 'llama.cpp inference server image — used by the local LLM tier.',
 		'other images': 'Smaller Docker images not shown individually (each under 70 MB).',
 		'untagged': 'Untagged or dangling image layers with no associated tag.',
 		// Catch-all
@@ -134,9 +134,9 @@ export class DiagnosticsWidget extends HTMLElement {
 			if (!r.ok) return;
 			const data = await r.json();
 			const changed =
-				this._activeInference.fast !== !!data.fast ||
-				this._activeInference.deep !== !!data.deep;
-			this._activeInference = { fast: !!data.fast, deep: !!data.deep };
+				this._activeInference.local !== !!data.local ||
+				this._activeInference.cloud !== !!data.cloud;
+			this._activeInference = { local: !!data.local, cloud: !!data.cloud };
 			if (changed) this._updateInferringState();
 		} catch { /* silent */ }
 	}
@@ -144,7 +144,7 @@ export class DiagnosticsWidget extends HTMLElement {
 	private _updateInferringState() {
 		const root = this.shadowRoot;
 		if (!root) return;
-		for (const tier of ['fast', 'deep'] as const) {
+		for (const tier of ['local', 'cloud'] as const) {
 			root.querySelectorAll<HTMLElement>(`.llm-tier-card[data-tier="${tier}"]`).forEach(card => {
 				card.classList.toggle('inferring', this._activeInference[tier]);
 			});
@@ -216,7 +216,7 @@ export class DiagnosticsWidget extends HTMLElement {
 		this.isBenchRunning = true;
 		this.updatePanel();
 		try {
-			for (const tier of ['fast', 'deep']) {
+			for (const tier of ['local', 'cloud']) {
 				await this._runBenchmarkCore(tier);
 				this.updatePanel();
 			}
@@ -229,11 +229,11 @@ export class DiagnosticsWidget extends HTMLElement {
 	}
 
 	private displayTier(tier: string): string {
-		return tier === 'fast' ? 'fast' : tier;
+		return tier === 'local' ? 'Local' : 'Cloud';
 	}
 
 	private getRating(tps: number, tier: string): { cls: string; icon: string; label: string; hint: string } {
-		const exp = DiagnosticsWidget.EXPECTATIONS[tier] || DiagnosticsWidget.EXPECTATIONS['deep'];
+		const exp = DiagnosticsWidget.EXPECTATIONS[tier] || DiagnosticsWidget.EXPECTATIONS['local'];
 		if (tps >= exp.fast) return { cls: 'excellent', icon: '++', label: this.tr('excellent', 'Excellent'), hint: `${tps.toFixed(1)} tok/s — well above target for ${exp.model}. Responses feel instant.` };
 		if (tps >= exp.good) return { cls: 'good', icon: 'ok', label: this.tr('good', 'Good'), hint: `${tps.toFixed(1)} tok/s — comfortable for interactive use with ${exp.model}.` };
 		if (tps >= exp.ok) return { cls: 'moderate', icon: '!', label: this.tr('moderate', 'Moderate'), hint: `${tps.toFixed(1)} tok/s — noticeable latency. Check thread count and CPU load.` };
@@ -242,8 +242,8 @@ export class DiagnosticsWidget extends HTMLElement {
 
 	private _svcColor(name: string): string {
 		const colors: Record<string, string> = {
-			'llm-fast': 'var(--accent-primary)',
-			'llm-deep': 'hsl(260,70%,65%)',
+			'llm-local': 'var(--accent-primary)',
+			'llm-cloud': 'hsl(260,70%,65%)',
 			'postgres': 'hsl(140,55%,55%)',
 			'qdrant': 'hsl(30,80%,60%)',
 			'redis': 'hsl(0,75%,60%)',
@@ -422,10 +422,10 @@ export class DiagnosticsWidget extends HTMLElement {
 			? `RAM critically full — ${srv.ram_used_gb || usedPct + '%'} GB used of ${srv.ram_total_gb || '?'} GB`
 			: `RAM pressure high — ${srv.ram_used_gb || usedPct + '%'} GB used of ${srv.ram_total_gb || '?'} GB`;
 		const mitigations = [
-			{ key: 'LLM_DEEP_CTX', action: 'Reduce context window', detail: 'Lower <code>LLM_DEEP_CTX</code> in <code>.env</code> (e.g. 4096 or 2048). Each halving frees ~1–2 GB KV cache.' },
-			{ key: 'LLM_DEEP_PREDICT', action: 'Reduce max prediction', detail: 'Lower <code>LLM_DEEP_PREDICT</code> in <code>.env</code> (e.g. 1024). Less output buffer.' },
-			{ key: 'Profile A', action: 'Switch to Profile A (Q2_K deep model)', detail: 'Use the low-RAM profile in <code>.env.example</code>. Saves ~2 GB at the cost of some quality.' },
-			{ key: 'LLM_DEEP_BATCH', action: 'Reduce batch size', detail: 'Lower <code>LLM_DEEP_BATCH</code> to 128 or 64. Less RAM per inference pass.' },
+			{ key: 'LLM_LOCAL_CTX', action: 'Reduce context window', detail: 'Lower <code>LLM_LOCAL_CTX</code> in <code>.env</code> (e.g. 4096 or 2048). Each halving frees ~1–2 GB KV cache.' },
+			{ key: 'LLM_LOCAL_PREDICT', action: 'Reduce max prediction', detail: 'Lower <code>LLM_LOCAL_PREDICT</code> in <code>.env</code> (e.g. 1024). Less output buffer.' },
+			{ key: 'Profile A', action: 'Switch to Profile A (Q2_K local model)', detail: 'Use the low-RAM profile in <code>.env.example</code>. Saves ~2 GB at the cost of some quality.' },
+			{ key: 'LLM_LOCAL_BATCH', action: 'Reduce batch size', detail: 'Lower <code>LLM_LOCAL_BATCH</code> to 128 or 64. Less RAM per inference pass.' },
 		];
 		return `${orphanHtml}
 			<div class="ram-alert ${level}" role="alert" aria-live="assertive">
@@ -561,7 +561,7 @@ export class DiagnosticsWidget extends HTMLElement {
 			return t?.ram_est_gb || 0;
 		};
 
-		const tierNames = ['deep', 'fast'];
+		const tierNames = ['cloud', 'local'];
 		const tierColors = ['hsl(260,70%,65%)', 'var(--accent-primary)'];
 		const ctxFor = (name: string): number => { const t = cfgTiers.find((x: any) => x.tier === name); return t?.ctx || 0; };
 		const threadsFor = (name: string): number => { const t = cfgTiers.find((x: any) => x.tier === name); return t?.threads || 0; };
@@ -619,12 +619,16 @@ export class DiagnosticsWidget extends HTMLElement {
 							}
 						}
 						if (!model) {
-							model = name === 'fast' ? 'Qwen3-1.7B' : 'Qwen3-4B';
+						const cfgTier = cfgTiers.find((x: any) => x.tier === name);
+						if (name === 'local') {
+							model = cfgTier?.model || 'Qwen3-0.6B';
+						} else {
+							model = cfgTier?.cloud_configured ? (cfgTier?.model || 'Connected') : 'Not configured';
 						}
 
 						const ctx = ctxFor(name);
 						const threads = threadsFor(name);
-						const liveRamGb = ((srv.container_ram || []).find((c: any) => c.name === 'llm-' + name) || {}).gb || 0;
+							const liveRamGb = ((srv.container_ram || []).find((c: any) => c.name === 'llm-' + name) || {}).gb || 0;
 						
 						// Enhanced metadata from tier data (td)
 						const fileSizeGb = td.model_size_gb || 0;
@@ -765,13 +769,13 @@ export class DiagnosticsWidget extends HTMLElement {
 							<span class="glass-tooltip">${this.tr('diag_bench_run_all_tip', 'Run performance tests across all active tiers.')}</span>
 						</button>
 						<div class="b-row">
-							<button class="b-btn sm tier-fast has-tip ${this.isBenchRunning ? 'running' : ''}" ${this.isBenchRunning ? 'disabled' : ''} data-tier="fast">
-								Fast
-								<span class="glass-tooltip">Test latency of the fast tier.</span>
+							<button class="b-btn sm tier-local has-tip ${this.isBenchRunning ? 'running' : ''}" ${this.isBenchRunning ? 'disabled' : ''} data-tier="local">
+								Local
+								<span class="glass-tooltip">Test latency of the local tier.</span>
 							</button>
-							<button class="b-btn sm tier-deep has-tip ${this.isBenchRunning ? 'running' : ''}" ${this.isBenchRunning ? 'disabled' : ''} data-tier="deep">
-								Deep
-								<span class="glass-tooltip">Test throughput of the deep tier.</span>
+							<button class="b-btn sm tier-cloud has-tip ${this.isBenchRunning ? 'running' : ''}" ${this.isBenchRunning ? 'disabled' : ''} data-tier="cloud">
+								Cloud
+								<span class="glass-tooltip">Test throughput of the cloud tier.</span>
 							</button>
 						</div>
 					</div>
@@ -1000,13 +1004,13 @@ export class DiagnosticsWidget extends HTMLElement {
 				.b-btn:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(100%); }
 				.b-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; }
 				.b-btn.sm { font-size: 0.55rem; padding: 0.4rem 0.2rem; flex: 1; }
-				.b-btn.tier-fast { border-color: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.4); color: var(--accent-primary); }
-				.b-btn.tier-fast:hover:not(:disabled) { background: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.12); border-color: var(--accent-primary); color: var(--accent-primary); }
-				.b-btn.tier-deep { border-color: hsla(260,70%,65%,0.4); color: hsl(260,70%,70%); }
-				.b-btn.tier-deep:hover:not(:disabled) { background: hsla(260,70%,65%,0.12); border-color: hsl(260,70%,65%); color: hsl(260,70%,75%); }
+				.b-btn.tier-local { border-color: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.4); color: var(--accent-primary); }
+				.b-btn.tier-local:hover:not(:disabled) { background: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.12); border-color: var(--accent-primary); color: var(--accent-primary); }
+				.b-btn.tier-cloud { border-color: hsla(260,70%,65%,0.4); color: hsl(260,70%,70%); }
+				.b-btn.tier-cloud:hover:not(:disabled) { background: hsla(260,70%,65%,0.12); border-color: hsl(260,70%,65%); color: hsl(260,70%,75%); }
 			/* Light-theme contrast override: hsl(260,65%,35%) gives ≥8:1 on --surface-bg-light */
-			:host-context([data-theme="light"]) .b-btn.tier-deep { color: hsl(260,65%,35%); border-color: hsla(260,65%,35%,0.5); }
-			:host-context([data-theme="light"]) .b-btn.tier-deep:hover:not(:disabled) { background: hsla(260,65%,35%,0.1); border-color: hsl(260,65%,35%); color: hsl(260,65%,28%); }
+			:host-context([data-theme="light"]) .b-btn.tier-cloud { color: hsl(260,65%,35%); border-color: hsla(260,65%,35%,0.5); }
+			:host-context([data-theme="light"]) .b-btn.tier-cloud:hover:not(:disabled) { background: hsla(260,65%,35%,0.1); border-color: hsl(260,65%,35%); color: hsl(260,65%,28%); }
 
 				.vol-inventory { grid-column: 1 / -1; background: hsla(0,0%,100%,0.02); border: 1px solid hsla(0,0%,100%,0.06); border-radius: 0.6rem; overflow: hidden; }
 				.vol-inv-summary { display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem 1rem; cursor: pointer; user-select: none; list-style: none; }
