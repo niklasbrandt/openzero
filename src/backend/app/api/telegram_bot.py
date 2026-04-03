@@ -1172,6 +1172,9 @@ async def _process_crew_stream(update: Update, context: ContextTypes.DEFAULT_TYP
 	from app.services.message_bus import bus
 	import time
 
+	# Persist the user's crew invocation to global_messages so dashboard stays in sync
+	await bus.ingest("telegram", f"/crew {crew_id} {user_input}".strip())
+
 	thinking_msg = await update.message.reply_text(f"<blockquote>🚀 <i>{t.get('executing_crew', 'Executing crew')} <b>{crew_id}</b>...</i></blockquote>", parse_mode="HTML")
 
 	chunks = []
