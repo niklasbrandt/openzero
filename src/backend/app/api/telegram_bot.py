@@ -277,14 +277,16 @@ async def _recover_unanswered_messages():
 
 		from app.services.llm import chat_with_context
 
-		merged_history = await get_global_history(limit=15)
+		merged_history = await get_global_history(limit=5)
 		# Inject a silent context note as the last assistant turn so the model
 		# knows these were pre-restart messages, without overriding personality.
 		merged_history = list(merged_history) + [{
 			"role": "assistant",
 			"content": "(You were offline and just came back. These messages came in while you were down — pick up like a friend would, naturally, no announcements.)",
 		}]
-		prompt = combined
+		# /no_think disables Qwen3 chain-of-thought mode — prevents 1000+ thinking
+		# tokens which push total generation time past the 900 s hard cap.
+		prompt = combined + "\n/no_think"
 
 		logger.info("Restart recovery: calling chat_with_context (deep tier, 900 s timeout)...")
 		response = await asyncio.wait_for(
