@@ -534,7 +534,7 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		crews = [c.split(":", 1)[1] for c in executed if c.startswith("__CREW_RUN__:")]
 		executed = [c for c in executed if not c.startswith("__CREW_RUN__:")]
 		if crews:
-			clean_reply += f"\n\n*(Reasoning supported by {', '.join(crews)})*"
+			clean_reply += f"\n\n*(Reasoning by crew {', '.join(crews)})*"
 
 		if executed or pending:
 			_rmsg = " ".join([str(c) for c in executed])
@@ -565,7 +565,7 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		crews = [c.split(":", 1)[1] for c in executed if c.startswith("__CREW_RUN__:")]
 		executed = [c for c in executed if not c.startswith("__CREW_RUN__:")]
 		if crews:
-			clean_reply += f"\n\n*(Reasoning supported by {', '.join(crews)})*"
+			clean_reply += f"\n\n*(Reasoning by crew {', '.join(crews)})*"
 
 		if executed or pending:
 			_cmsg = " ".join([str(c) for c in executed])
@@ -638,7 +638,7 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		crews = [c.split(":", 1)[1] for c in executed_cmds if c.startswith("__CREW_RUN__:")]
 		executed_cmds = [c for c in executed_cmds if not c.startswith("__CREW_RUN__:")]
 		if crews:
-			clean_reply += f"\n\n*(Reasoning supported by {', '.join(crews)})*"
+			clean_reply += f"\n\n*(Reasoning by crew {', '.join(crews)})*"
 
 		_direct = clean_reply or "Direct execution complete."
 		await _reply(_direct, model="operator_direct")
@@ -679,7 +679,7 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		crews = [c.split(":", 1)[1] for c in executed_cmds if c.startswith("__CREW_RUN__:")]
 		executed_cmds = [c for c in executed_cmds if not c.startswith("__CREW_RUN__:")]
 		if crews:
-			clean_reply += f"\n\n*(Reasoning supported by {', '.join(crews)})*"
+			clean_reply += f"\n\n*(Reasoning by crew {', '.join(crews)})*"
 
 		safe_executed = [str(c) for c in executed_cmds]
 		safe_pending = [{"description": str(p.get("description", "Action")), "type": str(p.get("type", "UNKNOWN"))} for p in pending_actions]
@@ -935,7 +935,7 @@ async def dashboard_chat_stream(req: ChatRequest, request: Request, _rl: None = 
 		crews = [c.split(":", 1)[1] for c in executed_cmds if c.startswith("__CREW_RUN__:")]
 		executed_cmds = [c for c in executed_cmds if not c.startswith("__CREW_RUN__:")]
 		if crews:
-			clean_reply += f"\n\n*(Reasoning supported by {', '.join(crews)})*"
+			clean_reply += f"\n\n*(Reasoning by crew {', '.join(crews)})*"
 
 		model_label = last_model_used.get()
 		yield f"data: {json.dumps({'done': True, 'reply': _sanitise_reply_html(clean_reply), 'actions': executed_cmds, 'pending': pending_actions, 'model': model_label})}\n\n"
