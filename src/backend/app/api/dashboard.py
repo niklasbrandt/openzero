@@ -22,7 +22,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from app.models.db import AsyncSessionLocal, Project, EmailRule, Briefing, Person
 from app.services.memory import semantic_search, semantic_search_raw, list_memories as list_memories_svc, delete_memory
-from app.services.learning import extract_and_store_facts
 from app.services.planka import get_project_tree
 from app.services.operator_board import operator_service
 from pydantic import BaseModel
@@ -275,23 +274,44 @@ async def chat_history(request: Request, limit: int = 30, _rl: None = Depends(_c
 async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = Depends(get_db), _rl: None = Depends(_check_chat_rate_limit)):
 	"""Chat with Z from the dashboard."""
 	msg = req.message.strip()
-	
+
+	# ── Universal Message Bus ─────────────────────────────────────────────
+	# Persist the user turn FIRST so slash commands, LLM timeouts, and
+	# container restarts never silently drop a message from cross-channel
+	# history. History is returned here and reused by the LLM path below.
+	from app.services.message_bus import bus
+	if not req.skip_history:
+		merged_history = await bus.ingest("dashboard", msg)
+	else:
+		from app.models.db import get_global_history
+		merged_history = await get_global_history(limit=10)
+
+	# Helper: persist a system/slash-command reply via the bus.
+	async def _reply(text: str, model: str = "system") -> None:
+		if not req.skip_history:
+			await bus.commit_reply("dashboard", text, model=model, save=True)
+
 	# Handle Slash Commands
 	if msg == "/day":
 		from app.tasks.morning import morning_briefing
 		await morning_briefing()
-		return {"reply": "✅ Daily briefing generated and saved to History."}
+		reply = "✅ Daily briefing generated and saved to History."
+		await _reply(reply)
+		return {"reply": reply}
 	elif msg == "/week":
 		from app.tasks.weekly import weekly_review
 		report = await weekly_review()
+		await _reply(report)
 		return {"reply": report}
 	elif msg == "/month":
 		from app.tasks.monthly import monthly_review
 		report = await monthly_review()
+		await _reply(report)
 		return {"reply": report}
 	elif msg == "/year":
 		from app.tasks.yearly import yearly_review
 		report = await yearly_review()
+		await _reply(report)
 		return {"reply": report}
 	elif msg == "/crews":
 		from app.services.crews import crew_registry
@@ -303,7 +323,9 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		title = t.get('crews_registry_status', 'Native Crew Registry Status')
 		if not active_crews:
 			body = t.get('no_crews_found', 'No Native Crews actived in the registry.')
-			return {"reply": f"🛸 **{title}**\n\n*{body}*"}
+			_r = f"🛸 **{title}**\n\n*{body}*"
+			await _reply(_r)
+			return {"reply": _r}
 		
 		msg_parts = [f"🛸 **{title}**\n"]
 		on_demand = t.get('on_demand', 'On-demand')
@@ -317,7 +339,9 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 				f"  ├ Cadence: {cadence}\n"
 				f"  └ *{crew.description}*\n"
 			)
-		return {"reply": "\n".join(msg_parts)}
+		_r = "\n".join(msg_parts)
+		await _reply(_r)
+		return {"reply": _r}
 	elif msg.startswith("/crew "):
 		parts = msg.split(" ", 2)
 		crew_id = parts[1]
@@ -334,13 +358,12 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		# Call run_crew tool logic manually
 		from app.services.agent_actions import run_crew
 		res = await run_crew.ainvoke({"crew_id": crew_id, "user_input": user_input})
-		
-		from app.models.db import save_global_message
-		await save_global_message("dashboard", "z", res, model="operator_override")
+		await _reply(res, model="operator_override")
 		return {"reply": f"✅ {res}"}
 	elif msg == "/quarter":
 		from app.tasks.quarterly import quarterly_review
 		report = await quarterly_review()
+		await _reply(report)
 		return {"reply": report}
 	elif msg == "/tree":
 		# Life Tree Overview - combines projects, inner circle, and status
@@ -418,6 +441,7 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 			f"{event_list}\n\n"
 			"*\"Z: Stay focused. I've got the mental tabs from here.\"*"
 		)
+		await _reply(life_tree)
 		return {"reply": life_tree}
 	elif msg == "/help":
 		from app.services.translations import get_user_lang, get_translations
@@ -453,10 +477,12 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 				"• `/purge` — Permanently wipe all semantic memory\n\n"
 				"Type any message to chat with Z directly."
 			)
+		await _reply(help_text)
 		return {"reply": help_text}
 	elif msg.startswith("/search ") or msg.startswith("/memory "):
 		query = msg.replace("/search", "").replace("/memory", "").strip()
 		results = await semantic_search(query)
+		await _reply(results)
 		return {"reply": results}
 	elif msg == "/memories":
 		from app.services.memory import get_qdrant, COLLECTION_NAME
@@ -466,7 +492,9 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 			return {"reply": "No memories stored in the vault."}
 		
 		memory_list = "\n".join([f"• {p.payload.get('text')}" for p in results])
-		return {"reply": f"🧠 **Semantic Vault: Core Knowledge Vault**\n\n{memory_list}"}
+		_r = f"🧠 **Semantic Vault: Core Knowledge Vault**\n\n{memory_list}"
+		await _reply(_r)
+		return {"reply": _r}
 	elif msg.startswith("/unlearn "):
 		query = msg.replace("/unlearn", "").strip()
 		from app.services.memory import get_qdrant, COLLECTION_NAME, get_embedder
@@ -480,12 +508,16 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		point = results.points[0]
 		text = point.payload.get('text', '[No Text]')
 		await delete_memory(point.id)
-		return {"reply": f"✅ Unlearned: \"{text}\". Z has evolved past this specific context."}
+		_r = f"✅ Unlearned: \"{text}\". Z has evolved past this specific context."
+		await _reply(_r)
+		return {"reply": _r}
 	elif msg.startswith("/learn "):
 		topic = msg.replace("/learn", "").strip()
 		from app.services.memory import store_memory
 		await store_memory(topic)
-		return {"reply": f"✅ Stored to memory: {topic}"}
+		_r = f"✅ Stored to memory: {topic}"
+		await _reply(_r)
+		return {"reply": _r}
 	elif msg.startswith("/remind "):
 		remind_msg = msg.replace("/remind", "").strip()
 		from app.services.llm import chat
@@ -505,13 +537,16 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 			clean_reply += f"\n\n*(Reasoning supported by {', '.join(crews)})*"
 
 		if executed or pending:
-			msg = " ".join([str(c) for c in executed])
+			_rmsg = " ".join([str(c) for c in executed])
 			safe_pending = [{"description": str(p.get("description", "Action")), "type": str(p.get("type", "UNKNOWN"))} for p in pending]
 			if pending:
-				msg += f" (Pending: {len(pending)} actions)"
-			return {"reply": f"✅ {msg}", "pending_actions": safe_pending}
+				_rmsg += f" (Pending: {len(pending)} actions)"
+			await _reply(f"✅ {_rmsg}")
+			return {"reply": f"✅ {_rmsg}", "pending_actions": safe_pending}
 		else:
-			return {"reply": "Could not parse reminder. Try: '/remind 30m for 2h drink water'"}
+			_r = "Could not parse reminder. Try: '/remind 30m for 2h drink water'"
+			await _reply(_r)
+			return {"reply": _r}
 	elif msg.startswith("/custom "):
 		custom_msg = msg.replace("/custom", "").strip()
 		from app.services.llm import chat
@@ -533,25 +568,32 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 			clean_reply += f"\n\n*(Reasoning supported by {', '.join(crews)})*"
 
 		if executed or pending:
-			msg = " ".join([str(c) for c in executed])
+			_cmsg = " ".join([str(c) for c in executed])
 			safe_pending = [{"description": str(p.get("description", "Action")), "type": str(p.get("type", "UNKNOWN"))} for p in pending]
 			if pending:
-				msg += f" (Pending: {len(pending)} actions)"
-			return {"reply": f"✅ {msg}", "pending_actions": safe_pending}
+				_cmsg += f" (Pending: {len(pending)} actions)"
+			await _reply(f"✅ {_cmsg}")
+			return {"reply": f"✅ {_cmsg}", "pending_actions": safe_pending}
 		else:
-			return {"reply": "Could not parse custom turnus. Try: '/custom every Monday at 10am remind me...'"}
+			_r = "Could not parse custom turnus. Try: '/custom every Monday at 10am remind me...'"
+			await _reply(_r)
+			return {"reply": _r}
 	elif msg == "/status":
 		from app.services.timezone import get_current_timezone
 		tz = await get_current_timezone()
 		now_str = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-		return {"reply": f"🤖 **System Status**\n\n• **Local Time**: {now_str}\n• **Timezone**: {tz}\n• **Memory Vault**: Connected\n• **Planka**: Connected\n\nSee the **Diagnostics** widget for detailed hardware and model performance metrics."}
+		_r = f"🤖 **System Status**\n\n• **Local Time**: {now_str}\n• **Timezone**: {tz}\n• **Memory Vault**: Connected\n• **Planka**: Connected\n\nSee the **Diagnostics** widget for detailed hardware and model performance metrics."
+		await _reply(_r)
+		return {"reply": _r}
 	elif msg.startswith("/think "):
 		# Forward to LLM with a 'thinking' prefix or just handle it as a normal message but acknowledge the mode
 		query = msg.replace("/think", "").strip()
 		# For now, let the LLM handle it, but we identify it in the help.
 		# If we want a special mode, we'd trigger it here. 
 		# Let's just return a placeholder for now since the LLM already handles general chat.
-		return {"reply": "🤖 **Z Thinking Mode** initiated. Processing complex multi-step reasoning for: " + query + "\n\n(This is handled by the Deep LLM tier with elevated context limits.)"}
+		_r = "🤖 **Z Thinking Mode** initiated. Processing complex multi-step reasoning for: " + query + "\n\n(This is handled by the Deep LLM tier with elevated context limits.)"
+		await _reply(_r)
+		return {"reply": _r}
 	elif msg == "/protocols":
 
 		from app.services.agent_actions import AVAILABLE_TOOLS
@@ -562,14 +604,17 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 			f"**Available Strategic Actions:**\n{tools_info}\n\n"
 			"*Every thought is an opportunity for evolution.*"
 		)
+		await _reply(protocols_reply)
 		return {"reply": protocols_reply}
 	elif msg == "/personal":
 		from app.services.personal_context import get_personal_context_debug_report
 		report = get_personal_context_debug_report()
+		await _reply(report)
 		return {"reply": report}
 	elif msg == "/agent":
 		from app.services.agent_context import get_agent_skills_debug_report
 		report = get_agent_skills_debug_report()
+		await _reply(report)
 		return {"reply": report}
 	elif msg == "/purge":
 		from app.services.translations import get_user_lang, get_translations
@@ -578,9 +623,13 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		t = get_translations(lang)
 		success = await wipe_collection(confirm=True)
 		if success:
-			return {"reply": t.get("purge_success", "\u2705 Semantic memory has been completely wiped.")}
+			_r = t.get("purge_success", "\u2705 Semantic memory has been completely wiped.")
+			await _reply(_r)
+			return {"reply": _r}
 		else:
-			return {"reply": t.get("purge_failed", "\u274c Failed to wipe memory. Check backend logs.")}
+			_r = t.get("purge_failed", "\u274c Failed to wipe memory. Check backend logs.")
+			await _reply(_r)
+			return {"reply": _r}
 	elif msg.startswith("[ACTION:"):
 		from app.services.agent_actions import parse_and_execute_actions
 		clean_reply, executed_cmds, pending_actions = await parse_and_execute_actions(msg, db=db, require_hitl=True)
@@ -591,45 +640,46 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		if crews:
 			clean_reply += f"\n\n*(Reasoning supported by {', '.join(crews)})*"
 
+		_direct = clean_reply or "Direct execution complete."
+		await _reply(_direct, model="operator_direct")
+		if not req.skip_history:
+			pass  # already saved by _reply
 		safe_executed = [str(c) for c in executed_cmds]
 		safe_pending = [{"description": str(p.get("description", "Action")), "type": str(p.get("type", "UNKNOWN"))} for p in pending_actions]
 		
 		return {
-			"reply": clean_reply or "Direct execution complete.",
+			"reply": _direct,
 			"actions": safe_executed,
 			"pending_actions": safe_pending,
 			"model": "operator_direct"
 		}
 
 	from app.services.llm import chat_with_context, last_model_used
-	from app.models.db import get_global_history, save_global_message
 
-	# Recover Cross-Channel History
-	merged_history = await get_global_history(limit=10)
-	
+	# merged_history already fetched via bus.ingest() at the top of this function.
 	try:
 		reply = await chat_with_context(
-			msg, 
+			msg,
 			history=merged_history,
 			include_projects=True,
 			include_people=True
 		)
-		
-		from app.services.agent_actions import parse_and_execute_actions
-		clean_reply, executed_cmds, pending_actions = await parse_and_execute_actions(reply, db=db, require_hitl=True)
+
+		# Parse actions and persist via the bus (single source of truth)
+		clean_reply, executed_cmds, pending_actions = await bus.commit_reply(
+			channel="dashboard",
+			raw_reply=reply,
+			model=last_model_used.get(),
+			user_text=msg,
+			db=db,
+			save=not req.skip_history,
+		)
 
 		# Reasoning indicator extraction
 		crews = [c.split(":", 1)[1] for c in executed_cmds if c.startswith("__CREW_RUN__:")]
 		executed_cmds = [c for c in executed_cmds if not c.startswith("__CREW_RUN__:")]
 		if crews:
 			clean_reply += f"\n\n*(Reasoning supported by {', '.join(crews)})*"
-
-		# Sync to Global Central Memory
-		if not req.skip_history:
-			await save_global_message("dashboard", "user", msg)
-			await save_global_message("dashboard", "z", clean_reply, model=last_model_used.get())
-
-		# Memory is user-driven only (via /add or LEARN action tag)
 
 		safe_executed = [str(c) for c in executed_cmds]
 		safe_pending = [{"description": str(p.get("description", "Action")), "type": str(p.get("type", "UNKNOWN"))} for p in pending_actions]
@@ -845,13 +895,20 @@ async def dashboard_chat_stream(req: ChatRequest, request: Request, _rl: None = 
 	"""SSE streaming chat endpoint for real-time token delivery to dashboard."""
 	from starlette.responses import StreamingResponse
 	from app.services.llm import chat_stream_with_context, last_model_used
-	from app.models.db import get_global_history, save_global_message
-	from app.services.agent_actions import parse_and_execute_actions
+	from app.services.message_bus import bus
 
 	msg = req.message.strip()
 
 	async def event_generator():
-		merged_history = await get_global_history(limit=10)
+		# Persist user turn FIRST via the bus before any streaming starts.
+		# This matches the blocking endpoint and ensures the message survives
+		# even if the client disconnects mid-stream.
+		if not req.skip_history:
+			merged_history = await bus.ingest("dashboard", msg)
+		else:
+			from app.models.db import get_global_history
+			merged_history = await get_global_history(limit=10)
+
 		chunks = []
 
 		async for chunk in chat_stream_with_context(
@@ -865,22 +922,22 @@ async def dashboard_chat_stream(req: ChatRequest, request: Request, _rl: None = 
 
 		full_response = "".join(chunks)
 
-		async with AsyncSessionLocal() as db:
-			clean_reply, executed_cmds, pending_actions = await parse_and_execute_actions(full_response, db=db, require_hitl=True)
-			
-			# Reasoning indicator extraction
-			crews = [c.split(":", 1)[1] for c in executed_cmds if c.startswith("__CREW_RUN__:")]
-			executed_cmds = [c for c in executed_cmds if not c.startswith("__CREW_RUN__:")]
-			if crews:
-				clean_reply += f"\n\n*(Reasoning supported by {', '.join(crews)})*"
+		# Parse actions, save Z reply, trigger background memory — all via bus.
+		clean_reply, executed_cmds, pending_actions = await bus.commit_reply(
+			channel="dashboard",
+			raw_reply=full_response,
+			model=last_model_used.get(),
+			user_text=msg,
+			save=not req.skip_history,
+		)
 
-		await save_global_message("dashboard", "user", msg)
+		# Reasoning indicator extraction
+		crews = [c.split(":", 1)[1] for c in executed_cmds if c.startswith("__CREW_RUN__:")]
+		executed_cmds = [c for c in executed_cmds if not c.startswith("__CREW_RUN__:")]
+		if crews:
+			clean_reply += f"\n\n*(Reasoning supported by {', '.join(crews)})*"
+
 		model_label = last_model_used.get()
-		await save_global_message("dashboard", "z", clean_reply, model=model_label)
-
-		# Background memory extraction — learn from user message without blocking reply
-		asyncio.create_task(extract_and_store_facts(msg))
-
 		yield f"data: {json.dumps({'done': True, 'reply': _sanitise_reply_html(clean_reply), 'actions': executed_cmds, 'pending': pending_actions, 'model': model_label})}\n\n"
 
 	return StreamingResponse(
