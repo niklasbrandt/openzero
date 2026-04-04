@@ -182,11 +182,11 @@ async def _get_or_create_today_card(
 		for c in cards:
 			if c.get("listId") == list_id and c.get("name") == date_str:
 				return c["id"], c.get("description") or ""
-		# Create today's card
+		# Create today's card at position 1 so it appears at the top of the list
 		r = await client.post(f"/api/lists/{list_id}/cards", json={
 			"name": date_str,
 			"description": "",
-			"position": 65535,
+			"position": 1,
 		})
 		r.raise_for_status()
 		data = r.json()
