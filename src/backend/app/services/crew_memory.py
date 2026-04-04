@@ -103,7 +103,7 @@ async def _get_or_create_crews_project(client: httpx.AsyncClient, project_name: 
 		r.raise_for_status()
 		return (r.json().get("item") or r.json())["id"]
 	except Exception as e:
-		logger.debug("crew_memory: _get_or_create_crews_project failed: %s", e)
+		logger.warning("crew_memory: _get_or_create_crews_project failed: %s", e)
 		return None
 
 
@@ -120,12 +120,21 @@ async def _get_or_create_crew_board(
 		for b in boards:
 			if (b.get("name") or "").lower() == board_name.lower():
 				return b["id"]
-		# Create board
-		from app.services.planka import create_board
-		result = await create_board(project_id=project_id, name=board_name)
-		return result["id"] if result and result.get("id") else None
+		# Create board directly on this client (same auth session)
+		r = await client.post(f"/api/projects/{project_id}/boards", json={
+			"name": board_name,
+			"position": 65535,
+		})
+		r.raise_for_status()
+		data = r.json()
+		board = data.get("item") or data
+		board_id = board.get("id")
+		if not board_id:
+			logger.warning("crew_memory: board creation returned no id for '%s'", board_name)
+			return None
+		return board_id
 	except Exception as e:
-		logger.debug("crew_memory: _get_or_create_crew_board failed: %s", e)
+		logger.warning("crew_memory: _get_or_create_crew_board failed: %s", e)
 		return None
 
 
@@ -194,7 +203,7 @@ async def _patch_card_description(client: httpx.AsyncClient, card_id: str, descr
 		r = await client.patch(f"/api/cards/{card_id}", json={"description": description})
 		r.raise_for_status()
 	except Exception as e:
-		logger.debug("crew_memory: _patch_card_description failed for %s: %s", card_id, e)
+		logger.warning("crew_memory: _patch_card_description failed for %s: %s", card_id, e)
 
 
 def _build_updated_description(current: str, user_msg: str, crew_response: str, now_str: str) -> str:
