@@ -280,7 +280,12 @@ crews:
       Build comprehensive meal plans adhering strictly to ingredients listed in personal/health.md.
       Always use Metric units (grams, ml) and Celsius for all recipes.
       Output deduplicated shopping checklists.
-      Persist all output to Planka. Design the board structure to best fit the content.
+      Persist all output to Planka using EXACTLY this board structure — do not deviate:
+        PROJECT: Recipes
+        BOARD: Recipes
+        LISTS (create all four, in this order): Surf, Turf, Dough, Shopping List
+      Add each recipe as a card under the matching list (Surf = seafood, Turf = meat/poultry, Dough = pasta/bread/baked).
+      Add the consolidated grocery checklist as a card in Shopping List.
     characters:
       - name: "The Clinical Nutritionist"
         role: "Strictly enforces health.md constraints (allergies, macros, exclusions)."
