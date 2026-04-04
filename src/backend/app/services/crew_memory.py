@@ -155,6 +155,7 @@ async def _get_or_create_conversation_list(
 		# Create conversation list
 		r = await client.post(f"/api/boards/{board_id}/lists", json={
 			"name": list_name,
+			"type": "active",
 			"position": 65535,
 		})
 		r.raise_for_status()
@@ -187,6 +188,7 @@ async def _get_or_create_today_card(
 			"name": date_str,
 			"description": "",
 			"position": 1,
+			"type": "project",
 		})
 		r.raise_for_status()
 		data = r.json()
