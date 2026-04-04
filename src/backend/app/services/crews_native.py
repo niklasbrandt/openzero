@@ -162,30 +162,30 @@ class NativeCrewEngine:
 
 		async with httpx.AsyncClient(timeout=3600.0) as client:
 			try:
-			async with client.stream("POST", f"{self.llm_url}/chat/completions", headers=req_headers, json=payload) as response:
-				response.raise_for_status()
-				collected_chunks: list[str] = []
-				async for line in response.aiter_lines():
-					if not line or not line.startswith("data: "):
-						continue
-					
-					data_str = line[6:].strip()
-					if data_str == "[DONE]":
-						break
-						
-					try:
-						chunk_data = json.loads(data_str)
-						delta = chunk_data.get("choices", [{}])[0].get("delta", {})
-						content = delta.get("content", "")
-						if content:
-							collected_chunks.append(content)
-							yield content
-					except Exception as je:
-						logger.debug("Stream Chunk Parse Error (non-fatal): %s", je)
-				# Write crew memory after stream completes
-				full_response = "".join(collected_chunks)
-				if full_response.strip():
-					asyncio.create_task(_write_crew_memory(crew_id, user_input, full_response))
+				async with client.stream("POST", f"{self.llm_url}/chat/completions", headers=req_headers, json=payload) as response:
+					response.raise_for_status()
+					collected_chunks: list[str] = []
+					async for line in response.aiter_lines():
+						if not line or not line.startswith("data: "):
+							continue
+
+						data_str = line[6:].strip()
+						if data_str == "[DONE]":
+							break
+
+						try:
+							chunk_data = json.loads(data_str)
+							delta = chunk_data.get("choices", [{}])[0].get("delta", {})
+							content = delta.get("content", "")
+							if content:
+								collected_chunks.append(content)
+								yield content
+						except Exception as je:
+							logger.debug("Stream Chunk Parse Error (non-fatal): %s", je)
+					# Write crew memory after stream completes
+					full_response = "".join(collected_chunks)
+					if full_response.strip():
+						asyncio.create_task(_write_crew_memory(crew_id, user_input, full_response))
 			except Exception as e:
 				logger.error("Native Engine Streaming Failure: %s", e)
 				raise
