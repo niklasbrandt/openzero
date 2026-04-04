@@ -1540,6 +1540,7 @@ class PersonCreate(BaseModel):
 	quiet_hours_start: Optional[str] = "00:00"
 	quiet_hours_end: Optional[str] = "06:00"
 	language: Optional[str] = "en"
+	date_format: Optional[str] = "iso"
 	color_primary: Optional[str] = None
 	color_secondary: Optional[str] = None
 	color_tertiary: Optional[str] = None
@@ -1574,6 +1575,7 @@ async def update_identity(person: PersonCreate, db: AsyncSession = Depends(get_d
 	me.quiet_hours_start = person.quiet_hours_start
 	me.quiet_hours_end = person.quiet_hours_end
 	me.language = person.language
+	me.date_format = person.date_format
 	me.color_primary = person.color_primary
 	me.color_secondary = person.color_secondary
 	me.color_tertiary = person.color_tertiary

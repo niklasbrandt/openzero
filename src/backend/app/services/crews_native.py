@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import json
 import httpx
@@ -9,6 +10,15 @@ from app.services.agent_context import get_agent_skills_for_prompt, refresh_agen
 from app.services.llm import ACTION_TAG_DOCS
 
 logger = logging.getLogger(__name__)
+
+
+async def _write_crew_memory(crew_id: str, user_input: str, crew_response: str) -> None:
+	"""Fire-and-forget: append this exchange to the crew's Planka conversation card."""
+	try:
+		from app.services.crew_memory import append_crew_exchange
+		await append_crew_exchange(crew_id, user_input, crew_response)
+	except Exception as e:
+		logger.debug("crew_memory write failed (non-fatal): %s", e)
 
 # Minimal system template for local 0.6B model — fits inside 4096 ctx window
 _LOCAL_SYSTEM_TEMPLATE = """You are Z, a personal AI agent. Execute the following crew mission:
@@ -92,6 +102,15 @@ class NativeCrewEngine:
 			if context_block:
 				instructions += f"\n\n{context_block}"
 
+		# 3b. Crew conversation memory context (this crew's past conversations)
+		try:
+			from app.services.crew_memory import get_crew_memory_context
+			mem_ctx = await get_crew_memory_context(crew_id)
+			if mem_ctx:
+				instructions += f"\n\n{mem_ctx}"
+		except Exception as e:
+			logger.debug("Native Engine: Failed to load crew memory context: %s", e)
+
 		# 4. Action tag vocabulary — always included (1.7B+ has 32k ctx)
 		instructions += f"\n\n{ACTION_TAG_DOCS}"
 
@@ -143,24 +162,30 @@ class NativeCrewEngine:
 
 		async with httpx.AsyncClient(timeout=3600.0) as client:
 			try:
-				async with client.stream("POST", f"{self.llm_url}/chat/completions", headers=req_headers, json=payload) as response:
-					response.raise_for_status()
-					async for line in response.aiter_lines():
-						if not line or not line.startswith("data: "):
-							continue
+			async with client.stream("POST", f"{self.llm_url}/chat/completions", headers=req_headers, json=payload) as response:
+				response.raise_for_status()
+				collected_chunks: list[str] = []
+				async for line in response.aiter_lines():
+					if not line or not line.startswith("data: "):
+						continue
+					
+					data_str = line[6:].strip()
+					if data_str == "[DONE]":
+						break
 						
-						data_str = line[6:].strip()
-						if data_str == "[DONE]":
-							break
-							
-						try:
-							chunk_data = json.loads(data_str)
-							delta = chunk_data.get("choices", [{}])[0].get("delta", {})
-							content = delta.get("content", "")
-							if content:
-								yield content
-						except Exception as je:
-							logger.debug("Stream Chunk Parse Error (non-fatal): %s", je)
+					try:
+						chunk_data = json.loads(data_str)
+						delta = chunk_data.get("choices", [{}])[0].get("delta", {})
+						content = delta.get("content", "")
+						if content:
+							collected_chunks.append(content)
+							yield content
+					except Exception as je:
+						logger.debug("Stream Chunk Parse Error (non-fatal): %s", je)
+				# Write crew memory after stream completes
+				full_response = "".join(collected_chunks)
+				if full_response.strip():
+					asyncio.create_task(_write_crew_memory(crew_id, user_input, full_response))
 			except Exception as e:
 				logger.error("Native Engine Streaming Failure: %s", e)
 				raise

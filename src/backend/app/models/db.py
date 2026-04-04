@@ -88,6 +88,7 @@ class Person(Base):
     quiet_hours_start = Column(String, default="00:00")
     quiet_hours_end = Column(String, default="06:00")
     language = Column(String, default="en") # ISO 639-1 code: en, zh, hi, es, fr, ar, pt, ru, ja, de
+    date_format = Column(String, default="iso") # Card date format key: iso | us | eu | cn
     color_primary = Column(String)  # Favorite primary color
     color_secondary = Column(String) # Favorite secondary color
     color_tertiary = Column(String)  # Favorite tertiary color
