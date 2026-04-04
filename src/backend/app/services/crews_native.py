@@ -10,6 +10,11 @@ from app.services.llm import ACTION_TAG_DOCS
 
 logger = logging.getLogger(__name__)
 
+# Minimal system template for local 0.6B model — fits inside 4096 ctx window
+_LOCAL_SYSTEM_TEMPLATE = """You are Z, a personal AI agent. Execute the following crew mission:
+{instructions}
+Output clear, actionable results. Be concise."""
+
 class NativeCrewEngine:
 	def __init__(self, llm_url: Optional[str] = None):
 		default_url = settings.LLM_CLOUD_BASE_URL if settings.cloud_configured else settings.LLM_LOCAL_URL
@@ -55,8 +60,12 @@ class NativeCrewEngine:
 		if not config:
 			raise ValueError(f"Crew '{crew_id}' is not defined in registry.")
 
+		is_local = not settings.cloud_configured
+
 		# 1. Base Instructions and Protocol
-		instructions = SYSTEM_TEMPLATE.format(instructions=config.instructions or "Tactical Steward.")
+		# Local model uses a stripped-down template to stay within 4096 ctx window
+		template = _LOCAL_SYSTEM_TEMPLATE if is_local else SYSTEM_TEMPLATE
+		instructions = template.format(instructions=config.instructions or "Tactical Steward.")
 
 		# 2. Semantic Priming: Character Roles
 		if config.characters:
@@ -65,13 +74,27 @@ class NativeCrewEngine:
 				char_block += f"- {char.get('name', 'Expert')}: {char.get('role', 'Contributing logic')}\n"
 			instructions += f"\n{char_block}"
 
-		# 3. Personal & Agent Context Injection
-		context_block = await self._get_crew_context()
-		if context_block:
-			instructions += f"\n\n{context_block}"
+		# 3. Context Injection
+		# Local: personal context only (agent_context is large and not needed for most crew tasks)
+		# Cloud: full personal + agent context
+		if is_local:
+			p_ctx = get_personal_context_for_prompt()
+			if not p_ctx:
+				try:
+					await refresh_personal_context()
+					p_ctx = get_personal_context_for_prompt()
+				except Exception as e:
+					logger.debug("Native Engine: Failed to refresh personal context: %s", e)
+			if p_ctx:
+				instructions += f"\n\n{p_ctx}"
+		else:
+			context_block = await self._get_crew_context()
+			if context_block:
+				instructions += f"\n\n{context_block}"
 
-		# 4. Action tag vocabulary — crew must emit these to write to Planka boards
-		instructions += f"\n\n{ACTION_TAG_DOCS}"
+		# 4. Action tag vocabulary — omit for local model (too many tokens; 0.6B can't use reliably)
+		if not is_local:
+			instructions += f"\n\n{ACTION_TAG_DOCS}"
 
 		# 5. Recent user messages from conversation history so the crew can reference
 		# what the user shared (e.g. recipes, plans). Z's own prior responses are

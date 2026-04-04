@@ -10,19 +10,17 @@ Z uses a **local + optional cloud** LLM architecture. A local llama.cpp model ru
 
 | Profile | RAM | Local tier model | Notes |
 |---------|-----|-------------------|---------|
-| A — Minimal | 8 GB | Qwen3-0.6B Q4_K_M | Tight but functional |
-| B — Standard (default) | 12 GB | Qwen3-0.6B Q4_K_M | Default docker-compose settings |
-| C — Comfortable | 24 GB | Qwen3-1.7B Q4_K_M | Set `LLM_LOCAL_CTX=8192`, `LLM_LOCAL_CACHE_RAM=2048` |
-| D — High-end | 64 GB+ | Qwen3-4B Q4_K_M | GPU or large-RAM homelab |
-
-To use a cloud API for complex tasks, set `LLM_CLOUD_BASE_URL`, `LLM_CLOUD_API_KEY`, and `LLM_MODEL_CLOUD` in your `.env`.
+| A — Minimal | 8 GB | Qwen3-0.6B Q4_K_M | Tight but functional; crews may fail (4096 ctx) |
+| B — Standard (default) | 12 GB | Qwen3-1.7B Q4_K_M | Default since v1.1 — 32k ctx, action tags work |
+| C — Comfortable | 24 GB | Qwen3-4B Q4_K_M | Set `LLM_LOCAL_CTX=32768`, `LLM_LOCAL_CACHE_RAM=2048` |
+| D — High-end | 64 GB+ | Qwen3-8B Q4_K_M | GPU or large-RAM homelab |
 
 ## 🏗️ Phase 1: Prepare your VPS (Server)
 
 We recommend a VPS with **Ubuntu 24.04**. For the default 12 GB profile, aim for at least **8 Cores** and **12 GB RAM**.
 
 > [!IMPORTANT]
-> **Z runs a local llama.cpp model on your server** (default: Qwen3-0.6B Q4_K_M). All interactive chat uses the local tier; an optional cloud API handles complex reasoning when configured. See the hardware profiles table above to choose the right model for your RAM budget. **Swap space is still recommended as a safety buffer.**
+> **Z runs a local llama.cpp model on your server** (default: Qwen3-1.7B Q4_K_M). All interactive chat uses the local tier; an optional cloud API handles complex reasoning when configured. See the hardware profiles table above to choose the right model for your RAM budget. **Swap space is still recommended as a safety buffer.**
 
 ### 0. Add Swap Space (MANDATORY first step)
 
@@ -194,7 +192,10 @@ cp .env.example .env
 # REDIS_PASSWORD=your_strong_random_password  (protects the task queue)
 # BASE_URL=http://open.zero  (or http://YOUR_SERVER_IP — must match your access URL)
 
-# LLM_LOCAL_CACHE_RAM=256  (MiB for prompt cache - local tier)
+# LLM_LOCAL_MODEL_URL=https://huggingface.co/unsloth/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B-Q4_K_M.gguf
+# LLM_LOCAL_MODEL_FILE=Qwen3-1.7B-Q4_K_M.gguf
+# LLM_LOCAL_CTX=32768           (context window — 32k for 1.7B+)
+# LLM_LOCAL_CACHE_RAM=512        (MiB for prompt cache - local tier)
 # LLM_CLOUD_BASE_URL=       (optional cloud API base URL)
 # LLM_CLOUD_API_KEY=        (optional cloud API key)
 
