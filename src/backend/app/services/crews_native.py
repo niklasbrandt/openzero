@@ -1,4 +1,3 @@
-import asyncio
 import logging
 import json
 import httpx
@@ -185,7 +184,7 @@ class NativeCrewEngine:
 					# Write crew memory after stream completes
 					full_response = "".join(collected_chunks)
 					if full_response.strip():
-						asyncio.create_task(_write_crew_memory(crew_id, user_input, full_response))
+						await _write_crew_memory(crew_id, user_input, full_response)
 			except Exception as e:
 				logger.error("Native Engine Streaming Failure: %s", e)
 				raise
