@@ -19,10 +19,7 @@ async def _write_crew_memory(crew_id: str, user_input: str, crew_response: str) 
 	except Exception as e:
 		logger.warning("crew_memory write failed (non-fatal): %s", e)
 
-# Minimal system template for local 0.6B model — fits inside 4096 ctx window
-_LOCAL_SYSTEM_TEMPLATE = """You are Z, a personal AI agent. Execute the following crew mission:
-{instructions}
-Output clear, actionable results. Be concise."""
+# Local model is now 1.7B with 32k context — use the same full template as cloud.
 
 class NativeCrewEngine:
 	def __init__(self, llm_url: Optional[str] = None):
@@ -72,9 +69,7 @@ class NativeCrewEngine:
 		is_local = not settings.cloud_configured
 
 		# 1. Base Instructions and Protocol
-		# Local model uses a stripped-down template to stay within 4096 ctx window
-		template = _LOCAL_SYSTEM_TEMPLATE if is_local else SYSTEM_TEMPLATE
-		instructions = template.format(instructions=config.instructions or "Tactical Steward.")
+		instructions = SYSTEM_TEMPLATE.format(instructions=config.instructions or "Tactical Steward.")
 
 		# 2. Semantic Priming: Character Roles
 		if config.characters:
