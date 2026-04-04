@@ -94,7 +94,7 @@ async def _get_or_create_crews_project(client: httpx.AsyncClient, project_name: 
 		resp = await client.get("/api/projects")
 		resp.raise_for_status()
 		for p in resp.json().get("items", []):
-			if p["name"].lower() == project_name.lower():
+			if (p.get("name") or "").lower() == project_name.lower():
 				return p["id"]
 		# Create it
 		r = await client.post("/api/projects", json={"name": project_name, "type": "private"})
@@ -118,7 +118,7 @@ async def _get_or_create_crew_board(
 		det.raise_for_status()
 		boards = det.json().get("included", {}).get("boards", [])
 		for b in boards:
-			if b["name"].lower() == board_name.lower():
+			if (b.get("name") or "").lower() == board_name.lower():
 				return b["id"]
 		# Create board
 		from app.services.planka import create_board
@@ -141,7 +141,7 @@ async def _get_or_create_conversation_list(
 		b_data = b_detail.json()
 		lists = b_data.get("included", {}).get("lists", []) or b_data.get("lists", [])
 		for lst in lists:
-			if lst["name"].lower() == list_name.lower():
+			if (lst.get("name") or "").lower() == list_name.lower():
 				return lst["id"]
 		# Create conversation list
 		r = await client.post(f"/api/boards/{board_id}/lists", json={
@@ -295,7 +295,7 @@ async def get_crew_memory_context(crew_id: str) -> str:
 			resp.raise_for_status()
 			project_id = next(
 				(p["id"] for p in resp.json().get("items", [])
-				 if p["name"].lower() == project_name.lower()),
+				 if (p.get("name") or "").lower() == project_name.lower()),
 				None,
 			)
 			if not project_id:
@@ -306,7 +306,7 @@ async def get_crew_memory_context(crew_id: str) -> str:
 			det.raise_for_status()
 			boards = det.json().get("included", {}).get("boards", [])
 			board_id = next(
-				(b["id"] for b in boards if b["name"].lower() == board_name.lower()),
+				(b["id"] for b in boards if (b.get("name") or "").lower() == board_name.lower()),
 				None,
 			)
 			if not board_id:
@@ -317,7 +317,7 @@ async def get_crew_memory_context(crew_id: str) -> str:
 			bl.raise_for_status()
 			lists = bl.json().get("included", {}).get("lists", []) or bl.json().get("lists", [])
 			list_id = next(
-				(lst["id"] for lst in lists if lst["name"].lower() == list_name.lower()),
+				(lst["id"] for lst in lists if (lst.get("name") or "").lower() == list_name.lower()),
 				None,
 			)
 			if not list_id:
