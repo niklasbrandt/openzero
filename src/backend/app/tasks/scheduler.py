@@ -181,7 +181,7 @@ async def start_scheduler():
 	)
 
 	# Proactive Mission Follow-up — Dynamic Activity Window
-	from app.services.follow_up import run_proactive_follow_up, check_active_tracking_sessions
+	from app.services.follow_up import run_proactive_follow_up, check_active_tracking_sessions, evening_reminder
 	
 	# Compute APScheduler hour ranges respecting Quiet Hours
 	if quiet_enabled and qh_start_hour != qh_end_hour:
@@ -209,6 +209,14 @@ async def start_scheduler():
 		check_active_tracking_sessions,
 		IntervalTrigger(minutes=5),
 		id="proximity_monitor",
+		replace_existing=True,
+	)
+
+	# Evening Today-board sweep — 17:00 and 19:00 local time
+	scheduler.add_job(
+		evening_reminder,
+		CronTrigger(hour="17,19", minute=0, timezone=tz),
+		id="evening_reminder",
 		replace_existing=True,
 	)
 
