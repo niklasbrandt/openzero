@@ -559,7 +559,11 @@ _PROMPT_ECHO_RE = _build_prompt_echo_re(SYSTEM_PROMPT_CHAT)
 
 # Extended prompt with action tag documentation (only for agent path)
 ACTION_TAG_DOCS = """
-Semantic Action Tags (Exact Format Required):
+Semantic Action Tags — STRICT FORMAT (every field required, closing ] required):
+CRITICAL: Every tag MUST start with `[ACTION:` — never use `[CREATE_TASK` or similar shorthand.
+CRITICAL: Tags go on NEW LINES at the very END of your response, after all prose.
+CRITICAL: Never embed tags mid-response or inside prose sections.
+
 - Create Task: `[ACTION: CREATE_TASK | BOARD: name | LIST: name | TITLE: text]`
   (Default board: "Operator Board", default list: "Today")
   Always emit this tag when the user says "remind me today", "remind me later", "add this to my list", or mentions any item they need to do/buy/handle.
