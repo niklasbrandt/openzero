@@ -69,7 +69,10 @@ class NativeCrewEngine:
 		is_local = not settings.cloud_configured
 
 		# 1. Base Instructions and Protocol
+		from datetime import datetime, timezone
+		now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 		instructions = SYSTEM_TEMPLATE.format(instructions=config.instructions or "Tactical Steward.")
+		instructions = f"Current date and time: {now_str}\n\n" + instructions
 
 		# 2. Semantic Priming: Character Roles
 		if config.characters:
