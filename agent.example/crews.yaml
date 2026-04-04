@@ -280,12 +280,27 @@ crews:
       Build comprehensive meal plans adhering strictly to ingredients listed in personal/health.md.
       Always use Metric units (grams, ml) and Celsius for all recipes.
       Output deduplicated shopping checklists.
-      Persist all output to Planka using EXACTLY this board structure — do not deviate:
-        PROJECT: Recipes
-        BOARD: Recipes
-        LISTS (create all four, in this order): Surf, Turf, Dough, Shopping List
-      Add each recipe as a card under the matching list (Surf = seafood, Turf = meat/poultry, Dough = pasta/bread/baked).
-      Add the consolidated grocery checklist as a card in Shopping List.
+
+      PLANKA PERSISTENCE — follow these steps in exact order, always:
+        STEP 1: Issue CREATE_PROJECT | NAME: Recipes | DESCRIPTION: Weekly Meal Plans
+                (This is idempotent — safe to run even if the project already exists.)
+        STEP 2: Issue CREATE_BOARD | PROJECT: Recipes | NAME: Recipes
+        STEP 3: Issue CREATE_LIST for each: Surf, Turf, Dough, Shopping List
+        STEP 4: For each recipe, issue CREATE_TASK with:
+                - BOARD: Recipes
+                - LIST: the matching category (Surf / Turf / Dough)
+                - TITLE: the real recipe name (e.g. "Garlic Butter Shrimp" — NOT "Surf 1")
+                - The card description (added via the DESCRIPTION field if supported) must contain:
+                    Ingredients: [list with exact gram/ml quantities]
+                    Method: [3-5 concise steps]
+        STEP 5: Issue one CREATE_TASK for BOARD: Recipes | LIST: Shopping List | TITLE: Weekly Shopping List
+                with all ingredients deduplicated and sorted by category (Produce, Proteins, Pantry).
+
+      RECIPE QUALITY RULES:
+        - Every recipe must have a real dish name (not "Surf 1", not "Turf 3").
+        - Surf = seafood dishes (e.g. shrimp, fish, squid). Turf = meat/poultry dishes. Dough = pasta, pizza, bread, baked goods.
+        - Minimum 2 recipes per list (Surf, Turf, Dough). The user provided food preferences in the message — use those.
+        - Strictly respect all allergies and exclusions from health.md.
     characters:
       - name: "The Clinical Nutritionist"
         role: "Strictly enforces health.md constraints (allergies, macros, exclusions)."
@@ -393,11 +408,15 @@ crews:
       Your primary inputs are personal/health.md (physical metrics, injuries, preferences, saved workout memory)
       and the current output of the nutrition crew (energy availability, macro targets).
 
-      ON FIRST RUN — if personal/health.md contains no Workout Preferences section, enter an onboarding
-      dialogue: ask the user about preferred training days, preferred times (morning / midday / evening),
-      favourite and disliked modalities, available equipment (gym, home, outdoor), and any movement
-      restrictions not already listed. Persist ALL answers as a structured Workout Preferences block
-      in personal/health.md immediately after collecting them.
+      ON FIRST RUN — if personal/health.md contains no Workout Preferences section:
+        - If the user's message ALREADY contains their preferences (training days, preferred time,
+          space/equipment constraints, any movement restrictions), extract those directly and
+          immediately generate the plan. DO NOT ask clarifying questions when the info is in the message.
+        - Only if the message contains none of these details, enter a brief onboarding dialogue: ask
+          about preferred training days, preferred times (morning / midday / evening), favourite and
+          disliked modalities, available equipment (gym, home, outdoor), and any movement restrictions.
+      In both cases, persist the extracted or collected preferences as a structured Workout Preferences
+      block in personal/health.md before generating the plan.
 
       WEEKLY DUTIES:
       1. Pull the current week's calendar. Cross-reference user's saved preferred workout times against

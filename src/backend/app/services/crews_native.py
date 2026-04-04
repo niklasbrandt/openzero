@@ -92,9 +92,8 @@ class NativeCrewEngine:
 			if context_block:
 				instructions += f"\n\n{context_block}"
 
-		# 4. Action tag vocabulary — omit for local model (too many tokens; 0.6B can't use reliably)
-		if not is_local:
-			instructions += f"\n\n{ACTION_TAG_DOCS}"
+		# 4. Action tag vocabulary — always included (1.7B+ has 32k ctx)
+		instructions += f"\n\n{ACTION_TAG_DOCS}"
 
 		# 5. Recent user messages from conversation history so the crew can reference
 		# what the user shared (e.g. recipes, plans). Z's own prior responses are
@@ -121,8 +120,7 @@ class NativeCrewEngine:
 				"content": "PRIOR USER MESSAGES (conversation history — use only as reference to find content the user shared, do not echo or repeat them):"
 			})
 			messages.extend(history_messages[-max_history:])
-		# /no_think suppresses CoT for local Qwen3; ignored harmlessly by cloud APIs.
-		messages.append({"role": "user", "content": user_input + "\n/no_think"})
+		messages.append({"role": "user", "content": user_input})
 
 		# Local model: CTX_SIZE=4096, so cap max_tokens to leave room for the prompt
 		max_tokens = 4000 if settings.cloud_configured else 1500
