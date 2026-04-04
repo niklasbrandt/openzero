@@ -344,5 +344,13 @@ translations: dict[str, str] = {
 	"list_this_week": 'Esta Semana',
 	"list_backlog": 'Reserva',
 	"list_done": 'Hecho',
-	"list_inbox": 'Bandeja de Entrada'
+        "list_inbox": 'Bandeja de Entrada',
+        "crews_project_name": 'Crews',
+        "crew_conversation_list": 'Conversaci\u00f3n',
+        "date_format_label": 'Formato de Fecha',
+        "date_format_iso": 'ISO (2026.01.30)',
+        "date_format_us": 'EE.UU. (01/30/2026)',
+        "date_format_eu": 'Europeo (30.01.2026)',
+        "date_format_cn": 'Chino (2026\u5e7401\u670830\u65e5)',
+        "aria_date_format": 'Formato de fecha para tarjetas y registros',
 }
