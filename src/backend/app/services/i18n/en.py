@@ -359,6 +359,13 @@ translations: dict[str, str] = {
 	"list_this_week": "This Week",
 	"list_backlog": "Backlog",
 	"list_done": "Done",
-	"list_inbox": "Inbox"
+        "list_inbox": "Inbox",
+        "crews_project_name": "Crews",
+        "crew_conversation_list": "Conversation",
+        "date_format_label": "Date Format",
+        "date_format_iso": "ISO (2026.01.30)",
+        "date_format_us": "US (01/30/2026)",
+        "date_format_eu": "European (30.01.2026)",
+        "date_format_cn": "Chinese (2026\u5e7401\u670830\u65e5)",
+        "aria_date_format": "Date format for cards and logs",
 }
-

@@ -175,6 +175,7 @@ export class UserCard extends HTMLElement {
 			quiet_hours_end: (shadow.querySelector('#quiet-end-input') as HTMLInputElement).value,
 			context: (shadow.querySelector('#context-input') as HTMLTextAreaElement).value,
 			language: (shadow.querySelector('#language-input') as HTMLSelectElement).value,
+			date_format: (shadow.querySelector('#date-format-input') as HTMLSelectElement).value,
 			color_primary: (shadow.querySelector('#color-primary-input') as HTMLInputElement).value,
 			color_secondary: (shadow.querySelector('#color-secondary-input') as HTMLInputElement).value,
 			color_tertiary: (shadow.querySelector('#color-tertiary-input') as HTMLInputElement).value,
@@ -397,8 +398,15 @@ export class UserCard extends HTMLElement {
 											<option value="${code}" ${me.language === code ? 'selected' : ''}>${meta.native}</option>
 										`).join('')}
 									</select>
-								</div>
-								<div class="field">
+								</div>							<div class="field">
+								<label class="label" for="date-format-input">${this.tr('date_format_label', 'Date Format')}</label>
+								<select id="date-format-input" aria-label="${this.tr('aria_date_format', 'Date format for cards and logs')}">
+									<option value="iso" ${(me.date_format || 'iso') === 'iso' ? 'selected' : ''}>${this.tr('date_format_iso', 'ISO (2026.01.30)')}</option>
+									<option value="us" ${me.date_format === 'us' ? 'selected' : ''}>${this.tr('date_format_us', 'US (01/30/2026)')}</option>
+									<option value="eu" ${me.date_format === 'eu' ? 'selected' : ''}>${this.tr('date_format_eu', 'European (30.01.2026)')}</option>
+									<option value="cn" ${me.date_format === 'cn' ? 'selected' : ''}>${this.tr('date_format_cn', 'Chinese (2026年01月30日)')}</option>
+								</select>
+							</div>								<div class="field">
 									<label class="label" for="bday-input">${this.tr('birthday', 'Birthday')}</label>
 									<input id="bday-input" type="text" placeholder="YYYY-MM-DD" value="${me.birthday || ''}" autocomplete="bday">
 								</div>
