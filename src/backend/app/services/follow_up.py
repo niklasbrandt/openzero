@@ -13,9 +13,9 @@ logger = logging.getLogger(__name__)
 
 # Urgency label → nudge interval in minutes
 URGENCY_INTERVALS: dict[str, int] = {
-	"urgent": 60,
-	"medium": 360,
-	"low": 720,
+	"urgent": 30,
+	"medium": 120,
+	"low": 240,
 }
 
 # card_id → (last_nudged_at, urgency_label, interval_minutes)
@@ -255,6 +255,57 @@ async def run_proactive_follow_up() -> None:
 
 	except Exception as e:
 		logger.error("Proactive Follow-up failed: %s", e)
+
+
+async def evening_reminder() -> None:
+	"""Unconditional end-of-day sweep: summarise all remaining Today tasks.
+
+	Fires at 17:00 and 19:00 regardless of per-card nudge intervals.
+	Skips silently if the Today list is empty.
+	"""
+	from app.services.operator_board import operator_service
+	try:
+		async with await operator_service._get_client() as client:
+			project_id, board_id = await operator_service.initialize_board(client)
+			board_resp = await client.get(f"/api/boards/{board_id}", params={"included": "lists,cards"})
+			board_resp.raise_for_status()
+			included = board_resp.json().get("included", {})
+			lists = included.get("lists", [])
+			cards = included.get("cards", [])
+
+			today_list = next((l for l in lists if l["name"] == "Today"), None)
+			if not today_list:
+				return
+
+			today_cards = [c for c in cards if c["listId"] == today_list["id"]]
+			if not today_cards:
+				logger.info("Evening reminder: Today list is clear, skipping.")
+				return
+
+			task_names = ", ".join(c["name"] for c in today_cards[:8])
+			hour = datetime.datetime.now().hour
+			time_label = "end of day" if hour >= 19 else "this evening"
+
+			prompt = (
+				f"It is {time_label}. The user still has these mission items on their Today board: {task_names}. "
+				"Deliver a direct, zero-fluff evening check. Remind them what is still open and push them "
+				"to either finish it tonight or move it consciously. Two sentences max."
+			)
+			from app.services.llm import chat
+			from app.services.notifier import send_notification, get_stats_footer as _get_stats_footer, get_nav_markup
+			from app.services.translations import get_user_lang, get_translations
+			nudge = await chat(prompt, _feature="evening_reminder")
+			_LLM_ERR = ("having trouble reaching", "still waking up", "warming up my local")
+			if any(err in nudge for err in _LLM_ERR):
+				logger.warning("Evening reminder: LLM unavailable, skipping this cycle")
+				return
+			footer = await _get_stats_footer()
+			lang = await get_user_lang()
+			t = get_translations(lang)
+			await send_notification(f"*Evening Check:*\n\n{nudge}{footer}", reply_markup=get_nav_markup(t))
+			logger.info("Evening reminder: sent for %d tasks.", len(today_cards))
+	except Exception as e:
+		logger.error("Evening reminder failed: %s", e)
 
 async def check_active_tracking_sessions() -> None:
 	"""
