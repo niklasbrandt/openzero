@@ -342,6 +342,9 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 
 				# Fast path A: board was just created in this response
 				board_id = newly_created_boards.get(board_name.lower())
+				if not board_id and len(newly_created_boards) == 1:
+					# LLM used a different name for the same board — use the only one created
+					board_id = next(iter(newly_created_boards.values()))
 				if board_id:
 					_r = await _post_list_on_board(board_id)
 					if _r:
