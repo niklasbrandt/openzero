@@ -199,7 +199,7 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 				if lists:
 					target_list = lists[0]
 				else:
-					l_resp = await client.post(f"/api/boards/{board_id}/lists", json={"name": "Inbox", "position": 65535})
+					l_resp = await client.post(f"/api/boards/{board_id}/lists", json={"name": "Inbox", "type": "active", "position": 65535})
 					l_resp.raise_for_status()
 					target_list = l_resp.json().get("item")
 
@@ -211,6 +211,7 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 				"name": title,
 				"description": description,
 				"position": 65535,
+				"type": "project",
 			})
 			res.raise_for_status()
 			# Resolve the project name for the path string
@@ -332,14 +333,7 @@ async def create_board(project_id: str, name: str) -> dict:
 				"position": 65535
 			})
 		except Exception as e:
-			logger.debug("Failed to create default Inbox list with type, retrying without: %s", e)
-			try:
-				await client.post(f"/api/boards/{board['id']}/lists", json={
-					"name": "Inbox",
-					"position": 65535
-				})
-			except Exception as e2:
-				logger.debug("Failed to create default Inbox list: %s", e2)
+			logger.debug("Failed to create default Inbox list: %s", e)
 
 		return board
 
@@ -437,6 +431,7 @@ async def create_list(board_name: str, list_name: str, project_name: Optional[st
 		try:
 			resp = await client.post(f"/api/boards/{board_id}/lists", json={
 				"name": list_name,
+				"type": "active",
 				"position": 65535
 			})
 			resp.raise_for_status()

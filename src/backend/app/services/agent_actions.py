@@ -336,12 +336,6 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 							resp = await client.post(f"/api/boards/{bid}/lists", json={"name": list_name, "type": "active", "position": 65535})
 							resp.raise_for_status()
 							return f"List '{list_name}' created in '{board_name}'."
-						except Exception:
-							pass
-						try:
-							resp = await client.post(f"/api/boards/{bid}/lists", json={"name": list_name, "position": 65535})
-							resp.raise_for_status()
-							return f"List '{list_name}' created in '{board_name}'."
 						except Exception as _le:
 							logger.error("_post_list_on_board failed for bid=%s list=%s: %s", bid, list_name, _le)
 							return None
