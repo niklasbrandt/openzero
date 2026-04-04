@@ -134,66 +134,57 @@ async def _get_or_create_conversation_list(
 	board_id: str,
 	list_name: str,
 ) -> str | None:
-	"""Return list_id for the Conversation list (always position 1 on the board)."""
+	"""Return list_id for the Conversation list on the board."""
 	try:
-		resp = await client.get(f"/api/boards/{board_id}", params={"included": "lists"})
-		resp.raise_for_status()
-		lists = resp.json().get("included", {}).get("lists", []) or resp.json().get("lists", [])
+		b_detail = await client.get(f"/api/boards/{board_id}", params={"included": "lists"})
+		b_detail.raise_for_status()
+		b_data = b_detail.json()
+		lists = b_data.get("included", {}).get("lists", []) or b_data.get("lists", [])
 		for lst in lists:
 			if lst["name"].lower() == list_name.lower():
 				return lst["id"]
-		# Create it at position 1 (smallest position = leftmost column)
-		for payload in [
-			{"name": list_name, "type": "active", "position": 1},
-			{"name": list_name, "position": 1},
-		]:
-			try:
-				r = await client.post(f"/api/boards/{board_id}/lists", json=payload)
-				r.raise_for_status()
-				item = r.json().get("item") or r.json()
-				return item.get("id") or item.get("item", {}).get("id")
-			except Exception:
-				continue
-		return None
+		# Create conversation list
+		r = await client.post(f"/api/boards/{board_id}/lists", json={
+			"name": list_name,
+			"position": 65535,
+		})
+		r.raise_for_status()
+		data = r.json()
+		item = data.get("item") or data
+		return item.get("id")
 	except Exception as e:
-		logger.debug("crew_memory: _get_or_create_conversation_list failed: %s", e)
+		logger.warning("crew_memory: _get_or_create_conversation_list failed: %s", e)
 		return None
 
 
 async def _get_or_create_today_card(
 	client: httpx.AsyncClient,
+	board_id: str,
 	list_id: str,
 	date_str: str,
 ) -> tuple[str | None, str]:
 	"""Return (card_id, current_description) for today's conversation card."""
 	try:
-		resp = await client.get(f"/api/lists/{list_id}/cards")
-		if resp.status_code == 404:
-			# Fallback: fetch board then list cards
-			pass
-		cards = []
-		if resp.status_code == 200:
-			cards = resp.json().get("items", [])
-		# Search for existing today card
+		# Planka has no GET /api/lists/{id}/cards — fetch cards via board detail
+		b_detail = await client.get(f"/api/boards/{board_id}", params={"included": "lists,cards"})
+		b_detail.raise_for_status()
+		b_data = b_detail.json()
+		cards = b_data.get("included", {}).get("cards", []) or b_data.get("cards", [])
 		for c in cards:
-			if c.get("name") == date_str:
-				desc = c.get("description") or ""
-				return c["id"], desc
-		# Create new card for today
-		for payload in [
-			{"name": date_str, "description": "", "position": 65535, "type": "project"},
-			{"name": date_str, "description": "", "position": 65535},
-		]:
-			try:
-				r = await client.post(f"/api/lists/{list_id}/cards", json=payload)
-				r.raise_for_status()
-				item = r.json().get("item") or r.json()
-				return item.get("id"), ""
-			except Exception:
-				continue
-		return None, ""
+			if c.get("listId") == list_id and c.get("name") == date_str:
+				return c["id"], c.get("description") or ""
+		# Create today's card
+		r = await client.post(f"/api/lists/{list_id}/cards", json={
+			"name": date_str,
+			"description": "",
+			"position": 65535,
+		})
+		r.raise_for_status()
+		data = r.json()
+		item = data.get("item") or data
+		return item.get("id"), ""
 	except Exception as e:
-		logger.debug("crew_memory: _get_or_create_today_card failed: %s", e)
+		logger.warning("crew_memory: _get_or_create_today_card failed: %s", e)
 		return None, ""
 
 
@@ -261,14 +252,14 @@ async def append_crew_exchange(crew_id: str, user_msg: str, crew_response: str) 
 			list_id = await _get_or_create_conversation_list(client, board_id, list_name)
 			if not list_id:
 				return
-			card_id, current_desc = await _get_or_create_today_card(client, list_id, date_str)
+			card_id, current_desc = await _get_or_create_today_card(client, board_id, list_id, date_str)
 			if not card_id:
 				return
 			updated_desc = _build_updated_description(current_desc, user_msg, crew_response, time_str)
 			await _patch_card_description(client, card_id, updated_desc)
-			logger.debug("crew_memory: updated conversation card for crew '%s' (%s)", crew_id, date_str)
+			logger.info("crew_memory: updated conversation card for crew '%s' (%s)", crew_id, date_str)
 	except Exception as e:
-		logger.debug("crew_memory: append_crew_exchange failed: %s", e)
+		logger.warning("crew_memory: append_crew_exchange failed: %s", e)
 
 
 async def get_crew_memory_context(crew_id: str) -> str:
@@ -332,9 +323,12 @@ async def get_crew_memory_context(crew_id: str) -> str:
 			if not list_id:
 				return ""
 
-			# Fetch cards and filter to expected date range
-			cr = await client.get(f"/api/lists/{list_id}/cards")
-			cards = cr.json().get("items", []) if cr.status_code == 200 else []
+			# Fetch cards from board detail (Planka has no GET /api/lists/{id}/cards)
+			bd = await client.get(f"/api/boards/{board_id}", params={"included": "lists,cards"})
+			bd.raise_for_status()
+			bd_data = bd.json()
+			all_cards = bd_data.get("included", {}).get("cards", []) or bd_data.get("cards", [])
+			cards = [c for c in all_cards if c.get("listId") == list_id]
 
 		matching = [
 			(c["name"], c.get("description", ""))
@@ -356,5 +350,5 @@ async def get_crew_memory_context(crew_id: str) -> str:
 
 		return f"CREW CONVERSATION HISTORY (last {CONTEXT_DAYS} days):\n{full}"
 	except Exception as e:
-		logger.debug("crew_memory: get_crew_memory_context failed: %s", e)
+		logger.warning("crew_memory: get_crew_memory_context failed: %s", e)
 		return ""

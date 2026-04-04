@@ -18,7 +18,7 @@ async def _write_crew_memory(crew_id: str, user_input: str, crew_response: str) 
 		from app.services.crew_memory import append_crew_exchange
 		await append_crew_exchange(crew_id, user_input, crew_response)
 	except Exception as e:
-		logger.debug("crew_memory write failed (non-fatal): %s", e)
+		logger.warning("crew_memory write failed (non-fatal): %s", e)
 
 # Minimal system template for local 0.6B model — fits inside 4096 ctx window
 _LOCAL_SYSTEM_TEMPLATE = """You are Z, a personal AI agent. Execute the following crew mission:
