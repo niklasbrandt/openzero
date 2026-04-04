@@ -208,12 +208,18 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 	executed_cmds = []
 	pending_actions = []
 	clean_reply = reply
+	# Dedup: small local models often repeat identical action tags multiple times.
+	# Track raw tag strings; skip any tag we have already processed in this response.
+	seen_raw_tags: set[str] = set()
 
 	# helper to clean tag from reply
 	def strip_tag(text, tag_match):
 		return text.replace(tag_match, "").strip()
 
 	async def handle_action(action_type, raw_tag, executor_coro, description):
+		if raw_tag in seen_raw_tags:
+			return True
+		seen_raw_tags.add(raw_tag)
 		if require_hitl and action_type in SENSITIVE_ACTIONS:
 			# Store in pending queue
 			action_id = await store_pending_thought(f"ACTION:{action_type}", json.dumps({
