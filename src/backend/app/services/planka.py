@@ -176,7 +176,7 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 					p_det = p_det_resp.json()
 					# Boards might be in 'included' or 'boards' key depending on version/sideloading
 					boards = p_det.get("included", {}).get("boards", []) or p_det.get("boards", [])
-					match = next((b for b in boards if b["name"].lower() == board_name.lower()), None)
+					match = next((b for b in boards if (b.get("name") or "").lower() == board_name.lower()), None)
 					if match:
 						target_board = match
 						break
@@ -192,7 +192,7 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 			b_detail_resp.raise_for_status()
 			b_detail = b_detail_resp.json()
 			lists = b_detail.get("included", {}).get("lists", []) or b_detail.get("lists", [])
-			target_list = next((l for l in lists if l["name"].lower() == list_name.lower()), None)
+			target_list = next((l for l in lists if (l.get("name") or "").lower() == list_name.lower()), None)
 
 			if not target_list:
 				# Fall back to first available list, or create 'Inbox' if board is empty
