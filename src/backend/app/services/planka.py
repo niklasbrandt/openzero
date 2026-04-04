@@ -207,12 +207,10 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 				raise ValueError(f"List '{list_name}' not found and could not be created on board '{target_board['name']}'")
 
 			# 3. Create Card
-			# Planka v6 requires type in ['project', 'story'] — use list-scoped endpoint
 			res = await client.post(f"/api/lists/{target_list['id']}/cards", json={
 				"name": title,
 				"description": description,
 				"position": 65535,
-				"type": "project",
 			})
 			res.raise_for_status()
 			# Resolve the project name for the path string
