@@ -87,6 +87,9 @@ class NativeCrewEngine:
 		except Exception as e:
 			logger.debug("Native Engine: Could not fetch conversation history: %s", e)
 
+		# Keep history small for local model (CTX_SIZE=4096 — prompt alone can be 2k+ tokens)
+		max_history = 5 if not settings.cloud_configured else 20
+
 		messages = [{"role": "system", "content": instructions}]
 		if history_messages:
 			# Summarise scope so the crew knows these are prior user messages
@@ -94,15 +97,18 @@ class NativeCrewEngine:
 				"role": "system",
 				"content": "PRIOR USER MESSAGES (conversation history — use only as reference to find content the user shared, do not echo or repeat them):"
 			})
-			messages.extend(history_messages)
+			messages.extend(history_messages[-max_history:])
 		# /no_think suppresses CoT for local Qwen3; ignored harmlessly by cloud APIs.
 		messages.append({"role": "user", "content": user_input + "\n/no_think"})
+
+		# Local model: CTX_SIZE=4096, so cap max_tokens to leave room for the prompt
+		max_tokens = 4000 if settings.cloud_configured else 1500
 
 		payload = {
 			"model": settings.LLM_MODEL_CLOUD if settings.cloud_configured else "local",
 			"messages": messages,
 			"temperature": 0.7,
-			"max_tokens": 6000,
+			"max_tokens": max_tokens,
 			"stream": True
 		}
 
