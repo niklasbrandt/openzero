@@ -336,7 +336,7 @@ translations: dict[str, str] = {
 	"core_values": "Core Values",
 	"behavioral_stylings": "Behavioral Stylings",
 	"system_intelligence": "System Intelligence",
-	"default_values": "Efficiency, accuracy, and systemic integrity.",
+	"default_values": "Be real. Get it right. Act in the user's actual interest.",
 	"configure_personality": "Configure Personality",
 	"emotional_tone": "Emotional Tone",
 	"intellect": "Intellect",
