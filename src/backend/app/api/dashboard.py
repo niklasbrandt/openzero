@@ -838,7 +838,6 @@ async def get_personality(db: AsyncSession = Depends(get_db)):
 			{"id": "humor", "label": "Humor Score", "type": "range", "min": 0, "max": 10, "low": "0%", "high": "100%"},
 			{"id": "honesty", "label": "Honesty Score", "type": "range", "min": 1, "max": 10, "low": "Low", "high": "Absolute"},
 			{"id": "roast", "label": "Roast Level", "type": "range", "min": 0, "max": 5, "low": "None", "high": "Brutal"},
-			{"id": "cringe", "label": "Cringeness", "type": "range", "min": 0, "max": 10, "low": "Normal", "high": "Super Cringe"},
 			{"id": "depth", "label": "Analysis Depth", "type": "range", "min": 1, "max": 5, "low": "Surface", "high": "Deep Dive"},
 			{"id": "role", "label": "Core Identity / Archetype", "type": "text", "placeholder": "e.g. Master Architect, Stoic Mentor, Sharp Assistant"},
 			{"id": "relationship", "label": "Relational Context", "type": "text", "placeholder": "Who are you to the user? (e.g. Mentor, Tool, Equal Partner)"},
