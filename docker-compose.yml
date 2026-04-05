@@ -94,10 +94,15 @@ services:
       postgres:
         condition: service_healthy
     env_file: .env.planka
+    # Wrapper entrypoint patches views/index.html on startup to inject the
+    # openZero dashboard nav link, then delegates to the original entrypoint.
+    entrypoint: ["/bin/bash", "/oz-entrypoint.sh"]
     volumes:
       - planka_avatars:/app/public/user-avatars
       - planka_backgrounds:/app/public/project-background-images
       - planka_attachments:/app/private/attachments
+      - ./infrastructure/planka/oz-entrypoint.sh:/oz-entrypoint.sh:ro
+      - ./infrastructure/planka/public/oz-nav.js:/app/public/oz-nav.js:ro
     networks:
       - internal
     labels:
