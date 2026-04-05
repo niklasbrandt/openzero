@@ -47,7 +47,7 @@
 		anchor.title = label;
 		anchor.setAttribute('aria-label', label);
 		anchor.className = 'item';
-		anchor.style.cssText = 'opacity:0.75;transition:opacity 0.15s ease;';
+		anchor.style.cssText = 'opacity:0.75;transition:opacity 0.15s ease;display:flex;align-items:center;gap:0.4em;margin-right:0.75em;';
 		anchor.addEventListener('mouseenter', function () { anchor.style.opacity = '1'; });
 		anchor.addEventListener('mouseleave', function () { anchor.style.opacity = '0.75'; });
 		anchor.addEventListener('focus', function () { anchor.style.opacity = '1'; });
@@ -57,6 +57,11 @@
 		icon.setAttribute('aria-hidden', 'true');
 		icon.className = 'home fitted icon';
 		anchor.appendChild(icon);
+
+		var text = document.createElement('span');
+		text.textContent = 'openZero Dashboard';
+		text.style.cssText = 'font-size:0.9em;font-weight:500;white-space:nowrap;';
+		anchor.appendChild(text);
 
 		return anchor;
 	}
