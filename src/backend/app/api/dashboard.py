@@ -821,7 +821,7 @@ async def get_personality(db: AsyncSession = Depends(get_db)):
 		"directness": 3,
 		"warmth": 4,
 		"agency": 4,
-		"critique": 3,
+		"critique": 4,
 		"humor": 4,
 		"honesty": 5,
 		"depth": 3,
