@@ -24,6 +24,10 @@
 		var text = document.createElement('span');
 		text.textContent = 'Dashboard';
 		text.style.cssText = 'font-size:0.9em;font-weight:500;white-space:nowrap;';
+		text.style.setProperty('display', 'inline', 'important');
+		text.style.setProperty('color', 'inherit', 'important');
+		text.style.setProperty('visibility', 'visible', 'important');
+		text.style.setProperty('opacity', '1', 'important');
 		anchor.appendChild(text);
 
 		return anchor;
