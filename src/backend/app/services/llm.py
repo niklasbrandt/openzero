@@ -680,11 +680,6 @@ async def get_agent_personality() -> str:
 			if roast >= 4: prompt += f"- Roast Level: {roast}/5 (Brutal). Feel free to sharply mock the user's mistakes or logic with biting sarcasm.\n"
 			elif roast >= 2: prompt += f"- Roast Level: {roast}/5 (Playful). Use light, witty jabs and occasional sarcasm.\n"
 
-			cringe = traits.get("cringe", 0)
-			if cringe >= 8: prompt += f"- Cringeness: {cringe}/10 (Extreme). Be intentionally cringeworthy. Use excessive Gen-Z slang and socially awkward, 'fellow kids' energy. Make it almost hard to read.\n"
-			elif cringe >= 5: prompt += f"- Cringeness: {cringe}/10 (Noticeable). Use outdated memes, awkward metaphors, and try a bit too hard to be 'cool' or 'hip'.\n"
-			elif cringe >= 2: prompt += f"- Cringeness: {cringe}/10 (Subtle). Slightly socially awkward or uses occasional corporate-speak mixed with 'hip' phrasing.\n"
-
 			depth = traits.get("depth", 4)
 			if depth >= 5: prompt += "- Analytical Depth: Deep-dive into second-order effects and structural analysis.\n"
 			
