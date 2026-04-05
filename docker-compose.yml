@@ -94,14 +94,15 @@ services:
       postgres:
         condition: service_healthy
     env_file: .env.planka
-    # Wrapper entrypoint patches views/index.html on startup to inject the
-    # openZero dashboard nav link, then delegates to the original entrypoint.
-    entrypoint: ["/bin/bash", "/oz-entrypoint.sh"]
     volumes:
       - planka_avatars:/app/public/user-avatars
       - planka_backgrounds:/app/public/project-background-images
       - planka_attachments:/app/private/attachments
-      - ./infrastructure/planka/oz-entrypoint.sh:/oz-entrypoint.sh:ro
+      # Inject openZero dashboard nav link — pre-patched index.html mounts
+      # over both Sails view and static fallback for the 2.0.3 image.
+      # Update infrastructure/planka/views/index.html when upgrading Planka.
+      - ./infrastructure/planka/views/index.html:/app/views/index.html:ro
+      - ./infrastructure/planka/views/index.html:/app/public/index.html:ro
       - ./infrastructure/planka/public/oz-nav.js:/app/public/oz-nav.js:ro
     networks:
       - internal
