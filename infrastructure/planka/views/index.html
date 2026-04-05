@@ -9,18 +9,6 @@
     <link rel="icon" href="/favicon.ico" />
     <link rel="apple-touch-icon" href="/logo192.png" />
     <link rel="manifest" href="/manifest.json" />
-    <script>
-      /* Seed dark theme before Planka's React app reads localStorage.
-         Only sets a value when the user has not already chosen a preference. */
-      (function () {
-        var keys = ['themeType', 'theme'];
-        for (var i = 0; i < keys.length; i++) {
-          if (!localStorage.getItem(keys[i])) {
-            localStorage.setItem(keys[i], 'dark');
-          }
-        }
-      }());
-    </script>
     <script type="module" crossorigin src="/assets/index-BNW5mRRP.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-BdpHnebQ.css">
     <script src="/assets/oz-nav.js" defer></script>
