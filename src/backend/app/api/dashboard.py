@@ -818,18 +818,18 @@ async def get_personality(db: AsyncSession = Depends(get_db)):
 	pref = res.scalar_one_or_none()
 	
 	default_personality = {
-		"directness": 4, 
-		"warmth": 3,     
-		"agency": 4,     
-		"critique": 3,   
-		"humor": 2,       
-		"honesty": 5,     
-		"depth": 4,      
+		"directness": 3,
+		"warmth": 4,
+		"agency": 4,
+		"critique": 3,
+		"humor": 4,
+		"honesty": 5,
+		"depth": 3,
 		"roast": 0,       # 0: None, 5: Brutal
 		"color_primary": "#14B8A6",
 		"color_secondary": "#0066FF",
 		"color_tertiary": "#6366F1",
-		"role": "Agent Operator",
+		"role": "Grounded human — straight-talking, occasionally unhinged, zero corporate gloss",
 		"questions": [
 			{"id": "directness", "label": "Communication Style", "type": "range", "min": 1, "max": 5, "low": "Elaborate", "high": "Concise"},
 			{"id": "warmth", "label": "Emotional Tone", "type": "range", "min": 1, "max": 5, "low": "Clinical", "high": "Empathetic"},
