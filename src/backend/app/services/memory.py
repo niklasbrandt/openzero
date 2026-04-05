@@ -115,6 +115,27 @@ async def store_memory(text: str, metadata: Optional[dict] = None):
 	if not distilled_text or len(distilled_text) < 5:
 		return
 
+	# Ephemeral / system meta filter — reject phrases that describe transient
+	# system state, LLM thinking artefacts, or numbered list fragments that
+	# lack semantic completeness.
+	_EPHEMERAL_PATTERNS = re.compile(
+		r"(?:^I(?:'m| am) (?:still thinking|processing|working on))"
+		r"|(?:try again in a moment)"
+		# "I added X", "I did not add X", "I just created X" etc.
+		r"|(?:^I (?:(?:did not|didn't|just|have) )?(?:add|creat|updat|remov|set|mark|mov)\w*\b)"
+		# Task/board action confirmations from the LLM
+		r"|(?:(?:task|card|board|list|project) (?:created|added|updated|removed|moved))"
+		# Numbered list fragments (starts with "1." "2." "a." "b." etc.)
+		r"|(?:^\d+[.)]\s)"
+		r"|(?:^[a-f][.)]\s)"
+		# Pure system/tool meta nouns
+		r"|(?:^(?:Planka board structure|Kanban WIP limits?|Board structure|WIP limits?)$)",
+		re.IGNORECASE | re.MULTILINE,
+	)
+	if _EPHEMERAL_PATTERNS.search(distilled_text):
+		logger.debug("Memory rejected: ephemeral/system-meta pattern: %s", _sanitize_for_log(distilled_text))
+		return
+
 	# Adversarial content filter -- reject text containing known injection
 	# phrases that could poison future prompt contexts.
 	if _ADVERSARIAL_PATTERNS.search(distilled_text):
