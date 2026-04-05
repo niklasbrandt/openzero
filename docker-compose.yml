@@ -103,7 +103,7 @@ services:
       # Update infrastructure/planka/views/index.html when upgrading Planka.
       - ./infrastructure/planka/views/index.html:/app/views/index.html:ro
       - ./infrastructure/planka/views/index.html:/app/public/index.html:ro
-      - ./infrastructure/planka/public/oz-nav.js:/app/public/oz-nav.js:ro
+      - ./infrastructure/planka/public/assets/oz-nav.js:/app/public/assets/oz-nav.js:ro
     networks:
       - internal
     labels:
