@@ -1,8 +1,34 @@
-/* openZero — Planka header nav injection
- * Injects a "Dashboard" link as the first item inside Planka's right header menu.
+/* openZero — Planka header nav injection + dark theme enforcement
+ * 1. Forces Gravity UI dark theme: swaps g-root_theme_light → g-root_theme_dark on
+ *    <body> as soon as React applies it (theme:"light" is hardcoded in the bundle).
+ * 2. Injects a "Dashboard" link as the first item inside Planka's right header menu.
  */
 (function () {
 	'use strict';
+
+	/* ── Dark theme ─────────────────────────────────────────────────────────── */
+	function applyDark(el) {
+		if (!el || !el.classList) return;
+		if (el.classList.contains('g-root_theme_light')) {
+			el.classList.remove('g-root_theme_light');
+			el.classList.add('g-root_theme_dark');
+		}
+		if (el.classList.contains('g-root_theme_light-hc')) {
+			el.classList.remove('g-root_theme_light-hc');
+			el.classList.add('g-root_theme_dark-hc');
+		}
+	}
+
+	var themeObserver = new MutationObserver(function (mutations) {
+		for (var i = 0; i < mutations.length; i++) {
+			if (mutations[i].attributeName === 'class') {
+				applyDark(mutations[i].target);
+			}
+		}
+	});
+	themeObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+	applyDark(document.body);
+	/* ────────────────────────────────────────────────────────────────────────── */
 
 	function buildLink() {
 		var anchor = document.createElement('a');
