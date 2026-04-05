@@ -119,17 +119,54 @@ async def store_memory(text: str, metadata: Optional[dict] = None):
 	# system state, LLM thinking artefacts, or numbered list fragments that
 	# lack semantic completeness.
 	_EPHEMERAL_PATTERNS = re.compile(
-		r"(?:^I(?:'m| am) (?:still thinking|processing|working on))"
-		r"|(?:try again in a moment)"
-		# "I added X", "I did not add X", "I just created X" etc.
-		r"|(?:^I (?:(?:did not|didn't|just|have) )?(?:add|creat|updat|remov|set|mark|mov)\w*\b)"
-		# Task/board action confirmations from the LLM
-		r"|(?:(?:task|card|board|list|project) (?:created|added|updated|removed|moved))"
-		# Numbered list fragments (starts with "1." "2." "a." "b." etc.)
-		r"|(?:^\d+[.)]\s)"
+		# ── Language-agnostic structural rules ──────────────────────────────────
+		# Numbered/lettered list fragments (language-agnostic): "1. Foo", "a) Bar"
+		r"(?:^\d+[.)]\s)"
 		r"|(?:^[a-f][.)]\s)"
+		# Task/board action confirmation lines (these come from agent_actions.py output)
+		r"|(?:(?:task|card|board|list|project) (?:created|added|updated|removed|moved))"
 		# Pure system/tool meta nouns
-		r"|(?:^(?:Planka board structure|Kanban WIP limits?|Board structure|WIP limits?)$)",
+		r"|(?:^(?:Planka board structure|Kanban WIP limits?|Board structure|WIP limits?)$)"
+
+		# ── First-person action/state statements — EN + 10 supported languages ──
+		# EN: "I added", "I'm still thinking", "I did not create", "Try again"
+		r"|(?:^I(?:'m| am) (?:still thinking|processing|working on))"
+		r"|(?:try again in a moment)"
+		r"|(?:^I (?:(?:did not|didn't|just|have|haven't) )?(?:add|creat|updat|remov|set|mark|mov)\w*\b)"
+		# DE: "Ich habe", "Ich denke noch", "Versuch es nochmal"
+		r"|(?:^Ich (?:denke|überlege|arbeite|verarbeite) (?:noch|gerade))"
+		r"|(?:^Ich (?:habe |hatte )?(?:(?:\w+ ){1,4})?(?:hinzugefügt|erstellt|aktualisiert|entfernt|gesetzt|verschob\w*|markiert))"
+		r"|(?:Versuch(?:e)? es (?:gleich |in einem Moment )?(?:nochmal|erneut))"
+		# ES: "He añadido", "Estoy procesando", "Inténtalo de nuevo"
+		r"|(?:^He (?:\w+ )?(?:añadido|creado|actualizado|eliminado|configurado|movido|marcado))"
+		r"|(?:^Estoy (?:procesando|trabajando|pensando))"
+		r"|(?:Inténtalo de nuevo)"
+		# FR: "J'ai ajouté", "Je suis en train de", "Réessaie"
+		r"|(?:^J'ai (?:\w+ )?(?:ajouté|créé|mis à jour|supprimé|défini|déplacé|marqué))"
+		r"|(?:^Je suis en train de)"
+		r"|(?:Réessaie(?:z)?)"
+		# PT: "Eu adicionei", "Estou processando", "Tente novamente"
+		r"|(?:^Eu (?:\w+ )?(?:adicionei|criei|atualizei|removi|defini|movi|marquei))"
+		r"|(?:^Estou (?:processando|trabalhando|pensando))"
+		r"|(?:Tente novamente)"
+		# RU: "Я добавил", "Я обрабатываю", "Попробуй ещё раз"
+		r"|(?:^Я (?:\w+ )?(?:добавил|создал|обновил|удалил|установил|переместил|отметил))"
+		r"|(?:^Я (?:обрабатываю|работаю|думаю))"
+		r"|(?:Попробуй(?:те)? (?:ещё раз|снова))"
+		# AR: "لقد أضفت" / "أنا أعمل" — block first-person action prefix
+		r"|(?:^لقد (?:أضفت|أنشأت|حدّثت|حذفت|نقلت|علّمت))"
+		r"|(?:^أنا (?:أعمل|أعالج|أفكر))"
+		# ZH (Simplified): "我已添加" / "我正在处理"
+		r"|(?:^我(?:已|正在)(?:添加|创建|更新|删除|移动|标记|处理|工作|思考))"
+		# JA: "追加しました" / "処理中です"
+		r"|(?:(?:追加|作成|更新|削除|移動|設定)しました)"
+		r"|(?:処理中です|考え中です)"
+		# KO: "추가했습니다" / "처리 중입니다"
+		r"|(?:(?:추가|생성|업데이트|삭제|이동|설정)했습니다)"
+		r"|(?:처리 중입니다|생각 중입니다)"
+		# HI: "मैंने जोड़ा" / "मैं काम कर रहा हूं"
+		r"|(?:^मैंने (?:जोड़|बनाया|अपडेट|हटाया|सेट|स्थानांतरित))"
+		r"|(?:^मैं (?:काम कर|प्रसंस्कर|सोच) रहा)",
 		re.IGNORECASE | re.MULTILINE,
 	)
 	if _EPHEMERAL_PATTERNS.search(distilled_text):
