@@ -10,27 +10,22 @@
     <link rel="apple-touch-icon" href="/logo192.png" />
     <link rel="manifest" href="/manifest.json" />
     <script>
-      /* Dark theme: observe documentElement (body not yet available in <head>).
-         Fires as soon as Gravity UI adds g-root_theme_light to <body> and swaps it. */
+      /* Force Gravity UI dark theme by intercepting classList.add at the prototype
+         level. Runs synchronously before any other script, so every subsequent call
+         to el.classList.add('g-root_theme_light') silently becomes
+         el.classList.add('g-root_theme_dark') — React cannot outrace this. */
       (function () {
-        function applyDark(el) {
-          if (!el || !el.classList) return;
-          if (el.classList.contains('g-root_theme_light')) {
-            el.classList.remove('g-root_theme_light');
-            el.classList.add('g-root_theme_dark');
+        var _add = DOMTokenList.prototype.add;
+        DOMTokenList.prototype.add = function () {
+          var args = [];
+          for (var i = 0; i < arguments.length; i++) {
+            var t = arguments[i];
+            if (t === 'g-root_theme_light')    t = 'g-root_theme_dark';
+            if (t === 'g-root_theme_light-hc') t = 'g-root_theme_dark-hc';
+            args.push(t);
           }
-          if (el.classList.contains('g-root_theme_light-hc')) {
-            el.classList.remove('g-root_theme_light-hc');
-            el.classList.add('g-root_theme_dark-hc');
-          }
-        }
-        new MutationObserver(function (mutations) {
-          for (var i = 0; i < mutations.length; i++) {
-            if (mutations[i].attributeName === 'class') {
-              applyDark(mutations[i].target);
-            }
-          }
-        }).observe(document.documentElement, { subtree: true, attributes: true, attributeFilter: ['class'] });
+          return _add.apply(this, args);
+        };
       }());
     </script>
     <script type="module" crossorigin src="/assets/index-BNW5mRRP.js"></script>
