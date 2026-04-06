@@ -17,13 +17,8 @@
 		anchor.addEventListener('focus', function () { anchor.style.opacity = '1'; });
 		anchor.addEventListener('blur', function () { anchor.style.opacity = '0.75'; });
 
-		var icon = document.createElement('i');
-		icon.setAttribute('aria-hidden', 'true');
-		icon.className = 'home fitted icon';
-		anchor.appendChild(icon);
-
 		var text = document.createElement('span');
-		text.textContent = 'Dashboard';
+		text.textContent = 'openZero Dashboard';
 		text.style.cssText = 'font-size:0.9em;font-weight:500;white-space:nowrap;';
 		text.style.setProperty('display', 'inline', 'important');
 		text.style.setProperty('color', 'inherit', 'important');
