@@ -188,7 +188,6 @@ async def _get_or_create_today_card(
 			"name": date_str,
 			"description": "",
 			"position": 1,
-			"type": "project",
 		})
 		r.raise_for_status()
 		data = r.json()
