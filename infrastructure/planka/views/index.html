@@ -10,21 +10,50 @@
     <link rel="apple-touch-icon" href="/logo192.png" />
     <link rel="manifest" href="/manifest.json" />
     <script>
-      /* Force Gravity UI dark theme by intercepting classList.add at the prototype
-         level. Runs synchronously before any other script, so every subsequent call
-         to el.classList.add('g-root_theme_light') silently becomes
-         el.classList.add('g-root_theme_dark') — React cannot outrace this. */
+      /* Force Gravity UI dark theme by intercepting all three ways a class can be
+         set on a DOM element. Runs synchronously before any other script. */
       (function () {
+        var LIGHT    = 'g-root_theme_light';
+        var DARK     = 'g-root_theme_dark';
+        var LIGHT_HC = 'g-root_theme_light-hc';
+        var DARK_HC  = 'g-root_theme_dark-hc';
+        var RE_L     = /\bg-root_theme_light\b/g;
+        var RE_L_HC  = /\bg-root_theme_light-hc\b/g;
+
+        function swapStr(s) {
+          if (typeof s !== 'string') return s;
+          return s.replace(RE_L_HC, DARK_HC).replace(RE_L, DARK);
+        }
+
+        /* 1. classList.add / classList.replace */
         var _add = DOMTokenList.prototype.add;
         DOMTokenList.prototype.add = function () {
           var args = [];
-          for (var i = 0; i < arguments.length; i++) {
-            var t = arguments[i];
-            if (t === 'g-root_theme_light')    t = 'g-root_theme_dark';
-            if (t === 'g-root_theme_light-hc') t = 'g-root_theme_dark-hc';
-            args.push(t);
-          }
+          for (var i = 0; i < arguments.length; i++) args.push(swapStr(arguments[i]));
           return _add.apply(this, args);
+        };
+        var _replace = DOMTokenList.prototype.replace;
+        if (_replace) {
+          DOMTokenList.prototype.replace = function (t, r) {
+            return _replace.call(this, swapStr(t), swapStr(r));
+          };
+        }
+
+        /* 2. element.className = '...' */
+        var _cn = Object.getOwnPropertyDescriptor(Element.prototype, 'className');
+        if (_cn && _cn.set) {
+          Object.defineProperty(Element.prototype, 'className', {
+            get: _cn.get,
+            set: function (v) { _cn.set.call(this, swapStr(v)); },
+            configurable: true
+          });
+        }
+
+        /* 3. element.setAttribute('class', '...') */
+        var _sa = Element.prototype.setAttribute;
+        Element.prototype.setAttribute = function (name, value) {
+          if (name === 'class') value = swapStr(value);
+          return _sa.call(this, name, value);
         };
       }());
     </script>
