@@ -211,7 +211,6 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 				"name": title,
 				"description": description,
 				"position": 65535,
-				"type": "project",
 			})
 			res.raise_for_status()
 			# Resolve the project name for the path string
@@ -227,6 +226,60 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 	except Exception as e:
 		logger.warning("create_task failed: %s", _sanitize_for_log(e))
 		return None
+
+async def archive_card(card_title_fragment: str, board_name: str = "") -> bool:
+	"""Move a Planka card to the 'Archive' list instead of deleting it.
+	Creates the Archive list on the board if it does not already exist.
+	"""
+	try:
+		token = await get_planka_auth_token()
+		headers = {"Authorization": f"Bearer {token}"}
+		async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, headers=headers, timeout=15.0) as client:
+			projects_resp = await client.get("/api/projects")
+			projects_resp.raise_for_status()
+			projects = projects_resp.json().get("items", [])
+
+			for p in projects:
+				det = await client.get(f"/api/projects/{p['id']}")
+				boards = det.json().get("included", {}).get("boards", [])
+				for b in boards:
+					if board_name and b["name"].lower() != board_name.lower():
+						continue
+					bd = await client.get(f"/api/boards/{b['id']}", params={"included": "lists,cards"})
+					bdata = bd.json()
+					cards = bdata.get("included", {}).get("cards", [])
+					lists = bdata.get("included", {}).get("lists", [])
+					card = next(
+						(c for c in cards if card_title_fragment.lower() in (c.get("name") or "").lower()),
+						None,
+					)
+					if not card:
+						continue
+					# Find or create Archive list
+					archive_list = next((l for l in lists if l.get("name", "").lower() == "archive"), None)
+					if not archive_list:
+						max_pos = max((l.get("position", 0) for l in lists), default=0)
+						r = await client.post(
+							f"/api/boards/{b['id']}/lists",
+							json={"name": "Archive", "type": "closed", "position": max_pos + 65535},
+						)
+						r.raise_for_status()
+						archive_list = r.json().get("item")
+					if not archive_list:
+						return False
+					# Move card to Archive list
+					move_resp = await client.patch(
+						f"/api/cards/{card['id']}",
+						json={"listId": archive_list["id"], "position": 65535},
+					)
+					if move_resp.status_code == 200:
+						logger.debug("archive_card: moved '%s' to Archive on board '%s'", card_title_fragment, b["name"])
+						return True
+			return False
+	except Exception as e:
+		logger.warning("archive_card failed: %s", _sanitize_for_log(e))
+		return False
+
 
 async def create_project(name: str, description: str = "") -> dict:
 	"""Create a new project in Planka."""
