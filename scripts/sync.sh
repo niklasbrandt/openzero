@@ -92,7 +92,7 @@ done
 
 ssh $REMOTE_USER@$REMOTE_HOST "cd $REMOTE_DIR \
   && $REBUILD_CMD \
-  && docker compose restart planka \
+  && docker compose up -d --remove-orphans \
   && docker builder prune -f \
   && docker image prune -f"
 
