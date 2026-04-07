@@ -184,9 +184,10 @@ async def _get_or_create_today_card(
 			if c.get("listId") == list_id and c.get("name") == date_str:
 				return c["id"], c.get("description") or ""
 		# Create today's card at position 1 so it appears at the top of the list
+		# Planka v2: "type" is required; omit empty description (rejected with 400).
 		r = await client.post(f"/api/lists/{list_id}/cards", json={
 			"name": date_str,
-			"description": "",
+			"type": "project",
 			"position": 1,
 		})
 		r.raise_for_status()
