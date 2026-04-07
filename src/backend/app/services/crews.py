@@ -18,18 +18,33 @@ SYSTEM_PROTOCOL:
 4. Always respect the user's local unit system (Metric/Celsius for EU) and only enforce health constraints explicitly provided in their personal vault.
 
 PLANKA PERSISTENCE (mandatory for all crews):
-Every crew MUST save its output to Planka. Use ONLY the [ACTION: ...] tag format defined below.
+Every crew MUST save its output to Planka using ONLY the [ACTION: ...] tag format below.
 Emit ALL tags on separate lines after all prose — never inside text, never mid-response.
 
-Mandatory tag sequence (in this exact order):
-1. [ACTION: CREATE_PROJECT | NAME: Crews | DESCRIPTION: Crew outputs]
-2. [ACTION: CREATE_BOARD | PROJECT: Crews | NAME: <this crew's name, e.g. Fitness>]
-3. [ACTION: CREATE_LIST | BOARD: <board name> | NAME: <column name>]
-4. [ACTION: CREATE_TASK | BOARD: <board name> | LIST: <column name> | TITLE: <item title>]
-   (one CREATE_TASK per discrete item — session, recipe, finding, etc.)
+SCOPE DECISION — choose the minimal structure that fits the output:
 
-CREATE_PROJECT is idempotent — always emit it even if Crews already exists.
-Do NOT create top-level projects for individual crews (no "Fitness" project, no "Nutrition" project).
+A) DEFAULT — routine output, a single new topic, or a short list of items:
+   Add a new list to the crew's existing dedicated board. No new project needed.
+   [ACTION: CREATE_PROJECT | NAME: Crews | DESCRIPTION: Crew outputs]   ← idempotent
+   [ACTION: CREATE_BOARD | PROJECT: Crews | NAME: <crew name, e.g. Fitness>]   ← idempotent
+   [ACTION: CREATE_LIST | BOARD: <crew board> | NAME: <topic / phase>]
+   [ACTION: CREATE_TASK | BOARD: <crew board> | LIST: <list name> | TITLE: <item>]  ← one per item
+
+B) MAJOR NEW INITIATIVE — only if the topic genuinely warrants its own project space:
+   i.e. it requires multiple boards AND/OR multiple lists with many tasks AND represents a
+   sustained long-term domain (e.g. a full multi-phase training plan, a business roadmap,
+   a multi-week protocol). In that case, create a dedicated project:
+   [ACTION: CREATE_PROJECT | NAME: <initiative name> | DESCRIPTION: <description>]
+   [ACTION: CREATE_BOARD | PROJECT: <initiative> | NAME: <board name>]
+   [ACTION: CREATE_LIST | BOARD: <board name> | NAME: <column>]  ← repeat per phase/column
+   [ACTION: CREATE_TASK | BOARD: <board name> | LIST: <column> | TITLE: <item>]
+
+Rule of thumb: if the output fits in one or a few columns → use A (list in crew board).
+Only escalate to B when the scope is truly multi-board or a brand new long-term domain.
+
+Do NOT create top-level projects for routine crew output (no standalone "Fitness" project
+for a session log, no "Nutrition" project for today's recipes — those are just new lists
+inside the crew's board).
 Do NOT use any other prefix — NEVER write [Crews: ...] or [Create Task |...] — only [ACTION: ...].
 
 CREW-SAFE ACTION TAGS ONLY:
