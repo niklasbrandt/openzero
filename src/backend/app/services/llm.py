@@ -875,11 +875,11 @@ def select_tier(user_message: str, tier_override: Optional[str] = None) -> tuple
 			# Cloud not configured — transparently fall back to local
 			logger.debug("Cloud tier requested but not configured — falling back to local")
 			tier = "local"
-			base_url = settings.LLM_LOCAL_URL
-			model_name = settings.LLM_MODEL_LOCAL
+			from app.services.llm_peers import get_active_local_endpoint
+			base_url, model_name = get_active_local_endpoint()
 	else:
-		base_url = settings.LLM_LOCAL_URL
-		model_name = settings.LLM_MODEL_LOCAL
+		from app.services.llm_peers import get_active_local_endpoint
+		base_url, model_name = get_active_local_endpoint()
 
 	display_name = f"{tier.capitalize()}: {model_name}"
 	return tier, base_url, display_name
@@ -1320,16 +1320,18 @@ async def chat_with_context(
 			needs_agent = False
 
 		if needs_agent:
-			# Agent path: use cloud tier if configured, otherwise local
-			agent_url = settings.LLM_CLOUD_BASE_URL.rstrip("/") if settings.cloud_configured else settings.LLM_LOCAL_URL
+			# Agent path: use cloud tier if configured, otherwise best local peer
+			from app.services.llm_peers import get_active_local_endpoint
+			_peer_url, _peer_model = get_active_local_endpoint()
+			agent_url = settings.LLM_CLOUD_BASE_URL.rstrip("/") if settings.cloud_configured else _peer_url
 			if settings.cloud_configured:
 				if not agent_url.endswith("/v1"):
 					agent_url = f"{agent_url}/v1"
 				agent_display = f"Cloud: {settings.LLM_MODEL_CLOUD}"
 				agent_model = settings.LLM_MODEL_CLOUD
 			else:
-				agent_url = f"{settings.LLM_LOCAL_URL}/v1"
-				agent_display = f"Local: {settings.LLM_MODEL_LOCAL}"
+				agent_url = f"{_peer_url}/v1"
+				agent_display = f"Local: {_peer_model}"
 				agent_model = "local"
 			last_model_used.set(agent_display)
 			logger.debug("Tool intent detected -- using LangGraph agent (%s)", agent_display)
