@@ -609,6 +609,10 @@ export class DiagnosticsWidget extends HTMLElement {
 						const td = tiers[name] || {};
 						const color = tierColorMap[name] || 'var(--accent-primary)';
 						const ramGb = ramEstFor(name);
+						// Detect whether an external peer is currently handling requests for this tier
+						const peers = (srv as any).llm_peers;
+						const activePeer = peers?.active;
+						const externalActive = activePeer && !activePeer.is_vps_local && name === 'local';
 
 						if (name === 'cloud' && !cloudConfigured) {
 							return `<div class="llm-tier-card disabled" data-tier="cloud" aria-disabled="true">
@@ -655,17 +659,28 @@ export class DiagnosticsWidget extends HTMLElement {
 						const cacheGb = cacheRamMb / 1024;
 						const ctxSize = td.ctx_size || ctx || 4096;
 						const kvCacheEstGb = Math.max(0, ctxSize / 4096 - 1) * 0.4;
-						const isMismatch = (liveRamGb > 0 && ramGb > 0 && (liveRamGb / (ramGb + cacheGb + kvCacheEstGb + 1.0)) > 1.3);
-						
+						// Suppress MISMATCH when an external peer is active — container_ram
+						// reflects the VPS llama.cpp which is idle with its full context allocated.
+						const isMismatch = !externalActive && (liveRamGb > 0 && ramGb > 0 && (liveRamGb / (ramGb + cacheGb + kvCacheEstGb + 1.0)) > 1.3);
+
 						const mismatchDesc = this.tr('diag_llm_mismatch_desc', 'CRITICAL: Live RAM usage ({live} GB) is significantly higher than expected ({est} GB + {cache} GB cache). This suggests a larger model is hiding under a smaller filename.').replace('{live}', liveRamGb.toFixed(1)).replace('{est}', ramGb.toFixed(1)).replace('{cache}', cacheGb.toFixed(1));
-						
-						return `<div class="llm-tier-card" style="--tier-color:${color}" data-tier="${name}">
+
+						return `<div class="llm-tier-card${externalActive ? ' peer-routed' : ''}" style="--tier-color:${color}" data-tier="${name}">
 							<div class="ltc-header">
 								<span class="ltc-name" style="color:${color}">${this.displayTier(name)}</span>
+								${externalActive ? `<span class="ltc-badge idle has-tip">${this.tr('diag_llm_idle', 'IDLE')}
+									<span class="glass-tooltip">${this.tr('diag_llm_idle_desc', 'VPS inference is idle — requests are routed to external compute peer.')}</span>
+								</span>` : ''}
 								${isMismatch ? `<span class="ltc-badge mismatch has-tip">${this.tr('diag_llm_mismatch', 'MISMATCH')}
 									<span class="glass-tooltip">${mismatchDesc}</span>
 								</span>` : ''}
 							</div>
+							${externalActive ? `<div class="ltc-peer-active has-tip">
+								<span class="ltc-peer-dot"></span>
+								<span class="ltc-peer-label">${this.esc(activePeer.model)}</span>
+								<span class="ltc-peer-host">${this.esc(activePeer.url.replace('http://', '').split(':')[0])}</span>
+								<span class="glass-tooltip">${this.tr('diag_llm_peer_active_tip', 'Active inference peer: {model} via {url}').replace('{model}', activePeer.model).replace('{url}', activePeer.url)}</span>
+							</div>` : ''}
 							<div class="ltc-model ${isMismatch ? 'mismatch has-tip' : ''}">
 								${isMismatch ? '<span class="ltc-mismatch-icon" aria-hidden="true">⚠️</span>' : ''}
 								${this.esc(model)}
@@ -1039,6 +1054,13 @@ export class DiagnosticsWidget extends HTMLElement {
 				.ltc-status.offline { color: var(--color-danger); }
 				.ltc-badge { font-size: 0.5rem; font-weight: 900; letter-spacing: 0.05em; text-transform: uppercase; border-radius: 3px; padding: 0.1rem 0.35rem; margin-left: auto; position: relative; }
 				.ltc-badge.mismatch { color: #fff; background: var(--color-danger); box-shadow: 0 0 10px hsla(0, 85%, 55%, 0.4); animation: diag-pulse 2s infinite; cursor: help; }
+				.ltc-badge.idle { background: hsla(220,30%,50%,0.12); color: var(--text-muted); border-color: hsla(220,30%,50%,0.2); letter-spacing: 0.05em; }
+				.llm-tier-card.peer-routed { opacity: 0.6; }
+				.llm-tier-card.peer-routed:hover { opacity: 1; transition: opacity 0.2s; }
+				.ltc-peer-active { display: flex; align-items: center; gap: 0.4rem; margin: 0.2rem 0 0.15rem; }
+				.ltc-peer-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent-primary); box-shadow: 0 0 5px var(--accent-primary); flex-shrink: 0; animation: diag-pulse 2s infinite; }
+				.ltc-peer-label { font-size: 0.68rem; color: var(--accent-primary); font-weight: 600; font-family: var(--font-mono); }
+				.ltc-peer-host { font-size: 0.6rem; color: var(--text-muted); font-family: var(--font-mono); }
 				.ltc-badge .glass-tooltip { right: 0; left: auto; transform: translateY(2px); margin-bottom: 2px; }
 				.has-tip:hover > .ltc-badge .glass-tooltip { transform: translateY(-4px); }
 				
