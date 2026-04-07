@@ -1957,9 +1957,13 @@ async def server_info() -> dict:
 		logger.debug("Uptime info unavailable: %s", up_err)
 
 	# --- Per-tier LLM props (threads, ctx, etc.) ---
+	from app.services.llm_peers import get_active_local_endpoint, get_peer_status
+	active_local_url, _ = get_active_local_endpoint()
 	tier_urls = {
-		"local": settings.LLM_LOCAL_URL,
+		"local": active_local_url,
 	}
+	# Attach peer discovery state so the dashboard can show which node is active
+	info["llm_peers"] = get_peer_status()
 	physical_cores = os.cpu_count() or 0
 
 	async with httpx.AsyncClient(timeout=5.0) as client:

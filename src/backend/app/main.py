@@ -99,6 +99,10 @@ async def lifespan(app: FastAPI):
                 logging.info("⚡ Background: Loading crew context...")
                 from app.services.crews import crew_registry
                 await crew_registry.load()
+
+                # Start autonomous LLM peer discovery (Tailscale / local net nodes)
+                from app.services.llm_peers import start_discovery_loop
+                await start_discovery_loop()
                 
                 # Load personal/agent context (LLM compression)
                 try:
