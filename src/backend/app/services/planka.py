@@ -207,11 +207,12 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 				raise ValueError(f"List '{list_name}' not found and could not be created on board '{target_board['name']}'")
 
 			# 3. Create Card
-			res = await client.post(f"/api/lists/{target_list['id']}/cards", json={
-				"name": title,
-				"description": description,
-				"position": 65535,
-			})
+			# Planka v2: "type" is required (whitelist: project, story).
+			# Empty description is rejected — omit the field when blank.
+			card_payload: dict = {"name": title, "type": "project", "position": 65535}
+			if description:
+				card_payload["description"] = description
+			res = await client.post(f"/api/lists/{target_list['id']}/cards", json=card_payload)
 			res.raise_for_status()
 			# Resolve the project name for the path string
 			project_name = "Operations"
