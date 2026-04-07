@@ -181,7 +181,30 @@ class MessageBus:
 			from app.services.learning import extract_and_store_facts
 			asyncio.create_task(extract_and_store_facts(user_text))
 
+		# Cross-channel sync: push the conversation to all other registered
+		# channels so the user sees it regardless of which surface they're on.
+		# Fire-and-forget to never block the originating channel's response.
+		if save and user_text and self._channels:
+			for ch, fn in self._channels.items():
+				if ch != channel:
+					sync_msg = (
+						f"<i>[via {channel}]</i>\n"
+						f"<b>You:</b> {user_text}\n\n"
+						f"<b>Z:</b> {clean_reply}"
+					)
+					asyncio.create_task(
+						self._safe_push(ch, fn, sync_msg),
+						name=f"cross_channel_sync_{channel}_to_{ch}",
+					)
+
 		return clean_reply, executed_cmds, pending_actions
+
+	async def _safe_push(self, channel: str, fn: "_PushFn", text: str) -> None:
+		"""Push helper with per-channel error isolation."""
+		try:
+			await fn(text)
+		except Exception as exc:
+			logger.warning("MessageBus cross-channel push to %r failed: %s", channel, exc)
 
 	# ─── Proactive push ───────────────────────────────────────────────────
 
