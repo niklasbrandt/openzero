@@ -594,8 +594,6 @@ CRITICAL: Never embed tags mid-response or inside prose sections.
   (Use when the user says a task is done/completed/sent/finished/submitted — moves the card to the "Done" column. Examples: "job application sent", "fixed the bug", "email sent")
 - Archive Card: `[ACTION: ARCHIVE_CARD | CARD: title fragment | BOARD: board name (optional)]`
   (Moves a card to the "Archive" list — use this instead of deleting. Preferred for cleanup, completed long-running work, or anything that may need to be recovered.)
-- Delete Project (confirmation required): `[ACTION: DELETE_PROJECT | NAME: project_name]`
-- Delete Board (confirmation required): `[ACTION: DELETE_BOARD | PROJECT: project_name | BOARD: board_name]`
 
 Bulk scaffolding: You can emit MULTIPLE action tags in one response to scaffold entire project structures.
 Example flow: CREATE_PROJECT -> CREATE_BOARD -> CREATE_LIST (x3) -> CREATE_TASK (x5)
@@ -607,8 +605,7 @@ Rules:
 - Tags are INVISIBLE to the user. Never mention them.
 - Place tags on a NEW LINE at the very end of your message.
 - Do NOT LEARN trivial chat (greetings, confirmations, questions). Only permanent, meaningful facts.
-- **ARCHIVE OVER DELETE**: When cleaning up or removing Planka items, always prefer ARCHIVE_CARD over deletion. Only use DELETE_PROJECT or DELETE_BOARD when the user explicitly and unambiguously requests permanent deletion. Both delete actions require the user to confirm before execution.
-- **DELETION REQUIRES CONFIRMATION**: Never emit DELETE_PROJECT or DELETE_BOARD without first telling the user what will be permanently removed and asking them to confirm. If the user has not yet confirmed, describe the action instead and ask.
+- **NO DELETION**: Agents cannot delete projects, boards, or cards. Use ARCHIVE_CARD for cleanup. If the user asks to delete something, explain that deletion is a manual action in Planka and offer to archive instead.
 """
 
 # Language map — module-level constant to avoid per-call allocation.
