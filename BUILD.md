@@ -10,8 +10,8 @@ Z uses a **local + optional cloud** LLM architecture. A local llama.cpp model ru
 
 | Profile | RAM | Local tier model | Notes |
 |---------|-----|-------------------|---------|
-| A — Minimal | 8 GB | Qwen3-0.6B Q4_K_M | Tight but functional; crews may fail (4096 ctx) |
-| B — Standard (default) | 12 GB | Qwen3-1.7B Q4_K_M | Default since v1.1 — 32k ctx, action tags work |
+| A — Minimal (Pi 5 / 8 GB VPS) | 8 GB | Qwen3-1.7B Q4_K_M | Use `CTX=8192`, `THREADS=4`, `CACHE_RAM=128` — ~2.6 GB LLM footprint |
+| B — Standard (default) | 12 GB | Qwen3-1.7B Q4_K_M | Default since v1.1 — `CTX=32768`, action tags work |
 | C — Comfortable | 24 GB | Qwen3-4B Q4_K_M | Set `LLM_LOCAL_CTX=32768`, `LLM_LOCAL_CACHE_RAM=2048` |
 | D — High-end | 64 GB+ | Qwen3-8B Q4_K_M | GPU or large-RAM homelab |
 
@@ -194,8 +194,10 @@ cp .env.example .env
 
 # LLM_LOCAL_MODEL_URL=https://huggingface.co/unsloth/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B-Q4_K_M.gguf
 # LLM_LOCAL_MODEL_FILE=Qwen3-1.7B-Q4_K_M.gguf
-# LLM_LOCAL_CTX=32768           (context window — 32k for 1.7B+)
-# LLM_LOCAL_CACHE_RAM=512        (MiB for prompt cache - local tier)
+# LLM_LOCAL_CTX=32768           (context window — 32k for 12 GB+; use 8192 on 8 GB / Pi 5)
+# LLM_LOCAL_THREADS=7           (CPU threads — use 4 on Raspberry Pi 5)
+# LLM_LOCAL_CACHE_RAM=512        (MiB prompt cache — use 128 on 8 GB / Pi 5)
+# LLM_LOCAL_BATCH=512           (batch size — use 256 on 8 GB / Pi 5)
 # LLM_CLOUD_BASE_URL=       (optional cloud API base URL)
 # LLM_CLOUD_API_KEY=        (optional cloud API key)
 

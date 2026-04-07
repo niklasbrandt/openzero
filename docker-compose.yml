@@ -87,7 +87,7 @@ services:
       - internal
 
   planka:
-    image: ghcr.io/plankanban/planka:2.0.3
+    image: ghcr.io/plankanban/planka:2.1.0
     restart: always
     # No external port binding — routed through Traefik only
     depends_on:
@@ -98,11 +98,10 @@ services:
       - planka_avatars:/app/public/user-avatars
       - planka_backgrounds:/app/public/project-background-images
       - planka_attachments:/app/private/attachments
-      # Inject openZero dashboard nav link — pre-patched index.html mounts
-      # over both Sails view and static fallback for the 2.0.3 image.
-      # Update infrastructure/planka/views/index.html when upgrading Planka.
-      - ./infrastructure/planka/views/index.html:/app/views/index.html:ro
-      - ./infrastructure/planka/views/index.html:/app/public/index.html:ro
+      # Inject openZero customisations — pre-patched EJS template mounts over
+      # the Sails view for the 2.1.0 image (index.html → index.ejs).
+      # Update infrastructure/planka/views/index.ejs when upgrading Planka.
+      - ./infrastructure/planka/views/index.ejs:/app/views/index.ejs:ro
       - ./infrastructure/planka/public/assets/oz-nav.js:/app/public/assets/oz-nav.js:ro
     networks:
       - internal
