@@ -688,7 +688,9 @@ export class DiagnosticsWidget extends HTMLElement {
 					if (!peers) return '';
 					const active = peers.active;
 					const candidates: any[] = peers.candidates || [];
-					if (candidates.length <= 1 && !active?.url?.includes('http')) return '';
+					// Only render when external (non-VPS) peers are configured
+					const hasExternal = candidates.some((c: any) => !c.is_vps_local);
+					if (!hasExternal) return '';
 					return `
 					<div class="peer-row">
 						<span class="peer-row-label">${this.tr('diag_compute_peers', 'Compute Peers')}</span>
