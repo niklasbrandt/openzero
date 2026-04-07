@@ -42,6 +42,8 @@ async def extract_and_store_facts(user_message: str):
 			"- DO NOT extract transient plans, isolated events, or short-term intentions (e.g. 'going to dinner tonight', 'ordered a present today', 'job application sent').\n"
 			"- DO NOT extract system errors, technical issues, or agent self-references (e.g. 'I am having trouble reaching the local model').\n"
 			"- No 'User likes...' or 'The user...' — just state the fact directly.\n"
+			"- STRICT DEDUPLICATION: Each distinct concept must appear AT MOST ONCE. Do not restate the same fact in different words. If two extracted lines convey the same meaning, keep only the shortest, clearest one and DROP the rest.\n"
+			"- Do NOT repeat the same topic across lines (e.g. do not list 'histamine intolerance' and 'histamine intolerant' — pick one).\n"
 			"- If there are NO learnable facts, reply ONLY with: NONE\n\n"
 			f"Message: {clean_input}"
 		)
