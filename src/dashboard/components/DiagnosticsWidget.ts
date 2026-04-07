@@ -648,10 +648,14 @@ export class DiagnosticsWidget extends HTMLElement {
 						const kvUsage = td.kv_usage_pct || 0;
 
 						// Mitigation: Detect hidden large models
-						// Accounting for the configured prompt cache to avoid false positives.
-						// Mismatch if live RAM > (Estimated Weights + Cache RAM + 1GB buffer) * 1.5
+						// Accounting for the configured prompt cache AND KV-cache growth at large context
+						// windows to avoid false positives. llama.cpp allocates KV cache for the full
+						// ctx_size upfront; at 32K+ that can be 3-4 GB for a small model.
+						// kvCacheEstGb: 0 at ≤4K ctx, ~0.4 GB per additional 4K block above baseline.
 						const cacheGb = cacheRamMb / 1024;
-						const isMismatch = (liveRamGb > 0 && ramGb > 0 && (liveRamGb / (ramGb + cacheGb + 1.0)) > 1.3);
+						const ctxSize = td.ctx_size || ctx || 4096;
+						const kvCacheEstGb = Math.max(0, ctxSize / 4096 - 1) * 0.4;
+						const isMismatch = (liveRamGb > 0 && ramGb > 0 && (liveRamGb / (ramGb + cacheGb + kvCacheEstGb + 1.0)) > 1.3);
 						
 						const mismatchDesc = this.tr('diag_llm_mismatch_desc', 'CRITICAL: Live RAM usage ({live} GB) is significantly higher than expected ({est} GB + {cache} GB cache). This suggests a larger model is hiding under a smaller filename.').replace('{live}', liveRamGb.toFixed(1)).replace('{est}', ramGb.toFixed(1)).replace('{cache}', cacheGb.toFixed(1));
 						
