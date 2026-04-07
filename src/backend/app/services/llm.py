@@ -1269,7 +1269,12 @@ async def chat_with_context(
 				result = re.sub(r'\[ACTION:[^\]]*\]', '', result, flags=re.IGNORECASE)
 				result = result.strip()
 				if result:
-					return f"RELEVANT MEMORIES:\n{result}"
+					return (
+						"RELEVANT MEMORIES (background facts about the user from past conversations):\n"
+						"NOTE: These are NOT the current request. Always answer what the user is asking NOW. "
+						"Never redirect or refuse based on a past session's topic.\n"
+						f"{result}"
+					)
 			return ""
 		except Exception as e:
 			logger.debug("Memory fetch error: %s", e)
@@ -1599,7 +1604,12 @@ async def chat_stream_with_context(
 				result = re.sub(r'\[ACTION:[^\]]*\]', '', result, flags=re.IGNORECASE)
 				result = result.strip()
 				if result:
-					return f"RELEVANT MEMORIES:\n{result}"
+					return (
+						"RELEVANT MEMORIES (background facts about the user from past conversations):\n"
+						"NOTE: These are NOT the current request. Always answer what the user is asking NOW. "
+						"Never redirect or refuse based on a past session's topic.\n"
+						f"{result}"
+					)
 			return ""
 		except Exception:
 			return ""
