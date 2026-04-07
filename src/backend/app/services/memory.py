@@ -190,8 +190,8 @@ async def store_memory(text: str, metadata: Optional[dict] = None):
 			query=embedding,
 			limit=1
 		)
-		if dupes.points and dupes.points[0].score > 0.98:
-			logger.info("Memory Deduplicator: Ignored existing fact")
+		if dupes.points and dupes.points[0].score > 0.92:
+			logger.info("Memory Deduplicator: Ignored existing fact (score=%.3f)", dupes.points[0].score)
 			return
 	except Exception as _e:
 		logger.debug("Memory dedup check failed: %s", _e) # optional; proceed with upsert if it fails
