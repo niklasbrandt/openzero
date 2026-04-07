@@ -44,9 +44,6 @@ _PROBE_INTERVAL_S = 30
 # Per-probe connect+read timeout (seconds). Short: dead peers must not block inference.
 _PROBE_TIMEOUT_S = 2.5
 
-# External peers are preferred when their latency <= VPS * this factor.
-_EXT_PREFERENCE_FACTOR = 1.20
-
 
 @dataclass
 class PeerState:
@@ -159,34 +156,21 @@ def _select_best(probed: list[PeerState]) -> Optional[PeerState]:
 
 	Rules:
 	1. Must be online.
-	2. External (non-VPS) peers are preferred when their latency is within
-	   _EXT_PREFERENCE_FACTOR of the best VPS latency.  A Tailscale Mac that
-	   replies within 20 % of the VPS container wins because it has far more
-	   compute (GPU, more cores) — the extra 5 ms round-trip is recouped in
-	   token-generation speed.
-	3. Tie-break: lowest latency.
+	2. External (non-VPS) peers are always preferred over the VPS container
+	   when they are reachable — Tailscale RTT is irrelevant vs inference time.
+	   Pick the lowest-latency external peer (ties broken by latency).
+	3. Fall back to the VPS container only when no external peer is online.
 	"""
 	online = [p for p in probed if p.online]
 	if not online:
 		return None
 
-	vps = [p for p in online if p.is_vps_local]
 	ext = [p for p in online if not p.is_vps_local]
+	if ext:
+		return min(ext, key=lambda p: p.latency_ms)
 
-	if not ext:
-		return min(vps, key=lambda p: p.latency_ms)
-
-	best_ext = min(ext, key=lambda p: p.latency_ms)
-
-	if not vps:
-		return best_ext
-
-	best_vps = min(vps, key=lambda p: p.latency_ms)
-
-	if best_ext.latency_ms <= best_vps.latency_ms * _EXT_PREFERENCE_FACTOR:
-		return best_ext
-
-	return best_vps
+	vps = [p for p in online if p.is_vps_local]
+	return min(vps, key=lambda p: p.latency_ms) if vps else None
 
 
 # --------------------------------------------------------------------------- #
