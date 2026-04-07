@@ -189,7 +189,7 @@ async def run_crew(crew_id: str, user_input: str = "Execute autonomous cycle") -
 
 AVAILABLE_TOOLS = [create_task, create_project, create_event, learn_memory, schedule_reminder, schedule_persistent_custom, move_card, run_crew]
 
-SENSITIVE_ACTIONS = {"SCHEDULE_CUSTOM", "LEARN", "CREATE_PROJECT", "ADD_PERSON", "CREATE_BOARD", "CREATE_LIST", "PROXIMITY_TRACK", "RUN_CREW", "SCHEDULE_CREW", "DELETE_PROJECT", "DELETE_BOARD"}
+SENSITIVE_ACTIONS = {"SCHEDULE_CUSTOM", "LEARN", "CREATE_PROJECT", "ADD_PERSON", "CREATE_BOARD", "CREATE_LIST", "PROXIMITY_TRACK", "RUN_CREW", "SCHEDULE_CREW"}
 
 async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = False):
 	"""
@@ -202,7 +202,6 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 	from app.services.planka import create_board as planka_create_board
 	from app.services.planka import create_list as planka_create_list
 	from app.services.planka import move_card as planka_move_card
-	from app.services.planka import delete_project as planka_delete_project
 	from app.services.planka import archive_card as planka_archive_card
 	from app.models.db import store_pending_thought
 	import json
@@ -747,6 +746,8 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 		clean_reply = strip_tag(clean_reply, raw_tag)
 
 	# Archive Card Tag — moves card to the "Archive" list instead of deleting.
+	# Deletion of projects/boards is intentionally NOT available as an agent action.
+	# Agents can only archive (reversible). Hard deletion is a manual user action in Planka.
 	archive_card_pattern = r"\[?ACTION: ARCHIVE_CARD \| CARD: ([^\|\]]+)(?: \| BOARD: ([^\|\]]+))?\]?"
 	for match in re.finditer(archive_card_pattern, reply):
 		raw_tag = match.group(0)
@@ -760,68 +761,6 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 			return f"\u26a0 Could not archive card '{card_frag}'. Check Planka board."
 
 		await handle_action("ARCHIVE_CARD", raw_tag, _exec_archive_card, f"Archive card '{card_frag}'")
-		clean_reply = strip_tag(clean_reply, raw_tag)
-
-	# Delete Project Tag — REQUIRES user confirmation (HITL-gated via SENSITIVE_ACTIONS).
-	del_proj_pattern = r"\[?ACTION: DELETE_PROJECT \| NAME: ([^\|\]]+)\]?"
-	for match in re.finditer(del_proj_pattern, reply):
-		raw_tag = match.group(0)
-		proj_name = match.group(1).strip()
-
-		async def _exec_del_proj(proj_name=proj_name):
-			from app.services.planka import get_planka_auth_token
-			import httpx
-			from app.config import settings
-			token = await get_planka_auth_token()
-			headers = {"Authorization": f"Bearer {token}"}
-			async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, headers=headers, timeout=15.0) as c:
-				r = await c.get("/api/projects")
-				r.raise_for_status()
-				projects = r.json().get("items", [])
-				proj = next((p for p in projects if p["name"].lower() == proj_name.lower()), None)
-				if not proj:
-					return f"\u26a0 Project '{proj_name}' not found."
-				ok = await planka_delete_project(proj["id"])
-				return f"Project '{proj_name}' deleted." if ok else f"\u26a0 Failed to delete project '{proj_name}'."
-
-		await handle_action("DELETE_PROJECT", raw_tag, _exec_del_proj, f"Delete project '{proj_name}' (PERMANENT)")
-		clean_reply = strip_tag(clean_reply, raw_tag)
-
-	# Delete Board Tag — REQUIRES user confirmation (HITL-gated via SENSITIVE_ACTIONS).
-	del_board_pattern = r"\[?ACTION: DELETE_BOARD \| PROJECT: ([^\|\]]+) \| BOARD: ([^\|\]]+)\]?"
-	for match in re.finditer(del_board_pattern, reply):
-		raw_tag = match.group(0)
-		proj_name_del, board_name_del = match.group(1).strip(), match.group(2).strip()
-
-		async def _exec_del_board(proj_name_del=proj_name_del, board_name_del=board_name_del):
-			from app.services.planka import get_planka_auth_token
-			import httpx
-			from app.config import settings
-			token = await get_planka_auth_token()
-			headers = {"Authorization": f"Bearer {token}"}
-			async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, headers=headers, timeout=15.0) as c:
-				r = await c.get("/api/projects")
-				projects = r.json().get("items", [])
-				proj = next((p for p in projects if p["name"].lower() == proj_name_del.lower()), None)
-				if not proj:
-					return f"\u26a0 Project '{proj_name_del}' not found."
-				det = await c.get(f"/api/projects/{proj['id']}")
-				boards = det.json().get("included", {}).get("boards", [])
-				board = next((b for b in boards if b["name"].lower() == board_name_del.lower()), None)
-				if not board:
-					return f"\u26a0 Board '{board_name_del}' not found in '{proj_name_del}'."
-				# cascade: delete cards, lists, then board
-				bd = await c.get(f"/api/boards/{board['id']}")
-				if bd.status_code == 200:
-					inc = bd.json().get("included", {})
-					for card in inc.get("cards", []):
-						await c.delete(f"/api/cards/{card['id']}")
-					for lst in inc.get("lists", []):
-						await c.delete(f"/api/lists/{lst['id']}")
-				resp = await c.delete(f"/api/boards/{board['id']}")
-				return f"Board '{board_name_del}' deleted from '{proj_name_del}'." if resp.status_code == 200 else f"\u26a0 Failed to delete board '{board_name_del}'."
-
-		await handle_action("DELETE_BOARD", raw_tag, _exec_del_board, f"Delete board '{board_name_del}' from '{proj_name_del}' (PERMANENT)")
 		clean_reply = strip_tag(clean_reply, raw_tag)
 
 	# --- FINAL AGGRESSIVE HYGIENE ---
