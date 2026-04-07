@@ -156,6 +156,11 @@ async def start_telegram_bot():
 		nav_markup=get_nav_markup,
 	)
 
+	# Register Telegram as a push channel in the message_bus so cross-channel
+	# messages (e.g. dashboard conversations) are delivered here automatically.
+	from app.services.message_bus import bus as _bus
+	_bus.register_channel("telegram", push_fn=send_notification_html)
+
 	# Launch greeting in background (keep a strong reference to prevent GC mid-run)
 	_task = asyncio.create_task(send_startup_greeting())
 	_background_tasks.add(_task)
