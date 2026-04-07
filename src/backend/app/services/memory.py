@@ -127,6 +127,18 @@ async def store_memory(text: str, metadata: Optional[dict] = None):
 		r"|(?:(?:task|card|board|list|project) (?:created|added|updated|removed|moved))"
 		# Pure system/tool meta nouns
 		r"|(?:^(?:Planka board structure|Kanban WIP limits?|Board structure|WIP limits?)$)"
+		# Session-state descriptions — not personal facts
+		# e.g. "The recipe for pizza dough is being requested"
+		# e.g. "The user is returning after ~23h of silence"
+		# e.g. "The user aims to use the pizza dough in 3 hours"
+		# e.g. "X is being requested"
+		r"|(?:is being requested)"
+		r"|(?:is returning after)"
+		r"|(?:user aims to use .{3,40} in \d)"
+		r"|(?:user plans to .{3,60} in \d)"
+		r"|(?:recipe for .{3,40} is)"
+		r"|(?:^The (?:recipe|request|plan|goal) for .{3,60}(?:is|was|will be))"
+		r"|(?:\bafter ~?\d+[hm] of silence)"
 
 		# ── First-person action/state statements — EN + 10 supported languages ──
 		# EN: "I added", "I'm still thinking", "I did not create", "Try again"
