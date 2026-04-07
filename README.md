@@ -89,6 +89,16 @@ openZero is not a chatbot wrapper. It is an operational layer for a personal com
 
 Two Docker networks: `internal` (all services) and `llm` (isolated inference). The LLM container cannot reach the database or memory stores directly.
 
+### Compute peer routing
+
+openZero can offload inference to any Tailscale-connected device running Ollama or llama.cpp. Add one line to `.env`:
+
+```
+LLM_PEER_CANDIDATES=http://100.x.y.z:11434#MacBook
+```
+
+The `#MacBook` fragment sets the display name shown in the dashboard. Multiple candidates are comma-separated. Every 30 seconds, openZero probes all peers with a real inference call (not just a health check), measures actual tokens/s, and promotes the fastest peer automatically — but only if it reaches 80% of the VPS speed. A slower device stays on standby; the dashboard Diagnostics panel shows each peer's name, model, and live tok/s under **Inference Provider** inside the Local tier card.
+
 ---
 
 ## Quick Start
