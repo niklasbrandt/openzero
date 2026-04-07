@@ -683,6 +683,39 @@ export class DiagnosticsWidget extends HTMLElement {
 					}).join('')}
 				</div>` : ''}
 
+				${(() => {
+					const peers = (srv as any).llm_peers;
+					if (!peers) return '';
+					const active = peers.active;
+					const candidates: any[] = peers.candidates || [];
+					if (candidates.length <= 1 && !active?.url?.includes('http')) return '';
+					return `
+					<div class="peer-row">
+						<span class="peer-row-label">${this.tr('diag_compute_peers', 'Compute Peers')}</span>
+						<div class="peer-list">
+							${candidates.map((p: any) => {
+								const isActive = active && p.url === active.url;
+								const label = p.is_vps_local
+									? this.tr('diag_peer_vps', 'VPS')
+									: (p.url.replace('http://', '').replace('https://', ''));
+								const serverLabel = p.server_type === 'ollama' ? 'Ollama' : 'llama.cpp';
+								const tip = p.online
+									? `${p.model} · ${serverLabel} · ${p.latency_ms != null ? p.latency_ms + ' ms' : ''}${isActive ? ' · Active' : ''}`
+									: this.tr('diag_peer_offline', 'Offline — waiting for peer to come online');
+								return `
+									<div class="peer-chip ${p.online ? 'online' : 'offline'} ${isActive ? 'active' : ''} has-tip">
+										<span class="peer-dot"></span>
+										<span class="peer-name">${this.esc(label)}</span>
+										${isActive ? '<span class="peer-active-badge">active</span>' : ''}
+										<span class="glass-tooltip">${this.esc(tip)}</span>
+									</div>
+								`;
+							}).join('')}
+						</div>
+					</div>
+					`;
+				})()}
+
 				<!-- Top Row: Prominent RAM -->
 				<div class="ram-strip">
 					<div class="ram-strip-header">
@@ -963,6 +996,20 @@ export class DiagnosticsWidget extends HTMLElement {
 				.svc-detail { font-size: 0.65rem; font-family: var(--font-mono); color: var(--text-muted); text-align: right; }
 
 				.svc-dot.processing { background: var(--accent-primary); box-shadow: 0 0 10px var(--accent-primary); animation: diag-pulse 1s infinite; }
+
+				.peer-row { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.75rem; flex-wrap: wrap; }
+				.peer-row-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); font-weight: 700; white-space: nowrap; }
+				.peer-list { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+				.peer-chip { display: flex; align-items: center; gap: 0.35rem; padding: 0.2rem 0.5rem; border-radius: 2rem; border: 1px solid hsla(0,0%,100%,0.08); background: hsla(0,0%,100%,0.03); font-size: 0.65rem; cursor: default; transition: border-color 0.2s; }
+				.peer-chip.online { border-color: hsla(160,60%,45%,0.3); }
+				.peer-chip.active { border-color: var(--accent-primary); background: hsla(174,70%,40%,0.1); }
+				.peer-chip.offline { opacity: 0.45; }
+				.peer-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); flex-shrink: 0; }
+				.peer-chip.online .peer-dot { background: hsl(160,60%,50%); }
+				.peer-chip.active .peer-dot { background: var(--accent-primary); box-shadow: 0 0 6px var(--accent-primary); animation: diag-pulse 2s infinite; }
+				.peer-name { color: var(--text-secondary); font-family: var(--font-mono); }
+				.peer-chip.active .peer-name { color: var(--text-primary); }
+				.peer-active-badge { font-size: 0.5rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent-primary); font-weight: 700; }
 
 				.llm-ram-breakdown { margin-bottom: 0.75rem; display: flex; flex-wrap: wrap; gap: 0.6rem; }
 				.llm-ram-bd-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); font-weight: 700; margin-bottom: 0.1rem; }
