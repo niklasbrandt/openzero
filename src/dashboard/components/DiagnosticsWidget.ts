@@ -675,12 +675,41 @@ export class DiagnosticsWidget extends HTMLElement {
 									<span class="glass-tooltip">${mismatchDesc}</span>
 								</span>` : ''}
 							</div>
-							${externalActive ? `<div class="ltc-peer-active has-tip">
-								<span class="ltc-peer-dot"></span>
-								<span class="ltc-peer-label">${this.esc(activePeer.model)}</span>
-								<span class="ltc-peer-host">${this.esc(activePeer.url.replace('http://', '').split(':')[0])}</span>
-								<span class="glass-tooltip">${this.tr('diag_llm_peer_active_tip', 'Active inference peer: {model} via {url}').replace('{model}', activePeer.model).replace('{url}', activePeer.url)}</span>
-							</div>` : ''}
+							${(() => {
+								// Inference Provider section — only shown for local tier when external peers are configured
+								if (name !== 'local') return '';
+								const peerInfo = (srv as any).llm_peers;
+								if (!peerInfo) return '';
+								const pCandidates: any[] = peerInfo.candidates || [];
+								const hasExternal = pCandidates.some((c: any) => !c.is_vps_local);
+								if (!hasExternal) return '';
+								const pActive = peerInfo.active;
+								return `<div class="ltc-provider">
+									<span class="ltc-prov-label">${this.tr('diag_inference_provider', 'Inference Provider')}</span>
+									<div class="ltc-prov-chips">
+										${pCandidates.map((p: any) => {
+											const isAct = pActive && p.url === pActive.url;
+											const pDisplayName = p.hostname || p.url.replace('http://', '').replace('https://', '').split(':')[0];
+											const serverLabel = p.server_type === 'ollama' ? 'Ollama' : 'llama.cpp';
+											const tpsLabel = p.toks_per_sec > 0 ? `${p.toks_per_sec} tok/s` : '';
+											const tipParts = p.online
+												? [p.model, serverLabel, tpsLabel, isAct ? 'Active' : '', p.last_error ? `\u26a0 ${p.last_error}` : ''].filter(Boolean).join(' \u00b7 ')
+												: this.tr('diag_peer_offline', 'Offline \u2014 waiting for peer to come online');
+											let chipClass = 'ltc-prov-chip has-tip';
+											if (!p.online) chipClass += ' offline';
+											else if (isAct && !p.is_vps_local) chipClass += ' active-ext';
+											else if (isAct) chipClass += ' active-vps';
+											else chipClass += ' standby';
+											return `<div class="${chipClass}" aria-label="${this.esc(pDisplayName)}">
+												${(isAct && !p.is_vps_local) ? '<span class="ltc-prov-dot" aria-hidden="true"></span>' : ''}
+												<span class="ltc-prov-name">${this.esc(pDisplayName)}</span>
+												${(isAct && tpsLabel) ? `<span class="ltc-prov-tps">${this.esc(tpsLabel)}</span>` : ''}
+												<span class="glass-tooltip">${this.esc(tipParts)}</span>
+											</div>`;
+										}).join('')}
+									</div>
+								</div>`;
+							})()}
 							<div class="ltc-model ${isMismatch ? 'mismatch has-tip' : ''}">
 								${isMismatch ? '<span class="ltc-mismatch-icon" aria-hidden="true">⚠️</span>' : ''}
 								${this.esc(model)}
@@ -697,41 +726,6 @@ export class DiagnosticsWidget extends HTMLElement {
 						</div>`;
 					}).join('')}
 				</div>` : ''}
-
-				${(() => {
-					const peers = (srv as any).llm_peers;
-					if (!peers) return '';
-					const active = peers.active;
-					const candidates: any[] = peers.candidates || [];
-					// Only render when external (non-VPS) peers are configured
-					const hasExternal = candidates.some((c: any) => !c.is_vps_local);
-					if (!hasExternal) return '';
-					return `
-					<div class="peer-row">
-						<span class="peer-row-label">${this.tr('diag_compute_peers', 'Compute Peers')}</span>
-						<div class="peer-list">
-							${candidates.map((p: any) => {
-								const isActive = active && p.url === active.url;
-								const label = p.is_vps_local
-									? this.tr('diag_peer_vps', 'VPS')
-									: (p.url.replace('http://', '').replace('https://', ''));
-								const serverLabel = p.server_type === 'ollama' ? 'Ollama' : 'llama.cpp';
-								const tip = p.online
-									? `${p.model} · ${serverLabel} · ${p.latency_ms != null ? p.latency_ms + ' ms' : ''}${isActive ? ' · Active' : ''}`
-									: this.tr('diag_peer_offline', 'Offline — waiting for peer to come online');
-								return `
-									<div class="peer-chip ${p.online ? 'online' : 'offline'} ${isActive ? 'active' : ''} has-tip">
-										<span class="peer-dot"></span>
-										<span class="peer-name">${this.esc(label)}</span>
-										${isActive ? '<span class="peer-active-badge">active</span>' : ''}
-										<span class="glass-tooltip">${this.esc(tip)}</span>
-									</div>
-								`;
-							}).join('')}
-						</div>
-					</div>
-					`;
-				})()}
 
 				<!-- Top Row: Prominent RAM -->
 				<div class="ram-strip">
@@ -1014,20 +1008,6 @@ export class DiagnosticsWidget extends HTMLElement {
 
 				.svc-dot.processing { background: var(--accent-primary); box-shadow: 0 0 10px var(--accent-primary); animation: diag-pulse 1s infinite; }
 
-				.peer-row { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.75rem; flex-wrap: wrap; }
-				.peer-row-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); font-weight: 700; white-space: nowrap; }
-				.peer-list { display: flex; flex-wrap: wrap; gap: 0.4rem; }
-				.peer-chip { display: flex; align-items: center; gap: 0.35rem; padding: 0.2rem 0.5rem; border-radius: 2rem; border: 1px solid hsla(0,0%,100%,0.08); background: hsla(0,0%,100%,0.03); font-size: 0.65rem; cursor: default; transition: border-color 0.2s; }
-				.peer-chip.online { border-color: hsla(160,60%,45%,0.3); }
-				.peer-chip.active { border-color: var(--accent-primary); background: hsla(174,70%,40%,0.1); }
-				.peer-chip.offline { opacity: 0.45; }
-				.peer-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); flex-shrink: 0; }
-				.peer-chip.online .peer-dot { background: hsl(160,60%,50%); }
-				.peer-chip.active .peer-dot { background: var(--accent-primary); box-shadow: 0 0 6px var(--accent-primary); animation: diag-pulse 2s infinite; }
-				.peer-name { color: var(--text-secondary); font-family: var(--font-mono); }
-				.peer-chip.active .peer-name { color: var(--text-primary); }
-				.peer-active-badge { font-size: 0.5rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent-primary); font-weight: 700; }
-
 				.llm-ram-breakdown { margin-bottom: 0.75rem; display: flex; flex-wrap: wrap; gap: 0.6rem; }
 				.llm-ram-bd-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); font-weight: 700; margin-bottom: 0.1rem; }
 				.llm-tier-card { flex: 1; min-width: 200px; background: hsla(0,0%,100%,0.025); border: 1px solid hsla(0,0%,100%,0.05); border-left: 2px solid var(--tier-color, var(--accent-primary)); border-radius: 0.4rem; padding: 0.45rem 0.6rem; display: flex; flex-direction: column; gap: 0.25rem; }
@@ -1057,12 +1037,21 @@ export class DiagnosticsWidget extends HTMLElement {
 				.ltc-badge.idle { background: hsla(220,30%,50%,0.12); color: var(--text-muted); border-color: hsla(220,30%,50%,0.2); letter-spacing: 0.05em; }
 				.llm-tier-card.peer-routed { opacity: 0.6; }
 				.llm-tier-card.peer-routed:hover { opacity: 1; transition: opacity 0.2s; }
-				.ltc-peer-active { display: flex; align-items: center; gap: 0.4rem; margin: 0.2rem 0 0.15rem; }
-				.ltc-peer-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent-primary); box-shadow: 0 0 5px var(--accent-primary); flex-shrink: 0; animation: diag-pulse 2s infinite; }
-				.ltc-peer-label { font-size: 0.68rem; color: var(--accent-primary); font-weight: 600; font-family: var(--font-mono); }
-				.ltc-peer-host { font-size: 0.6rem; color: var(--text-muted); font-family: var(--font-mono); }
 				.ltc-badge .glass-tooltip { right: 0; left: auto; transform: translateY(2px); margin-bottom: 2px; }
 				.has-tip:hover > .ltc-badge .glass-tooltip { transform: translateY(-4px); }
+
+				/* Inference Provider section inside LOCAL card */
+				.ltc-provider { margin: 0.35rem 0 0.1rem; }
+				.ltc-prov-label { display: block; font-size: 0.52rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); font-weight: 700; margin-bottom: 0.3rem; }
+				.ltc-prov-chips { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+				.ltc-prov-chip { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.45rem; border-radius: 99px; font-size: 0.6rem; font-family: var(--font-mono); font-weight: 600; border: 1px solid; position: relative; }
+				.ltc-prov-chip.active-ext { border-color: var(--accent-primary); background: hsla(var(--accent-primary-h,172),var(--accent-primary-s,100%),var(--accent-primary-l,36%),0.15); color: var(--accent-primary); }
+				.ltc-prov-chip.active-vps { border-color: hsla(0,0%,100%,0.18); background: hsla(0,0%,100%,0.06); color: var(--text-secondary); }
+				.ltc-prov-chip.standby { border-color: hsla(0,0%,100%,0.08); background: transparent; color: var(--text-muted); opacity: 0.7; }
+				.ltc-prov-chip.offline { border-color: hsla(0,0%,100%,0.05); background: transparent; color: var(--text-muted); opacity: 0.4; }
+				.ltc-prov-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent-primary); box-shadow: 0 0 5px var(--accent-primary); flex-shrink: 0; animation: diag-pulse 2s infinite; }
+				.ltc-prov-name { font-size: 0.62rem; }
+				.ltc-prov-tps { font-size: 0.56rem; opacity: 0.75; font-weight: 400; }
 				
 				.ltc-model { font-size: 0.78rem; font-family: var(--font-mono); color: var(--text-secondary); font-weight: 600; display: flex; align-items: center; gap: 0.4rem; padding: 0.1rem 0; position: relative; width: fit-content; }
 				.ltc-model.mismatch { color: var(--color-danger); cursor: help; }
