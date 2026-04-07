@@ -1957,10 +1957,13 @@ async def server_info() -> dict:
 		logger.debug("Uptime info unavailable: %s", up_err)
 
 	# --- Per-tier LLM props (threads, ctx, etc.) ---
-	from app.services.llm_peers import get_active_local_endpoint, get_peer_status
-	active_local_url, _ = get_active_local_endpoint()
+	# tiers always monitors the VPS llama.cpp container directly via its native
+	# API (/health, /slots, /props). Peer routing (which endpoint serves requests)
+	# is shown separately via llm_peers and must NOT be used here — Ollama and
+	# other peer types don't expose llama.cpp-specific endpoints.
+	from app.services.llm_peers import get_peer_status
 	tier_urls = {
-		"local": active_local_url,
+		"local": settings.LLM_LOCAL_URL,
 	}
 	# Attach peer discovery state so the dashboard can show which node is active
 	info["llm_peers"] = get_peer_status()
