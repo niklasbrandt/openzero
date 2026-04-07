@@ -37,6 +37,13 @@ class Settings(BaseSettings):
     LLM_LOCAL_URL: str = "http://llm-local:8081"
     LLM_MODEL_LOCAL: str = "Qwen3-0.6B"
 
+    # Peer discovery — comma-separated list of additional inference endpoints
+    # (Tailscale-connected Macs, other local PCs, etc.).  Probed every 30 s;
+    # the fastest responding peer is used automatically.  Supports both
+    # llama.cpp (default port 8081) and Ollama (default port 11434).
+    # Example: LLM_PEER_CANDIDATES=http://100.x.y.z:11434,http://100.a.b.c:8081
+    LLM_PEER_CANDIDATES: str = ""
+
     # Cloud LLM — optional OpenAI-compatible inference provider (Groq, Together, OpenRouter, …)
     # Leave LLM_CLOUD_API_KEY empty to disable cloud tier; all cloud calls fall back to local.
     LLM_CLOUD_BASE_URL: str = ""
