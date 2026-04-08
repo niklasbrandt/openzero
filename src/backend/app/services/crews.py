@@ -302,6 +302,13 @@ async def resolve_active_crew(history: list, user_text: str, lang: str = "en") -
 			return crew.id
 
 	# 2. Holistic scoring over recent history.
+	# Guard: skip history scoring for short greetings / conversational fragments.
+	# A message of ≤3 words with no keyword hit should never be pulled into a
+	# crew solely because the previous Z reply had a crew attribution footer.
+	word_count = len(user_text.split())
+	if word_count <= 3:
+		return None
+
 	recent = history[-8:] if len(history) > 8 else history
 	scores: dict[str, int] = {}
 	for msg in recent:
