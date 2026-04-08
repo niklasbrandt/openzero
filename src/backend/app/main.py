@@ -148,8 +148,8 @@ async def lifespan(app: FastAPI):
                             _deployed_commit, current,
                         )
                         os._exit(0)
-                except Exception:
-                    pass
+                except Exception as _ve:
+                    logging.debug("Version watch error: %s", _ve)
 
         asyncio.create_task(_watch_version())
 
@@ -162,8 +162,8 @@ async def lifespan(app: FastAPI):
     try:
         await stop_telegram_bot()
         await stop_scheduler()
-    except Exception:
-        pass
+    except Exception as _se:
+        logging.debug("Shutdown error: %s", _se)
 
 
 app = FastAPI(

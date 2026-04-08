@@ -343,7 +343,7 @@ translations: dict[str, str] = {
 	"list_this_week": 'Minggu Ini',
 	"list_backlog": 'Backlog',
 	"list_done": 'Selesai',
-	"list_inbox": 'Kotak Masuk'
+	"list_inbox": 'Kotak Masuk',
 	'abort': 'Batal',
 	'aria_abort_crew': 'Batalkan eksekusi kru',
 	'aria_benchmark_tier': 'Tolok ukur',

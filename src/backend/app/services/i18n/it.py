@@ -343,7 +343,7 @@ translations: dict[str, str] = {
 	"list_this_week": 'Questa Settimana',
 	"list_backlog": 'Arretrati',
 	"list_done": 'Fatto',
-	"list_inbox": 'In arrivo'
+	"list_inbox": 'In arrivo',
 	'abort': 'Annulla',
 	'aria_abort_crew': "Annulla l'esecuzione del crew",
 	'aria_benchmark_tier': 'Benchmark',

@@ -2,7 +2,6 @@ import sys
 import os
 import asyncio
 import logging
-import httpx
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../src/backend")))
 
