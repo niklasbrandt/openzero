@@ -908,6 +908,36 @@ async def dashboard_chat_stream(req: ChatRequest, request: Request, _rl: None = 
 			from app.models.db import get_global_history
 			merged_history = await get_global_history(limit=10)
 
+		# --- Slash command: /crew <id> [input] ---
+		# The blocking /chat endpoint handles slash commands but the streaming
+		# endpoint was going directly to the LLM, silently swallowing /crew.
+		if msg.startswith("/crew "):
+			parts = msg.split(" ", 2)
+			crew_id = parts[1]
+			user_input = parts[2] if len(parts) > 2 else "Manual operator trigger"
+			from app.services.crews import crew_registry
+			from app.services.crews_native import native_crew_engine
+			config = crew_registry.get(crew_id)
+			if not config:
+				err = f"❌ Crew '{crew_id}' not found. Use `/crews` to list available crews."
+				yield f"data: {json.dumps({'done': True, 'reply': err, 'actions': [], 'pending': [], 'model': 'system'})}\n\n"
+				return
+			# Stream crew output token-by-token via the same engine the dedicated endpoint uses
+			chunks: list[str] = []
+			async for chunk in native_crew_engine.run_crew_stream(crew_id, user_input):
+				chunks.append(chunk)
+				yield f"data: {json.dumps({'token': chunk})}\n\n"
+			full_response = "".join(chunks)
+			clean_reply, executed_cmds, pending_actions = await bus.commit_reply(
+				channel="dashboard",
+				raw_reply=full_response,
+				model=f"crew:{crew_id}",
+				user_text=msg,
+				save=not req.skip_history,
+			)
+			yield f"data: {json.dumps({'done': True, 'reply': _sanitise_reply_html(clean_reply), 'actions': executed_cmds, 'pending': pending_actions, 'model': f'crew:{crew_id}'})}\n\n"
+			return
+
 		chunks = []
 
 		async for chunk in chat_stream_with_context(
