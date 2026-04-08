@@ -16,7 +16,6 @@ Public API:
   get_crew_memory_context(crew_id) -> str
       Returns recent conversation history formatted for injection into system prompt.
 """
-import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
 
@@ -130,7 +129,7 @@ async def _get_or_create_crew_board(
 		board = data.get("item") or data
 		board_id = board.get("id")
 		if not board_id:
-			logger.warning("crew_memory: board creation returned no id for '%s'", board_name)
+			logger.warning("crew_memory: board creation returned no id for '%s'", board_name.replace('\n', ' ').replace('\r', ' '))
 			return None
 		return board_id
 	except Exception as e:
@@ -268,7 +267,7 @@ async def append_crew_exchange(crew_id: str, user_msg: str, crew_response: str) 
 				return
 			updated_desc = _build_updated_description(current_desc, user_msg, crew_response, time_str)
 			await _patch_card_description(client, card_id, updated_desc)
-			logger.info("crew_memory: updated conversation card for crew '%s' (%s)", crew_id, date_str)
+			logger.info("crew_memory: updated conversation card for crew '%s' (%s)", crew_id.replace('\n', ' ').replace('\r', ' '), date_str)
 	except Exception as e:
 		logger.warning("crew_memory: append_crew_exchange failed: %s", e)
 
