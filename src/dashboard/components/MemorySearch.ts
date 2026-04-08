@@ -1,5 +1,4 @@
 import { BUTTON_STYLES } from '../services/buttonStyles';
-import { initGoo } from '../services/gooStyles';
 import { ACCESSIBILITY_STYLES } from '../services/accessibilityStyles';
 import { SECTION_HEADER_STYLES } from '../services/sectionHeaderStyles';
 import { SCROLLBAR_STYLES } from '../services/scrollbarStyles';
@@ -46,8 +45,6 @@ export class MemorySearch extends HTMLElement {
 
 	connectedCallback() {
 		this.loadTranslations().then(() => this.render());
-		initGoo(this);
-		window.addEventListener('goo-changed', () => initGoo(this));
 	}
 
 	// ── Search mode ─────────────────────────────────────────────────────────

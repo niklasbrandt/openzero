@@ -2,7 +2,6 @@ import { ACCESSIBILITY_STYLES } from '../services/accessibilityStyles';
 import { SECTION_HEADER_STYLES } from '../services/sectionHeaderStyles';
 import { GLASS_TOOLTIP_STYLES } from '../services/glassTooltipStyles';
 import { EMPTY_STATE_STYLES } from '../services/emptyStateStyles';
-import { GOO_STYLES, initGoo } from '../services/gooStyles';
 
 export class SoftwareStatus extends HTMLElement {
 	private data: any = null;
@@ -35,8 +34,6 @@ export class SoftwareStatus extends HTMLElement {
 		);
 		this._observer.observe(this);
 		document.addEventListener('visibilitychange', this._onVisChange);
-		initGoo(this);
-		window.addEventListener('goo-changed', () => initGoo(this));
 		window.addEventListener('identity-updated', () => {
 			this.loadTranslations().then(() => {
 				this.render();
@@ -235,7 +232,6 @@ export class SoftwareStatus extends HTMLElement {
 				${SECTION_HEADER_STYLES}
 				${GLASS_TOOLTIP_STYLES}
 				${EMPTY_STATE_STYLES}
-				${GOO_STYLES}
 
 				/* ── Service Grid ── */
 				.svc-grid {

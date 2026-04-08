@@ -1,6 +1,5 @@
 import { ACCESSIBILITY_STYLES } from '../services/accessibilityStyles';
 import { SECTION_HEADER_STYLES } from '../services/sectionHeaderStyles';
-import { GOO_STYLES, initGoo } from '../services/gooStyles';
 
 export class ProjectTree extends HTMLElement {
 	private t: Record<string, string> = {};
@@ -16,8 +15,6 @@ export class ProjectTree extends HTMLElement {
 			this.fetchData();
 			this.setupToggle();
 		});
-		initGoo(this);
-		window.addEventListener('goo-changed', () => initGoo(this));
 		window.addEventListener('refresh-data', (e: any) => {
 			if (e.detail && e.detail.actions && (e.detail.actions.includes('project') || e.detail.actions.includes('board'))) {
 				this.fetchData();
@@ -108,7 +105,6 @@ export class ProjectTree extends HTMLElement {
 				<style>
 					${ACCESSIBILITY_STYLES}
 					${SECTION_HEADER_STYLES}
-					${GOO_STYLES}
 					/* Override icon gradient for boards */
 					h2 .h-icon {
 						background: linear-gradient(135deg, var(--accent-color, hsla(173, 80%, 40%, 1)) 0%, var(--accent-secondary, hsla(216, 100%, 50%, 1)) 100%);

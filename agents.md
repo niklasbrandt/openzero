@@ -122,7 +122,7 @@ All code written for the openZero dashboard **MUST** conform to **WCAG 2.1 Level
 - **rem Not em:** Use `rem` for all spacing (margin, padding, gap, width, height). The only acceptable use of `em` is `letter-spacing`.
 - **Class Naming:** Section header icons use `.h-icon`. Status indicators use `.status-dot`. Empty placeholders use `.empty-state`. Never use generic `.icon` or `.empty`.
 - **Shadow DOM Encapsulation:** Component styles stay inside their `.ts` template wrappers. Never extract into separate CSS files.
-- **Easing Rules:** Standard GSAP easing: `expo.out` (entrance), `expo.inOut` (transition), `power2.in` (exit), `power2.out` (micro). `elastic.out` and `bounce.out` are only permitted in goo mode (`oz-goo-*` scoped).
+- **Easing Rules:** Standard GSAP easing: `expo.out` (entrance), `expo.inOut` (transition), `power2.in` (exit), `power2.out` (micro).
 - **Accessibility per Component:** Every Shadow DOM component must include `${ACCESSIBILITY_STYLES}` (providing `.sr-only`, `@media(prefers-reduced-motion)`, and `@media(forced-colors:active)`). Component-specific animation suppression goes in a separate reduced-motion block after the module.
 
 ## 19. Localization Hygiene

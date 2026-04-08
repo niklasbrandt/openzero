@@ -2,7 +2,6 @@ import { ACCESSIBILITY_STYLES } from '../services/accessibilityStyles';
 import { SECTION_HEADER_STYLES } from '../services/sectionHeaderStyles';
 import { GLASS_TOOLTIP_STYLES } from '../services/glassTooltipStyles';
 import { EMPTY_STATE_STYLES } from '../services/emptyStateStyles';
-import { GOO_STYLES, initGoo } from '../services/gooStyles';
 
 const BENCH_ACCENT = 'var(--accent-secondary-text, hsl(216, 100%, 65%))';
 const BENCH_ACCENT_RGB = 'var(--accent-secondary-rgb, 0, 102, 255)';
@@ -27,8 +26,6 @@ export class SystemBenchmark extends HTMLElement {
 
 	connectedCallback() {
 		Promise.all([this.loadTranslations(), this.fetchLlmConfig()]).then(() => this.render());
-		initGoo(this);
-		window.addEventListener('goo-changed', () => initGoo(this));
 		window.addEventListener('identity-updated', () => {
 			this.loadTranslations().then(() => this.render());
 		});
@@ -254,7 +251,6 @@ export class SystemBenchmark extends HTMLElement {
 				${GLASS_TOOLTIP_STYLES}
 				${SECTION_HEADER_STYLES}
 				${EMPTY_STATE_STYLES}
-				${GOO_STYLES}
 
 				/* Override icon gradient for benchmark accent */
 				h2 .h-icon {

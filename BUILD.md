@@ -521,7 +521,6 @@ The openZero dashboard features a high-performance mission-control interface. Yo
 ### 3. Motion & Performance
 
 - **Cursor Parallax:** The background glow and accent highlights track your mouse movements using a hardware-accelerated `lerp` engine.
-- **Goo Mode (Phase 4):** Organic fluid interactions are driven by an SVG filter (`#oz-goo`) and CSS classes (`.oz-goo-container`).
 ### 4. Agent Personality
 
 - You can now configure Z's **Communication Style**, **Emotional Tone**, and **Agency Level** directly from the User Card.

@@ -1,5 +1,4 @@
 import { BUTTON_STYLES } from '../services/buttonStyles';
-import { initGoo } from '../services/gooStyles';
 import { ACCESSIBILITY_STYLES } from '../services/accessibilityStyles';
 import { SECTION_HEADER_STYLES } from '../services/sectionHeaderStyles';
 
@@ -54,8 +53,6 @@ export class AgentsWidget extends HTMLElement {
 			this.render();
 			this.loadData();
 		});
-		initGoo(this);
-		window.addEventListener('goo-changed', () => initGoo(this));
 		this.addEventListener('refresh-data', () => this.loadData());
 		window.addEventListener('identity-updated', () => {
 			this.loadTranslations().then(() => {
