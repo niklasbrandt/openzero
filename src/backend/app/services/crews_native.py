@@ -203,5 +203,45 @@ class NativeCrewEngine:
 				logger.error("Native Engine Streaming Failure: %s", e)
 				raise
 
+	async def run_crew_panel(self, crew_ids: list, user_input: str):
+		"""Run a panel of crews sequentially, yielding all tokens.
+
+		The primary crew (first in list) runs normally.  Each subsequent crew
+		receives the primary crew's full output as additional context so it can
+		build on rather than duplicate the work already done.
+
+		Yields:
+		  - All tokens from the primary crew.
+		  - A separator marker string ``\\n\\n---crew:{id}---\\n\\n`` before each
+		    secondary crew's tokens so the caller can split/label sections.
+		"""
+		if not crew_ids:
+			return
+
+		primary_id = crew_ids[0]
+		primary_chunks: list[str] = []
+
+		async for chunk in self.run_crew_stream(primary_id, user_input):
+			primary_chunks.append(chunk)
+			yield chunk
+
+		primary_output = "".join(primary_chunks)
+
+		for secondary_id in crew_ids[1:]:
+			yield f"\n\n---crew:{secondary_id}---\n\n"
+			# Provide the primary crew's output as reference context
+			augmented_input = (
+				f"{user_input}\n\n"
+				f"[Primary crew '{primary_id}' already produced the following output — "
+				f"build on it, add your domain perspective, avoid repeating what was already said:]\n"
+				f"{primary_output}"
+			)
+			secondary_chunks: list[str] = []
+			async for chunk in self.run_crew_stream(secondary_id, augmented_input):
+				secondary_chunks.append(chunk)
+				yield chunk
+			# Keep running concatenation so each subsequent crew sees all prior work
+			primary_output += "\n\n" + "".join(secondary_chunks)
+
 
 native_crew_engine = NativeCrewEngine()
