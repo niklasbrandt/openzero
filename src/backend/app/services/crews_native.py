@@ -203,12 +203,49 @@ class NativeCrewEngine:
 				logger.error("Native Engine Streaming Failure: %s", e)
 				raise
 
+	async def _crew_wants_to_engage(self, crew_id: str, user_input: str, primary_output: str) -> bool:
+		"""Ask the secondary crew via a fast yes/no gate whether the query is relevant to it.
+
+		Returns True only when the model answers 'yes'.  Any error or ambiguous
+		answer is treated as 'no' so irrelevant crews stay silent by default.
+		"""
+		cfg = crew_registry.get(crew_id)
+		if cfg is None:
+			return False
+		crew_desc = cfg.description or cfg.name
+		prompt = (
+			f"You are the '{cfg.name}' crew ({crew_desc}).\n"
+			f"Another crew has just responded to a user request. "
+			f"Decide whether YOUR domain adds meaningful, non-redundant value to this specific request.\n\n"
+			f"User request: {user_input[:400]}\n\n"
+			f"Primary crew output summary (first 300 chars): {primary_output[:300]}\n\n"
+			f"Reply with exactly one word — 'yes' if you have substantive domain expertise to contribute, "
+			f"'no' if the request is outside your scope or already fully covered."
+		)
+		try:
+			payload = {
+				"model": "",
+				"messages": [{"role": "user", "content": prompt}],
+				"max_tokens": 5,
+				"temperature": 0,
+				"stream": False,
+			}
+			async with httpx.AsyncClient(timeout=10) as client:
+				r = await client.post(f"{self.llm_url}/chat/completions", json=payload)
+				r.raise_for_status()
+				answer = r.json()["choices"][0]["message"]["content"].strip().lower()
+				return answer.startswith("yes")
+		except Exception as e:
+			logger.debug("crew relevance gate failed for '%s': %s", crew_id, e)
+			return False
+
 	async def run_crew_panel(self, crew_ids: list, user_input: str):
 		"""Run a panel of crews sequentially, yielding all tokens.
 
 		The primary crew (first in list) runs normally.  Each subsequent crew
-		receives the primary crew's full output as additional context so it can
-		build on rather than duplicate the work already done.
+		first answers a fast yes/no gate — if it decides the query is outside
+		its domain it stays silent and is skipped.  If it opts in it receives
+		the accumulated output as context so it can build on rather than repeat.
 
 		Yields:
 		  - All tokens from the primary crew.
@@ -228,12 +265,16 @@ class NativeCrewEngine:
 		primary_output = "".join(primary_chunks)
 
 		for secondary_id in crew_ids[1:]:
+			engaged = await self._crew_wants_to_engage(secondary_id, user_input, primary_output)
+			if not engaged:
+				logger.debug("crew panel: '%s' opted out for this query", secondary_id)
+				continue
 			yield f"\n\n---crew:{secondary_id}---\n\n"
-			# Provide the primary crew's output as reference context
+			# Provide accumulated context so the secondary builds on, not repeats
 			augmented_input = (
 				f"{user_input}\n\n"
-				f"[Primary crew '{primary_id}' already produced the following output — "
-				f"build on it, add your domain perspective, avoid repeating what was already said:]\n"
+				f"[Prior crew(s) already produced the following — "
+				f"add your domain perspective, avoid repeating what was already covered:]\n"
 				f"{primary_output}"
 			)
 			secondary_chunks: list[str] = []
