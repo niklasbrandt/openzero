@@ -56,6 +56,32 @@ CREW-SAFE ACTION TAGS ONLY:
 - For CREATE_EVENT dates, ALWAYS use the current real-world date — never hardcode past years like 2023.
 """
 
+_STOP_WORDS = {
+	"a", "an", "the", "of", "and", "or", "for", "to", "in", "on", "with",
+	"at", "by", "from", "into", "is", "are", "its", "it", "that", "this",
+	"be", "as", "all", "any", "per", "up", "do", "not", "no", "via", "new",
+	"each", "your", "their", "has", "have", "will", "can", "they", "them",
+	"but", "so", "if", "when", "then", "which", "who", "how",
+}
+
+
+def _crew_tokens(cfg: "CrewConfig") -> set:
+	"""Return a bag-of-words for a crew using name + description + character roles."""
+	parts = [cfg.name, cfg.description or ""]
+	if cfg.characters:
+		for ch in cfg.characters:
+			parts.append(ch.get("name", ""))
+			parts.append(ch.get("role", ""))
+	text = " ".join(parts).lower()
+	return {w for w in re.findall(r'[a-z]+', text) if w not in _STOP_WORDS and len(w) > 3}
+
+
+def _jaccard(a: set, b: set) -> float:
+	if not a or not b:
+		return 0.0
+	return len(a & b) / len(a | b)
+
+
 class CrewConfig(BaseModel):
 	id: str
 	name: str
@@ -67,7 +93,7 @@ class CrewConfig(BaseModel):
 	characters: Optional[List[Dict[str, str]]] = None
 	keywords: Optional[List[str]] = None  # trigger words for auto-routing from free-text (English)
 	keywords_i18n: Optional[Dict[str, List[str]]] = None  # per-language keyword overrides, e.g. {"de": [...], "fr": [...]}
-	intersects_with: Optional[List[str]] = None  # crew IDs that should co-run alongside this one (up to 2 secondaries)
+	panel_exclude: Optional[List[str]] = None  # crew IDs explicitly blocked from co-running in panels
 	feeds_briefing: Optional[str] = None
 	schedule: Optional[str] = None
 	briefing_day: Optional[str] = None
@@ -106,7 +132,7 @@ class CrewRegistry:
 				characters=c.get("characters"),
 				keywords=c.get("keywords"),
 				keywords_i18n=c.get("keywords_i18n"),
-				intersects_with=c.get("intersects_with"),
+				panel_exclude=c.get("panel_exclude"),
 				feeds_briefing=c.get("feeds_briefing"),
 				schedule=c.get("schedule"),
 				briefing_day=c.get("briefing_day"),
@@ -116,6 +142,27 @@ class CrewRegistry:
 			)
 			self._crews[config.id] = config
 		logger.info("Registry: Successfully loaded %d active crews.", len(self._crews))
+		self._compute_panel_candidates()
+
+	def _compute_panel_candidates(self, top_n: int = 3, min_score: float = 0.02) -> None:
+		"""Auto-compute domain-similar crew pairs via bag-of-words Jaccard on name + description + character roles.
+
+		Run once after load(). Result cached in self._panel_candidates.
+		"""
+		crews = list(self._crews.values())
+		vectors = {c.id: _crew_tokens(c) for c in crews}
+		self._panel_candidates: Dict[str, List[str]] = {}
+		for crew in crews:
+			scores = [
+				(other.id, _jaccard(vectors[crew.id], vectors[other.id]))
+				for other in crews if other.id != crew.id
+			]
+			scores.sort(key=lambda x: -x[1])
+			self._panel_candidates[crew.id] = [
+				cid for cid, s in scores[:top_n] if s >= min_score
+			]
+		nonempty = {k: v for k, v in self._panel_candidates.items() if v}
+		logger.info("Panel candidates (auto-computed): %s", nonempty)
 
 	def get(self, crew_id: str) -> Optional[CrewConfig]:
 		return self._crews.get(crew_id)
@@ -285,9 +332,9 @@ async def resolve_active_crews(history: list, user_text: str, lang: str = "en", 
 	"""Return an ordered list of up to `max_crews` crew IDs for this message.
 
 	The first entry is the primary crew (same algorithm as resolve_active_crew).
-	Subsequent entries come from the primary crew's `intersects_with` list — crews
-	declared as domain neighbours that should co-reason on the same request.
-	Only crews that actually exist in the registry are included.
+	Subsequent entries are drawn from auto-computed domain-similarity candidates
+	(see CrewRegistry._compute_panel_candidates). Any crew listed in the primary's
+	`panel_exclude` config is skipped. Only crews that exist in the registry are included.
 	Returns an empty list if no crew matches.
 	"""
 	primary = await resolve_active_crew(history, user_text, lang=lang)
@@ -296,10 +343,11 @@ async def resolve_active_crews(history: list, user_text: str, lang: str = "en", 
 
 	result = [primary]
 	cfg = crew_registry.get(primary)
-	if cfg and cfg.intersects_with:
-		for sid in cfg.intersects_with:
-			if len(result) >= max_crews:
-				break
-			if sid != primary and crew_registry.get(sid):
-				result.append(sid)
+	exclude = set(cfg.panel_exclude or []) if cfg else set()
+	candidates = crew_registry._panel_candidates.get(primary, [])
+	for sid in candidates:
+		if len(result) >= max_crews:
+			break
+		if sid != primary and sid not in exclude and crew_registry.get(sid):
+			result.append(sid)
 	return result
