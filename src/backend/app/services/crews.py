@@ -227,17 +227,26 @@ async def resolve_active_crew(history: list, user_text: str, lang: str = "en") -
 	"""Return a crew_id if this message should be routed to a crew automatically.
 
 	Algorithm (in order of priority):
-	1. Direct keyword match in current message — strongest signal, route immediately.
-	   For non-English sessions the English keywords are auto-translated to the
-	   user's configured language via the fast local LLM (result cached in memory).
+	0. Crew ID direct match — if the user's message contains the exact crew id as
+	   a standalone word (e.g. "hi dependents"), route there immediately regardless
+	   of crew list order or keyword translation results.
+	1. Keyword match in current message — base English keywords plus any
+	   auto-translated keywords for the user's configured language.
 	2. Score the last ~8 history entries (user + Z) holistically:
 	   - A Z reply with crew attribution footer scores +3 for that crew.
 	   - A user message whose content matches a crew's keywords scores +1.
 	   Highest-scoring crew wins if score >= 2.
 	Returns crew_id string or None (let Z handle it normally).
 	"""
-	# 1. Immediate keyword match on current message.
 	lower_text = user_text.lower()
+
+	# 0. Priority: explicit crew ID in message — beats keyword order entirely.
+	for crew in crew_registry.list_active():
+		pattern = r'(?<![a-z0-9])' + re.escape(crew.id.lower()) + r'(?![a-z0-9])'
+		if re.search(pattern, lower_text):
+			return crew.id
+
+	# 1. Keyword match on current message.
 	for crew in crew_registry.list_active():
 		effective = await _get_effective_keywords(crew, lang)
 		if effective and _keyword_matches(effective, lower_text):
