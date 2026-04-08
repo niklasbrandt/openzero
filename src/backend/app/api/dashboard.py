@@ -950,7 +950,7 @@ async def dashboard_chat_stream(req: ChatRequest, request: Request, _rl: None = 
 	)
 
 @router.post("/crew/stream/{crew_id}")
-async def dashboard_crew_stream(crew_id: str, req: ChatRequest, db: AsyncSession = Depends(get_db)):
+async def dashboard_crew_stream(crew_id: str, req: ChatRequest, request: Request, db: AsyncSession = Depends(get_db)):
 	"""SSE streaming endpoint for crew missions."""
 	from starlette.responses import StreamingResponse
 	from app.services.crews_native import native_crew_engine
@@ -960,6 +960,9 @@ async def dashboard_crew_stream(crew_id: str, req: ChatRequest, db: AsyncSession
 		chunks = []
 		try:
 			async for chunk in native_crew_engine.run_crew_stream(crew_id, req.message):
+				if await request.is_disconnected():
+					logger.info("Dashboard crew '%s' stream aborted by client", str(crew_id).replace('\n', ' ').replace('\r', ' '))
+					return
 				chunks.append(chunk)
 				yield f"data: {json.dumps({'token': chunk})}\n\n"
 
