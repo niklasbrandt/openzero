@@ -38,6 +38,148 @@ openZero is not a chatbot wrapper. It is an operational layer for a personal com
 
 ---
 
+## Quick Start
+
+```bash
+git clone https://github.com/your-org/openzero.git
+cd openzero
+cp config.example.yaml config.yaml && cp .env.example .env
+# fill in your domain, secrets, and credentials
+docker compose up -d
+```
+
+DB migrations run automatically on first boot. Telegram starts as soon as `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` are set. WhatsApp requires a Meta Cloud API webhook — see [BUILD.md](BUILD.md).
+
+See [BUILD.md](BUILD.md) for a complete variable reference.
+
+---
+
+## Personal context
+
+Z is grounded in your life through two local directories that are never committed:
+
+```bash
+cp -r personal.example/ personal/   # about-me, business, health, requirements
+cp -r agent.example/   agent/       # agent-rules, crews.yaml, kanban config
+```
+
+These files are injected into every system prompt alongside live memory retrieval.
+
+---
+
+## Messaging channels
+
+Both Telegram and WhatsApp route to the same Z agent with full context: memory retrieval, personal context, and LLM generation.
+
+### Telegram commands
+
+| Command           | Effect                        |
+| ----------------- | ----------------------------- |
+| `/briefing`       | Morning digest                |
+| `/memory <query>` | Semantic memory search        |
+| `/task <text>`    | Create a Planka card          |
+| `/calendar`       | Upcoming events               |
+| `/email`          | Inbox summary                 |
+| `/crew <name>`    | Trigger a crew immediately    |
+| `/crews`          | List crews and status         |
+| `/status`         | Hardware and container health |
+| `/lang <code>`    | Switch language               |
+
+### WhatsApp
+
+Free-form messages work identically — every message goes through the full Z context pipeline. There are no slash commands; just write naturally.
+
+---
+
+## Crew routing
+
+On every incoming message Z decides whether to answer directly or delegate to a specialist crew. The same logic applies across all channels. It has three layers, evaluated in order:
+
+1. **Crew ID match** — if the crew's own ID appears as a whole word in the message (e.g. "hi dependents, ..."), Z routes to it immediately with no further evaluation.
+2. **Keyword routing** — each crew in `agent/crews.yaml` can declare a `keywords` list. If any keyword matches (word-boundary, language-aware), Z routes to that crew without invoking the main LLM. Keywords are automatically translated to the user's configured language on first use and cached.
+3. **LLM routing** — if neither of the above matches, Z passes the message to the fast-tier model with the full crew registry as context. The model returns the best-fit crew ID, or `none` to handle the message itself.
+
+The routing decision is always logged, so you can tune keywords or add crews without touching code.
+
+For example, the `nutrition` crew listens for words like `recipe`, `meal`, `cook`, `grocery`, `macro` — so sending "make me a high-protein dinner recipe for tonight" routes directly to it, runs the full multi-character crew, and outputs a structured Planka board with the recipe and shopping list. A message like "what should I eat to hit 180g protein today?" contains no exact keyword but the fast-tier model correctly identifies `nutrition` as the best crew and delegates accordingly.
+
+### Crew panels
+
+Crews can declare `intersects_with` — a list of related crew IDs whose domains often overlap. When a primary crew is selected and has `intersects_with` configured, each listed crew is offered a fast yes/no relevance gate (a single token from the local model). Any crew that judges the query relevant to its domain joins the response as a secondary panel. Secondaries receive the accumulated output as context and add their perspective without repeating what is already covered. The result is a single reply composed of up to three crew sections, each attributed to its crew. Crews that find the query outside their scope stay silent — so a recipe request pulls in nutrition and possibly health (dietary constraints), but not fitness.
+
+---
+
+## Autonomous crews
+
+Crews are YAML-defined agent task sequences in `agent/crews.yaml`. No code changes needed to add one.
+
+```yaml
+- id: "flow"
+  name: "Productivity, Stagnation & Deep Work Engine"
+  description: "Unblocks stuck tasks and schedules deep work execution."
+  group: "basic"
+  type: "agent"
+  feeds_briefing: "/week"
+  briefing_day: "MON"
+  instructions: |
+    Scan Planka boards for tasks that lack recent activity.
+    Propose actionable micro-tasks and identify optimal calendar blocks for deep work.
+  characters:
+    - name: "The Systems Auditor"
+      role: "Flags deadlocked boards, deadline drift, and WIP violations."
+    - name: "The Unblocker Strategist"
+      role: "Outputs micro-tasks under 25 min to break inertia."
+    - name: "The Session Architect"
+      role: "Schedules dedicated deep work blocks into ideal energy windows."
+```
+
+```yaml
+- id: "nutrition"
+  name: "Precision Culinary & Macro Optimizer"
+  description: "Generates weekly meal boards, recipes, and shopping lists."
+  group: "private"
+  type: "agent"
+  feeds_briefing: "/week"
+  briefing_day: "SUN"
+  keywords:
+    - recipe
+    - meal
+    - cook
+    - grocery
+    - macro
+    - calories
+    - ingredient
+    - shopping list
+  intersects_with:
+    - health
+    - fitness
+  instructions: |
+    Build comprehensive meal plans adhering to constraints in personal/health.md.
+    Use metric units. Output deduplicated shopping checklists.
+    Persist all output to Planka — board structure should fit the content.
+  characters:
+    - name: "The Clinical Nutritionist"
+      role: "Strictly enforces health.md constraints (allergies, macros, exclusions)."
+    - name: "The Production Head Chef"
+      role: "Builds sequential, batch-optimized cooking instructions."
+    - name: "The Shopping Logistics Officer"
+      role: "Deduplicates all recipes into one aisle-mapped grocery checklist."
+```
+
+Scheduling: `feeds_briefing: /day|/week|/month|/quarter` (briefing-relative, recommended) · `schedule: "0 7 * * *"` (fixed cron)
+
+Triggers: briefing-relative · fixed cron · manual via `/crew <id>` on Telegram or dashboard
+
+---
+
+## Dashboard
+
+17 Shadow DOM Web Components — no React, Vue, or Angular.
+38 HSLA theme presets, live switching, goo-mode elastic animations.
+WCAG 2.1 AA, 10 languages, keyboard-navigable.
+
+---
+
 ## Stack
 
 ```
@@ -98,149 +240,6 @@ LLM_PEER_CANDIDATES=http://100.x.y.z:11434#MacBook
 ```
 
 The `#MacBook` fragment sets the display name shown in the dashboard. Multiple candidates are comma-separated. Every 30 seconds, openZero probes all peers with a real inference call (not just a health check), measures actual tokens/s, and promotes the fastest peer automatically — but only if it reaches 80% of the VPS speed. A slower device stays on standby; the dashboard Diagnostics panel shows each peer's name, model, and live tok/s under **Inference Provider** inside the Local tier card.
-
----
-
-## Quick Start
-
-```bash
-git clone https://github.com/your-org/openzero.git
-cd openzero
-cp config.example.yaml config.yaml && cp .env.example .env
-# fill in your domain, secrets, and credentials
-docker compose up -d
-```
-
-DB migrations run automatically on first boot. Telegram starts as soon as `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` are set. WhatsApp requires a Meta Cloud API webhook — see [BUILD.md](BUILD.md).
-
-See [BUILD.md](BUILD.md) for a complete variable reference.
-
----
-
-## Personal context
-
-Z is grounded in your life through two local directories that are never committed:
-
-```bash
-cp -r personal.example/ personal/   # about-me, business, health, requirements
-cp -r agent.example/   agent/       # agent-rules, crews.yaml, kanban config
-```
-
-These files are injected into every system prompt alongside live memory retrieval.
-
----
-
-## Messaging channels
-
-Both Telegram and WhatsApp route to the same Z agent with full context: memory retrieval, personal context, and LLM generation.
-
-### Telegram commands
-
-| Command           | Effect                        |
-| ----------------- | ----------------------------- |
-| `/briefing`       | Morning digest                |
-| `/memory <query>` | Semantic memory search        |
-| `/task <text>`    | Create a Planka card          |
-| `/calendar`       | Upcoming events               |
-| `/email`          | Inbox summary                 |
-| `/crew <name>`    | Trigger a crew immediately    |
-| `/crews`          | List crews and status         |
-| `/status`         | Hardware and container health |
-| `/lang <code>`    | Switch language               |
-
-### WhatsApp
-
-Free-form messages work identically — every message goes through the full Z context pipeline. There are no slash commands; just write naturally.
-
-Z reads every message and decides whether to answer directly or delegate to a specialist crew. The decision has two layers:
-
-1. **Keyword routing** — each crew in `agent/crews.yaml` declares a `keywords` list. If any keyword appears in the message (case-insensitive), Z routes to that crew without invoking the main language model at all. This keeps latency near-zero for predictable domains.
-2. **LLM routing** — if no keyword matches, Z passes the message to the fast-tier model with the full crew registry as context. The model returns the best-fit crew ID, or `none` to handle the message itself. This catches paraphrased intent that keywords would miss.
-
-If multiple crews match, keyword specificity wins; ties go to the crew listed first in the YAML. The routing decision is always logged, so you can tune keywords or add crews without touching code.
-
-Crews can also declare `intersects_with` — a list of related crew IDs whose domains often overlap. When a primary crew is selected and has intersects_with configured, each listed crew is offered a fast yes/no relevance gate (a single token from the local model). Any crew that judges the query relevant to its own domain joins the response as a secondary panel. Secondaries receive the primary output as context and add their perspective without repeating what is already covered. The result is a single message composed of up to three crew sections, each attributed to its crew. Crews that find the query outside their scope stay silent — so a recipe request pulls in nutrition and possibly health (dietary constraints), but not fitness.
-
-For example, the `nutrition` crew listens for words like `recipe`, `meal`, `cook`, `grocery`, `macro` — so sending "make me a high-protein dinner recipe for tonight" routes directly to it, runs the full multi-character crew, and outputs a structured Planka board with the recipe and shopping list. A message like "what should I eat to hit 180g protein today?" contains no exact keyword but the fast-tier model correctly identifies `nutrition` as the best crew and delegates accordingly.
-
----
-
-## Autonomous crews
-
-Crews are YAML-defined agent task sequences in `agent/crews.yaml`. No code changes needed to add one.
-
-```yaml
-- id: "flow"
-  name: "Productivity, Stagnation & Deep Work Engine"
-  description: "Unblocks stuck tasks and schedules deep work execution."
-  group: "basic"
-  type: "agent"
-  feeds_briefing: "/week"
-  briefing_day: "MON"
-  instructions: |
-    Scan Planka boards for tasks that lack recent activity.
-    Propose actionable micro-tasks and identify optimal calendar blocks for deep work.
-  characters:
-    - name: "The Systems Auditor"
-      role: "Flags deadlocked boards, deadline drift, and WIP violations."
-    - name: "The Unblocker Strategist"
-      role: "Outputs micro-tasks under 25 min to break inertia."
-    - name: "The Session Architect"
-      role: "Schedules dedicated deep work blocks into ideal energy windows."
-```
-
-```yaml
-- id: "nutrition"
-  name: "Precision Culinary & Macro Optimizer"
-  description: "Generates weekly meal boards, recipes, and shopping lists."
-  group: "private"
-  type: "agent"
-  feeds_briefing: "/week"
-  briefing_day: "SUN"
-  keywords:
-    - recipe
-    - meal
-    - cook
-    - grocery
-    - macro
-    - calories
-    - ingredient
-    - shopping list
-  instructions: |
-    Build comprehensive meal plans adhering to constraints in personal/health.md.
-    Use metric units. Output deduplicated shopping checklists.
-    Persist all output to Planka — board structure should fit the content.
-  characters:
-    - name: "The Clinical Nutritionist"
-      role: "Strictly enforces health.md constraints (allergies, macros, exclusions)."
-    - name: "The Production Head Chef"
-      role: "Builds sequential, batch-optimized cooking instructions."
-    - name: "The Shopping Logistics Officer"
-      role: "Deduplicates all recipes into one aisle-mapped grocery checklist."
-```
-
-Use `intersects_with` on any crew to enable co-reasoning with related crews:
-
-```yaml
-- id: "fitness"
-  intersects_with:
-    - nutrition
-    - health
-```
-
-When fitness is the primary crew, nutrition and health are each asked a yes/no gate question. If they opt in they append their domain perspective to the same reply. Gate calls use the fast local model and add minimal latency — a crew that opts out is simply skipped.
-
-Scheduling: `feeds_briefing: /day|/week|/month|/quarter` (briefing-relative, recommended) · `schedule: "0 7 * * *"` (fixed cron)
-
-Triggers: briefing-relative · fixed cron · manual via `/crew <id>` on Telegram or dashboard
-
----
-
-## Dashboard
-
-17 Shadow DOM Web Components — no React, Vue, or Angular.
-38 HSLA theme presets, live switching, goo-mode elastic animations.
-WCAG 2.1 AA, 10 languages, keyboard-navigable.
 
 ---
 
