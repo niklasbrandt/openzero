@@ -392,7 +392,7 @@ async def _recover_unanswered_messages():
 
 		logger.info("Restart recovery: response delivered — sending combined online notification.")
 		await _send_online_notification(recovery_html=recovery_html)
-	except BaseException as e:
+	except Exception as e:
 		logging.exception("Restart recovery failed: %s", e)
 		await _send_online_notification()
 
@@ -1154,8 +1154,8 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 	if not response.strip():
 		try:
 			await thinking_msg.delete()
-		except Exception:
-			pass
+		except Exception as _e:
+			logger.debug("Telegram delete ignored: %s", _e)
 		return
 
 	# Parse action tags, save Z reply, schedule background memory — all via bus.
@@ -1260,7 +1260,7 @@ async def _process_crew_stream(update: Update, context: ContextTypes.DEFAULT_TYP
 	thinking_msg = await update.message.reply_text(
 		f"<blockquote><i>...thinking (crew: <b>{crew_display}</b>)</i></blockquote>",
 		parse_mode="HTML",
-		reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Abort", callback_data="crew_abort_0")]])
+		reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Cancel", callback_data="crew_abort_0")]])
 	)
 	# Store abort event keyed by actual message_id now that we have it
 	_crew_abort_events[thinking_msg.message_id] = abort_event
@@ -1269,12 +1269,8 @@ async def _process_crew_stream(update: Update, context: ContextTypes.DEFAULT_TYP
 		await thinking_msg.edit_reply_markup(
 			reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Abort", callback_data=f"crew_abort_{thinking_msg.message_id}")]])
 		)
-	except Exception:
-		pass
-
-	chunks = []
-	last_edit_time = time.time()
-	EDIT_INTERVAL = 1.5
+	except Exception as _e:
+		logger.debug("Telegram edit_reply_markup ignored: %s", _e)
 	aborted = False
 
 	try:
@@ -1291,8 +1287,8 @@ async def _process_crew_stream(update: Update, context: ContextTypes.DEFAULT_TYP
 						display = f"<blockquote><i>...thinking (crew: <b>{crew_display}</b>)</i>\n\n{_md_to_html(partial_text)}...</blockquote>"
 						await safe_edit(thinking_msg, display, parse_mode="HTML",
 							reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Abort", callback_data=f"crew_abort_{thinking_msg.message_id}")]]))
-					except Exception:
-						pass
+					except Exception as _e:
+						logger.debug("Telegram crew stream update ignored: %s", _e)
 					last_edit_time = now
 
 		if aborted:
@@ -1323,7 +1319,8 @@ async def _process_crew_stream(update: Update, context: ContextTypes.DEFAULT_TYP
 		logger.error("Telegram Crew Stream Failed: %s", e)
 		try:
 			await safe_edit(thinking_msg, f"<blockquote><i>Crew execution failed: {e}</i></blockquote>", parse_mode="HTML")
-		except Exception: pass
+		except Exception as _e:
+			logger.debug("Telegram crew error edit ignored: %s", _e)
 	finally:
 		_crew_abort_events.pop(thinking_msg.message_id, None)
 

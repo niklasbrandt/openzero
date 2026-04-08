@@ -1,7 +1,6 @@
 from app.services.llm import chat, last_model_used
 from app.services.planka import get_project_tree, get_activity_report
-from app.models.db import AsyncSessionLocal, Briefing, Project
-from sqlalchemy import select
+from app.models.db import AsyncSessionLocal, Briefing
 import asyncio
 import datetime
 

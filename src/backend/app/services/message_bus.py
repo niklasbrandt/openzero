@@ -78,7 +78,7 @@ Channel adapters own only the channel-specific parts:
 
 import asyncio
 import logging
-from typing import Any, Awaitable, Callable, Optional
+from typing import Any, Awaitable, Callable
 
 logger = logging.getLogger(__name__)
 
