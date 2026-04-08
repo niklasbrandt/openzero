@@ -1083,20 +1083,19 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 	"""Core freetext processing logic with streaming progressive updates."""
 	from app.services.llm import chat_stream_with_context
 	from app.services.message_bus import bus
-	from app.services.crews import resolve_active_crew
+	from app.services.crews import resolve_active_crews
 	import time
 
 	lang = await get_user_lang()
 	t = get_translations(lang)
 
-	# Auto-route to a crew if the last Z reply was from one (continuation)
-	# or if the user's message matches a crew's keyword list.
+	# Auto-route to a crew (or panel of crews) if the message matches.
 	if not is_followup:
 		_h = history or []
-		routed_crew = await resolve_active_crew(_h, user_text, lang=lang)
-		if routed_crew:
-			logger.info("Auto-routing '%s...' to crew '%s'", user_text[:40], routed_crew)
-			await _process_crew_stream(update, context, routed_crew, user_text, t, already_ingested=True)
+		routed_crews = await resolve_active_crews(_h, user_text, lang=lang)
+		if routed_crews:
+			logger.info("Auto-routing '%s...' to crew panel %s", user_text[:40], routed_crews)
+			await _process_crew_stream(update, context, routed_crews, user_text, t, already_ingested=True)
 			return
 
 	# Show initial acknowledgment
@@ -1243,18 +1242,23 @@ async def handle_crew_abort(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		logger.debug("crew_abort callback parse ignored: %s", _e)
 
 
-async def _process_crew_stream(update: Update, context: ContextTypes.DEFAULT_TYPE, crew_id: str, user_input: str, t: dict, already_ingested: bool = False):
-	"""Executes a crew mission with progressive Telegram message updates."""
+async def _process_crew_stream(update: Update, context: ContextTypes.DEFAULT_TYPE, crew_ids: "str | list", user_input: str, t: dict, already_ingested: bool = False):
+	"""Executes a crew mission (or panel of crews) with progressive Telegram message updates."""
 	from app.services.crews_native import native_crew_engine
 	from app.services.message_bus import bus
 	import time
 
+	# Normalise to list so the rest of the function handles both call styles.
+	if isinstance(crew_ids, str):
+		crew_ids = [crew_ids]
+	primary_id = crew_ids[0]
+
 	# Persist the user's crew invocation to global_messages so dashboard stays in sync.
 	# Skip if the caller already called bus.ingest (e.g. auto-routing from handle_freetext).
 	if not already_ingested:
-		await bus.ingest("telegram", f"/crew {crew_id} {user_input}".strip())
+		await bus.ingest("telegram", f"/crew {primary_id} {user_input}".strip())
 
-	crew_display = crew_id.replace('-', ' ').title()
+	crew_display = " + ".join(cid.replace('-', ' ').title() for cid in crew_ids)
 	abort_event = asyncio.Event()
 
 	thinking_msg = await update.message.reply_text(
@@ -1273,11 +1277,33 @@ async def _process_crew_stream(update: Update, context: ContextTypes.DEFAULT_TYP
 		logger.debug("Telegram edit_reply_markup ignored: %s", _e)
 	aborted = False
 
+	# Section tracking for multi-crew display
+	current_crew_id = primary_id
+	current_section_chunks: list[str] = []
+	all_sections: dict[str, str] = {}  # crew_id -> full text
+
 	try:
-		async for chunk in native_crew_engine.run_crew_stream(crew_id, user_input):
+		chunks: list[str] = []
+		last_edit_time = time.time()
+		EDIT_INTERVAL = 1.5
+
+		stream = (
+			native_crew_engine.run_crew_panel(crew_ids, user_input)
+			if len(crew_ids) > 1
+			else native_crew_engine.run_crew_stream(primary_id, user_input)
+		)
+
+		async for chunk in stream:
 			if abort_event.is_set():
 				aborted = True
 				break
+			# Detect section separator emitted by run_crew_panel
+			if chunk.startswith("\n\n---crew:") and chunk.endswith("---\n\n"):
+				all_sections[current_crew_id] = "".join(current_section_chunks)
+				current_crew_id = chunk.strip().removeprefix("---crew:").removesuffix("---")
+				current_section_chunks = []
+				continue
+			current_section_chunks.append(chunk)
 			chunks.append(chunk)
 			now = time.time()
 			if now - last_edit_time >= EDIT_INTERVAL:
@@ -1291,26 +1317,37 @@ async def _process_crew_stream(update: Update, context: ContextTypes.DEFAULT_TYP
 						logger.debug("Telegram crew stream update ignored: %s", _e)
 					last_edit_time = now
 
+		# Save last (or only) section
+		if current_section_chunks:
+			all_sections[current_crew_id] = "".join(current_section_chunks)
+
 		if aborted:
 			await safe_edit(thinking_msg, f"<blockquote><i>stopped (crew: <b>{crew_display}</b>)</i></blockquote>", parse_mode="HTML")
 			return
 
-		full_res = "".join(chunks)
-		logger.info("Crew '%s' raw output (%d chars): %s", crew_id, len(full_res), full_res[:500])
+		# Commit each section separately for correct action attribution
+		combined_clean_parts: list[str] = []
+		all_executed_cmds: list = []
+		for cid, section_text in all_sections.items():
+			safe_cid = cid.replace("\n", "\\n").replace("\r", "\\r")
+			logger.info("Crew panel '%s' raw output (%d chars): %s", safe_cid, len(section_text), section_text[:300])
+			c_reply, e_cmds, p_actions = await bus.commit_reply(
+				channel="telegram",
+				raw_reply=section_text,
+				model=f"crew:{cid}",
+				user_text=user_input,
+			)
+			if p_actions:
+				logger.info("Crew '%s' pending actions: %s", safe_cid, p_actions)
+			combined_clean_parts.append(c_reply)
+			all_executed_cmds.extend(e_cmds)
 
-		clean_reply, executed_cmds, pending_actions = await bus.commit_reply(
-			channel="telegram",
-			raw_reply=full_res,
-			model=f"crew:{crew_id}",
-			user_text=user_input,
-		)
+		if all_executed_cmds:
+			logger.info("Crew panel executed actions: %s", all_executed_cmds)
 
-		if executed_cmds:
-			logger.info("Crew '%s' executed actions: %s", crew_id, executed_cmds)
-		if pending_actions:
-			logger.info("Crew '%s' pending actions: %s", crew_id, pending_actions)
-
-		clean_reply += f"\n\n_(Reasoning by crew {crew_id})_"
+		attribution = ", ".join(crew_ids)
+		clean_reply = "\n\n---\n\n".join(combined_clean_parts)
+		clean_reply += f"\n\n_(Reasoning by crew {attribution})_"
 
 		display_final = f"<b>{format_time()}</b>\n\n{_md_to_html(clean_reply)}"
 		await safe_edit(thinking_msg, f"<blockquote>{display_final}</blockquote>", parse_mode="HTML", reply_markup=get_nav_markup(t))

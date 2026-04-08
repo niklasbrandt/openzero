@@ -237,6 +237,9 @@ crews:
     type: "agent"
     feeds_briefing: "/week"
     briefing_day: "MON"
+    intersects_with:
+      - nutrition
+      - fitness
     instructions: |
       Evaluate biometric data to optimize physical load, mitigate burnout, and align chronobiology.
     characters:
@@ -254,6 +257,9 @@ crews:
     type: "agent"
     feeds_briefing: "/week"
     briefing_day: "SUN"
+    intersects_with:
+      - health
+      - fitness
     keywords:
       - recipe
       - recipes
@@ -414,6 +420,9 @@ crews:
     type: "agent"
     feeds_briefing: "/week"
     briefing_day: "MON"
+    intersects_with:
+      - nutrition
+      - health
     instructions: |
       You are a full-spectrum performance coaching panel operating on behalf of the user.
       Your primary inputs are personal/health.md (physical metrics, injuries, preferences, saved workout memory)

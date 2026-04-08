@@ -67,6 +67,7 @@ class CrewConfig(BaseModel):
 	characters: Optional[List[Dict[str, str]]] = None
 	keywords: Optional[List[str]] = None  # trigger words for auto-routing from free-text (English)
 	keywords_i18n: Optional[Dict[str, List[str]]] = None  # per-language keyword overrides, e.g. {"de": [...], "fr": [...]}
+	intersects_with: Optional[List[str]] = None  # crew IDs that should co-run alongside this one (up to 2 secondaries)
 	feeds_briefing: Optional[str] = None
 	schedule: Optional[str] = None
 	briefing_day: Optional[str] = None
@@ -105,6 +106,7 @@ class CrewRegistry:
 				characters=c.get("characters"),
 				keywords=c.get("keywords"),
 				keywords_i18n=c.get("keywords_i18n"),
+				intersects_with=c.get("intersects_with"),
 				feeds_briefing=c.get("feeds_briefing"),
 				schedule=c.get("schedule"),
 				briefing_day=c.get("briefing_day"),
@@ -277,3 +279,27 @@ async def resolve_active_crew(history: list, user_text: str, lang: str = "en") -
 			return best
 
 	return None
+
+
+async def resolve_active_crews(history: list, user_text: str, lang: str = "en", max_crews: int = 3) -> list:
+	"""Return an ordered list of up to `max_crews` crew IDs for this message.
+
+	The first entry is the primary crew (same algorithm as resolve_active_crew).
+	Subsequent entries come from the primary crew's `intersects_with` list — crews
+	declared as domain neighbours that should co-reason on the same request.
+	Only crews that actually exist in the registry are included.
+	Returns an empty list if no crew matches.
+	"""
+	primary = await resolve_active_crew(history, user_text, lang=lang)
+	if not primary:
+		return []
+
+	result = [primary]
+	cfg = crew_registry.get(primary)
+	if cfg and cfg.intersects_with:
+		for sid in cfg.intersects_with:
+			if len(result) >= max_crews:
+				break
+			if sid != primary and crew_registry.get(sid):
+				result.append(sid)
+	return result
