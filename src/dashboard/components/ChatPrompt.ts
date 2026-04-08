@@ -291,8 +291,9 @@ export class ChatPrompt extends HTMLElement {
 				}
 			}
 		} catch (err) {
+			const contentDiv = msgEl.querySelector('.bubble-content') as HTMLElement;
 			if ((err as any)?.name === 'AbortError') {
-				contentArea.innerHTML += `<br><span style="color:var(--text-faint,rgba(255,255,255,0.3))"><i>stopped</i></span>`;
+				if (contentDiv) contentDiv.innerHTML = `<span style="opacity:0.4"><i>stopped</i></span>`;
 			} else {
 				console.error("Streaming failed", err);
 				contentArea.innerHTML += `<br><br><span style="color:var(--text-error)">Connection failed. Response truncated.</span>`;
