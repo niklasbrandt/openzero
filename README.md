@@ -119,58 +119,43 @@ Z routes this to `fitness` (primary crew). The auto-similarity check identifies 
 
 ## Autonomous crews
 
-Crews are YAML-defined agent task sequences in `agent/crews.yaml`. No code changes needed to add one.
+Crews are YAML-defined agent task sequences in `agent/crews.yaml`. No code changes needed to add one — define the crew, restart the backend, and it is live.
+
+### Dual-layer memory
+
+Every crew writes to two memory layers:
+
+- **Planka** — structured, human-readable output. Each crew creates or updates cards on its own board: recipes as cards with ingredient lists and cook steps, workout plans as weekly list layouts, research findings as titled task cards. This is the operational layer — you can act on it directly, modify it, or hand it off to a team.
+- **Qdrant** — semantic vector memory. Key findings, preferences, and progress checkpoints are stored as tagged memory points (e.g. `[fitness-plan]`, `[nutrition-weekly]`) and retrieved automatically in future prompts. A crew running next Monday can recall what it decided last Monday without you repeating yourself.
+
+The combination means crew output is both actionable (Planka) and persistent as context (Qdrant). You can ask Z "what did the coach crew say last week?" and it will retrieve the relevant memory points to answer, while the original Planka card remains separately available as a reference artifact.
+
+### Adding a crew
+
+Drop a new entry into `agent/crews.yaml` and restart the backend — no code changes required:
 
 ```yaml
-- id: "flow"
-  name: "Productivity, Stagnation & Deep Work Engine"
-  description: "Unblocks stuck tasks and schedules deep work execution."
-  group: "basic"
+- id: "my-crew"               # unique slug, used in /crew commands and routing
+  name: "My Crew Display Name"
+  description: "One sentence describing what this crew does."
+  group: "private"            # groups: basic | business | education | private
   type: "agent"
-  feeds_briefing: "/week"
-  briefing_day: "MON"
+  feeds_briefing: "/week"     # or /day | /month | /quarter — omit for cron-only
+  briefing_day: "MON"         # MON–SUN, required when feeds_briefing is /week
+  # schedule: "0 14 * * 2"   # alternative: fixed cron, 5-field syntax
+  keywords:                   # optional — word-boundary matches route here directly
+    - trigger word
+  # panel_exclude:            # optional — crew IDs blocked from co-running here
+  #   - other-crew-id
   instructions: |
-    Scan Planka boards for tasks that lack recent activity.
-    Propose actionable micro-tasks and identify optimal calendar blocks for deep work.
+    Describe what the crew should do. Reference personal/health.md, personal/about-me.md,
+    or personal/requirements.md for grounding. End instructions with explicit Planka
+    persistence steps (CREATE_PROJECT / CREATE_BOARD / CREATE_LIST / CREATE_TASK).
   characters:
-    - name: "The Systems Auditor"
-      role: "Flags deadlocked boards, deadline drift, and WIP violations."
-    - name: "The Unblocker Strategist"
-      role: "Outputs micro-tasks under 25 min to break inertia."
-    - name: "The Session Architect"
-      role: "Schedules dedicated deep work blocks into ideal energy windows."
-```
-
-```yaml
-- id: "nutrition"
-  name: "Precision Culinary & Macro Optimizer"
-  description: "Generates weekly meal boards, recipes, and shopping lists."
-  group: "private"
-  type: "agent"
-  feeds_briefing: "/week"
-  briefing_day: "SUN"
-  keywords:
-    - recipe
-    - meal
-    - cook
-    - grocery
-    - macro
-    - calories
-    - ingredient
-    - shopping list
-  # panel_exclude:
-  #   - fitness  # optional: block a specific crew from ever co-running here
-  instructions: |
-    Build comprehensive meal plans adhering to constraints in personal/health.md.
-    Use metric units. Output deduplicated shopping checklists.
-    Persist all output to Planka — board structure should fit the content.
-  characters:
-    - name: "The Clinical Nutritionist"
-      role: "Strictly enforces health.md constraints (allergies, macros, exclusions)."
-    - name: "The Production Head Chef"
-      role: "Builds sequential, batch-optimized cooking instructions."
-    - name: "The Shopping Logistics Officer"
-      role: "Deduplicates all recipes into one aisle-mapped grocery checklist."
+    - name: "The Role Name"
+      role: "One sentence describing this character's specific function."
+    - name: "The Second Role"
+      role: "What this character contributes that the first does not."
 ```
 
 Scheduling: `feeds_briefing: /day|/week|/month|/quarter` (briefing-relative, recommended) · `schedule: "0 7 * * *"` (fixed cron)
