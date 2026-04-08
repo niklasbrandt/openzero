@@ -373,4 +373,6 @@ translations: dict[str, str] = {
         "aria_date_format": 'Datumsformat f\u00fcr Karten und Protokolle',
         "abort": 'Abbrechen',
         "aria_abort_crew": 'Crew-Ausf\u00fchrung abbrechen',
+	'diag_cloud_not_configured': 'Nicht konfiguriert',
+	'diag_cloud_set_env': 'Set LLM_CLOUD_BASE_URL + API key in .env',
 }
