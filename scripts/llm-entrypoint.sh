@@ -162,20 +162,22 @@ elif [[ "$_OVERRIDE" == "highend" || "$_OVERRIDE" == "high" ]]; then
 	_AUTO_CTX=32768; _AUTO_PREDICT=1024; _AUTO_BATCH=512; _AUTO_CACHE=2048
 	_AUTO_NO_MMAP=1; _AUTO_MLOCK=1
 else
-	# Auto-detect from actual available memory.
-	# Threshold for Minimal is 7 GB available (not 5) so that a Budget 8 GB
-	# Cloud VPS with all openZero services already running (~2-3 GB consumed)
-	# still lands in the correct profile rather than Standard.
+	# Use MemTotal (not MemAvailable) for tier selection.
+	# MemAvailable fluctuates — on a fresh 8 GB machine the LLM container can
+	# start before sibling containers have loaded, making MemAvailable read 6-7 GB
+	# and potentially landing on the wrong tier. MemTotal is stable and unambiguous:
+	# an 8 GB machine always has ~8 GB total, a 12 GB machine always has ~12 GB.
+	# MemAvailable is still printed as diagnostic context.
 	echo "Memory: ${AVAIL_RAM_GB} GB available of ${TOTAL_RAM_GB} GB total"
-	if   [ "$AVAIL_RAM_GB" -lt 7 ]; then
-		_PROFILE="Minimal — Pi 5 / Budget 8 GB Cloud VPS"
+	if   [ "$TOTAL_RAM_GB" -lt 9 ]; then
+		_PROFILE="Minimal — Pi 5 / Budget 8 GB VPS"
 		_AUTO_CTX=8192;  _AUTO_PREDICT=512;  _AUTO_BATCH=256; _AUTO_CACHE=128
 		_AUTO_NO_MMAP=0; _AUTO_MLOCK=0
-	elif [ "$AVAIL_RAM_GB" -lt 10 ]; then
+	elif [ "$TOTAL_RAM_GB" -lt 14 ]; then
 		_PROFILE="Standard — 12 GB VPS"
 		_AUTO_CTX=16384; _AUTO_PREDICT=512;  _AUTO_BATCH=512; _AUTO_CACHE=256
 		_AUTO_NO_MMAP=1; _AUTO_MLOCK=1
-	elif [ "$AVAIL_RAM_GB" -lt 20 ]; then
+	elif [ "$TOTAL_RAM_GB" -lt 28 ]; then
 		_PROFILE="Comfortable — 24 GB"
 		_AUTO_CTX=32768; _AUTO_PREDICT=1024; _AUTO_BATCH=512; _AUTO_CACHE=512
 		_AUTO_NO_MMAP=1; _AUTO_MLOCK=1
