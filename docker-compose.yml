@@ -59,6 +59,7 @@ services:
       - LLM_CACHE_RAM=${LLM_LOCAL_CACHE_RAM}
       - LLM_LOCAL_NO_MMAP=${LLM_LOCAL_NO_MMAP}
       - LLM_LOCAL_MLOCK=${LLM_LOCAL_MLOCK}
+      - LLM_PROFILE_OVERRIDE=${LLM_PROFILE_OVERRIDE}
     healthcheck:
       test: [ "CMD", "curl", "-sf", "http://localhost:8081/health" ]
       interval: 30s
