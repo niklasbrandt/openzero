@@ -1093,7 +1093,7 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 	# or if the user's message matches a crew's keyword list.
 	if not is_followup:
 		_h = history or []
-		routed_crew = resolve_active_crew(_h, user_text)
+		routed_crew = await resolve_active_crew(_h, user_text, lang=lang)
 		if routed_crew:
 			logger.info("Auto-routing '%s...' to crew '%s'", user_text[:40], routed_crew)
 			await _process_crew_stream(update, context, routed_crew, user_text, t, already_ingested=True)
