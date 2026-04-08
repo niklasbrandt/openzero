@@ -384,6 +384,15 @@ crews:
     type: "agent"
     feeds_briefing: "/week"
     briefing_day: "SUN"
+    keywords:
+      - dependents
+      - kindergarten
+      - birthday party
+      - kids activity
+      - children activity
+      - child activity
+      - pediatric
+      - milestone
     instructions: |
       Correlate behavior against pediatric milestones. Handle administrative logistics to reduce cognitive load on the parent.
     characters:

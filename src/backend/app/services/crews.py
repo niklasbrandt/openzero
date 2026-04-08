@@ -1,3 +1,4 @@
+import json as _json
 import logging
 import re
 from pathlib import Path
@@ -64,7 +65,8 @@ class CrewConfig(BaseModel):
 	enabled: bool = True
 	instructions: Optional[str] = None
 	characters: Optional[List[Dict[str, str]]] = None
-	keywords: Optional[List[str]] = None  # trigger words for auto-routing from free-text
+	keywords: Optional[List[str]] = None  # trigger words for auto-routing from free-text (English)
+	keywords_i18n: Optional[Dict[str, List[str]]] = None  # per-language keyword overrides, e.g. {"de": [...], "fr": [...]}
 	feeds_briefing: Optional[str] = None
 	schedule: Optional[str] = None
 	briefing_day: Optional[str] = None
@@ -102,6 +104,7 @@ class CrewRegistry:
 				instructions=c.get("instructions"),
 				characters=c.get("characters"),
 				keywords=c.get("keywords"),
+				keywords_i18n=c.get("keywords_i18n"),
 				feeds_briefing=c.get("feeds_briefing"),
 				schedule=c.get("schedule"),
 				briefing_day=c.get("briefing_day"),
@@ -125,22 +128,119 @@ crew_registry = CrewRegistry(agent_dir=str(AGENT_FOLDER_PATH))
 # Format: "Reasoning by crew <id>"
 _CREW_ATTRIBUTION_RE = re.compile(r"Reasoning by crew ([a-zA-Z0-9_-]+)", re.IGNORECASE)
 
-def resolve_active_crew(history: list, user_text: str) -> Optional[str]:
+# ISO 639-1 code → human-readable language name for the translation prompt
+_LANG_NAMES: dict[str, str] = {
+	"de": "German", "fr": "French", "es": "Spanish", "it": "Italian",
+	"pt": "Portuguese", "nl": "Dutch", "pl": "Polish", "ru": "Russian",
+	"ja": "Japanese", "zh": "Chinese (Simplified)", "ko": "Korean",
+	"hi": "Hindi", "ar": "Arabic", "sv": "Swedish", "no": "Norwegian",
+	"da": "Danish", "fi": "Finnish", "tr": "Turkish",
+}
+
+# In-process cache: (crew_id, lang) -> translated keyword list.
+# Populated lazily on first resolve; lives for the lifetime of the process.
+_kw_translation_cache: dict[tuple, list] = {}
+
+
+async def _translate_keywords_to_lang(crew_id: str, lang: str, keywords: list) -> list:
+	"""Translate English crew trigger-keywords to `lang` via the fast local LLM.
+
+	The result is cached in memory so translation happens at most once per
+	crew/language pair per process lifetime.  Falls back to the original
+	English keywords silently if the LLM is unavailable or returns bad JSON.
+	"""
+	cache_key = (crew_id, lang)
+	if cache_key in _kw_translation_cache:
+		return _kw_translation_cache[cache_key]
+
+	lang_name = _LANG_NAMES.get(lang, lang)
+	try:
+		from app.services.llm import chat  # lazy import avoids circular deps
+		prompt = (
+			f"Translate each English keyword/phrase below to {lang_name}. "
+			f"Return ONLY a valid JSON array of translated strings — no explanation, no markdown.\n"
+			f"Input: {_json.dumps(keywords)}"
+		)
+		raw = await chat(
+			prompt,
+			system_override="You are a translation assistant. Reply with only a valid JSON array of strings.",
+			tier="local",
+			sanitize=False,
+			_feature="crew_kw_translate",
+		)
+		# Strip markdown code fences if the model wraps the output
+		raw = raw.strip()
+		if raw.startswith("```"):
+			lines = raw.split("\n")
+			raw = "\n".join(lines[1:]).rsplit("```", 1)[0]
+		translated = _json.loads(raw.strip())
+		if isinstance(translated, list):
+			result = [str(t).lower() for t in translated if t]
+			_kw_translation_cache[cache_key] = result
+			logger.debug("Crew '%s' keywords translated to %s: %s", crew_id, lang, result)
+			return result
+	except Exception as exc:
+		logger.debug("Keyword translation failed for crew '%s' lang '%s': %s", crew_id, lang, exc)
+
+	# Fallback: cache English list under this lang key so we don't retry indefinitely
+	_kw_translation_cache[cache_key] = keywords
+	return keywords
+
+def _keyword_matches(keywords: list, text: str) -> bool:
+	"""Return True if any keyword matches as a whole word (or phrase) in text.
+
+	Uses word-boundary anchors so that short keywords like 'eat' don't false-fire
+	on unrelated words such as 'weather' or 'create'.
+	Multi-word phrases (e.g. 'shopping list') are matched as exact substrings with
+	boundaries on the outer edges only.
+	"""
+	for kw in keywords:
+		pattern = r'(?<![a-z0-9])' + re.escape(kw.lower()) + r'(?![a-z0-9])'
+		if re.search(pattern, text):
+			return True
+	return False
+
+
+async def _get_effective_keywords(crew: "CrewConfig", lang: str) -> list:
+	"""Return the keyword list to use for `crew` in the given language.
+
+	Priority:
+	1. `keywords_i18n[lang]` — explicit manual override in YAML (fastest, no LLM call).
+	2. Auto-translated via fast local LLM (lazy, cached per crew+lang in memory).
+	3. English `keywords` fallback if LLM unavailable.
+	"""
+	base = list(crew.keywords or [])
+	if not base:
+		return []
+	if lang == "en":
+		return base
+	# Manual override in YAML takes priority over auto-translation
+	if crew.keywords_i18n:
+		manual = crew.keywords_i18n.get(lang)
+		if manual:
+			return base + [k.lower() for k in manual]
+	# Auto-translate English keywords to the user's configured language
+	return await _translate_keywords_to_lang(crew.id, lang, base)
+
+
+async def resolve_active_crew(history: list, user_text: str, lang: str = "en") -> Optional[str]:
 	"""Return a crew_id if this message should be routed to a crew automatically.
 
 	Algorithm (in order of priority):
 	1. Direct keyword match in current message — strongest signal, route immediately.
+	   For non-English sessions the English keywords are auto-translated to the
+	   user's configured language via the fast local LLM (result cached in memory).
 	2. Score the last ~8 history entries (user + Z) holistically:
 	   - A Z reply with crew attribution footer scores +3 for that crew.
 	   - A user message whose content matches a crew's keywords scores +1.
-	   Highest-scoring crew wins if score >= 2. This lets a crew session
-	   survive an unrelated message in between without needing an explicit command.
+	   Highest-scoring crew wins if score >= 2.
 	Returns crew_id string or None (let Z handle it normally).
 	"""
 	# 1. Immediate keyword match on current message.
 	lower_text = user_text.lower()
 	for crew in crew_registry.list_active():
-		if crew.keywords and any(kw.lower() in lower_text for kw in crew.keywords):
+		effective = await _get_effective_keywords(crew, lang)
+		if effective and _keyword_matches(effective, lower_text):
 			return crew.id
 
 	# 2. Holistic scoring over recent history.
@@ -158,7 +258,8 @@ def resolve_active_crew(history: list, user_text: str) -> Optional[str]:
 		elif role == "user":
 			lower_content = content.lower()
 			for crew in crew_registry.list_active():
-				if crew.keywords and any(kw.lower() in lower_content for kw in crew.keywords):
+				effective = await _get_effective_keywords(crew, lang)
+				if effective and _keyword_matches(effective, lower_content):
 					scores[crew.id] = scores.get(crew.id, 0) + 1
 
 	if scores:
