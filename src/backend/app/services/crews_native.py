@@ -71,6 +71,20 @@ class NativeCrewEngine:
 		# 1. Base Instructions and Protocol
 		from datetime import datetime, timezone
 		now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+
+		# For "agent"-type crews with custom instructions, prepend a hard
+		# format override as a separate system message — placed before SYSTEM_TEMPLATE
+		# so the model cannot miss it.  Small local models ignore format rules buried
+		# deep in a long prompt; a leading dedicated message is far more reliable.
+		format_prefix = ""
+		if config.type == "agent" and config.instructions:
+			format_prefix = (
+				"ABSOLUTE RULE: Reply in plain conversational prose only. "
+				"No numbered lists, no bullet points, no headers, no bold text, "
+				"no labels like 'Next Steps' or 'Protocol'. "
+				"Write exactly as a calm, direct person speaking to the user — nothing else."
+			)
+
 		instructions = SYSTEM_TEMPLATE.format(instructions=config.instructions or "Tactical Steward.")
 		instructions = f"Current date and time: {now_str}\n\n" + instructions
 
@@ -129,6 +143,8 @@ class NativeCrewEngine:
 		max_history = 5 if not settings.cloud_configured else 20
 
 		messages = [{"role": "system", "content": instructions}]
+		if format_prefix:
+			messages.insert(0, {"role": "system", "content": format_prefix})
 		if history_messages:
 			# Summarise scope so the crew knows these are prior user messages
 			messages.append({
