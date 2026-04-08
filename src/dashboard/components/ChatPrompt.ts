@@ -178,7 +178,9 @@ export class ChatPrompt extends HTMLElement {
 	private async streamResponse(url: string, body: any, isCrew = false, crewId?: string) {
 		this.pendingRequests++;
 		this.updateSendButton();
-		
+
+		const abortCtrl = new AbortController();
+
 		// 1. Create a "Live" Assistant Bubble
 		const container = this.shadowRoot?.querySelector('#messages');
 		if (!container) return;
@@ -186,6 +188,7 @@ export class ChatPrompt extends HTMLElement {
 		// Remove typing indicator if present
 		this.hideTypingIndicator();
 
+		const crewDisplay = crewId ? crewId.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : '';
 		const messageId = `msg-${Date.now()}`;
 		const msgEl = document.createElement('div');
 		msgEl.className = `message assistant live animate`;
@@ -193,18 +196,24 @@ export class ChatPrompt extends HTMLElement {
 		msgEl.innerHTML = `
 			<div class="bubble">
 				<div class="bubble-content" id="${messageId}-content">
-					${isCrew ? `<i style="opacity:0.7">${this.tr('executing_crew', 'Executing crew')} <b>${crewId}</b>...</i><br><br>` : ''}
+					${isCrew ? `<i style="opacity:0.7">...thinking (crew: <b>${crewDisplay}</b>)</i><br><br>` : ''}
 					<span class="tokens"></span>
 				</div>
 				<div class="bubble-footer">
 					<span class="model-tag">${isCrew ? 'cloud' : '...'}</span>
 					<span class="time">${this.formatDateTime(new Date())}</span>
+					${isCrew ? `<button class="abort-btn" type="button" aria-label="${this.tr('aria_abort_crew', 'Abort crew')}">${this.tr('abort', 'Abort')}</button>` : ''}
 				</div>
 			</div>
 		`;
 		container.prepend(msgEl);
 		this.applyBubbleTextColor();
 		this.scrollToBottom();
+
+		const abortBtn = msgEl.querySelector('.abort-btn') as HTMLButtonElement | null;
+		if (abortBtn) {
+			abortBtn.addEventListener('click', () => abortCtrl.abort());
+		}
 
 		const contentArea = msgEl.querySelector('.tokens') as HTMLElement;
 		const modelTag = msgEl.querySelector('.model-tag') as HTMLElement;
@@ -215,6 +224,7 @@ export class ChatPrompt extends HTMLElement {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(body),
+				signal: abortCtrl.signal,
 			});
 
 			if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -281,9 +291,14 @@ export class ChatPrompt extends HTMLElement {
 				}
 			}
 		} catch (err) {
-			console.error("Streaming failed", err);
-			contentArea.innerHTML += `<br><br><span style="color:var(--text-error)">⚡ Connection failed. Response truncated.</span>`;
+			if ((err as any)?.name === 'AbortError') {
+				contentArea.innerHTML += `<br><span style="color:var(--text-faint,rgba(255,255,255,0.3))"><i>stopped</i></span>`;
+			} else {
+				console.error("Streaming failed", err);
+				contentArea.innerHTML += `<br><br><span style="color:var(--text-error)">Connection failed. Response truncated.</span>`;
+			}
 		} finally {
+			abortBtn?.remove();
 			this.pendingRequests = Math.max(0, this.pendingRequests - 1);
 			this.updateSendButton();
 			msgEl.classList.remove('live');
@@ -736,6 +751,28 @@ export class ChatPrompt extends HTMLElement {
 				align-items: center;
 				gap: 0.75rem;
 				margin-top: 0.5rem;
+			}
+
+			.abort-btn {
+				font-size: 0.65rem;
+				padding: 0.15rem 0.5rem;
+				border: 1px solid var(--accent-color, hsla(173, 80%, 40%, 1));
+				border-radius: 3px;
+				background: transparent;
+				color: var(--accent-color, hsla(173, 80%, 40%, 1));
+				cursor: pointer;
+				opacity: 0.75;
+				transition: opacity 0.2s;
+				line-height: 1.4;
+				margin-left: auto;
+			}
+			.abort-btn:hover { opacity: 1; }
+			.abort-btn:focus-visible {
+				outline: 2px solid var(--accent-color, hsla(173, 80%, 40%, 1));
+				outline-offset: 2px;
+			}
+			@media (forced-colors: active) {
+				.abort-btn { border-color: ButtonText; color: ButtonText; }
 			}
 
 			.model-tag {
