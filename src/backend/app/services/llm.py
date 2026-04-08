@@ -694,7 +694,7 @@ async def get_agent_personality() -> str:
 	except Exception:
 		return ""
 
-async def build_system_prompt(user_name: str, user_profile: dict) -> tuple[str, str, str]:
+async def build_system_prompt(user_name: str, user_profile: dict, include_agent_skills: bool = True) -> tuple[str, str, str]:
 	from app.services.timezone import format_time, format_date_full, get_now
 	
 	now = get_now()
@@ -740,15 +740,18 @@ async def build_system_prompt(user_name: str, user_profile: dict) -> tuple[str, 
 	personal_block = ("\n\n" + personal_ctx) if personal_ctx else ""
 
 	# Inject agent skill modules (operational expertise — lower priority than personal context)
-	from app.services.agent_context import get_agent_skills_for_prompt, refresh_agent_context
-	agent_ctx = get_agent_skills_for_prompt()
-	if not agent_ctx:
-		try:
-			await refresh_agent_context()
-			agent_ctx = get_agent_skills_for_prompt()
-		except Exception:
-			logger.debug("chat_with_context: agent context refresh failed", exc_info=True)
-	agent_skills_block = ("\n\n" + agent_ctx) if agent_ctx else ""
+	# Skipped for short conversational messages to reduce prompt token count (TTFT).
+	agent_skills_block = ""
+	if include_agent_skills:
+		from app.services.agent_context import get_agent_skills_for_prompt, refresh_agent_context
+		agent_ctx = get_agent_skills_for_prompt()
+		if not agent_ctx:
+			try:
+				await refresh_agent_context()
+				agent_ctx = get_agent_skills_for_prompt()
+			except Exception:
+				logger.debug("chat_with_context: agent context refresh failed", exc_info=True)
+		agent_skills_block = ("\n\n" + agent_ctx) if agent_ctx else ""
 
 	formatted_system_prompt = SYSTEM_PROMPT_CHAT.format(
 		current_time=simplified_time,
@@ -1620,13 +1623,19 @@ async def chat_stream_with_context(
 			fetch_people(), fetch_projects(), fetch_memories()
 		)
 		full_prompt = "\n\n".join(filter(None, [people_p, project_p, memory_p]))
-		formatted_system_prompt, _, _ = await build_system_prompt(user_name, user_profile)
+		# Short conversational messages: skip agent skills (~1800 tokens) and cap history
+		# to reduce input token count and improve TTFT on cloud inference.
+		_is_short_msg = len(user_message.strip()) < 40
+		formatted_system_prompt, _, _ = await build_system_prompt(
+			user_name, user_profile, include_agent_skills=not _is_short_msg
+		)
 		logger.debug("Stream context gathered in %.2fs", time.time() - start_time)
 
 		tier_name, base_url, display_name = select_tier(user_message, tier_override)
 		last_model_used.set(display_name)
 
-		history_text = _build_history_text(history)
+		_history_slice = history[-6:] if _is_short_msg else history
+		history_text = _build_history_text(_history_slice)
 		context_injection = "\n\n".join(filter(None, [full_prompt, history_text]))
 		system_with_context = f"{formatted_system_prompt}\n\n{context_injection}" if context_injection else formatted_system_prompt
 
@@ -1644,7 +1653,7 @@ async def chat_stream_with_context(
 					user_name=user_name,
 					user_profile=user_profile,
 				)
-				first_chunk = await asyncio.wait_for(stream.__anext__(), timeout=settings.DEEP_MODEL_TIMEOUT_S)
+				first_chunk = await asyncio.wait_for(stream.__anext__(), timeout=2.0)
 				cleaned = _strip_emoji(first_chunk)
 				if cleaned:
 					yield cleaned
