@@ -159,6 +159,8 @@ Z reads every message and decides whether to answer directly or delegate to a sp
 
 If multiple crews match, keyword specificity wins; ties go to the crew listed first in the YAML. The routing decision is always logged, so you can tune keywords or add crews without touching code.
 
+Crews can also declare `intersects_with` — a list of related crew IDs whose domains often overlap. When a primary crew is selected and has intersects_with configured, each listed crew is offered a fast yes/no relevance gate (a single token from the local model). Any crew that judges the query relevant to its own domain joins the response as a secondary panel. Secondaries receive the primary output as context and add their perspective without repeating what is already covered. The result is a single message composed of up to three crew sections, each attributed to its crew. Crews that find the query outside their scope stay silent — so a recipe request pulls in nutrition and possibly health (dietary constraints), but not fitness.
+
 For example, the `nutrition` crew listens for words like `recipe`, `meal`, `cook`, `grocery`, `macro` — so sending "make me a high-protein dinner recipe for tonight" routes directly to it, runs the full multi-character crew, and outputs a structured Planka board with the recipe and shopping list. A message like "what should I eat to hit 180g protein today?" contains no exact keyword but the fast-tier model correctly identifies `nutrition` as the best crew and delegates accordingly.
 
 ---
@@ -216,6 +218,17 @@ Crews are YAML-defined agent task sequences in `agent/crews.yaml`. No code chang
     - name: "The Shopping Logistics Officer"
       role: "Deduplicates all recipes into one aisle-mapped grocery checklist."
 ```
+
+Use `intersects_with` on any crew to enable co-reasoning with related crews:
+
+```yaml
+- id: "fitness"
+  intersects_with:
+    - nutrition
+    - health
+```
+
+When fitness is the primary crew, nutrition and health are each asked a yes/no gate question. If they opt in they append their domain perspective to the same reply. Gate calls use the fast local model and add minimal latency — a crew that opts out is simply skipped.
 
 Scheduling: `feeds_briefing: /day|/week|/month|/quarter` (briefing-relative, recommended) · `schedule: "0 7 * * *"` (fixed cron)
 
