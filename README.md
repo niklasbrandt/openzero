@@ -165,7 +165,7 @@ Triggers: briefing-relative · fixed cron · manual via `/crew <id>` on Telegram
 ## Dashboard
 
 17 Shadow DOM Web Components — no React, Vue, or Angular.
-38 HSLA theme presets, live switching, goo-mode elastic animations.
+38 HSLA theme presets, live switching.
 WCAG 2.1 AA, 10 languages, keyboard-navigable.
 
 ---
@@ -248,8 +248,11 @@ Z speaks to external systems through a small set of structured action tags embed
 | `CREATE_LIST` | Creates a list on a board |
 | `CREATE_TASK` | Creates a card on a list |
 | `MOVE_CARD` | Moves a card to a different list |
+| `MARK_DONE` | Marks a card as done |
 | `ARCHIVE_CARD` | Archives a card (soft removal only — no hard delete) |
 | `CREATE_EVENT` | Creates a calendar event |
+| `REMIND` | Sets a repeating reminder at a specified interval and duration |
+| `SET_NUDGE_INTERVAL` | Sets how often Z nudges about a specific task |
 | `ADD_PERSON` | Adds a person to the social circles graph |
 | `LEARN` | Stores a fact to Qdrant long-term memory |
 | `SCHEDULE_CUSTOM` | Registers a persistent scheduled job |
