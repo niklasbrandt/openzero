@@ -96,7 +96,7 @@ Free-form messages work identically — every message goes through the full Z co
 On every incoming message Z decides whether to answer directly or delegate to a specialist crew. The same logic applies across all channels. It has three layers, evaluated in order:
 
 1. **Crew ID match** — if the crew's own ID appears as a whole word in the message (e.g. "coach, am I on track this week?"), Z routes to it immediately with no further evaluation.
-2. **Keyword routing** — each crew in `agent/crews.yaml` can declare a `keywords` list. If any keyword matches (word-boundary, language-aware), Z routes to that crew without a separate LLM routing call — the crew still runs normally on the model. Keywords are automatically translated to the user's configured language on first use and cached.
+2. **Keyword routing** — each crew in `agent/crews.yaml` can declare a `keywords` list. If any keyword matches (word-boundary, language-aware), Z routes to that crew directly. Keywords are automatically translated to the user's configured language on first use and cached.
 3. **LLM routing** — if neither of the above matches, Z passes the message to the fast-tier model with the full crew registry as context. The model returns the best-fit crew ID, or `none` to handle the message itself.
 
 The routing decision is always logged, so you can tune keywords or add crews without touching code.
