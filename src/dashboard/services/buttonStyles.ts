@@ -91,30 +91,4 @@ export const BUTTON_STYLES = `
 		button { border: 2px solid ButtonText; }
 		.btn-primary, .save-btn { background: ButtonText; color: ButtonFace; }
 	}
-
-	/* ── Goo Mode: elastic buttons ──
-	 * Activates when the host element carries .oz-goo (set via initGoo()).
-	 * Uses elastic.out easing -- permitted only in goo-scoped rules (docs/artifacts/DESIGN.md S6.3).
-	 */
-	:host(.oz-goo) button {
-		transition:
-			transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275),
-			background var(--duration-base, 0.3s),
-			border-color var(--duration-base, 0.3s),
-			border-radius 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-	}
-	:host(.oz-goo) button:hover {
-		transform: scale(1.05);
-		border-radius: 1.2rem;
-	}
-	:host(.oz-goo) button:active {
-		transform: scale(0.92);
-		transition-duration: 0.08s;
-	}
-	@media (prefers-reduced-motion: reduce) {
-		:host(.oz-goo) button {
-			transition: none !important;
-			transform: none !important;
-		}
-	}
 `;

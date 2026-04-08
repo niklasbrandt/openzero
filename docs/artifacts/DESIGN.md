@@ -193,4 +193,3 @@ Standard GSAP easing:
 | Transition | `expo.inOut` |
 | Exit | `power2.in` |
 | Micro-interaction | `power2.out` |
-| Goo mode only | `elastic.out`, `bounce.out` |

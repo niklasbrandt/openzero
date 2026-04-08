@@ -1,5 +1,4 @@
 import { BUTTON_STYLES } from '../services/buttonStyles';
-import { initGoo } from '../services/gooStyles';
 import { ACCESSIBILITY_STYLES } from '../services/accessibilityStyles';
 import { SECTION_HEADER_STYLES } from '../services/sectionHeaderStyles';
 
@@ -39,8 +38,6 @@ export class BriefingHistory extends HTMLElement {
 			this.render();
 			this.fetchBriefings();
 		});
-		initGoo(this);
-		window.addEventListener('goo-changed', () => initGoo(this));
 	}
 
 	private currentLimit = 5;
@@ -87,7 +84,7 @@ export class BriefingHistory extends HTMLElement {
 							${b.model ? `<span class="model-tag" aria-label="${this.tr('aria_briefing_model', 'Model used')}: ${b.model}">${b.model}</span>` : ''}
 						</div>
 						<div class="chevron" aria-hidden="true">
-							<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" class="oz-goo-blob">
+						<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
 								<path d="m6 9 6 6 6-6"/>
 							</svg>
 						</div>
@@ -277,7 +274,7 @@ export class BriefingHistory extends HTMLElement {
 					<div class="bg-glow"></div>
 					<h2>
 			<span class="h-icon" aria-hidden="true">
-						<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" class="oz-goo-blob">
+						<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
 								<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
 								<polyline points="14 2 14 8 20 8"></polyline>
 								<line x1="16" y1="13" x2="8" y2="13"></line>

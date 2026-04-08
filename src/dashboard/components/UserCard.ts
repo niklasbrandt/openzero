@@ -3,7 +3,6 @@ import { ACCESSIBILITY_STYLES } from '../services/accessibilityStyles';
 import { SECTION_HEADER_STYLES } from '../services/sectionHeaderStyles';
 import { SCROLLBAR_STYLES } from '../services/scrollbarStyles';
 import { EMPTY_STATE_STYLES } from '../services/emptyStateStyles';
-import { initGoo } from '../services/gooStyles';
 
 export class UserCard extends HTMLElement {
 	private me: any = null;
@@ -74,7 +73,6 @@ export class UserCard extends HTMLElement {
 		hc_3: { label: 'High Contrast III', colors: ["hsla(0, 0%, 100%, 1)", "hsla(60, 100%, 50%, 1)", "hsla(180, 100%, 50%, 1)"] },
 	};
 
-	private gooMode: boolean = false;
 	private themeMode: 'dark' | 'light' | 'auto' = 'dark';
 
 	constructor() {
@@ -86,23 +84,11 @@ export class UserCard extends HTMLElement {
 		this.loadTranslations().then(() => {
 			this.fetchIdentity();
 		});
-		this.gooMode = localStorage.getItem('goo-mode') === 'true';
 		this.themeMode = (localStorage.getItem('theme-mode') as any) || 'dark';
-		this.applyGoo();
 		this.applyThemeMode();
-		initGoo(this);
-		window.addEventListener('goo-changed', () => initGoo(this));
 		window.addEventListener('identity-updated', () => {
 			this.loadTranslations().then(() => this.render());
 		});
-	}
-
-	private applyGoo() {
-		if (this.gooMode) {
-			document.body.classList.add('oz-goo-container');
-		} else {
-			document.body.classList.remove('oz-goo-container');
-		}
 	}
 
 	private applyThemeMode() {
@@ -469,10 +455,6 @@ export class UserCard extends HTMLElement {
 										<div class="toggle-opt ${this.themeMode === 'auto' ? 'active' : ''}" data-mode="auto">${this.tr('auto', 'Auto')}</div>
 										<div class="toggle-opt ${this.themeMode === 'dark' ? 'active' : ''}" data-mode="dark">${this.tr('dark', 'Dark')}</div>
 									</div>
-									<div class="checkbox-group" id="goo-toggle-wrapper">
-										<input type="checkbox" id="goo-mode-checkbox" ${this.gooMode ? 'checked' : ''}>
-										<label for="goo-mode-checkbox">${this.tr('goo_mode', 'I like Goo (Phase 4 Organic Interaction)')}</label>
-									</div>
 								</div>
 
 								<div class="field" style="grid-column: span 2;">
@@ -615,13 +597,6 @@ export class UserCard extends HTMLElement {
 				}
 			});
 
-			const gooToggle = this.shadowRoot?.querySelector('#goo-mode-checkbox') as HTMLInputElement;
-			gooToggle?.addEventListener('change', () => {
-				this.gooMode = gooToggle.checked;
-				localStorage.setItem('goo-mode', String(this.gooMode));
-				this.applyGoo();
-				window.dispatchEvent(new Event('goo-changed'));
-			});
 
 			this.shadowRoot?.querySelectorAll('.toggle-opt').forEach(opt => {
 				opt.addEventListener('click', () => {

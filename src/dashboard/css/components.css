@@ -5,52 +5,6 @@
  * These are light-DOM components used across multiple pages.
  */
 
-/* ── Goo Mode: Light-DOM effects ──
- * The SVG goo filter (feGaussianBlur + feColorMatrix) is intentionally NOT
- * applied to .oz-goo-container at the body level. Compositing the entire
- * page through an SVG filter on every frame destroys GPU performance.
- * The filter remains defined in index.html for targeted use on sub-32px
- * decorative merges only. Shadow DOM components use the GOO_STYLES module.
- */
-.oz-goo-container .sidebar-nav a {
-	transition:
-		transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275),
-		color 0.2s ease,
-		background 0.2s ease;
-}
-.oz-goo-container .sidebar-nav a:hover {
-	transform: scale(1.06);
-	border-radius: 1rem 0.4rem 1rem 0.4rem;
-}
-.oz-goo-container .sidebar-nav a:active {
-	transform: scale(0.93);
-	transition-duration: 0.08s;
-}
-.oz-goo-container .github-link {
-	transition:
-		transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275),
-		color 0.3s ease,
-		background 0.3s ease,
-		border-color 0.3s ease,
-		border-radius 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-.oz-goo-container .github-link:hover {
-	transform: translateY(-3px) scale(1.04);
-	border-radius: 1.2rem;
-}
-@media (prefers-reduced-motion: reduce) {
-	.oz-goo-container .sidebar-nav a,
-	.oz-goo-container .github-link {
-		transition: none !important;
-		transform: none !important;
-	}
-}
-
-.oz-goo-blob {
-	position: relative;
-	z-index: 1;
-}
-
 /* -- Rule items (email-rules list rows) -- */
 .rule-item {
 	display: flex;

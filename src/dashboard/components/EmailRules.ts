@@ -1,5 +1,4 @@
 import { BUTTON_STYLES } from '../services/buttonStyles';
-import { initGoo } from '../services/gooStyles';
 import { ACCESSIBILITY_STYLES } from '../services/accessibilityStyles';
 import { SECTION_HEADER_STYLES } from '../services/sectionHeaderStyles';
 
@@ -31,8 +30,6 @@ export class EmailRules extends HTMLElement {
       this.render();
       this.fetchRules();
     });
-    initGoo(this);
-    window.addEventListener('goo-changed', () => initGoo(this));
   }
 
   private editingId: number | null = null;
