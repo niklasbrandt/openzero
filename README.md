@@ -107,7 +107,13 @@ For example, the `nutrition` crew listens for words like `recipe`, `meal`, `cook
 
 When a primary crew is selected, Z automatically identifies domain-similar candidates by computing word-overlap (Jaccard similarity) across crew names, descriptions, and character roles at startup — no manual configuration required. Each candidate is offered a fast yes/no relevance gate (a single token from the local model). Any crew that judges the query relevant joins the response as a secondary panel. Secondaries receive the accumulated output as context and add their perspective without repeating what is already covered. The result is a single reply composed of up to three crew sections, each attributed to its crew. Crews that find the query outside their scope stay silent — so a recipe request pulls in nutrition and possibly health (dietary constraints), but not fitness.
 
-To explicitly prevent a specific crew from ever joining a panel, add `panel_exclude` to its YAML config:
+To explicitly prevent a specific crew from ever joining a panel, add `panel_exclude` to its YAML config.
+
+**Example — one message, two crews, one board:**
+
+> "I want to drop 3 kg over the next 6 weeks while keeping my training load up"
+
+Z routes this to `fitness` (primary crew). The auto-similarity check identifies `nutrition` as a high-overlap candidate. Both crews submit to the relevance gate — both opt in. `fitness` produces a 6-week progressive programme; `nutrition` adds a calorie-deficit meal plan aligned to the training schedule. The full panel output is saved automatically as structured cards in the `Fitness` Planka board under a `Weekly Plan` list — no commands needed.
 
 ---
 
