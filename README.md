@@ -91,19 +91,23 @@ Free-form messages work identically — every message goes through the full Z co
 
 ---
 
-## Crew routing
+## Crews
+
+Crews are YAML-defined multi-character agent tasks in `agent/crews.yaml`. They run on a schedule, fire in response to messages, or get triggered manually. No code changes needed to add one — define the crew, restart the backend, and it is live.
+
+### Routing
 
 On every incoming message Z decides whether to answer directly or delegate to a specialist crew. The same logic applies across all channels. It has three layers, evaluated in order:
 
 1. **Crew ID match** — if the crew's own ID appears as a whole word in the message (e.g. "coach, am I on track this week?"), Z routes to it immediately with no further evaluation.
-2. **Keyword routing** — each crew in `agent/crews.yaml` can declare a `keywords` list. If any keyword matches (word-boundary, language-aware), Z routes to that crew directly. Keywords are automatically translated to the user's configured language on first use and cached.
+2. **Keyword routing** — each crew can declare a `keywords` list. If any keyword matches (word-boundary, language-aware), Z routes to that crew directly. Keywords are automatically translated to the user's configured language on first use and cached.
 3. **LLM routing** — if neither of the above matches, Z passes the message to the fast-tier model with the full crew registry as context. The model returns the best-fit crew ID, or `none` to handle the message itself.
 
 The routing decision is always logged, so you can tune keywords or add crews without touching code.
 
 For example, the `nutrition` crew listens for words like `recipe`, `meal`, `cook`, `grocery`, `macro` — so sending "make me a high-protein dinner recipe for tonight" routes directly to it, runs the full multi-character crew, and outputs a structured Planka board with the recipe and shopping list. A message like "what should I eat to hit 180g protein today?" contains no exact keyword but the fast-tier model correctly identifies `nutrition` as the best crew and delegates accordingly.
 
-### Crew panels
+### Panels
 
 When a primary crew is selected, Z automatically identifies domain-similar candidates by computing word-overlap (Jaccard similarity) across crew names, descriptions, and character roles at startup — no manual configuration required. Each candidate is offered a fast yes/no relevance gate (a single token from the local model). Any crew that judges the query relevant joins the response as a secondary panel. Secondaries receive the accumulated output as context and add their perspective without repeating what is already covered. The result is a single reply composed of up to three crew sections, each attributed to its crew. Crews that find the query outside their scope stay silent — so a recipe request pulls in nutrition and possibly health (dietary constraints), but not fitness.
 
@@ -115,20 +119,14 @@ To explicitly prevent a specific crew from ever joining a panel, add `panel_excl
 
 Z routes this to `fitness` (primary crew). The auto-similarity check identifies `nutrition` as a high-overlap candidate. Both crews submit to the relevance gate — both opt in. `fitness` produces a 6-week progressive programme; `nutrition` adds a calorie-deficit meal plan aligned to the training schedule. The full panel output is saved automatically as structured cards in the `Fitness` Planka board under a `Weekly Plan` list — no commands needed.
 
----
-
-## Autonomous crews
-
-Crews are YAML-defined agent task sequences in `agent/crews.yaml`. No code changes needed to add one — define the crew, restart the backend, and it is live.
-
-### Dual-layer memory
+### Memory
 
 Every crew writes to two memory layers:
 
 - **Planka** — structured, human-readable output. Each crew creates or updates cards on its own board: recipes as cards with ingredient lists and cook steps, workout plans as weekly list layouts, research findings as titled task cards. This is the operational layer — you can act on it directly, modify it, or hand it off to a team.
 - **Qdrant** — semantic vector memory. Key findings, preferences, and progress checkpoints are stored as tagged memory points (e.g. `[fitness-plan]`, `[nutrition-weekly]`) and retrieved automatically in future prompts. A crew running next Monday can recall what it decided last Monday without you repeating yourself.
 
-The combination means crew output is both actionable (Planka) and persistent as context (Qdrant). You can ask Z "what did the coach crew say last week?" and it will retrieve the relevant memory points to answer, while the original Planka card remains separately available as a reference artifact.
+You can ask Z "what did the coach crew say last week?" and it will retrieve the relevant memory points, while the original Planka card remains separately available as a reference artifact.
 
 ### Adding a crew
 
