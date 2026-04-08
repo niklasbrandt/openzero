@@ -104,7 +104,19 @@
 
 		/* ── Kanban list (column) ─────────────────────────────── */
 
-		#app ._wrapper_4d1a2_46 { background: #383438 !important; }
+		/* Outer column shell (_wrapper_4d1a2_46 = older; _outerWrapper_hsqrn_135 = current) */
+		#app ._wrapper_4d1a2_46,
+		#app ._outerWrapper_hsqrn_135 { background: #383438 !important; }
+
+		/* Column header text */
+		#app ._headerName_hsqrn_116 { color: rgba(255,255,255,0.85) !important; }
+
+		/* "Add another card" button */
+		#app ._addCardButton_hsqrn_8 {
+			background: #383438 !important;
+			color: rgba(255,255,255,0.5) !important;
+			fill: rgba(255,255,255,0.5) !important;
+		}
 
 		/* ── Kanban card ──────────────────────────────────────── */
 
