@@ -374,4 +374,6 @@ translations: dict[str, str] = {
         "date_format_eu": "European (30.01.2026)",
         "date_format_cn": "Chinese (2026\u5e7401\u670830\u65e5)",
         "aria_date_format": "Date format for cards and logs",
+        "abort": "Abort",
+        "aria_abort_crew": "Abort crew execution",
 }
