@@ -1,5 +1,4 @@
 import { BUTTON_STYLES } from '../services/buttonStyles';
-import { initGoo } from '../services/gooStyles';
 import { ACCESSIBILITY_STYLES } from '../services/accessibilityStyles';
 import { FEEDBACK_STYLES } from '../services/feedbackStyles';
 
@@ -31,8 +30,6 @@ export class CreateProject extends HTMLElement {
 			this.render();
 			this.setupListeners();
 		});
-		initGoo(this);
-		window.addEventListener('goo-changed', () => initGoo(this));
 	}
 
 	public toggle() {

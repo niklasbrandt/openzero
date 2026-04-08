@@ -1,6 +1,5 @@
 import { ACCESSIBILITY_STYLES } from '../services/accessibilityStyles';
 import { SCROLLBAR_STYLES } from '../services/scrollbarStyles';
-import { GOO_STYLES, initGoo } from '../services/gooStyles';
 
 interface ChatMessage {
 	role: 'user' | 'assistant';
@@ -29,8 +28,6 @@ export class ChatPrompt extends HTMLElement {
 			this.render();
 			this.loadHistory();
 		});
-		initGoo(this);
-		window.addEventListener('goo-changed', () => { initGoo(this); this.render(); });
 		window.addEventListener('identity-updated', () => {
 			this.loadTranslations().then(() => this.render());
 		});
@@ -421,27 +418,6 @@ export class ChatPrompt extends HTMLElement {
 
 		// Apply contrast-aware text color to every agent bubble
 		this.applyBubbleTextColor();
-
-		// Apply Goo Mode liquification if enabled
-		this.applyGooLiquification();
-	}
-
-	/**
-	 * Apply active Goo Mode effects to chat elements.
-	 * Uses CSS-only bouncy entrance animation (no SVG filter on containers).
-	 */
-	private applyGooLiquification() {
-		const isGoo = localStorage.getItem('goo-mode') === 'true';
-		const messages = this.shadowRoot?.querySelectorAll('.message.animate');
-
-		if (isGoo && messages) {
-			messages.forEach(msg => {
-				const bubble = msg.querySelector('.bubble');
-				if (bubble) {
-					(bubble as HTMLElement).style.animation = 'oz-goo-msg 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards';
-				}
-			});
-		}
 	}
 
 	/**
@@ -562,7 +538,7 @@ export class ChatPrompt extends HTMLElement {
 	}
 
 	private sendSVG(): string {
-		return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="oz-goo-blob"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`;
+		return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`;
 	}
 
 	private spinnerSVG(): string {
@@ -579,7 +555,6 @@ export class ChatPrompt extends HTMLElement {
 		<style>
 					${ACCESSIBILITY_STYLES}
 					${SCROLLBAR_STYLES}
-					${GOO_STYLES}
 					h2 { font-size: 1.5rem; font-weight: bold; margin: 0 0 1rem 0; color: var(--text-primary, hsla(0, 0%, 100%, 1)); letter-spacing: 0.02em; }
 			:host {
 				display: block;
@@ -900,13 +875,7 @@ export class ChatPrompt extends HTMLElement {
 				transition: all var(--duration-fast, 0.2s);
 			}
 
-			#send-btn svg { width: 18px; height: 18px; transition: transform var(--duration-fast, 0.2s); }
 			#send-btn:hover:not(:disabled) svg { transform: translateX(2px) translateY(-1px) scale(1.1); }
-
-			.oz-goo-blob {
-				position: relative;
-				z-index: 1;
-			}
 
 			#send-btn:hover:not(:disabled) {
 				background: rgba(var(--accent-color-rgb, 20, 184, 166), 0.2);

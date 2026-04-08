@@ -1,5 +1,4 @@
 import { BUTTON_STYLES } from '../services/buttonStyles';
-import { initGoo } from '../services/gooStyles';
 import { ACCESSIBILITY_STYLES } from '../services/accessibilityStyles';
 import { SECTION_HEADER_STYLES } from '../services/sectionHeaderStyles';
 import { EMPTY_STATE_STYLES } from '../services/emptyStateStyles';
@@ -44,8 +43,6 @@ export class CalendarAgenda extends HTMLElement {
 			this.render();
 			this.fetchEvents();
 		});
-		initGoo(this);
-		window.addEventListener('goo-changed', () => initGoo(this));
 		window.addEventListener('refresh-data', (e: Event) => {
 			const ce = e as CustomEvent;
 			if (ce.detail && ce.detail.actions && ce.detail.actions.includes('calendar')) {
