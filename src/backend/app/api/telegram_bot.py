@@ -1239,8 +1239,8 @@ async def handle_crew_abort(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		event = _crew_abort_events.get(msg_id)
 		if event:
 			event.set()
-	except (ValueError, IndexError):
-		pass
+	except (ValueError, IndexError) as _e:
+		logger.debug("crew_abort callback parse ignored: %s", _e)
 
 
 async def _process_crew_stream(update: Update, context: ContextTypes.DEFAULT_TYPE, crew_id: str, user_input: str, t: dict, already_ingested: bool = False):
