@@ -173,10 +173,6 @@ class CrewRegistry:
 AGENT_FOLDER_PATH = Path("/app/agent") if Path("/app/agent").exists() else Path(__file__).parents[4] / "agent"
 crew_registry = CrewRegistry(agent_dir=str(AGENT_FOLDER_PATH))
 
-# Regex that matches the crew attribution footer Z appends to every crew reply.
-# Format: "Reasoning by crew <id>"
-_CREW_ATTRIBUTION_RE = re.compile(r"Reasoning by crew ([a-zA-Z0-9_-]+)", re.IGNORECASE)
-
 # ISO 639-1 code → human-readable language name for the translation prompt
 _LANG_NAMES: dict[str, str] = {
 	"de": "German", "fr": "French", "es": "Spanish", "it": "Italian",
@@ -301,31 +297,21 @@ async def resolve_active_crew(history: list, user_text: str, lang: str = "en") -
 		if effective and _keyword_matches(effective, lower_text):
 			return crew.id
 
-	# 2. Holistic scoring over recent history.
-	# Guard: skip history scoring for short greetings / conversational fragments.
-	# A message of ≤3 words with no keyword hit should never be pulled into a
-	# crew solely because the previous Z reply had a crew attribution footer.
-	word_count = len(user_text.split())
-	if word_count <= 3:
-		return None
-
+	# 2. Holistic scoring over recent history (user messages only).
+	# Only user messages contribute to history scoring — Z's attribution footers
+	# are metadata, not intent signals, and scoring them caused false positives
+	# (e.g. a greeting like "hi" triggering a crew because the previous Z reply
+	# still had a crew attribution footer in the 8-message window).
 	recent = history[-8:] if len(history) > 8 else history
 	scores: dict[str, int] = {}
 	for msg in recent:
-		content = msg.get("content", "")
-		role = msg.get("role", "")
-		if role == "z":
-			m = _CREW_ATTRIBUTION_RE.search(content)
-			if m:
-				crew_id = m.group(1).strip()
-				if crew_registry.get(crew_id):
-					scores[crew_id] = scores.get(crew_id, 0) + 3
-		elif role == "user":
-			lower_content = content.lower()
-			for crew in crew_registry.list_active():
-				effective = await _get_effective_keywords(crew, lang)
-				if effective and _keyword_matches(effective, lower_content):
-					scores[crew.id] = scores.get(crew.id, 0) + 1
+		if msg.get("role", "") != "user":
+			continue
+		lower_content = msg.get("content", "").lower()
+		for crew in crew_registry.list_active():
+			effective = await _get_effective_keywords(crew, lang)
+			if effective and _keyword_matches(effective, lower_content):
+				scores[crew.id] = scores.get(crew.id, 0) + 1
 
 	if scores:
 		best = max(scores, key=lambda k: scores[k])
