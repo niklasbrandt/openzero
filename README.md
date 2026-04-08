@@ -105,7 +105,9 @@ For example, the `nutrition` crew listens for words like `recipe`, `meal`, `cook
 
 ### Crew panels
 
-Crews can declare `intersects_with` — a list of related crew IDs whose domains often overlap. When a primary crew is selected and has `intersects_with` configured, each listed crew is offered a fast yes/no relevance gate (a single token from the local model). Any crew that judges the query relevant to its domain joins the response as a secondary panel. Secondaries receive the accumulated output as context and add their perspective without repeating what is already covered. The result is a single reply composed of up to three crew sections, each attributed to its crew. Crews that find the query outside their scope stay silent — so a recipe request pulls in nutrition and possibly health (dietary constraints), but not fitness.
+When a primary crew is selected, Z automatically identifies domain-similar candidates by computing word-overlap (Jaccard similarity) across crew names, descriptions, and character roles at startup — no manual configuration required. Each candidate is offered a fast yes/no relevance gate (a single token from the local model). Any crew that judges the query relevant joins the response as a secondary panel. Secondaries receive the accumulated output as context and add their perspective without repeating what is already covered. The result is a single reply composed of up to three crew sections, each attributed to its crew. Crews that find the query outside their scope stay silent — so a recipe request pulls in nutrition and possibly health (dietary constraints), but not fitness.
+
+To explicitly prevent a specific crew from ever joining a panel, add `panel_exclude` to its YAML config:
 
 ---
 
@@ -150,9 +152,8 @@ Crews are YAML-defined agent task sequences in `agent/crews.yaml`. No code chang
     - calories
     - ingredient
     - shopping list
-  intersects_with:
-    - health
-    - fitness
+  # panel_exclude:
+  #   - fitness  # optional: block a specific crew from ever co-running here
   instructions: |
     Build comprehensive meal plans adhering to constraints in personal/health.md.
     Use metric units. Output deduplicated shopping checklists.
