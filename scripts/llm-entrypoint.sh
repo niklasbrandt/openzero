@@ -127,29 +127,63 @@ done
 # This means openZero works out of the box on any machine — from a Raspberry
 # Pi 5 8 GB to a 64 GB homelab — with no manual tuning required.
 # You can still override any individual value by setting LLM_LOCAL_* in .env.
+#
+# LLM_PROFILE_OVERRIDE bypasses detection entirely and forces a profile by name.
+# Useful for testing a constrained profile on a beefy dev VPS.
+# Valid values: minimal | standard | comfortable | highend
+#
+# Use MemAvailable (not MemTotal) so that other running services — Pi-hole,
+# MCP bridges, postgres, qdrant, etc. — are already subtracted from the
+# budget. This gives the correct headroom on shared machines like a Pi 5.
+AVAIL_RAM_KB=$(grep MemAvailable /proc/meminfo 2>/dev/null | awk '{print $2}')
 TOTAL_RAM_KB=$(grep MemTotal /proc/meminfo 2>/dev/null | awk '{print $2}')
 TOTAL_RAM_GB=$(awk "BEGIN { printf \"%d\", ${TOTAL_RAM_KB:-0} / 1048576 }")
+AVAIL_RAM_GB=$(awk "BEGIN { printf \"%d\", ${AVAIL_RAM_KB:-0} / 1048576 }")
 CPU_THREADS=$(nproc 2>/dev/null || echo 4)
 
-if   [ "$TOTAL_RAM_GB" -lt 10 ]; then
-	_PROFILE="Minimal — Pi 5 / 8 GB VPS"
+# Normalise the override to lowercase, strip punctuation so "Minimal", "MINIMAL",
+# "minimal", "pi5" etc. all resolve correctly.
+_OVERRIDE=$(echo "${LLM_PROFILE_OVERRIDE:-}" | tr '[:upper:]' '[:lower:]' | tr -d ' -_')
+
+if   [[ "$_OVERRIDE" == "minimal" || "$_OVERRIDE" == "pi5" || "$_OVERRIDE" == "pi" ]]; then
+	_PROFILE="Minimal — Pi 5 / 8 GB VPS (FORCED)"
 	_AUTO_CTX=8192;  _AUTO_PREDICT=512;  _AUTO_BATCH=256; _AUTO_CACHE=128
-	_AUTO_NO_MMAP=0; _AUTO_MLOCK=0
-elif [ "$TOTAL_RAM_GB" -lt 16 ]; then
-	_PROFILE="Standard — 12 GB VPS"
+	_AUTO_NO_MMAP=0; _AUTO_MLOCK=0; CPU_THREADS=4
+elif [[ "$_OVERRIDE" == "standard" ]]; then
+	_PROFILE="Standard — 12 GB VPS (FORCED)"
 	_AUTO_CTX=16384; _AUTO_PREDICT=512;  _AUTO_BATCH=512; _AUTO_CACHE=256
 	_AUTO_NO_MMAP=1; _AUTO_MLOCK=1
-elif [ "$TOTAL_RAM_GB" -lt 32 ]; then
-	_PROFILE="Comfortable — 24 GB"
+elif [[ "$_OVERRIDE" == "comfortable" ]]; then
+	_PROFILE="Comfortable — 24 GB (FORCED)"
 	_AUTO_CTX=32768; _AUTO_PREDICT=1024; _AUTO_BATCH=512; _AUTO_CACHE=512
 	_AUTO_NO_MMAP=1; _AUTO_MLOCK=1
-else
-	_PROFILE="High-end — 32 GB+"
+elif [[ "$_OVERRIDE" == "highend" || "$_OVERRIDE" == "high" ]]; then
+	_PROFILE="High-end — 32 GB+ (FORCED)"
 	_AUTO_CTX=32768; _AUTO_PREDICT=1024; _AUTO_BATCH=512; _AUTO_CACHE=2048
 	_AUTO_NO_MMAP=1; _AUTO_MLOCK=1
+else
+	# Auto-detect from actual available memory
+	echo "Memory: ${AVAIL_RAM_GB} GB available of ${TOTAL_RAM_GB} GB total"
+	if   [ "$AVAIL_RAM_GB" -lt 5 ]; then
+		_PROFILE="Minimal — Pi 5 / 8 GB VPS"
+		_AUTO_CTX=8192;  _AUTO_PREDICT=512;  _AUTO_BATCH=256; _AUTO_CACHE=128
+		_AUTO_NO_MMAP=0; _AUTO_MLOCK=0
+	elif [ "$AVAIL_RAM_GB" -lt 10 ]; then
+		_PROFILE="Standard — 12 GB VPS"
+		_AUTO_CTX=16384; _AUTO_PREDICT=512;  _AUTO_BATCH=512; _AUTO_CACHE=256
+		_AUTO_NO_MMAP=1; _AUTO_MLOCK=1
+	elif [ "$AVAIL_RAM_GB" -lt 20 ]; then
+		_PROFILE="Comfortable — 24 GB"
+		_AUTO_CTX=32768; _AUTO_PREDICT=1024; _AUTO_BATCH=512; _AUTO_CACHE=512
+		_AUTO_NO_MMAP=1; _AUTO_MLOCK=1
+	else
+		_PROFILE="High-end — 32 GB+"
+		_AUTO_CTX=32768; _AUTO_PREDICT=1024; _AUTO_BATCH=512; _AUTO_CACHE=2048
+		_AUTO_NO_MMAP=1; _AUTO_MLOCK=1
+	fi
 fi
 
-echo "Hardware: ${TOTAL_RAM_GB} GB RAM, ${CPU_THREADS} CPU threads → auto-profile: ${_PROFILE}"
+echo "Hardware: ${TOTAL_RAM_GB} GB RAM, ${CPU_THREADS} CPU threads → profile: ${_PROFILE}"
 
 # Merge: explicit .env overrides win; auto-detected values are the fallback.
 THREADS="${THREADS:-$CPU_THREADS}"
