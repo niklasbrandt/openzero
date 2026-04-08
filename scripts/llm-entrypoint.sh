@@ -122,26 +122,59 @@ find "$MODEL_DIR" -maxdepth 1 -name "*.gguf" | while read -r f; do
 	fi
 done
 
-# Batch size for prompt evaluation — larger = faster TTFT but more RAM.
-# Default 512 is a good balance. Set via BATCH_SIZE env var.
-BATCH="${BATCH_SIZE:-512}"
+# ── Hardware Auto-Detection ──────────────────────────────────────────────────
+# Reads total RAM and CPU count from the host and selects a hardware profile.
+# This means openZero works out of the box on any machine — from a Raspberry
+# Pi 5 8 GB to a 64 GB homelab — with no manual tuning required.
+# You can still override any individual value by setting LLM_LOCAL_* in .env.
+TOTAL_RAM_KB=$(grep MemTotal /proc/meminfo 2>/dev/null | awk '{print $2}')
+TOTAL_RAM_GB=$(awk "BEGIN { printf \"%d\", ${TOTAL_RAM_KB:-0} / 1048576 }")
+CPU_THREADS=$(nproc 2>/dev/null || echo 4)
 
-# Parallel slots — 1 for a single-user personal assistant.
-# Increasing this multiplies KV cache memory by N. Set via PARALLEL env var.
+if   [ "$TOTAL_RAM_GB" -lt 10 ]; then
+	_PROFILE="Minimal — Pi 5 / 8 GB VPS"
+	_AUTO_CTX=8192;  _AUTO_PREDICT=512;  _AUTO_BATCH=256; _AUTO_CACHE=128
+	_AUTO_NO_MMAP=0; _AUTO_MLOCK=0
+elif [ "$TOTAL_RAM_GB" -lt 16 ]; then
+	_PROFILE="Standard — 12 GB VPS"
+	_AUTO_CTX=16384; _AUTO_PREDICT=512;  _AUTO_BATCH=512; _AUTO_CACHE=256
+	_AUTO_NO_MMAP=1; _AUTO_MLOCK=1
+elif [ "$TOTAL_RAM_GB" -lt 32 ]; then
+	_PROFILE="Comfortable — 24 GB"
+	_AUTO_CTX=32768; _AUTO_PREDICT=1024; _AUTO_BATCH=512; _AUTO_CACHE=512
+	_AUTO_NO_MMAP=1; _AUTO_MLOCK=1
+else
+	_PROFILE="High-end — 32 GB+"
+	_AUTO_CTX=32768; _AUTO_PREDICT=1024; _AUTO_BATCH=512; _AUTO_CACHE=2048
+	_AUTO_NO_MMAP=1; _AUTO_MLOCK=1
+fi
+
+echo "Hardware: ${TOTAL_RAM_GB} GB RAM, ${CPU_THREADS} CPU threads → auto-profile: ${_PROFILE}"
+
+# Merge: explicit .env overrides win; auto-detected values are the fallback.
+THREADS="${THREADS:-$CPU_THREADS}"
+CTX_SIZE="${CTX_SIZE:-$_AUTO_CTX}"
+N_PREDICT="${N_PREDICT:-$_AUTO_PREDICT}"
+BATCH="${BATCH_SIZE:-$_AUTO_BATCH}"
 PARALLEL="${PARALLEL:-1}"
-
-# Prompt cache size in MiB — recent llama-server versions default to 8192 MiB (8GB).
-# We limit this to save VPS RAM. Default to 256 MiB.
-CACHE="${LLM_CACHE_RAM:-256}"
+CACHE="${LLM_CACHE_RAM:-$_AUTO_CACHE}"
+NO_MMAP="${LLM_LOCAL_NO_MMAP:-$_AUTO_NO_MMAP}"
+MLOCK="${LLM_LOCAL_MLOCK:-$_AUTO_MLOCK}"
 
 echo "Starting llama-server on port ${PORT}..."
+echo "  Profile: ${_PROFILE}"
 echo "  Threads: ${THREADS}"
 echo "  Context: ${CTX_SIZE}"
 echo "  Max predict: ${N_PREDICT}"
 echo "  Batch size: ${BATCH}"
 echo "  Parallel slots: ${PARALLEL}"
 echo "  Cache RAM: ${CACHE} MiB"
+echo "  no-mmap: ${NO_MMAP} | mlock: ${MLOCK}"
 echo "  Extra args: ${EXTRA_ARGS}"
+
+MEMORY_FLAGS=""
+[[ "${NO_MMAP}" == "1" ]] && MEMORY_FLAGS="${MEMORY_FLAGS} --no-mmap"
+[[ "${MLOCK}" == "1" ]] && MEMORY_FLAGS="${MEMORY_FLAGS} --mlock"
 
 exec /app/llama-server \
 	--model "$MODEL_PATH" \
@@ -154,7 +187,6 @@ exec /app/llama-server \
 	--batch-size "${BATCH}" \
 	--parallel "${PARALLEL}" \
 	--cache-ram "${CACHE}" \
-	--no-mmap \
-	--mlock \
 	--cont-batching \
+	${MEMORY_FLAGS} \
 	${EXTRA_ARGS}
