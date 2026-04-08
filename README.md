@@ -235,10 +235,55 @@ The `#MacBook` fragment sets the display name shown in the dashboard. Multiple c
 
 ## Security
 
-- LLM network-isolated from all data stores
-- Bearer token required on every API endpoint
-- 268 prompt injection tests across 25 attack categories run in CI
-- 11-gate CI pipeline: `pip-audit`, `ruff`, `mypy`, `bandit`, `trufflehog`, regression, i18n, accessibility
+Security in openZero is defined by an explicit allowlist, not a blocklist. The agent can only perform actions that are declared in its action vocabulary. Everything else is structurally impossible.
+
+### Agent action vocabulary
+
+Z speaks to external systems through a small set of structured action tags embedded in its replies. Only these are recognised and executed:
+
+| Action | What it does |
+| --- | --- |
+| `CREATE_PROJECT` | Creates a Planka project |
+| `CREATE_BOARD` | Creates a Planka board inside a project |
+| `CREATE_LIST` | Creates a list on a board |
+| `CREATE_TASK` | Creates a card on a list |
+| `MOVE_CARD` | Moves a card to a different list |
+| `ARCHIVE_CARD` | Archives a card (soft removal only — no hard delete) |
+| `CREATE_EVENT` | Creates a calendar event |
+| `ADD_PERSON` | Adds a person to the social circles graph |
+| `LEARN` | Stores a fact to Qdrant long-term memory |
+| `SCHEDULE_CUSTOM` | Registers a persistent scheduled job |
+| `RUN_CREW` | Triggers a named crew immediately |
+| `SCHEDULE_CREW` | Schedules a crew at a cron spec |
+| `PROXIMITY_TRACK` | Initiates a task proximity tracking session |
+
+Hard deletion of projects, boards, or data is not in the vocabulary at all. There is no `DELETE_PROJECT`, `DELETE_BOARD`, `WIPE_MEMORY`, or equivalent. Prompt injection attempts that include fabricated delete tags are silently ignored — the parser only matches the known set.
+
+### Human-in-the-loop gate
+
+A subset of actions that create persistent state or modify the agent's own behaviour are designated `SENSITIVE_ACTIONS`:
+
+`CREATE_PROJECT` · `CREATE_BOARD` · `CREATE_LIST` · `ADD_PERSON` · `LEARN` · `SCHEDULE_CUSTOM` · `RUN_CREW` · `SCHEDULE_CREW` · `PROXIMITY_TRACK`
+
+When `require_hitl=True` is set on a reply (configurable per channel and per endpoint), sensitive actions are queued and require user confirmation before execution. Routine actions like `CREATE_TASK`, `MOVE_CARD`, and `CREATE_EVENT` execute immediately.
+
+### Network and infrastructure isolation
+
+- The LLM containers (`llm-fast`, `llm-deep`) are on an internal Docker network with no direct access to the database, Qdrant, or Planka. All model calls go through the FastAPI backend, which owns all credentials.
+- Bearer token required on every API endpoint — no unauthenticated routes.
+- The entire stack is reachable only through the Tailscale mesh network. No ports are exposed to the public internet.
+- DNS (port 53) is bound to the Tailscale interface only — Pi-hole is not publicly reachable.
+
+### CI security gates
+
+Every commit runs an 11-gate pipeline:
+
+- `pip-audit` — dependency CVE scan
+- `bandit` — Python static security analysis
+- `trufflehog` — secret leak detection in git history
+- `ruff` + `mypy` — lint and type safety
+- 268 prompt injection tests across 25 attack categories
+- i18n key parity, accessibility compliance, and live regression tests
 
 ---
 
