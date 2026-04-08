@@ -374,5 +374,10 @@ translations: dict[str, str] = {
         "abort": 'Abbrechen',
         "aria_abort_crew": 'Crew-Ausf\u00fchrung abbrechen',
 	'diag_cloud_not_configured': 'Nicht konfiguriert',
-	'diag_cloud_set_env': 'Set LLM_CLOUD_BASE_URL + API key in .env',
+	'diag_cloud_set_env': 'LLM_CLOUD_BASE_URL + API-Schlüssel in .env',
+	'diag_cloud_why': 'Komplexes Denken & kontextintensive Aufgaben jenseits lokaler Kapazität.',
+	'diag_local_why': 'Private, dauerhaft verfügbare Inferenz auf dem VPS. Keine externe Abhängigkeit.',
+	'diag_cloud_opt_api_title': 'Inferenz-API',
+	'diag_cloud_opt_gpu_title': 'Heim-GPU-Server',
+	'diag_cloud_or': 'oder',
 }
