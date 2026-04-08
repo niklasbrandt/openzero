@@ -38,6 +38,8 @@ EXCLUDES=(
 )
 
 # Generate Release Notes for Z (Code-Level Context)
+# Written to agent/latest_changes.txt so the backend can read it via the
+# already-mounted ./agent volume without requiring an image rebuild.
 if [ -d .git ]; then
   LAST_SYNC_FILE=".last_sync_commit"
   if [ -f "$LAST_SYNC_FILE" ]; then
@@ -45,16 +47,13 @@ if [ -d .git ]; then
     CURRENT_COMMIT=$(git rev-parse HEAD)
     if [ "$LAST_COMMIT" != "$CURRENT_COMMIT" ]; then
       # Use commit messages — readable for LLM summarization
-      echo "Changes since last deployment:" > LATEST_CHANGES.txt
-      git log --pretty=format:"- %s" "$LAST_COMMIT".."$CURRENT_COMMIT" >> LATEST_CHANGES.txt
-      # Also add a short diff stat for technical context
-      echo -e "\n\nFiles modified:" >> LATEST_CHANGES.txt
-      git diff --stat "$LAST_COMMIT" "$CURRENT_COMMIT" | head -n 20 >> LATEST_CHANGES.txt
+      echo "Changes since last deployment:" > agent/latest_changes.txt
+      git log --pretty=format:"- %s" "$LAST_COMMIT".."$CURRENT_COMMIT" >> agent/latest_changes.txt
     fi
   else
-    # First sync: Show last commit message
-    echo "Initial deployment." > LATEST_CHANGES.txt
-    git log --pretty=format:"- %s" -5 >> LATEST_CHANGES.txt
+    # First sync: Show last 5 commit messages
+    echo "Initial deployment." > agent/latest_changes.txt
+    git log --pretty=format:"- %s" -5 >> agent/latest_changes.txt
   fi
 fi
 
@@ -96,8 +95,8 @@ ssh $REMOTE_USER@$REMOTE_HOST "cd $REMOTE_DIR \
   && docker builder prune -f \
   && docker image prune -f"
 
-# Clean up local temporary file
-rm -f LATEST_CHANGES.txt
+# Clean up local release notes file (already synced to remote)
+rm -f agent/latest_changes.txt
 
 echo "Deployment complete."
 echo "Reminder: Use 'bash scripts/sync-personal.sh' if you also need to update personal context."

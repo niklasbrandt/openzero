@@ -75,6 +75,9 @@ _pending_messages: dict[int, list[str]] = {}   # chat_id -> buffered texts
 # be collected before it finishes (Python 3.12 asyncio GC behaviour).
 _background_tasks: set = set()
 
+# Abort events for in-flight crew executions, keyed by thinking_msg.message_id.
+_crew_abort_events: dict[int, asyncio.Event] = {}
+
 async def start_telegram_bot():
 	"""Start the Telegram bot in polling mode within the FastAPI event loop."""
 	global bot_app
@@ -114,6 +117,7 @@ async def start_telegram_bot():
 	bot_app.add_handler(CommandHandler("skills", cmd_agent)) # Legacy support
 	bot_app.add_handler(CommandHandler("crews", cmd_crews))
 	bot_app.add_handler(CommandHandler("crew", cmd_crews))
+	bot_app.add_handler(CallbackQueryHandler(handle_crew_abort, pattern="^crew_abort_"))
 	bot_app.add_handler(CallbackQueryHandler(handle_approval, pattern="^think_"))
 	bot_app.add_handler(CallbackQueryHandler(handle_unlearn_approval, pattern="^unlearn_"))
 	bot_app.add_handler(CallbackQueryHandler(handle_wipe_confirm, pattern="^wipe_"))
@@ -210,6 +214,23 @@ async def _send_online_notification(recovery_html: str = ""):
 	except Exception as _e:
 		logger.warning("Online notification failed: %s", _e)
 
+_LATEST_CHANGES_PATH = "/app/agent/latest_changes.txt"
+
+def _read_and_consume_latest_changes() -> str:
+	"""Read the latest deployment changes file (written by sync.sh) and delete
+	it so it is only surfaced once per deployment."""
+	import os
+	try:
+		if not os.path.exists(_LATEST_CHANGES_PATH):
+			return ""
+		with open(_LATEST_CHANGES_PATH, "r") as f:
+			content = f.read().strip()
+		os.remove(_LATEST_CHANGES_PATH)
+		return content
+	except Exception as _e:
+		logger.debug("latest_changes read/consume failed: %s", _e)
+		return ""
+
 async def _recover_unanswered_messages():
 	"""Deterministic restart recovery: scans up to 30 global messages to find
 	user messages that have no real Z reply after them.
@@ -270,6 +291,36 @@ async def _recover_unanswered_messages():
 
 		if not unanswered:
 			logger.info("Restart recovery: nothing to recover — sending online notification.")
+			changes = _read_and_consume_latest_changes()
+			if changes:
+				logger.info("Restart recovery: new deployment changes detected, asking LLM to mention them.")
+				try:
+					from app.services.llm import chat_with_context
+					changes_prompt = (
+						"You came back online after a deployment. Casually let the user know you're back "
+						"and mention what's new in 1–3 short sentences, in plain conversational language. "
+						"Do NOT use bullet lists, formal headers, or 'Recent Logic Updates'. "
+						"Just talk like a friend would. Keep it brief.\n\n"
+						f"Deployment notes:\n{changes[:1500]}"
+					)
+					raw = await asyncio.wait_for(
+						chat_with_context(
+							changes_prompt,
+							history=[],
+							include_projects=False,
+							include_people=False,
+							use_agent=False,
+							tier_override="fast",
+							thinking=False,
+						),
+						timeout=60,
+					)
+					if raw and not _is_error_stub(raw):
+						clean = strip_llm_time_header(raw)
+						await _send_online_notification(recovery_html=_md_to_html(clean))
+						return
+				except Exception as _ce:
+					logger.warning("Restart recovery: changes LLM call failed (%s) — falling back to plain back.", _ce)
 			await _send_online_notification()
 			return
 
@@ -1179,6 +1230,19 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		logger.error("handle_voice failed: %s", e)
 		await safe_reply(update, "Voice processing failed. There might be an issue with the transcription or intelligence layer.")
 
+async def handle_crew_abort(update: Update, context: ContextTypes.DEFAULT_TYPE):
+	"""Handles Abort button press during crew execution."""
+	query = update.callback_query
+	await query.answer()
+	try:
+		msg_id = int(query.data.split("_", 2)[2])
+		event = _crew_abort_events.get(msg_id)
+		if event:
+			event.set()
+	except (ValueError, IndexError):
+		pass
+
+
 async def _process_crew_stream(update: Update, context: ContextTypes.DEFAULT_TYPE, crew_id: str, user_input: str, t: dict, already_ingested: bool = False):
 	"""Executes a crew mission with progressive Telegram message updates."""
 	from app.services.crews_native import native_crew_engine
@@ -1190,25 +1254,50 @@ async def _process_crew_stream(update: Update, context: ContextTypes.DEFAULT_TYP
 	if not already_ingested:
 		await bus.ingest("telegram", f"/crew {crew_id} {user_input}".strip())
 
-	thinking_msg = await update.message.reply_text(f"<blockquote>🚀 <i>{t.get('executing_crew', 'Executing crew')} <b>{crew_id}</b>...</i></blockquote>", parse_mode="HTML")
+	crew_display = crew_id.replace('-', ' ').title()
+	abort_event = asyncio.Event()
+
+	thinking_msg = await update.message.reply_text(
+		f"<blockquote><i>...thinking (crew: <b>{crew_display}</b>)</i></blockquote>",
+		parse_mode="HTML",
+		reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Abort", callback_data="crew_abort_0")]])
+	)
+	# Store abort event keyed by actual message_id now that we have it
+	_crew_abort_events[thinking_msg.message_id] = abort_event
+	# Edit to set the correct message_id in callback_data
+	try:
+		await thinking_msg.edit_reply_markup(
+			reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Abort", callback_data=f"crew_abort_{thinking_msg.message_id}")]])
+		)
+	except Exception:
+		pass
 
 	chunks = []
 	last_edit_time = time.time()
 	EDIT_INTERVAL = 1.5
+	aborted = False
 
 	try:
 		async for chunk in native_crew_engine.run_crew_stream(crew_id, user_input):
+			if abort_event.is_set():
+				aborted = True
+				break
 			chunks.append(chunk)
 			now = time.time()
 			if now - last_edit_time >= EDIT_INTERVAL:
 				partial_text = "".join(chunks)
 				if len(partial_text.strip()) > 3:
 					try:
-						display = f"<blockquote>🚀 <i><b>{crew_id}</b>: {_md_to_html(partial_text)}...</i></blockquote>"
-						await safe_edit(thinking_msg, display, parse_mode="HTML")
+						display = f"<blockquote><i>...thinking (crew: <b>{crew_display}</b>)</i>\n\n{_md_to_html(partial_text)}...</blockquote>"
+						await safe_edit(thinking_msg, display, parse_mode="HTML",
+							reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Abort", callback_data=f"crew_abort_{thinking_msg.message_id}")]]))
 					except Exception:
 						pass
 					last_edit_time = now
+
+		if aborted:
+			await safe_edit(thinking_msg, f"<blockquote><i>stopped (crew: <b>{crew_display}</b>)</i></blockquote>", parse_mode="HTML")
+			return
 
 		full_res = "".join(chunks)
 		logger.info("Crew '%s' raw output (%d chars): %s", crew_id, len(full_res), full_res[:500])
@@ -1233,8 +1322,10 @@ async def _process_crew_stream(update: Update, context: ContextTypes.DEFAULT_TYP
 	except Exception as e:
 		logger.error("Telegram Crew Stream Failed: %s", e)
 		try:
-			await safe_edit(thinking_msg, f"<blockquote>❌ <i>Crew execution failed: {e}</i></blockquote>", parse_mode="HTML")
+			await safe_edit(thinking_msg, f"<blockquote><i>Crew execution failed: {e}</i></blockquote>", parse_mode="HTML")
 		except Exception: pass
+	finally:
+		_crew_abort_events.pop(thinking_msg.message_id, None)
 
 
 @owner_only
