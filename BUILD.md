@@ -8,12 +8,12 @@ This guide is designed for anyone—even if you've never used a server before. F
 
 Z uses a **local + optional cloud** LLM architecture. A local llama.cpp model runs on your server for all interactive tasks. An optional cloud API (OpenAI-compatible) can be configured for complex reasoning tasks.
 
-| Profile | RAM | Local tier model | Notes |
-|---------|-----|-------------------|---------|
-| A — Minimal (Pi 5 / 8 GB VPS) | 8 GB | Qwen3-1.7B Q4_K_M | Auto-detected — no manual tuning needed |
-| B — Standard | 12 GB | Qwen3-1.7B Q4_K_M | Auto-detected — no manual tuning needed |
-| C — Comfortable | 24 GB | Qwen3-4B Q4_K_M | Set `LLM_LOCAL_MODEL_URL` + `LLM_LOCAL_MODEL_FILE` only |
-| D — High-end | 64 GB+ | Qwen3-8B Q4_K_M | Set `LLM_LOCAL_MODEL_URL` + `LLM_LOCAL_MODEL_FILE` only |
+| Profile | RAM | vCPU | Local tier model | Notes |
+|---------|-----|------|-------------------|-------|
+| A — Minimal | 8 GB | 4 | Qwen3-1.7B Q4_K_M | Pi 5 or budget cloud VPS (~4 EUR/mo, 4 vCPU / 8 GB) — auto-detected |
+| B — Standard | 12 GB | 4–6 | Qwen3-1.7B Q4_K_M | Auto-detected — no manual tuning needed |
+| C — Comfortable | 24 GB | 8 | Qwen3-4B Q4_K_M | Set `LLM_LOCAL_MODEL_URL` + `LLM_LOCAL_MODEL_FILE` only |
+| D — High-end | 64 GB+ | 16+ | Qwen3-8B Q4_K_M | Set `LLM_LOCAL_MODEL_URL` + `LLM_LOCAL_MODEL_FILE` only |
 
 The LLM container reads your server's RAM and CPU count on every start and picks the right context size, thread count, batch size, and memory strategy automatically. You do not need to set `LLM_LOCAL_CTX`, `LLM_LOCAL_THREADS`, or `LLM_LOCAL_CACHE_RAM` unless you want to override a specific value.
 
