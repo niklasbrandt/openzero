@@ -38,6 +38,7 @@ __pycache__/
 *.pyc
 .last_sync_commit
 LATEST_CHANGES.txt
+agent/latest_changes.txt
 
 # ===========================
 # Backups (contain DB dumps)
