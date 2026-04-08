@@ -108,6 +108,13 @@
 						"type": "string"
 					},
 					"description": "Words/phrases that trigger automatic routing of free-text messages to this crew."
+				},
+				"panel_exclude": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					},
+					"description": "Crew IDs that are explicitly blocked from co-running in panels with this crew."
 				}
 			},
 			"required": [
