@@ -145,8 +145,8 @@ CPU_THREADS=$(nproc 2>/dev/null || echo 4)
 # "minimal", "pi5" etc. all resolve correctly.
 _OVERRIDE=$(echo "${LLM_PROFILE_OVERRIDE:-}" | tr '[:upper:]' '[:lower:]' | tr -d ' -_')
 
-if   [[ "$_OVERRIDE" == "minimal" || "$_OVERRIDE" == "pi5" || "$_OVERRIDE" == "pi" ]]; then
-	_PROFILE="Minimal — Pi 5 / 8 GB VPS (FORCED)"
+if   [[ "$_OVERRIDE" == "minimal" || "$_OVERRIDE" == "pi5" || "$_OVERRIDE" == "pi" || "$_OVERRIDE" == "budget" ]]; then
+	_PROFILE="Minimal — Pi 5 / Budget 8 GB VPS (FORCED)"
 	_AUTO_CTX=8192;  _AUTO_PREDICT=512;  _AUTO_BATCH=256; _AUTO_CACHE=128
 	_AUTO_NO_MMAP=0; _AUTO_MLOCK=0; CPU_THREADS=4
 elif [[ "$_OVERRIDE" == "standard" ]]; then
@@ -162,10 +162,13 @@ elif [[ "$_OVERRIDE" == "highend" || "$_OVERRIDE" == "high" ]]; then
 	_AUTO_CTX=32768; _AUTO_PREDICT=1024; _AUTO_BATCH=512; _AUTO_CACHE=2048
 	_AUTO_NO_MMAP=1; _AUTO_MLOCK=1
 else
-	# Auto-detect from actual available memory
+	# Auto-detect from actual available memory.
+	# Threshold for Minimal is 7 GB available (not 5) so that a Budget 8 GB
+	# Cloud VPS with all openZero services already running (~2-3 GB consumed)
+	# still lands in the correct profile rather than Standard.
 	echo "Memory: ${AVAIL_RAM_GB} GB available of ${TOTAL_RAM_GB} GB total"
-	if   [ "$AVAIL_RAM_GB" -lt 5 ]; then
-		_PROFILE="Minimal — Pi 5 / 8 GB VPS"
+	if   [ "$AVAIL_RAM_GB" -lt 7 ]; then
+		_PROFILE="Minimal — Pi 5 / Budget 8 GB Cloud VPS"
 		_AUTO_CTX=8192;  _AUTO_PREDICT=512;  _AUTO_BATCH=256; _AUTO_CACHE=128
 		_AUTO_NO_MMAP=0; _AUTO_MLOCK=0
 	elif [ "$AVAIL_RAM_GB" -lt 10 ]; then
