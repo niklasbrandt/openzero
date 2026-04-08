@@ -618,18 +618,11 @@ export class DiagnosticsWidget extends HTMLElement {
 							return `<div class="llm-tier-card disabled ltc-cloud-unconfigured" data-tier="cloud" aria-disabled="true">
 								<div class="ltc-header"><span class="ltc-name">${this.displayTier('cloud')}</span></div>
 								<div class="ltc-model">${this.tr('diag_cloud_not_configured', 'Not configured')}</div>
-								<p class="ltc-cloud-why">${this.tr('diag_cloud_why', 'Complex reasoning, large-context analysis &amp; tasks that exceed local capacity.')}</p>
-								<div class="ltc-cloud-routes" role="list" aria-label="${this.tr('aria_cloud_config_options', 'Cloud configuration options')}">
-									<div class="ltc-cr-row" role="listitem">
-										<span class="ltc-cr-title">${this.tr('diag_cloud_opt_api_title', 'Inference API')}</span>
-										<span class="ltc-cr-sub">${this.tr('diag_cloud_opt_api_sub', 'OpenAI · Anthropic · Groq · Together')}</span>
-										<span class="ltc-cr-note">${this.tr('diag_cloud_opt_api_note', 'pay-per-token · no hardware needed')}</span>
-									</div>
-									<div class="ltc-cr-row" role="listitem">
-										<span class="ltc-cr-title">${this.tr('diag_cloud_opt_gpu_title', 'Home GPU server')}</span>
-										<span class="ltc-cr-sub">${this.tr('diag_cloud_opt_gpu_sub', 'Ollama or llama.cpp on a dedicated GPU machine')}</span>
-										<span class="ltc-cr-note">${this.tr('diag_cloud_opt_gpu_note', 'always-on or wake-on-demand · data stays local')}</span>
-									</div>
+								<p class="ltc-cloud-why">${this.tr('diag_cloud_why', 'Complex reasoning &amp; large-context tasks beyond local capacity.')}</p>
+								<div class="ltc-cloud-or-line" aria-label="${this.tr('aria_cloud_config_options', 'Cloud configuration options')}">
+									<span class="ltc-or-opt">${this.tr('diag_cloud_opt_api_title', 'Inference API')}</span>
+									<span class="ltc-or-sep">${this.tr('diag_cloud_or', 'or')}</span>
+									<span class="ltc-or-opt">${this.tr('diag_cloud_opt_gpu_title', 'home GPU server')}</span>
 								</div>
 								<div class="ltc-specs"><code class="ltc-cloud-code">${this.tr('diag_cloud_set_env', 'LLM_CLOUD_BASE_URL + API key in .env')}</code></div>
 							</div>`;
@@ -1028,12 +1021,10 @@ export class DiagnosticsWidget extends HTMLElement {
 				.llm-tier-card.disabled .ltc-name { color: var(--text-muted) !important; }
 				.llm-tier-card.disabled .ltc-model { color: var(--text-muted); font-style: italic; }
 				.ltc-spec-hint { font-size: 0.5rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); font-style: italic; }
-				.ltc-cloud-why { font-size: 0.61rem; color: var(--text-muted); line-height: 1.55; margin: 0.25rem 0 0.4rem; padding: 0; }
-				.ltc-cloud-routes { display: flex; flex-direction: column; gap: 0.3rem; margin-bottom: 0.4rem; }
-				.ltc-cr-row { display: flex; flex-direction: column; gap: 0.08rem; padding: 0.3rem 0.45rem; border-radius: 0.3rem; background: hsla(0,0%,100%,0.025); border: 1px solid hsla(0,0%,100%,0.05); }
-				.ltc-cr-title { font-size: 0.6rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em; }
-				.ltc-cr-sub { font-size: 0.59rem; color: var(--text-muted); font-family: var(--font-mono); display: block; margin-top: 0.1rem; }
-				.ltc-cr-note { font-size: 0.52rem; color: var(--text-muted); opacity: 0.6; display: block; font-style: italic; margin-top: 0.06rem; }
+				.ltc-cloud-why { font-size: 0.6rem; color: var(--text-muted); line-height: 1.55; margin: 0.25rem 0 0.35rem; padding: 0; }
+				.ltc-cloud-or-line { display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.35rem; }
+				.ltc-or-opt { font-size: 0.6rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
+				.ltc-or-sep { font-size: 0.55rem; color: var(--text-muted); font-style: italic; }
 				.ltc-cloud-code { font-family: var(--font-mono); font-size: 0.55rem; color: var(--text-muted); background: hsla(0,0%,100%,0.06); padding: 0.15rem 0.4rem; border-radius: 3px; font-style: normal; }
 
 				@property --llm-spin-angle { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
