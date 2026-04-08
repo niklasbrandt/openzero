@@ -3,7 +3,6 @@ import { SECTION_HEADER_STYLES } from '../services/sectionHeaderStyles';
 import { GLASS_TOOLTIP_STYLES } from '../services/glassTooltipStyles';
 import { STATUS_STYLES } from '../services/statusStyles';
 import { EMPTY_STATE_STYLES } from '../services/emptyStateStyles';
-import { GOO_STYLES, initGoo } from '../services/gooStyles';
 
 
 export class DiagnosticsWidget extends HTMLElement {
@@ -82,8 +81,6 @@ export class DiagnosticsWidget extends HTMLElement {
 		);
 		this._observer.observe(this);
 		document.addEventListener('visibilitychange', this._onVisChange);
-		initGoo(this);
-		window.addEventListener('goo-changed', () => initGoo(this));
 		window.addEventListener('identity-updated', () => {
 			this.loadTranslations().then(() => {
 				this.render();
@@ -920,7 +917,6 @@ export class DiagnosticsWidget extends HTMLElement {
 				${GLASS_TOOLTIP_STYLES}
 				${STATUS_STYLES}
 				${EMPTY_STATE_STYLES}
-				${GOO_STYLES}
 
 				.h-icon { background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-secondary) 100%); }
 
