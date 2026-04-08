@@ -102,6 +102,28 @@
 			color: var(--g-color-text-secondary, rgba(255,255,255,0.5)) !important;
 		}
 
+		/* ── Kanban list (column) ─────────────────────────────── */
+
+		/* Column/list background — hardcoded #e2e4e6 (light grey) */
+		#app ._wrapper_4d1a2_46 {
+			background: var(--g-color-base-float, rgb(56,52,56)) !important;
+		}
+
+		/* ── Kanban card ──────────────────────────────────────── */
+
+		/* Card tile background — hardcoded #fff */
+		#app ._wrapper_36a26_43 {
+			background: var(--g-color-base-float-medium, rgb(67,63,67)) !important;
+			box-shadow: 0 1px var(--g-color-line-generic, rgba(255,255,255,0.15)) !important;
+		}
+
+		/* ── Card detail sidebar / modal wrappers ────────────── */
+
+		#app ._wrapper_kv1fg_5,
+		#app ._wrapper_1napt_5 {
+			background: var(--g-color-base-background, rgb(34,29,34)) !important;
+		}
+
 		/* ── Card fields (board/card modal view) ─────────────── */
 
 		/* Text area fields in cards and modals */
@@ -128,10 +150,22 @@
 			border-color: var(--g-color-line-focus, rgba(255,255,255,0.3)) !important;
 		}
 
+		/* Description / checklist plain text */
+		#app ._text_170s0_69 {
+			color: var(--g-color-text-primary, rgba(255,255,255,0.85)) !important;
+		}
+
 		/* Checklist / task field wrapper */
 		#app ._fieldWrapper_tpq9f_15 {
 			background: var(--g-color-base-float, rgb(56,52,56)) !important;
 			box-shadow: 0 1px var(--g-color-line-generic, rgba(255,255,255,0.15)) !important;
+		}
+
+		/* ── Activity / comment chat bubble ──────────────────── */
+
+		#app ._bubble_mycbd_8 {
+			background: var(--g-color-base-float-medium, rgb(67,63,67)) !important;
+			box-shadow: 0 1px 2px -1px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.1) !important;
 		}
 
 		/* ── Card & board text colors ─────────────────────────── */
@@ -152,9 +186,46 @@
 			color: var(--g-color-text-primary, rgba(255,255,255,0.85)) !important;
 		}
 
+		/* Transparent dark icons — invisible on dark background, make them white */
+		#app ._icon_1thss_6,
+		#app ._icon_170s0_49 {
+			color: rgba(255,255,255,0.25) !important;
+		}
+
+		/* ── Metadata badges (due date, checklist count, etc.) ── */
+
+		/* Light grey pill badges with dark text */
+		#app ._wrapper_1y12g_17,
+		#app ._wrapper_ylxnu_13,
+		#app ._wrapper_12wku_14 {
+			background: var(--g-color-base-float-medium, rgb(67,63,67)) !important;
+			color: var(--g-color-text-secondary, rgba(255,255,255,0.5)) !important;
+		}
+
+		/* ── @mention highlight ──────────────────────────────── */
+
+		#app ._mention_pwski_21 {
+			background-color: var(--g-color-base-info-light, rgba(54,151,241,0.2)) !important;
+		}
+
+		/* ── Card label borders ───────────────────────────────── */
+
+		/* Labels use a hardcoded near-black transparent border — replace with light */
+		#app ._label_1q90a_5,
+		#app ._label_1c9ar_18 {
+			border-color: rgba(255,255,255,0.2) !important;
+		}
+
+		/* ── Dropzone overlay ─────────────────────────────────── */
+
+		#app ._dropzone_1khdk_5 {
+			background: var(--g-color-base-float, rgb(56,52,56)) !important;
+			color: var(--g-color-text-primary, rgba(255,255,255,0.85)) !important;
+		}
+
 		/* ── Misc elements ────────────────────────────────────── */
 
-		/* Delete / remove button uses near-white semi-transparent bg */
+		/* Delete / remove button */
 		#app ._deleteButton_1c9ar_5 {
 			background: var(--g-color-base-float, rgb(56,52,56)) !important;
 			color: var(--g-color-text-secondary, rgba(255,255,255,0.5)) !important;
