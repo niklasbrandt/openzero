@@ -10,10 +10,12 @@ Z uses a **local + optional cloud** LLM architecture. A local llama.cpp model ru
 
 | Profile | RAM | Local tier model | Notes |
 |---------|-----|-------------------|---------|
-| A — Minimal (Pi 5 / 8 GB VPS) | 8 GB | Qwen3-1.7B Q4_K_M | Use `CTX=8192`, `THREADS=4`, `CACHE_RAM=128` — ~2.6 GB LLM footprint |
-| B — Standard (default) | 12 GB | Qwen3-1.7B Q4_K_M | Default since v1.1 — `CTX=32768`, action tags work |
-| C — Comfortable | 24 GB | Qwen3-4B Q4_K_M | Set `LLM_LOCAL_CTX=32768`, `LLM_LOCAL_CACHE_RAM=2048` |
-| D — High-end | 64 GB+ | Qwen3-8B Q4_K_M | GPU or large-RAM homelab |
+| A — Minimal (Pi 5 / 8 GB VPS) | 8 GB | Qwen3-1.7B Q4_K_M | Auto-detected — no manual tuning needed |
+| B — Standard | 12 GB | Qwen3-1.7B Q4_K_M | Auto-detected — no manual tuning needed |
+| C — Comfortable | 24 GB | Qwen3-4B Q4_K_M | Set `LLM_LOCAL_MODEL_URL` + `LLM_LOCAL_MODEL_FILE` only |
+| D — High-end | 64 GB+ | Qwen3-8B Q4_K_M | Set `LLM_LOCAL_MODEL_URL` + `LLM_LOCAL_MODEL_FILE` only |
+
+The LLM container reads your server's RAM and CPU count on every start and picks the right context size, thread count, batch size, and memory strategy automatically. You do not need to set `LLM_LOCAL_CTX`, `LLM_LOCAL_THREADS`, or `LLM_LOCAL_CACHE_RAM` unless you want to override a specific value.
 
 ## 🏗️ Phase 1: Prepare your VPS (Server)
 
