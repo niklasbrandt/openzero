@@ -33,7 +33,7 @@ import asyncio
 import logging
 import os
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 import httpx
@@ -92,8 +92,8 @@ async def _probe_llamacpp(client: httpx.AsyncClient, url: str) -> Optional[float
 		latency_ms = (time.monotonic() - t0) * 1000
 		if resp.status_code in (200, 503):
 			return latency_ms
-	except Exception:
-		pass
+	except Exception as _e:
+		logger.debug("llama.cpp probe failed: %s", _e)
 	return None
 
 
@@ -109,8 +109,8 @@ async def _probe_ollama(
 			models = resp.json().get("models", [])
 			model_name = models[0].get("name", "") if models else ""
 			return latency_ms, model_name
-	except Exception:
-		pass
+	except Exception as _e:
+		logger.debug("Ollama probe failed: %s", _e)
 	return None
 
 
@@ -126,8 +126,8 @@ async def _detect_model_llamacpp(client: httpx.AsyncClient, url: str, fallback: 
 			)
 			if mp:
 				return os.path.basename(mp)
-	except Exception:
-		pass
+	except Exception as _e:
+		logger.debug("llama.cpp model detect failed: %s", _e)
 	return fallback
 
 
@@ -388,7 +388,7 @@ async def start_discovery_loop() -> None:
 	Runs an initial probe synchronously before yielding so that the first
 	inference request after startup already has a valid active endpoint.
 	"""
-	global _started, _peers
+	global _started
 
 	if _started:
 		return

@@ -343,7 +343,7 @@ translations: dict[str, str] = {
 	"list_this_week": 'Tuan nay',
 	"list_backlog": 'Ton dong',
 	"list_done": 'Hoan thanh',
-	"list_inbox": 'Hop thu'
+	"list_inbox": 'Hop thu',
 	'abort': 'Hủy',
 	'aria_abort_crew': 'Hủy thực thi nhóm',
 	'aria_benchmark_tier': 'Đánh giá hiệu năng',

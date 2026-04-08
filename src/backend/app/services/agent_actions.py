@@ -254,7 +254,8 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 	# 1. Create Project Tag — DESCRIPTION is optional (LLM may omit it).
 	# IMPORTANT: use greedy [^\|\]]+ (NOT lazy +?) — lazy combined with optional \]?
 	# causes the group to match only the first character of the project name.
-	proj_pattern = r"\[?ACTION: CREATE_PROJECT \| NAME: ([^\|\]]+)(?:\s*\|\s*DESCRIPTION:\s*([^\|\]]+))?\]?"
+	# Bounded quantifiers prevent polynomial backtracking on uncontrolled input (CWE-1333).
+	proj_pattern = r"\[?ACTION: CREATE_PROJECT \| NAME: ([^\|\]]{1,500})(?:\s{0,20}\|\s{0,20}DESCRIPTION:\s{0,20}([^\|\]]{1,2000}))?\]?"
 	for match in re.finditer(proj_pattern, reply):
 		raw_tag = match.group(0)
 		name = match.group(1).strip().strip('"\'')

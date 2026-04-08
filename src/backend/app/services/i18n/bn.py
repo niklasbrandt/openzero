@@ -343,7 +343,7 @@ translations: dict[str, str] = {
 	"list_this_week": 'এই সপ্তাহ',
 	"list_backlog": 'ব্যাকলগ',
 	"list_done": 'সম্পন্ন',
-	"list_inbox": 'ইনবক্স'
+	"list_inbox": 'ইনবক্স',
 	'abort': 'বাতিল',
 	'aria_abort_crew': 'ক্রু এক্সিকিউশন বাতিল করুন',
 	'aria_benchmark_tier': 'বেঞ্চমার্ক',

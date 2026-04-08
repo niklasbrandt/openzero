@@ -343,7 +343,7 @@ translations: dict[str, str] = {
 	"list_this_week": 'Bu Hafta',
 	"list_backlog": 'Birikenler',
 	"list_done": 'Tamamlandi',
-	"list_inbox": 'Gelen Kutusu'
+	"list_inbox": 'Gelen Kutusu',
 	'abort': 'İptal',
 	'aria_abort_crew': 'Ekip yürütürmesini iptal et',
 	'aria_benchmark_tier': 'Kıyaslama',
