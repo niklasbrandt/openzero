@@ -658,6 +658,7 @@ export class DiagnosticsWidget extends HTMLElement {
 						const cloudFnCalling: boolean | null = name === 'cloud' ? (td.function_calling ?? null) : null;
 						const cloudVision: boolean | null = name === 'cloud' ? (td.vision ?? null) : null;
 						const cloudReasoning: boolean | null = name === 'cloud' ? (td.reasoning ?? null) : null;
+						const cloudWebSearch: boolean | null = name === 'cloud' ? (td.web_search ?? null) : null;
 						const cloudMaxOut: number = name === 'cloud' ? (td.max_completion_tokens || 0) : 0;
 						const cloudTokenizer: string = name === 'cloud' ? (td.tokenizer || '') : '';
 
@@ -738,6 +739,7 @@ export class DiagnosticsWidget extends HTMLElement {
 								${(cloudFnCalling !== null) ? `<div class="ltc-spec has-tip"><span>${this.tr('diag_cloud_fn_calling', 'Tools')}</span><strong>${cloudFnCalling ? this.tr('diag_cloud_cap_yes', 'yes') : this.tr('diag_cloud_cap_no', 'no')}</strong><span class="glass-tooltip">${this.tr('diag_cloud_fn_calling_tip', 'Supports function / tool calling')}</span></div>` : ''}
 								${(cloudVision !== null) ? `<div class="ltc-spec has-tip"><span>${this.tr('diag_cloud_vision', 'Vision')}</span><strong>${cloudVision ? this.tr('diag_cloud_cap_yes', 'yes') : this.tr('diag_cloud_cap_no', 'no')}</strong><span class="glass-tooltip">${this.tr('diag_cloud_vision_tip', 'Supports image / vision input')}</span></div>` : ''}
 								${(cloudReasoning !== null) ? `<div class="ltc-spec has-tip"><span>${this.tr('diag_cloud_reasoning', 'Reasoning')}</span><strong>${cloudReasoning ? this.tr('diag_cloud_cap_yes', 'yes') : this.tr('diag_cloud_cap_no', 'no')}</strong><span class="glass-tooltip">${this.tr('diag_cloud_reasoning_tip', 'Supports internal chain-of-thought reasoning mode')}</span></div>` : ''}
+								${(cloudWebSearch !== null) ? `<div class="ltc-spec has-tip"><span>${this.tr('diag_cloud_web_search', 'Web search')}</span><strong>${cloudWebSearch ? this.tr('diag_cloud_cap_yes', 'yes') : this.tr('diag_cloud_cap_no', 'no')}</strong><span class="glass-tooltip">${this.tr('diag_cloud_web_search_tip', 'Supports real-time web search tool')}</span></div>` : ''}
 							</div>
 						</div>`;
 					}).join('')}

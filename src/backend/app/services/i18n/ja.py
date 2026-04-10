@@ -379,6 +379,8 @@ translations: dict[str, str] = {
 	'diag_cloud_vision_tip': '画像 / ビジョン入力に対応',
 	'diag_cloud_reasoning': '推論',
 	'diag_cloud_reasoning_tip': '内部チェーン・オブ・ソート推論モードに対応',
+	'diag_cloud_web_search': 'Web検索',
+	'diag_cloud_web_search_tip': 'リアルタイムWeb検索ツールに対応',
 	'diag_cloud_cap_yes': 'はい',
 	'diag_cloud_cap_no': 'いいえ',
 	'diag_local_why': 'VPS上のプライベートで常時稼働する推論。外部依存なし。',

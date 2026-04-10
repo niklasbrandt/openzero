@@ -378,6 +378,8 @@ translations: dict[str, str] = {
 	'diag_cloud_vision_tip': 'Compatible con entrada de imágenes / visión',
 	'diag_cloud_reasoning': 'Razonamiento',
 	'diag_cloud_reasoning_tip': 'Compatible con el modo de razonamiento en cadena de pensamiento',
+	'diag_cloud_web_search': 'Búsqueda web',
+	'diag_cloud_web_search_tip': 'Compatible con la herramienta de búsqueda web en tiempo real',
 	'diag_cloud_cap_yes': 'sí',
 	'diag_cloud_cap_no': 'no',
 	'diag_local_why': 'Inferencia privada y siempre activa en el VPS. Sin dependencia externa.',

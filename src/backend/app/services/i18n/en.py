@@ -162,6 +162,8 @@ translations: dict[str, str] = {
 	"diag_cloud_vision_tip": "Supports image / vision input",
 	"diag_cloud_reasoning": "Reasoning",
 	"diag_cloud_reasoning_tip": "Supports internal chain-of-thought reasoning mode",
+	"diag_cloud_web_search": "Web search",
+	"diag_cloud_web_search_tip": "Supports real-time web search tool",
 	"diag_cloud_cap_yes": "yes",
 	"diag_cloud_cap_no": "no",
 	"diag_local_why": "Private, always-on inference on the VPS. No external dependency.",

@@ -377,6 +377,8 @@ translations: dict[str, str] = {
 	'diag_cloud_vision_tip': 'इमेज / विजन इनपुट का समर्थन करता है',
 	'diag_cloud_reasoning': 'रीज़निंग',
 	'diag_cloud_reasoning_tip': 'आंतरिक चेन-ऑफ-थॉट रीज़निंग मोड का समर्थन करता है',
+	'diag_cloud_web_search': 'वेब खोज',
+	'diag_cloud_web_search_tip': 'रीयल-टाइम वेब खोज टूल का समर्थन करता है',
 	'diag_cloud_cap_yes': 'हाँ',
 	'diag_cloud_cap_no': 'नहीं',
 	'diag_local_why': 'VPS पर निजी, सदैव-चालू अनुमान। कोई बाहरी निर्भरता नहीं।',
