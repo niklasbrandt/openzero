@@ -1119,13 +1119,17 @@ async def chat_stream(
 							try:
 								fn_args = json.loads(tc["function"]["arguments"])
 							except json.JSONDecodeError:
+								logger.warning("Tool call: malformed JSON arguments: %s", tc["function"]["arguments"])
 								fn_args = {}
 
 							if fn_name == "web_search":
 								search_query = fn_args.get("query", "")
-								# PII-sanitize the search query before it leaves the VPS
+								# The model sees sanitized text, so its query contains
+								# privacy tokens ([CITY_1], [PERSON_1], ...).  Rehydrate
+								# them back to real values before hitting SearXNG (which
+								# is self-hosted on the internal network — no PII risk).
 								if rep_map:
-									search_query = sanitize_prompt(search_query)[0]
+									search_query = rehydrate_response(search_query, rep_map)
 								logger.info("Tool call: web_search(%r)", search_query)
 								tool_result = await execute_web_search(search_query)
 							else:
