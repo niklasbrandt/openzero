@@ -147,7 +147,7 @@ _OVERRIDE=$(echo "${LLM_PROFILE_OVERRIDE:-}" | tr '[:upper:]' '[:lower:]' | tr -
 
 if   [[ "$_OVERRIDE" == "minimal" || "$_OVERRIDE" == "pi5" || "$_OVERRIDE" == "pi" || "$_OVERRIDE" == "budget" ]]; then
 	_PROFILE="Minimal — Pi 5 / Budget 8 GB VPS (FORCED)"
-	_AUTO_CTX=8192;  _AUTO_PREDICT=512;  _AUTO_BATCH=256; _AUTO_CACHE=128
+	_AUTO_CTX=16384; _AUTO_PREDICT=512;  _AUTO_BATCH=256; _AUTO_CACHE=256
 	_AUTO_NO_MMAP=0; _AUTO_MLOCK=0; CPU_THREADS=4
 elif [[ "$_OVERRIDE" == "standard" ]]; then
 	_PROFILE="Standard — 12 GB VPS (FORCED)"
@@ -171,7 +171,7 @@ else
 	echo "Memory: ${AVAIL_RAM_GB} GB available of ${TOTAL_RAM_GB} GB total"
 	if   [ "$TOTAL_RAM_GB" -lt 9 ]; then
 		_PROFILE="Minimal — Pi 5 / Budget 8 GB VPS"
-		_AUTO_CTX=8192;  _AUTO_PREDICT=512;  _AUTO_BATCH=256; _AUTO_CACHE=128
+		_AUTO_CTX=16384; _AUTO_PREDICT=512;  _AUTO_BATCH=256; _AUTO_CACHE=256
 		_AUTO_NO_MMAP=0; _AUTO_MLOCK=0
 	elif [ "$TOTAL_RAM_GB" -lt 14 ]; then
 		_PROFILE="Standard — 12 GB VPS"

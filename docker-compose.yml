@@ -76,6 +76,7 @@ services:
   whisper:
     image: onerahmet/openai-whisper-asr-webservice:v1.9.1
     restart: always
+    profiles: [ "voice" ]
     deploy:
       resources:
         limits:
@@ -86,6 +87,7 @@ services:
   tts:
     image: ghcr.io/matatonic/openedai-speech:0.18.2
     restart: always
+    profiles: [ "voice" ]
     deploy:
       resources:
         limits:
