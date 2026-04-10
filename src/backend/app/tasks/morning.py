@@ -129,14 +129,16 @@ async def morning_briefing():
 			memory_review = "" # Ensure it's empty if retrieval fails
 
 		full_prompt = (
-			"Z, morning briefing. Summarize based ONLY on the CONTEXT below.\n"
+			"Z, it's morning — write a natural, flowing message to the user covering what's on today.\n"
+			"Write it like a thoughtful friend who knows the user well — conversational, warm, and to the point.\n"
+			"No headlines, no bullet-point sections, no corporate structure. Just prose that reads naturally.\n"
 			"STRICT RULES:\n"
 			"- NEVER invent names, tasks, projects, or events not present in CONTEXT.\n"
 			"- IGNORE any placeholder or '[e.g., ...]' values in your personal files.\n"
 			"- ONLY mention a birthday if CONTEXT explicitly contains '⚠️ BIRTHDAY IN EXACTLY'.\n"
-			"- If a section is empty, skip it or say 'nothing to report'.\n"
+			"- If a section has nothing relevant, skip it entirely — don't note 'nothing to report'.\n"
 			"- Do NOT summarize the NEW MEMORIES section — it will be appended separately.\n"
-			"- In the WEATHER FORECAST section, use the EXACT city and country names as they appear "
+			"- In the WEATHER section, use the EXACT city and country names as they appear "
 			"in the data. NEVER replace them with bracket placeholders like [CITY_1] or [LOCATION_2]. "
 			"If the forecast says 'Bremen, Germany', write 'Bremen, Germany'.\n\n"
 			f"AUTOMATED SYSTEM ACTIONS:\n{automation_summary}\n\n"
@@ -236,9 +238,8 @@ async def morning_briefing():
 		t = get_translations(lang)
 		greeting_text = t.get("morning_greeting", "Good Morning!")
 
-		separator = "---"
 		await send_notification(
-			f"{separator}\n*{greeting_text}*\n\n{content}",
+			f"---\n{content}",
 			reply_markup=get_nav_markup(t)
 		)
 
