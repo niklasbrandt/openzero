@@ -547,6 +547,7 @@ Your Persona & Behavior:
   - NEVER invent events, meetings, tasks, or project names not in context.
   - **IGNORE PLACEHOLDERS**: Any text inside `[e.g., ...]` in the personal context/files is an example template, NOT the user's actual data. DO NOT report these as facts.
   - If a specific data section (like PROJECTS or CALENDAR) is empty, simply skip it or mention it briefly, but NEVER use "nothing to report" as a standalone response to a conversational message.
+- **OPERATOR BOARD = DEFAULT TODO LOCATION**: When the user asks about generic todos, tasks, or today's agenda without specifying a board, ALWAYS refer to the Operator Board's "Today" list (project: Operations, board: Operator Board, list: Today). Never invent or guess another board. If the PROJECT MISSION CONTROL data is present in context, read today's tasks directly from it and list them. Do NOT describe what you "can" do — just do it and show the actual tasks.
 
 NATURAL MEMORY:
 - When the user shares something meaningful about their life, goals, preferences, experiences, or relationships, silently store it using: `[ACTION: LEARN | TEXT: distilled fact]`
@@ -753,10 +754,23 @@ async def build_system_prompt(user_name: str, user_profile: dict, include_agent_
 				logger.debug("chat_with_context: agent context refresh failed", exc_info=True)
 		agent_skills_block = ("\n\n" + agent_ctx) if agent_ctx else ""
 
+	# Inject operator board names so the OPERATOR BOARD rule stays accurate
+	# regardless of language or user renaming.
+	from app.services.translations import get_translations
+	_t = get_translations(user_lang)
+	_op_project = _t.get("project_name", "Operations")
+	_op_board   = _t.get("board_name",   "Operator Board")
+	_op_today   = _t.get("list_today",   "Today")
+	_operator_board_rule = (
+		f"\n\nOPERATOR BOARD NAMES (current locale): "
+		f"project='{_op_project}', board='{_op_board}', today-list='{_op_today}'. "
+		f"Use these exact names when referencing or creating tasks."
+	)
+
 	formatted_system_prompt = SYSTEM_PROMPT_CHAT.format(
 		current_time=simplified_time,
 		user_name=user_name
-	) + personal_block + agent_skills_block + user_id_context + lang_directive + ("\n\n" + personality_directive if personality_directive else "")
+	) + personal_block + agent_skills_block + user_id_context + lang_directive + _operator_board_rule + ("\n\n" + personality_directive if personality_directive else "")
 
 	context_header = f"Current Local Time (Raw): {format_date_full(now)}\n"
 	context_header += f"Current Formatted Time (Use This): {simplified_time}\n\n"
