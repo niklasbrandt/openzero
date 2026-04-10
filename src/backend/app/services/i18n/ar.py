@@ -378,6 +378,8 @@ translations: dict[str, str] = {
 	'diag_cloud_vision_tip': 'يدعم إدخال الصور / الرؤية',
 	'diag_cloud_reasoning': 'الاستدلال',
 	'diag_cloud_reasoning_tip': 'يدعم وضع الاستدلال بتسلسل الأفكار',
+	'diag_cloud_web_search': 'بحث الويب',
+	'diag_cloud_web_search_tip': 'يدعم أداة البحث على الويب في الوقت الفعلي',
 	'diag_cloud_cap_yes': 'نعم',
 	'diag_cloud_cap_no': 'لا',
 	'diag_local_why': 'استدلال خاص ودائم التشغيل على VPS. لا اعتماد خارجي.',
