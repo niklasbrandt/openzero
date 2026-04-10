@@ -201,6 +201,8 @@ def _security_sanitise(text: str) -> str:
 # LLM-assisted compression (Stage 2 — runs once per changed file)
 # ---------------------------------------------------------------------------
 
+_PLACEHOLDER_TOKEN_RE = re.compile(r'\[[A-Z_]+_\d+\]')
+
 async def _llm_compress(filename: str, text: str) -> str:
 	"""Compress via local-tier LLM. Falls back to deterministic on failure."""
 	try:
@@ -211,13 +213,25 @@ async def _llm_compress(filename: str, text: str) -> str:
 				"You are a lossless context compressor. Compress the following personal context into a "
 				"dense, information-complete paragraph under 250 words. Preserve ALL facts, preferences, "
 				"behavioral rules, and explicit instructions. Remove only redundancy and formatting noise. "
+				"CRITICAL: You MUST copy ALL proper nouns — city names, country names, person names, "
+				"place names, URLs — EXACTLY as they appear in the source text. NEVER replace any value "
+				"with a bracket placeholder like [CITY_1], [NAME_2], or similar tokens. "
 				"Output only the compressed text, nothing else."
 			),
 			tier="local",
 			_feature="context_compress",
 		)
+		compressed = compressed.strip()
+		# Guard: if the local model inserted placeholder tokens (e.g. [CITY_2]), fall back to
+		# the deterministic output so real proper nouns are never lost.
+		if _PLACEHOLDER_TOKEN_RE.search(compressed):
+			logger.warning(
+				"personal_context: LLM compression for %s produced placeholder tokens — falling back to deterministic",
+				filename,
+			)
+			return text
 		logger.debug("personal_context: LLM-compressed %s (%d→%d chars)", filename, len(text), len(compressed))
-		return compressed.strip()
+		return compressed
 	except Exception as exc:
 		logger.warning("personal_context: LLM compression failed for %s (%s) — using deterministic", filename, exc)
 		return text
