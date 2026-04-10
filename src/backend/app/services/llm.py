@@ -1266,17 +1266,34 @@ async def chat_with_context(
 		if len(user_message.strip()) < 15:
 			return ""
 		try:
-			result = await semantic_search(user_message, top_k=3)
+			# If the user message is a pronoun-heavy follow-up (e.g. "how can you help
+			# me with them?"), searching just that message retrieves off-topic memories
+			# that misdirect pronoun resolution. Enrich the query with the last Z turn
+			# so the semantic search stays grounded in the current conversation topic.
+			_FOLLOW_UP_PRONOUNS = frozenset({"them", "it", "that", "those", "these", "they", "this"})
+			search_query = user_message
+			if history and set(user_message.lower().split()) & _FOLLOW_UP_PRONOUNS:
+				for _h in reversed(history):
+					if _h.get("role") != "user":
+						_last_z = (_h.get("content") or "")[:200]
+						if _last_z:
+							search_query = f"{_last_z} {user_message}"
+						break
+			result = await semantic_search(search_query, top_k=3)
 			if result and "No memories found" not in result and "Memory system" not in result:
 				# Strip any action tags that may have been poisoned into memory
 				# (Finding 3 -- action tags must only come from assistant responses)
 				result = re.sub(r'\[ACTION:[^\]]*\]', '', result, flags=re.IGNORECASE)
 				result = result.strip()
 				if result:
+					_history_note = (
+						" When RECENT CONVERSATION is present, resolve pronouns "
+						"('them', 'it', 'that', 'those') from the conversation — not from these memories."
+					) if history else ""
 					return (
 						"RELEVANT MEMORIES (background facts about the user from past conversations):\n"
 						"NOTE: These are NOT the current request. Always answer what the user is asking NOW. "
-						"Never redirect or refuse based on a past session's topic.\n"
+						f"Never redirect or refuse based on a past session's topic.{_history_note}\n"
 						f"{result}"
 					)
 			return ""
@@ -1597,7 +1614,19 @@ async def chat_stream_with_context(
 		if len(user_message.strip()) < 15:
 			return ""
 		try:
-			result = await semantic_search(user_message, top_k=3)
+			# Enrich the search query with the last Z turn when the current message
+			# contains pronouns — prevents retrieving off-topic memories that would
+			# misdirect the model's pronoun resolution.
+			_FOLLOW_UP_PRONOUNS = frozenset({"them", "it", "that", "those", "these", "they", "this"})
+			search_query = user_message
+			if history and set(user_message.lower().split()) & _FOLLOW_UP_PRONOUNS:
+				for _h in reversed(history):
+					if _h.get("role") != "user":
+						_last_z = (_h.get("content") or "")[:200]
+						if _last_z:
+							search_query = f"{_last_z} {user_message}"
+						break
+			result = await semantic_search(search_query, top_k=3)
 			if result and "No memories found" not in result and "Memory system" not in result:
 				# Retrieval-time adversarial filter — block poisoned memory payloads
 				from app.services.memory import _ADVERSARIAL_PATTERNS
@@ -1608,10 +1637,14 @@ async def chat_stream_with_context(
 				result = re.sub(r'\[ACTION:[^\]]*\]', '', result, flags=re.IGNORECASE)
 				result = result.strip()
 				if result:
+					_history_note = (
+						" When RECENT CONVERSATION is present, resolve pronouns "
+						"('them', 'it', 'that', 'those') from the conversation — not from these memories."
+					) if history else ""
 					return (
 						"RELEVANT MEMORIES (background facts about the user from past conversations):\n"
 						"NOTE: These are NOT the current request. Always answer what the user is asking NOW. "
-						"Never redirect or refuse based on a past session's topic.\n"
+						f"Never redirect or refuse based on a past session's topic.{_history_note}\n"
 						f"{result}"
 					)
 			return ""
