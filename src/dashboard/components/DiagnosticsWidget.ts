@@ -645,14 +645,17 @@ export class DiagnosticsWidget extends HTMLElement {
 							}
 						}
 
-						const ctx = ctxFor(name);
+						const ctx = td.ctx_size || ctxFor(name);
 						const threads = threadsFor(name);
 						const liveRamGb = ((srv.container_ram || []).find((c: any) => c.name === 'llm-' + name) || {}).gb || 0;
-						
+
 						// Enhanced metadata from tier data (td)
 						const fileSizeGb = td.model_size_gb || 0;
 						const cacheRamMb = td.cache_ram_mb || 0;
 						const kvUsage = td.kv_usage_pct || 0;
+						// Cloud-specific metadata (from /v1/models probe)
+						const cloudOwnedBy: string = name === 'cloud' ? (td.owned_by || '') : '';
+						const cloudCaps: Record<string, boolean> = name === 'cloud' ? (td.capabilities || {}) : {};
 
 						// Mitigation: Detect hidden large models
 						// Accounting for the configured prompt cache AND KV-cache growth at large context
@@ -725,6 +728,9 @@ export class DiagnosticsWidget extends HTMLElement {
 								${threads ? `<div class="ltc-spec has-tip"><span>${this.tr('threads', 'Threads')}</span><strong>${threads}</strong><span class="glass-tooltip">${this.tr('diag_llm_threads_tip', 'CPU threads allocated to this tier')}</span></div>` : ''}
 								${(!externalActive && liveRamGb && cacheGb) ? `<div class="ltc-spec has-tip"><span>${this.tr('diag_ram_weights_label', 'RAM weights')}</span><strong>${(liveRamGb - cacheGb).toFixed(1)} GB</strong><span class="glass-tooltip">${this.tr('diag_ram_weights_tip', 'Model weights and compute buffers in RAM, excluding KV cache.')}</span></div>` : ''}
 								${(!externalActive && liveRamGb) ? `<div class="ltc-spec has-tip"><span>${this.tr('diag_ram_live_label', 'RAM live')}</span><strong style="color:${isMismatch ? 'var(--color-danger)' : color}">${liveRamGb.toFixed(1)} GB</strong><span class="glass-tooltip">${this.tr('diag_ram_live_tip', 'Live RAM from Docker stats: Model weights + KV cache + compute buffers')}</span></div>` : ''}
+								${cloudOwnedBy ? `<div class="ltc-spec has-tip"><span>${this.tr('diag_cloud_provider', 'Provider')}</span><strong>${this.esc(cloudOwnedBy)}</strong><span class="glass-tooltip">${this.tr('diag_cloud_provider_tip', 'Model owner / API provider')}</span></div>` : ''}
+								${(cloudCaps.function_calling !== undefined) ? `<div class="ltc-spec has-tip"><span>${this.tr('diag_cloud_fn_calling', 'Tools')}</span><strong>${cloudCaps.function_calling ? this.tr('diag_cloud_cap_yes', 'yes') : this.tr('diag_cloud_cap_no', 'no')}</strong><span class="glass-tooltip">${this.tr('diag_cloud_fn_calling_tip', 'Supports function / tool calling')}</span></div>` : ''}
+								${(cloudCaps.vision !== undefined) ? `<div class="ltc-spec has-tip"><span>${this.tr('diag_cloud_vision', 'Vision')}</span><strong>${cloudCaps.vision ? this.tr('diag_cloud_cap_yes', 'yes') : this.tr('diag_cloud_cap_no', 'no')}</strong><span class="glass-tooltip">${this.tr('diag_cloud_vision_tip', 'Supports image / vision input')}</span></div>` : ''}
 							</div>
 						</div>`;
 					}).join('')}
