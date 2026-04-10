@@ -40,6 +40,10 @@ services:
       - llm_models:/models
       - ./scripts/llm-entrypoint.sh:/entrypoint.sh
     entrypoint: [ "/bin/bash", "/entrypoint.sh" ]
+    deploy:
+      resources:
+        limits:
+          memory: ${LLM_LOCAL_MEM_LIMIT:-2048M}
     cap_add:
       - IPC_LOCK
     ulimits:
@@ -75,7 +79,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1536M
+          memory: 1024M
     networks:
       - internal
 
@@ -85,7 +89,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1536M
+          memory: 1024M
     networks:
       - internal
 

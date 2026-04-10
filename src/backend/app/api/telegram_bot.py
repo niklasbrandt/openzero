@@ -1026,24 +1026,7 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		# the LLM times out, and returns cross-channel history in one call.
 		_hist = await bus.ingest("telegram", user_text)
 
-		# --- "Coming back" detection: inject return context for long silences ---
-		# If the last Z reply was >2 h ago, annotate the LLM prompt so Z
-		# acknowledges the gap. The raw user_text stays in the DB unchanged.
 		llm_user_text = user_text
-		try:
-			_last_z = next((m for m in reversed(_hist) if m["role"] == "z"), None)
-			if _last_z:
-				_last_ts = datetime.fromisoformat(_last_z["at"]).replace(tzinfo=_tz.utc)
-				_gap = datetime.now(_tz.utc) - _last_ts
-				if _gap.total_seconds() > 7200:
-					_gap_h = int(_gap.total_seconds() // 3600)
-					llm_user_text = (
-						f"[SYSTEM: User returning after ~{_gap_h}h of silence. "
-						f"Acknowledge their return naturally in one sentence, then respond to their message.]\n\n{user_text}"
-					)
-					logger.debug("Return greeting injected: gap %.0f h", _gap.total_seconds() / 3600)
-		except Exception as _exc:
-			logger.debug("Return greeting failed to hydrate: %s", _exc)
 
 		# --- Message Coalescing ---
 		if chat_id not in _thinking_locks:
