@@ -29,8 +29,6 @@ python-docx>=1.1.0
 pymupdf>=1.24.0
 # Cloud LLM PII Sanitization
 spacy>=3.7.0
-# Web Search Tool
-duckduckgo-search>=7.0.0
 sentence-transformers>=3.4.0
 huggingface_hub>=1.6.0
 transformers>=5.3.0

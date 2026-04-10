@@ -1,0 +1,58 @@
+# SearXNG settings for openZero
+# Internal-only instance — no public exposure, no rate limiting needed.
+# Docs: https://docs.searxng.org/admin/settings/index.html
+
+use_default_settings: true
+
+general:
+  instance_name: "openZero Search"
+  enable_metrics: false
+
+search:
+  safe_search: 0
+  autocomplete: ""
+  default_lang: "en"
+  formats:
+    - html
+    - json
+
+server:
+  # Bind inside container — Traefik/Docker networking handles access
+  bind_address: "0.0.0.0"
+  port: 8080
+  secret_key: "openzero-searxng-internal-only"
+  limiter: false
+  image_proxy: false
+  # Not publicly exposed — disable bot protection
+  public_instance: false
+
+ui:
+  static_use_hash: true
+  default_theme: simple
+
+# Enable broad engine set for good coverage
+engines:
+  - name: google
+    engine: google
+    shortcut: g
+    disabled: false
+  - name: duckduckgo
+    engine: duckduckgo
+    shortcut: ddg
+    disabled: false
+  - name: bing
+    engine: bing
+    shortcut: b
+    disabled: false
+  - name: wikipedia
+    engine: wikipedia
+    shortcut: wp
+    disabled: false
+  - name: wikidata
+    engine: wikidata
+    shortcut: wd
+    disabled: false
+
+outgoing:
+  request_timeout: 5.0
+  useragent_suffix: ""

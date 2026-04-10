@@ -17,10 +17,12 @@ the backend executes the search and feeds results back.
 - Instead: inject tool definitions via the `tools` parameter on the standard
   `/v1/chat/completions` endpoint. Works identically on all providers.
 
-### DuckDuckGo (no API key)
-- Zero config, no cost, no rate limits worth worrying about.
-- Runs via `duckduckgo-search` Python package in a thread (`asyncio.to_thread`).
-- Falls back gracefully with a user-friendly error message.
+### Self-Hosted SearXNG (meta-search, no API keys)
+- Runs as a Docker container on the internal network (`searxng:8080`).
+- Aggregates Google, Bing, DuckDuckGo, Wikipedia results in one query.
+- Backend calls `GET /search?q=...&format=json` via httpx (already a dependency).
+- No external API keys, no rate limits, full data sovereignty.
+- Configuration: `infrastructure/searxng/settings.yml`.
 
 ### Single Tool Round (no infinite loops)
 - First request includes `tools` + `tool_choice: auto`.
@@ -40,7 +42,8 @@ the backend executes the search and feeds results back.
 - `src/backend/app/services/llm.py` -- tool injection + SSE tool_calls accumulation + execution loop
 - `src/backend/app/services/agent_actions.py` -- added `web_search` to AVAILABLE_TOOLS
 - `src/backend/app/config.py` -- added `CLOUD_LLM_TOOLS` setting (default True)
-- `src/backend/requirements.txt` -- added `duckduckgo-search>=7.0.0`
+- `infrastructure/searxng/settings.yml` -- NEW: SearXNG meta-search config
+- `docker-compose.yml` -- added `searxng` service on internal network
 - `BUILD.md` -- documented CLOUD_LLM_TOOLS setting
 - `env_example_keys.txt` -- added CLOUD_LLM_SANITIZE, CLOUD_LLM_TOOLS
 
@@ -59,7 +62,7 @@ User message --> chat_stream()
   +--> If tool_calls accumulated:
         |
         +--> Sanitize search query (PII)
-        +--> execute_web_search(query) via DuckDuckGo
+        +--> execute_web_search(query) via SearXNG (httpx)
         +--> Append tool result to messages
         +--> Follow-up request (no tools) --> stream final answer
 ```
