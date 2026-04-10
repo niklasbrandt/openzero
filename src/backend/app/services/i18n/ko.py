@@ -377,6 +377,8 @@ translations: dict[str, str] = {
 	'diag_cloud_vision_tip': '이미지 / 비전 입력 지원',
 	'diag_cloud_reasoning': '추론',
 	'diag_cloud_reasoning_tip': '내부 사고 체인 추론 모드 지원',
+	'diag_cloud_web_search': '웹 검색',
+	'diag_cloud_web_search_tip': '실시간 웹 검색 도구 지원',
 	'diag_cloud_cap_yes': '예',
 	'diag_cloud_cap_no': '아니요',
 	'diag_local_why': 'VPS에서 비공개, 상시 가동 추론. 외부 의존성 없음.',

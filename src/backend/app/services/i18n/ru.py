@@ -377,6 +377,8 @@ translations: dict[str, str] = {
 	'diag_cloud_vision_tip': 'Поддерживает ввод изображений / зрение',
 	'diag_cloud_reasoning': 'Рассуждения',
 	'diag_cloud_reasoning_tip': 'Поддерживает внутренний режим рассуждений «цепочка мыслей»',
+	'diag_cloud_web_search': 'Веб-поиск',
+	'diag_cloud_web_search_tip': 'Поддерживает инструмент поиска в вебе в режиме реального времени',
 	'diag_cloud_cap_yes': 'да',
 	'diag_cloud_cap_no': 'нет',
 	'diag_local_why': 'Частный постоянно работающий вывод на VPS. Нет внешних зависимостей.',

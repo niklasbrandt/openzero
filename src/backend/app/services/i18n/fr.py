@@ -378,6 +378,8 @@ translations: dict[str, str] = {
 	'diag_cloud_vision_tip': 'Prend en charge les entrées image / vision',
 	'diag_cloud_reasoning': 'Raisonnement',
 	'diag_cloud_reasoning_tip': 'Prend en charge le mode de raisonnement en chaîne de pensée',
+	'diag_cloud_web_search': 'Recherche web',
+	'diag_cloud_web_search_tip': 'Prend en charge la recherche web en temps réel',
 	'diag_cloud_cap_yes': 'oui',
 	'diag_cloud_cap_no': 'non',
 	'diag_local_why': 'Inférence privée et toujours disponible sur le VPS. Aucune dépendance externe.',

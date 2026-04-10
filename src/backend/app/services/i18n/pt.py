@@ -377,6 +377,8 @@ translations: dict[str, str] = {
 	'diag_cloud_vision_tip': 'Suporta entrada de imagem / visão',
 	'diag_cloud_reasoning': 'Raciocínio',
 	'diag_cloud_reasoning_tip': 'Suporta modo de raciocínio em cadeia de pensamento',
+	'diag_cloud_web_search': 'Pesquisa web',
+	'diag_cloud_web_search_tip': 'Suporta ferramenta de pesquisa web em tempo real',
 	'diag_cloud_cap_yes': 'sim',
 	'diag_cloud_cap_no': 'não',
 	'diag_local_why': 'Inferência privada e sempre ativa no VPS. Sem dependência externa.',

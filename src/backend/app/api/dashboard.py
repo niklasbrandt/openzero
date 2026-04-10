@@ -2127,6 +2127,7 @@ async def server_info() -> dict:
 			"function_calling": None,  # None = unknown, True/False = known
 			"vision": None,
 			"reasoning": None,
+			"web_search": None,
 			"max_completion_tokens": 0,
 			"tokenizer": "",
 		}
@@ -2190,6 +2191,15 @@ async def server_info() -> dict:
 						cloud_meta["reasoning"] = True
 					elif _caps.get("reasoning") is not None:
 						cloud_meta["reasoning"] = bool(_caps["reasoning"])
+					# Web search
+					_pricing: dict = _md.get("pricing") or {}
+					_ws_price = _pricing.get("web_search", "0")
+					if "web_search" in _caps:
+						cloud_meta["web_search"] = bool(_caps["web_search"])
+					elif "web_search" in _sup_params:
+						cloud_meta["web_search"] = True
+					elif _ws_price and _ws_price != "0":
+						cloud_meta["web_search"] = True
 		except Exception as _cme:
 			logger.debug("Cloud model metadata probe failed: %s", _cme)
 		info["tiers"]["cloud"] = cloud_meta
