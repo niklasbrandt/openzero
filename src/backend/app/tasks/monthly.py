@@ -9,16 +9,17 @@ async def monthly_review():
 	activity = await get_activity_report(days=30)
 
 	prompt = (
-		"Z, monthly review. Summarize 30-day progress, stalled initiatives, and 3 major goals for next month.\n\n"
+		"Z, it's been a full month — write a natural, honest reflection on how things went.\n"
+		"What actually moved forward, what got stuck, and what feels worth pushing on next month?\n"
+		"Write it like a thoughtful friend who's been watching alongside — flowing prose, no formal section headers.\n\n"
 		"STRICT OPERATIONAL DATA (THE ONLY TRUTH):\n"
 		f"{activity}\n\n"
 		f"FULL PROJECT TREE:\n{tree}\n\n"
-		"INSTRUCTIONS:\n"
+		"RULES:\n"
 		"1. Respond ONLY based on the OPERATIONAL DATA and PROJECT TREE above.\n"
-		"2. If OPERATIONAL DATA starts with '### OPERATIONAL DATA FAILURE', report the failure to the user and DO NOT list specific card names from your own memory or personal files.\n"
-		"3. CRITICAL: Ignore any placeholder or '[e.g., ...]' values found in your personal/business context (like Acme Studio, WebGPU, etc.). If you see them, they are NOT your user's data.\n"
-		"4. Be sharp, direct, and data-driven. No filler.\n"
-		"5. Format with clear headers: ### 1. 30-Day Progress | ### 2. 3 Major Goals for Next Month"
+		"2. If OPERATIONAL DATA starts with '### OPERATIONAL DATA FAILURE', tell the user about the disconnection honestly — don't list specific card names from memory.\n"
+		"3. CRITICAL: Ignore any placeholder or '[e.g., ...]' values from personal/business context (like Acme Studio, WebGPU, etc.).\n"
+		"4. Suggest 3 meaningful goals for next month, woven naturally into the prose.\n"
 	)
 	
 	content = await chat(prompt, _feature="monthly_review")
@@ -32,6 +33,6 @@ async def monthly_review():
 	# Send Telegram Notification
 	from app.services.notifier import send_notification
 	from app.config import settings
-	await send_notification(f"*Monthly Mission Review*\n\n{content}\n\n[Dashboard]({settings.BASE_URL}/dashboard)")
+	await send_notification(f"---\n{content}\n\n[Dashboard]({settings.BASE_URL}/dashboard)")
 	
 	return content

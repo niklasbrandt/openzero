@@ -9,15 +9,16 @@ async def quarterly_review():
 	activity = await get_activity_report(days=90)
 
 	prompt = (
-		"Z, QUARTERLY STRATEGIC REVIEW. \n\n"
+		"Z, three months have passed — write a genuine, flowing reflection on the quarter.\n"
+		"What actually happened? What shifted, what stalled, and what feels important as you look ahead?\n"
+		"Write it like a thoughtful friend who's been paying attention — no corporate structure, no bullet headers, just honest prose.\n\n"
 		"OPERATIONAL DATA (PAST 90 DAYS ACTIVITY):\n"
 		f"{activity}\n\n"
 		f"FULL PROJECT TREE:\n{tree}\n\n"
-		"INSTRUCTIONS:\n"
+		"RULES:\n"
 		"1. Analyze the past 90 days based ONLY on the data above.\n"
-		"2. Focus on major mission completions and long-term trajectory.\n"
+		"2. Focus on what actually moved and what the longer arc looks like from here.\n"
 		"3. CRITICAL: Ignore any placeholder or '[e.g., ...]' values in your personal context.\n"
-		"4. Be professional and high-level."
 	)
 	
 	content = await chat(prompt)
@@ -30,6 +31,6 @@ async def quarterly_review():
 	
 	# Send Telegram Notification
 	from app.services.notifier import send_notification
-	await send_notification(f"*Quarterly Strategic Review*\n\n{content}")
+	await send_notification(f"---\n{content}")
 	
 	return content
