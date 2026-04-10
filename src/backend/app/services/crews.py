@@ -33,16 +33,25 @@ A) DEFAULT — routine output that belongs to THIS crew's ongoing domain:
    [ACTION: CREATE_LIST | BOARD: <exact crew name> | NAME: <topic / phase>]
    [ACTION: CREATE_TASK | BOARD: <exact crew name> | LIST: <list name> | TITLE: <item>]  ← one per item
 
-B) NAMED INITIATIVE — whenever the output is for a specific event, plan, or topic that has
-   its own distinct name (e.g. "Birthday 2026", "Marathon Training", "Q3 Roadmap"):
+B) NAMED INITIATIVE — ONLY for a one-off external event, project, or initiative that has
+   a unique proper name tied to a specific occasion or goal (e.g. "Birthday 2026",
+   "Marathon Training", "Q3 Roadmap", "Portugal Trip"). These are things that exist
+   *independently* of any crew, have a clear start/end, and would make sense as a
+   standalone project for a person who doesn't know which crew produced them.
    Create a dedicated project using that initiative name — NOT "Crews".
    [ACTION: CREATE_PROJECT | NAME: <initiative name> | DESCRIPTION: <description>]
    [ACTION: CREATE_BOARD | PROJECT: <initiative name> | NAME: <board name>]
    [ACTION: CREATE_LIST | BOARD: <board name> | NAME: <column>]  ← repeat per phase/column
    [ACTION: CREATE_TASK | BOARD: <board name> | LIST: <column> | TITLE: <item>]
 
-Rule of thumb: does this output belong to the crew's ongoing domain (e.g. today's workout
-log under Fitness)? → A. Does it have its own event/project name? → B with that name.
+Rule of thumb — when in doubt, use A:
+- Routine crew output → A. Examples: meal plans, workout logs, recipe collections,
+  weekly check-ins, shopping lists, health summaries, financial reports. These always
+  belong on the crew's own board, even if the list has a descriptive name like
+  "New Recipes", "High-Protein Meals", or "Weekly Log Apr 2026".
+- One-off external initiative with a proper name → B. Testing question: could this
+  stand alone as a project a non-crew person would manage? If yes → B. If it's just
+  this crew's domain output with a label → A.
 
 CRITICAL: The "Crews" project must only ever contain boards named exactly as crew IDs.
 Never add a board to "Crews" with a custom name. Use option B instead.
