@@ -3,8 +3,9 @@ Web Search Tool
 ---------------
 Provider-agnostic web search for openZero's LLM tool-calling pipeline.
 
-Uses DuckDuckGo by default (zero config, no API key). Falls back gracefully
-when the network is unavailable or rate-limited.
+Uses the self-hosted SearXNG instance (meta-search aggregator) running as a
+sibling Docker container.  Zero external API keys required — SearXNG fans out
+to Google, Bing, DuckDuckGo, Wikipedia etc. and merges results.
 
 The module exposes:
 - ``WEB_SEARCH_TOOL_DEF``: OpenAI-compatible tool definition dict (for injection
@@ -18,10 +19,14 @@ arguments before passing them here. This module performs the search as-is.
 """
 
 import logging
-import asyncio
 from typing import Optional
 
+import httpx
+
 logger = logging.getLogger(__name__)
+
+# SearXNG runs on the internal Docker network — same compose stack
+SEARXNG_URL = "http://searxng:8080/search"
 
 # ---------------------------------------------------------------------------
 # Tool definition — injected into the ``tools`` array on chat completions
@@ -51,11 +56,11 @@ WEB_SEARCH_TOOL_DEF: dict = {
 
 
 # ---------------------------------------------------------------------------
-# Search execution — DuckDuckGo (no API key)
+# Search execution — SearXNG JSON API
 # ---------------------------------------------------------------------------
 
 async def execute_web_search(query: str, max_results: int = 5) -> str:
-	"""Run a web search and return a formatted string of results.
+	"""Run a web search via the local SearXNG instance.
 
 	Returns a human-readable summary suitable for injection into an LLM
 	context window as a tool response.  On failure returns an error message
@@ -65,18 +70,19 @@ async def execute_web_search(query: str, max_results: int = 5) -> str:
 		return "Error: empty search query."
 
 	try:
-		from duckduckgo_search import DDGS
-	except ImportError:
-		logger.error("web_search: duckduckgo-search not installed — run: pip install duckduckgo-search")
-		return "Web search unavailable (dependency missing)."
+		async with httpx.AsyncClient(timeout=10.0) as client:
+			resp = await client.get(
+				SEARXNG_URL,
+				params={
+					"q": query,
+					"format": "json",
+					"categories": "general",
+				},
+			)
+			resp.raise_for_status()
+			data = resp.json()
 
-	try:
-		# DDGS is synchronous — run in a thread to avoid blocking the event loop
-		def _search() -> list[dict]:
-			with DDGS() as ddgs:
-				return list(ddgs.text(query, max_results=max_results))
-
-		results = await asyncio.to_thread(_search)
+		results = data.get("results", [])[:max_results]
 
 		if not results:
 			return f"No web results found for: {query}"
@@ -85,19 +91,20 @@ async def execute_web_search(query: str, max_results: int = 5) -> str:
 		lines: list[str] = [f"Web search results for: {query}\n"]
 		for i, r in enumerate(results, 1):
 			title = r.get("title", "")
-			body = r.get("body", "")
-			href = r.get("href", "")
+			content = r.get("content", "")
+			url = r.get("url", "")
 			lines.append(f"{i}. {title}")
-			if body:
-				lines.append(f"   {body}")
-			if href:
-				lines.append(f"   Source: {href}")
+			if content:
+				lines.append(f"   {content}")
+			if url:
+				lines.append(f"   Source: {url}")
 			lines.append("")
 
 		return "\n".join(lines).strip()
 
 	except Exception as e:
 		logger.warning("web_search failed for query %r: %s", query, e)
+		return f"Web search temporarily unavailable ({type(e).__name__}). Please try again later."
 		return f"Web search temporarily unavailable ({type(e).__name__}). Please try again later."
 
 

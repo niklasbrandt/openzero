@@ -298,6 +298,18 @@ services:
       - "traefik.http.middlewares.pihole-restrict.ipallowlist.sourcerange=100.64.0.0/10"
       - "traefik.http.routers.pihole.middlewares=pihole-restrict"
 
+  searxng:
+    image: searxng/searxng:latest
+    restart: always
+    volumes:
+      - ./infrastructure/searxng/settings.yml:/etc/searxng/settings.yml:ro
+    networks:
+      - internal
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
   # Native Crews Orchestration replaces Dify
 
 

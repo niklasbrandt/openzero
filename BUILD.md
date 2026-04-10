@@ -288,7 +288,8 @@ When routing requests to cloud providers (Groq, OpenAI), openZero can automatica
 When the cloud tier has tool-calling enabled, the model can autonomously decide to search the web for current information. This uses standard OpenAI function-calling on `/v1/chat/completions` and works across all major providers (Mistral, Groq, OpenAI, OpenRouter).
 
 - **Enabled by default** (`CLOUD_LLM_TOOLS=true`).
-- Uses DuckDuckGo for zero-config web search (no API key needed).
+- Uses the self-hosted **SearXNG** meta-search container (aggregates Google, Bing, DuckDuckGo, Wikipedia). No external API keys required.
+- SearXNG runs as a sibling Docker container on the internal network (`searxng:8080`).
 - PII sanitization applies to search queries when `CLOUD_LLM_SANITIZE=true`.
 - The model decides autonomously when to search (e.g. user asks about recent events, prices, weather).
 - Limited to a single tool round per request to prevent infinite loops.
