@@ -2120,8 +2120,49 @@ async def server_info() -> dict:
 	#   reasoning:                               supported_parameters includes "reasoning" (OpenRouter)
 	#   max_out:                                 top_provider.max_completion_tokens (OpenRouter)
 	#   tokenizer:                               architecture.tokenizer (OpenRouter)
-	#   params_b: num_parameters (some providers, scaled to B) | regex from name/description/id
+	#   params_b: num_parameters (some providers, scaled to B) | regex from name/description/id | static table
 	#   model_name: name (Mistral) | id (fallback)
+	#
+	# Static fallback table — used when the /v1/models probe doesn't return a value.
+	# Providers like Mistral don't expose num_parameters and some model names contain no "B" suffix.
+	# Keyed by lowercase model id. Add both versioned id AND -latest alias.
+	_STATIC_MODEL_META: dict = {
+		# Mistral Small 4 (MoE 119B total / 6.5B active)
+		"mistral-small-2603": {"params_b": 119.0, "ctx_size": 256000},
+		"mistral-small-latest": {"params_b": 119.0, "ctx_size": 256000},
+		# Mistral Small 3.2
+		"mistral-small-2506": {"params_b": 24.0, "ctx_size": 131072},
+		# Mistral Small 3.1 (legacy)
+		"mistral-small-2503": {"params_b": 24.0, "ctx_size": 131072},
+		# Mistral Small 3.0 (legacy)
+		"mistral-small-2501": {"params_b": 24.0, "ctx_size": 32768},
+		# Mistral Medium 3.1
+		"mistral-medium-3-1-2508": {"params_b": 123.0, "ctx_size": 131072},
+		"mistral-medium-2505": {"params_b": 123.0, "ctx_size": 131072},
+		"mistral-medium-latest": {"params_b": 123.0, "ctx_size": 131072},
+		# Mistral Large 3
+		"mistral-large-2512": {"params_b": 123.0, "ctx_size": 131072},
+		"mistral-large-latest": {"params_b": 123.0, "ctx_size": 131072},
+		# Mixtral open-weight
+		"open-mixtral-8x22b": {"params_b": 141.0, "ctx_size": 65536},
+		"open-mixtral-8x7b": {"params_b": 46.7, "ctx_size": 32768},
+		"open-mistral-7b": {"params_b": 7.0, "ctx_size": 32768},
+		"open-mistral-nemo": {"params_b": 12.0, "ctx_size": 131072},
+		# Groq / Meta Llama
+		"llama-3.3-70b-versatile": {"params_b": 70.0, "ctx_size": 131072},
+		"llama-3.3-70b-specdec": {"params_b": 70.0, "ctx_size": 8192},
+		"llama-3.1-70b-versatile": {"params_b": 70.0, "ctx_size": 131072},
+		"llama-3.1-8b-instant": {"params_b": 8.0, "ctx_size": 131072},
+		"llama3-70b-8192": {"params_b": 70.0, "ctx_size": 8192},
+		"llama3-8b-8192": {"params_b": 8.0, "ctx_size": 8192},
+		"mixtral-8x7b-32768": {"params_b": 46.7, "ctx_size": 32768},
+		"gemma2-9b-it": {"params_b": 9.0, "ctx_size": 8192},
+		# Magistral (Mistral reasoning)
+		"magistral-medium-2506": {"params_b": 123.0, "ctx_size": 131072},
+		"magistral-small-2506": {"params_b": 24.0, "ctx_size": 131072},
+		"magistral-medium-latest": {"params_b": 123.0, "ctx_size": 131072},
+		"magistral-small-latest": {"params_b": 24.0, "ctx_size": 131072},
+	}
 	if settings.cloud_configured:
 		cloud_meta: dict = {
 			"ctx_size": 0,
@@ -2222,6 +2263,22 @@ async def server_info() -> dict:
 						_raw_p = _md.get("num_parameters", 0) or 0
 						if _raw_p:
 							cloud_meta["params_b"] = round(_raw_p / 1_000_000_000, 1)
+				# Static fallback — fill in params_b and ctx_size for well-known models whose
+				# providers don't expose these values via the /v1/models response.
+				# Only fills gaps (does not override values already resolved from the API).
+				_sml_id = _cloud_model.lower()
+				_static_entry = _STATIC_MODEL_META.get(_sml_id)
+				if not _static_entry:
+					# Prefix / contains match for versioned aliases (e.g. mistral-small-2603 ↔ mistral-small-latest)
+					for _sk in _STATIC_MODEL_META:
+						if _sk in _sml_id or _sml_id in _sk:
+							_static_entry = _STATIC_MODEL_META[_sk]
+							break
+				if _static_entry:
+					if not cloud_meta["params_b"]:
+						cloud_meta["params_b"] = _static_entry.get("params_b", 0.0)
+					if not cloud_meta["ctx_size"]:
+						cloud_meta["ctx_size"] = _static_entry.get("ctx_size", 0)
 		except Exception as _cme:
 			logger.debug("Cloud model metadata probe failed: %s", _cme)
 		info["tiers"]["cloud"] = cloud_meta
