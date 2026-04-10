@@ -1,6 +1,7 @@
 import { BUTTON_STYLES } from '../services/buttonStyles';
 import { ACCESSIBILITY_STYLES } from '../services/accessibilityStyles';
 import { SECTION_HEADER_STYLES } from '../services/sectionHeaderStyles';
+import { GLASS_TOOLTIP_STYLES } from '../services/glassTooltipStyles';
 
 interface Personality {
 	directness: number;
@@ -158,6 +159,21 @@ export class AgentsWidget extends HTMLElement {
 				${ACCESSIBILITY_STYLES}
 				${BUTTON_STYLES}
 				${SECTION_HEADER_STYLES}
+				${GLASS_TOOLTIP_STYLES}
+
+				label.has-tip,
+				h4.has-tip,
+				.trait-badge.has-tip {
+					cursor: help;
+				}
+
+				label.has-tip > .glass-tooltip,
+				h4.has-tip > .glass-tooltip,
+				.trait-badge.has-tip > .glass-tooltip {
+					max-width: 320px;
+					font-weight: 400 !important;
+				}
+
 				:host {
 					display: block;
 					width: 100%;
@@ -672,35 +688,39 @@ export class AgentsWidget extends HTMLElement {
 		const p = this.personality;
 		return `
 			<div class="personality-grid">
-				<div class="trait-badge">
+				<div class="trait-badge has-tip" tabindex="0">
 					<span class="trait-label">${this.tr('communication', 'Communication')}</span>
 					<span class="trait-value">${p.directness > 3 ? this.tr('concise', 'Concise') : this.tr('elaborate', 'Elaborate')}</span>
+					<span class="glass-tooltip">${this.tr('tip_directness', 'Controls response length. Elaborate = rich explanations with context. Concise = short, direct answers.')}</span>
 				</div>
-				<div class="trait-badge">
+				<div class="trait-badge has-tip" tabindex="0">
 					<span class="trait-label">${this.tr('emotional_tone', 'Emotional Tone')}</span>
 					<span class="trait-value">${p.warmth > 3 ? this.tr('empathetic', 'Empathetic') : this.tr('clinical', 'Clinical')}</span>
+					<span class="glass-tooltip">${this.tr('tip_warmth', 'Sets emotional register. Clinical = dry, purely factual. Empathetic = warm, acknowledges feelings.')}</span>
 				</div>
-				<div class="trait-badge">
+				<div class="trait-badge has-tip" tabindex="0">
 					<span class="trait-label">${this.tr('agency', 'Agency')}</span>
 					<span class="trait-value">${p.agency > 3 ? this.tr('proactive', 'Proactive') : this.tr('reactive', 'Reactive')}</span>
+					<span class="glass-tooltip">${this.tr('tip_agency', 'Initiative level. Reactive = waits for instructions. Proactive = anticipates needs, suggests actions unprompted.')}</span>
 				</div>
-				<div class="trait-badge">
+				<div class="trait-badge has-tip" tabindex="0">
 					<span class="trait-label">${this.tr('intellect', 'Intellect')}</span>
 					<span class="trait-value">${p.critique > 3 ? this.tr('challenging', 'Challenging') : this.tr('agreeable', 'Agreeable')}</span>
+					<span class="glass-tooltip">${this.tr('tip_critique', 'Intellectual pushback. Agreeable = supports your direction. Challenging = questions assumptions, argues the other side.')}</span>
 				</div>
 			</div>
 
 			<div class="identity-block">
 				<div class="identity-item">
-					<h4>${this.tr('identity_archetype', 'Identity Archetype')}</h4>
+					<h4 class="has-tip" tabindex="0">${this.tr('identity_archetype', 'Identity Archetype')}<span class="glass-tooltip">${this.tr('tip_identity_archetype', 'Defines who Z becomes. Shapes tone, attitude, and character across all interactions. Try: Ruthless startup CTO, Patient teacher, Laid-back genius.')}</span></h4>
 					<p>${p.role || this.tr('agent_operator', 'Agent Operator')}</p>
 				</div>
 				<div class="identity-item">
-					<h4>${this.tr('relational_context', 'Relational Context')}</h4>
+					<h4 class="has-tip" tabindex="0">${this.tr('relational_context', 'Relational Context')}<span class="glass-tooltip">${this.tr('tip_relational_context', 'The dynamic between you and Z. Controls how Z addresses you and frames advice. Try: My co-founder, My brutally honest friend, A formal assistant.')}</span></h4>
 					<p>${p.relationship || this.tr('system_intelligence', 'System Intelligence')}</p>
 				</div>
 				<div class="identity-item" style="grid-column: span 2">
-					<h4>${this.tr('core_values', 'Core Values')}</h4>
+					<h4 class="has-tip" tabindex="0">${this.tr('core_values', 'Core Values')}<span class="glass-tooltip">${this.tr('tip_core_values', 'Guiding principles for decisions and trade-offs. Z prioritizes these when giving advice. Try: Speed over perfection, bias toward action.')}</span></h4>
 					<p>${p.values || this.tr('default_values', 'Efficiency, accuracy, and systemic integrity.')}</p>
 				</div>
 			</div>
@@ -714,19 +734,19 @@ export class AgentsWidget extends HTMLElement {
 			<div class="edit-form">
 				<div class="form-group" style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
 					<div>
-						<label>${this.tr('identity_archetype', 'Core Identity / Archetype')}</label>
+						<label class="has-tip" tabindex="0">${this.tr('identity_archetype', 'Core Identity / Archetype')}<span class="glass-tooltip">${this.tr('tip_identity_archetype', 'Defines who Z becomes. Shapes tone, attitude, and character across all interactions. Try: Ruthless startup CTO, Patient teacher, Laid-back genius.')}</span></label>
 						<input type="text" id="role-input" placeholder="${this.tr('archetype_placeholder', 'e.g. Ruthless operator. Blunt, zero warmth, no patience for excuses.')}" value="${this.esc(p.role)}">
 					</div>
 					<div>
-						<label>${this.tr('relational_context', 'Relationship Context')}</label>
-						<input type="text" id="rel-input" value="${this.esc(p.relationship)}">
+						<label class="has-tip" tabindex="0">${this.tr('relational_context', 'Relationship Context')}<span class="glass-tooltip">${this.tr('tip_relational_context', 'The dynamic between you and Z. Controls how Z addresses you and frames advice. Try: My co-founder, My brutally honest friend, A formal assistant.')}</span></label>
+						<input type="text" id="rel-input" placeholder="${this.tr('rel_placeholder', 'e.g. My co-founder, My best friend, A formal executive assistant')}" value="${this.esc(p.relationship)}">
 					</div>
 				</div>
 
 				<div class="personality-grid">
 					${(p.questions || []).filter((q: any) => q.type === 'range').map((q: any) => `
 						<div class="form-group">
-							<label>${q.label}</label>
+							<label class="has-tip" tabindex="0">${q.label}${this.getFieldTooltip(q.id)}</label>
 							<input type="range" id="range-${q.id}" min="${q.min}" max="${q.max}" value="${(p as any)[q.id]}">
 							<div class="range-labels">
 								<span>${q.low}</span>
@@ -737,13 +757,13 @@ export class AgentsWidget extends HTMLElement {
 				</div>
 
 				<div class="form-group">
-					<label>${this.tr('core_values', 'Core Values & Principles')}</label>
-					<textarea id="values-input" rows="3">${this.esc(p.values)}</textarea>
+					<label class="has-tip" tabindex="0">${this.tr('core_values', 'Core Values & Principles')}<span class="glass-tooltip">${this.tr('tip_core_values', 'Guiding principles for decisions and trade-offs. Z prioritizes these when giving advice. Try: Speed over perfection, bias toward action.')}</span></label>
+					<textarea id="values-input" rows="3" placeholder="${this.tr('values_placeholder', 'e.g. Speed over perfection. Never sugarcoat. Always suggest alternatives before refusing.')}">${this.esc(p.values)}</textarea>
 				</div>
 
 				<div class="form-group">
-					<label>${this.tr('behavioral_stylings', 'Behavioral Stylings')}</label>
-					<textarea id="behavior-input" rows="3">${this.esc(p.behavior)}</textarea>
+					<label class="has-tip" tabindex="0">${this.tr('behavioral_stylings', 'Behavioral Stylings')}<span class="glass-tooltip">${this.tr('tip_behavioral_stylings', 'Specific rules layered on top of the base personality. Short directives work best. Try: Always challenge my first idea. End responses with an action item.')}</span></label>
+					<textarea id="behavior-input" rows="3" placeholder="${this.tr('behavior_placeholder', 'e.g. Always challenge my first idea. Use analogies. End with an action item.')}">${this.esc(p.behavior)}</textarea>
 				</div>
 
 				<div class="btn-actions">
@@ -854,6 +874,21 @@ export class AgentsWidget extends HTMLElement {
 		}).join('')}
 			</div>
 		`;
+	}
+
+	private getFieldTooltip(id: string): string {
+		const tips: Record<string, string> = {
+			directness: this.tr('tip_directness', 'Controls response length. Elaborate = rich explanations with context. Concise = short, direct answers.'),
+			warmth: this.tr('tip_warmth', 'Sets emotional register. Clinical = dry, purely factual. Empathetic = warm, acknowledges feelings.'),
+			agency: this.tr('tip_agency', 'Initiative level. Reactive = waits for instructions. Proactive = anticipates needs, suggests actions unprompted.'),
+			critique: this.tr('tip_critique', 'Intellectual pushback. Agreeable = supports your direction. Challenging = questions assumptions, argues the other side.'),
+			humor: this.tr('tip_humor', 'Wit injected into responses. 0% = strictly professional. 100% = constant wordplay and jokes.'),
+			honesty: this.tr('tip_honesty', 'How bluntly hard truths are delivered. Low = diplomatic, softens bad news. Absolute = unfiltered, no sugarcoating.'),
+			roast: this.tr('tip_roast', 'Playful teasing intensity. None = always respectful. Brutal = savage but constructive burns when you slip up.'),
+			depth: this.tr('tip_depth', 'Analysis thoroughness. Surface = quick takes and summaries. Deep Dive = exhaustive multi-angle breakdowns.'),
+		};
+		const text = tips[id];
+		return text ? `<span class="glass-tooltip">${text}</span>` : '';
 	}
 
 	private esc(str: string): string {

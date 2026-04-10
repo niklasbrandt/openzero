@@ -10,12 +10,24 @@ Z uses a **local + optional cloud** LLM architecture. A local llama.cpp model ru
 
 | Profile | RAM | vCPU | Local tier model | Notes |
 |---------|-----|------|-------------------|-------|
-| A — Minimal | 8 GB | 4 | Qwen3-1.7B Q4_K_M | Pi 5 or budget cloud VPS (~4 EUR/mo, 4 vCPU / 8 GB) — auto-detected |
-| B — Standard | 12 GB | 4–6 | Qwen3-1.7B Q4_K_M | Auto-detected — no manual tuning needed |
-| C — Comfortable | 24 GB | 8 | Qwen3-4B Q4_K_M | Set `LLM_LOCAL_MODEL_URL` + `LLM_LOCAL_MODEL_FILE` only |
-| D — High-end | 64 GB+ | 16+ | Qwen3-8B Q4_K_M | Set `LLM_LOCAL_MODEL_URL` + `LLM_LOCAL_MODEL_FILE` only |
+| A -- Minimal | 8 GB | 4 | Qwen3-1.7B Q4_K_M | Pi 5 or budget cloud VPS (~4 EUR/mo, 4 vCPU / 8 GB) -- auto-detected. Voice (TTS/Whisper) disabled by default. |
+| B -- Standard | 12 GB | 4-6 | Qwen3-1.7B Q4_K_M | Auto-detected -- no manual tuning needed |
+| C -- Comfortable | 24 GB | 8 | Qwen3-4B Q4_K_M | Set `LLM_LOCAL_MODEL_URL` + `LLM_LOCAL_MODEL_FILE` only |
+| D -- High-end | 64 GB+ | 16+ | Qwen3-8B Q4_K_M | Set `LLM_LOCAL_MODEL_URL` + `LLM_LOCAL_MODEL_FILE` only |
 
 The LLM container reads your server's RAM and CPU count on every start and picks the right context size, thread count, batch size, and memory strategy automatically. You do not need to set `LLM_LOCAL_CTX`, `LLM_LOCAL_THREADS`, or `LLM_LOCAL_CACHE_RAM` unless you want to override a specific value.
+
+### Voice Services (TTS + Whisper)
+
+Voice services (text-to-speech and speech-to-text) use the Docker Compose `voice` profile. They are **not started by default**, freeing ~1.4 GB of RAM for the LLM on constrained hardware.
+
+To enable voice:
+
+```bash
+docker compose --profile voice up -d
+```
+
+Or set `COMPOSE_PROFILES=voice` in your `.env` to make it permanent. On 12 GB+ machines this is recommended. On 8 GB machines, leave voice off unless you disable the local LLM and rely on cloud inference.
 
 ## 🏗️ Phase 1: Prepare your VPS (Server)
 
