@@ -2112,9 +2112,24 @@ async def server_info() -> dict:
 	info["physical_cores"] = physical_cores
 
 	# --- Cloud tier metadata probe ---
-	# Calls the cloud provider's /v1/models/{model} to get ctx window, owner, capabilities.
+	# Normalises metadata from any OpenAI-compatible provider into a single schema.
+	# Field aliases per provider:
+	#   ctx:      max_context_window (Mistral) | context_window (Groq) | context_length (OpenRouter)
+	#   vision:   capabilities.vision (Mistral) | architecture.input_modalities includes "image" (OpenRouter)
+	#   tools:    capabilities.function_calling (Mistral) | supported_parameters includes "tools" (OpenRouter/Groq)
+	#   reasoning:                               supported_parameters includes "reasoning" (OpenRouter)
+	#   max_out:                                 top_provider.max_completion_tokens (OpenRouter)
+	#   tokenizer:                               architecture.tokenizer (OpenRouter)
 	if settings.cloud_configured:
-		cloud_meta: dict = {"ctx_size": 0, "owned_by": "", "capabilities": {}}
+		cloud_meta: dict = {
+			"ctx_size": 0,
+			"owned_by": "",
+			"function_calling": None,  # None = unknown, True/False = known
+			"vision": None,
+			"reasoning": None,
+			"max_completion_tokens": 0,
+			"tokenizer": "",
+		}
 		try:
 			_cloud_base = settings.LLM_CLOUD_BASE_URL.rstrip("/")
 			if not _cloud_base.endswith("/v1"):
@@ -2122,13 +2137,11 @@ async def server_info() -> dict:
 			_cloud_model = settings.LLM_MODEL_CLOUD or ""
 			_cloud_headers = {"Authorization": f"Bearer {settings.LLM_CLOUD_API_KEY}"} if settings.LLM_CLOUD_API_KEY else {}
 			async with httpx.AsyncClient(timeout=5.0) as _cc:
-				# Try per-model endpoint first (Mistral, etc.)
+				_md = None
+				# Try per-model endpoint first (Mistral, Groq, etc.)
 				_mr = await _cc.get(f"{_cloud_base}/models/{_cloud_model}", headers=_cloud_headers)
 				if _mr.status_code == 200:
 					_md = _mr.json()
-					cloud_meta["ctx_size"] = _md.get("max_context_window", 0)
-					cloud_meta["owned_by"] = _md.get("owned_by", "")
-					cloud_meta["capabilities"] = _md.get("capabilities", {})
 				else:
 					# Fallback: list all models and find ours
 					_lr = await _cc.get(f"{_cloud_base}/models", headers=_cloud_headers)
@@ -2137,10 +2150,46 @@ async def server_info() -> dict:
 						_models = _ldata.get("data", []) if isinstance(_ldata, dict) else _ldata
 						for _m in _models:
 							if _m.get("id") == _cloud_model:
-								cloud_meta["ctx_size"] = _m.get("max_context_window", 0)
-								cloud_meta["owned_by"] = _m.get("owned_by", "")
-								cloud_meta["capabilities"] = _m.get("capabilities", {})
+								_md = _m
 								break
+
+				if _md:
+					# Context window — try all known aliases in priority order
+					cloud_meta["ctx_size"] = (
+						_md.get("max_context_window")                          # Mistral
+						or _md.get("context_window")                           # Groq
+						or _md.get("context_length")                           # OpenRouter
+						or (_md.get("top_provider") or {}).get("context_length")  # OpenRouter top_provider
+						or 0
+					)
+					cloud_meta["owned_by"] = _md.get("owned_by", "")
+					# Max completion tokens (OpenRouter)
+					cloud_meta["max_completion_tokens"] = (
+						(_md.get("top_provider") or {}).get("max_completion_tokens", 0) or 0
+					)
+					# Tokenizer (OpenRouter architecture object)
+					_arch = _md.get("architecture") or {}
+					cloud_meta["tokenizer"] = _arch.get("tokenizer", "")
+					# Input modalities (OpenRouter) — used for vision detection
+					_input_mods: list = _arch.get("input_modalities") or []
+					# Provider-specific capability objects
+					_caps: dict = _md.get("capabilities") or {}
+					_sup_params: list = _md.get("supported_parameters") or []
+					# Function / tool calling
+					if "function_calling" in _caps:
+						cloud_meta["function_calling"] = bool(_caps["function_calling"])
+					elif "tools" in _sup_params or "tool_choice" in _sup_params:
+						cloud_meta["function_calling"] = True
+					# Vision / image input
+					if "vision" in _caps:
+						cloud_meta["vision"] = bool(_caps["vision"])
+					elif "image" in _input_mods or "file" in _input_mods:
+						cloud_meta["vision"] = True
+					# Reasoning / chain-of-thought
+					if "reasoning" in _sup_params or "include_reasoning" in _sup_params:
+						cloud_meta["reasoning"] = True
+					elif _caps.get("reasoning") is not None:
+						cloud_meta["reasoning"] = bool(_caps["reasoning"])
 		except Exception as _cme:
 			logger.debug("Cloud model metadata probe failed: %s", _cme)
 		info["tiers"]["cloud"] = cloud_meta
