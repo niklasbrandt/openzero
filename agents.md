@@ -113,6 +113,7 @@ All code written for the openZero dashboard **MUST** conform to **WCAG 2.1 Level
 - **Always Push:** After committing changes to git, you MUST push to the remote repository. Never leave commits local-only.
 - **Always Sync VPS:** After pushing, you MUST run `scripts/sync.sh` to deploy the changes to the VPS. Code changes are not complete until they are live on the server.
 - **Single Step:** Treat commit, push, and VPS sync as one atomic workflow. Do not stop after committing without pushing and syncing.
+- **No Private Details in Commit Messages:** Commit messages are public. Never include personal context, user data, private conversation content, health details, or any other private information in commit subjects or bodies. Describe only the technical change (e.g. `fix: enrich memory search query for follow-up messages` — not what the conversation was about).
 
 ## 18. Design System & CSS Architecture
 
