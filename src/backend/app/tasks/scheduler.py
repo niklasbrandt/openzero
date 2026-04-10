@@ -389,7 +389,7 @@ async def load_custom_tasks():
 				# Use a wrapper to capture the specific message for this job
 				def make_task(msg):
 					async def notify_task():
-					await send_notification(msg)
+						await send_notification(msg)
 					return notify_task
 
 				trigger = None
