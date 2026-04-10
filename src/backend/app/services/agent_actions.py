@@ -91,7 +91,7 @@ async def schedule_reminder(message: str, interval_minutes: int, duration_hours:
 	tz = pytz.timezone(tz_str)
 	
 	async def send_reminder_task():
-		await send_notification(f"🔔 *Z: Periodic Reminder*\n\n{message}")
+		await send_notification(f"🔔 {message}")
 
 	end_date = None
 	if duration_hours:

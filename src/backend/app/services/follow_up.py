@@ -234,9 +234,9 @@ async def run_proactive_follow_up() -> None:
 				f"{c['name']} ({urgency})" for c, urgency, _ in due_cards[:5]
 			)
 			prompt = (
-				f"The user has these mission items due for a check-in: {task_line}. "
-				"Ask them warmly and directly for a progress update on these specific missions. "
-				"Keep it concise (1-2 sentences). No filler. Just the mission check."
+				f"The user has these things on their plate right now: {task_line}. "
+				"Write a short, casual check-in — like a friend who knows what they're working on just asking how it's going. "
+				"One or two sentences, natural and human. No labels, no headers."
 			)
 			from app.services.llm import chat
 			from app.services.notifier import send_notification, get_stats_footer as _get_stats_footer, get_nav_markup
@@ -250,7 +250,7 @@ async def run_proactive_follow_up() -> None:
 			footer = await _get_stats_footer()
 			lang = await get_user_lang()
 			t = get_translations(lang)
-			await send_notification(f"*Mission Check:*\n\n{nudge}{footer}", reply_markup=get_nav_markup(t))
+			await send_notification(f"{nudge}{footer}", reply_markup=get_nav_markup(t))
 			logger.info("Follow-up: Sent nudge for %s tasks.", len(due_cards))
 
 	except Exception as e:
@@ -287,9 +287,9 @@ async def evening_reminder() -> None:
 			time_label = "end of day" if hour >= 19 else "this evening"
 
 			prompt = (
-				f"It is {time_label}. The user still has these mission items on their Today board: {task_names}. "
-				"Deliver a direct, zero-fluff evening check. Remind them what is still open and push them "
-				"to either finish it tonight or move it consciously. Two sentences max."
+				f"It's {time_label} and the user still has these things open: {task_names}. "
+				"Write a casual, human message nudging them to wrap things up or consciously let them go for tonight. "
+				"Keep it short and natural — like something a close friend might send. No headers or labels."
 			)
 			from app.services.llm import chat
 			from app.services.notifier import send_notification, get_stats_footer as _get_stats_footer, get_nav_markup
@@ -302,7 +302,7 @@ async def evening_reminder() -> None:
 			footer = await _get_stats_footer()
 			lang = await get_user_lang()
 			t = get_translations(lang)
-			await send_notification(f"*Evening Check:*\n\n{nudge}{footer}", reply_markup=get_nav_markup(t))
+			await send_notification(f"{nudge}{footer}", reply_markup=get_nav_markup(t))
 			logger.info("Evening reminder: sent for %d tasks.", len(today_cards))
 	except Exception as e:
 		logger.error("Evening reminder failed: %s", e)
@@ -332,9 +332,9 @@ async def check_active_tracking_sessions() -> None:
 					if now >= due_dt and not m.get("sent"):
 						logger.info("Proximity: Milestone check (Session %s)", session.id)
 						prompt = (
-							f"Target Zero: The allocated duration for this mission item has passed: '{m['task']}'. "
-							"Do a technical progress check. Ask if this segment is complete or if unexpected friction occurred. "
-							"Keep it direct and professional."
+						f"The time block for '{m['task']}' just ran out. "
+						"Check in naturally — did they finish, or did something get in the way? "
+						"Short and casual, no jargon."
 						)
 						from app.services.llm import chat
 						from app.services.notifier import send_notification, get_stats_footer as _get_stats_footer, get_nav_markup
@@ -343,7 +343,7 @@ async def check_active_tracking_sessions() -> None:
 						footer = await _get_stats_footer()
 						lang = await get_user_lang()
 						t = get_translations(lang)
-						await send_notification(f"⚖️ *Segment Check:* \n\n{nudge}{footer}", reply_markup=get_nav_markup(t))
+						await send_notification(f"{nudge}{footer}", reply_markup=get_nav_markup(t))
 						m["sent"] = True
 						modified = True
 				
@@ -351,9 +351,9 @@ async def check_active_tracking_sessions() -> None:
 				if now >= session.end_time and not session.final_nudge_sent:
 					logger.info("Proximity: Final check (Session %s)", session.id)
 					prompt = (
-						f"Target Zero: The full mission timeframe is complete for: {session.tasks}. "
-						"Ask for final confirmation on which blocks reached 100% completion. "
-						"Be direct. This is the final mission-wrap-up."
+						f"The whole session is done — {session.tasks}. "
+						"Write a brief, warm wrap-up note asking how it went and what actually got finished. "
+						"Conversational, no corporate framing."
 					)
 					from app.services.llm import chat
 					from app.services.notifier import send_notification, get_stats_footer as _get_stats_footer, get_nav_markup
@@ -362,7 +362,7 @@ async def check_active_tracking_sessions() -> None:
 					footer = await _get_stats_footer()
 					lang = await get_user_lang()
 					t = get_translations(lang)
-					await send_notification(f"🏁 *Final Mission Wrap-up:* \n\n{nudge}{footer}", reply_markup=get_nav_markup(t))
+					await send_notification(f"{nudge}{footer}", reply_markup=get_nav_markup(t))
 					session.final_nudge_sent = True
 					session.is_active = False
 					modified = True
