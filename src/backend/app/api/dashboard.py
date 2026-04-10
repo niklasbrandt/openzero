@@ -2111,6 +2111,40 @@ async def server_info() -> dict:
 
 	info["physical_cores"] = physical_cores
 
+	# --- Cloud tier metadata probe ---
+	# Calls the cloud provider's /v1/models/{model} to get ctx window, owner, capabilities.
+	if settings.cloud_configured:
+		cloud_meta: dict = {"ctx_size": 0, "owned_by": "", "capabilities": {}}
+		try:
+			_cloud_base = settings.LLM_CLOUD_BASE_URL.rstrip("/")
+			if not _cloud_base.endswith("/v1"):
+				_cloud_base = f"{_cloud_base}/v1"
+			_cloud_model = settings.LLM_MODEL_CLOUD or ""
+			_cloud_headers = {"Authorization": f"Bearer {settings.LLM_CLOUD_API_KEY}"} if settings.LLM_CLOUD_API_KEY else {}
+			async with httpx.AsyncClient(timeout=5.0) as _cc:
+				# Try per-model endpoint first (Mistral, etc.)
+				_mr = await _cc.get(f"{_cloud_base}/models/{_cloud_model}", headers=_cloud_headers)
+				if _mr.status_code == 200:
+					_md = _mr.json()
+					cloud_meta["ctx_size"] = _md.get("max_context_window", 0)
+					cloud_meta["owned_by"] = _md.get("owned_by", "")
+					cloud_meta["capabilities"] = _md.get("capabilities", {})
+				else:
+					# Fallback: list all models and find ours
+					_lr = await _cc.get(f"{_cloud_base}/models", headers=_cloud_headers)
+					if _lr.status_code == 200:
+						_ldata = _lr.json()
+						_models = _ldata.get("data", []) if isinstance(_ldata, dict) else _ldata
+						for _m in _models:
+							if _m.get("id") == _cloud_model:
+								cloud_meta["ctx_size"] = _m.get("max_context_window", 0)
+								cloud_meta["owned_by"] = _m.get("owned_by", "")
+								cloud_meta["capabilities"] = _m.get("capabilities", {})
+								break
+		except Exception as _cme:
+			logger.debug("Cloud model metadata probe failed: %s", _cme)
+		info["tiers"]["cloud"] = cloud_meta
+
 	# --- Per-container RAM (Docker socket) ---
 	# Queries live RSS for each running container via the mounted Docker socket.
 	# RSS = memory_stats.usage minus the kernel's page cache (reclaimable).
