@@ -6,6 +6,8 @@ async def generate_speech(text: str) -> bytes:
 	Generate speech from text using the local TTS service.
 	Returns audio bytes (mp3).
 	"""
+	if not settings.TTS_BASE_URL:
+		raise Exception("TTS service not configured (voice profile disabled)")
 	url = f"{settings.TTS_BASE_URL}/v1/audio/speech"
 	data = {
 		"model": "tts-1",
