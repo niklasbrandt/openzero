@@ -550,11 +550,12 @@ async def get_activity_report(days: int = 30) -> str:
 	"""Fetch a detailed record of cards finished vs. cards stalled vs. WIP state.
 	This is the 'truth' used by the Review tasks to prevent hallucinations.
 	"""
-	token = await get_planka_auth_token()
-	headers = {"Authorization": f"Bearer {token}"}
 	cutoff = datetime.now() - timedelta(days=days)
-	
+
 	try:
+		token = await get_planka_auth_token()
+		headers = {"Authorization": f"Bearer {token}"}
+
 		async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, timeout=20.0, headers=headers) as client:
 			resp = await client.get("/api/projects")
 			projects = resp.json().get("items", [])
