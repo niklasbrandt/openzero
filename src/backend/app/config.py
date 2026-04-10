@@ -108,6 +108,10 @@ class Settings(BaseSettings):
     # PII sanitization for outbound cloud LLM calls (Groq, OpenAI)
     # Set to false to disable for all cloud providers globally.
     CLOUD_LLM_SANITIZE: bool = True
+    # Cloud tool-calling: enable the model to autonomously call tools
+    # (web search, etc.) via standard function-calling on /v1/chat/completions.
+    # Disabled by default until verified with the configured provider.
+    CLOUD_LLM_TOOLS: bool = True
     
     
     # Scheduling
