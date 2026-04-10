@@ -8,6 +8,7 @@
 [![Dual LLM Tier](https://img.shields.io/badge/Routing-Fast_%2B_Deep_Tier-blueviolet.svg)](#stack)
 [![Autonomous Crews](https://img.shields.io/badge/Crews-YAML_Scheduled-brightgreen.svg)](#autonomous-crews)
 [![Crew Output](https://img.shields.io/badge/Crew_Output-Planka_Kanban-0079BF.svg)](#autonomous-crews)
+[![Web Search](https://img.shields.io/badge/Search-SearXNG_Self--Hosted-3498db.svg)](#stack)
 [![Semantic Memory](https://img.shields.io/badge/Memory-Qdrant_Vector-8e44ad.svg)](#memory--learning)
 [![Multi-Channel](https://img.shields.io/badge/Messaging-Telegram_%C2%B7_WhatsApp-25D366.svg)](#channels)
 [![Voice I/O](https://img.shields.io/badge/Voice-Whisper_%2B_TTS-e74c3c.svg)](#stack)
@@ -30,7 +31,7 @@ Meet Z — a self-hosted personal AI operating system. Deploy on a VPS or homela
 
 ## What it does
 
-openZero is a private, composable AI system built around a single agent named Z. It bundles local LLM inference, semantic long-term memory, a real-time web dashboard, calendar and email intelligence, multi-channel messaging (Telegram, WhatsApp, ...), autonomous background crews, and a Kanban task engine — all running on your own hardware and reachable through a Tailscale private network.
+openZero is a private, composable AI system built around a single agent named Z. It bundles local LLM inference, autonomous web search, semantic long-term memory, a real-time web dashboard, calendar and email intelligence, multi-channel messaging (Telegram, WhatsApp, ...), autonomous background crews, and a Kanban task engine — all running on your own hardware and reachable through a Tailscale private network.
 
 The system is built with no proprietary lock-in: the LLM is swappable (llama.cpp, any OpenAI-compatible endpoint), the memory backend is open-source (Qdrant), and every service is a standard Docker container. Data never leaves your infrastructure unless you explicitly configure an external inference provider.
 
@@ -212,14 +213,18 @@ WCAG 2.1 AA, 10 languages, keyboard-navigable.
 │   │  (STT)    │  │ (speech)│  │  (Kanban)    │  │
 │   └───────────┘  └─────────┘  └──────────────┘  │
 │                                                  │
-│   ┌───────────┐                ┌──────────────┐  │
-│   │   Crews   │                │   Redis      │  │
-│   │  (.yaml)  │                │  (cache)     │  │
-│   └───────────┘                └──────────────┘  │
+│   ┌───────────┐  ┌─────────┐  ┌──────────────┐  │
+│   │  SearXNG  │  │  Crews  │  │   Redis      │  │
+│   │  (search) │  │ (.yaml) │  │  (cache)     │  │
+│   └───────────┘  └─────────┘  └──────────────┘  │
 └──────────────────────────────────────────────────┘
 ```
 
 Two Docker networks: `internal` (all services) and `llm` (isolated inference). The LLM container cannot reach the database or memory stores directly.
+
+### Web search
+
+When the cloud tier model needs current information — news, prices, weather, recent events — it autonomously invokes a web search tool via standard OpenAI function-calling. The search runs against a self-hosted SearXNG instance (meta-search aggregator: Google, Bing, DuckDuckGo, Wikipedia) on the internal Docker network. No external API keys, no third-party services, full data sovereignty. Search queries are PII-sanitized when `CLOUD_LLM_SANITIZE=true`. Controlled by `CLOUD_LLM_TOOLS=true` (default on).
 
 ### Compute peer routing
 
