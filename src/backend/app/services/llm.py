@@ -1243,16 +1243,19 @@ async def chat_with_context(
 
 	async def fetch_projects():
 		if not include_projects: return ""
-		# Only fetch project tree for mission-related messages
-		mission_keywords = ["task", "board", "status", "mission", "tree", "project", "plan", "build"]
-		if not any(kw in user_message.lower() for kw in mission_keywords):
+		# Skip for single-word/trivial messages — all other messages get board data.
+		# get_project_tree() has a 60s TTL cache so repeated calls are free.
+		if len(user_message.strip().split()) < 3:
 			return ""
 
 		try:
 			from app.services.planka import get_project_tree, get_activity_report
-			tree, activity = await asyncio.gather(
-				get_project_tree(as_html=False),
-				get_activity_report(days=7)
+			tree, activity = await asyncio.wait_for(
+				asyncio.gather(
+					get_project_tree(as_html=False),
+					get_activity_report(days=7)
+				),
+				timeout=12,
 			)
 			context_str = f"PROJECT MISSION CONTROL:\n{tree}\n\n7-DAY ACTIVITY:\n{activity}"
 			if len(context_str) > 4000:
@@ -1266,13 +1269,42 @@ async def chat_with_context(
 		if len(user_message.strip()) < 15:
 			return ""
 		try:
-			# If the user message is a pronoun-heavy follow-up (e.g. "how can you help
-			# me with them?"), searching just that message retrieves off-topic memories
-			# that misdirect pronoun resolution. Enrich the query with the last Z turn
-			# so the semantic search stays grounded in the current conversation topic.
-			_FOLLOW_UP_PRONOUNS = frozenset({"them", "it", "that", "those", "these", "they", "this"})
+			# Pronouns and stopwords across supported languages (EN + DE).
+			# Used below to detect pure follow-up messages that contain no real
+			# content words — for those, memory is skipped entirely so the model
+			# uses RECENT CONVERSATION rather than stale memories.
+			_FOLLOW_UP_PRONOUNS = frozenset({
+				# English
+				"them", "it", "that", "those", "these", "they", "this",
+				# German
+				"ihnen", "es", "das", "die", "dem", "den",
+				"dieser", "diesem", "diesen", "diese",
+			})
+			_GENERIC_STOPWORDS = frozenset({
+				# English
+				"how", "can", "you", "help", "me", "with", "what", "do", "i",
+				"could", "should", "would", "will", "are", "is", "a", "an", "the",
+				"and", "or", "but", "in", "on", "at", "to", "for", "of", "my",
+				"your", "their", "our", "about", "please", "tell", "show", "get",
+				# German
+				"wie", "kann", "kannst", "du", "mir", "helfen", "bei", "was",
+				"ich", "bitte", "zeig", "zeige", "meine", "mein", "dein",
+				"ihr", "uns", "wir", "haben", "sein", "ist", "sind",
+			})
+			_ALL_STOPWORDS = _FOLLOW_UP_PRONOUNS | _GENERIC_STOPWORDS
+			_words = set(user_message.lower().split())
+			_content_words = _words - _ALL_STOPWORDS
+
+			# Pure follow-up: no meaningful content words — skip memory and let
+			# RECENT CONVERSATION resolve the reference. Injecting unrelated
+			# memories here causes the model to use them as disambiguation options.
+			if history and len(_content_words) < 2:
+				return ""
+
+			# Pronoun present alongside content: enrich the search query with the
+			# last Z turn so the vector search stays on-topic.
 			search_query = user_message
-			if history and set(user_message.lower().split()) & _FOLLOW_UP_PRONOUNS:
+			if history and _words & _FOLLOW_UP_PRONOUNS:
 				for _h in reversed(history):
 					if _h.get("role") != "user":
 						_last_z = (_h.get("content") or "")[:200]
@@ -1598,28 +1630,55 @@ async def chat_stream_with_context(
 
 	async def fetch_projects():
 		if not include_projects: return ""
-		mission_keywords = ["task", "board", "status", "mission", "tree", "project", "plan", "build"]
-		if not any(kw in user_message.lower() for kw in mission_keywords):
+		# Skip for single-word/trivial messages — all other messages get board data.
+		# get_project_tree() has a 60s TTL cache so repeated calls are free.
+		if len(user_message.strip().split()) < 3:
 			return ""
 		try:
 			from app.services.planka import get_project_tree
-			tree = await get_project_tree(as_html=False)
+			tree = await asyncio.wait_for(get_project_tree(as_html=False), timeout=12)
 			if tree and len(tree) > 3000:
 				tree = tree[:3000] + "... [Project Tree Truncated]"
 			return f"PROJECT MISSION CONTROL:\n{tree}"
 		except Exception:
-			return ""
+			return "PROJECTS: (Board integration unavailable)"
 
 	async def fetch_memories():
 		if len(user_message.strip()) < 15:
 			return ""
 		try:
-			# Enrich the search query with the last Z turn when the current message
-			# contains pronouns — prevents retrieving off-topic memories that would
-			# misdirect the model's pronoun resolution.
-			_FOLLOW_UP_PRONOUNS = frozenset({"them", "it", "that", "those", "these", "they", "this"})
+			# Pronouns and stopwords across supported languages (EN + DE).
+			_FOLLOW_UP_PRONOUNS = frozenset({
+				# English
+				"them", "it", "that", "those", "these", "they", "this",
+				# German
+				"ihnen", "es", "das", "die", "dem", "den",
+				"dieser", "diesem", "diesen", "diese",
+			})
+			_GENERIC_STOPWORDS = frozenset({
+				# English
+				"how", "can", "you", "help", "me", "with", "what", "do", "i",
+				"could", "should", "would", "will", "are", "is", "a", "an", "the",
+				"and", "or", "but", "in", "on", "at", "to", "for", "of", "my",
+				"your", "their", "our", "about", "please", "tell", "show", "get",
+				# German
+				"wie", "kann", "kannst", "du", "mir", "helfen", "bei", "was",
+				"ich", "bitte", "zeig", "zeige", "meine", "mein", "dein",
+				"ihr", "uns", "wir", "haben", "sein", "ist", "sind",
+			})
+			_ALL_STOPWORDS = _FOLLOW_UP_PRONOUNS | _GENERIC_STOPWORDS
+			_words = set(user_message.lower().split())
+			_content_words = _words - _ALL_STOPWORDS
+
+			# Pure follow-up: no meaningful content words — skip memory and let
+			# RECENT CONVERSATION resolve the reference.
+			if history and len(_content_words) < 2:
+				return ""
+
+			# Pronoun present alongside content: enrich the search query with the
+			# last Z turn so the vector search stays on-topic.
 			search_query = user_message
-			if history and set(user_message.lower().split()) & _FOLLOW_UP_PRONOUNS:
+			if history and _words & _FOLLOW_UP_PRONOUNS:
 				for _h in reversed(history):
 					if _h.get("role") != "user":
 						_last_z = (_h.get("content") or "")[:200]
