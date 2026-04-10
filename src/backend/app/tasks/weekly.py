@@ -15,15 +15,17 @@ async def weekly_review():
 		activity = await get_activity_report(days=7)
 		
 		prompt = (
-			"Z, weekly review. Summarize progress, roadblocks, and 3 goals for next week.\n\n"
+			"Z, it's the end of the week — write a natural, flowing message to the user about how the week went.\n"
+			"Think about what progressed, what stalled, and what feels important for next week.\n"
+			"Write it like a thoughtful friend reflecting on the week — no formal headers, no bullet-point structure, just clear honest prose.\n\n"
 			"OPERATIONAL DATA (7-DAY ACTIVITY):\n"
 			f"{activity}\n\n"
 			f"PROJECT TREE:\n{tree}\n\n"
-			"INSTRUCTIONS:\n"
-			"- Base your summary ONLY on the OPERATIONAL DATA and TREE provided above.\n"
-			"- If OPERATIONAL DATA shows an 'OPERATIONAL DATA FAILURE/EMPTY' state, do NOT guess task status. Report the disconnection.\n"
-			"- Do not report placeholder examples from personal files (like Acme Studio).\n"
-			"- Be concise and professional."
+			"RULES:\n"
+			"- Base your message ONLY on the OPERATIONAL DATA and TREE provided above.\n"
+			"- If OPERATIONAL DATA shows an 'OPERATIONAL DATA FAILURE/EMPTY' state, tell the user honestly without guessing at specifics.\n"
+			"- Do not mention placeholder examples from personal files (like Acme Studio).\n"
+			"- Suggest 3 things worth focusing on next week, woven naturally into the prose."
 		)
 		
 		content = await chat(prompt, _feature="weekly_review")
@@ -52,7 +54,7 @@ async def weekly_review():
 		# Send Telegram Notification
 		from app.services.notifier import send_notification
 		from app.config import settings
-		await send_notification(f"*Weekly Review Ready*\n\n{content}\n\n[Dashboard]({settings.BASE_URL}/dashboard)")
+		await send_notification(f"---\n{content}\n\n[Dashboard]({settings.BASE_URL}/dashboard)")
 		
 		return content
 
