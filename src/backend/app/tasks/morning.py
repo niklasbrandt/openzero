@@ -135,7 +135,10 @@ async def morning_briefing():
 			"- IGNORE any placeholder or '[e.g., ...]' values in your personal files.\n"
 			"- ONLY mention a birthday if CONTEXT explicitly contains '⚠️ BIRTHDAY IN EXACTLY'.\n"
 			"- If a section is empty, skip it or say 'nothing to report'.\n"
-			"- Do NOT summarize the NEW MEMORIES section — it will be appended separately.\n\n"
+			"- Do NOT summarize the NEW MEMORIES section — it will be appended separately.\n"
+			"- In the WEATHER FORECAST section, use the EXACT city and country names as they appear "
+			"in the data. NEVER replace them with bracket placeholders like [CITY_1] or [LOCATION_2]. "
+			"If the forecast says 'Bremen, Germany', write 'Bremen, Germany'.\n\n"
 			f"AUTOMATED SYSTEM ACTIONS:\n{automation_summary}\n\n"
 			f"INNER CIRCLE (Family/Care):\n{inner_context}\n\n"
 			f"CLOSE CIRCLE (Friends/Social):\n{close_context}\n\n"
@@ -194,6 +197,10 @@ async def morning_briefing():
 			briefing = Briefing(type="day", content=content, model=last_model_used.get())
 			session.add(briefing)
 			await session.commit()
+
+		# 4b. Persist to global_messages so the dashboard chat widget shows the briefing
+		from app.models.db import save_global_message
+		await save_global_message("telegram", "z", content, model=last_model_used.get())
 
 		# 5. Precision Delivery SLEEP logic
 		# We kicked off 15m early. We now sleep the exact remaining delta seconds to hit the precise user configuration.
