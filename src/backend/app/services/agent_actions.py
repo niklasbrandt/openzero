@@ -187,7 +187,9 @@ async def run_crew(crew_id: str, user_input: str = "Execute autonomous cycle") -
 		logger.error("Crew '{crew_id}' total runtime failure: %s\n%s", e, traceback.format_exc())
 		return f"Error: Communication failure with crew '{crew_id}'."
 
-AVAILABLE_TOOLS = [create_task, create_project, create_event, learn_memory, schedule_reminder, schedule_persistent_custom, move_card, run_crew]
+from app.services.web_search import web_search
+
+AVAILABLE_TOOLS = [create_task, create_project, create_event, learn_memory, schedule_reminder, schedule_persistent_custom, move_card, run_crew, web_search]
 
 SENSITIVE_ACTIONS = {"SCHEDULE_CUSTOM", "LEARN", "CREATE_PROJECT", "ADD_PERSON", "CREATE_BOARD", "CREATE_LIST", "PROXIMITY_TRACK", "RUN_CREW", "SCHEDULE_CREW"}
 

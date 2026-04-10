@@ -283,6 +283,21 @@ When routing requests to cloud providers (Groq, OpenAI), openZero can automatica
 
 - Callers can also opt out per-call by passing `sanitize=False` to `chat()` or `chat_with_context()` directly in code (e.g. for code-generation payloads where no PII is present).
 
+### 5c-ii. Cloud LLM Web Search (Tool Calling)
+
+When the cloud tier has tool-calling enabled, the model can autonomously decide to search the web for current information. This uses standard OpenAI function-calling on `/v1/chat/completions` and works across all major providers (Mistral, Groq, OpenAI, OpenRouter).
+
+- **Enabled by default** (`CLOUD_LLM_TOOLS=true`).
+- Uses DuckDuckGo for zero-config web search (no API key needed).
+- PII sanitization applies to search queries when `CLOUD_LLM_SANITIZE=true`.
+- The model decides autonomously when to search (e.g. user asks about recent events, prices, weather).
+- Limited to a single tool round per request to prevent infinite loops.
+- To **disable**, add to your `.env`:
+
+	```env
+	CLOUD_LLM_TOOLS=false
+	```
+
 ### 5d. Set Up Personal Context Folder
 
 The `personal/` folder is the highest-authority context source for Z. Files here are injected into every system prompt and refreshed every hour.

@@ -960,6 +960,15 @@ async def chat_stream(
 		# Request-level token cap prevents runaway generation
 		max_tok = kwargs.get("max_tokens") or TIER_MAX_TOKENS.get(tier_name, 400)
 
+		# Cloud tool-calling: inject web search tool definition so the model
+		# can autonomously decide to search the web when needed.
+		# Disabled for local tier (tiny models can't reliably generate tool calls).
+		enable_tools = (
+			tier_name == "cloud"
+			and settings.CLOUD_LLM_TOOLS
+			and kwargs.get("enable_tools", True)
+		)
+
 		# CoT: disabled by default. Callers can override via thinking=True.
 		request_thinking = kwargs.get("thinking", False)
 
@@ -1007,6 +1016,10 @@ async def chat_stream(
 						"top_p": 0.9,
 						"max_tokens": max_tok,
 					}
+					if enable_tools:
+						from app.services.web_search import WEB_SEARCH_TOOL_DEF
+						_req_json["tools"] = [WEB_SEARCH_TOOL_DEF]
+						_req_json["tool_choice"] = "auto"
 					if tier_name == "local":
 						# Qwen3 thinking mode control (ignored by non-Qwen3 models)
 						_req_json["thinking"] = request_thinking
@@ -1020,18 +1033,41 @@ async def chat_stream(
 						# Qwen3 think-block filter: buffer content to strip <think>…</think>
 						_think_buf = ""
 						_in_think = False
+						# Tool-call accumulator (streaming tool_calls arrive in deltas)
+						_tool_calls: dict[int, dict] = {}  # index → {id, name, arguments}
+						_got_content = False
 						async for line in response.aiter_lines():
 							if not line.startswith("data: "):
 								continue
 							data_str = line[6:]
 							if data_str.strip() == "[DONE]":
-								return
+								break
 							try:
 								data = json.loads(data_str)
-								delta = data.get("choices", [{}])[0].get("delta", {})
+								choice = data.get("choices", [{}])[0]
+								delta = choice.get("delta", {})
+								# --- Tool-call accumulation ---
+								tc_deltas = delta.get("tool_calls")
+								if tc_deltas:
+									for tcd in tc_deltas:
+										idx = tcd.get("index", 0)
+										if idx not in _tool_calls:
+											_tool_calls[idx] = {
+												"id": tcd.get("id", ""),
+												"name": (tcd.get("function") or {}).get("name", ""),
+												"arguments": "",
+											}
+										else:
+											if tcd.get("id"):
+												_tool_calls[idx]["id"] = tcd["id"]
+											if (tcd.get("function") or {}).get("name"):
+												_tool_calls[idx]["name"] = tcd["function"]["name"]
+										_tool_calls[idx]["arguments"] += (tcd.get("function") or {}).get("arguments", "")
+									continue
 								content = delta.get("content")
 								if not content:
 									continue
+								_got_content = True
 								# Stamp timestamp so /api/dashboard/llm-active drives card animation
 								_tier_last_active[tier_name] = time.monotonic()
 								# Filter Qwen3 <think> blocks from the stream
@@ -1054,7 +1090,86 @@ async def chat_stream(
 										yield content
 							except json.JSONDecodeError:
 								continue
-						return
+
+					# --- Tool execution loop ---
+					# If the model requested tool calls instead of content,
+					# execute them and send a follow-up request.
+					if _tool_calls and not _got_content:
+						from app.services.web_search import execute_web_search
+						# Build assistant message with tool_calls for the follow-up
+						_tc_list = []
+						for idx in sorted(_tool_calls):
+							tc = _tool_calls[idx]
+							_tc_list.append({
+								"id": tc["id"],
+								"type": "function",
+								"function": {
+									"name": tc["name"],
+									"arguments": tc["arguments"],
+								},
+							})
+						messages.append({
+							"role": "assistant",
+							"tool_calls": _tc_list,
+						})
+
+						# Execute each tool call and append results
+						for tc in _tc_list:
+							fn_name = tc["function"]["name"]
+							try:
+								fn_args = json.loads(tc["function"]["arguments"])
+							except json.JSONDecodeError:
+								fn_args = {}
+
+							if fn_name == "web_search":
+								search_query = fn_args.get("query", "")
+								# PII-sanitize the search query before it leaves the VPS
+								if rep_map:
+									search_query = sanitize_prompt(search_query)[0]
+								logger.info("Tool call: web_search(%r)", search_query)
+								tool_result = await execute_web_search(search_query)
+							else:
+								tool_result = f"Unknown tool: {fn_name}"
+								logger.warning("Model requested unknown tool: %s", fn_name)
+
+							messages.append({
+								"role": "tool",
+								"tool_call_id": tc["id"],
+								"content": tool_result,
+							})
+
+						# Follow-up request: stream the final answer (no tools this time
+						# to prevent infinite loops — single tool round).
+						_followup_json = {
+							"model": _req_json["model"],
+							"messages": messages,
+							"stream": True,
+							"temperature": 0.2,
+							"top_p": 0.9,
+							"max_tokens": max_tok,
+						}
+						async with client.stream(
+							"POST",
+							api_url,
+							headers=request_headers,
+							json=_followup_json,
+						) as fu_response:
+							fu_response.raise_for_status()
+							async for line in fu_response.aiter_lines():
+								if not line.startswith("data: "):
+									continue
+								data_str = line[6:]
+								if data_str.strip() == "[DONE]":
+									break
+								try:
+									data = json.loads(data_str)
+									content = data.get("choices", [{}])[0].get("delta", {}).get("content")
+									if content:
+										_tier_last_active[tier_name] = time.monotonic()
+										yield content
+								except json.JSONDecodeError:
+									continue
+					return
 			except httpx.ReadTimeout:
 				if tier_name == "local":
 					# Timed out — yield nothing; caller cleans up the thinking indicator.
