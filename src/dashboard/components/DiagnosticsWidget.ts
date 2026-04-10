@@ -653,9 +653,13 @@ export class DiagnosticsWidget extends HTMLElement {
 						const fileSizeGb = td.model_size_gb || 0;
 						const cacheRamMb = td.cache_ram_mb || 0;
 						const kvUsage = td.kv_usage_pct || 0;
-						// Cloud-specific metadata (from /v1/models probe)
+						// Cloud-specific metadata (from /v1/models probe — universal across providers)
 						const cloudOwnedBy: string = name === 'cloud' ? (td.owned_by || '') : '';
-						const cloudCaps: Record<string, boolean> = name === 'cloud' ? (td.capabilities || {}) : {};
+						const cloudFnCalling: boolean | null = name === 'cloud' ? (td.function_calling ?? null) : null;
+						const cloudVision: boolean | null = name === 'cloud' ? (td.vision ?? null) : null;
+						const cloudReasoning: boolean | null = name === 'cloud' ? (td.reasoning ?? null) : null;
+						const cloudMaxOut: number = name === 'cloud' ? (td.max_completion_tokens || 0) : 0;
+						const cloudTokenizer: string = name === 'cloud' ? (td.tokenizer || '') : '';
 
 						// Mitigation: Detect hidden large models
 						// Accounting for the configured prompt cache AND KV-cache growth at large context
@@ -729,8 +733,11 @@ export class DiagnosticsWidget extends HTMLElement {
 								${(!externalActive && liveRamGb && cacheGb) ? `<div class="ltc-spec has-tip"><span>${this.tr('diag_ram_weights_label', 'RAM weights')}</span><strong>${(liveRamGb - cacheGb).toFixed(1)} GB</strong><span class="glass-tooltip">${this.tr('diag_ram_weights_tip', 'Model weights and compute buffers in RAM, excluding KV cache.')}</span></div>` : ''}
 								${(!externalActive && liveRamGb) ? `<div class="ltc-spec has-tip"><span>${this.tr('diag_ram_live_label', 'RAM live')}</span><strong style="color:${isMismatch ? 'var(--color-danger)' : color}">${liveRamGb.toFixed(1)} GB</strong><span class="glass-tooltip">${this.tr('diag_ram_live_tip', 'Live RAM from Docker stats: Model weights + KV cache + compute buffers')}</span></div>` : ''}
 								${cloudOwnedBy ? `<div class="ltc-spec has-tip"><span>${this.tr('diag_cloud_provider', 'Provider')}</span><strong>${this.esc(cloudOwnedBy)}</strong><span class="glass-tooltip">${this.tr('diag_cloud_provider_tip', 'Model owner / API provider')}</span></div>` : ''}
-								${(cloudCaps.function_calling !== undefined) ? `<div class="ltc-spec has-tip"><span>${this.tr('diag_cloud_fn_calling', 'Tools')}</span><strong>${cloudCaps.function_calling ? this.tr('diag_cloud_cap_yes', 'yes') : this.tr('diag_cloud_cap_no', 'no')}</strong><span class="glass-tooltip">${this.tr('diag_cloud_fn_calling_tip', 'Supports function / tool calling')}</span></div>` : ''}
-								${(cloudCaps.vision !== undefined) ? `<div class="ltc-spec has-tip"><span>${this.tr('diag_cloud_vision', 'Vision')}</span><strong>${cloudCaps.vision ? this.tr('diag_cloud_cap_yes', 'yes') : this.tr('diag_cloud_cap_no', 'no')}</strong><span class="glass-tooltip">${this.tr('diag_cloud_vision_tip', 'Supports image / vision input')}</span></div>` : ''}
+								${(cloudMaxOut > 0) ? `<div class="ltc-spec has-tip"><span>${this.tr('diag_cloud_max_out', 'Max out')}</span><strong>${cloudMaxOut.toLocaleString()}</strong><span class="glass-tooltip">${this.tr('diag_cloud_max_out_tip', 'Maximum output tokens per request')}</span></div>` : ''}
+								${cloudTokenizer ? `<div class="ltc-spec has-tip"><span>${this.tr('diag_cloud_tokenizer', 'Tokenizer')}</span><strong>${this.esc(cloudTokenizer)}</strong><span class="glass-tooltip">${this.tr('diag_cloud_tokenizer_tip', 'Tokenization method used by the model')}</span></div>` : ''}
+								${(cloudFnCalling !== null) ? `<div class="ltc-spec has-tip"><span>${this.tr('diag_cloud_fn_calling', 'Tools')}</span><strong>${cloudFnCalling ? this.tr('diag_cloud_cap_yes', 'yes') : this.tr('diag_cloud_cap_no', 'no')}</strong><span class="glass-tooltip">${this.tr('diag_cloud_fn_calling_tip', 'Supports function / tool calling')}</span></div>` : ''}
+								${(cloudVision !== null) ? `<div class="ltc-spec has-tip"><span>${this.tr('diag_cloud_vision', 'Vision')}</span><strong>${cloudVision ? this.tr('diag_cloud_cap_yes', 'yes') : this.tr('diag_cloud_cap_no', 'no')}</strong><span class="glass-tooltip">${this.tr('diag_cloud_vision_tip', 'Supports image / vision input')}</span></div>` : ''}
+								${(cloudReasoning !== null) ? `<div class="ltc-spec has-tip"><span>${this.tr('diag_cloud_reasoning', 'Reasoning')}</span><strong>${cloudReasoning ? this.tr('diag_cloud_cap_yes', 'yes') : this.tr('diag_cloud_cap_no', 'no')}</strong><span class="glass-tooltip">${this.tr('diag_cloud_reasoning_tip', 'Supports internal chain-of-thought reasoning mode')}</span></div>` : ''}
 							</div>
 						</div>`;
 					}).join('')}
