@@ -40,8 +40,14 @@ _DOCX_PARAGRAPH_LIMIT = 500
 _PARSE_TIMEOUT_SECONDS = 30
 
 # Token budget (1 token ≈ 4 chars)
-TOKEN_BUDGET_PER_FILE = 300   # ~1 200 chars — trigger LLM compression above this
-TOKEN_BUDGET_TOTAL = 800      # ~3 200 chars — hard cap for the whole block
+TOKEN_BUDGET_PER_FILE = 600    # ~2 400 chars — trigger LLM compression above this
+TOKEN_BUDGET_TOTAL = 2500      # ~10 000 chars — hard cap for the whole block
+
+# Per-file budget overrides (filename → token limit).  about-me.md is the
+# highest-authority identity file and should survive nearly intact.
+_PER_FILE_TOKEN_BUDGETS: dict[str, int] = {
+	"about-me.md": 1200,   # ~4 800 chars — passes through with only noise removal
+}
 
 # Action-tag pattern — strip from personal files before injection
 # Use [^\]] instead of nested quantifiers to avoid polynomial backtracking.
@@ -211,8 +217,9 @@ async def _llm_compress(filename: str, text: str) -> str:
 			text,
 			system_override=(
 				"You are a lossless context compressor. Compress the following personal context into a "
-				"dense, information-complete paragraph under 250 words. Preserve ALL facts, preferences, "
-				"behavioral rules, and explicit instructions. Remove only redundancy and formatting noise. "
+			"dense, information-complete summary under 400 words. Preserve ALL facts, preferences, "
+			"behavioral rules, and explicit instructions. Remove only redundancy and pure formatting "
+			"noise (blank lines, dividers, HTML comments). Keep every meaningful sentence intact. "
 				"CRITICAL: You MUST copy ALL proper nouns — city names, country names, person names, "
 				"place names, URLs — EXACTLY as they appear in the source text. NEVER replace any value "
 				"with a bracket placeholder like [CITY_1], [NAME_2], or similar tokens. "
@@ -370,7 +377,8 @@ async def refresh_personal_context() -> None:
 		new_cache[path.name] = det
 
 		# Stage 2: LLM compression if over per-file budget
-		char_budget = TOKEN_BUDGET_PER_FILE * 4
+		file_token_budget = _PER_FILE_TOKEN_BUDGETS.get(path.name, TOKEN_BUDGET_PER_FILE)
+		char_budget = file_token_budget * 4
 		if len(det) > char_budget:
 			compressed = await _llm_compress(path.name, det)
 			new_compressed[path.name] = compressed
