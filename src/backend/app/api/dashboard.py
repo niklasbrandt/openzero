@@ -2120,10 +2120,14 @@ async def server_info() -> dict:
 	#   reasoning:                               supported_parameters includes "reasoning" (OpenRouter)
 	#   max_out:                                 top_provider.max_completion_tokens (OpenRouter)
 	#   tokenizer:                               architecture.tokenizer (OpenRouter)
+	#   params_b: num_parameters (some providers, scaled to B) | regex from name/description/id
+	#   model_name: name (Mistral) | id (fallback)
 	if settings.cloud_configured:
 		cloud_meta: dict = {
 			"ctx_size": 0,
 			"owned_by": "",
+			"model_name": "",
+			"params_b": 0.0,
 			"function_calling": None,  # None = unknown, True/False = known
 			"vision": None,
 			"reasoning": None,
@@ -2200,6 +2204,24 @@ async def server_info() -> dict:
 						cloud_meta["web_search"] = True
 					elif _ws_price and _ws_price != "0":
 						cloud_meta["web_search"] = True
+					# Human display name (Mistral: name field; other providers: fallback to model id)
+					cloud_meta["model_name"] = _md.get("name") or _md.get("id") or _cloud_model
+					# Parameter count — no provider exposes a direct field; extract via regex from
+					# name, description, or model id (e.g. "22B", "70b", "mixtral-8x7b")
+					import re as _re_p
+					_param_src = " ".join(filter(None, [
+						_md.get("name", ""),
+						_md.get("description", ""),
+						_cloud_model,
+					]))
+					_pm = _re_p.search(r'(\d+(?:\.\d+)?)\s*[Bb](?=[^a-zA-Z]|$)', _param_src)
+					if _pm:
+						cloud_meta["params_b"] = float(_pm.group(1))
+					else:
+						# Also check raw num_parameters field (e.g. Ollama reports as integer)
+						_raw_p = _md.get("num_parameters", 0) or 0
+						if _raw_p:
+							cloud_meta["params_b"] = round(_raw_p / 1_000_000_000, 1)
 		except Exception as _cme:
 			logger.debug("Cloud model metadata probe failed: %s", _cme)
 		info["tiers"]["cloud"] = cloud_meta
