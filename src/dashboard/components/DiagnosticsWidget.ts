@@ -661,6 +661,8 @@ export class DiagnosticsWidget extends HTMLElement {
 						const cloudWebSearch: boolean | null = name === 'cloud' ? (td.web_search ?? null) : null;
 						const cloudMaxOut: number = name === 'cloud' ? (td.max_completion_tokens || 0) : 0;
 						const cloudTokenizer: string = name === 'cloud' ? (td.tokenizer || '') : '';
+						const cloudParamsB: number = name === 'cloud' ? (td.params_b || 0) : 0;
+						const cloudModelName: string = name === 'cloud' ? (td.model_name || '') : '';
 
 						// Mitigation: Detect hidden large models
 						// Accounting for the configured prompt cache AND KV-cache growth at large context
@@ -733,6 +735,8 @@ export class DiagnosticsWidget extends HTMLElement {
 								${threads ? `<div class="ltc-spec has-tip"><span>${this.tr('threads', 'Threads')}</span><strong>${threads}</strong><span class="glass-tooltip">${this.tr('diag_llm_threads_tip', 'CPU threads allocated to this tier')}</span></div>` : ''}
 								${(!externalActive && liveRamGb && cacheGb) ? `<div class="ltc-spec has-tip"><span>${this.tr('diag_ram_weights_label', 'RAM weights')}</span><strong>${(liveRamGb - cacheGb).toFixed(1)} GB</strong><span class="glass-tooltip">${this.tr('diag_ram_weights_tip', 'Model weights and compute buffers in RAM, excluding KV cache.')}</span></div>` : ''}
 								${(!externalActive && liveRamGb) ? `<div class="ltc-spec has-tip"><span>${this.tr('diag_ram_live_label', 'RAM live')}</span><strong style="color:${isMismatch ? 'var(--color-danger)' : color}">${liveRamGb.toFixed(1)} GB</strong><span class="glass-tooltip">${this.tr('diag_ram_live_tip', 'Live RAM from Docker stats: Model weights + KV cache + compute buffers')}</span></div>` : ''}
+								${(cloudParamsB > 0) ? `<div class="ltc-spec has-tip"><span>${this.tr('diag_cloud_params', 'Params')}</span><strong>${(cloudParamsB % 1 === 0 ? cloudParamsB.toFixed(0) : cloudParamsB.toFixed(1))}B</strong><span class="glass-tooltip">${this.tr('diag_cloud_params_tip', 'Approximate parameter count')}</span></div>` : ''}
+								${(cloudModelName && cloudModelName !== model) ? `<div class="ltc-spec has-tip"><span>${this.tr('diag_cloud_model_name', 'Name')}</span><strong>${this.esc(cloudModelName)}</strong><span class="glass-tooltip">${this.tr('diag_cloud_model_name_tip', 'Human-readable model name from the provider')}</span></div>` : ''}
 								${cloudOwnedBy ? `<div class="ltc-spec has-tip"><span>${this.tr('diag_cloud_provider', 'Provider')}</span><strong>${this.esc(cloudOwnedBy)}</strong><span class="glass-tooltip">${this.tr('diag_cloud_provider_tip', 'Model owner / API provider')}</span></div>` : ''}
 								${(cloudMaxOut > 0) ? `<div class="ltc-spec has-tip"><span>${this.tr('diag_cloud_max_out', 'Max out')}</span><strong>${cloudMaxOut.toLocaleString()}</strong><span class="glass-tooltip">${this.tr('diag_cloud_max_out_tip', 'Maximum output tokens per request')}</span></div>` : ''}
 								${cloudTokenizer ? `<div class="ltc-spec has-tip"><span>${this.tr('diag_cloud_tokenizer', 'Tokenizer')}</span><strong>${this.esc(cloudTokenizer)}</strong><span class="glass-tooltip">${this.tr('diag_cloud_tokenizer_tip', 'Tokenization method used by the model')}</span></div>` : ''}
