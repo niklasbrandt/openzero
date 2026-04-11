@@ -1163,6 +1163,20 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 			logger.debug("Telegram delete ignored: %s", _e)
 		return
 
+	# Z-initiated crew routing: if Z emitted [ACTION: ROUTE | CREW: id], discard
+	# Z's response and re-dispatch the original user text to that crew instead.
+	import re as _re
+	_route_match = _re.search(r'\[ACTION:\s*ROUTE\s*\|\s*CREW:\s*([a-z0-9_-]+)\s*\]', response, _re.IGNORECASE)
+	if _route_match:
+		crew_id = _route_match.group(1).strip().lower()
+		logger.info("Z self-routed '%s...' to crew '%s'", user_text[:40], crew_id)
+		try:
+			await thinking_msg.delete()
+		except Exception as _e:
+			logger.debug("Telegram delete (route handoff) ignored: %s", _e)
+		await _process_crew_stream(update, context, [crew_id], user_text, t, already_ingested=True)
+		return
+
 	# Parse action tags, save Z reply, schedule background memory — all via bus.
 	clean_reply, executed_cmds, _ = await bus.commit_reply(
 		channel="telegram",
