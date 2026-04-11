@@ -165,22 +165,92 @@ async def _get_or_create_weekly_card(
 		return None, ""
 
 
+# Matches a leading quantity like "360g", "120ml", "2x", "5 Stück"
+_QTY_PREFIX = re.compile(
+	r"^\d[\d.,]*\s*(?:g|kg|ml|l|cl|dl|x|st[üu]ck|pcs?|tbsp?|tsp?|el|tl|bunch|bund)?\s+",
+	re.IGNORECASE,
+)
+# Detects an inline quantity that marks the start of a new item inside a long line
+_INLINE_QTY = re.compile(
+	r"(?<!\w)(\d[\d.,]*\s*(?:g|kg|ml|l|cl|dl|x|st[üu]ck|pcs?|tbsp?|tsp?|el|tl|bunch|bund)\s+)",
+	re.IGNORECASE,
+)
+
+
+def _parse_raw_items(raw: str) -> list[str]:
+	"""Normalise any raw items text into a clean list of non-empty item strings."""
+	# Strip residual ACTION tag fragments
+	text = re.sub(r"\[?ACTION:[^\]]*\]?", "", raw)
+	# Replace literal \n sequences with real newlines
+	text = text.replace("\\n", "\n")
+	# Replace semicolons used as separators
+	text = text.replace(";", "\n")
+
+	lines: list[str] = []
+	for raw_line in text.splitlines():
+		line = raw_line.strip()
+		if not line:
+			continue
+		# Skip timestamp markers and section headers / category labels
+		if line.startswith("---") or line.startswith("[...") or line.startswith("Last updated"):
+			continue
+		# If a single line contains multiple quantity-prefixed items squashed together,
+		# split them out (e.g. "1000g chicken 360g starch 60g cornflour")
+		parts = _INLINE_QTY.split(line)
+		if len(parts) > 2:
+			# parts alternates: [leading_text, qty, ingredient, qty, ingredient, ...]
+			rebuilt: list[str] = []
+			i = 0
+			# leading text before the first quantity (usually empty)
+			if parts[0].strip():
+				rebuilt.append(parts[0].strip())
+			i = 1
+			while i + 1 < len(parts):
+				rebuilt.append((parts[i] + parts[i + 1]).strip())
+				i += 2
+			lines.extend(rebuilt)
+		else:
+			lines.append(line)
+
+	return [l for l in lines if l]
+
+
+def _item_key(item: str) -> str:
+	"""Return a normalised dedup key for an item (quantity-agnostic, lowercase)."""
+	key = _QTY_PREFIX.sub("", item).lower().strip()
+	return key or item.lower().strip()
+
+
+def _dedup(items: list[str]) -> list[str]:
+	"""Deduplicate items, keeping the first occurrence of each ingredient key."""
+	seen: dict[str, str] = {}
+	for item in items:
+		k = _item_key(item)
+		if k not in seen:
+			seen[k] = item
+	return list(seen.values())
+
+
 def _merge_items(current_desc: str, new_items: str, timestamp: str) -> str:
-	"""Append new shopping items to the card description, deduplicating where possible."""
-	# Clean the incoming items
-	clean_items = re.sub(r"\[?ACTION:[^\]]+\]?", "", new_items).strip()
-	if not clean_items:
+	"""Consolidate all shopping items into a single deduplicated, clean list."""
+	existing = _parse_raw_items(current_desc)
+	incoming = _parse_raw_items(new_items)
+
+	if not incoming:
 		return current_desc
 
-	new_block = f"\n--- Added {timestamp} ---\n{clean_items}\n"
-	updated = (current_desc + new_block) if current_desc else new_block.lstrip("\n")
+	merged = _dedup(existing + incoming)
+
+	header = f"Last updated: {timestamp}\n"
+	body = "\n".join(merged)
+	updated = header + body
 
 	if len(updated) > MAX_DESC_CHARS:
-		truncated = updated[-MAX_DESC_CHARS:]
-		nl = truncated.find("\n")
-		if nl > 0:
-			truncated = truncated[nl + 1:]
-		updated = "[...earlier items omitted...]\n" + truncated
+		# Trim oldest items from the top of the body
+		lines = merged[:]
+		while lines and len(header + "\n".join(lines)) > MAX_DESC_CHARS:
+			lines.pop(0)
+		updated = header + "[...older items trimmed...]\n" + "\n".join(lines)
 
 	return updated
 
