@@ -128,14 +128,26 @@ class NativeCrewEngine:
 		# 5. Recent user messages from conversation history so the crew can reference
 		# what the user shared (e.g. recipes, plans). Z's own prior responses are
 		# excluded — they add noise and cause the crew to echo stale output.
+		#
+		# KEYWORD FILTERING: if the crew defines keywords, only include history
+		# messages that contain at least one keyword (case-insensitive).  This
+		# prevents a specialised crew (e.g. 'life', 'nutrition') from being
+		# derailed by unrelated recent conversation (e.g. cooking tips bleeding
+		# into a psychological support session, or vice-versa).
 		from app.models.db import get_global_history
 		history_messages = []
+		crew_keywords: list[str] = [kw.lower() for kw in (config.keywords or [])]
 		try:
 			recent = await get_global_history(limit=20)
 			for m in recent:
 				if m["role"] != "user":
 					continue
-				history_messages.append({"role": "user", "content": m["content"]})
+				content = m["content"]
+				if crew_keywords:
+					content_lower = content.lower()
+					if not any(kw in content_lower for kw in crew_keywords):
+						continue  # skip irrelevant history for keyword-scoped crews
+				history_messages.append({"role": "user", "content": content})
 		except Exception as e:
 			logger.debug("Native Engine: Could not fetch conversation history: %s", e)
 
