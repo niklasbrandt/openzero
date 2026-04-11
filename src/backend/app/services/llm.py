@@ -1078,16 +1078,17 @@ async def chat_stream(
 										_in_think = False
 										_think_buf = ""
 										if after.lstrip("\n"):
-											yield after.lstrip("\n")
+											_out = after.lstrip("\n")
+											yield rehydrate_response(_out, rep_map) if rep_map else _out
 								else:
 									if "<think>" in content:
 										before, rest = content.split("<think>", 1)
 										if before:
-											yield before
+											yield rehydrate_response(before, rep_map) if rep_map else before
 										_in_think = True
 										_think_buf = rest
 									else:
-										yield content
+										yield rehydrate_response(content, rep_map) if rep_map else content
 							except json.JSONDecodeError:
 								continue
 
@@ -1170,7 +1171,7 @@ async def chat_stream(
 									content = data.get("choices", [{}])[0].get("delta", {}).get("content")
 									if content:
 										_tier_last_active[tier_name] = time.monotonic()
-										yield content
+										yield rehydrate_response(content, rep_map) if rep_map else content
 								except json.JSONDecodeError:
 									continue
 					return
