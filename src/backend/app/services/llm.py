@@ -625,6 +625,13 @@ CRITICAL: Never embed tags mid-response or inside prose sections.
   (Moves a card to the "Archive" list — use this instead of deleting. Preferred for cleanup, completed long-running work, or anything that may need to be recovered.)
 - Append Shopping List: `[ACTION: APPEND_SHOPPING | ITEMS: item1\nitem2\nitem3]`
   (Appends grocery items to the current week's shopping list card on the Nutrition board. Use when the user mentions what they'll cook/eat, or when generating recipes. List each ingredient on a separate line with quantities.)
+- Route to Specialist Crew: `[ACTION: ROUTE | CREW: crew_id]`
+  Use ONLY when you have determined — from conversation context — that a specialist crew would handle the message better than you, and keyword routing did not already trigger (i.e. you are currently the one processing the message).
+  Write ONE brief handoff sentence before the tag so the user knows why.
+  Available crew IDs: flow, research, workspace, market-intel, leads, meeting, content, legal, lessons, edu-communication, health, nutrition, coach, residence, travels, security, dependents, fitness, life
+  Examples: user says "make that chicken thing spicier" after a topic switch → `[ACTION: ROUTE | CREW: nutrition]`
+            user says "remind me to train tomorrow" in a scheduling context → `[ACTION: ROUTE | CREW: fitness]`
+  NEVER use this tag if the message is conversational, generic, or does not clearly belong to a specific crew domain.
 
 Bulk scaffolding: You can emit MULTIPLE action tags in one response to scaffold entire project structures.
 Example flow: CREATE_PROJECT -> CREATE_BOARD -> CREATE_LIST (x3) -> CREATE_TASK (x5)
