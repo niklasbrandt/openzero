@@ -13,6 +13,7 @@ Key Responsibilities:
 
 import httpx
 import logging
+import re
 from datetime import datetime, timedelta
 from typing import Optional, Any
 from app.config import settings
@@ -141,6 +142,17 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 	board_name = (board_name or "Operator Board").strip().strip('"\'')
 	list_name = (list_name or "Inbox").strip().strip('"\'')
 	title = (title or "New Task").strip().strip('"\'')
+
+	# Detect PII-sanitization token leakage (e.g. board_name='[ORG_1] Board' when the
+	# cloud sanitizer mangled the operator board directive before it reached the LLM).
+	# Any board name that still contains a [CATEGORY_N] placeholder is unrehydrated;
+	# fall back to Operator Board rather than creating a card on the wrong board.
+	if re.search(r'\[[A-Z]+_\d+\]', board_name):
+		logger.warning(
+			"create_task: board_name '%s' contains a sanitization token — defaulting to Operator Board",
+			board_name,
+		)
+		board_name = "Operator Board"
 
 	# Normalize any translated project/board name variant to operator board
 	from app.services.translations import get_all_values
