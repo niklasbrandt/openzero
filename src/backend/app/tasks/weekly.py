@@ -15,9 +15,11 @@ async def weekly_review():
 		activity = await get_activity_report(days=7)
 		
 		prompt = (
-			"Z, it's the end of the week — write a natural, flowing message to the user about how the week went.\n"
+			"Z, it's the end of the week — write a detailed, natural, flowing message to the user about how the week went.\n"
 			"Think about what progressed, what stalled, and what feels important for next week.\n"
-			"Write it like a thoughtful friend reflecting on the week — no formal headers, no bullet-point structure, just clear honest prose.\n\n"
+			"Write it like a thoughtful friend reflecting on the week — no formal headers, no bullet-point structure, just clear honest prose.\n"
+			"Be specific: name actual boards, cards, and progress percentages from the data. Don't be vague.\n"
+			"Aim for at least 250 words — give the user a real reflection, not a skim.\n\n"
 			"OPERATIONAL DATA (7-DAY ACTIVITY):\n"
 			f"{activity}\n\n"
 			f"PROJECT TREE:\n{tree}\n\n"
