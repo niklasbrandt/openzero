@@ -336,6 +336,15 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 				async def _post_list_on_board(bid: str) -> str:
 					token = await get_planka_auth_token()
 					async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, timeout=15.0, headers={"Authorization": f"Bearer {token}"}) as client:
+						# Dedup: check if list already exists on this board
+						try:
+							b_det = await client.get(f"/api/boards/{bid}", params={"included": "lists"})
+							b_det.raise_for_status()
+							for lst in b_det.json().get("included", {}).get("lists", []):
+								if (lst.get("name") or "").lower() == list_name.lower():
+									return f"List '{list_name}' already exists in '{board_name}'."
+						except Exception:
+							pass
 						try:
 							resp = await client.post(f"/api/boards/{bid}/lists", json={"name": list_name, "type": "active", "position": 65535})
 							resp.raise_for_status()
