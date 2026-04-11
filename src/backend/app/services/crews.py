@@ -153,7 +153,7 @@ class CrewRegistry:
 		logger.info("Registry: Successfully loaded %d active crews.", len(self._crews))
 		self._compute_panel_candidates()
 
-	def _compute_panel_candidates(self, top_n: int = 3, min_score: float = 0.02) -> None:
+	def _compute_panel_candidates(self, top_n: int = 5, min_score: float = 0.15) -> None:
 		"""Auto-compute domain-similar crew pairs via bag-of-words Jaccard on name + description + character roles.
 
 		Run once after load(). Result cached in self._panel_candidates.
@@ -330,7 +330,7 @@ async def resolve_active_crew(history: list, user_text: str, lang: str = "en") -
 	return None
 
 
-async def resolve_active_crews(history: list, user_text: str, lang: str = "en", max_crews: int = 3) -> list:
+async def resolve_active_crews(history: list, user_text: str, lang: str = "en", max_crews: int = 5) -> list:
 	"""Return an ordered list of up to `max_crews` crew IDs for this message.
 
 	The first entry is the primary crew (same algorithm as resolve_active_crew).
