@@ -852,6 +852,13 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 		parts = executed_cmds + [f"⏳ Awaiting approval: {p['description']}" for p in pending_actions]
 		clean_reply = "\n".join(parts)
 
+	# Safety net: strip any remaining ROUTE tags (including malformed variants where
+	# the model omitted 'ACTION:' or the closing ']') before the reply reaches the user.
+	clean_reply = re.sub(
+		r'\[(?:ACTION:\s*)?ROUTE\s*\|\s*CREW:\s*[a-z0-9_-]+\s*\]?',
+		'', clean_reply, flags=re.IGNORECASE
+	).strip()
+
 	return clean_reply, executed_cmds, pending_actions
 
 async def execute_crew_programmatically(crew_id: str, input_context: str = "Scheduled execution sequence"):
