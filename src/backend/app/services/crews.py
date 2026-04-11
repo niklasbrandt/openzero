@@ -240,6 +240,46 @@ async def _translate_keywords_to_lang(crew_id: str, lang: str, keywords: list) -
 	_kw_translation_cache[cache_key] = keywords
 	return keywords
 
+# Referential words that strongly suggest the message is a follow-up refinement
+# of the previous response rather than a new, unrelated request.
+# "make it spicier" / "do that again" / "try this instead" → continuation.
+# "buy glasses" / "todo for next week" → no referential signal → no continuation.
+_FOLLOWUP_SIGNALS: frozenset = frozenset([
+	"it", "this", "that", "them", "those", "these",  # referential pronouns
+	"again", "redo", "re-do", "once more",             # explicit redo
+	"instead",                                          # replacement
+])
+
+# Matches the crew attribution footer added by _process_crew_stream.
+_CREW_ATTRIBUTION_RE = re.compile(r'\(Reasoning by crew ([^)]+)\)', re.IGNORECASE)
+
+
+def _last_attributed_crew(history: list) -> Optional[str]:
+	"""Return the primary crew ID from the most recent assistant message, or None.
+
+	Scans backwards through history to find the first assistant turn.  If that
+	turn contains a crew attribution footer, the primary (first) crew ID is
+	returned.  If the most recent assistant turn exists but has no attribution,
+	None is returned — meaning Z handled it without a crew.
+	"""
+	for msg in reversed(history):
+		if msg.get("role") == "assistant":
+			m = _CREW_ATTRIBUTION_RE.search(msg.get("content", ""))
+			if m:
+				return m.group(1).split(",")[0].strip()
+			return None
+	return None
+
+
+def _is_followup_text(text: str) -> bool:
+	"""Heuristic: does this message contain referential language pointing to the
+	previous response?  Only short, clearly referential tokens qualify so that
+	unrelated messages (e.g. 'buy glasses') are not mistakenly continued.
+	"""
+	words = set(text.lower().split())
+	return bool(words & _FOLLOWUP_SIGNALS)
+
+
 def _keyword_matches(keywords: list, text: str) -> bool:
 	"""Return True if any keyword matches as a whole word (or phrase) in text.
 
@@ -282,10 +322,13 @@ async def resolve_active_crew(history: list, user_text: str, lang: str = "en") -
 
 	Algorithm (in order of priority):
 	0. Crew ID direct match — if the user's message contains the exact crew id as
-	   a standalone word (e.g. "hi dependents"), route there immediately regardless
-	   of crew list order or keyword translation results.
+	   a standalone word (e.g. "hi dependents"), route there immediately.
 	1. Keyword match in current message — base English keywords plus any
 	   auto-translated keywords for the user's configured language.
+	2. Single-turn continuation — if the immediately preceding Z reply was
+	   attributed to a crew AND the current message contains referential language
+	   (e.g. "it", "that", "again"), continue with that crew.
+	   Unrelated messages without such signals (e.g. "buy glasses") return None.
 	Returns crew_id string or None (let Z handle it normally).
 	"""
 	lower_text = user_text.lower()
@@ -302,12 +345,16 @@ async def resolve_active_crew(history: list, user_text: str, lang: str = "en") -
 		if effective and _keyword_matches(effective, lower_text):
 			return crew.id
 
-	# 2. Holistic history scoring is intentionally disabled.
-	# History scoring caused false-positive crew routing: messages with no keyword
-	# overlap (e.g. "buy glasses" after a recipe conversation) were silently
-	# dispatched to the last-active crew because previous user messages had pushed
-	# the score >= 2. Step 1 is the sole routing authority; if it finds no match,
-	# Z handles the message in its default context.
+	# 2. Single-turn continuation: if the immediately preceding Z reply was
+	# attributed to a crew AND the current message contains referential language
+	# (e.g. "make it spicier", "do that again"), continue with that crew.
+	# Unrelated messages without referential pronouns (e.g. "buy glasses") do
+	# NOT trigger continuation, so they fall through to Z as normal.
+	last_crew = _last_attributed_crew(history)
+	if last_crew and _is_followup_text(lower_text):
+		if crew_registry.get(last_crew):
+			return last_crew
+
 	return None
 
 
