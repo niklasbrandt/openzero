@@ -346,6 +346,7 @@ translations: dict[str, str] = {
 	"list_inbox": 'صندوق الوارد',
 	"crews_project_name": 'فرق',
 	"crew_conversation_list": 'محادثة',
+	"crew_shopping_list": 'قائمة التسوق',
 	"date_format_label": 'تنسيق التاريخ',
 	"date_format_iso": 'ISO (2026.01.30)',
 	"date_format_us": 'أمريكي (01/30/2026)',

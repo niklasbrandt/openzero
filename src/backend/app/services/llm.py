@@ -596,6 +596,8 @@ CRITICAL: Never embed tags mid-response or inside prose sections.
   (Use when the user says a task is done/completed/sent/finished/submitted — moves the card to the "Done" column. Examples: "job application sent", "fixed the bug", "email sent")
 - Archive Card: `[ACTION: ARCHIVE_CARD | CARD: title fragment | BOARD: board name (optional)]`
   (Moves a card to the "Archive" list — use this instead of deleting. Preferred for cleanup, completed long-running work, or anything that may need to be recovered.)
+- Append Shopping List: `[ACTION: APPEND_SHOPPING | ITEMS: item1\nitem2\nitem3]`
+  (Appends grocery items to the current week's shopping list card on the Nutrition board. Use when the user mentions what they'll cook/eat, or when generating recipes. List each ingredient on a separate line with quantities.)
 
 Bulk scaffolding: You can emit MULTIPLE action tags in one response to scaffold entire project structures.
 Example flow: CREATE_PROJECT -> CREATE_BOARD -> CREATE_LIST (x3) -> CREATE_TASK (x5)
@@ -603,7 +605,7 @@ Example flow: CREATE_PROJECT -> CREATE_BOARD -> CREATE_LIST (x3) -> CREATE_TASK 
 Rules:
 - Use action tags (CREATE_TASK, CREATE_EVENT, etc.) ONLY when the user **explicitly** requests an action.
 - **NEVER** use action tags for hypothetical scenarios or suggestions.
-- **EXCEPTION — LEARN**: Use LEARN proactively when the user shares meaningful personal facts, diary-like statements, preferences, goals, or life updates. No trigger words needed.
+- **EXCEPTION -- LEARN**: Use LEARN proactively when the user shares meaningful personal facts, diary-like statements, preferences, goals, or life updates. No trigger words needed.\n- **EXCEPTION -- APPEND_SHOPPING**: Use APPEND_SHOPPING proactively whenever the user mentions what they will cook or eat. Extract all required ingredients and emit them. No explicit request needed.
 - Tags are INVISIBLE to the user. Never mention them.
 - Place tags on a NEW LINE at the very end of your message.
 - Do NOT LEARN trivial chat (greetings, confirmations, questions). Only permanent, meaningful facts.
