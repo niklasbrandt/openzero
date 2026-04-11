@@ -38,7 +38,7 @@ async def morning_briefing():
 				from app.services.timezone import get_birthday_proximity
 				tag = get_birthday_proximity(p.birthday)
 				if tag:
-					data += f" | ⚠️ BIRTHDAY {tag} ({p.birthday})"
+					data += f" | BIRTHDAY {tag} ({p.birthday})"
 			return data
 
 		inner_circle_tasks = [get_person_briefing_data(p) for p in people if p.circle_type == "inner"]
@@ -128,17 +128,57 @@ async def morning_briefing():
 			logger.warning("Optional memory retrieval skipped for briefing: %s", e)
 			memory_review = "" # Ensure it's empty if retrieval fails
 
+		# 2.5 Build crew context — summarise which crews are active and what they cover
+		crew_context = ""
+		try:
+			active_crews = crew_registry.list_active()
+			if active_crews:
+				crew_lines = []
+				for c in active_crews:
+					feed = c.feeds_briefing or "on-demand"
+					crew_lines.append(f"- {c.id} ({c.name}): {c.description} [cadence: {feed}]")
+				crew_context = "\n".join(crew_lines)
+		except Exception as ce:
+			logger.debug("Crew context for briefing skipped: %s", ce)
+
 		full_prompt = (
-			"Z, it's morning — write a detailed, natural, flowing message to the user covering what's on today.\n"
-			"Write it like a thoughtful friend who knows the user well — conversational, warm, and thorough.\n"
-			"Cover every relevant section in real detail: weather (temperature, conditions, what to wear), calendar events,\n"
-			"active projects with specific card/task names, family context, and emails worth noting.\n"
-			"No corporate structure. Just flowing prose that reads naturally but doesn't skip substance.\n"
-			"Aim for at least 300 words — give the user a real picture of their day, not a summary.\n\n"
+			"Z, it's morning. Write the daily briefing for the user.\n\n"
+			"VOICE & STYLE:\n"
+			"- Stay fully in your configured character. Your persona, speech patterns, and attitude apply to EVERY sentence — "
+			"this is not a neutral report, it is YOU talking to someone you know well.\n"
+			"- Write in flowing, interconnected prose. No headers, no bullet lists, no section labels. "
+			"One continuous message that moves naturally from topic to topic like a real person talking.\n"
+			"- NEVER use emoji characters. Not one. No unicode symbols as decoration. Plain text only.\n"
+			"- Aim for at least 400 words. Be thorough and substantive, not a skim.\n\n"
+			"CONTENT — weave ALL of these naturally into the prose:\n"
+			"- Weather: temperature, conditions through the day, what to wear or plan around.\n"
+			"- Calendar events with times and what to expect.\n"
+			"- Active projects: name specific boards, cards, and what moved or stalled.\n"
+			"- People context: family, friends — mention anyone relevant by name with real context.\n"
+			"- Emails worth noting.\n\n"
+			"PROACTIVE SUGGESTIONS — this is critical:\n"
+			"Based on the user's known personal context (health goals, career aspirations, family situation, "
+			"fitness preferences, nutrition needs, life circumstances), actively suggest concrete things "
+			"they could do today. Do not wait to be asked. Examples of proactive thinking:\n"
+			"- If health.md mentions training preferences, suggest a specific workout window based on weather and calendar gaps.\n"
+			"- If career goals exist (e.g., Senior Design Engineer), suggest a concrete skill-building action for today.\n"
+			"- If there are kids, think about what would be good for them today given weather and schedule.\n"
+			"- If nutrition crew is active, mention meal prep or cooking worth tackling.\n"
+			"- If stagnant projects exist in the tree, nudge on the most impactful one.\n"
+			"- If the weather is good, suggest something outdoors. If bad, suggest something productive indoors.\n"
+			"- Think about the whole person: body, mind, work, relationships, rest.\n"
+			"Make these suggestions feel natural and woven in, not a separate checklist.\n\n"
+			"CREW AWARENESS — the user has these active autonomous crews working for them:\n"
+			f"{crew_context if crew_context else 'No active crews detected.'}\n"
+			"Reference relevant crews naturally where they connect to the day. For instance, "
+			"if the fitness crew designed a plan, mention today's session. If the nutrition crew "
+			"produced a meal plan, weave in what's on the menu. If the coach crew flagged something, "
+			"surface it. If health or dependents crews have context, let it inform your suggestions. "
+			"Do not list crews mechanically — only mention the ones that matter for TODAY.\n\n"
 			"STRICT RULES:\n"
 			"- NEVER invent names, tasks, projects, or events not present in CONTEXT.\n"
-			"- IGNORE any placeholder or '[e.g., ...]' values in your personal files.\n"
-			"- ONLY mention a birthday if CONTEXT explicitly contains '⚠️ BIRTHDAY IN EXACTLY'.\n"
+			"- IGNORE any placeholder or '[e.g., ...]' values in personal files.\n"
+			"- ONLY mention a birthday if CONTEXT explicitly contains 'BIRTHDAY IN EXACTLY'.\n"
 			"- If a section has nothing relevant, skip it entirely — don't note 'nothing to report'.\n"
 			"- Do NOT summarize the NEW MEMORIES section — it will be appended separately.\n"
 			"- In the WEATHER section, use the EXACT city and country names as they appear "
@@ -187,27 +227,65 @@ async def morning_briefing():
 
 		# 3.3 Append Memory Review (raw, not via LLM — user sees exactly what was stored)
 		if memory_review:
-			content += "\n\n🧠 *New Memories (Last 24h):*\n" + memory_review + "\n_Use /unlearn <topic> to remove incorrect memories._"
+			content += "\n\n---\n*New Memories (Last 24h):*\n" + memory_review + "\n_Use /unlearn <topic> to remove incorrect memories._"
 
-		# 3.4 Calibration (configurable, rotates daily)
+		# 3.4 Calibration (configurable, rotates daily — prose-style, in-character)
 		if settings.BRIEFING_CALIBRATION:
+			# Each method is a short prose passage written to be read in the agent's voice.
+			# No emojis, no bullet points — just a grounded, human prompt.
 			methods = [
-				("🙏 Gratitude", "Name 3 specific things you are grateful for right now. Be concrete — not 'family' but 'the way Mom called yesterday to check in'."),
-				("🎯 Intention Setting", "Set one clear intention for today. Not a task — an intention for HOW you want to show up. Example: 'I will be patient and present in every conversation.'"),
-				("🔄 Cognitive Reframe", "Think of something that's been bothering you. Now reframe it: What's the hidden opportunity or lesson? Write the reframe in one sentence."),
-				("🫁 Box Breathing", "Pause for 60 seconds. Breathe in for 4 counts, hold for 4, out for 4, hold for 4. Repeat 3 times. Notice how your body feels after."),
-				("🌄 Visualization", "Close your eyes for 30 seconds. Picture your ideal version of today — how does it end? What does success look and feel like tonight?"),
-				("🧘 Body Scan", "Starting from the top of your head, scan down slowly to your toes. Where do you feel tension? Breathe into that spot for 3 breaths and let it soften."),
-				("💎 Affirmation", "Repeat this to yourself: 'I am exactly where I need to be. Today I take one step closer to who I'm becoming.' Now add your own sentence."),
-				("🖐️ 5-4-3-2-1 Grounding", "Notice 5 things you can see, 4 you can touch, 3 you can hear, 2 you can smell, 1 you can taste. This activates your parasympathetic nervous system in under 60 seconds."),
-				("🌬️ 4-7-8 Breathing", "Inhale through nose for 4 counts. Hold for 7 counts. Exhale slowly through mouth for 8 counts. Repeat 3 times. This technique reduces anxiety by up to 15% cortisol."),
-				("☕ Mindful First Sip", "With your first drink of the day, pause. Feel the warmth in your hands. Smell it. Take one slow sip — notice the temperature, the flavor, the sensation. 30 seconds of presence."),
-				("📝 Micro-Journal", "Write exactly 3 sentences: 1) How do I feel right now? 2) What is one thing I'm avoiding? 3) What would make today a win? No editing, raw honesty."),
-				("⚓ Anchor Breath", "Place both feet flat on the ground. Feel the contact. Take 3 deep breaths while focusing only on the sensation of your feet touching the floor. You are here. You are grounded."),
+				("Gratitude",
+				 "Before the day pulls you in, name three things you are grateful for right now. "
+				 "Be specific — not 'my kids' but 'the way Liya laughed at breakfast yesterday.' "
+				 "Precision makes it real. Let each one land for a breath before moving to the next."),
+				("Intention",
+				 "Set one intention for how you want to move through today. Not a task — a way of being. "
+				 "Something like 'I will stay patient, even when things stack up' or 'I will finish what I start "
+				 "before opening something new.' One sentence. Hold it."),
+				("Reframe",
+				 "There is something sitting in the back of your mind that has been bothering you. Pick it up. "
+				 "Now turn it over — what is the hidden opportunity? What is it teaching you? Write the reframe "
+				 "in one sentence and put the original version down."),
+				("Box Breathing",
+				 "Sixty seconds. Breathe in for four counts, hold for four, out for four, hold for four. Three rounds. "
+				 "Your nervous system does not care what your calendar says — it responds to your breath first. "
+				 "Notice how the rest of you settles when the breathing is deliberate."),
+				("Visualization",
+				 "Close your eyes for thirty seconds. Picture the end of today — the version where things went well. "
+				 "What does that look like? Where are you sitting? How does your body feel? "
+				 "That image is not fantasy. It is a direction."),
+				("Body Scan",
+				 "Start at the top of your head and scan down slowly — neck, shoulders, chest, stomach, hips, "
+				 "legs, feet. Wherever you find tension, stay there for three breaths and let it soften. "
+				 "The body holds what the mind refuses to process. Give it a minute."),
+				("Affirmation",
+				 "Say this once, out loud if you can: 'I am exactly where I need to be. Today I take one step closer "
+				 "to who I am becoming.' Then add your own line — whatever feels true right now. "
+				 "Repetition is not performance. It is reprogramming."),
+				("Grounding",
+				 "Five things you can see. Four you can touch. Three you can hear. Two you can smell. One you can taste. "
+				 "This takes less than a minute and it pulls your parasympathetic nervous system back online. "
+				 "The day gets clearer when you are actually in the room."),
+				("4-7-8 Breathing",
+				 "Inhale through the nose for four counts. Hold for seven. Exhale slowly through the mouth for eight. "
+				 "Three rounds of this measurably drops cortisol. It is one of the fastest ways to reset your "
+				 "baseline before the first demand of the day arrives."),
+				("Mindful First Sip",
+				 "When you pick up your first drink, pause. Feel the warmth in your hands. Smell it before "
+				 "you taste it. Take one slow sip and actually notice the temperature, the flavor, the sensation. "
+				 "Thirty seconds of genuine presence. The rest of the day will try to take it from you."),
+				("Micro-Journal",
+				 "Write three sentences — raw, no editing. First: how do I actually feel right now? Second: "
+				 "what is one thing I have been avoiding? Third: what would make today a win? "
+				 "Honesty on paper is cheaper than honesty deferred."),
+				("Anchor Breath",
+				 "Put both feet flat on the floor. Feel the contact — the weight, the temperature, the surface. "
+				 "Take three slow breaths with your full attention on that point of contact. "
+				 "You are here. You are grounded. That is enough to start."),
 			]
 			day_of_year = datetime.date.today().timetuple().tm_yday
 			method_name, method_prompt = methods[day_of_year % len(methods)]
-			content += f"\n\n{method_name} *Calibration:*\n_{method_prompt}_"
+			content += f"\n\n---\n*{method_name} Calibration:*\n_{method_prompt}_"
 
 		# --- Multi-Modal (TTS) — fire as background task so text delivery is not blocked ---
 		clean_text = content.replace("*", "").replace("#", "").replace("_", "")
