@@ -301,13 +301,22 @@ crews:
         STEP 1: Issue CREATE_LIST for each category that does not yet exist:
                 Surf, Turf, Dough, Pasta, Miscellaneous
                 Use BOARD: Nutrition for all.
-        STEP 2: For each recipe, issue CREATE_TASK with:
-                - BOARD: Nutrition
-                - LIST: the matching category (Surf / Turf / Dough / Pasta / Miscellaneous)
-                - TITLE: the real recipe name (e.g. "Garlic Butter Shrimp" -- NOT "Surf 1")
-                - The card description (added via the DESCRIPTION field if supported) must contain:
-                    Ingredients: [list with exact gram/ml quantities]
-                    Method: [3-5 concise steps]
+        STEP 2: For each recipe emit ONE CREATE_TASK tag. DESCRIPTION is MANDATORY and must
+                contain the complete recipe pasted directly inside the tag.
+                Multi-line content inside the tag is fully valid -- use this exact format:
+                [ACTION: CREATE_TASK | BOARD: Nutrition | LIST: Turf | TITLE: Honey Garlic Chicken | DESCRIPTION: Ingredients:
+                400g chicken thighs
+                30ml honey
+                20ml soy sauce
+                4 garlic cloves
+                Method:
+                1. Mix honey, soy sauce and garlic.
+                2. Marinate chicken 30 min.
+                3. Pan-fry 8 min per side at medium-high heat.
+                4. Glaze with remaining sauce and serve.]
+                NEVER emit a CREATE_TASK for a recipe without DESCRIPTION.
+                NEVER write the recipe as prose outside the tag and leave DESCRIPTION empty.
+                Do NOT use placeholder text like [list here] -- write the actual ingredients and steps.
         STEP 3: Issue APPEND_SHOPPING with ALL ingredients from all recipes, deduplicated and
                 sorted by category (Produce, Proteins, Pantry, Spices). One item per line with quantity.
                 Example: [ACTION: APPEND_SHOPPING | ITEMS: 1200g chicken wings\n30ml olive oil\n15g smoked paprika]
