@@ -31,7 +31,7 @@ A) DEFAULT — routine output that belongs to THIS crew's ongoing domain:
    [ACTION: CREATE_PROJECT | NAME: Crews | DESCRIPTION: Crew outputs]   ← idempotent
    [ACTION: CREATE_BOARD | PROJECT: Crews | NAME: <exact crew name>]   ← idempotent
    [ACTION: CREATE_LIST | BOARD: <exact crew name> | NAME: <topic / phase>]
-   [ACTION: CREATE_TASK | BOARD: <exact crew name> | LIST: <list name> | TITLE: <item>]  ← one per item
+   [ACTION: CREATE_TASK | BOARD: <exact crew name> | LIST: <list name> | TITLE: <item> | DESCRIPTION: <full content>]  ← one per item; use DESCRIPTION for recipe text, multi-step instructions, or any detailed body content
 
 B) NAMED INITIATIVE — ONLY for a one-off external event, project, or initiative that has
    a unique proper name tied to a specific occasion or goal (e.g. "Birthday 2026",
@@ -336,7 +336,9 @@ async def resolve_active_crews(history: list, user_text: str, lang: str = "en", 
 	The first entry is the primary crew (same algorithm as resolve_active_crew).
 	Subsequent entries are drawn from auto-computed domain-similarity candidates
 	(see CrewRegistry._compute_panel_candidates). Any crew listed in the primary's
-	`panel_exclude` config is skipped. Only crews that exist in the registry are included.
+	`panel_exclude` config is skipped. Secondary crews MUST also keyword-match the
+	current user message — purely semantic similarity is not sufficient. Only crews
+	that exist in the registry are included.
 	Returns an empty list if no crew matches.
 	"""
 	primary = await resolve_active_crew(history, user_text, lang=lang)
@@ -347,9 +349,18 @@ async def resolve_active_crews(history: list, user_text: str, lang: str = "en", 
 	cfg = crew_registry.get(primary)
 	exclude = set(cfg.panel_exclude or []) if cfg else set()
 	candidates = crew_registry._panel_candidates.get(primary, [])
+	lower_text = user_text.lower()
 	for sid in candidates:
 		if len(result) >= max_crews:
 			break
-		if sid != primary and sid not in exclude and crew_registry.get(sid):
+		if sid == primary or sid in exclude:
+			continue
+		secondary_cfg = crew_registry.get(sid)
+		if not secondary_cfg:
+			continue
+		# Only include a secondary crew if it also keyword-matches the current message.
+		# This prevents domain-similarity alone from pulling in unrelated crews.
+		secondary_kws = await _get_effective_keywords(secondary_cfg, lang)
+		if secondary_kws and _keyword_matches(secondary_kws, lower_text):
 			result.append(sid)
 	return result

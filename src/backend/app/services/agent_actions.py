@@ -426,14 +426,18 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 		clean_reply = strip_tag(clean_reply, raw_tag)
 
 	# 4. Create Task Tag — runs AFTER scaffolding so the board/list already exists.
-	task_pattern = r"\[?ACTION: CREATE_TASK \| BOARD: ([^\|\]]+) \| LIST: ([^\|\]]+) \| TITLE: ([^\|\]]+)\]?"
+	# DESCRIPTION is optional — captured when present, defaults to empty string.
+	task_pattern = r"\[?ACTION: CREATE_TASK \| BOARD: ([^\|\]]+) \| LIST: ([^\|\]]+) \| TITLE: ([^\|\]]+?)(?:\s*\|\s*DESCRIPTION:\s*([^\]]+))?\]?"
 	for match in re.finditer(task_pattern, reply):
 		raw_tag = match.group(0)
-		board, llist, title = match.groups()
-		board, llist, title = board.strip().strip('"\''), llist.strip().strip('"\''), title.strip().strip('"\'')
+		board, llist, title, desc = match.groups()
+		board = board.strip().strip('"\'')
+		llist = llist.strip().strip('"\'')
+		title = title.strip().strip('"\'')
+		desc = (desc or "").strip()
 
-		async def _exec_task(board=board, llist=llist, title=title):
-			path = await planka_create_task(board_name=board, list_name=llist, title=title)
+		async def _exec_task(board=board, llist=llist, title=title, desc=desc):
+			path = await planka_create_task(board_name=board, list_name=llist, title=title, description=desc)
 			if path:
 				return f"Task '{title}' created in {path}."
 			return f"\u26a0 Failed to create task '{title}'. Check Planka connection."

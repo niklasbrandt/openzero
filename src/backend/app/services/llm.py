@@ -578,9 +578,10 @@ CRITICAL: Every tag MUST start with `[ACTION:` — never use `[CREATE_TASK` or s
 CRITICAL: Tags go on NEW LINES at the very END of your response, after all prose.
 CRITICAL: Never embed tags mid-response or inside prose sections.
 
-- Create Task: `[ACTION: CREATE_TASK | BOARD: name | LIST: name | TITLE: text]`
+- Create Task: `[ACTION: CREATE_TASK | BOARD: name | LIST: name | TITLE: text | DESCRIPTION: full text (optional)]`
   (Default board: "Operator Board", default list: "Today")
   Always emit this tag when the user says "remind me today", "remind me later", "add this to my list", or mentions any item they need to do/buy/handle.
+  Use DESCRIPTION for detailed content: full recipes, multi-step instructions, notes — anything that belongs in the card body, not just the title.
 - Create Project: `[ACTION: CREATE_PROJECT | NAME: text | DESCRIPTION: text]`
 - Create Board: `[ACTION: CREATE_BOARD | PROJECT: project_name | NAME: text]`
 - Create List (Column): `[ACTION: CREATE_LIST | BOARD: board_name | NAME: text]`
