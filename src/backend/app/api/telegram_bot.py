@@ -1168,8 +1168,13 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 
 	# Z-initiated crew routing: if Z emitted [ACTION: ROUTE | CREW: id], discard
 	# Z's response and re-dispatch the original user text to that crew instead.
+	# The model sometimes omits the 'ACTION:' prefix or the closing ']'; catch all
+	# plausible variants so they are routed rather than leaked to the user.
 	import re as _re
-	_route_match = _re.search(r'\[ACTION:\s*ROUTE\s*\|\s*CREW:\s*([a-z0-9_-]+)\s*\]', response, _re.IGNORECASE)
+	_route_match = _re.search(
+		r'\[(?:ACTION:\s*)?ROUTE\s*\|\s*CREW:\s*([a-z0-9_-]+)\s*\]?',
+		response, _re.IGNORECASE
+	)
 	if _route_match:
 		crew_id = _route_match.group(1).strip().lower()
 		logger.info("Z self-routed '%s...' to crew '%s'", user_text[:40], crew_id)
