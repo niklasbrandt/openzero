@@ -1152,8 +1152,11 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 	response = "".join(chunks)
 
 	# Sanitise output: strip emojis, model-generated slash commands, etc.
-	from app.services.llm import sanitise_output, last_model_used
+	from app.services.llm import sanitise_output, last_model_used, rehydrate_response, get_active_rep_map
 	response = sanitise_output(response)
+	# Final rehydration pass: per-chunk rehydration above misses tokens like
+	# [DATE_3] that were split across two SSE deltas ("[DATE_" + "3]").
+	response = rehydrate_response(response, get_active_rep_map())
 
 	# If the LLM timed out or returned nothing, silently remove the thinking message.
 	if not response.strip():

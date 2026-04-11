@@ -424,6 +424,17 @@ from langgraph.prebuilt import create_react_agent
 # Track the model used for the current request context
 last_model_used: ContextVar[str] = ContextVar("last_model_used", default="local")
 
+# Holds the PII replacement map for the current streaming request so callers
+# can do a final whole-response rehydration pass after assembling all chunks.
+# Per-chunk rehydration misses tokens split across two SSE deltas (e.g.
+# "[DATE_" in one chunk and "3]" in the next).  Callers should call
+# rehydrate_response(assembled, get_active_rep_map()) after joining chunks.
+_active_rep_map: ContextVar[dict] = ContextVar("_active_rep_map", default={})
+
+def get_active_rep_map() -> dict:
+	"""Return the PII replacement map built for the current streaming request."""
+	return _active_rep_map.get({})
+
 # Active inference timestamps — updated every time a token is yielded.
 # Used by /api/dashboard/llm-active to drive the dashboard card animation.
 # Key: tier name ("local" / "cloud"), Value: time.monotonic() of last token yield.
@@ -1021,6 +1032,10 @@ async def chat_stream(
 			messages[0]["content"], _m2 = sanitize_prompt(system_prompt, _counters, _seen_map=_m1)
 			rep_map = {**_m1, **_m2}
 			logger.debug("cloud_sanitize[local-cloud]: %d entities replaced", len(rep_map))
+		# Expose rep_map so callers can do a final whole-response rehydration pass
+		# after assembling all chunks (per-chunk rehydration misses tokens split
+		# across two SSE deltas, e.g. "[DATE_" in one chunk and "3]" in the next).
+		_active_rep_map.set(rep_map)
 
 		# Cloud tier uses a short timeout (external API is fast).
 		# Local tier: 120s — single tier with no fallback, wait for first token.
@@ -1273,6 +1288,7 @@ async def chat_stream(
 			outbound_system, _m2 = sanitize_prompt(system_prompt, _counters, _seen_map=_m1)
 			rep_map = {**_m1, **_m2}
 			logger.debug("cloud_sanitize[groq]: %d entities replaced in outbound prompt", len(rep_map))
+		_active_rep_map.set(rep_map)
 		try:
 			async with httpx.AsyncClient(timeout=130.0) as client:
 				response = await client.post(
@@ -1309,6 +1325,7 @@ async def chat_stream(
 			outbound_system, _m2 = sanitize_prompt(system_prompt, _counters, _seen_map=_m1)
 			rep_map = {**_m1, **_m2}
 			logger.debug("cloud_sanitize[openai]: %d entities replaced in outbound prompt", len(rep_map))
+		_active_rep_map.set(rep_map)
 		try:
 			async with httpx.AsyncClient(timeout=130.0) as client:
 				response = await client.post(

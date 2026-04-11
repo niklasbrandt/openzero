@@ -950,8 +950,10 @@ async def dashboard_chat_stream(req: ChatRequest, request: Request, _rl: None = 
 			yield f"data: {json.dumps({'token': chunk})}\n\n"
 
 		full_response = "".join(chunks)
-
-		# Parse actions, save Z reply, trigger background memory — all via bus.
+		# Final rehydration pass so tokens split across SSE chunks (e.g. "[DATE_" + "3]")
+		# are correctly restored before action parsing and display.
+		from app.services.llm import rehydrate_response, get_active_rep_map
+		full_response = rehydrate_response(full_response, get_active_rep_map())
 		clean_reply, executed_cmds, pending_actions = await bus.commit_reply(
 			channel="dashboard",
 			raw_reply=full_response,
