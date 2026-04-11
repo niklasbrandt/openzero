@@ -216,20 +216,35 @@ async def _send_online_notification(recovery_html: str = ""):
 
 _LATEST_CHANGES_PATH = "/app/agent/latest_changes.txt"
 
-def _read_and_consume_latest_changes() -> str:
-	"""Read the latest deployment changes file (written by sync.sh) and delete
-	it so it is only surfaced once per deployment."""
+def _read_latest_changes() -> str:
+	"""Read the latest deployment changes file (written by sync.sh).
+	Does NOT delete -- call _consume_latest_changes() after successful delivery."""
 	import os
 	try:
 		if not os.path.exists(_LATEST_CHANGES_PATH):
 			return ""
 		with open(_LATEST_CHANGES_PATH, "r") as f:
-			content = f.read().strip()
-		os.remove(_LATEST_CHANGES_PATH)
-		return content
+			return f.read().strip()
 	except Exception as _e:
-		logger.debug("latest_changes read/consume failed: %s", _e)
+		logger.debug("latest_changes read failed: %s", _e)
 		return ""
+
+def _consume_latest_changes():
+	"""Delete the changes file after successful delivery."""
+	import os
+	try:
+		if os.path.exists(_LATEST_CHANGES_PATH):
+			os.remove(_LATEST_CHANGES_PATH)
+	except Exception:
+		pass
+
+def _format_raw_changes_html(changes: str) -> str:
+	"""Format raw commit messages as a minimal HTML fallback."""
+	lines = [l.strip() for l in changes.splitlines() if l.strip().startswith("- ")]
+	if not lines:
+		return ""
+	formatted = "\n".join(lines[:10])
+	return f"<i>back.</i>\n\n<pre>{formatted}</pre>"
 
 async def _recover_unanswered_messages():
 	"""Deterministic restart recovery: scans up to 30 global messages to find
@@ -291,7 +306,7 @@ async def _recover_unanswered_messages():
 
 		if not unanswered:
 			logger.info("Restart recovery: nothing to recover — sending online notification.")
-			changes = _read_and_consume_latest_changes()
+			changes = _read_latest_changes()
 			if changes:
 				logger.info("Restart recovery: new deployment changes detected, asking LLM to mention them.")
 				try:
@@ -317,10 +332,18 @@ async def _recover_unanswered_messages():
 					)
 					if raw and not _is_error_stub(raw):
 						clean = strip_llm_time_header(raw)
+						_consume_latest_changes()
 						await _send_online_notification(recovery_html=_md_to_html(clean))
 						return
+					logger.warning("Restart recovery: LLM returned empty/error — using raw changes fallback.")
 				except Exception as _ce:
-					logger.warning("Restart recovery: changes LLM call failed (%s) — falling back to plain back.", _ce)
+					logger.warning("Restart recovery: changes LLM call failed (%s) — using raw changes fallback.", _ce)
+				# LLM unavailable — show raw commit messages directly
+				fallback_html = _format_raw_changes_html(changes)
+				if fallback_html:
+					_consume_latest_changes()
+					await _send_online_notification(recovery_html=fallback_html)
+					return
 			await _send_online_notification()
 			return
 
