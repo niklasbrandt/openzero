@@ -281,26 +281,36 @@ crews:
       Always use Metric units (grams, ml) and Celsius for all recipes.
       Output deduplicated shopping checklists.
 
-      PLANKA PERSISTENCE — follow these steps in exact order, always:
-        STEP 1: Issue CREATE_PROJECT | NAME: Recipes | DESCRIPTION: Weekly Meal Plans
-                (This is idempotent — safe to run even if the project already exists.)
-        STEP 2: Issue CREATE_BOARD | PROJECT: Recipes | NAME: Recipes
-        STEP 3: Issue CREATE_LIST for each: Surf, Turf, Dough, Shopping List
-        STEP 4: For each recipe, issue CREATE_TASK with:
-                - BOARD: Recipes
-                - LIST: the matching category (Surf / Turf / Dough)
-                - TITLE: the real recipe name (e.g. "Garlic Butter Shrimp" — NOT "Surf 1")
+      ABSOLUTE HARD BLOCKLIST (ZERO TOLERANCE -- override everything else):
+        The user's health.md lists "Excluded Ingredients: [pig]".
+        This means: NO pork, NO pig, NO bacon, NO ham, NO prosciutto, NO pancetta, NO lard,
+        NO chorizo (pork-based), NO sausage (pork-based), NO schnitzel made with pork.
+        If a recipe traditionally uses pork, substitute with chicken, beef, turkey, or veal.
+        Violation of this rule renders the entire output invalid.
+
+      PLANKA PERSISTENCE -- follow these steps in exact order, always:
+        The "Crews" project and "Nutrition" board already exist (managed by the system).
+        NEVER create a separate "Recipes" project. All recipe content goes into the
+        existing Crews -> Nutrition board.
+        STEP 1: Issue CREATE_LIST for each category that does not yet exist:
+                Surf, Turf, Dough, Pasta, Miscellaneous, Shopping List
+                Use BOARD: Nutrition for all.
+        STEP 2: For each recipe, issue CREATE_TASK with:
+                - BOARD: Nutrition
+                - LIST: the matching category (Surf / Turf / Dough / Pasta / Miscellaneous)
+                - TITLE: the real recipe name (e.g. "Garlic Butter Shrimp" -- NOT "Surf 1")
                 - The card description (added via the DESCRIPTION field if supported) must contain:
                     Ingredients: [list with exact gram/ml quantities]
                     Method: [3-5 concise steps]
-        STEP 5: Issue one CREATE_TASK for BOARD: Recipes | LIST: Shopping List | TITLE: Weekly Shopping List
+        STEP 3: Issue one CREATE_TASK for BOARD: Nutrition | LIST: Shopping List | TITLE: Weekly Shopping List
                 with all ingredients deduplicated and sorted by category (Produce, Proteins, Pantry).
+        Do NOT issue CREATE_PROJECT or CREATE_BOARD tags. The board already exists.
 
       RECIPE QUALITY RULES:
         - Every recipe must have a real dish name (not "Surf 1", not "Turf 3").
-        - Surf = seafood dishes (e.g. shrimp, fish, squid). Turf = meat/poultry dishes. Dough = pasta, pizza, bread, baked goods.
-        - Minimum 2 recipes per list (Surf, Turf, Dough). The user provided food preferences in the message — use those.
-        - Strictly respect all allergies and exclusions from health.md.
+        - Surf = seafood dishes (e.g. shrimp, fish, squid). Turf = meat/poultry dishes. Dough = pizza, bread, baked goods. Pasta = pasta dishes. Miscellaneous = everything else.
+        - Minimum 2 recipes per list (Surf, Turf, Dough). The user provided food preferences in the message -- use those.
+        - Strictly respect all allergies and exclusions from health.md -- especially the HARD BLOCKLIST above.
     characters:
       - name: "The Clinical Nutritionist"
         role: "Strictly enforces health.md constraints (allergies, macros, exclusions)."

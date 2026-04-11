@@ -283,10 +283,21 @@ async def archive_card(card_title_fragment: str, board_name: str = "") -> bool:
 
 
 async def create_project(name: str, description: str = "") -> dict:
-	"""Create a new project in Planka."""
+	"""Create a new project in Planka. Returns existing project if name matches (idempotent)."""
 	token = await get_planka_auth_token()
 	headers = {"Authorization": f"Bearer {token}"}
 	async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, headers=headers) as client:
+		# Dedup: return existing project if one with the same name already exists
+		try:
+			resp = await client.get("/api/projects")
+			resp.raise_for_status()
+			for p in resp.json().get("items", []):
+				if (p.get("name") or "").lower() == name.lower():
+					logger.debug("create_project: '%s' already exists (id=%s), returning existing", _sanitize_for_log(name), p["id"])
+					return p
+		except Exception as e:
+			logger.debug("create_project dedup check failed: %s", _sanitize_for_log(e))
+
 		# Try with 'type' first, then 'isPublic' if it fails
 		try:
 			resp = await client.post("/api/projects", json={
@@ -363,10 +374,21 @@ async def find_and_delete_projects_by_prefix(prefix: str) -> list:
 	return deleted
 
 async def create_board(project_id: str, name: str) -> dict:
-	"""Create a new board in a project."""
+	"""Create a new board in a project. Returns existing board if name matches (idempotent)."""
 	token = await get_planka_auth_token()
 	headers = {"Authorization": f"Bearer {token}"}
 	async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, headers=headers) as client:
+		# Dedup: return existing board if one with the same name already exists
+		try:
+			det = await client.get(f"/api/projects/{project_id}")
+			det.raise_for_status()
+			for b in det.json().get("included", {}).get("boards", []):
+				if (b.get("name") or "").lower() == name.lower():
+					logger.debug("create_board: '%s' already exists in project %s (id=%s), returning existing", _sanitize_for_log(name), _sanitize_for_log(project_id), b["id"])
+					return b
+		except Exception as e:
+			logger.debug("create_board dedup check failed: %s", _sanitize_for_log(e))
+
 		try:
 			resp = await client.post(f"/api/projects/{project_id}/boards", json={
 				"name": name,
@@ -454,7 +476,7 @@ async def move_card(card_title_fragment: str, destination_list: str, board_name:
 		return False
 
 async def create_list(board_name: str, list_name: str, project_name: Optional[str] = None) -> Optional[dict]:
-	"""Create a new list (column) in a board."""
+	"""Create a new list (column) in a board. Returns existing list if name matches (idempotent)."""
 	token = await get_planka_auth_token()
 	headers = {"Authorization": f"Bearer {token}"}
 	async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, headers=headers) as client:
@@ -464,6 +486,7 @@ async def create_list(board_name: str, list_name: str, project_name: Optional[st
 		projects = resp.json().get("items", [])
 
 		board_id = None
+		existing_lists = []
 		for proj in projects:
 			if project_name and proj["name"].lower() != project_name.lower():
 				continue
@@ -481,6 +504,18 @@ async def create_list(board_name: str, list_name: str, project_name: Optional[st
 		if not board_id:
 			logger.debug("create_list - board '%s' not found", _sanitize_for_log(board_name))
 			return None
+
+		# Dedup: check if a list with the same name already exists on this board
+		try:
+			b_detail = await client.get(f"/api/boards/{board_id}", params={"included": "lists"})
+			b_detail.raise_for_status()
+			existing_lists = b_detail.json().get("included", {}).get("lists", [])
+			for lst in existing_lists:
+				if (lst.get("name") or "").lower() == list_name.lower():
+					logger.debug("create_list: '%s' already exists on board '%s' (id=%s), returning existing", _sanitize_for_log(list_name), _sanitize_for_log(board_name), lst["id"])
+					return lst
+		except Exception as e:
+			logger.debug("create_list dedup check failed: %s", _sanitize_for_log(e))
 
 		try:
 			resp = await client.post(f"/api/boards/{board_id}/lists", json={
