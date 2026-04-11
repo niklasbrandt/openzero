@@ -286,10 +286,6 @@ async def resolve_active_crew(history: list, user_text: str, lang: str = "en") -
 	   of crew list order or keyword translation results.
 	1. Keyword match in current message — base English keywords plus any
 	   auto-translated keywords for the user's configured language.
-	2. Score the last ~8 history entries (user + Z) holistically:
-	   - A Z reply with crew attribution footer scores +3 for that crew.
-	   - A user message whose content matches a crew's keywords scores +1.
-	   Highest-scoring crew wins if score >= 2.
 	Returns crew_id string or None (let Z handle it normally).
 	"""
 	lower_text = user_text.lower()
@@ -306,27 +302,12 @@ async def resolve_active_crew(history: list, user_text: str, lang: str = "en") -
 		if effective and _keyword_matches(effective, lower_text):
 			return crew.id
 
-	# 2. Holistic scoring over recent history (user messages only).
-	# Only user messages contribute to history scoring — Z's attribution footers
-	# are metadata, not intent signals, and scoring them caused false positives
-	# (e.g. a greeting like "hi" triggering a crew because the previous Z reply
-	# still had a crew attribution footer in the 8-message window).
-	recent = history[-8:] if len(history) > 8 else history
-	scores: dict[str, int] = {}
-	for msg in recent:
-		if msg.get("role", "") != "user":
-			continue
-		lower_content = msg.get("content", "").lower()
-		for crew in crew_registry.list_active():
-			effective = await _get_effective_keywords(crew, lang)
-			if effective and _keyword_matches(effective, lower_content):
-				scores[crew.id] = scores.get(crew.id, 0) + 1
-
-	if scores:
-		best = max(scores, key=lambda k: scores[k])
-		if scores[best] >= 2:
-			return best
-
+	# 2. Holistic history scoring is intentionally disabled.
+	# History scoring caused false-positive crew routing: messages with no keyword
+	# overlap (e.g. "buy glasses" after a recipe conversation) were silently
+	# dispatched to the last-active crew because previous user messages had pushed
+	# the score >= 2. Step 1 is the sole routing authority; if it finds no match,
+	# Z handles the message in its default context.
 	return None
 
 
