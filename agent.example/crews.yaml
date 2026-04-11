@@ -276,6 +276,12 @@ crews:
       - lunch
       - breakfast
       - snack
+      - octopus
+      - chicken
+      - beef
+      - fish
+      - pasta
+      - salad
     instructions: |
       Build comprehensive meal plans adhering strictly to ingredients listed in personal/health.md.
       Always use Metric units (grams, ml) and Celsius for all recipes.
@@ -293,7 +299,7 @@ crews:
         NEVER create a separate "Recipes" project. All recipe content goes into the
         existing Crews -> Nutrition board.
         STEP 1: Issue CREATE_LIST for each category that does not yet exist:
-                Surf, Turf, Dough, Pasta, Miscellaneous, Shopping List
+                Surf, Turf, Dough, Pasta, Miscellaneous
                 Use BOARD: Nutrition for all.
         STEP 2: For each recipe, issue CREATE_TASK with:
                 - BOARD: Nutrition
@@ -302,8 +308,11 @@ crews:
                 - The card description (added via the DESCRIPTION field if supported) must contain:
                     Ingredients: [list with exact gram/ml quantities]
                     Method: [3-5 concise steps]
-        STEP 3: Issue one CREATE_TASK for BOARD: Nutrition | LIST: Shopping List | TITLE: Weekly Shopping List
-                with all ingredients deduplicated and sorted by category (Produce, Proteins, Pantry).
+        STEP 3: Issue APPEND_SHOPPING with ALL ingredients from all recipes, deduplicated and
+                sorted by category (Produce, Proteins, Pantry, Spices). One item per line with quantity.
+                Example: [ACTION: APPEND_SHOPPING | ITEMS: 1200g chicken wings\n30ml olive oil\n15g smoked paprika]
+                Do NOT use CREATE_TASK for shopping items. The APPEND_SHOPPING tag automatically
+                manages weekly shopping list cards.
         Do NOT issue CREATE_PROJECT or CREATE_BOARD tags. The board already exists.
 
       RECIPE QUALITY RULES:

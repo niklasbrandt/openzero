@@ -757,6 +757,26 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 		await handle_action("SET_NUDGE_INTERVAL", raw_tag, _exec_nudge, f"Set nudge interval for '{task_f}' to {interval_raw.strip()}m")
 		clean_reply = strip_tag(clean_reply, raw_tag)
 
+	# 12. Append Shopping List Tag — appends items to the weekly shopping card.
+	shopping_pattern = r"\[?ACTION: APPEND_SHOPPING \| ITEMS: ([^\]]{1,4000})\]?"
+	for match in re.finditer(shopping_pattern, reply):
+		raw_tag = match.group(0)
+		items_text = match.group(1).strip()
+
+		async def _exec_shopping(items_text=items_text):
+			try:
+				from app.services.shopping_list import append_shopping_items
+				ok = await append_shopping_items(items_text)
+				if ok:
+					return "Shopping list updated."
+				return "\u26a0 Failed to update shopping list. Nutrition board not found."
+			except Exception as _e:
+				logger.error("APPEND_SHOPPING failed: %s", _e)
+				return "\u26a0 Failed to update shopping list."
+
+		await handle_action("APPEND_SHOPPING", raw_tag, _exec_shopping, "Append items to weekly shopping list")
+		clean_reply = strip_tag(clean_reply, raw_tag)
+
 	# Archive Card Tag — moves card to the "Archive" list instead of deleting.
 	# Deletion of projects/boards is intentionally NOT available as an agent action.
 	# Agents can only archive (reversible). Hard deletion is a manual user action in Planka.
