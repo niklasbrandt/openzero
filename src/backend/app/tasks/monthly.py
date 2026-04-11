@@ -9,9 +9,11 @@ async def monthly_review():
 	activity = await get_activity_report(days=30)
 
 	prompt = (
-		"Z, it's been a full month — write a natural, honest reflection on how things went.\n"
+		"Z, it's been a full month — write a detailed, natural, honest reflection on how things went.\n"
 		"What actually moved forward, what got stuck, and what feels worth pushing on next month?\n"
-		"Write it like a thoughtful friend who's been watching alongside — flowing prose, no formal section headers.\n\n"
+		"Write it like a thoughtful friend who's been watching alongside — flowing prose, no formal section headers.\n"
+		"Be specific: name actual boards, cards, and progress percentages. Don't be vague.\n"
+		"Aim for at least 300 words — this is a month of work, give it the depth it deserves.\n\n"
 		"STRICT OPERATIONAL DATA (THE ONLY TRUTH):\n"
 		f"{activity}\n\n"
 		f"FULL PROJECT TREE:\n{tree}\n\n"
