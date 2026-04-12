@@ -1361,15 +1361,22 @@ async def _process_crew_stream(update: Update, context: ContextTypes.DEFAULT_TYP
 			await safe_edit(thinking_msg, f"<blockquote><i>stopped (crew: <b>{crew_display}</b>)</i></blockquote>", parse_mode="HTML")
 			return
 
-		# Commit each section separately for correct action attribution
+		# Commit each section separately for correct action attribution.
+		# Attribution footer is appended to the LAST section's raw_reply so it
+		# is stored in DB — _last_attributed_crew needs it there for follow-up
+		# continuation to work on the next user message.
 		combined_clean_parts: list[str] = []
 		all_executed_cmds: list = []
-		for cid, section_text in all_sections.items():
+		attribution = ", ".join(crew_ids)
+		section_items = list(all_sections.items())
+		for idx, (cid, section_text) in enumerate(section_items):
 			safe_cid = cid.replace("\n", "\\n").replace("\r", "\\r")
 			logger.info("Crew panel '%s' raw output (%d chars): %s", safe_cid, len(section_text), section_text[:300])
+			is_last = idx == len(section_items) - 1
+			raw = section_text + (f"\n\n_(Reasoning by crew {attribution})_" if is_last else "")
 			c_reply, e_cmds, p_actions = await bus.commit_reply(
 				channel="telegram",
-				raw_reply=section_text,
+				raw_reply=raw,
 				model=f"crew:{cid}",
 				user_text=user_input,
 			)
@@ -1381,9 +1388,8 @@ async def _process_crew_stream(update: Update, context: ContextTypes.DEFAULT_TYP
 		if all_executed_cmds:
 			logger.info("Crew panel executed actions: %s", all_executed_cmds)
 
-		attribution = ", ".join(crew_ids)
 		clean_reply = "\n\n---\n\n".join(combined_clean_parts)
-		clean_reply += f"\n\n_(Reasoning by crew {attribution})_"
+		# Attribution already included in last section via commit — no extra append needed.
 
 		display_final = f"<b>{format_time()}</b>\n\n{_md_to_html(clean_reply)}"
 		await safe_edit(thinking_msg, f"<blockquote>{display_final}</blockquote>", parse_mode="HTML", reply_markup=get_nav_markup(t))
