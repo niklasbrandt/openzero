@@ -258,19 +258,23 @@ _CREW_ATTRIBUTION_RE = re.compile(r'\(Reasoning by crew ([^)]+)\)', re.IGNORECAS
 
 
 def _last_attributed_crew(history: list) -> Optional[str]:
-	"""Return the primary crew ID from the most recent Z message, or None.
+	"""Return the most recently active crew ID from recent Z messages, or None.
 
-	Scans backwards through history to find the first Z/assistant turn.  If that
-	turn contains a crew attribution footer, the primary (first) crew ID is
-	returned.  If the most recent Z turn exists but has no attribution,
-	None is returned — meaning Z handled it without a crew.
+	Scans backwards through up to 3 Z/assistant turns looking for a crew
+	attribution footer.  Scanning through multiple turns means that a plain
+	Z reply (e.g. a restart notification) between two crew-attributed turns
+	does NOT break the continuation chain.
 	"""
+	z_turns_seen = 0
 	for msg in reversed(history):
-		if msg.get("role") in ("z", "assistant"):
-			m = _CREW_ATTRIBUTION_RE.search(msg.get("content", ""))
-			if m:
-				return m.group(1).split(",")[0].strip()
-			return None
+		if msg.get("role") not in ("z", "assistant"):
+			continue
+		z_turns_seen += 1
+		m = _CREW_ATTRIBUTION_RE.search(msg.get("content", ""))
+		if m:
+			return m.group(1).split(",")[0].strip()
+		if z_turns_seen >= 3:
+			break
 	return None
 
 
