@@ -30,7 +30,7 @@ import logging
 import re
 import unicodedata
 from datetime import datetime
-from typing import AsyncGenerator, Optional
+from typing import AsyncGenerator, Any, Optional
 import pytz
 from contextvars import ContextVar
 import uuid
@@ -862,7 +862,7 @@ async def chat(
 	model: Optional[str] = None,
 	tier: Optional[str] = None,
 	sanitize: bool = True,
-	**kwargs
+	**kwargs: Any
 ) -> str:
 	"""Blocking chat — collects all tokens from chat_stream() into a single string.
 	Used by scheduled tasks, email summarization, calendar detection, etc."""
@@ -985,7 +985,7 @@ async def chat_stream(
 	model: Optional[str] = None,
 	tier: Optional[str] = None,
 	sanitize: bool = True,
-	**kwargs
+	**kwargs: Any
 ) -> AsyncGenerator[str, None]:
 	"""Stream tokens from the LLM as an async generator.
 	This is the core function — chat() wraps this for blocking use.
@@ -1030,7 +1030,7 @@ async def chat_stream(
 		last_model_used.set(display_name)
 		logger.debug("LLM [%s] -> %s @ %s", tier_name, display_name, base_url)
 
-		messages = [
+		messages: list[dict[str, Any]] = [
 			{"role": "system", "content": system_prompt},
 			{"role": "user", "content": user_message},
 		]
@@ -1312,9 +1312,9 @@ async def chat_stream(
 		# PII sanitization — strip named entities before they leave the VPS
 		outbound_message = user_message
 		outbound_system = system_prompt
-		rep_map: dict[str, str] = {}
+		rep_map = {}
 		if sanitize and settings.CLOUD_LLM_SANITIZE:
-			_counters: dict = {}
+			_counters = {}
 			outbound_message, _m1 = sanitize_prompt(user_message, _counters)
 			outbound_system, _m2 = sanitize_prompt(system_prompt, _counters, _seen_map=_m1)
 			rep_map = {**_m1, **_m2}

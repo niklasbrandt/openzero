@@ -111,7 +111,7 @@ async def morning_briefing():
 			emails = await fetch_unread_emails(max_results=5)
 			return "\n".join([f"- {e['from']}: {e['subject']}" for e in emails]) if emails else "No new emails."
 
-		from app.services.planka import get_project_tree, get_activity_report
+		from app.services.planka import get_activity_report
 		weather_report, tree, email_summary, activity = await asyncio.gather(
 			get_weather_forecast(detected_location),
 			get_project_tree(as_html=False),

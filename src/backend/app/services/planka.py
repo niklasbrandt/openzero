@@ -643,7 +643,7 @@ async def get_activity_report(days: int = 30) -> str:
 				
 				# Map labels for lookups
 				label_map = {l["id"]: l for l in labels}
-				card_to_labels = {}
+				card_to_labels: dict[str, list] = {}
 				for cl in card_labels:
 					cid = cl["cardId"]
 					lid = cl["labelId"]

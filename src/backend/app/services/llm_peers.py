@@ -68,7 +68,8 @@ class PeerState:
 	latency_ms: float = float("inf")
 	toks_per_sec: float = 0.0		# measured inference speed; 0 = not yet known
 	last_error: str = ""			# last inference error message, if any
-	is_vps_local: bool = False		# True for the VPS Docker container fallback	hostname: str = ""			# human-readable device name for the dashboard
+	is_vps_local: bool = False		# True for the VPS Docker container fallback
+	hostname: str = ""				# human-readable device name for the dashboard
 
 # --------------------------------------------------------------------------- #
 #  Module-level mutable state                                                 #
