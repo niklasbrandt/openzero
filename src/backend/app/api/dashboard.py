@@ -1501,6 +1501,7 @@ async def memory_delete(point_id: str, _auth=Depends(require_auth)):
 # --- Briefings ---
 @router.get("/briefings")
 async def get_briefings(limit: int = 10, db: AsyncSession = Depends(get_db)):
+	limit = max(1, min(limit, 100))  # cap: 1–100 to prevent unbounded DB queries
 	result = await db.execute(select(Briefing).order_by(Briefing.created_at.desc()).limit(limit))
 	briefings = result.scalars().all()
 	return briefings
@@ -1821,7 +1822,10 @@ async def create_local_event(event: LocalEventCreate, db: AsyncSession = Depends
 @router.put("/calendar/local/{event_id}")
 async def update_local_event(event_id: str, event: LocalEventUpdate, db: AsyncSession = Depends(get_db)):
 	from app.models.db import LocalEvent
-	clean_id = int(event_id.replace("local_", ""))
+	try:
+		clean_id = int(event_id.replace("local_", ""))
+	except ValueError:
+		raise HTTPException(status_code=400, detail="Invalid event ID") from None
 	res = await db.execute(select(LocalEvent).where(LocalEvent.id == clean_id))
 	db_event = res.scalar_one_or_none()
 	if not db_event: raise HTTPException(status_code=404)
