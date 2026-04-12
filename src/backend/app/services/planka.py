@@ -24,7 +24,6 @@ from app.services.planka_common import get_planka_auth_token, _tree_cache
 import asyncio
 import time
 
-import re
 def _sanitize_for_log(text: Any) -> str:
 	"""Built-in sanitizer for CodeQL Log Injection (CWE-117)."""
 	val = str(text)[:255]

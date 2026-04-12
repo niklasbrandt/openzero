@@ -343,8 +343,8 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 							for lst in b_det.json().get("included", {}).get("lists", []):
 								if (lst.get("name") or "").lower() == list_name.lower():
 									return f"List '{list_name}' already exists in '{board_name}'."
-						except Exception:
-							pass
+						except Exception as _de:
+							logger.debug("board detail fetch failed for bid=%s: %s", bid, _de)
 						try:
 							resp = await client.post(f"/api/boards/{bid}/lists", json={"name": list_name, "type": "active", "position": 65535})
 							resp.raise_for_status()
@@ -427,9 +427,10 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 
 	# 4. Create Task Tag — runs AFTER scaffolding so the board/list already exists.
 	# DESCRIPTION is optional — captured when present, defaults to empty string.
-	# Pattern allows ] inside description content (e.g. markdown [1]) via ([^\]]+(?:\][^\]]+)*).
-	task_pattern = r"\[?ACTION: CREATE_TASK \| BOARD: ([^\|\]]+) \| LIST: ([^\|\]]+) \| TITLE: ([^\|\]]+)(?:\s*\|\s*DESCRIPTION:\s*([^\]]+(?:\][^\]]+)*))?\]?"
-	for match in re.finditer(task_pattern, reply):
+	# Pattern allows ] inside description content via a bounded capture group.
+	# Input is capped before iteration to prevent polynomial backtracking (CWE-1333).
+	task_pattern = r"\[?ACTION: CREATE_TASK \| BOARD: ([^\|\]]+) \| LIST: ([^\|\]]+) \| TITLE: ([^\|\]]+)(?:\s*\|\s*DESCRIPTION:\s*([\s\S]{0,20000}?))?\]"
+	for match in re.finditer(task_pattern, reply[:200_000]):
 		raw_tag = match.group(0)
 		board, llist, title, desc = match.groups()
 		board = board.strip().strip('"\'')

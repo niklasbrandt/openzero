@@ -300,9 +300,11 @@ def _keyword_matches(keywords: list, text: str) -> bool:
 	Multi-word phrases (e.g. 'shopping list') are matched as exact substrings with
 	boundaries on the outer edges only.
 	"""
+	# Cap input to prevent polynomial backtracking (CWE-1333) on adversarial strings.
+	safe_text = text[:2000]
 	for kw in keywords:
 		pattern = r'(?<![a-z0-9])' + re.escape(kw.lower()) + r'(?![a-z0-9])'
-		if re.search(pattern, text):
+		if re.search(pattern, safe_text):
 			return True
 	return False
 

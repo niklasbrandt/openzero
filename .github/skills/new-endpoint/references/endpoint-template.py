@@ -4,7 +4,6 @@ Copy and adapt for new endpoints.
 """
 
 from pydantic import BaseModel
-from typing import Optional
 # from app.services.__service__ import __function__
 
 
