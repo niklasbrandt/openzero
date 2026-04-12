@@ -1335,11 +1335,12 @@ async def cmd_think(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	]
 	reply_markup = InlineKeyboardMarkup(keyboard)
 	
+	import html as _html
 	disclosure_msg = (
 		f"<blockquote>\u2696\ufe0f <b>Privacy Disclosure</b>\n\n"
-		f"To answer this deeply, I need to send the following to {settings.DEEP_THINK_PROVIDER}:\n"
-		f"{proposal['summary']}\n\n"
-		f"<b>Question:</b> {query}</blockquote>"
+		f"To answer this deeply, I need to send the following to {_html.escape(str(settings.DEEP_THINK_PROVIDER))}:\n"
+		f"{_html.escape(proposal['summary'])}\n\n"
+		f"<b>Question:</b> {_html.escape(query)}</blockquote>"
 	)
 	await update.message.reply_text(disclosure_msg, parse_mode="HTML", reply_markup=reply_markup)
 
@@ -1443,12 +1444,13 @@ async def handle_draft_approval(update: Update, context: ContextTypes.DEFAULT_TY
 
 	try:
 		import json as _json
+		import html as _html
 		draft_data = _json.loads(thought["context_data"])
 		from app.services.gmail import create_draft_reply
 		success = await create_draft_reply(draft_data["email_id"], draft_data["reply_body"])
 		if success:
 			await query.edit_message_text(
-				f"✅ <b>Draft created in Gmail</b>\nTo: {draft_data.get('to', '')}\nSubject: Re: {draft_data.get('subject', '')}",
+				f"✅ <b>Draft created in Gmail</b>\nTo: {_html.escape(str(draft_data.get('to', '')))}\nSubject: Re: {_html.escape(str(draft_data.get('subject', '')))}" ,
 				parse_mode="HTML"
 			)
 		else:
