@@ -410,8 +410,11 @@ def rehydrate_response(text: str, replacement_map: dict[str, str]) -> str:
 	# Sort by token length descending to avoid partial matches
 	for token in sorted(inverted, key=len, reverse=True):
 		original = inverted[token]
-		# Case-insensitive replacement for the token itself
-		text = re.sub(re.escape(token), original, text, flags=re.IGNORECASE)
+		# Case-insensitive replacement for the token itself.
+		# Use a lambda for the replacement so that backslash sequences in the
+		# original (e.g. a Windows path like '\1System') are never interpreted
+		# as regex backreferences by re.sub, which would raise re.error.
+		text = re.sub(re.escape(token), lambda _m, o=original: o, text, flags=re.IGNORECASE)
 
 	return text
 
