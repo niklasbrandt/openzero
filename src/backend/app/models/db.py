@@ -183,4 +183,4 @@ async def get_global_history(limit: int = 15):
         )
         messages = result.scalars().all()
         # Return in chronological order for the LLM
-        return [{"role": m.role, "content": m.content, "channel": m.channel, "model": m.model, "at": m.created_at.isoformat()} for m in reversed(messages)]
+        return [{"role": m.role, "content": m.content, "channel": m.channel, "model": m.model, "at": m.created_at.isoformat() + "Z"} for m in reversed(messages)]
