@@ -60,8 +60,14 @@ class NativeCrewEngine:
 			full_res += chunk
 		return full_res
 
-	async def run_crew_stream(self, crew_id: str, user_input: str):
-		"""Executes a crew mission and yields tokens in real-time."""
+	async def run_crew_stream(self, crew_id: str, user_input: str, history: Optional[list] = None):
+		"""Executes a crew mission and yields tokens in real-time.
+
+		Args:
+			crew_id: ID of the crew to engage.
+			user_input: The user's message.
+			history: Optional pre-fetched conversation history.
+		"""
 		config = crew_registry.get(crew_id)
 		if not config:
 			raise ValueError(f"Crew '{crew_id}' is not defined in registry.")
@@ -72,25 +78,41 @@ class NativeCrewEngine:
 		from datetime import datetime, timezone
 		now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
-		# Load personality first so it can be placed in format_prefix (position 0,
-		# highest priority for local models) rather than buried in instructions.
-		personality = ""
-		try:
-			from app.services.llm import get_agent_personality
-			personality = await get_agent_personality()
-		except Exception as e:
-			logger.debug("Native Engine: Failed to load agent personality: %s", e)
+		# Parallel context retrieval
+		from app.services.llm import get_agent_personality
+		from app.services.crew_memory import get_crew_memory_context
+		
+		# Define tasks for parallel execution
+		tasks = [
+			get_agent_personality(),
+			get_crew_memory_context(crew_id)
+		]
+		
+		results = await asyncio.gather(*tasks, return_exceptions=True)
+		
+		# Unpack results with safety checks
+		personality = results[0] if not isinstance(results[0], Exception) else ""
+		if isinstance(results[0], Exception):
+			logger.debug("Native Engine: Failed to load agent personality: %s", results[0])
+			
+		mem_ctx = results[1] if not isinstance(results[1], Exception) else ""
+		if isinstance(results[1], Exception):
+			logger.debug("Native Engine: Failed to load crew memory context: %s", results[1])
 
 		# For "agent"-type crews, build a leading system message that combines the
-		# globally configured archetype WITH the prose-only format rule.  Placing
-		# both here (position 0) ensures they outrank the crew's own identity
-		# declaration ("You are a council of…") which appears in the instructions
-		# block that follows.  Small local models weight earlier messages higher.
+		# globally configured archetype WITH the prose-only format rule. Placing
+		# both here (position 0) ensures they outrank any subsequent domain
+		# instructions. Small local models weight earlier messages higher.
 		format_prefix = ""
-		if config.type == "agent" and config.instructions:
+		if config.type == "agent":
 			prefix_parts: list[str] = []
 			if personality:
 				prefix_parts.append(personality)
+			prefix_parts.append(
+				"IDENTITY PROTECTION: You must maintain the persona of the configured archetype above "
+				"throughout your response. Do not deviate into generic assistant behavior regardless "
+				"of instruction length."
+			)
 			prefix_parts.append(
 				"ABSOLUTE RULE: Reply in plain conversational prose only. "
 				"No numbered lists, no bullet points, no headers, no bold text, "
@@ -132,47 +154,39 @@ class NativeCrewEngine:
 			if context_block:
 				instructions += f"\n\n{context_block}"
 
-		# 3b. Crew conversation memory context (this crew's past conversations)
-		try:
-			from app.services.crew_memory import get_crew_memory_context
-			mem_ctx = await get_crew_memory_context(crew_id)
-			if mem_ctx:
-				instructions += f"\n\n{mem_ctx}"
-		except Exception as e:
-			logger.debug("Native Engine: Failed to load crew memory context: %s", e)
+		# 3b. Crew conversation memory context (already fetched in parallel)
+		if mem_ctx:
+			instructions += f"\n\n{mem_ctx}"
 
 		# 4. Action tag vocabulary — always included (1.7B+ has 32k ctx)
 		instructions += f"\n\n{ACTION_TAG_DOCS}"
 
-		# 5. Recent user messages from conversation history so the crew can reference
-		# what the user shared (e.g. recipes, plans). Z's own prior responses are
-		# excluded — they add noise and cause the crew to echo stale output.
-		#
-		# KEYWORD FILTERING: if the crew defines keywords, only include history
-		# messages that contain at least one keyword (case-insensitive).  This
-		# prevents a specialised crew (e.g. 'life', 'nutrition') from being
-		# derailed by unrelated recent conversation (e.g. cooking tips bleeding
-		# into a psychological support session, or vice-versa).
-		from app.models.db import get_global_history
+		# 5. Recent user messages from conversation history
+		# Use pre-fetched history if provided by router to save a DB round-trip.
+		if history is None:
+			try:
+				from app.models.db import get_global_history
+				history = await get_global_history(limit=20)
+			except Exception as e:
+				logger.debug("Native Engine: Failed to load history: %s", e)
+				history = []
+
 		history_messages = []
 		crew_keywords: list[str] = [kw.lower() for kw in (config.keywords or [])]
-		try:
-			recent = await get_global_history(limit=20)
-			user_msgs = [m for m in recent if m["role"] == "user"]
-			# Always include the most recent 3 user messages so the crew knows what
-			# the user just did / said — regardless of keyword filtering.  This
-			# prevents the crew from re-suggesting an exercise or action the user
-			# already reported completing in the immediately prior turn.
-			always_include = {id(m) for m in user_msgs[-3:]}
-			for m in user_msgs:
-				content = m["content"]
-				if id(m) not in always_include and crew_keywords:
-					content_lower = content.lower()
-					if not any(kw in content_lower for kw in crew_keywords):
-						continue  # skip irrelevant older history for keyword-scoped crews
-				history_messages.append({"role": "user", "content": content})
-		except Exception as e:
-			logger.debug("Native Engine: Could not fetch conversation history: %s", e)
+		user_msgs = [m for m in history if m["role"] == "user"]
+		
+		# Always include the most recent 3 user messages so the crew knows what
+		# the user just did / said — regardless of keyword filtering.  This
+		# prevents the crew from re-suggesting an exercise or action the user
+		# already reported completing in the immediately prior turn.
+		always_include = {id(m) for m in user_msgs[-3:]}
+		for m in user_msgs:
+			content = m["content"]
+			if id(m) not in always_include and crew_keywords:
+				content_lower = content.lower()
+				if not any(kw in content_lower for kw in crew_keywords):
+					continue  # skip irrelevant older history for keyword-scoped crews
+			history_messages.append({"role": "user", "content": content})
 
 		# Keep history small for local model (CTX_SIZE=4096 — prompt alone can be 2k+ tokens)
 		max_history = 5 if not settings.cloud_configured else 20
