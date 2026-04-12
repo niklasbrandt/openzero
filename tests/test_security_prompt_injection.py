@@ -3538,3 +3538,69 @@ class TestWhatsAppWebhookTimingOracle:
 			f"hmac.compare_digest(): {bad}"
 		)
 
+
+# ---------------------------------------------------------------------------
+# Section 39 — DOM XSS hardening for Planka tree/chat links/calendar widgets
+# ---------------------------------------------------------------------------
+class TestDashboardDomXssHardening:
+	"""Section 39: Static regression checks for newly patched DOM XSS vectors."""
+
+	@staticmethod
+	def _read(path_parts: list[str]) -> str:
+		here = os.path.dirname(__file__)
+		path = os.path.join(here, "..", *path_parts)
+		with open(path, encoding="utf-8") as fh:
+			return fh.read()
+
+	def test_planka_tree_escapes_project_and_board_names(self):
+		"""Static: Planka HTML tree builder must HTML-escape project/board names."""
+		src = self._read(["src", "backend", "app", "services", "planka.py"])
+		assert "import html as _html" in src, (
+			"planka.py must import html as _html for HTML escaping in get_project_tree(as_html=True)."
+		)
+		assert "_html.escape(project_name)" in src, (
+			"get_project_tree(as_html=True) must escape project_name before embedding it in HTML."
+		)
+		assert "_html.escape(board_name)" in src, (
+			"get_project_tree(as_html=True) must escape board_name before embedding it in HTML."
+		)
+
+	def test_chatprompt_blocks_javascript_uri_links(self):
+		"""Static: ChatPrompt markdown link rendering must enforce safe URL schemes."""
+		src = self._read(["src", "dashboard", "components", "ChatPrompt.ts"])
+		assert "const safeUrl = /^(https?:\\/\\/|\\/)/i.test(url) ? url : '#'" in src, (
+			"ChatPrompt.renderContent() must validate markdown URLs and reject javascript: URIs."
+		)
+		assert "rel=\"noopener noreferrer\"" in src, (
+			"ChatPrompt links with target=_blank must include rel=\"noopener noreferrer\"."
+		)
+
+	def test_calendar_manager_escapes_untrusted_event_fields(self):
+		"""Static: CalendarManager must escape event summary/person before innerHTML embed."""
+		src = self._read(["src", "dashboard", "components", "CalendarManager.ts"])
+		assert "private esc(s: string | undefined | null): string" in src, (
+			"CalendarManager.ts must define an esc() helper for HTML encoding."
+		)
+		assert "value=\"${this.esc(e.summary)}\"" in src, (
+			"CalendarManager event title input value must use this.esc(e.summary)."
+		)
+		assert "${e.person ? `<span class=\"badge\">${this.esc(e.person)}</span>` : ''}" in src, (
+			"CalendarManager person badge must HTML-escape e.person."
+		)
+
+	def test_calendar_agenda_escapes_untrusted_event_fields(self):
+		"""Static: CalendarAgenda must escape event and filter-person fields."""
+		src = self._read(["src", "dashboard", "components", "CalendarAgenda.ts"])
+		assert "private esc(s: string | undefined | null): string" in src, (
+			"CalendarAgenda.ts must define an esc() helper for HTML encoding."
+		)
+		assert "value=\"${this.esc(e.summary)}\"" in src, (
+			"CalendarAgenda event title input value must use this.esc(e.summary)."
+		)
+		assert "${e.person ? `<span class=\"person-badge\">${this.esc(e.person)}</span>` : ''}" in src, (
+			"CalendarAgenda person badge must HTML-escape e.person."
+		)
+		assert "data-person=\"${this.esc(p)}\"" in src, (
+			"CalendarAgenda filter data-person attribute must escape each person value."
+		)
+
