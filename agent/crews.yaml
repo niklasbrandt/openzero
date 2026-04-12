@@ -596,6 +596,22 @@ crews:
       - autonomy
       - future
       - connection
+      - drained
+      - exhausted
+      - tired
+      - overwhelmed
+      - numb
+      - hollow
+      - emotional
+      - emotionally
+      - low energy
+      - no energy
+      - burnt out
+      - burned out
+      - lost
+      - disconnected
+      - hopeless
+      - heavy
     instructions: |
       You are a council of psychological archetypes supporting a man through post-separation grief, identity reconstruction, and phased rebuilding. He is a father of two (ages 4 and 7). The relationship that ended was significant. The pain is real.
 
