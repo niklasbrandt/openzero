@@ -51,7 +51,25 @@ _RECALL_HISTORY_RE = re.compile(
 	r'|\bwhat\s+(?:did\s+i|have\s+i)\s+ask(?:ed)?.{0,60}\b(?:today|this\s+morning|yesterday|\d+\s+days?\s+ago)\b'
 	r'|\b(?:list|show\s+me|review|go\s+through)\b.{0,60}\b(?:my\s+messages?|what\s+i\s+ask(?:ed)?)\b'
 	r'|\b(?:my\s+)?(?:tasks?|requests?|things?)\s+(?:i\s+)?(?:asked|gave|told|sent).{0,40}\b(?:today|yesterday|\d+\s+days?\s+ago)\b'
+	r'|(?:and\s+)?i\s+asked\s+(?:today\s+)?(?:about\s+)?(?:an?\s+)?other\s+thing\b'
+	r'|\bdid\s+you\s+(?:do|create|add|make|get)\s+(?:it|that|them)\b'
 	r')',
+	re.IGNORECASE,
+)
+
+# Server-side pre-filter: imperative verbs that signal an actual task request
+_TASK_SIGNAL_RE = re.compile(
+	r'\b(?:create|add|make|set\s+up|build|save|find|look\s+up|remind\s+me|send|'
+	r'schedule|book|plan|update|edit|delete|remove|move|check|get|fetch|pull|'
+	r'generate|write|draft|note|log|track|record|store|show\s+me|give\s+me|'
+	r'new\s+(?:board|task|todo|card|list|project)|open\s+a\b)\b',
+	re.IGNORECASE,
+)
+
+# Messages to always skip in task recalls regardless of verb content
+_SKIP_RECALL_RE = re.compile(
+	r'^(?:/|and\s+now|ok|okay|sure|fine|great|thanks|yes|no\b|did\s+you|'
+	r'i\s+(?:did|pressed|pushed|tried|went|feel|felt|am|was)\b)',
 	re.IGNORECASE,
 )
 
@@ -149,20 +167,48 @@ async def route_message_stream(
 				day_label = "yesterday"
 			else:
 				day_label = f"{days_ago} days ago"
-			if day_msgs:
+
+			# Server-side pre-filter: only keep messages that look like task requests.
+			# This is more reliable than asking the LLM to decide what counts.
+			# Deduplication: skip messages whose content (stripped) was already seen.
+			seen_content: set[str] = set()
+			task_msgs: list[dict] = []
+			for m in day_msgs:
+				content = m["content"].strip()
+				# Skip system commands, short follow-ups, and non-task messages
+				if _SKIP_RECALL_RE.match(content):
+					continue
+				if len(content.split()) < 3:
+					continue
+				if not _TASK_SIGNAL_RE.search(content):
+					continue
+				# Dedup: same text sent multiple times → keep first occurrence only
+				key = content.lower()
+				if key in seen_content:
+					continue
+				seen_content.add(key)
+				task_msgs.append(m)
+
+			if task_msgs:
+				block = "\n".join(
+					f"[{m['at'][11:16]}] {m['content']}" for m in task_msgs
+				)
+				injected = (
+					f"The user asked you to recall what they asked you to do {day_label}.\n"
+					f"The following messages have already been pre-filtered to only contain actual task requests.\n"
+					f"Your job: present each one as a concise single line with its timestamp.\n"
+					f"Do NOT add commentary, do NOT re-execute anything, do NOT emit [ACTION: ...] tags.\n\n"
+					f"PRE-FILTERED TASK REQUESTS for {day_label}:\n{block}\n\n---\n{user_text}"
+				)
+			elif day_msgs:
+				# Messages exist but none passed the task filter — let LLM decide
 				block = "\n".join(
 					f"[{m['at'][11:16]}] {m['content']}" for m in day_msgs
 				)
 				injected = (
-					f"The user is asking you to recall what they asked you to do {day_label}.\n"
-					f"Below is every message they sent that day. Your job:\n"
-					f"1. Read through all messages and identify only those that were actual requests, tasks, or instructions directed at you.\n"
-					f"   - Include: 'create a task', 'add to board', 'look up X', 'remind me', 'plan Y', explicit questions expecting action.\n"
-					f"   - Exclude: emotional venting, follow-up confirmations like 'and now?', reports of what they did themselves, and system commands like '/crew life ...'.\n"
-					f"2. For each identified request, write one concise line: [HH:MM] short description of what was asked.\n"
-					f"3. If a request appears multiple times (user re-sent unchanged), list it once with the first timestamp.\n"
-					f"4. Do NOT emit any [ACTION: ...] tags. Do NOT re-execute anything. This is read-only.\n"
-					f"5. If no clear task requests are found in the messages, say so honestly.\n\n"
+					f"The user asked you to recall what they asked you to do {day_label}.\n"
+					f"Below are all their messages. Identify any actual requests or tasks.\n"
+					f"Do NOT emit [ACTION: ...] tags. Do NOT re-execute anything.\n\n"
 					f"MESSAGES for {day_label}:\n{block}\n\n---\n{user_text}"
 				)
 			else:
@@ -205,7 +251,7 @@ async def route_message_stream(
 			crew_id = routed_crews[0]
 			logger.info("Router: keyword-routing '%s...' → crew '%s'", _sanitize_for_log(user_text), crew_id)
 			chunks = []
-			async for token in native_crew_engine.run_crew_stream(crew_id, user_text):
+			async for token in native_crew_engine.run_crew_stream(crew_id, user_text, history=history):
 				chunks.append(token)
 				yield token
 			full = rehydrate_response("".join(chunks), get_active_rep_map())
@@ -217,6 +263,15 @@ async def route_message_stream(
 				model=f"crew:{crew_id}", user_text=user_text, save=save_history,
 			)
 			cmds = [c for c in cmds if not c.startswith("__CREW_RUN__:")]
+			action_errors = [c for c in cmds if isinstance(c, str) and c.startswith("\u26a0")]
+			if action_errors:
+				clean += "\n\n" + "  ".join(action_errors)
+			elif not cmds and _PHANTOM_RE.search(clean[:_MAX_RE_REPLY]):
+				clean += (
+					"\n\n\u26a0 Nothing was actually saved — "
+					"the crew described the action without executing it. Please try again."
+				)
+				logger.warning("Router step1: phantom confirmation from crew '%s'", crew_id)
 			result_future.set_result(RouterResult(
 				reply=clean, model=f"crew:{crew_id}",
 				executed_cmds=cmds, pending_actions=pending,
@@ -248,7 +303,7 @@ async def route_message_stream(
 			crew_id = m.group(1).strip().lower()
 			logger.info("Router: Z self-routed '%s...' → crew '%s'", _sanitize_for_log(user_text), crew_id)
 			r_chunks: list[str] = []
-			async for token in native_crew_engine.run_crew_stream(crew_id, user_text):
+			async for token in native_crew_engine.run_crew_stream(crew_id, user_text, history=history):
 				r_chunks.append(token)
 				yield token
 			r_full = rehydrate_response("".join(r_chunks), get_active_rep_map())
@@ -260,6 +315,15 @@ async def route_message_stream(
 				model=f"crew:{crew_id}", user_text=user_text, save=save_history,
 			)
 			r_cmds = [c for c in r_cmds if not c.startswith("__CREW_RUN__:")]
+			r_action_errors = [c for c in r_cmds if isinstance(c, str) and c.startswith("\u26a0")]
+			if r_action_errors:
+				r_clean += "\n\n" + "  ".join(r_action_errors)
+			elif not r_cmds and _PHANTOM_RE.search(r_clean[:_MAX_RE_REPLY]):
+				r_clean += (
+					"\n\n\u26a0 Nothing was actually saved — "
+					"the crew described the action without executing it. Please try again."
+				)
+				logger.warning("Router step3: phantom confirmation from crew '%s'", crew_id)
 			result_future.set_result(RouterResult(
 				reply=r_clean, model=f"crew:{crew_id}",
 				executed_cmds=r_cmds, pending_actions=r_pending,
