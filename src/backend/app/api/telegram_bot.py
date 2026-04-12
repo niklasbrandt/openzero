@@ -1120,16 +1120,22 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
 			logger.debug("handle_freetext error reporting failed: %s", _se)
 
 async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, user_text: str, is_followup: bool = False, history: list | None = None):
-	"""Core freetext processing logic with streaming progressive updates."""
-	from app.services.llm import chat_stream_with_context
-	from app.services.message_bus import bus
-	from app.services.crews import resolve_active_crews
+	"""Core freetext processing — Telegram transport layer.
+
+	All routing decisions (crew keyword match, ROUTE tag, phantom guard, etc.)
+	are handled by app.services.router.route_message_stream.  This function
+	only owns Telegram-specific concerns: thinking message, progressive edits,
+	and HTML formatting.
+	"""
 	import time
+	from app.services.router import route_message_stream
+	from app.services.crews import resolve_active_crews
 
 	lang = await get_user_lang()
 	t = get_translations(lang)
 
-	# Auto-route to a crew (or panel of crews) if the message matches.
+	# For non-followup messages, check keyword routing first so we can hand off
+	# to _process_crew_stream (which handles its own Telegram UX).
 	if not is_followup:
 		_h = history or []
 		routed_crews = await resolve_active_crews(_h, user_text, lang=lang)
@@ -1138,122 +1144,73 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 			await _process_crew_stream(update, context, routed_crews, user_text, t, already_ingested=True)
 			return
 
-	# Show initial acknowledgment
+	# Show thinking placeholder
 	if is_followup:
 		thinking_msg = await context.bot.send_message(
 			chat_id=chat_id,
 			text=f"<blockquote><i>{t.get('thinking_followup', 'Processing your follow-up...')}</i></blockquote>",
-			parse_mode="HTML"
+			parse_mode="HTML",
 		)
 	else:
-		thinking_msg = await update.message.reply_text(f"<blockquote><i>{t.get('thinking', 'Thinking...')}</i></blockquote>", parse_mode="HTML")
+		thinking_msg = await update.message.reply_text(
+			f"<blockquote><i>{t.get('thinking', 'Thinking...')}</i></blockquote>",
+			parse_mode="HTML",
+		)
 
-
-	# Use cross-channel history provided by the caller (already fetched via bus.ingest).
-	# Fall back to a fresh fetch only when called from a path that has no history yet
-	# (e.g. voice, direct internal calls).
 	if history is None:
 		from app.models.db import get_global_history
 		merged_history = await get_global_history(limit=10)
 	else:
 		merged_history = history
 
-	# Stream tokens with progressive Telegram message updates
-	chunks = []
-	last_edit_time = time.time()
-	EDIT_INTERVAL = 1.5  # seconds between progressive edits
-
-	async for chunk in chat_stream_with_context(
-		user_text,
+	# Stream via unified router — collect tokens for progressive edits
+	token_stream, result_fut = await route_message_stream(
+		user_text=user_text,
 		history=merged_history,
-		include_projects=True,
-		include_people=True
-	):
-		chunks.append(chunk)
-		now = time.time()
+		channel="telegram",
+		lang=lang,
+		save_history=True,
+	)
 
-		# Progressively update the message at intervals
+	chunks: list[str] = []
+	last_edit_time = time.time()
+	EDIT_INTERVAL = 1.5
+
+	async for token in token_stream:
+		chunks.append(token)
+		now = time.time()
 		if now - last_edit_time >= EDIT_INTERVAL:
-			partial_text = "".join(chunks)
-			if len(partial_text.strip()) > 3:
+			partial = "".join(chunks)
+			if len(partial.strip()) > 3:
 				try:
-					display = f"<blockquote><i>{_md_to_html(partial_text)}...</i></blockquote>"
+					display = f"<blockquote><i>{_md_to_html(partial)}...</i></blockquote>"
 					await safe_edit(thinking_msg, display, parse_mode="HTML")
 				except Exception as _ee:
 					logger.debug("Progressive edit skip: %s", _ee)
 				last_edit_time = now
 
-	response = "".join(chunks)
+	result = await result_fut
 
-	# Sanitise output: strip emojis, model-generated slash commands, etc.
-	from app.services.llm import sanitise_output, last_model_used, rehydrate_response, get_active_rep_map
-	response = sanitise_output(response)
-	# Final rehydration pass: per-chunk rehydration above misses tokens like
-	# [DATE_3] that were split across two SSE deltas ("[DATE_" + "3]").
-	response = rehydrate_response(response, get_active_rep_map())
-
-	# If the LLM timed out or returned nothing, silently remove the thinking message.
-	if not response.strip():
+	# Empty response — LLM timed out or returned nothing
+	if not result.reply.strip():
 		try:
 			await thinking_msg.delete()
 		except Exception as _e:
 			logger.debug("Telegram delete ignored: %s", _e)
 		return
 
-	# Z-initiated crew routing: if Z emitted [ACTION: ROUTE | CREW: id], discard
-	# Z's response and re-dispatch the original user text to that crew instead.
-	# The model sometimes omits the 'ACTION:' prefix or the closing ']'; catch all
-	# plausible variants so they are routed rather than leaked to the user.
-	import re as _re
-	_route_match = _re.search(
-		r'\[(?:ACTION:\s*)?ROUTE\s*\|\s*CREW:\s*([a-z0-9_-]+)\s*\]?',
-		response, _re.IGNORECASE
-	)
-	if _route_match:
-		crew_id = _route_match.group(1).strip().lower()
-		logger.info("Z self-routed '%s...' to crew '%s'", user_text[:40], crew_id)
+	# If router redirected to a crew (ROUTE tag), delete thinking msg and hand off
+	if result.routed_to_crew:
 		try:
 			await thinking_msg.delete()
 		except Exception as _e:
 			logger.debug("Telegram delete (route handoff) ignored: %s", _e)
-		await _process_crew_stream(update, context, [crew_id], user_text, t, already_ingested=True)
+		await _process_crew_stream(update, context, [result.routed_to_crew], user_text, t, already_ingested=True)
 		return
 
-	# Parse action tags, save Z reply, schedule background memory — all via bus.
-	clean_reply, executed_cmds, _ = await bus.commit_reply(
-		channel="telegram",
-		raw_reply=response,
-		model=last_model_used.get(),
-		user_text=user_text,
-	)
-
-	# Reasoning indicator
-	crews = [c.split(":", 1)[1] for c in executed_cmds if c.startswith("__CREW_RUN__:")]
-	if crews:
-		clean_reply += f"\n\n_(Reasoning by crew {', '.join(crews)})_"
-
-	# Surface Planka / action errors so the user knows when something didn't execute.
-	# Z's prose may already claim success, so append the real failure notice.
-	action_errors = [c for c in executed_cmds if isinstance(c, str) and c.startswith("\u26a0")]
-	if action_errors:
-		clean_reply += "\n\n" + "  ".join(action_errors)
-
-	# Phantom-confirmation guard: Z claimed an action was done in prose but emitted no tag.
-	# Only trigger when no commands were executed AND no errors occurred (pure phantom).
-	import re as _re2
-	_phantom_re = _re2.compile(
-		r'\b(task added|board (added|created)|event (added|created)|card (added|created)|added to (your )?(todo|list|board|today)|done[\s\u2014\u2013-]+(task|board|card|event))\b',
-		_re2.IGNORECASE,
-	)
-	if not executed_cmds and _phantom_re.search(clean_reply):
-		clean_reply += "\n\n\u26a0 Nothing was actually saved — I described the action without executing it. Please try again."
-		logger.warning("Phantom confirmation detected in response (no executed_cmds but confirmation prose present)")
-
-	# Prepend real time (strip any LLM-generated time header)
-	clean_reply = strip_llm_time_header(clean_reply)
+	clean_reply = strip_llm_time_header(result.reply)
 	html_reply = _md_to_html(clean_reply)
 	display_reply = f"<b>{format_time()}</b>\n\n{html_reply}"
-
 	footer = await _get_stats_footer()
 	await safe_edit(thinking_msg, f"<blockquote>{display_reply}{footer}</blockquote>", parse_mode="HTML", reply_markup=get_nav_markup(t))
 
