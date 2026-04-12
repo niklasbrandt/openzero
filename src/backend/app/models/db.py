@@ -184,3 +184,17 @@ async def get_global_history(limit: int = 15):
         messages = result.scalars().all()
         # Return in chronological order for the LLM
         return [{"role": m.role, "content": m.content, "channel": m.channel, "model": m.model, "at": m.created_at.isoformat() + "Z"} for m in reversed(messages)]
+
+
+async def get_today_user_messages():
+    """Return all user messages sent today (UTC midnight → now), oldest first."""
+    today_start = datetime.datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(GlobalMessage)
+            .where(GlobalMessage.role == "user")
+            .where(GlobalMessage.created_at >= today_start)
+            .order_by(GlobalMessage.created_at.asc())
+        )
+        messages = result.scalars().all()
+        return [{"content": m.content, "at": m.created_at.isoformat() + "Z"} for m in messages]

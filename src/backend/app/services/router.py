@@ -30,6 +30,17 @@ _ROUTE_RE = re.compile(
 	re.IGNORECASE,
 )
 
+# Recall-today detector: user wants a retrospective of their own messages from today
+_RECALL_TODAY_RE = re.compile(
+	r'(?:'
+	r'recall\b.{0,80}\b(?:today|this morning|earlier today)\b'
+	r'|what\s+(?:did\s+i|have\s+i)\s+ask(?:ed)?.{0,60}\b(?:today|this morning)\b'
+	r'|(?:list|show\s+me|review|go\s+through)\b.{0,60}\b(?:my\s+messages?|what\s+i\s+ask(?:ed)?)\b'
+	r'|(?:my\s+)?(?:tasks?|requests?|things?)\s+(?:i\s+)?(?:asked|gave|told|sent).{0,40}\btoday\b'
+	r')',
+	re.IGNORECASE,
+)
+
 # Phantom-confirmation guard — Z claimed success in prose without emitting a tag
 _PHANTOM_RE = re.compile(
 	r'\b(task added|board (added|created)|event (added|created)|card (added|created)'
@@ -84,6 +95,51 @@ async def route_message_stream(
 			last_model_used,
 		)
 		from app.services.message_bus import bus
+
+		# ── 0. Recall-today intercept ─────────────────────────────────────────
+		# When the user asks "recall all things I asked you to do today" (or similar),
+		# fetch the actual conversation messages from DB and inject them as literal
+		# context so Z analyses the real history — not Planka boards.
+		if _RECALL_TODAY_RE.search(user_text):
+			from app.models.db import get_today_user_messages
+			today_msgs = await get_today_user_messages()
+			# Strip the current recall request itself (it's the last message)
+			today_msgs = [m for m in today_msgs if m["content"].strip() != user_text.strip()]
+			if today_msgs:
+				block = "\n".join(
+					f"[{m['at'][11:16]}] {m['content']}" for m in today_msgs
+				)
+				injected = (
+					f"TODAY MESSAGE HISTORY (all messages you sent since midnight UTC — "
+					f"use ONLY this to answer; do NOT consult Planka boards or make anything up):\n\n"
+					f"{block}\n\n"
+					f"---\n{user_text}"
+				)
+			else:
+				injected = (
+					f"No messages found in the database for today. "
+					f"Inform the user honestly that there are no earlier messages today.\n\n{user_text}"
+				)
+			chunks: list[str] = []
+			async for token in chat_stream_with_context(
+				injected,
+				history=[],
+				include_projects=False,
+				include_people=False,
+			):
+				chunks.append(token)
+				yield token
+			response = sanitise_output("".join(chunks))
+			response = rehydrate_response(response, get_active_rep_map())
+			clean, cmds, pending = await bus.commit_reply(
+				channel=channel, raw_reply=response,
+				model=last_model_used.get(), user_text=user_text, save=save_history,
+			)
+			result_future.set_result(RouterResult(
+				reply=clean, model=last_model_used.get(),
+				executed_cmds=cmds, pending_actions=pending,
+			))
+			return
 
 		# ── 1. Keyword-based crew routing ────────────────────────────────────
 		routed_crews = await resolve_active_crews(history, user_text, lang=lang)
