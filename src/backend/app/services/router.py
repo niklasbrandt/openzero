@@ -100,6 +100,9 @@ async def route_message_stream(
 				model=f"crew:{crew_id}", user_text=user_text, save=save_history,
 			)
 			cmds = [c for c in cmds if not c.startswith("__CREW_RUN__:")]
+			# Attribution footer — lets _last_attributed_crew detect this crew
+			# in subsequent follow-up messages to enable single-turn continuation.
+			clean += f"\n\n_(Reasoning by crew {crew_id})_"
 			result_future.set_result(RouterResult(
 				reply=clean, model=f"crew:{crew_id}",
 				executed_cmds=cmds, pending_actions=pending,
@@ -140,6 +143,8 @@ async def route_message_stream(
 				model=f"crew:{crew_id}", user_text=user_text, save=save_history,
 			)
 			r_cmds = [c for c in r_cmds if not c.startswith("__CREW_RUN__:")]
+			# Attribution footer — enables follow-up continuation via _last_attributed_crew
+			r_clean += f"\n\n_(Reasoning by crew {crew_id})_"
 			result_future.set_result(RouterResult(
 				reply=r_clean, model=f"crew:{crew_id}",
 				executed_cmds=r_cmds, pending_actions=r_pending,
