@@ -433,17 +433,51 @@ async def stop_telegram_bot():
 			logging.warning("Telegram shutdown warning (non-fatal): %s", e)
 
 async def send_notification(text: str, reply_markup=None):
-	"""Send a message to the owner wrapped in an HTML blockquote island."""
+	"""Send a message to the owner wrapped in an HTML blockquote island.
+
+	Telegram enforces a 4096-character message limit.  Long briefings are
+	split on paragraph boundaries and sent as consecutive messages; the
+	reply_markup is only attached to the final chunk.
+	"""
 	if not settings.TELEGRAM_BOT_TOKEN or not settings.TELEGRAM_ALLOWED_USER_ID:
 		return
 	bot = Bot(token=settings.TELEGRAM_BOT_TOKEN)
 	html_text = _md_to_html(text)
-	await bot.send_message(
-		chat_id=int(settings.TELEGRAM_ALLOWED_USER_ID),
-		text=f"<blockquote>{html_text}</blockquote>",
-		parse_mode="HTML",
-		reply_markup=reply_markup,
-	)
+
+	MAX_CHARS = 3800  # Leave headroom for <blockquote> wrapper tags
+	chat_id = int(settings.TELEGRAM_ALLOWED_USER_ID)
+
+	if len(html_text) <= MAX_CHARS:
+		await bot.send_message(
+			chat_id=chat_id,
+			text=f"<blockquote>{html_text}</blockquote>",
+			parse_mode="HTML",
+			reply_markup=reply_markup,
+		)
+		return
+
+	# Split on double-newlines (paragraph breaks) to keep chunks coherent
+	paragraphs = html_text.split("\n\n")
+	chunks: list[str] = []
+	current = ""
+	for para in paragraphs:
+		segment = (para + "\n\n") if current else para
+		if len(current) + len(segment) > MAX_CHARS and current:
+			chunks.append(current.rstrip())
+			current = para + "\n\n"
+		else:
+			current += segment
+	if current.strip():
+		chunks.append(current.rstrip())
+
+	for i, chunk in enumerate(chunks):
+		is_last = (i == len(chunks) - 1)
+		await bot.send_message(
+			chat_id=chat_id,
+			text=f"<blockquote>{chunk}</blockquote>",
+			parse_mode="HTML",
+			reply_markup=reply_markup if is_last else None,
+		)
 
 async def send_notification_html(text: str, reply_markup=None):
 	"""Send an HTML-formatted message to the owner (already formatted)."""
