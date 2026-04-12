@@ -1267,12 +1267,27 @@ async def _process_crew_stream(update: Update, context: ContextTypes.DEFAULT_TYP
 			combined_clean_parts.append(c_reply)
 			all_executed_cmds.extend(e_cmds)
 
-		if all_executed_cmds:
-			logger.info("Crew panel executed actions: %s", all_executed_cmds)
-
 		clean_reply = "\n\n---\n\n".join(combined_clean_parts)
-		# Attribution already included in last section via commit — no extra append needed.
 
+		# Surface action errors and phantom confirmations so the user knows when
+		# a card/board/task was not actually created.
+		action_errors = [c for c in all_executed_cmds if isinstance(c, str) and c.startswith("\u26a0")]
+		if action_errors:
+			clean_reply += "\n\n" + "  ".join(action_errors)
+			logger.warning("Crew panel '%s' action errors: %s", crew_display, action_errors)
+		elif not all_executed_cmds:
+			# No actions executed — check if the crew hallucinated a confirmation
+			_phantom_words = ("created", "added", "saved", "set up", "scheduled", "built", "generated")
+			if any(w in clean_reply.lower() for w in _phantom_words):
+				clean_reply += (
+					"\n\n\u26a0 Nothing was actually saved \u2014 "
+					"the crew described the action without executing it. Please try again."
+				)
+				logger.warning("Crew panel '%s': phantom confirmation (no executed_cmds)", crew_display)
+		else:
+			logger.info("Crew panel '%s' executed actions: %s", crew_display, all_executed_cmds)
+
+		# Attribution already included in last section via commit — no extra append needed.
 		display_final = f"<b>{format_time()}</b>\n\n{_md_to_html(clean_reply)}"
 		await safe_edit(thinking_msg, f"<blockquote>{display_final}</blockquote>", parse_mode="HTML", reply_markup=get_nav_markup(t))
 
