@@ -3306,3 +3306,74 @@ class TestTelegramHTMLInjection:
 			"Raw transcript in parse_mode='HTML' can cause Telegram BadRequest on special chars."
 		)
 
+
+# ---------------------------------------------------------------------------
+# Section 35 -- Rehydration lambda + SCHEDULE_CREW cron field validation
+# ---------------------------------------------------------------------------
+
+class TestRehydrationAndCrewCronValidation:
+	"""Section 35: Static regression for two fixes applied together.
+
+	  (a) rehydrate_response: replacement must use a lambda to avoid interpreting
+	      backslash sequences in PII values as regex backreferences (re.error).
+	  (b) _exec_schedule_crew: CRON spec fields must be validated with an
+	      allowlist regex, consistent with schedule_persistent_custom.
+	"""
+
+	@staticmethod
+	def _read_llm_src() -> str:
+		here = os.path.dirname(__file__)
+		path = os.path.join(here, "..", "src", "backend", "app", "services", "llm.py")
+		with open(path, encoding="utf-8") as fh:
+			return fh.read()
+
+	@staticmethod
+	def _read_actions_src() -> str:
+		here = os.path.dirname(__file__)
+		path = os.path.join(here, "..", "src", "backend", "app", "services", "agent_actions.py")
+		with open(path, encoding="utf-8") as fh:
+			return fh.read()
+
+	def test_rehydrate_uses_lambda_replacement(self):
+		"""Static: rehydrate_response must not pass original directly to re.sub.
+
+		Passing 'original' as the replacement string to re.sub interprets
+		backslash sequences (\\1, \\g<name>) as regex backreferences.  If the
+		PII original contains a backslash-digit sequence, re.sub raises re.error.
+		Fix: use lambda _m, o=original: o so the string is returned literally.
+		"""
+		src = self._read_llm_src()
+		fn_idx = src.find("def rehydrate_response(")
+		assert fn_idx != -1, "rehydrate_response must exist in llm.py"
+		block = src[fn_idx: fn_idx + 900]
+		assert "lambda" in block, (
+			"rehydrate_response must use a lambda as the re.sub replacement argument "
+			"(e.g. 'lambda _m, o=original: o') to prevent backslash sequences in PII "
+			"original values from being interpreted as regex backreferences."
+		)
+		# Ensure the old bare-string form is gone
+		assert "re.sub(re.escape(token), original," not in block, (
+			"rehydrate_response must not pass 'original' directly to re.sub — "
+			"use a lambda instead to suppress backreference interpretation."
+		)
+
+	def test_schedule_crew_cron_field_character_allowlist(self):
+		"""Static: SCHEDULE_CREW must validate cron field characters (allowlist).
+
+		schedule_persistent_custom validates each cron field with
+		re.match(r'^[\\d*/,\\-]+$', f). The SCHEDULE_CREW handler in
+		agent_actions.py previously only checked field count (==5), leaving
+		arbitrary characters to be passed to APScheduler's CronTrigger.
+		Fix: apply the same character allowlist.
+		"""
+		src = self._read_actions_src()
+		fn_idx = src.find("_exec_schedule_crew")
+		assert fn_idx != -1, "_exec_schedule_crew must exist in agent_actions.py"
+		block = src[fn_idx: fn_idx + 800]
+		# Must have a character-validation pattern (allowlist)
+		assert r"[\d*/,\-]" in block or r"[\d*/," in block, (
+			"_exec_schedule_crew must validate cron field characters with an allowlist "
+			"regex (e.g. re.match(r'^[\\d*/,\\-]+$', f)) consistent with "
+			"schedule_persistent_custom. Only checking field count is insufficient."
+		)
+
