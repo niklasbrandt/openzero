@@ -88,6 +88,15 @@ class NativeCrewEngine:
 		instructions = SYSTEM_TEMPLATE.format(instructions=config.instructions or "Tactical Steward.")
 		instructions = f"Current date and time: {now_str}\n\n" + instructions
 
+		# Inject agent personality/archetype so the crew's voice matches Z's character.
+		try:
+			from app.services.llm import get_agent_personality
+			personality = await get_agent_personality()
+			if personality:
+				instructions = personality + "\n\n" + instructions
+		except Exception as e:
+			logger.debug("Native Engine: Failed to load agent personality: %s", e)
+
 		# 2. Semantic Priming: Character Roles
 		if config.characters:
 			char_block = "\nCREW COMPOSITION & ROLES:\n"
