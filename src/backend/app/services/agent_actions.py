@@ -675,8 +675,8 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 				return f"\u26a0 Error: Crew '{crew_id}' is not found or is disabled."
 				
 			fields = cron_spec.split()
-			if len(fields) != 5:
-				return "\u26a0 Error: CRON spec must be exactly 5 fields."
+			if len(fields) != 5 or not all(re.match(r'^[\d*/,\-]+$', f) for f in fields):
+				return "\u26a0 Error: CRON spec must be exactly 5 fields using only digits, *, /, ,, - (e.g. '0 12 * * 1')."
 			
 			tz_str = await get_current_timezone()
 			tz = pytz.timezone(tz_str)
