@@ -240,6 +240,22 @@ async def _translate_keywords_to_lang(crew_id: str, lang: str, keywords: list) -
 	_kw_translation_cache[cache_key] = keywords
 	return keywords
 
+# Messages that ask about the OUTCOME of a previous action ("did you do it?",
+# "no feedback from you", "did it work?") should NEVER route to a crew — the
+# crew has no context about what Z did and will respond with irrelevant domain
+# content. These must always be handled by Z who has the full conversation history.
+_OPERATIONAL_QUERY_RE = re.compile(
+	r'\b(?:'
+	r'did\s+you\s+do\s+(?:it|that)'
+	r'|did\s+(?:you|it|that)\s+(?:work|go\s+through|save|add|create|happen)'
+	r'|no\s+feedback\s+from\s+you'
+	r'|any\s+(?:confirmation|feedback|result|update)\s+(?:from|on|about)'
+	r'|confirm\s+(?:it|that|if)'
+	r'|what\s+happened\s+(?:with|to)'
+	r')\b',
+	re.IGNORECASE,
+)
+
 # Referential words that strongly suggest the message is a follow-up refinement
 # of the previous response rather than a new, unrelated request.
 # "make it spicier" / "do that again" / "and now?" → continuation.
@@ -258,23 +274,27 @@ _CREW_ATTRIBUTION_RE = re.compile(r'\(Reasoning by crew ([^)]+)\)', re.IGNORECAS
 
 
 def _last_attributed_crew(history: list) -> Optional[str]:
-	"""Return the most recently active crew ID from recent Z messages, or None.
+	"""Return the most recently active crew ID from the immediately preceding Z
+	message, or None.
 
-	Scans backwards through up to 3 Z/assistant turns looking for a crew
-	attribution footer.  Scanning through multiple turns means that a plain
-	Z reply (e.g. a restart notification) between two crew-attributed turns
-	does NOT break the continuation chain.
+	Scans exactly 1 Z/assistant turn. If the most recent Z reply is not attributed
+	to a crew (e.g. a recall response, a task confirmation, an unrelated Z answer),
+	the continuation chain resets to None — preventing stale emotional-crew
+	attribution from contaminating unrelated operational follow-ups like
+	"did you do it?" or "no feedback from you?".
+
+	The previous 3-turn scan was introduced to handle restart notifications but
+	caused false positives: a 'life' crew reply earlier in the session would
+	re-engage when the user asked a simple status question because the word "it"
+	triggered _is_followup_text while the life attribution was still in range.
+	Post-restart continuation is now handled by _infer_crew_from_user_history.
 	"""
-	z_turns_seen = 0
 	for msg in reversed(history):
 		if msg.get("role") not in ("z", "assistant"):
 			continue
-		z_turns_seen += 1
 		m = _CREW_ATTRIBUTION_RE.search(msg.get("content", ""))
-		if m:
-			return m.group(1).split(",")[0].strip()
-		if z_turns_seen >= 3:
-			break
+		# Return the crew id if found, None otherwise — stop after the first Z turn.
+		return m.group(1).split(",")[0].strip() if m else None
 	return None
 
 
@@ -370,6 +390,10 @@ async def resolve_active_crew(history: list, user_text: str, lang: str = "en") -
 	"""Return a crew_id if this message should be routed to a crew automatically.
 
 	Algorithm (in order of priority):
+	-1. Operational query guard — questions about the result of a previous action
+	    ("did you do it?", "no feedback from you", "did it work?") are never
+	    routed to crews. The crew has no context about what Z did and would
+	    respond with irrelevant domain content. Z handles these with full history.
 	0. Crew ID direct match — if the user's message contains the exact crew id as
 	   a standalone word (e.g. "hi dependents"), route there immediately.
 	1. Keyword match in current message — base English keywords plus any
@@ -381,6 +405,11 @@ async def resolve_active_crew(history: list, user_text: str, lang: str = "en") -
 	Returns crew_id string or None (let Z handle it normally).
 	"""
 	lower_text = user_text.lower()
+
+	# -1. Operational query guard: status / confirmation questions skip all crew routing.
+	if _OPERATIONAL_QUERY_RE.search(user_text[:2000]):
+		logger.debug("Router: operational query detected — bypassing crew routing")
+		return None
 
 	# 0. Priority: explicit crew ID in message — beats keyword order entirely.
 	for crew in crew_registry.list_active():
