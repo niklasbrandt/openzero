@@ -3244,3 +3244,65 @@ class TestUnboundedParamsAndEventIDValidation:
 			"update_local_event's ValueError handler must return HTTP 400, not 500."
 		)
 
+
+# ---------------------------------------------------------------------------
+# Section 34 -- HTML Injection in Telegram Message Handlers (CWE-80)
+# ---------------------------------------------------------------------------
+
+class TestTelegramHTMLInjection:
+	"""Section 34: Static regression for HTML injection in telegram_bot.py.
+
+	Two injection points were fixed:
+	  (a) cmd_crews: crew_id from context.args[0] embedded in HTML reply without escaping.
+	      A crew_id like '</b><a href="x">y</a><b>' would inject a clickable link.
+	  (b) handle_voice: STT transcript embedded in three HTML strings without html.escape().
+	      A transcript containing '<', '>', '&' causes Telegram BadRequest (can't parse entities).
+	"""
+
+	@staticmethod
+	def _read_bot_src() -> str:
+		here = os.path.dirname(__file__)
+		path = os.path.join(here, "..", "src", "backend", "app", "api", "telegram_bot.py")
+		with open(path, encoding="utf-8") as fh:
+			return fh.read()
+
+	def test_crew_id_html_escaped_in_disabled_reply(self):
+		"""Static: cmd_crews must html.escape(crew_id) before embedding in HTML reply.
+
+		Without escaping, a user-supplied crew_id like '</b><a href="evil">x</a><b>'
+		is injected verbatim into a parse_mode='HTML' Telegram message, corrupting
+		the markup and potentially inserting clickable links.
+		"""
+		src = self._read_bot_src()
+		fn_idx = src.find("async def cmd_crews(")
+		assert fn_idx != -1, "cmd_crews must exist in telegram_bot.py"
+		# Look for the is_disabled reply block — it uses crew_id in HTML context
+		disabled_idx = src.find("is_disabled", fn_idx)
+		assert disabled_idx != -1, "is_disabled branch must exist in cmd_crews"
+		# The HTML reply around 'is_disabled' must use _html.escape(crew_id)
+		block = src[fn_idx: disabled_idx + 300]
+		assert "_html.escape(crew_id)" in block, (
+			"cmd_crews must escape crew_id with _html.escape() before embedding it in "
+			"the Telegram HTML reply for the 'is_disabled' branch (CWE-80). "
+			"Unescaped user input in parse_mode='HTML' messages can inject HTML markup."
+		)
+
+	def test_voice_transcript_html_escaped_in_status_message(self):
+		"""Static: handle_voice must html.escape(transcript) in all HTML embed sites.
+
+		STT output can contain '<', '>', '&' (e.g. if the speaker says 'less than').
+		Embedding the raw transcript in a parse_mode='HTML' Telegram message causes
+		Telegram to return BadRequest: can't parse entities, silently dropping the reply.
+		"""
+		src = self._read_bot_src()
+		fn_idx = src.find("async def handle_voice(")
+		assert fn_idx != -1, "handle_voice must exist in telegram_bot.py"
+		block = src[fn_idx: fn_idx + 2000]
+		# Both display paths must escape the transcript
+		escape_count = block.count("_html.escape(transcript)")
+		assert escape_count >= 2, (
+			f"handle_voice must apply _html.escape(transcript) in at least 2 HTML embed "
+			f"sites (status message + display_reply). Found {escape_count} occurrence(s). "
+			"Raw transcript in parse_mode='HTML' can cause Telegram BadRequest on special chars."
+		)
+

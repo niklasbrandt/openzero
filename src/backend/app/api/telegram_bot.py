@@ -829,7 +829,8 @@ async def cmd_crews(update: Update, context: ContextTypes.DEFAULT_TYPE):
 			await _process_crew_stream(update, context, crew_id, user_input, t)
 			return
 		elif config and not config.enabled:
-			await update.message.reply_text(f"<blockquote>⚠️ <i>Crew '<b>{crew_id}</b>' {t.get('is_disabled', 'is disabled')}.</i></blockquote>", parse_mode="HTML")
+			import html as _html
+			await update.message.reply_text(f"<blockquote>⚠️ <i>Crew '<b>{_html.escape(crew_id)}</b>' {t.get('is_disabled', 'is disabled')}.</i></blockquote>", parse_mode="HTML")
 			return
 		# If first arg doesn't look like a crew ID, we fall through to list all (useful if user typed junk)
 
@@ -1110,11 +1111,12 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		from app.services.voice import transcribe_voice
 		transcript = await transcribe_voice(voice_bytes)
 		
+		import html as _html
 		if not transcript or transcript.startswith("["):
-			await safe_edit(status_msg, f"<blockquote>⚠️ <i>{transcript or 'Could not transcribe voice.'}</i></blockquote>", parse_mode="HTML")
+			await safe_edit(status_msg, f"<blockquote>⚠️ <i>{_html.escape(transcript or 'Could not transcribe voice.')}</i></blockquote>", parse_mode="HTML")
 			return
 
-		await safe_edit(status_msg, f"<blockquote>📝 <b>Transcript:</b>\n<i>{transcript}</i>\n\n<i>Thinking...</i></blockquote>", parse_mode="HTML")
+		await safe_edit(status_msg, f"<blockquote>📝 <b>Transcript:</b>\n<i>{_html.escape(transcript)}</i>\n\n<i>Thinking...</i></blockquote>", parse_mode="HTML")
 		
 		# 3. Process as text
 		from app.services.llm import chat_with_context, last_model_used
@@ -1139,7 +1141,7 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		
 		clean_reply = strip_llm_time_header(clean_reply)
 		html_reply = _md_to_html(clean_reply)
-		display_reply = f"📝 <b>Transcript:</b>\n<i>{transcript}</i>\n\n<b>{format_time()}</b>\n\n{html_reply}"
+		display_reply = f"📝 <b>Transcript:</b>\n<i>{_html.escape(transcript)}</i>\n\n<b>{format_time()}</b>\n\n{html_reply}"
 		
 		footer = await _get_stats_footer()
 		await safe_edit(status_msg, f"<blockquote>{display_reply}{footer}</blockquote>", parse_mode="HTML", reply_markup=get_nav_markup())
