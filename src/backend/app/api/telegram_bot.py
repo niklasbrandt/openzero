@@ -1232,6 +1232,12 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 	if crews:
 		clean_reply += f"\n\n_(Reasoning by crew {', '.join(crews)})_"
 
+	# Surface Planka / action errors so the user knows when something didn't execute.
+	# Z's prose may already claim success, so append the real failure notice.
+	action_errors = [c for c in executed_cmds if isinstance(c, str) and c.startswith("\u26a0")]
+	if action_errors:
+		clean_reply += "\n\n" + "  ".join(action_errors)
+
 	# Prepend real time (strip any LLM-generated time header)
 	clean_reply = strip_llm_time_header(clean_reply)
 	html_reply = _md_to_html(clean_reply)
