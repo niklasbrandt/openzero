@@ -37,7 +37,7 @@ import uuid
 import asyncio
 import time
 from sqlalchemy import select
-from app.models.db import AsyncSessionLocal, Person
+from app.models.db import AsyncSessionLocal, LLMMetric, Person
 
 logger = logging.getLogger(__name__)
 
@@ -429,7 +429,7 @@ last_model_used: ContextVar[str] = ContextVar("last_model_used", default="local"
 # Per-chunk rehydration misses tokens split across two SSE deltas (e.g.
 # "[DATE_" in one chunk and "3]" in the next).  Callers should call
 # rehydrate_response(assembled, get_active_rep_map()) after joining chunks.
-_active_rep_map: ContextVar[dict] = ContextVar("_active_rep_map", default={})
+_active_rep_map: ContextVar[dict] = ContextVar("_active_rep_map", default=None)
 
 def get_active_rep_map() -> dict:
 	"""Return the PII replacement map built for the current streaming request."""
@@ -453,7 +453,6 @@ async def record_llm_metric(
 ) -> None:
 	"""Record a single LLM invocation metric (non-blocking, never raises)."""
 	try:
-		from app.models.db import AsyncSessionLocal, LLMMetric
 		async with AsyncSessionLocal() as session:
 			session.add(LLMMetric(
 				tier=tier,
@@ -572,7 +571,7 @@ ACTIVE LISTENING — CRITICAL:
 - NEVER contradict or question what the user already told you.
 - When the user makes a simple statement or shares something, respond naturally and briefly. Do NOT over-interpret it or turn it into a question.
 - If the user clarifies or corrects you, accept the correction immediately and move on.
-- **ACTION CORRECTION — CRITICAL**: If the user says something like "no it did not", "that didn't work", "it doesn't exist", "it failed", or any denial of a previous action you claimed to have completed, DO NOT pivot to a new or different action. DO NOT invent tasks from context. Re-read the previous exchange, identify what action you emitted, and re-emit the same action tag to retry it. Confirm the retry explicitly (e.g. "Let me try that again —").
+- **ACTION CORRECTION — CRITICAL**: If the user says something like "no it did not", "that didn't work", "it doesn't exist", "it failed", "no feedback from you", "did you do it", or any denial of a previous action you claimed to have completed, DO NOT pivot to a new or different action. DO NOT invent tasks from context. Re-read the previous exchange, identify what action you emitted, and re-emit the same action tag to retry it. Confirm the retry explicitly (e.g. "Let me try that again —") AND emit the tag in the same response. Never say "let me try again" without also emitting the tag.
 - If you are unsure what the user means, re-read their message literally before guessing.
 
 Your Persona & Behavior:
@@ -642,6 +641,7 @@ CRITICAL: Every tag MUST start with `[ACTION:` — never use `[CREATE_TASK` or s
 CRITICAL: Tags go on NEW LINES at the very END of your response, after all prose.
 CRITICAL: Never embed tags mid-response or inside prose sections.
 CRITICAL — NO PHANTOM CONFIRMATIONS: NEVER write "task added", "done", "board created", "added to your list", or ANY action-confirmation phrase UNLESS you have emitted the corresponding action tag IN THIS SAME RESPONSE. The prose phrase does not perform the action — the tag does. If you write the confirmation without the tag, the user sees "done" but nothing happened. Violating this rule is the worst possible failure mode.
+CRITICAL — RETRY PROMISE: If you write "let me try again", "trying now", "I'll retry", or any equivalent, you MUST emit the action tag in THIS SAME response — not in a future one. A retry promise without a tag is a phantom confirmation and will fail silently. If you cannot determine which action to retry (e.g. because the history is unclear), ask the user what exactly to re-create rather than promising and not delivering.
 
 - Create Task: `[ACTION: CREATE_TASK | BOARD: name | LIST: name | TITLE: text | DESCRIPTION: full content]`
   (Default board: "Operator Board", default list: "Today")
