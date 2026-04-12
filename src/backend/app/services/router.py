@@ -63,11 +63,13 @@ _RECALL_HISTORY_RE = re.compile(
 	re.IGNORECASE,
 )
 
-# Server-side pre-filter: imperative verbs that signal an actual task request
+# Server-side pre-filter: verbs that signal an actual task or request
 _TASK_SIGNAL_RE = re.compile(
 	r'\b(?:create|add|make|set\s+up|build|save|find|look\s+up|remind\s+me|send|'
 	r'schedule|book|plan|update|edit|delete|remove|move|check|get|fetch|pull|'
 	r'generate|write|draft|note|log|track|record|store|show\s+me|give\s+me|'
+	r'finish|complete|finalize|prep|prepare|coordinate|sync|refresh|apply|'
+	r'submit|fix|resolve|review|research|analyse|analyze|explore|test|deploy|'
 	r'new\s+(?:board|task|todo|card|list|project)|open\s+a\b)\b',
 	re.IGNORECASE,
 )
@@ -265,58 +267,28 @@ async def route_message_stream(
 					else:
 						status_label = " [could not verify - check Planka]"
 					lines.append(f"[{m['at'][11:16]}] {m['content']}{status_label}")
-				block = "\n".join(lines)
-				injected = (
-					f"The user asked you to recall what they asked you to do {day_label}, "
-					f"and verify whether those items actually exist in Planka right now.\n"
-					f"The list below has been pre-filtered to task requests only. "
-					f"Each line includes a live Planka verification result:\n"
-					f"  [FOUND in Planka] = the item exists in Planka — it was saved\n"
-					f"  [NOT found in Planka] = the item is NOT in Planka — it was NOT saved\n"
-					f"  [could not verify] = no clear title could be extracted to search\n\n"
-					f"Be honest about each item. If something is NOT in Planka, say it clearly. "
-					f"Do NOT re-execute anything. Do NOT emit [ACTION: ...] tags.\n\n"
-					f"TASK REQUESTS for {day_label}:\n{block}\n\n---\n{user_text}"
-				)
+				# Build deterministic response — no LLM to avoid hallucinations and token leaks.
+				_found = sum(1 for s in statuses if s == "found")
+				_missing = sum(1 for s in statuses if s == "missing")
+				summary_line = f"({_found} saved, {_missing} not found)"
+				response = f"Tasks requested {day_label} {summary_line}:\n\n" + "\n".join(lines)
 			elif user_msgs:
-				# fallback: show all user messages if none passed task filter
-				block = "\n".join(f"[{m['at'][11:16]}] {m['content']}" for m in user_msgs)
-				injected = (
-					f"The user asked to recall their messages from {day_label}.\n"
-					f"Below are all their messages. Identify actual task requests.\n"
-					f"Do NOT emit [ACTION: ...] tags. Do NOT re-execute anything.\n\n"
-					f"MESSAGES for {day_label}:\n{block}\n\n---\n{user_text}"
+				# fallback: no task-like messages found — show all messages as-is
+				response = (
+					f"No task requests matched for {day_label}. "
+					f"Here are all messages from that period:\n\n"
+					+ "\n".join(f"[{m['at'][11:16]}] {m['content']}" for m in user_msgs)
 				)
 			else:
-				injected = (
-					f"No messages found in the database for {day_label}. "
-					f"Inform the user honestly that there are no messages recorded for that day.\n\n{user_text}"
-				)
-			chunks: list[str] = []
-			async for token in chat_stream_with_context(
-				injected,
-				history=[],
-				include_projects=False,
-				include_people=False,
-			):
-				chunks.append(token)
-				yield token
-			response = sanitise_output("".join(chunks))
-			response = rehydrate_response(response, get_active_rep_map())
+				response = f"No messages found in the database for {day_label}."
+			# Yield directly — no LLM pass, so no hallucinations, no PII re-tokenisation.
+			yield response
 			clean, cmds, pending = await bus.commit_reply(
 				channel=channel, raw_reply=response,
-				model=last_model_used.get(), user_text=user_text, save=save_history,
+				model="recall", user_text=user_text, save=save_history,
 			)
-			# Phantom guard for recall path: any action-confirmation language here is
-			# always wrong — this is a read-only summary, actions can never legitimately run.
-			if _PHANTOM_RE.search(clean[:_MAX_RE_REPLY]):
-				clean += (
-					"\n\n\u26a0 Note: the list above shows requests from your history — "
-					"nothing was re-executed now."
-				)
-				logger.warning("Router: phantom-style language in recall reply")
 			result_future.set_result(RouterResult(
-				reply=clean, model=last_model_used.get(),
+				reply=clean, model="recall",
 				executed_cmds=cmds, pending_actions=pending,
 			))
 			return
