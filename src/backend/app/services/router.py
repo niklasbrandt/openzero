@@ -95,14 +95,14 @@ async def route_message_stream(
 				chunks.append(token)
 				yield token
 			full = rehydrate_response("".join(chunks), get_active_rep_map())
+			# Include attribution in raw_reply so it is stored in DB and
+			# _last_attributed_crew can detect this crew for follow-up continuation.
+			attribution = f"\n\n_(Reasoning by crew {crew_id})_"
 			clean, cmds, pending = await bus.commit_reply(
-				channel=channel, raw_reply=full,
+				channel=channel, raw_reply=full + attribution,
 				model=f"crew:{crew_id}", user_text=user_text, save=save_history,
 			)
 			cmds = [c for c in cmds if not c.startswith("__CREW_RUN__:")]
-			# Attribution footer — lets _last_attributed_crew detect this crew
-			# in subsequent follow-up messages to enable single-turn continuation.
-			clean += f"\n\n_(Reasoning by crew {crew_id})_"
 			result_future.set_result(RouterResult(
 				reply=clean, model=f"crew:{crew_id}",
 				executed_cmds=cmds, pending_actions=pending,
@@ -138,13 +138,14 @@ async def route_message_stream(
 				r_chunks.append(token)
 				yield token
 			r_full = rehydrate_response("".join(r_chunks), get_active_rep_map())
+			# Include attribution in raw_reply so it is stored in DB and
+			# _last_attributed_crew can detect this crew for follow-up continuation.
+			r_attribution = f"\n\n_(Reasoning by crew {crew_id})_"
 			r_clean, r_cmds, r_pending = await bus.commit_reply(
-				channel=channel, raw_reply=r_full,
+				channel=channel, raw_reply=r_full + r_attribution,
 				model=f"crew:{crew_id}", user_text=user_text, save=save_history,
 			)
 			r_cmds = [c for c in r_cmds if not c.startswith("__CREW_RUN__:")]
-			# Attribution footer — enables follow-up continuation via _last_attributed_crew
-			r_clean += f"\n\n_(Reasoning by crew {crew_id})_"
 			result_future.set_result(RouterResult(
 				reply=r_clean, model=f"crew:{crew_id}",
 				executed_cmds=r_cmds, pending_actions=r_pending,

@@ -258,15 +258,15 @@ _CREW_ATTRIBUTION_RE = re.compile(r'\(Reasoning by crew ([^)]+)\)', re.IGNORECAS
 
 
 def _last_attributed_crew(history: list) -> Optional[str]:
-	"""Return the primary crew ID from the most recent assistant message, or None.
+	"""Return the primary crew ID from the most recent Z message, or None.
 
-	Scans backwards through history to find the first assistant turn.  If that
+	Scans backwards through history to find the first Z/assistant turn.  If that
 	turn contains a crew attribution footer, the primary (first) crew ID is
-	returned.  If the most recent assistant turn exists but has no attribution,
+	returned.  If the most recent Z turn exists but has no attribution,
 	None is returned — meaning Z handled it without a crew.
 	"""
 	for msg in reversed(history):
-		if msg.get("role") == "assistant":
+		if msg.get("role") in ("z", "assistant"):
 			m = _CREW_ATTRIBUTION_RE.search(msg.get("content", ""))
 			if m:
 				return m.group(1).split(",")[0].strip()
