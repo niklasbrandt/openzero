@@ -3377,3 +3377,66 @@ class TestRehydrationAndCrewCronValidation:
 			"schedule_persistent_custom. Only checking field count is insufficient."
 		)
 
+
+# ---------------------------------------------------------------------------
+# Section 36 -- HTML injection in cmd_think and handle_draft_approval (CWE-80)
+# ---------------------------------------------------------------------------
+
+class TestThinkAndDraftHTMLInjection:
+	"""Section 36: Static regression for HTML injection in remaining Telegram handlers.
+
+	Two injection points fixed:
+	  (a) cmd_think: proposal['summary'] (LLM-generated) and query (user input)
+	      embedded in a parse_mode='HTML' privacy-disclosure message without escaping.
+	      An adversarial LLM or user-crafted query could inject '<a>' tags.
+	  (b) handle_draft_approval: draft_data['to'] and draft_data['subject'] come from
+	      external Gmail emails processed by LLM. A crafted email subject like
+	      '</b><a href="evil">x</a>' would inject clickable HTML into the approval popup.
+	"""
+
+	@staticmethod
+	def _read_bot_src() -> str:
+		here = os.path.dirname(__file__)
+		path = os.path.join(here, "..", "src", "backend", "app", "api", "telegram_bot.py")
+		with open(path, encoding="utf-8") as fh:
+			return fh.read()
+
+	def test_cmd_think_escapes_llm_summary_and_query(self):
+		"""Static: cmd_think must escape proposal['summary'] and query before HTML embed."""
+		src = self._read_bot_src()
+		fn_idx = src.find("async def cmd_think(")
+		assert fn_idx != -1, "cmd_think must exist in telegram_bot.py"
+		block = src[fn_idx: fn_idx + 1800]
+		# Both the LLM-generated summary and the user query must be escaped
+		assert "_html.escape(proposal['summary'])" in block or '_html.escape(proposal["summary"])' in block, (
+			"cmd_think must apply _html.escape() to proposal['summary'] before embedding "
+			"it in the parse_mode='HTML' privacy disclosure message (CWE-80). "
+			"LLM-generated text containing '<' or '>' breaks Telegram HTML parsing."
+		)
+		assert "_html.escape(query)" in block, (
+			"cmd_think must apply _html.escape() to the user query before embedding it "
+			"in the privacy disclosure HTML message (CWE-80)."
+		)
+
+	def test_draft_approval_escapes_email_fields(self):
+		"""Static: handle_draft_approval must escape 'to' and 'subject' from Gmail data.
+
+		These fields come from external emails parsed by LLM. An attacker who sends
+		an email with a crafted subject like '</b><a href=evil.com>click</a>' can
+		inject clickable HTML into the owner's Telegram draft-approval message.
+		"""
+		src = self._read_bot_src()
+		fn_idx = src.find("async def handle_draft_approval(")
+		assert fn_idx != -1, "handle_draft_approval must exist in telegram_bot.py"
+		block = src[fn_idx: fn_idx + 1400]
+		# The Gmail 'to' and 'subject' fields must be escaped
+		assert "_html.escape" in block, (
+			"handle_draft_approval must apply _html.escape() to draft_data 'to' and "
+			"'subject' fields before embedding them in the Telegram HTML confirmation "
+			"message (CWE-80). External email data is untrusted and can contain HTML."
+		)
+		# Ensure both 'to' and 'subject' are in the same block (they go together)
+		assert "draft_data.get('to'" in block or 'draft_data.get("to"' in block, (
+			"handle_draft_approval must include the 'to' field in its HTML confirmation."
+		)
+
