@@ -145,7 +145,12 @@ async def start_telegram_bot():
 	# (e.g. the previous process crashed or the LLM was still loading).
 	async def send_startup_greeting():
 		try:
-			await _recover_unanswered_messages()
+			# Run the watchdog recovery first — it handles the unanswered messages path.
+			# Then run the original recovery for deployment-changes notification.
+			from app.services.message_watchdog import check_unanswered_messages
+			await check_unanswered_messages()
+			# Deployment changes banner (only if nothing was recovered above)
+			await _send_changes_notification_if_needed()
 		except Exception:
 			logger.exception("FAILED to complete Telegram startup recovery")
 
@@ -246,159 +251,56 @@ def _format_raw_changes_html(changes: str) -> str:
 	formatted = "\n".join(lines[:10])
 	return f"<i>back.</i>\n\n<pre>{formatted}</pre>"
 
-async def _recover_unanswered_messages():
-	"""Deterministic restart recovery: scans up to 30 global messages to find
-	user messages that have no real Z reply after them.
-
-	Error stubs ('still waking up', 'encountered friction') and automated
-	system messages (heartbeats, nudges) do NOT count as real answers.
-	Heartbeats and nudges are sent via send_notification without being saved
-	to global_messages, so they never appear in history.
-
-	Waits 15 s after startup so live handle_freetext can consume any pending
-	Telegram updates before recovery scans history."""
-	try:
-		await asyncio.sleep(15)
-		logger.info("Restart recovery: scanning message history...")
-
-		from app.models.db import get_global_history
-
-		history = await get_global_history(limit=30)
-		logger.info("Restart recovery: found %d messages in history.", len(history))
-		if not history:
-			return
-
-		now_utc = datetime.now(_tz.utc)
-		unanswered = []
-
-		# Walk history newest-first. Collect user messages that have no real
-		# Z reply after them. Stop as soon as we hit a real Z reply.
-		for msg in reversed(history):
-			role = msg["role"]
-			content = msg.get("content", "")
-
-			if role == "z":
-				if _is_error_stub(content) or _is_system_message(content):
-					logger.debug(
-						"Recovery: skipping non-answer Z message: %s",
-						content[:60],
-					)
-					continue
-				# Real Z reply — everything before this is answered
-				logger.info("Recovery: found real Z reply, stopping scan.")
-				break
-
-			# role == "user"
-			try:
-				msg_ts = datetime.fromisoformat(msg["at"]).replace(tzinfo=_tz.utc)
-				age_s = (now_utc - msg_ts).total_seconds()
-				if age_s < 60:
-					logger.info(
-						"Recovery: user message too recent (%ds), skipping (handle_freetext in flight).",
-						int(age_s),
-					)
-					continue
-			except Exception as _exc:
-				logger.debug("Recovery - TS parse failed: %s", _exc)
-
-			logger.info("Recovery: found unanswered user message: %s", content[:80])
-			unanswered.append(content)
-
-		if not unanswered:
-			logger.info("Restart recovery: nothing to recover — sending online notification.")
-			changes = _read_latest_changes()
-			if changes:
-				logger.info("Restart recovery: new deployment changes detected, asking LLM to mention them.")
-				try:
-					from app.services.llm import chat_with_context
-					changes_prompt = (
-						"You came back online after a deployment. Casually let the user know you're back "
-						"and mention what's new in 1–3 short sentences, in plain conversational language. "
-						"Do NOT use bullet lists, formal headers, or 'Recent Logic Updates'. "
-						"Just talk like a friend would. Keep it brief.\n\n"
-						f"Deployment notes:\n{changes[:1500]}"
-					)
-					raw = await asyncio.wait_for(
-						chat_with_context(
-							changes_prompt,
-							history=[],
-							include_projects=False,
-							include_people=False,
-							use_agent=False,
-							tier_override="fast",
-							thinking=False,
-						),
-						timeout=60,
-					)
-					if raw and not _is_error_stub(raw):
-						clean = strip_llm_time_header(raw)
-						_consume_latest_changes()
-						await _send_online_notification(recovery_html=_md_to_html(clean))
-						return
-					logger.warning("Restart recovery: LLM returned empty/error — using raw changes fallback.")
-				except Exception as _ce:
-					logger.warning("Restart recovery: changes LLM call failed (%s) — using raw changes fallback.", _ce)
-				# LLM unavailable — show raw commit messages directly
-				fallback_html = _format_raw_changes_html(changes)
-				if fallback_html:
-					_consume_latest_changes()
-					await _send_online_notification(recovery_html=fallback_html)
-					return
-			await _send_online_notification()
-			return
-
-		unanswered.reverse()  # chronological order
-		combined = "\n".join(unanswered)
-		logger.info(
-			"Restart recovery: %d unanswered message(s) — responding now.",
-			len(unanswered),
-		)
-
-		from app.services.llm import chat_with_context
-
-		merged_history = await get_global_history(limit=10)
-		# Inject a silent context note so Z knows these were pre-restart messages.
-		# Placed as an assistant turn so it doesn't confuse role ordering.
-		merged_history = list(merged_history) + [{
-			"role": "assistant",
-			"content": "(You were offline and just came back. These messages came in while you were down — pick up like a friend would, naturally, no announcements.)",
-		}]
-
-		# Route through the unified router so crew routing and attribution
-		# still apply (e.g. emotional follow-ups re-engage the life crew).
-		logger.info("Restart recovery: routing message through unified router...")
-		from app.services.router import route_message_stream
-		token_stream, result_fut = await route_message_stream(
-			user_text=combined,
-			history=merged_history,
-			channel="telegram",
-			save_history=True,
-		)
-		_chunks: list[str] = []
-		async for _tok in token_stream:
-			_chunks.append(_tok)
-		result = await result_fut
-
-		logger.info(
-			"Restart recovery: router responded (%d chars): %s",
-			len(result.reply),
-			result.reply[:120],
-		)
-
-		# If the model returned an error stub, fall back to the plain notification.
-		if not result.reply or _is_error_stub(result.reply):
-			logger.warning("Restart recovery: error stub returned — sending plain notification.")
-			await _send_online_notification()
-			return
-
-		clean_reply = strip_llm_time_header(result.reply)
-		recovery_html = _md_to_html(clean_reply)
-
-		logger.info("Restart recovery: response delivered — sending combined online notification.")
-		await _send_online_notification(recovery_html=recovery_html)
-	except Exception as e:
-		logging.exception("Restart recovery failed: %s", e)
+async def _send_changes_notification_if_needed():
+	"""Send the deployment-changes banner if a latest_changes.txt exists.
+	Called at startup after watchdog recovery handles any unanswered messages."""
+	await asyncio.sleep(15)
+	changes = _read_latest_changes()
+	if not changes:
 		await _send_online_notification()
+		return
+	logger.info("Startup: deployment changes detected, asking LLM to mention them.")
+	try:
+		from app.services.llm import chat_with_context
+		changes_prompt = (
+			"You came back online after a deployment. Casually let the user know you're back "
+			"and mention what's new in 1–3 short sentences, in plain conversational language. "
+			"Do NOT use bullet lists, formal headers, or 'Recent Logic Updates'. "
+			"Just talk like a friend would. Keep it brief.\n\n"
+			f"Deployment notes:\n{changes[:1500]}"
+		)
+		raw = await asyncio.wait_for(
+			chat_with_context(
+				changes_prompt,
+				history=[],
+				include_projects=False,
+				include_people=False,
+				use_agent=False,
+				tier_override="fast",
+				thinking=False,
+			),
+			timeout=60,
+		)
+		if raw and not _is_error_stub(raw):
+			clean = strip_llm_time_header(raw)
+			_consume_latest_changes()
+			await _send_online_notification(recovery_html=_md_to_html(clean))
+			return
+	except Exception as _ce:
+		logger.warning("Startup: changes LLM call failed (%s) — using raw fallback.", _ce)
+	fallback_html = _format_raw_changes_html(changes)
+	if fallback_html:
+		_consume_latest_changes()
+		await _send_online_notification(recovery_html=fallback_html)
+	else:
+		await _send_online_notification()
+
+
+async def _recover_unanswered_messages():
+	"""Legacy startup recovery — kept for backwards-compat. The periodic watchdog
+	(`message_watchdog.check_unanswered_messages`) is the canonical path now."""
+	pass
+
 
 async def stop_telegram_bot():
 	"""Gracefully stop the bot."""

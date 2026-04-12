@@ -252,6 +252,25 @@ async def start_scheduler():
 		replace_existing=True,
 	)
 
+	# Message & Action Integrity Watchdog
+	# check_unanswered_messages: every 5 minutes — recovers user messages that
+	# arrived while Z was down, the LLM was loading, or Telegram dropped them.
+	from app.services.message_watchdog import check_unanswered_messages, audit_action_integrity
+	scheduler.add_job(
+		check_unanswered_messages,
+		IntervalTrigger(minutes=5),
+		id="message_watchdog",
+		replace_existing=True,
+	)
+	# audit_action_integrity: every 15 minutes — surfaces unacknowledged action
+	# failures (⚠ errors, phantom confirmations) that the user hasn't seen.
+	scheduler.add_job(
+		audit_action_integrity,
+		IntervalTrigger(minutes=15),
+		id="action_integrity_audit",
+		replace_existing=True,
+	)
+
 	# 2. Load User-Defined Persistent Custom Tasks
 	await load_custom_tasks()
 
