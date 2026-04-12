@@ -45,7 +45,6 @@ def get_embedder():
 	if embedder is None:
 		with _embedder_lock:
 			if embedder is None:
-				import os
 				from sentence_transformers import SentenceTransformer
 				# local_files_only=True skips all HuggingFace network checks — model
 				# is already cached in the container. Falls back to online if not cached.

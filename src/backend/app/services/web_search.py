@@ -103,7 +103,7 @@ async def execute_web_search(query: str, max_results: int = 5) -> str:
 
 	except Exception as e:
 		logger.warning("web_search failed for query %r: %s", query, e)
-		return f"Web search temporarily unavailable ({type(e).__name__}). Please try again later."
+		return "Web search temporarily unavailable. Please try again later."
 
 
 # ---------------------------------------------------------------------------

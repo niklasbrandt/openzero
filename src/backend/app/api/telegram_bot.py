@@ -206,7 +206,6 @@ async def _send_online_notification(recovery_html: str = ""):
 	reply is the whole message — no stiff banner. When idle, send a short casual
 	note so the user knows Z is alive without any formal ceremony."""
 	try:
-		from app.services.translations import get_user_lang, get_translations
 		lang = await get_user_lang()
 		t = get_translations(lang)
 		if recovery_html:
@@ -242,6 +241,8 @@ def _consume_latest_changes():
 			os.remove(_LATEST_CHANGES_PATH)
 	except Exception as _e:
 		logger.debug("Could not remove latest-changes file: %s", _e)
+
+def _format_raw_changes_html(changes: str) -> str:
 	"""Format raw commit messages as a minimal HTML fallback."""
 	lines = [l.strip() for l in changes.splitlines() if l.strip().startswith("- ")]
 	if not lines:
