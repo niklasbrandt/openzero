@@ -19,7 +19,6 @@ arguments before passing them here. This module performs the search as-is.
 """
 
 import logging
-from typing import Optional
 
 import httpx
 
