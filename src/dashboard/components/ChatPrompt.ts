@@ -536,8 +536,11 @@ export class ChatPrompt extends HTMLElement {
 		// 2. Bold: **text**
 		html = html.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
 
-		// 3. Links: [text](url)
-		html = html.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" class="chat-link">$1</a>');
+		// 3. Links: [text](url) — validate scheme to prevent javascript: URI injection (CWE-79)
+		html = html.replace(/\[(.*?)\]\((.*?)\)/g, (_match, text, url) => {
+			const safeUrl = /^(https?:\/\/|\/)/i.test(url) ? url : '#';
+			return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="chat-link">${text}</a>`;
+		});
 
 		// 4. Newlines to <br>
 		html = html.replace(/\n/g, '<br>');

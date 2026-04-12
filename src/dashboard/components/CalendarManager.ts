@@ -81,6 +81,16 @@ export class CalendarManager extends HTMLElement {
 		return this.t[key] || fallback;
 	}
 
+	private esc(s: string | undefined | null): string {
+		if (!s) return '';
+		return String(s)
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;')
+			.replace(/"/g, '&quot;')
+			.replace(/'/g, '&#39;');
+	}
+
 	connectedCallback() {
 		this.loadTranslations().then(() => {
 			this.render();
@@ -585,19 +595,19 @@ export class CalendarManager extends HTMLElement {
 										<div class="event-card-inner">
 												<div class="event-info">
 														<input type="text" class="event-title-edit" 
-																value="${e.summary}" 
+																value="${this.esc(e.summary)}" 
 																data-id="${e.id}"
 																${!e.is_local || e.is_birthday ? 'disabled' : ''}
-																aria-label="${!e.is_local || e.is_birthday ? this.tr('aria_event', 'Event') + ': ' : this.tr('aria_edit_event_title', 'Edit event title') + ': '}${e.summary}"
+																aria-label="${!e.is_local || e.is_birthday ? this.tr('aria_event', 'Event') + ': ' : this.tr('aria_edit_event_title', 'Edit event title') + ': '}${this.esc(e.summary)}"
 																style="background: transparent; border: none; font-size: 0.9rem; font-weight: 600; color: var(--text-primary, hsla(0, 0%, 100%, 1)); width: 100%; outline: none;">
 														<div class="event-meta">
 																<span>${timeStr === '00:00' ? this.tr('all_day', 'All Day') : timeStr}</span>
-																${e.person ? `<span class="badge">${e.person}</span>` : ''}
+																${e.person ? `<span class="badge">${this.esc(e.person)}</span>` : ''}
 														</div>
 												</div>
 												${e.is_local && !e.is_birthday ? `
 													<div style="display: flex; gap: 4px;">
-														<button class="delete-event-btn" data-id="${e.id}" title="Delete event" aria-label="${this.tr('aria_delete_event', 'Delete event')}: ${e.summary}">&times;</button>
+														<button class="delete-event-btn" data-id="${e.id}" title="Delete event" aria-label="${this.tr('aria_delete_event', 'Delete event')}: ${this.esc(e.summary)}">&times;</button>
 													</div>
 												` : ''}
 										</div>
