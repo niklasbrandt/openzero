@@ -114,6 +114,7 @@ All code written for the openZero dashboard **MUST** conform to **WCAG 2.1 Level
 - **Always Sync VPS:** After pushing, you MUST run `scripts/sync.sh` to deploy the changes to the VPS. Code changes are not complete until they are live on the server.
 - **Single Step:** Treat commit, push, and VPS sync as one atomic workflow. Do not stop after committing without pushing and syncing.
 - **No Private Details in Commit Messages:** Commit messages are public. Never include personal context, user data, private conversation content, health details, or any other private information in commit subjects or bodies. Describe only the technical change (e.g. `fix: enrich memory search query for follow-up messages` — not what the conversation was about).
+- **One-Line Commit Messages [strict!]:** Commit messages MUST be a single subject line only. No body, no bullet points, no multi-line explanations. Keep it short and descriptive (e.g. `fix: chunk long briefings to avoid Telegram 4096-char limit`). If a change genuinely needs context, it belongs in code comments — not in the commit message.
 
 ## 18. Design System & CSS Architecture
 
