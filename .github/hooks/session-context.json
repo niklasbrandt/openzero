@@ -1,0 +1,11 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "bash .github/hooks/scripts/session-context.sh",
+        "timeout": 5
+      }
+    ]
+  }
+}
