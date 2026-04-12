@@ -592,6 +592,55 @@ async def get_board_summary(board_name: str = "Operator Board") -> str:
 		logger.warning("get_board_summary error: %s", e)
 		return "Planka context unavailable."
 
+async def find_item_in_planka(title_fragment: str) -> bool:
+	"""Check whether title_fragment (case-insensitive substring) exists as a board name
+	or as a card name on the Operator Board.  Used by the recall-history intercept to
+	provide ground-truth verification instead of trusting Z's reply text.
+
+	Strategy (fast — 3 round-trips):
+	  1. GET /api/projects
+	  2. GET /api/projects/{id} in parallel → board names
+	  3. GET /api/boards/{operator_board_id} with cards included → card names
+	"""
+	if not title_fragment or len(title_fragment.strip()) < 3:
+		return False
+	fragment = title_fragment.lower().strip()
+	try:
+		token = await get_planka_auth_token()
+		headers = {"Authorization": f"Bearer {token}"}
+		async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, timeout=12.0, headers=headers) as client:
+			proj_resp = await client.get("/api/projects")
+			projects = proj_resp.json().get("items", [])
+			if not projects:
+				return False
+
+			proj_details = await asyncio.gather(
+				*[client.get(f"/api/projects/{p['id']}") for p in projects],
+				return_exceptions=True,
+			)
+
+			operator_board_id: Optional[str] = None
+			for det in proj_details:
+				if isinstance(det, BaseException):
+					continue
+				boards = det.json().get("included", {}).get("boards", [])
+				for b in boards:
+					if fragment in b["name"].lower():
+						return True
+					if b["name"].lower() == "operator board" and operator_board_id is None:
+						operator_board_id = b["id"]
+
+			if operator_board_id:
+				ob_resp = await client.get(
+					f"/api/boards/{operator_board_id}", params={"included": "cards"}
+				)
+				cards = ob_resp.json().get("included", {}).get("cards", [])
+				if any(fragment in c["name"].lower() for c in cards):
+					return True
+	except Exception as e:
+		logger.warning("find_item_in_planka: %s", _sanitize_for_log(e))
+	return False
+
 async def get_activity_report(days: int = 30) -> str:
 	"""Fetch a detailed record of cards finished vs. cards stalled vs. WIP state.
 	This is the 'truth' used by the Review tasks to prevent hallucinations.
