@@ -291,15 +291,12 @@ async def morning_briefing():
 		clean_text = content.replace("*", "").replace("#", "").replace("_", "")
 		tts_task = asyncio.create_task(generate_speech(clean_text))
 
-		# 4. Store in Database for Dashboard
+		# 4. Store in Database for Dashboard (briefing history widget)
+		from app.models.db import save_global_message
 		async with AsyncSessionLocal() as session:
 			briefing = Briefing(type="day", content=content, model=last_model_used.get())
 			session.add(briefing)
 			await session.commit()
-
-		# 4b. Persist to global_messages so the dashboard chat widget shows the briefing
-		from app.models.db import save_global_message
-		await save_global_message("telegram", "z", content, model=last_model_used.get())
 
 		# 5. Precision Delivery SLEEP logic
 		# We kicked off 15m early. We now sleep the exact remaining delta seconds to hit the precise user configuration.
@@ -339,6 +336,10 @@ async def morning_briefing():
 			f"---\n{content}",
 			reply_markup=get_nav_markup(t)
 		)
+
+		# 6b. Persist to global_messages NOW — after delivery so dashboard and
+		# Telegram show the briefing at the same time (not 15 min early).
+		await save_global_message("telegram", "z", content, model=last_model_used.get())
 
 		# 5b. Wait for TTS to finish and send voice (with generous timeout — non-blocking for text above)
 		try:
