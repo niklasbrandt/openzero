@@ -76,13 +76,15 @@ class NativeCrewEngine:
 		# format override as a separate system message — placed before SYSTEM_TEMPLATE
 		# so the model cannot miss it.  Small local models ignore format rules buried
 		# deep in a long prompt; a leading dedicated message is far more reliable.
+		# NOTE: do NOT prescribe voice or personality here — those come from the
+		# globally configured agent archetype in the instructions that follow.
 		format_prefix = ""
 		if config.type == "agent" and config.instructions:
 			format_prefix = (
 				"ABSOLUTE RULE: Reply in plain conversational prose only. "
 				"No numbered lists, no bullet points, no headers, no bold text, "
 				"no labels like 'Next Steps' or 'Protocol'. "
-				"Write exactly as a calm, direct person speaking to the user — nothing else."
+				"Follow the voice and persona defined in the system instructions."
 			)
 
 		instructions = SYSTEM_TEMPLATE.format(instructions=config.instructions or "Tactical Steward.")
@@ -148,14 +150,18 @@ class NativeCrewEngine:
 		crew_keywords: list[str] = [kw.lower() for kw in (config.keywords or [])]
 		try:
 			recent = await get_global_history(limit=20)
-			for m in recent:
-				if m["role"] != "user":
-					continue
+			user_msgs = [m for m in recent if m["role"] == "user"]
+			# Always include the most recent 3 user messages so the crew knows what
+			# the user just did / said — regardless of keyword filtering.  This
+			# prevents the crew from re-suggesting an exercise or action the user
+			# already reported completing in the immediately prior turn.
+			always_include = {id(m) for m in user_msgs[-3:]}
+			for m in user_msgs:
 				content = m["content"]
-				if crew_keywords:
+				if id(m) not in always_include and crew_keywords:
 					content_lower = content.lower()
 					if not any(kw in content_lower for kw in crew_keywords):
-						continue  # skip irrelevant history for keyword-scoped crews
+						continue  # skip irrelevant older history for keyword-scoped crews
 				history_messages.append({"role": "user", "content": content})
 		except Exception as e:
 			logger.debug("Native Engine: Could not fetch conversation history: %s", e)
