@@ -908,6 +908,29 @@ async def dashboard_chat_stream(req: ChatRequest, request: Request, _rl: None = 
 			from app.models.db import get_global_history
 			merged_history = await get_global_history(limit=10)
 
+		# --- Auto-route to a specialist crew if the message matches keywords ---
+		from app.services.crews import resolve_active_crews
+		from app.services.crews_native import native_crew_engine
+		routed_crews = await resolve_active_crews(merged_history, msg, lang="en")
+		if routed_crews:
+			chunks: list[str] = []
+			async for chunk in native_crew_engine.run_crew_stream(routed_crews[0], msg):
+				chunks.append(chunk)
+				yield f"data: {json.dumps({'token': chunk})}\n\n"
+			full_response = "".join(chunks)
+			from app.services.llm import rehydrate_response, get_active_rep_map, last_model_used
+			full_response = rehydrate_response(full_response, get_active_rep_map())
+			clean_reply, executed_cmds, pending_actions = await bus.commit_reply(
+				channel="dashboard",
+				raw_reply=full_response,
+				model=f"crew:{routed_crews[0]}",
+				user_text=msg,
+				save=not req.skip_history,
+			)
+			executed_cmds = [c for c in executed_cmds if not c.startswith("__CREW_RUN__:")]
+			yield f"data: {json.dumps({'done': True, 'reply': _sanitise_reply_html(clean_reply), 'actions': executed_cmds, 'pending': pending_actions, 'model': f'crew:{routed_crews[0]}'})}\n\n"
+			return
+
 		# --- Slash command: /crew <id> [input] ---
 		# The blocking /chat endpoint handles slash commands but the streaming
 		# endpoint was going directly to the LLM, silently swallowing /crew.
@@ -954,6 +977,27 @@ async def dashboard_chat_stream(req: ChatRequest, request: Request, _rl: None = 
 		# are correctly restored before action parsing and display.
 		from app.services.llm import rehydrate_response, get_active_rep_map
 		full_response = rehydrate_response(full_response, get_active_rep_map())
+
+		# Z-initiated crew routing: if Z emitted [ACTION: ROUTE | CREW: id], discard
+		# Z's response and re-dispatch the original user text to the crew instead.
+		import re as _re_dash
+		_route_m = _re_dash.search(r'\[(?:ACTION:\s*)?ROUTE\s*\|\s*CREW:\s*([a-z0-9_-]+)\s*\]?', full_response, _re_dash.IGNORECASE)
+		if _route_m:
+			crew_id_r = _route_m.group(1).strip().lower()
+			from app.services.crews_native import native_crew_engine as _nce
+			r_chunks: list[str] = []
+			async for chunk in _nce.run_crew_stream(crew_id_r, msg):
+				r_chunks.append(chunk)
+				yield f"data: {json.dumps({'token': chunk})}\n\n"
+			r_full = "".join(r_chunks)
+			r_clean, r_cmds, r_pending = await bus.commit_reply(
+				channel="dashboard", raw_reply=r_full,
+				model=f"crew:{crew_id_r}", user_text=msg, save=not req.skip_history,
+			)
+			r_cmds = [c for c in r_cmds if not c.startswith("__CREW_RUN__:")]
+			yield f"data: {json.dumps({'done': True, 'reply': _sanitise_reply_html(r_clean), 'actions': r_cmds, 'pending': r_pending, 'model': f'crew:{crew_id_r}'})}\n\n"
+			return
+
 		clean_reply, executed_cmds, pending_actions = await bus.commit_reply(
 			channel="dashboard",
 			raw_reply=full_response,
