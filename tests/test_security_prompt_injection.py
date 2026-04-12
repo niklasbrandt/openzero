@@ -3499,3 +3499,42 @@ class TestEmailPollFormattingInjection:
 				"arguments must be wrapped with _strip_html() to prevent formatting injection."
 			)
 
+
+# ---------------------------------------------------------------------------
+# Section 38 — Timing oracle in WhatsApp webhook verify_token comparison
+# ---------------------------------------------------------------------------
+class TestWhatsAppWebhookTimingOracle:
+	"""Section 38: WhatsApp hub_verify_token must use constant-time comparison.
+
+	Using the plain Python `==` operator on secret tokens exposes a timing
+	oracle that allows an attacker to brute-force the token one character at
+	a time.  The fix is hmac.compare_digest() which always runs in constant
+	time regardless of where the first differing character is.
+
+	CWE-208 (Observable Timing Discrepancy)
+	"""
+
+	@staticmethod
+	def _read_whatsapp_src() -> str:
+		here = os.path.dirname(__file__)
+		path = os.path.join(here, "..", "src", "backend", "app", "api", "whatsapp.py")
+		with open(path, encoding="utf-8") as fh:
+			return fh.read()
+
+	def test_verify_token_uses_compare_digest(self):
+		"""Static: hub_verify_token comparison must use hmac.compare_digest(), not ==."""
+		src = self._read_whatsapp_src()
+		assert "hmac.compare_digest" in src, (
+			"whatsapp.py webhook_verify must use hmac.compare_digest() to compare "
+			"hub_verify_token against WHATSAPP_WEBHOOK_VERIFY_TOKEN. Plain == exposes "
+			"a timing oracle (CWE-208) enabling character-by-character brute-force of "
+			"the webhook secret."
+		)
+		# Also confirm the plain == comparison on the token was removed
+		import re as _re
+		bad = _re.findall(r'hub_verify_token\s*==\s*settings\.WHATSAPP_WEBHOOK_VERIFY_TOKEN', src)
+		assert not bad, (
+			"Found raw '==' comparison of hub_verify_token — must be replaced with "
+			f"hmac.compare_digest(): {bad}"
+		)
+

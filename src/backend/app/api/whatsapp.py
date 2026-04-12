@@ -154,14 +154,18 @@ async def webhook_verify(
 		logger.error("WHATSAPP_WEBHOOK_VERIFY_TOKEN not set — rejecting Meta verification.")
 		raise HTTPException(status_code=403, detail="Webhook not configured.")
 
-	if hub_mode == "subscribe" and hub_verify_token == settings.WHATSAPP_WEBHOOK_VERIFY_TOKEN:
+	_token_match = hmac.compare_digest(
+		(hub_verify_token or "").encode(),
+		settings.WHATSAPP_WEBHOOK_VERIFY_TOKEN.encode(),
+	)
+	if hub_mode == "subscribe" and _token_match:
 		logger.info("WhatsApp webhook verified by Meta.")
 		return hub_challenge or ""
 
 	logger.warning(
 		"WhatsApp webhook verification failed: mode=%r token_match=%s",
 		str(hub_mode).replace('\n', ' ').replace('\r', ' '),
-		hub_verify_token == settings.WHATSAPP_WEBHOOK_VERIFY_TOKEN,
+		_token_match,
 	)
 	raise HTTPException(status_code=403, detail="Verification failed.")
 
