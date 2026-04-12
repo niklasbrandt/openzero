@@ -1238,6 +1238,17 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 	if action_errors:
 		clean_reply += "\n\n" + "  ".join(action_errors)
 
+	# Phantom-confirmation guard: Z claimed an action was done in prose but emitted no tag.
+	# Only trigger when no commands were executed AND no errors occurred (pure phantom).
+	import re as _re2
+	_phantom_re = _re2.compile(
+		r'\b(task added|board (added|created)|event (added|created)|card (added|created)|added to (your )?(todo|list|board|today)|done[\s\u2014\u2013-]+(task|board|card|event))\b',
+		_re2.IGNORECASE,
+	)
+	if not executed_cmds and _phantom_re.search(clean_reply):
+		clean_reply += "\n\n\u26a0 Nothing was actually saved — I described the action without executing it. Please try again."
+		logger.warning("Phantom confirmation detected in response (no executed_cmds but confirmation prose present)")
+
 	# Prepend real time (strip any LLM-generated time header)
 	clean_reply = strip_llm_time_header(clean_reply)
 	html_reply = _md_to_html(clean_reply)
