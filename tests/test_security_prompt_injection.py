@@ -3177,3 +3177,70 @@ class TestPlankaRedirectXSSAndCrewIDValidation:
 			"function entry to reject malformed crew IDs before processing (CWE-20)."
 		)
 
+
+# ===================================================================
+#  33. UNBOUNDED QUERY PARAM CAPS & EVENT ID VALIDATION
+# ===================================================================
+
+class TestUnboundedParamsAndEventIDValidation:
+	"""Static analysis: enforce per-endpoint query param caps and ID validation.
+
+	Two issues fixed:
+	1. GET /briefings accepted an uncapped 'limit' integer query parameter and
+	   passed it directly to SQLAlchemy .limit(). An authenticated user could
+	   request ?limit=999999999, forcing the database to scan and transfer the
+	   full briefings table in one response (CWE-400, resource exhaustion DoS).
+	2. PUT /calendar/local/{event_id} called int() on the path param without a
+	   try/except around the conversion. A non-integer event_id like 'local_abc'
+	   would raise an unhandled ValueError, propagating as an opaque HTTP 500
+	   instead of returning HTTP 400 Bad Request to the caller.
+	"""
+
+	_DASHBOARD_PATH = os.path.join(
+		os.path.dirname(__file__), "..", "src", "backend",
+		"app", "api", "dashboard.py"
+	)
+
+	def _read_dashboard_src(self) -> str:
+		with open(os.path.abspath(self._DASHBOARD_PATH), encoding="utf-8") as fh:
+			return fh.read()
+
+	def test_briefings_limit_is_capped(self):
+		"""Static: GET /briefings must apply a max cap to the 'limit' query param.
+
+		Passing an unbounded integer directly to .limit() allows any authenticated
+		caller to trigger a full-table scan, exhausting DB memory and network bandwidth.
+		"""
+		src = self._read_dashboard_src()
+		fn_idx = src.find("async def get_briefings(")
+		assert fn_idx != -1, "get_briefings must exist in dashboard.py"
+		block = src[fn_idx: fn_idx + 300]
+		# Must have an explicit cap (min/max clamping pattern)
+		import re as _re
+		cap_present = bool(_re.search(r'\bmin\s*\(.*limit|limit.*\bmin\s*\(', block))
+		assert cap_present, (
+			"get_briefings must clamp 'limit' with min() to prevent unbounded DB queries "
+			"(CWE-400). Found no min() cap in the first 300 chars of the function. "
+			"Pattern: limit = max(1, min(limit, 100))"
+		)
+
+	def test_update_local_event_catches_invalid_id(self):
+		"""Static: update_local_event must catch ValueError from int() conversion.
+
+		Without a try/except, a path param like 'local_abc' raises an unhandled
+		ValueError inside the async handler, which propagates as HTTP 500 instead
+		of the correct HTTP 400 Bad Request.
+		"""
+		src = self._read_dashboard_src()
+		fn_idx = src.find("async def update_local_event(")
+		assert fn_idx != -1, "update_local_event must exist"
+		block = src[fn_idx: fn_idx + 400]
+		# Must have a ValueError handler for the int() conversion
+		assert "ValueError" in block, (
+			"update_local_event must catch ValueError from int(event_id.replace(...)) "
+			"and raise HTTPException(400) to avoid leaking opaque 500 errors on bad input."
+		)
+		assert "400" in block, (
+			"update_local_event's ValueError handler must return HTTP 400, not 500."
+		)
+
