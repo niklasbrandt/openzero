@@ -72,32 +72,40 @@ class NativeCrewEngine:
 		from datetime import datetime, timezone
 		now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
-		# For "agent"-type crews with custom instructions, prepend a hard
-		# format override as a separate system message — placed before SYSTEM_TEMPLATE
-		# so the model cannot miss it.  Small local models ignore format rules buried
-		# deep in a long prompt; a leading dedicated message is far more reliable.
-		# NOTE: do NOT prescribe voice or personality here — those come from the
-		# globally configured agent archetype in the instructions that follow.
+		# Load personality first so it can be placed in format_prefix (position 0,
+		# highest priority for local models) rather than buried in instructions.
+		personality = ""
+		try:
+			from app.services.llm import get_agent_personality
+			personality = await get_agent_personality()
+		except Exception as e:
+			logger.debug("Native Engine: Failed to load agent personality: %s", e)
+
+		# For "agent"-type crews, build a leading system message that combines the
+		# globally configured archetype WITH the prose-only format rule.  Placing
+		# both here (position 0) ensures they outrank the crew's own identity
+		# declaration ("You are a council of…") which appears in the instructions
+		# block that follows.  Small local models weight earlier messages higher.
 		format_prefix = ""
 		if config.type == "agent" and config.instructions:
-			format_prefix = (
+			prefix_parts: list[str] = []
+			if personality:
+				prefix_parts.append(personality)
+			prefix_parts.append(
 				"ABSOLUTE RULE: Reply in plain conversational prose only. "
 				"No numbered lists, no bullet points, no headers, no bold text, "
 				"no labels like 'Next Steps' or 'Protocol'. "
-				"Follow the voice and persona defined in the system instructions."
+				"Apply the voice and persona above to every sentence of your response."
 			)
+			format_prefix = "\n\n".join(prefix_parts)
 
 		instructions = SYSTEM_TEMPLATE.format(instructions=config.instructions or "Tactical Steward.")
 		instructions = f"Current date and time: {now_str}\n\n" + instructions
 
-		# Inject agent personality/archetype so the crew's voice matches Z's character.
-		try:
-			from app.services.llm import get_agent_personality
-			personality = await get_agent_personality()
-			if personality:
-				instructions = personality + "\n\n" + instructions
-		except Exception as e:
-			logger.debug("Native Engine: Failed to load agent personality: %s", e)
+		# For non-agent crews (no format_prefix), still inject personality into
+		# instructions so their voice matches the configured archetype.
+		if personality and not format_prefix:
+			instructions = personality + "\n\n" + instructions
 
 		# 2. Semantic Priming: Character Roles
 		if config.characters:
