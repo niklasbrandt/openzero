@@ -22,6 +22,7 @@ agents:
   - commercial
   - visionary
   - researcher
+  - personal-os
 argument-hint: "Just describe what you want — in any terms. The dispatcher will route it."
 handoffs:
   - label: "Hand off to ui-builder"
@@ -84,6 +85,10 @@ handoffs:
     agent: researcher
     prompt: "{{USER_REQUEST}}"
     send: false
+  - label: "Hand off to personal-os"
+    agent: personal-os
+    prompt: "{{USER_REQUEST}}"
+    send: false
 ---
 
 # dispatch
@@ -108,6 +113,7 @@ You are the openZero universal dispatcher. Your only job is to understand what t
 | Dead code, orphaned keys, dependency audit, .example parity | `repo` |
 | Licensing, pricing, positioning, business strategy | `commercial` |
 | Brainstorming, future directions, HCI, architecture exploration | `visionary` |
+| PKM, review rituals, habit systems, life domain integration, personal OS design | `personal-os` |
 | Research, documentation lookup, codebase exploration (read-only) | `researcher` |
 
 ## Protocol
