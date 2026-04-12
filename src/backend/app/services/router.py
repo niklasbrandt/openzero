@@ -226,18 +226,34 @@ async def route_message_stream(
 				task_msgs.append(m)
 
 			# Extract the most likely item name from a task message.
-			# Checks quoted strings first, then "titled/called/named X" patterns.
-			_TITLE_RE = re.compile(
-				r'(?:titled?|called?|named?)\s+["\u201c\u2018]?([^"\'.\[\]\n]{3,80})["\u201c\u2019]?'
-				r'|["\u201c\u2018]([^"\']{3,80})["\u201d\u2019]',
+			# Tries multiple heuristics in priority order.
+			_TITLE_EXPLICIT_RE = re.compile(
+				r'(?:titled?|called?|named?)\s+["\'\u201c\u2018]?([^"\'\u201d\u2019.\[\]\n]{3,60})["\'\u201d\u2019]?'
+				r'|["\'\u201c\u2018]([^"\'\u201d\u2019\x27]{3,60})["\'\u201d\u2019\x27]',
 				re.IGNORECASE,
 			)
+			_TITLE_REMIND_RE = re.compile(r'\bremind\s+(?:me\s+)?to\s+([^.!?\n]{2,50})', re.IGNORECASE)
+			_TITLE_COLON_RE = re.compile(r'\b(?:todo|task|reminder)\s+(?:for\s+[^\s:]{1,20}\s*)?:\s*([^\n.!?]{3,60})', re.IGNORECASE)
+			_TITLE_ADD_TO_RE = re.compile(r'\badd\s+([^.!?\n]{2,30}?)\s+to\s+(?:the\s+)?(?:shopping|list\b|board\b)', re.IGNORECASE)
 
 			def _extract_title(text: str) -> str:
 				"""Return best guessed item title from a task description, or ''."""
-				m = _TITLE_RE.search(text)
+				short = text[:200]
+				m = _TITLE_EXPLICIT_RE.search(short)
 				if m:
 					return (m.group(1) or m.group(2) or "").strip().rstrip(".,;!?")
+				m = _TITLE_REMIND_RE.search(short)
+				if m:
+					title = m.group(1).strip().rstrip(".,;!?")
+					# Strip trailing time qualifiers ("in 10 minutes", "at 3", etc.)
+					title = re.sub(r'\s+(?:in\s+\d+|at\s+\d)\S*$', '', title, flags=re.IGNORECASE).strip()
+					return " ".join(title.split()[:7])
+				m = _TITLE_COLON_RE.search(short)
+				if m:
+					return m.group(1).strip().rstrip(".,;!?")
+				m = _TITLE_ADD_TO_RE.search(short)
+				if m:
+					return m.group(1).strip().rstrip(".,;!?")
 				return ""
 
 			if task_msgs:
@@ -270,7 +286,15 @@ async def route_message_stream(
 				# Build deterministic response — no LLM to avoid hallucinations and token leaks.
 				_found = sum(1 for s in statuses if s == "found")
 				_missing = sum(1 for s in statuses if s == "missing")
-				summary_line = f"({_found} saved, {_missing} not found)"
+				_unveri = sum(1 for s in statuses if s == "unverifiable" or isinstance(s, Exception))
+				parts = []
+				if _missing:
+					parts.append(f"{_missing} not saved")
+				if _found:
+					parts.append(f"{_found} saved in Planka")
+				if _unveri:
+					parts.append(f"{_unveri} could not verify (no clear title)")
+				summary_line = f"({', '.join(parts)})" if parts else "(no items)"
 				response = f"Tasks requested {day_label} {summary_line}:\n\n" + "\n".join(lines)
 			elif user_msgs:
 				# fallback: no task-like messages found — show all messages as-is
