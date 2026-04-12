@@ -77,7 +77,6 @@ class PeerState:
 _peers: list[PeerState] = []
 _active: Optional[PeerState] = None
 _lock = asyncio.Lock()
-_started = False
 
 
 # --------------------------------------------------------------------------- #
@@ -388,11 +387,9 @@ async def start_discovery_loop() -> None:
 	Runs an initial probe synchronously before yielding so that the first
 	inference request after startup already has a valid active endpoint.
 	"""
-	global _started
-
-	if _started:
+	if getattr(start_discovery_loop, '_started', False):
 		return
-	_started = True
+	start_discovery_loop._started = True
 
 	_peers[:] = _build_peer_list()
 

@@ -111,8 +111,8 @@ async def _do_check_unanswered() -> None:
 			if age_s < 90:
 				# Too recent — live handle_freetext may still be processing
 				continue
-		except Exception:
-			pass
+		except Exception as _e:
+			logger.debug("Watchdog: could not parse message timestamp: %s", _e)
 
 		unanswered.append(content)
 

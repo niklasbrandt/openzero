@@ -24,6 +24,17 @@ from typing import AsyncIterator
 
 logger = logging.getLogger(__name__)
 
+# Maximum input length applied before running complex regexes on user-controlled
+# text to prevent polynomial (ReDoS) backtracking (CWE-1333).
+_MAX_RE_INPUT = 500
+_MAX_RE_REPLY = 10_000
+
+
+def _sanitize_for_log(text: str, max_len: int = 80) -> str:
+	"""Strip newlines from user-controlled text before writing to logs (CWE-117)."""
+	return text[:max_len].replace('\n', '\\n').replace('\r', '\\r')
+
+
 # Regex for Z-initiated ROUTE tags (tolerates missing 'ACTION:' prefix / closing ']')
 _ROUTE_RE = re.compile(
 	r'\[(?:ACTION:\s*)?ROUTE\s*\|\s*CREW:\s*([a-z0-9_-]+)\s*\]?',
@@ -124,7 +135,7 @@ async def route_message_stream(
 		# ── 0. Recall-history intercept ──────────────────────────────────────
 		# When the user asks to recall messages from today, yesterday, N days ago, etc.,
 		# fetch the actual conversation from DB and inject it — never consult Planka.
-		if _RECALL_HISTORY_RE.search(user_text):
+		if _RECALL_HISTORY_RE.search(user_text[:_MAX_RE_INPUT]):
 			from app.models.db import get_user_messages_for_day
 			days_ago = _resolve_days_ago(user_text)
 			day_msgs = await get_user_messages_for_day(days_ago)
@@ -176,7 +187,7 @@ async def route_message_stream(
 		routed_crews = await resolve_active_crews(history, user_text, lang=lang)
 		if routed_crews:
 			crew_id = routed_crews[0]
-			logger.info("Router: keyword-routing '%s...' → crew '%s'", user_text[:40], crew_id)
+			logger.info("Router: keyword-routing '%s...' → crew '%s'", _sanitize_for_log(user_text), crew_id)
 			chunks: list[str] = []
 			async for token in native_crew_engine.run_crew_stream(crew_id, user_text):
 				chunks.append(token)
@@ -219,7 +230,7 @@ async def route_message_stream(
 		m = _ROUTE_RE.search(response)
 		if m:
 			crew_id = m.group(1).strip().lower()
-			logger.info("Router: Z self-routed '%s...' → crew '%s'", user_text[:40], crew_id)
+			logger.info("Router: Z self-routed '%s...' → crew '%s'", _sanitize_for_log(user_text), crew_id)
 			r_chunks: list[str] = []
 			async for token in native_crew_engine.run_crew_stream(crew_id, user_text):
 				r_chunks.append(token)
@@ -256,7 +267,7 @@ async def route_message_stream(
 		if action_errors:
 			clean += "\n\n" + "  ".join(action_errors)
 
-		if not cmds and _PHANTOM_RE.search(clean):
+		if not cmds and _PHANTOM_RE.search(clean[:_MAX_RE_REPLY]):
 			clean += (
 				"\n\n\u26a0 Nothing was actually saved — "
 				"I described the action without executing it. Please try again."
