@@ -11,6 +11,7 @@ Key Responsibilities:
 - Ensuring robust connection handling across different environments.
 """
 
+import html as _html
 import httpx
 import logging
 import re
@@ -70,7 +71,7 @@ async def get_project_tree(as_html: bool = True) -> str:
 
 				# Make project names clickable
 				if as_html:
-					p_display = f"<b><a href='/api/dashboard/planka-redirect?target_project_id={project_id}' target='_blank' style='color: inherit; text-decoration: none;'>{project_name}</a></b>"
+					p_display = f"<b><a href='/api/dashboard/planka-redirect?target_project_id={project_id}' target='_blank' style='color: inherit; text-decoration: none;'>{_html.escape(project_name)}</a></b>"
 				else:
 					# Use version without underscores for Telegram Markdown
 					p_display = f"**[{project_name}]({settings.BASE_URL}/api/dashboard/planka-redirect?targetprojectid={project_id})**"
@@ -109,7 +110,7 @@ async def get_project_tree(as_html: bool = True) -> str:
 
 				if as_html:
 					progress_str = f" <span style='color: #4ade80; font-size: 0.8rem;'>({progress_pct}%)</span>" if total_cards > 0 else ""
-					line = f"  └── <a href='/api/dashboard/planka-redirect?target_board_id={board_id}' target='_blank' style='color: inherit; text-decoration: none;'>{board_name}</a>{progress_str}"
+					line = f"  └── <a href='/api/dashboard/planka-redirect?target_board_id={board_id}' target='_blank' style='color: inherit; text-decoration: none;'>{_html.escape(board_name)}</a>{progress_str}"
 				else:
 					progress_str = f" ({progress_pct}%)" if total_cards > 0 else ""
 					# Use version without underscores for Telegram Markdown
