@@ -50,6 +50,14 @@
 				"description": {
 					"type": "string"
 				},
+				"group": {
+					"type": "string",
+					"enum": ["basic", "business", "education", "private"]
+				},
+				"instructions": {
+					"type": "string",
+					"description": "Multi-line instruction block for the LLM."
+				},
 				"type": {
 					"type": "string",
 					"enum": [
@@ -83,6 +91,17 @@
 						"SUN"
 					]
 				},
+				"briefing_dom": {
+					"description": "Day-of-month for /month cadence. Integer or comma string e.g. 1, 15, '1,15'."
+				},
+				"briefing_months": {
+					"type": "string",
+					"description": "Comma-separated month numbers for /quarter cadence e.g. '1,4,7,10'."
+				},
+				"lead_time": {
+					"type": "integer",
+					"description": "Per-crew override for minutes before briefing time."
+				},
 				"schedule": {
 					"type": "string",
 					"description": "Crontab expression (5 fields)"
@@ -108,6 +127,13 @@
 						"type": "string"
 					},
 					"description": "Words/phrases that trigger automatic routing of free-text messages to this crew."
+				},
+				"panels": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					},
+					"description": "Crew IDs that run alongside this crew."
 				},
 				"panel_exclude": {
 					"type": "array",
