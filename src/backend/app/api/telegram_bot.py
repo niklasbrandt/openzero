@@ -13,7 +13,7 @@ from app.services.timezone import format_time, get_user_timezone
 import asyncio
 import pytz
 import re
-from datetime import datetime, timezone as _tz
+from datetime import datetime
 import logging
 from app.services.translations import get_translations, get_user_lang
 from app.models.db import AsyncSessionLocal
@@ -240,10 +240,8 @@ def _consume_latest_changes():
 	try:
 		if os.path.exists(_LATEST_CHANGES_PATH):
 			os.remove(_LATEST_CHANGES_PATH)
-	except Exception:
-		pass
-
-def _format_raw_changes_html(changes: str) -> str:
+	except Exception as _e:
+		logger.debug("Could not remove latest-changes file: %s", _e)
 	"""Format raw commit messages as a minimal HTML fallback."""
 	lines = [l.strip() for l in changes.splitlines() if l.strip().startswith("- ")]
 	if not lines:
