@@ -42,12 +42,12 @@ _ROUTE_RE = re.compile(
 	re.IGNORECASE,
 )
 
-# Recall-history detector: user wants a retrospective of their own messages for a given day.
+# Recall-history detector: user wants a retrospective of their own messages for a given day/range.
 _RECALL_HISTORY_RE = re.compile(
 	r'(?:'
 	r'\b(?:recall|look\s+up|review|show\s+me|list|go\s+through)\b'
 	r'\s+(?:.{0,60}\s+)?(?:i\s+)?(?:asked|sent|gave|told|messaged)\s+you\b'
-	r'|\brecall\b.{0,80}\b(?:today|this\s+morning|earlier\s+today|yesterday|\d+\s+days?\s+ago|last\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|week))\b'
+	r'|\brecall\b.{0,80}\b(?:today|this\s+morning|earlier\s+today|yesterday|\d+\s+days?\s+ago|last\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|week)|last\s+two\s+weeks?|past\s+(?:two\s+)?weeks?|this\s+week|recently)\b'
 	r'|\bwhat\s+(?:did\s+i|have\s+i)\s+ask(?:ed)?.{0,60}\b(?:today|this\s+morning|yesterday|\d+\s+days?\s+ago)\b'
 	r'|\b(?:list|show\s+me|review|go\s+through)\b.{0,60}\b(?:my\s+messages?|what\s+i\s+ask(?:ed)?)\b'
 	r'|\b(?:my\s+)?(?:tasks?|requests?|things?)\s+(?:i\s+)?(?:asked|gave|told|sent).{0,40}\b(?:today|yesterday|\d+\s+days?\s+ago)\b'
@@ -56,6 +56,9 @@ _RECALL_HISTORY_RE = re.compile(
 	r'|\b(?:so\s+)?(?:are|were|was)\s+(?:they|it|those)\s+(?:created|added|saved|built|done|set\s+up|executed)\b'
 	r'|\bdid\s+(?:those|they|it|that)\s+(?:get\s+)?(?:created|added|saved|go\s+through|work|execute)\b'
 	r'|\bwas\s+(?:it|that|the\s+(?:task|board|card|todo))\s+(?:created|added|saved|done|executed)\b'
+	r'|\bcheck\b.{0,60}\b(?:uncreated|missing|unfinished|pending|unexecuted)\b.{0,60}\b(?:tasks?|todos?|items?)\b'
+	r'|\b(?:uncreated|missing)\s+(?:tasks?|todos?|items?)\b'
+	r'|\bwhich\s+(?:tasks?|todos?|items?)\s+(?:were\s+not|weren.t|have\s+not\s+been|haven.t\s+been|did\s+not|didn.t)\s+(?:created|saved|added|executed|done)\b'
 	r')',
 	re.IGNORECASE,
 )
@@ -83,21 +86,40 @@ _WEEKDAY_MAP = {
 	'friday': 4, 'saturday': 5, 'sunday': 6,
 }
 
-def _resolve_days_ago(text: str) -> int:
-	"""Parse a days_ago offset from natural language. Returns 0 (today) as default."""
+def _resolve_timeframe(text: str) -> tuple[int, bool]:
+	"""Parse time range from natural language.
+
+	Returns (days, is_range):
+	  is_range=True  -> fetch the last N days as a rolling window (get_range_exchanges)
+	  is_range=False -> fetch a specific single day by offset (get_day_exchanges)
+	"""
 	import datetime as _dt
 	lower = text.lower()
+	# Multi-day range patterns
+	if re.search(r'two\s+weeks?', lower):
+		return 14, True
+	m_nw = re.search(r'(\d+)\s+weeks?', lower)
+	if m_nw:
+		return int(m_nw.group(1)) * 7, True
+	m_nd = re.search(r'(?:last|past)\s+(\d+)\s+days?', lower)
+	if m_nd:
+		return int(m_nd.group(1)), True
+	if re.search(r'(?:last|this|past)\s+week\b|over\s+the\s+(?:last|past)\s+week\b', lower):
+		return 7, True
+	if re.search(r'(?:past|last)\s+few\s+days?\b|recently\b', lower):
+		return 7, True
+	# Single-day patterns
 	if 'yesterday' in lower:
-		return 1
+		return 1, False
 	m = _DAYS_AGO_RE.search(lower)
 	if m:
-		return int(m.group(1))
+		return int(m.group(1)), False
 	for day_name, weekday_num in _WEEKDAY_MAP.items():
 		if f'last {day_name}' in lower:
 			today_num = _dt.datetime.utcnow().weekday()
 			delta = (today_num - weekday_num) % 7
-			return delta if delta > 0 else 7
-	return 0  # default: today
+			return (delta if delta > 0 else 7), False
+	return 0, False  # default: today
 
 # Phantom-confirmation guard — Z claimed success in prose without emitting a tag
 _PHANTOM_RE = re.compile(
@@ -159,13 +181,23 @@ async def route_message_stream(
 		# When the user asks to recall messages from today, yesterday, N days ago, etc.,
 		# fetch the actual conversation from DB and inject it — never consult Planka.
 		if _RECALL_HISTORY_RE.search(user_text[:_MAX_RE_INPUT]):
-			from app.models.db import get_day_exchanges
+			from app.models.db import get_day_exchanges, get_range_exchanges
 			from app.services.planka import find_item_in_planka
-			days_ago = _resolve_days_ago(user_text)
-			all_exchanges = await get_day_exchanges(days_ago)
+			days_ago, is_range = _resolve_timeframe(user_text)
+			if is_range:
+				all_exchanges = await get_range_exchanges(days_ago)
+			else:
+				all_exchanges = await get_day_exchanges(days_ago)
 			# Strip the current recall/status request itself
 			all_exchanges = [m for m in all_exchanges if m["content"].strip() != user_text.strip()]
-			if days_ago == 0:
+			if is_range:
+				if days_ago == 14:
+					day_label = "the last two weeks"
+				elif days_ago == 7:
+					day_label = "the last week"
+				else:
+					day_label = f"the last {days_ago} days"
+			elif days_ago == 0:
 				day_label = "today (since midnight UTC)"
 			elif days_ago == 1:
 				day_label = "yesterday"
