@@ -222,3 +222,24 @@ async def get_day_exchanges(days_ago: int = 0):
         )
         messages = result.scalars().all()
         return [{"role": m.role, "content": m.content, "at": m.created_at.isoformat() + "Z"} for m in messages]
+
+
+async def get_range_exchanges(days: int = 7):
+    """Return all user AND z messages for the past N days (rolling window), ordered chronologically.
+
+    Unlike get_day_exchanges which targets a single calendar day, this fetches
+    everything from `days` days ago up to now. Used by the recall intercept for
+    multi-day range queries (e.g. 'last two weeks', 'this week').
+
+    Each dict has: role ('user' or 'z'), content, at (ISO timestamp with Z suffix).
+    """
+    cutoff = datetime.datetime.utcnow() - datetime.timedelta(days=days)
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(GlobalMessage)
+            .where(GlobalMessage.role.in_(["user", "z"]))
+            .where(GlobalMessage.created_at >= cutoff)
+            .order_by(GlobalMessage.created_at.asc())
+        )
+        messages = result.scalars().all()
+        return [{"role": m.role, "content": m.content, "at": m.created_at.isoformat() + "Z"} for m in messages]
