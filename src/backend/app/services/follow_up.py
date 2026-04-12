@@ -242,10 +242,10 @@ async def run_proactive_follow_up() -> None:
 			from app.services.notifier import send_notification, get_stats_footer as _get_stats_footer, get_nav_markup
 			from app.services.translations import get_user_lang, get_translations
 			nudge = await chat(prompt, _feature="follow_up_nudge")
-			# Guard: skip sending if the LLM returned an error string (e.g. still starting up)
+			# Guard: skip sending if the LLM returned an error string or empty response
 			_LLM_ERR = ("having trouble reaching", "still waking up", "warming up my local")
-			if any(err in nudge for err in _LLM_ERR):
-				logger.warning("Follow-up: LLM unavailable, skipping nudge this cycle")
+			if not nudge.strip() or any(err in nudge for err in _LLM_ERR):
+				logger.warning("Follow-up: LLM unavailable or empty, skipping nudge this cycle")
 				return
 			footer = await _get_stats_footer()
 			lang = await get_user_lang()
@@ -296,8 +296,8 @@ async def evening_reminder() -> None:
 			from app.services.translations import get_user_lang, get_translations
 			nudge = await chat(prompt, _feature="evening_reminder")
 			_LLM_ERR = ("having trouble reaching", "still waking up", "warming up my local")
-			if any(err in nudge for err in _LLM_ERR):
-				logger.warning("Evening reminder: LLM unavailable, skipping this cycle")
+			if not nudge.strip() or any(err in nudge for err in _LLM_ERR):
+				logger.warning("Evening reminder: LLM unavailable or empty, skipping this cycle")
 				return
 			footer = await _get_stats_footer()
 			lang = await get_user_lang()
@@ -340,11 +340,15 @@ async def check_active_tracking_sessions() -> None:
 						from app.services.notifier import send_notification, get_stats_footer as _get_stats_footer, get_nav_markup
 						from app.services.translations import get_user_lang, get_translations
 						nudge = await chat(prompt)
-						footer = await _get_stats_footer()
-						lang = await get_user_lang()
-						t = get_translations(lang)
-						await send_notification(f"{nudge}{footer}", reply_markup=get_nav_markup(t))
-						m["sent"] = True
+						if not nudge.strip():
+							logger.warning("Proximity milestone: LLM returned empty nudge, skipping send")
+							m["sent"] = True
+						else:
+							footer = await _get_stats_footer()
+							lang = await get_user_lang()
+							t = get_translations(lang)
+							await send_notification(f"{nudge}{footer}", reply_markup=get_nav_markup(t))
+							m["sent"] = True
 						modified = True
 				
 				# 2. Final Session Wrap-up
@@ -359,10 +363,13 @@ async def check_active_tracking_sessions() -> None:
 					from app.services.notifier import send_notification, get_stats_footer as _get_stats_footer, get_nav_markup
 					from app.services.translations import get_user_lang, get_translations
 					nudge = await chat(prompt)
-					footer = await _get_stats_footer()
-					lang = await get_user_lang()
-					t = get_translations(lang)
-					await send_notification(f"{nudge}{footer}", reply_markup=get_nav_markup(t))
+					if nudge.strip():
+						footer = await _get_stats_footer()
+						lang = await get_user_lang()
+						t = get_translations(lang)
+						await send_notification(f"{nudge}{footer}", reply_markup=get_nav_markup(t))
+					else:
+						logger.warning("Proximity final wrap-up: LLM returned empty nudge, skipping send")
 					session.final_nudge_sent = True
 					session.is_active = False
 					modified = True
