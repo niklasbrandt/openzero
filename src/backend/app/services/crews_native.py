@@ -6,7 +6,11 @@ from app.config import settings
 from app.services.crews import crew_registry, SYSTEM_TEMPLATE
 from app.services.personal_context import get_personal_context_for_prompt, refresh_personal_context
 from app.services.agent_context import get_agent_skills_for_prompt, refresh_agent_context
-from app.services.llm import ACTION_TAG_DOCS
+import asyncio
+from datetime import datetime, timezone
+from app.services.llm import ACTION_TAG_DOCS, get_agent_personality
+from app.services.crew_memory import get_crew_memory_context
+from app.models.db import get_global_history
 
 logger = logging.getLogger(__name__)
 
@@ -75,12 +79,9 @@ class NativeCrewEngine:
 		is_local = not settings.cloud_configured
 
 		# 1. Base Instructions and Protocol
-		from datetime import datetime, timezone
 		now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
 		# Parallel context retrieval
-		from app.services.llm import get_agent_personality
-		from app.services.crew_memory import get_crew_memory_context
 		
 		# Define tasks for parallel execution
 		tasks = [
@@ -165,7 +166,6 @@ class NativeCrewEngine:
 		# Use pre-fetched history if provided by router to save a DB round-trip.
 		if history is None:
 			try:
-				from app.models.db import get_global_history
 				history = await get_global_history(limit=20)
 			except Exception as e:
 				logger.debug("Native Engine: Failed to load history: %s", e)
