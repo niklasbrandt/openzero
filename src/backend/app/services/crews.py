@@ -1,3 +1,4 @@
+import asyncio
 import json as _json
 import logging
 import re
@@ -152,6 +153,25 @@ class CrewRegistry:
 			self._crews[config.id] = config
 		logger.info("Registry: Successfully loaded %d active crews.", len(self._crews))
 		self._compute_panel_candidates()
+		await self._precache_keywords()
+
+	async def _precache_keywords(self) -> None:
+		"""Pre-calculate and cache keyword lists for all enabled languages.
+		
+		This avoids JIT translation/matching overhead during request resolution.
+		Current priority is 'en' and 'de' as the primary deployment languages.
+		"""
+		languages = ["en", "de"]
+		logger.info("Registry: Pre-caching keywords for %s", languages)
+		
+		tasks = []
+		for lang in languages:
+			for crew in self._crews.values():
+				tasks.append(_get_effective_keywords(crew, lang))
+		
+		if tasks:
+			await asyncio.gather(*tasks, return_exceptions=True)
+		logger.info("Registry: Keyword pre-cache complete for %d crews across %s", len(self._crews), languages)
 
 	def _compute_panel_candidates(self, top_n: int = 5, min_score: float = 0.15) -> None:
 		"""Auto-compute domain-similar crew pairs via bag-of-words Jaccard on name + description + character roles.
@@ -351,7 +371,7 @@ async def _get_effective_keywords(crew: "CrewConfig", lang: str) -> list:
 	return await _translate_keywords_to_lang(crew.id, lang, base)
 
 
-async def _infer_crew_from_user_history(history: list, lang: str = "en") -> Optional[str]:
+async def _infer_crew_from_user_history(history: list, lang: str = "en", active_crews: Optional[List["CrewConfig"]] = None) -> Optional[str]:
 	"""Scan recent user messages for crew keyword matches.
 
 	Fallback for when _last_attributed_crew finds no attribution (e.g. legacy
@@ -375,12 +395,19 @@ async def _infer_crew_from_user_history(history: list, lang: str = "en") -> Opti
 	if not substantive:
 		return None
 
+	if active_crews is None:
+		active_crews = crew_registry.list_active()
+
+	# Pre-fetch all effective keywords in parallel to minimize latency.
+	kw_tasks = [_get_effective_keywords(crew, lang) for crew in active_crews]
+	kw_lists = await asyncio.gather(*kw_tasks)
+	crew_keywords = list(zip(active_crews, kw_lists))
+
 	# For each substantive message (newest-first so most-recent context wins),
 	# check which crew keywords it triggers.
 	for msg in substantive:
 		content_lower = msg.get("content", "").lower()
-		for crew in crew_registry.list_active():
-			effective = await _get_effective_keywords(crew, lang)
+		for crew, effective in crew_keywords:
 			if effective and _keyword_matches(effective, content_lower):
 				return crew.id
 	return None
@@ -412,14 +439,17 @@ async def resolve_active_crew(history: list, user_text: str, lang: str = "en") -
 		return None
 
 	# 0. Priority: explicit crew ID in message — beats keyword order entirely.
-	for crew in crew_registry.list_active():
+	active_crews = crew_registry.list_active()
+	for crew in active_crews:
 		pattern = r'(?<![a-z0-9])' + re.escape(crew.id.lower()) + r'(?![a-z0-9])'
 		if re.search(pattern, lower_text):
 			return crew.id
 
 	# 1. Keyword match on current message.
-	for crew in crew_registry.list_active():
-		effective = await _get_effective_keywords(crew, lang)
+	# Pre-fetch all effective keywords in parallel.
+	kw_tasks = [_get_effective_keywords(crew, lang) for crew in active_crews]
+	kw_lists = await asyncio.gather(*kw_tasks)
+	for crew, effective in zip(active_crews, kw_lists):
 		if effective and _keyword_matches(effective, lower_text):
 			return crew.id
 
@@ -435,7 +465,7 @@ async def resolve_active_crew(history: list, user_text: str, lang: str = "en") -
 	# AND current message is a follow-up signal. Handles "and now?" after
 	# "i am feeling drained" even across restarts with no attribution in DB.
 	if _is_followup_text(lower_text):
-		inferred = await _infer_crew_from_user_history(history, lang)
+		inferred = await _infer_crew_from_user_history(history, lang, active_crews=active_crews)
 		if inferred and crew_registry.get(inferred):
 			return inferred
 
@@ -462,17 +492,18 @@ async def resolve_active_crews(history: list, user_text: str, lang: str = "en", 
 	exclude = set(cfg.panel_exclude or []) if cfg else set()
 	candidates = crew_registry._panel_candidates.get(primary, [])
 	lower_text = user_text.lower()
-	for sid in candidates:
-		if len(result) >= max_crews:
-			break
-		if sid == primary or sid in exclude:
-			continue
-		secondary_cfg = crew_registry.get(sid)
-		if not secondary_cfg:
-			continue
-		# Only include a secondary crew if it also keyword-matches the current message.
-		# This prevents domain-similarity alone from pulling in unrelated crews.
-		secondary_kws = await _get_effective_keywords(secondary_cfg, lang)
-		if secondary_kws and _keyword_matches(secondary_kws, lower_text):
-			result.append(sid)
+	
+	candidate_configs = [crew_registry.get(sid) for sid in candidates if sid != primary and sid not in exclude]
+	candidate_configs = [c for c in candidate_configs if c]
+	
+	if candidate_configs:
+		kw_tasks = [_get_effective_keywords(cc, lang) for cc in candidate_configs]
+		kw_lists = await asyncio.gather(*kw_tasks)
+		for secondary_cfg, secondary_kws in zip(candidate_configs, kw_lists):
+			if len(result) >= max_crews:
+				break
+			# Only include a secondary crew if it also keyword-matches the current message.
+			# This prevents domain-similarity alone from pulling in unrelated crews.
+			if secondary_kws and _keyword_matches(secondary_kws, lower_text):
+				result.append(secondary_cfg.id)
 	return result

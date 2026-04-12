@@ -215,6 +215,8 @@ export class ChatPrompt extends HTMLElement {
 		const contentArea = msgEl.querySelector('.tokens') as HTMLElement;
 		const modelTag = msgEl.querySelector('.model-tag') as HTMLElement;
 		let fullText = '';
+		let lastRenderTime = 0;
+		const RENDER_THROTTLE_MS = 16; // ~60fps target for DOM updates
 
 		try {
 			const response = await fetch(url, {
@@ -246,9 +248,15 @@ export class ChatPrompt extends HTMLElement {
 						const data = JSON.parse(dataStr);
 						if (data.token) {
 							fullText += data.token;
-							contentArea.innerHTML = this.renderContent(fullText);
+							const now = performance.now();
+							if (now - lastRenderTime > RENDER_THROTTLE_MS) {
+								contentArea.innerHTML = this.renderContent(fullText);
+								lastRenderTime = now;
+							}
 						}
 						if (data.done) {
+							// Final render to ensure no trailing tokens are missed by throttle
+							contentArea.innerHTML = this.renderContent(fullText);
 							if (data.model) modelTag.textContent = data.model;
 							
 							// Finalize message in local state
