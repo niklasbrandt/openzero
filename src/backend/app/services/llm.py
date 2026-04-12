@@ -807,32 +807,23 @@ async def build_system_prompt(user_name: str, user_profile: dict, include_agent_
 	if user_lang != "en":
 		lang_directive = f"\n\nLANGUAGE DIRECTIVE: You MUST respond in {lang_name}. All responses, briefings, and notifications must be in {lang_name}. Think in {lang_name}. Only use English for technical terms that have no natural translation."
 
-	personality_directive = await get_agent_personality()
-
-	# Inject personal context as the highest-priority block (zero overhead when empty)
+	# Parallel context fetching: personal and agent context (zero overhead when cached)
 	from app.services.personal_context import get_personal_context_for_prompt, refresh_personal_context
+	from app.services.agent_context import get_agent_skills_for_prompt, refresh_agent_context
+
+	_p_coro = refresh_personal_context() if not get_personal_context_for_prompt() else asyncio.sleep(0)
+	_a_coro = refresh_agent_context() if include_agent_skills and not get_agent_skills_for_prompt() else asyncio.sleep(0)
+	_personality_coro = get_agent_personality()
+
+	await asyncio.gather(_p_coro, _a_coro)
+	personality_directive = await _personality_coro
+
 	personal_ctx = get_personal_context_for_prompt()
-	if not personal_ctx:
-		# Cache miss — lazily trigger load in case background startup hasn't completed yet
-		try:
-			await refresh_personal_context()
-			personal_ctx = get_personal_context_for_prompt()
-		except Exception:
-			logger.debug("chat_with_context: personal context refresh failed", exc_info=True)
 	personal_block = ("\n\n" + personal_ctx) if personal_ctx else ""
 
-	# Inject agent skill modules (operational expertise — lower priority than personal context)
-	# Skipped for short conversational messages to reduce prompt token count (TTFT).
 	agent_skills_block = ""
 	if include_agent_skills:
-		from app.services.agent_context import get_agent_skills_for_prompt, refresh_agent_context
 		agent_ctx = get_agent_skills_for_prompt()
-		if not agent_ctx:
-			try:
-				await refresh_agent_context()
-				agent_ctx = get_agent_skills_for_prompt()
-			except Exception:
-				logger.debug("chat_with_context: agent context refresh failed", exc_info=True)
 		agent_skills_block = ("\n\n" + agent_ctx) if agent_ctx else ""
 
 	# Inject operator board names so the OPERATOR BOARD rule stays accurate
