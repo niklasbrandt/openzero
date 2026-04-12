@@ -329,6 +329,41 @@ async def _get_effective_keywords(crew: "CrewConfig", lang: str) -> list:
 	return await _translate_keywords_to_lang(crew.id, lang, base)
 
 
+async def _infer_crew_from_user_history(history: list, lang: str = "en") -> Optional[str]:
+	"""Scan recent user messages for crew keyword matches.
+
+	Fallback for when _last_attributed_crew finds no attribution (e.g. legacy
+	messages, post-restart session where attribution wasn't yet stored in DB).
+
+	Strategy: scan older substantive messages first (the ones that established
+	original intent), skipping follow-up signals like "and now?" that have no
+	domain content of their own. Returns the crew whose keywords appear in the
+	most-recent substantive user message.
+	"""
+	# Collect up to 6 recent user turns, oldest-first (so original intent wins
+	# when we iterate), filtering out pure follow-up messages.
+	raw = [m for m in reversed(history) if m.get("role") == "user"][:6]
+	# Reverse again so we go oldest→newest; skip messages that are entirely
+	# follow-up signals (no domain content to infer from).
+	substantive = [
+		m for m in reversed(raw)
+		if not _is_followup_text(m.get("content", ""))
+		   or len(m.get("content", "").split()) > 6  # long messages may carry both
+	]
+	if not substantive:
+		return None
+
+	# For each substantive message (newest-first so most-recent context wins),
+	# check which crew keywords it triggers.
+	for msg in substantive:
+		content_lower = msg.get("content", "").lower()
+		for crew in crew_registry.list_active():
+			effective = await _get_effective_keywords(crew, lang)
+			if effective and _keyword_matches(effective, content_lower):
+				return crew.id
+	return None
+
+
 async def resolve_active_crew(history: list, user_text: str, lang: str = "en") -> Optional[str]:
 	"""Return a crew_id if this message should be routed to a crew automatically.
 
@@ -357,15 +392,21 @@ async def resolve_active_crew(history: list, user_text: str, lang: str = "en") -
 		if effective and _keyword_matches(effective, lower_text):
 			return crew.id
 
-	# 2. Single-turn continuation: if the immediately preceding Z reply was
-	# attributed to a crew AND the current message contains referential language
-	# (e.g. "make it spicier", "do that again"), continue with that crew.
-	# Unrelated messages without referential pronouns (e.g. "buy glasses") do
-	# NOT trigger continuation, so they fall through to Z as normal.
+	# 2. Attribution-based continuation: most recent Z reply attributed to a crew
+	# + referential language in current message → continue with that crew.
 	last_crew = _last_attributed_crew(history)
 	if last_crew and _is_followup_text(lower_text):
 		if crew_registry.get(last_crew):
 			return last_crew
+
+	# 3. Keyword-inferred continuation (fallback): no attribution in history (e.g.
+	# legacy messages, post-restart) but recent USER messages contain crew keywords
+	# AND current message is a follow-up signal. Handles "and now?" after
+	# "i am feeling drained" even across restarts with no attribution in DB.
+	if _is_followup_text(lower_text):
+		inferred = await _infer_crew_from_user_history(history, lang)
+		if inferred and crew_registry.get(inferred):
+			return inferred
 
 	return None
 
