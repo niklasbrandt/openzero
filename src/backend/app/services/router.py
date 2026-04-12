@@ -63,21 +63,32 @@ _RECALL_HISTORY_RE = re.compile(
 	re.IGNORECASE,
 )
 
-# Server-side pre-filter: verbs that signal an actual task or request
+# Server-side pre-filter: PERSISTENCE verbs only — informational verbs (give me, check,
+# find, get, show me, how to, review, research) are intentionally excluded to prevent
+# recipe requests, questions, and status checks from polluting task recall.
 _TASK_SIGNAL_RE = re.compile(
-	r'\b(?:create|add|make|set\s+up|build|save|find|look\s+up|remind\s+me|send|'
-	r'schedule|book|plan|update|edit|delete|remove|move|check|get|fetch|pull|'
-	r'generate|write|draft|note|log|track|record|store|show\s+me|give\s+me|'
+	r'\b(?:create|add|make|set\s+up|build|save|store|remind\s+me|send|'
+	r'schedule|book|plan|update|edit|delete|remove|move|'
+	r'write|draft|note|log|track|record|'
 	r'finish|complete|finalize|prep|prepare|coordinate|sync|refresh|apply|'
-	r'submit|fix|resolve|review|research|analyse|analyze|explore|test|deploy|'
+	r'submit|fix|resolve|deploy|'
 	r'new\s+(?:board|task|todo|card|list|project)|open\s+a\b)\b',
 	re.IGNORECASE,
 )
 
-# Messages to always skip in task recalls regardless of verb content
+# Messages to always skip in task recalls regardless of verb content.
+# Covers: nav commands, ack words, status questions, Telegram reply-quotes, question openers, how-to phrases.
 _SKIP_RECALL_RE = re.compile(
-	r'^(?:/|and\s+now|ok|okay|sure|fine|great|thanks|yes|no\b|did\s+you|'
-	r'i\s+(?:did|pressed|pushed|tried|went|feel|felt|am|was)\b)',
+	r'^(?:'
+	r'/'
+	r'|and\s+now|ok|okay|sure|fine|great|thanks|yes|no\b'
+	r'|did\s+you|i\s+(?:did|pressed|pushed|tried|went|feel|felt|am|was)\b'
+	r'|\[Replying to:'
+	r'|(?:are|were|was|have|has|had|is|do|does|did|can|could|would|should|shall)\s'
+	r'|how\s+(?:to|do|can|should|would|does|about)\b'
+	r'|what\s+(?:is|are|do|does|did|was|were|would|can)\b'
+	r'|(?:tell|show|explain|describe)\s+me\b'
+	r')',
 	re.IGNORECASE,
 )
 
@@ -217,9 +228,13 @@ async def route_message_stream(
 					continue
 				if len(content.split()) < 3:
 					continue
+				# Skip meta-recall queries (the class of message we are currently processing)
+				if _RECALL_HISTORY_RE.search(content[:_MAX_RE_INPUT]):
+					continue
 				if not _TASK_SIGNAL_RE.search(content):
 					continue
-				key = content.lower()
+				# Dedup: strip trailing punctuation/backslash so "do it\" == "do it"
+				key = content.lower().rstrip('\\/ \t.,!?')
 				if key in seen_content:
 					continue
 				seen_content.add(key)
