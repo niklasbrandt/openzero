@@ -614,6 +614,7 @@ Semantic Action Tags — STRICT FORMAT (every field required, closing ] required
 CRITICAL: Every tag MUST start with `[ACTION:` — never use `[CREATE_TASK` or similar shorthand.
 CRITICAL: Tags go on NEW LINES at the very END of your response, after all prose.
 CRITICAL: Never embed tags mid-response or inside prose sections.
+CRITICAL — NO PHANTOM CONFIRMATIONS: NEVER write "task added", "done", "board created", "added to your list", or ANY action-confirmation phrase UNLESS you have emitted the corresponding action tag IN THIS SAME RESPONSE. The prose phrase does not perform the action — the tag does. If you write the confirmation without the tag, the user sees "done" but nothing happened. Violating this rule is the worst possible failure mode.
 
 - Create Task: `[ACTION: CREATE_TASK | BOARD: name | LIST: name | TITLE: text | DESCRIPTION: full content]`
   (Default board: "Operator Board", default list: "Today")
