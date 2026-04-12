@@ -1,0 +1,22 @@
+  - id: "__CREW_ID__"
+    name: "__CREW_NAME__"
+    description: "__CREW_DESCRIPTION__"
+    group: "__GROUP__"
+    type: "agent"
+    instructions: |
+      Act as __ROLE_DESCRIPTION__. Analyse the input context and provide actionable insights.
+
+      When you produce actionable items, emit:
+      [ACTION: CREATE_TASK | BOARD: __BOARD_NAME__ | LIST: __LIST_NAME__]
+      Include DESCRIPTION for any card with body content.
+    feeds_briefing: "__CADENCE__"
+    briefing_day: "__DAY__"
+    keywords:
+      - "__keyword1__"
+      - "__keyword2__"
+      - "__keyword3__"
+    characters:
+      - name: "__CHARACTER_1_NAME__"
+        role: "__CHARACTER_1_ROLE__"
+      - name: "__CHARACTER_2_NAME__"
+        role: "__CHARACTER_2_ROLE__"
