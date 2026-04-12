@@ -30,16 +30,41 @@ _ROUTE_RE = re.compile(
 	re.IGNORECASE,
 )
 
-# Recall-today detector: user wants a retrospective of their own messages from today
-_RECALL_TODAY_RE = re.compile(
+# Recall-history detector: user wants a retrospective of their own messages for a given day.
+_RECALL_HISTORY_RE = re.compile(
 	r'(?:'
-	r'recall\b.{0,80}\b(?:today|this morning|earlier today)\b'
-	r'|what\s+(?:did\s+i|have\s+i)\s+ask(?:ed)?.{0,60}\b(?:today|this morning)\b'
-	r'|(?:list|show\s+me|review|go\s+through)\b.{0,60}\b(?:my\s+messages?|what\s+i\s+ask(?:ed)?)\b'
-	r'|(?:my\s+)?(?:tasks?|requests?|things?)\s+(?:i\s+)?(?:asked|gave|told|sent).{0,40}\btoday\b'
+	r'\b(?:recall|look\s+up|review|show\s+me|list|go\s+through)\b'
+	r'\s+(?:.{0,60}\s+)?(?:i\s+)?(?:asked|sent|gave|told|messaged)\s+you\b'
+	r'|\brecall\b.{0,80}\b(?:today|this\s+morning|earlier\s+today|yesterday|\d+\s+days?\s+ago|last\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|week))\b'
+	r'|\bwhat\s+(?:did\s+i|have\s+i)\s+ask(?:ed)?.{0,60}\b(?:today|this\s+morning|yesterday|\d+\s+days?\s+ago)\b'
+	r'|\b(?:list|show\s+me|review|go\s+through)\b.{0,60}\b(?:my\s+messages?|what\s+i\s+ask(?:ed)?)\b'
+	r'|\b(?:my\s+)?(?:tasks?|requests?|things?)\s+(?:i\s+)?(?:asked|gave|told|sent).{0,40}\b(?:today|yesterday|\d+\s+days?\s+ago)\b'
 	r')',
 	re.IGNORECASE,
 )
+
+# Relative-date extractor used by the recall intercept
+_DAYS_AGO_RE = re.compile(r'(\d+)\s+days?\s+ago', re.IGNORECASE)
+_WEEKDAY_MAP = {
+	'monday': 0, 'tuesday': 1, 'wednesday': 2, 'thursday': 3,
+	'friday': 4, 'saturday': 5, 'sunday': 6,
+}
+
+def _resolve_days_ago(text: str) -> int:
+	"""Parse a days_ago offset from natural language. Returns 0 (today) as default."""
+	import datetime as _dt
+	lower = text.lower()
+	if 'yesterday' in lower:
+		return 1
+	m = _DAYS_AGO_RE.search(lower)
+	if m:
+		return int(m.group(1))
+	for day_name, weekday_num in _WEEKDAY_MAP.items():
+		if f'last {day_name}' in lower:
+			today_num = _dt.datetime.utcnow().weekday()
+			delta = (today_num - weekday_num) % 7
+			return delta if delta > 0 else 7
+	return 0  # default: today
 
 # Phantom-confirmation guard — Z claimed success in prose without emitting a tag
 _PHANTOM_RE = re.compile(
@@ -96,29 +121,35 @@ async def route_message_stream(
 		)
 		from app.services.message_bus import bus
 
-		# ── 0. Recall-today intercept ─────────────────────────────────────────
-		# When the user asks "recall all things I asked you to do today" (or similar),
-		# fetch the actual conversation messages from DB and inject them as literal
-		# context so Z analyses the real history — not Planka boards.
-		if _RECALL_TODAY_RE.search(user_text):
-			from app.models.db import get_today_user_messages
-			today_msgs = await get_today_user_messages()
-			# Strip the current recall request itself (it's the last message)
-			today_msgs = [m for m in today_msgs if m["content"].strip() != user_text.strip()]
-			if today_msgs:
+		# ── 0. Recall-history intercept ──────────────────────────────────────
+		# When the user asks to recall messages from today, yesterday, N days ago, etc.,
+		# fetch the actual conversation from DB and inject it — never consult Planka.
+		if _RECALL_HISTORY_RE.search(user_text):
+			from app.models.db import get_user_messages_for_day
+			days_ago = _resolve_days_ago(user_text)
+			day_msgs = await get_user_messages_for_day(days_ago)
+			# Strip the current recall request itself (only relevant when days_ago == 0)
+			day_msgs = [m for m in day_msgs if m["content"].strip() != user_text.strip()]
+			if days_ago == 0:
+				day_label = "today (since midnight UTC)"
+			elif days_ago == 1:
+				day_label = "yesterday"
+			else:
+				day_label = f"{days_ago} days ago"
+			if day_msgs:
 				block = "\n".join(
-					f"[{m['at'][11:16]}] {m['content']}" for m in today_msgs
+					f"[{m['at'][11:16]}] {m['content']}" for m in day_msgs
 				)
 				injected = (
-					f"TODAY MESSAGE HISTORY (all messages you sent since midnight UTC — "
+					f"MESSAGE HISTORY for {day_label} (all messages sent that day — "
 					f"use ONLY this to answer; do NOT consult Planka boards or make anything up):\n\n"
 					f"{block}\n\n"
 					f"---\n{user_text}"
 				)
 			else:
 				injected = (
-					f"No messages found in the database for today. "
-					f"Inform the user honestly that there are no earlier messages today.\n\n{user_text}"
+					f"No messages found in the database for {day_label}. "
+					f"Inform the user honestly that there are no messages recorded for that day.\n\n{user_text}"
 				)
 			chunks: list[str] = []
 			async for token in chat_stream_with_context(
