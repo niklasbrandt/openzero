@@ -38,6 +38,16 @@ export class CalendarAgenda extends HTMLElement {
 		return this.t[key] || fallback;
 	}
 
+	private esc(s: string | undefined | null): string {
+		if (!s) return '';
+		return String(s)
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;')
+			.replace(/"/g, '&quot;')
+			.replace(/'/g, '&#39;');
+	}
+
 	connectedCallback() {
 		this.loadTranslations().then(() => {
 			this.render();
@@ -152,15 +162,15 @@ export class CalendarAgenda extends HTMLElement {
 								<span class="summary" style="flex: 1;">
 									${!e.is_local ? `<span class="local-indicator">Google</span> ` : ''}
 									<input type="text" class="event-title-edit" 
-										value="${e.summary}" 
+										value="${this.esc(e.summary)}" 
 										data-id="${e.id}"
 										${!e.is_local || e.is_birthday ? 'disabled' : ''}
-										aria-label="${!e.is_local || e.is_birthday ? this.tr('aria_event_name', 'Event') + ': ' : this.tr('aria_edit_event', 'Edit event title') + ': '}${e.summary}"
+										aria-label="${!e.is_local || e.is_birthday ? this.tr('aria_event_name', 'Event') + ': ' : this.tr('aria_edit_event', 'Edit event title') + ': '}${this.esc(e.summary)}"
 										style="background: transparent; border: none; font-size: 0.9rem; font-weight: 500; color: var(--text-primary, hsla(0, 0%, 100%, 1)); width: 100%; outline: none;">
 								</span>
 								${e.is_local && !e.is_birthday ? `<button class="delete-btn btn-sm" data-id="${e.id}" title="${this.tr('delete', 'Delete')}" aria-label="${this.tr('delete', 'Delete')}">✕</button>` : ''}
 							</div>
-							${e.person ? `<span class="person-badge">${e.person}</span>` : ''}
+							${e.person ? `<span class="person-badge">${this.esc(e.person)}</span>` : ''}
 						</div>
 					</div>
 				`;
@@ -173,7 +183,7 @@ export class CalendarAgenda extends HTMLElement {
 			filters.innerHTML = `
 				<button class="filter-btn ${!this.filterPerson ? 'active' : ''}" data-person="" aria-pressed="${!this.filterPerson ? 'true' : 'false'}">${this.tr('filter_all', 'All')}</button>
 				${people.map(p => `
-					<button class="filter-btn ${this.filterPerson === p ? 'active' : ''}" data-person="${p}" aria-pressed="${this.filterPerson === p ? 'true' : 'false'}">${p}</button>
+					<button class="filter-btn ${this.filterPerson === p ? 'active' : ''}" data-person="${this.esc(p)}" aria-pressed="${this.filterPerson === p ? 'true' : 'false'}">${this.esc(p)}</button>
 				`).join('')}
 			`;
 
