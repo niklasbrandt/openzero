@@ -3440,3 +3440,62 @@ class TestThinkAndDraftHTMLInjection:
 			"handle_draft_approval must include the 'to' field in its HTML confirmation."
 		)
 
+
+# ---------------------------------------------------------------------------
+# Section 37 — Formatting injection via external email fields in email_poll.py
+# ---------------------------------------------------------------------------
+class TestEmailPollFormattingInjection:
+	"""Section 37: Regression for formatting injection via external email fields.
+
+	send_notification() routes text through _md_to_html() which HTML-escapes
+	input but then has a passthrough that re-enables <b>, <i>, <code>, etc.
+	An attacker who sends an email with display name 'Hacker <b>URGENT</b>'
+	would have bold formatting injected into the Telegram notification.
+
+	Fix: _strip_html() applied to all external/LLM-derived fields in email_poll.py
+	before they are embedded in notification strings.
+	"""
+
+	@staticmethod
+	def _read_email_poll_src() -> str:
+		here = os.path.dirname(__file__)
+		path = os.path.join(here, "..", "src", "backend", "app", "tasks", "email_poll.py")
+		with open(path, encoding="utf-8") as fh:
+			return fh.read()
+
+	def test_strip_html_helper_defined(self):
+		"""Static: email_poll.py must define a _strip_html() sanitization helper."""
+		src = self._read_email_poll_src()
+		assert "_strip_html" in src, (
+			"email_poll.py must define a _strip_html() helper that strips HTML tags "
+			"from external email fields before embedding them in Telegram notifications. "
+			"Without this, an attacker can inject <b>/<i>/<code> formatting by crafting "
+			"their email display name."
+		)
+		assert "_re_html_tag" in src or "re.compile" in src or "re.sub" in src, (
+			"_strip_html must use a compiled regex (re.compile or re.sub) to remove tags."
+		)
+
+	def test_external_fields_sanitized_in_notifications(self):
+		"""Static: external email fields must be wrapped in _strip_html() in all send_notification calls."""
+		src = self._read_email_poll_src()
+		# Every occurrence of email['from'] (or email["from"]) in a notification string
+		# must be wrapped by _strip_html.  We check that the raw unescaped form is not
+		# directly present in a send_notification argument.
+		#
+		# Find all send_notification call blocks and check they don't contain bare
+		# email['from'] without _strip_html wrapper.
+		import re as _re
+		# Locate send_notification call blocks (rough heuristic: from 'send_notification(' to ')')
+		bare = _re.findall(
+			r"send_notification\([^)]*?(?:email\[.from.\]|email\[.subject.\])[^)]*?\)",
+			src,
+			flags=_re.DOTALL,
+		)
+		for call in bare:
+			assert "_strip_html" in call, (
+				f"Found send_notification call with unescaped email field:\n{call[:300]}\n"
+				"All email['from'] and email['subject'] references inside send_notification "
+				"arguments must be wrapped with _strip_html() to prevent formatting injection."
+			)
+

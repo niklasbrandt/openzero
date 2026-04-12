@@ -1,7 +1,19 @@
 import json
 import logging
+import re as _re
 
 logger = logging.getLogger(__name__)
+
+def _strip_html(text: str) -> str:
+	"""Strip HTML-like tags from external/LLM-generated fields before embedding in notifications.
+
+	The _md_to_html passthrough in telegram_bot.py re-enables certain HTML tags
+	(b, i, code, etc.) from escaped content.  Pre-stripping prevents formatting
+	injection via crafted email From/Subject display names.
+	"""
+	return _re_html_tag.sub('', str(text or '')).strip()
+
+_re_html_tag = _re.compile(r'<[^>]{0,200}>')
 
 async def poll_gmail():
 	"""Check for new emails, apply rules, notify if urgent or detect events."""
@@ -34,9 +46,9 @@ async def poll_gmail():
 			
 			await send_notification(
 				f"📅 *Z Detected an Event*\n\n"
-				f"*Title:* {event['summary']}\n"
-				f"*Start:* {event['start']}\n"
-				f"*Context:* From {email['from']}\n\n"
+				f"*Title:* {_strip_html(event['summary'])}\n"
+				f"*Start:* {_strip_html(event['start'])}\n"
+				f"*Context:* From {_strip_html(email['from'])}\n\n"
 				f"Shall I add this to your schedule?",
 				reply_markup=markup
 			)
@@ -51,8 +63,8 @@ async def poll_gmail():
 				if rule.action == "urgent":
 					await send_notification(
 						f"⚠️ *URGENT EMAIL* {f'[{badge}]' if badge else ''}\n"
-						f"From: {email['from']}\n"
-						f"Subject: {subject}\n\n"
+						f"From: {_strip_html(email['from'])}\n"
+						f"Subject: {_strip_html(subject)}\n\n"
 						f"Z: I am preparing a draft reply for you."
 					)
 					# Also summarize it so it's in the briefing as important
@@ -123,9 +135,9 @@ async def prepare_draft_reply(email: dict):
 
 	await send_notification(
 		f"📝 *Z: Draft Reply Ready*\n\n"
-		f"*To:* {email['from']}\n"
-		f"*Subject:* {email['subject']}\n\n"
-		f"*Proposed reply:*\n{reply_body[:400]}{'...' if len(reply_body) > 400 else ''}\n\n"
+		f"*To:* {_strip_html(email['from'])}\n"
+		f"*Subject:* {_strip_html(email['subject'])}\n\n"
+		f"*Proposed reply:*\n{_strip_html(reply_body[:400])}{'...' if len(reply_body) > 400 else ''}\n\n"
 		f"Shall I create this draft in Gmail?",
 		reply_markup=markup
 	)
