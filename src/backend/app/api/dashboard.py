@@ -203,6 +203,12 @@ _REPLY_ALLOWLIST_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Strict allowlist for Planka entity IDs used in HTML/JS context (numeric strings only).
+_PLANKA_ID_RE = re.compile(r'^\d{1,20}$')
+
+# Allowlist for crew IDs: alphanumeric + dash/underscore, max 64 chars (matches registry IDs).
+_CREW_ID_RE = re.compile(r'^[\w\-]{1,64}$')
+
 def _sanitise_reply_html(text: str) -> str:
     """Strip all HTML tags except the safe allowlist: b, i, code, pre, br, p."""
     return _REPLY_ALLOWLIST_RE.sub("", text) if text else text
@@ -961,6 +967,8 @@ async def dashboard_chat_stream(req: ChatRequest, request: Request, _rl: None = 
 @router.post("/crew/stream/{crew_id}")
 async def dashboard_crew_stream(crew_id: str, req: ChatRequest, request: Request, db: AsyncSession = Depends(get_db), _rl: None = Depends(_check_chat_rate_limit)):
 	"""SSE streaming endpoint for crew missions."""
+	if not _CREW_ID_RE.match(crew_id):
+		raise HTTPException(status_code=400, detail="Invalid crew ID format")
 	from starlette.responses import StreamingResponse
 	from app.services.crews_native import native_crew_engine
 	from app.services.message_bus import bus
@@ -1246,9 +1254,12 @@ async def planka_redirect(request: Request, target: str = "", background: bool =
 				logger.debug("Could not verify token: %s", e)
 
 			# 4. Determine Target Redirect URL
-			target_board_id = request.query_params.get("target_board_id") or request.query_params.get("targetboardid")
-			target_project_id = request.query_params.get("target_project_id") or request.query_params.get("targetprojectid")
-			
+			_raw_board_id = request.query_params.get("target_board_id") or request.query_params.get("targetboardid")
+			_raw_project_id = request.query_params.get("target_project_id") or request.query_params.get("targetprojectid")
+			# Validate IDs against strict numeric allowlist (CWE-79 / reflected XSS)
+			target_board_id = _raw_board_id if (_raw_board_id and _PLANKA_ID_RE.match(_raw_board_id)) else None
+			target_project_id = _raw_project_id if (_raw_project_id and _PLANKA_ID_RE.match(_raw_project_id)) else None
+
 			if target_board_id:
 				redirect_url = f"{public_base}/boards/{target_board_id}"
 			elif target_project_id:
@@ -1317,7 +1328,7 @@ async def planka_redirect(request: Request, target: str = "", background: bool =
 				<script>
 					function setupSession() {{
 						try {{
-							const token = "{access_token}";
+							const token = {json.dumps(access_token)};
 
 							// Planka 2.x stores the JWT in browser cookies (not localStorage).
 							// The React app reads api$2.get("accessToken") on boot, which
@@ -1338,10 +1349,10 @@ async def planka_redirect(request: Request, target: str = "", background: bool =
 								}}
 							}}
 
-							window.location.replace('{redirect_url}');
+							window.location.replace({json.dumps(redirect_url)});
 						}} catch (e) {{
 							console.error('SSO Error:', e);
-							window.location.replace('{redirect_url}');
+							window.location.replace({json.dumps(redirect_url)});
 						}}
 					}}
 					window.onload = setupSession;

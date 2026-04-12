@@ -3069,3 +3069,111 @@ class TestCrewStreamRateLimitAndXFF:
 				"performing raw X-Forwarded-For header extraction inline."
 			)
 
+
+# ===================================================================
+#  32. REFLECTED XSS — PLANKA REDIRECT & CREW ID INJECTION
+# ===================================================================
+
+class TestPlankaRedirectXSSAndCrewIDValidation:
+	"""Static analysis: prevent reflected XSS via planka-redirect and crew_id path param.
+
+	Two issues fixed together:
+	1. /planka-redirect accepted arbitrary target_board_id / target_project_id query params
+	   and interpolated them bare into a JavaScript window.location.replace() call inside
+	   an inline <script> block.  With SameSite=Lax cookies, a crafted link shared with an
+	   authenticated user fires reflected XSS from the legitimate origin (CWE-79).
+	2. /crew/stream/{crew_id} path parameter had no format validation before being passed to
+	   the crew engine and embedded in attribution strings, allowing arbitrary strings to
+	   reach backend logic and be reflected to the client (CWE-20).
+	"""
+
+	_DASHBOARD_PATH = os.path.join(
+		os.path.dirname(__file__), "..", "src", "backend",
+		"app", "api", "dashboard.py"
+	)
+
+	def _read_dashboard_src(self) -> str:
+		with open(os.path.abspath(self._DASHBOARD_PATH), encoding="utf-8") as fh:
+			return fh.read()
+
+	def test_planka_redirect_board_id_validated(self):
+		"""Static: target_board_id must be validated before use in redirect URL.
+
+		Bare query param interpolation into a JS string literal allows reflected XSS.
+		The fix must apply an allowlist regex (numeric IDs only) before constructing
+		the redirect URL.
+		"""
+		src = self._read_dashboard_src()
+		# _PLANKA_ID_RE must be defined at module level
+		assert "_PLANKA_ID_RE" in src, (
+			"_PLANKA_ID_RE allowlist regex must exist in dashboard.py to validate "
+			"Planka entity IDs before inserting them into HTML/JS context (CWE-79)."
+		)
+		# Must be used to validate the raw query param
+		assert "_PLANKA_ID_RE.match(" in src, (
+			"_PLANKA_ID_RE must be applied via .match() to the raw target_board_id / "
+			"target_project_id query params before they are used in a redirect URL."
+		)
+
+	def test_planka_redirect_uses_json_encoding_for_js(self):
+		"""Static: values embedded in the inline <script> must go through json.dumps().
+
+		json.dumps() produces a properly escaped JSON string literal that is safe to
+		embed verbatim in JavaScript.  Raw f-string interpolation allows single-quote
+		breakout, CRLF injection, and tag closure attacks.
+		"""
+		src = self._read_dashboard_src()
+		planka_fn_idx = src.find("async def planka_redirect(")
+		assert planka_fn_idx != -1, "planka_redirect function must exist"
+		# Scan to cover the full HTML template (planka_redirect is a large function)
+		block = src[planka_fn_idx: planka_fn_idx + 12000]
+		# Both redirect_url and access_token must be JSON-encoded for safe JS embedding
+		import re as _re
+		json_dumps_uses = _re.findall(r'json\.dumps\((?:redirect_url|access_token)\)', block)
+		assert len(json_dumps_uses) >= 2, (
+			"planka_redirect must use json.dumps() to embed both 'redirect_url' and "
+			"'access_token' into the inline JavaScript block. Raw f-string interpolation "
+			"allows quote breakout / XSS (CWE-79). "
+			f"Found only {len(json_dumps_uses)} json.dumps() use(s) in the function."
+		)
+
+	def test_planka_redirect_no_bare_redirect_url_in_js(self):
+		"""Static: the string '{redirect_url}' must not appear inside a JS window.location call.
+
+		This is the exact vulnerable pattern: window.location.replace('{redirect_url}')
+		which allows single-quote breakout if redirect_url is user-controlled.
+		"""
+		src = self._read_dashboard_src()
+		import re as _re
+		# Match the old bare-interpolation pattern inside a JS replace() call
+		bare_pattern = _re.search(
+			r"window\.location\.replace\(['\"]\\{['\"]?redirect_url['\"]?\\}",
+			src,
+		)
+		# Also match the unescaped f-string form that would appear in the raw source
+		bare_fstring = "window.location.replace('{redirect_url}')" in src
+		assert not bare_fstring and not bare_pattern, (
+			"window.location.replace() must NOT use bare '{redirect_url}' interpolation. "
+			"Use json.dumps(redirect_url) to produce a safe JS string literal."
+		)
+
+	def test_crew_id_validated_before_use(self):
+		"""Static: /crew/stream/{crew_id} must validate the path parameter format.
+
+		Without a format check, arbitrary strings (including path traversal, HTML tags,
+		and control characters) reach the crew engine and may be reflected in error
+		messages or attribution strings returned to the client (CWE-20).
+		"""
+		src = self._read_dashboard_src()
+		assert "_CREW_ID_RE" in src, (
+			"_CREW_ID_RE allowlist regex must exist in dashboard.py to validate "
+			"crew_id path parameters before they reach the crew engine."
+		)
+		crew_stream_idx = src.find("async def dashboard_crew_stream(")
+		assert crew_stream_idx != -1, "dashboard_crew_stream function must exist"
+		block = src[crew_stream_idx: crew_stream_idx + 400]
+		assert "_CREW_ID_RE.match(crew_id)" in block, (
+			"dashboard_crew_stream must check _CREW_ID_RE.match(crew_id) near the "
+			"function entry to reject malformed crew IDs before processing (CWE-20)."
+		)
+
