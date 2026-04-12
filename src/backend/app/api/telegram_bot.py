@@ -356,62 +356,43 @@ async def _recover_unanswered_messages():
 
 		from app.services.llm import chat_with_context
 
-		merged_history = await get_global_history(limit=5)
-		# Inject a silent context note as the last assistant turn so the model
-		# knows these were pre-restart messages, without overriding personality.
+		merged_history = await get_global_history(limit=10)
+		# Inject a silent context note so Z knows these were pre-restart messages.
+		# Placed as an assistant turn so it doesn't confuse role ordering.
 		merged_history = list(merged_history) + [{
 			"role": "assistant",
 			"content": "(You were offline and just came back. These messages came in while you were down — pick up like a friend would, naturally, no announcements.)",
 		}]
-		# Append action tag imperative so the model emits CREATE_TASK tags
-		# even on the use_agent=False path (which skips the CRITICAL imperative).
-		prompt = (
-			combined
-			+ "\n\nCRITICAL: For EVERY todo or task mentioned above, you MUST emit a "
-			"[ACTION: CREATE_TASK | BOARD: Personal | LIST: Todo | TITLE: <task>] tag "
-			"at the END of your reply. Do NOT just describe — emit the tag."
+
+		# Route through the unified router so crew routing and attribution
+		# still apply (e.g. emotional follow-ups re-engage the life crew).
+		logger.info("Restart recovery: routing message through unified router...")
+		from app.services.router import route_message_stream
+		token_stream, result_fut = await route_message_stream(
+			user_text=combined,
+			history=merged_history,
+			channel="telegram",
+			save_history=True,
 		)
-		response = await asyncio.wait_for(
-			chat_with_context(
-				prompt,
-				history=merged_history,
-				include_projects=False,
-				include_people=True,
-				use_agent=False,
-				tier_override="cloud",
-				thinking=False,
-			),
-			timeout=900,
-		)
+		_chunks: list[str] = []
+		async for _tok in token_stream:
+			_chunks.append(_tok)
+		result = await result_fut
+
 		logger.info(
-			"Restart recovery: LLM responded (%d chars): %s",
-			len(response or ""),
-			(response or "")[:120],
+			"Restart recovery: router responded (%d chars): %s",
+			len(result.reply),
+			result.reply[:120],
 		)
 
-		# If the LLM returned an error stub (models were still overloaded),
-		# don't save it to DB — fall back to the plain "back." notification.
-		if not response or _is_error_stub(response):
-			logger.warning("Restart recovery: LLM returned error stub — sending plain notification.")
+		# If the model returned an error stub, fall back to the plain notification.
+		if not result.reply or _is_error_stub(result.reply):
+			logger.warning("Restart recovery: error stub returned — sending plain notification.")
 			await _send_online_notification()
 			return
 
-		logger.info("Restart recovery: running parse_and_execute_actions via bus...")
-		from app.services.message_bus import bus
-		from app.services.llm import last_model_used
-		clean_reply, executed_cmds, _ = await bus.commit_reply(
-			channel="telegram",
-			raw_reply=response,
-			model=last_model_used.get(),
-		)
-		crews = [c.split(":", 1)[1] for c in executed_cmds if c.startswith("__CREW_RUN__:")]
-		if crews:
-			clean_reply += f"\n\n_(Reasoning by crew {', '.join(crews)})_"
-		logger.info("Restart recovery: actions parsed and saved to DB via bus...")
-
-		clean_reply = strip_llm_time_header(clean_reply)
-		html_reply = _md_to_html(clean_reply)
-		recovery_html = html_reply
+		clean_reply = strip_llm_time_header(result.reply)
+		recovery_html = _md_to_html(clean_reply)
 
 		logger.info("Restart recovery: response delivered — sending combined online notification.")
 		await _send_online_notification(recovery_html=recovery_html)
