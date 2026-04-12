@@ -242,12 +242,15 @@ async def _translate_keywords_to_lang(crew_id: str, lang: str, keywords: list) -
 
 # Referential words that strongly suggest the message is a follow-up refinement
 # of the previous response rather than a new, unrelated request.
-# "make it spicier" / "do that again" / "try this instead" → continuation.
+# "make it spicier" / "do that again" / "and now?" → continuation.
 # "buy glasses" / "todo for next week" → no referential signal → no continuation.
 _FOLLOWUP_SIGNALS: frozenset = frozenset([
-	"it", "this", "that", "them", "those", "these",  # referential pronouns
-	"again", "redo", "re-do", "once more",             # explicit redo
-	"instead",                                          # replacement
+	"it", "this", "that", "them", "those", "these",		# referential pronouns
+	"again", "redo", "re-do", "once more",				# explicit redo
+	"instead",											# replacement
+	"now", "next", "then",								# temporal continuation ("and now?", "what next?")
+	"continue", "proceed", "go on", "more",				# explicit continuation
+	"ok", "okay", "sure", "fine", "great",				# acknowledgement → continue
 ])
 
 # Matches the crew attribution footer added by _process_crew_stream.
@@ -275,9 +278,14 @@ def _is_followup_text(text: str) -> bool:
 	"""Heuristic: does this message contain referential language pointing to the
 	previous response?  Only short, clearly referential tokens qualify so that
 	unrelated messages (e.g. 'buy glasses') are not mistakenly continued.
+
+	Punctuation is stripped from each token so that "now?" matches "now",
+	"it." matches "it", etc.
 	"""
-	words = set(text.lower().split())
-	return bool(words & _FOLLOWUP_SIGNALS)
+	# Strip leading/trailing punctuation from each token before comparing
+	tokens = {re.sub(r'^[^\w]+|[^\w]+$', '', w) for w in text.lower().split()}
+	tokens.discard("")
+	return bool(tokens & _FOLLOWUP_SIGNALS)
 
 
 def _keyword_matches(keywords: list, text: str) -> bool:
