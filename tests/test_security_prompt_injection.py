@@ -2959,3 +2959,113 @@ class TestRateLimiterBypass:
 				"Rate limiter bypass at early return must be gated by IS_DOCKER check."
 			)
 
+
+# ===================================================================
+#  31. CREW STREAM RATE LIMITING & XFF HEADER HARDENING
+# ===================================================================
+
+class TestCrewStreamRateLimitAndXFF:
+	"""Static analysis: crew stream endpoint must be rate limited; XFF must be sanitised.
+
+	Two issues fixed together:
+	1. /crew/stream/{crew_id} was missing _check_chat_rate_limit dependency —
+	   crew runs invoke the LLM multiple times and are expensive.  A compromised
+	   token could trigger unlimited crew executions with no throttling.
+	2. Both rate limiters extracted client IP via raw X-Forwarded-For header without
+	   sanitising CRLF or capping length, enabling log injection and IP rotation to
+	   defeat rate limiting.
+	"""
+
+	_DASHBOARD_PATH = os.path.join(
+		os.path.dirname(__file__), "..", "src", "backend",
+		"app", "api", "dashboard.py"
+	)
+
+	def _read_dashboard_src(self) -> str:
+		with open(os.path.abspath(self._DASHBOARD_PATH), encoding="utf-8") as fh:
+			return fh.read()
+
+	def test_crew_stream_has_chat_rate_limit_dependency(self):
+		"""Static: dashboard_crew_stream must declare _check_chat_rate_limit as a dependency.
+
+		Without this, crew executions — which call the LLM multiple times and may run
+		for minutes — are only guarded by the general 20 req/60s limiter, allowing
+		a compromised token to flood the LLM tier at full speed.
+		"""
+		src = self._read_dashboard_src()
+		# Find the crew stream endpoint definition
+		idx = src.find("@router.post(\"/crew/stream/{crew_id}\")")
+		assert idx != -1, "/crew/stream/{crew_id} route must exist in dashboard.py"
+		# Scan the function signature (next 300 chars)
+		block = src[idx: idx + 300]
+		assert "_check_chat_rate_limit" in block, (
+			"dashboard_crew_stream must include Depends(_check_chat_rate_limit) "
+			"to enforce LLM rate limits on expensive crew executions (OWASP A2 / CWE-400)."
+		)
+
+	def test_extract_client_ip_helper_exists(self):
+		"""Static: a dedicated _extract_client_ip() helper must exist in dashboard.py.
+
+		Raw inline X-Forwarded-For extraction in both rate limiters allowed CRLF
+		injection into log lines and easy IP rotation to bypass per-IP rate limits.
+		Centralising extraction in a sanitising helper fixes both issues at once.
+		"""
+		src = self._read_dashboard_src()
+		assert "def _extract_client_ip(" in src, (
+			"_extract_client_ip() helper must exist in dashboard.py to centralise "
+			"sanitised X-Forwarded-For extraction used by both rate limiters."
+		)
+
+	def test_extract_client_ip_strips_crlf(self):
+		"""Unit: _extract_client_ip helper must strip CRLF from XFF values.
+
+		A raw XFF value like '1.2.3.4\\r\\nX-Admin: true' without sanitisation
+		allows log injection and can spoof additional headers in some proxy stacks.
+		"""
+		src = self._read_dashboard_src()
+		idx = src.find("def _extract_client_ip(")
+		assert idx != -1, "_extract_client_ip must exist"
+		block = src[idx: idx + 600]
+		# Must strip control chars containing CR/LF
+		assert r"\r\n" in block or "\\r\\n" in block or "CRLF" in block or r"[\r\n" in block or r"\\x00-\\x1f" in block, (
+			"_extract_client_ip must strip CR/LF or control characters from XFF values."
+		)
+
+	def test_extract_client_ip_caps_length(self):
+		"""Unit: _extract_client_ip must cap the extracted IP to prevent unbounded values.
+
+		An attacker can send arbitrarily long XFF values.  Without a length cap,
+		this could cause excessive allocation in the per-IP hit store and bloat logs.
+		"""
+		src = self._read_dashboard_src()
+		idx = src.find("def _extract_client_ip(")
+		assert idx != -1, "_extract_client_ip must exist"
+		block = src[idx: idx + 600]
+		# Must have a length cap (slice notation or explicit length check)
+		import re as _re
+		cap_present = (
+			_re.search(r'\[:_MAX_IP_LEN\]|\[:\d{2,}\]|_MAX_IP_LEN\b', block) is not None
+		)
+		assert cap_present, (
+			"_extract_client_ip must cap the extracted IP string length "
+			"(e.g. [:45] or a named constant) to prevent unbounded memory use."
+		)
+
+	def test_rate_limiters_use_extract_helper(self):
+		"""Static: both _check_rate_limit and _check_chat_rate_limit must call _extract_client_ip.
+
+		If either limiter still contains inline 'headers.get(\"X-Forwarded-For\")' extraction
+		it bypasses the CRLF sanitisation introduced in the helper.
+		"""
+		src = self._read_dashboard_src()
+		import re as _re
+
+		for fn_name in ("def _check_rate_limit(", "def _check_chat_rate_limit("):
+			idx = src.find(fn_name)
+			assert idx != -1, f"{fn_name} must exist in dashboard.py"
+			block = src[idx: idx + 700]
+			assert "_extract_client_ip(" in block, (
+				f"{fn_name} must call _extract_client_ip() instead of "
+				"performing raw X-Forwarded-For header extraction inline."
+			)
+
