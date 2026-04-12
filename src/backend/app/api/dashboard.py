@@ -164,9 +164,14 @@ def _check_rate_limit(request: Request):
     hits.append(now)
 
 def _check_chat_rate_limit(request: Request):
-    """Stricter sliding-window limiter for LLM chat endpoints: 5 requests per 60 s per client IP."""
-    if request.headers.get("Authorization") == f"Bearer {settings.DASHBOARD_TOKEN}":
-        return  # Bypass rate limits for valid DASHBOARD_TOKEN (e.g., test suites)
+    """Stricter sliding-window limiter for LLM chat endpoints: 5 requests per 60 s per client IP.
+
+    Rate limiting is enforced in production (IS_DOCKER=True) even for authenticated requests
+    to prevent cost abuse in case of token compromise.  In local dev (IS_DOCKER=False) the
+    limiter is bypassed for convenience (test suites, rapid iteration).
+    """
+    if not settings.IS_DOCKER:
+        return  # Dev mode: bypass rate limits (test suites, local iteration)
     client_ip = (
         request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
         or (request.client.host if request.client else "unknown")

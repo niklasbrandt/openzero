@@ -1800,6 +1800,7 @@ def _install_backend_mocks():
 	mods["app.models.db"].Person = type("Person", (), {"circle_type": None, "language": "en"})
 	mods["app.models.db"].Preference = type("Preference", (), {"key": None, "value": "{}"})
 	mods["app.models.db"].GlobalMessage = type("GlobalMessage", (), {"role": None, "content": "", "channel": "", "model": None, "created_at": __import__("datetime").datetime.now()})
+	mods["app.models.db"].LLMMetric = type("LLMMetric", (), {"tier": None, "feature": None, "model": None, "tokens": 0, "latency_ms": 0, "prompt_len": 0})
 	mods["app.models.db"].Base = type("Base", (), {})
 	mods["app.services"].agent_actions = mods["app.services.agent_actions"]
 	mods["app.services"].timezone = mods["app.services.timezone"]
@@ -2891,3 +2892,70 @@ class TestCmdBoardHTMLSafety:
 		"""html.escape must leave a normal board name unchanged."""
 		name = "Operator Board"
 		assert html.escape(name) == name
+
+
+# ===================================================================
+#  30. RATE LIMITER BYPASS PREVENTION (OWASP A2 / CWE-400)
+# ===================================================================
+
+class TestRateLimiterBypass:
+	"""Static analysis: _check_chat_rate_limit must not bypass in production.
+
+	The chat rate limiter guards against LLM cost abuse when the dashboard
+	token is compromised.  An unconditional bypass for any authenticated
+	request defeats this protection in production (IS_DOCKER=True).
+
+	The only acceptable bypass is inside a non-Docker dev branch so that
+	local test suites and rapid iteration are not blocked.
+	"""
+
+	_DASHBOARD_PATH = os.path.join(
+		os.path.dirname(__file__), "..", "src", "backend",
+		"app", "api", "dashboard.py"
+	)
+
+	def _read_dashboard_src(self) -> str:
+		with open(os.path.abspath(self._DASHBOARD_PATH), encoding="utf-8") as fh:
+			return fh.read()
+
+	def _chat_rate_limit_block(self) -> str:
+		src = self._read_dashboard_src()
+		idx = src.find("def _check_chat_rate_limit(")
+		assert idx != -1, "_check_chat_rate_limit must exist in dashboard.py"
+		return src[idx: idx + 1000]
+
+	def test_no_unconditional_bearer_bypass(self):
+		"""The rate limiter must not unconditionally bypass on Authorization header match.
+
+		An unconditional bypass makes the rate limiter non-functional for every
+		authenticated user (which is all users in this single-user system), defeating
+		OWASP A2 protection against token-compromise-based LLM flooding.
+		"""
+		block = self._chat_rate_limit_block()
+		# The dangerous pattern: bypass triggered by Bearer token alone, not gated by IS_DOCKER
+		import re as _re
+		# Has a pure bearer-only bypass with no IS_DOCKER guard?
+		bare_bypass = _re.search(
+			r'(?:headers\.get\(["\']Authorization|\.startswith\(["\']bearer)',
+			block,
+			_re.IGNORECASE,
+		)
+		if bare_bypass:
+			# Accept it only if it is nested inside an IS_DOCKER guard
+			assert "IS_DOCKER" in block, (
+				"_check_chat_rate_limit bypasses the rate limiter on Authorization header "
+				"without gating on IS_DOCKER.  This disables rate limiting for ALL "
+				"authenticated users in production (OWASP A2 / CWE-400)."
+			)
+
+	def test_dev_bypass_gated_by_is_docker(self):
+		"""If a rate-limit bypass exists, it must be inside a not-IS_DOCKER branch."""
+		block = self._chat_rate_limit_block()
+		import re as _re
+		# If any early-return bypass is present, IS_DOCKER must appear nearby
+		early_return = _re.search(r'\bif\b[^\n]{0,120}\breturn\b', block)
+		if early_return:
+			assert "IS_DOCKER" in block, (
+				"Rate limiter bypass at early return must be gated by IS_DOCKER check."
+			)
+
