@@ -185,7 +185,7 @@ async def webhook_receive(
 	try:
 		payload = await request.json()
 	except Exception:
-		raise HTTPException(status_code=400, detail="Invalid JSON.")
+		raise HTTPException(status_code=400, detail="Invalid JSON.") from None
 
 	# Walk the standard Meta webhook envelope
 	for entry in payload.get("entry", []):

@@ -19,8 +19,8 @@ import re
 from fastapi import APIRouter, Depends, HTTPException, Request, Header, BackgroundTasks
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
-from app.models.db import AsyncSessionLocal, Project, EmailRule, Briefing, Person
+from sqlalchemy import select, delete, func
+from app.models.db import AsyncSessionLocal, Project, EmailRule, Briefing, Person, LLMMetric
 from app.services.memory import semantic_search, semantic_search_raw, list_memories as list_memories_svc, delete_memory
 from app.services.planka import get_project_tree
 from app.services.operator_board import operator_service
@@ -3035,8 +3035,6 @@ async def get_crews_history():
 @router.get("/llm-metrics")
 async def get_llm_metrics():
 	"""Return LLM usage analytics: per-feature call counts, avg latency, tier distribution."""
-	from app.models.db import AsyncSessionLocal, LLMMetric
-	from sqlalchemy import select, func
 	try:
 		async with AsyncSessionLocal() as session:
 			# Per-feature aggregates

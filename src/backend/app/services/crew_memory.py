@@ -59,7 +59,6 @@ async def _get_user_timezone():
 	"""Return the user's timezone or UTC."""
 	try:
 		import pytz
-		from app.services.translations import get_user_lang
 		from app.models.db import AsyncSessionLocal, Person
 		from sqlalchemy import select
 		async with AsyncSessionLocal() as session:

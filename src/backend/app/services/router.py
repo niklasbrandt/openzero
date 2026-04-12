@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import logging
 import re
+import asyncio
 from dataclasses import dataclass, field
 from typing import AsyncIterator
 
@@ -81,7 +82,8 @@ def _resolve_days_ago(text: str) -> int:
 _PHANTOM_RE = re.compile(
 	r'\b(task added|board (added|created)|event (added|created)|card (added|created)'
 	r'|added to (your )?(todo|list|board|today)'
-	r'|done[\s\u2014\u2013-]+(task|board|card|event))\b',
+	r'|done[\s\u2014\u2013-]+(task|board|card|event|create|add)'
+	r'|done\s*[\u2014\u2013\-]+\s*(create|add|new))\b',
 	re.IGNORECASE,
 )
 
@@ -153,7 +155,11 @@ async def route_message_stream(
 				)
 				injected = (
 					f"MESSAGE HISTORY for {day_label} (all messages sent that day — "
-					f"use ONLY this to answer; do NOT consult Planka boards or make anything up):\n\n"
+					f"use ONLY this to answer; do NOT consult Planka boards or make anything up).\n"
+					f"CRITICAL: this is a read-only recall task. List what the user asked, as-is. "
+					f"Do NOT prefix any item with 'Done', 'Done —', 'Completed', or any action-confirmation language. "
+					f"Do NOT emit [ACTION: ...] tags. Do NOT re-execute anything. "
+					f"Simply present each request with its timestamp as a plain list:\n\n"
 					f"{block}\n\n"
 					f"---\n{user_text}"
 				)
@@ -177,6 +183,14 @@ async def route_message_stream(
 				channel=channel, raw_reply=response,
 				model=last_model_used.get(), user_text=user_text, save=save_history,
 			)
+			# Phantom guard for recall path: any action-confirmation language here is
+			# always wrong — this is a read-only summary, actions can never legitimately run.
+			if _PHANTOM_RE.search(clean[:_MAX_RE_REPLY]):
+				clean += (
+					"\n\n\u26a0 Note: the list above shows requests from your history — "
+					"nothing was re-executed now."
+				)
+				logger.warning("Router: phantom-style language in recall reply")
 			result_future.set_result(RouterResult(
 				reply=clean, model=last_model_used.get(),
 				executed_cmds=cmds, pending_actions=pending,
@@ -188,7 +202,7 @@ async def route_message_stream(
 		if routed_crews:
 			crew_id = routed_crews[0]
 			logger.info("Router: keyword-routing '%s...' → crew '%s'", _sanitize_for_log(user_text), crew_id)
-			chunks: list[str] = []
+			chunks = []
 			async for token in native_crew_engine.run_crew_stream(crew_id, user_text):
 				chunks.append(token)
 				yield token
