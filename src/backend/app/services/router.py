@@ -160,6 +160,7 @@ async def route_message_stream(
 		# fetch the actual conversation from DB and inject it — never consult Planka.
 		if _RECALL_HISTORY_RE.search(user_text[:_MAX_RE_INPUT]):
 			from app.models.db import get_day_exchanges
+			from app.services.planka import find_item_in_planka
 			days_ago = _resolve_days_ago(user_text)
 			all_exchanges = await get_day_exchanges(days_ago)
 			# Strip the current recall/status request itself
@@ -172,7 +173,6 @@ async def route_message_stream(
 				day_label = f"{days_ago} days ago"
 
 			user_msgs = [m for m in all_exchanges if m["role"] == "user"]
-			z_msgs = [m for m in all_exchanges if m["role"] == "z"]
 
 			# Server-side pre-filter: only keep user messages that look like task requests.
 			seen_content: set[str] = set()
@@ -191,44 +191,58 @@ async def route_message_stream(
 				seen_content.add(key)
 				task_msgs.append(m)
 
-			# Build Z-confirmation lookup: scan Z's replies for action confirmation strings.
-			# Keywords that indicate a successful Planka execution.
-			_CONFIRM_WORDS = ("created", "added", "saved", "scheduled", "set up", "built", "done")
-			_WARN_WORDS = ("\u26a0",)
+			# Extract the most likely item name from a task message.
+			# Checks quoted strings first, then "titled/called/named X" patterns.
+			_TITLE_RE = re.compile(
+				r'(?:titled?|called?|named?)\s+["\u201c\u2018]?([^"\'.\[\]\n]{3,80})["\u201c\u2019]?'
+				r'|["\u201c\u2018]([^"\']{3,80})["\u201d\u2019]',
+				re.IGNORECASE,
+			)
 
-			def _find_z_status(task_time: str) -> str:
-				"""Find the first Z reply after task_time that contains a confirmation or warning."""
-				for z in z_msgs:
-					if z["at"] > task_time:
-						c = z["content"].lower()
-						if any(w in c for w in _CONFIRM_WORDS):
-							return "confirmed"
-						if any(w in z["content"] for w in _WARN_WORDS):
-							return "failed"
-				return "unknown"
+			def _extract_title(text: str) -> str:
+				"""Return best guessed item title from a task description, or ''."""
+				m = _TITLE_RE.search(text)
+				if m:
+					return (m.group(1) or m.group(2) or "").strip().rstrip(".,;!?")
+				return ""
 
 			if task_msgs:
+				# Verify each task against live Planka state (ground truth).
+				import asyncio as _asyncio
+
+				async def _planka_status(task_text: str) -> str:
+					title = _extract_title(task_text)
+					if not title:
+						return "unverifiable"
+					found = await find_item_in_planka(title)
+					return "found" if found else "missing"
+
+				statuses = await _asyncio.gather(
+					*[_planka_status(m["content"]) for m in task_msgs],
+					return_exceptions=True,
+				)
+
 				lines = []
-				for m in task_msgs:
-					status = _find_z_status(m["at"])
-					if status == "confirmed":
-						status_label = " [confirmed]"
-					elif status == "failed":
-						status_label = " [FAILED - not saved]"
+				for m, status in zip(task_msgs, statuses):
+					if isinstance(status, Exception):
+						status_label = " [could not verify - check Planka]"
+					elif status == "found":
+						status_label = " [FOUND in Planka]"
+					elif status == "missing":
+						status_label = " [NOT found in Planka - was NOT saved]"
 					else:
-						status_label = " [status unknown]"
+						status_label = " [could not verify - check Planka]"
 					lines.append(f"[{m['at'][11:16]}] {m['content']}{status_label}")
 				block = "\n".join(lines)
 				injected = (
 					f"The user asked you to recall what they asked you to do {day_label}, "
-					f"and whether those actions were actually executed.\n"
-					f"The list below has been pre-filtered to show task requests only. "
-					f"Each line includes a status based on your prior replies:\n"
-					f"  [confirmed] = your reply from that time contained confirmation language\n"
-					f"  [FAILED] = your reply contained a ⚠ warning\n"
-					f"  [status unknown] = no clear confirmation found in your replies\n\n"
-					f"Present each item concisely. If status is unknown, say so honestly "
-					f"and suggest the user check Planka directly. "
+					f"and verify whether those items actually exist in Planka right now.\n"
+					f"The list below has been pre-filtered to task requests only. "
+					f"Each line includes a live Planka verification result:\n"
+					f"  [FOUND in Planka] = the item exists in Planka — it was saved\n"
+					f"  [NOT found in Planka] = the item is NOT in Planka — it was NOT saved\n"
+					f"  [could not verify] = no clear title could be extracted to search\n\n"
+					f"Be honest about each item. If something is NOT in Planka, say it clearly. "
 					f"Do NOT re-execute anything. Do NOT emit [ACTION: ...] tags.\n\n"
 					f"TASK REQUESTS for {day_label}:\n{block}\n\n---\n{user_text}"
 				)
@@ -277,6 +291,23 @@ async def route_message_stream(
 
 		# ── 1. Keyword-based crew routing ────────────────────────────────────
 		routed_crews = await resolve_active_crews(history, user_text, lang=lang)
+		if not routed_crews:
+			# ── 1.1 Speculative Fast-Intent (Qwen-0.6B) ──────────────────────
+			# If keywords failed, check for crew intent via the local fast model
+			# before falling back to the heavy general LLM.
+			intent_prompt = (
+				"Classify if the user wants to engage a specialized crew. "
+				"Available: research, fitness, nutrition, life, market-intel, legal.\n"
+				f"User: \"{user_text}\"\n"
+				"Reply with ONLY the crew ID or 'none'."
+			)
+			from app.services.llm import chat
+			predicted = await chat(intent_prompt, tier="fast")
+			predicted = predicted.lower().strip().strip("'\"")
+			if predicted in ("research", "fitness", "nutrition", "life", "market-intel", "legal"):
+				logger.info("Router: speculative-routing '%s...' → crew '%s'", _sanitize_for_log(user_text), predicted)
+				routed_crews = [predicted]
+
 		if routed_crews:
 			crew_id = routed_crews[0]
 			logger.info("Router: keyword-routing '%s...' → crew '%s'", _sanitize_for_log(user_text), crew_id)
