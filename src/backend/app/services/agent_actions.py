@@ -428,7 +428,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 	# 4. Create Task Tag — runs AFTER scaffolding so the board/list already exists.
 	# DESCRIPTION is optional — captured when present, defaults to empty string.
 	# Pattern allows ] inside description content (e.g. markdown [1]) via ([^\]]+(?:\][^\]]+)*).
-	task_pattern = r"\[?ACTION: CREATE_TASK \| BOARD: ([^\|\]]+) \| LIST: ([^\|\]]+) \| TITLE: ([^\|\]]+?)(?:\s*\|\s*DESCRIPTION:\s*([^\]]+(?:\][^\]]+)*))?\]?"
+	task_pattern = r"\[?ACTION: CREATE_TASK \| BOARD: ([^\|\]]+) \| LIST: ([^\|\]]+) \| TITLE: ([^\|\]]+)(?:\s*\|\s*DESCRIPTION:\s*([^\]]+(?:\][^\]]+)*))?\]?"
 	for match in re.finditer(task_pattern, reply):
 		raw_tag = match.group(0)
 		board, llist, title, desc = match.groups()
