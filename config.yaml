@@ -8,6 +8,7 @@
 features:
   # Core Interfaces
   messenger_bot: true             # Enable the Messenger Bot interface (e.g., Telegram)
+  whatsapp_bot: false             # Enable the WhatsApp Cloud API channel (requires WHATSAPP_* vars in .env)
   task_board_integration: true    # Enable Planka Kanban board syncing and task creation
 
   # External Integrations
@@ -53,3 +54,18 @@ preferences:
   # Behavior & Thresholds
   max_emails_per_briefing: 10     # Max number of emails to explicitly summarize
   stagnation_warning_days: 14     # Warn if a project card hasn't moved in X days
+
+# ------------------------------------------------------------------------------
+# 4. Intelligence Configuration
+# ------------------------------------------------------------------------------
+intelligence:
+  # 2-Tier architecture: local / cloud
+  # Tier routing is automatic based on message complexity.
+  # Override defaults in .env (LLM_MODEL_LOCAL, LLM_CLOUD_BASE_URL, etc.)
+
+  # First-token timeout (seconds) before escalating local -> cloud
+  cloud_timeout_seconds: 2
+
+  # Whether to attempt cloud routing for interactive messages
+  # Set to false for fully air-gapped / offline deployments
+  smart_cloud_routing: true
