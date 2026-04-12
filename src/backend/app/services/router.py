@@ -193,7 +193,9 @@ async def route_message_stream(
 		# ── 0. Recall-history intercept ──────────────────────────────────────
 		# When the user asks to recall messages from today, yesterday, N days ago, etc.,
 		# fetch the actual conversation from DB and inject it — never consult Planka.
-		if _RECALL_HISTORY_RE.search(user_text[:_MAX_RE_INPUT]):
+		# Pre-filter: only run heavy regex if common recall keywords are present.
+		_common_recall_words = ("recall", "look up", "review", "show me", "last", "yesterday", "today", "did you")
+		if any(w in user_text.lower() for w in _common_recall_words) and _RECALL_HISTORY_RE.search(user_text[:_MAX_RE_INPUT]):
 			from app.models.db import get_day_exchanges, get_range_exchanges
 			from app.services.planka import find_item_in_planka
 			days_ago, is_range = _resolve_timeframe(user_text)
@@ -222,6 +224,7 @@ async def route_message_stream(
 			# Server-side pre-filter: only keep user messages that look like task requests.
 			seen_content: set[str] = set()
 			task_msgs: list[dict] = []
+			_common_task_words = ("create", "add", "make", "set", "save", "sent", "told", "ask", "track", "log")
 			for m in user_msgs:
 				content = m["content"].strip()
 				if _SKIP_RECALL_RE.match(content):
@@ -229,9 +232,9 @@ async def route_message_stream(
 				if len(content.split()) < 3:
 					continue
 				# Skip meta-recall queries (the class of message we are currently processing)
-				if _RECALL_HISTORY_RE.search(content[:_MAX_RE_INPUT]):
+				if any(w in content.lower() for w in _common_recall_words) and _RECALL_HISTORY_RE.search(content[:_MAX_RE_INPUT]):
 					continue
-				if not _TASK_SIGNAL_RE.search(content):
+				if not any(w in content.lower() for w in _common_task_words) or not _TASK_SIGNAL_RE.search(content):
 					continue
 				# Dedup: strip trailing punctuation/backslash so "do it\" == "do it"
 				key = content.lower().rstrip('\\/ \t.,!?')
