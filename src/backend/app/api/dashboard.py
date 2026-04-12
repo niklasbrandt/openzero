@@ -149,12 +149,29 @@ _chat_rate_limit_store: dict = defaultdict(list)
 _CHAT_RATE_LIMIT_MAX = 5
 _CHAT_RATE_LIMIT_WINDOW = 60  # seconds
 
+def _extract_client_ip(request: Request) -> str:
+    """Extract client IP from request, sanitising X-Forwarded-For against header injection.
+
+    XFF is only used when present; the first entry is stripped of whitespace and
+    truncated to 45 chars (max length of a valid IPv6 address) to prevent log
+    injection via oversized or CRLF-containing values.  Falls back to the
+    direct connection address when XFF is absent or empty.
+    """
+    _MAX_IP_LEN = 45  # IPv6 max length
+    xff = request.headers.get("X-Forwarded-For", "")
+    if xff:
+        # Take the leftmost (client-supplied) entry; strip whitespace and control chars.
+        candidate = xff.split(",")[0].strip()
+        # Remove any CRLF or control characters that could cause log injection.
+        candidate = re.sub(r'[\r\n\x00-\x1f]', '', candidate)[:_MAX_IP_LEN]
+        if candidate:
+            return candidate
+    return (request.client.host if request.client else "unknown")
+
+
 def _check_rate_limit(request: Request):
     """Sliding-window rate limiter: 20 requests per 60 s per client IP."""
-    client_ip = (
-        request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
-        or (request.client.host if request.client else "unknown")
-    )
+    client_ip = _extract_client_ip(request)
     now = _time.time()
     window_start = now - _RATE_LIMIT_WINDOW
     hits = _rate_limit_store[client_ip]
@@ -172,10 +189,7 @@ def _check_chat_rate_limit(request: Request):
     """
     if not settings.IS_DOCKER:
         return  # Dev mode: bypass rate limits (test suites, local iteration)
-    client_ip = (
-        request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
-        or (request.client.host if request.client else "unknown")
-    )
+    client_ip = _extract_client_ip(request)
     now = _time.time()
     window_start = now - _CHAT_RATE_LIMIT_WINDOW
     hits = _chat_rate_limit_store[client_ip]
@@ -945,7 +959,7 @@ async def dashboard_chat_stream(req: ChatRequest, request: Request, _rl: None = 
 	)
 
 @router.post("/crew/stream/{crew_id}")
-async def dashboard_crew_stream(crew_id: str, req: ChatRequest, request: Request, db: AsyncSession = Depends(get_db)):
+async def dashboard_crew_stream(crew_id: str, req: ChatRequest, request: Request, db: AsyncSession = Depends(get_db), _rl: None = Depends(_check_chat_rate_limit)):
 	"""SSE streaming endpoint for crew missions."""
 	from starlette.responses import StreamingResponse
 	from app.services.crews_native import native_crew_engine
