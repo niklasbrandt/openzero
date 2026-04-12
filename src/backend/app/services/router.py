@@ -154,14 +154,16 @@ async def route_message_stream(
 					f"[{m['at'][11:16]}] {m['content']}" for m in day_msgs
 				)
 				injected = (
-					f"MESSAGE HISTORY for {day_label} (all messages sent that day — "
-					f"use ONLY this to answer; do NOT consult Planka boards or make anything up).\n"
-					f"CRITICAL: this is a read-only recall task. List what the user asked, as-is. "
-					f"Do NOT prefix any item with 'Done', 'Done —', 'Completed', or any action-confirmation language. "
-					f"Do NOT emit [ACTION: ...] tags. Do NOT re-execute anything. "
-					f"Simply present each request with its timestamp as a plain list:\n\n"
-					f"{block}\n\n"
-					f"---\n{user_text}"
+					f"The user is asking you to recall what they asked you to do {day_label}.\n"
+					f"Below is every message they sent that day. Your job:\n"
+					f"1. Read through all messages and identify only those that were actual requests, tasks, or instructions directed at you.\n"
+					f"   - Include: 'create a task', 'add to board', 'look up X', 'remind me', 'plan Y', explicit questions expecting action.\n"
+					f"   - Exclude: emotional venting, follow-up confirmations like 'and now?', reports of what they did themselves, and system commands like '/crew life ...'.\n"
+					f"2. For each identified request, write one concise line: [HH:MM] short description of what was asked.\n"
+					f"3. If a request appears multiple times (user re-sent unchanged), list it once with the first timestamp.\n"
+					f"4. Do NOT emit any [ACTION: ...] tags. Do NOT re-execute anything. This is read-only.\n"
+					f"5. If no clear task requests are found in the messages, say so honestly.\n\n"
+					f"MESSAGES for {day_label}:\n{block}\n\n---\n{user_text}"
 				)
 			else:
 				injected = (
