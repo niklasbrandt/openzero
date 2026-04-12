@@ -4,7 +4,7 @@ import logging
 import re
 from pathlib import Path
 from typing import Optional, Dict, List
-import yaml # type: ignore
+import yaml
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)

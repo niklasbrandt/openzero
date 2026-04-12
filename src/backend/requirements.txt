@@ -43,3 +43,10 @@ types-pytz
 # Transitive dependency pin: filelock <=3.20.0 has TOCTOU/symlink CVEs
 # (CVE-2024-filelock-toctou, Trivy alerts #205/#206). Fixed in 3.20.1+.
 filelock>=3.20.1
+# Transitive dependency security pins (pip-audit 2026-04-12)
+# CVE-2026-39892: buffer overflow in Hash.update with non-contiguous buffers
+cryptography>=46.0.7
+# CVE-2026-4539: ReDoS in AdlLexer
+pygments>=2.20.0
+# mypy stubs for yaml (removes type: ignore in crews.py)
+types-PyYAML
