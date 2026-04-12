@@ -53,6 +53,9 @@ _RECALL_HISTORY_RE = re.compile(
 	r'|\b(?:my\s+)?(?:tasks?|requests?|things?)\s+(?:i\s+)?(?:asked|gave|told|sent).{0,40}\b(?:today|yesterday|\d+\s+days?\s+ago)\b'
 	r'|(?:and\s+)?i\s+asked\s+(?:today\s+)?(?:about\s+)?(?:an?\s+)?other\s+thing\b'
 	r'|\bdid\s+you\s+(?:do|create|add|make|get)\s+(?:it|that|them)\b'
+	r'|\b(?:so\s+)?(?:are|were|was)\s+(?:they|it|those)\s+(?:created|added|saved|built|done|set\s+up|executed)\b'
+	r'|\bdid\s+(?:those|they|it|that)\s+(?:get\s+)?(?:created|added|saved|go\s+through|work|execute)\b'
+	r'|\bwas\s+(?:it|that|the\s+(?:task|board|card|todo))\s+(?:created|added|saved|done|executed)\b'
 	r')',
 	re.IGNORECASE,
 )
@@ -156,11 +159,11 @@ async def route_message_stream(
 		# When the user asks to recall messages from today, yesterday, N days ago, etc.,
 		# fetch the actual conversation from DB and inject it — never consult Planka.
 		if _RECALL_HISTORY_RE.search(user_text[:_MAX_RE_INPUT]):
-			from app.models.db import get_user_messages_for_day
+			from app.models.db import get_day_exchanges
 			days_ago = _resolve_days_ago(user_text)
-			day_msgs = await get_user_messages_for_day(days_ago)
-			# Strip the current recall request itself (only relevant when days_ago == 0)
-			day_msgs = [m for m in day_msgs if m["content"].strip() != user_text.strip()]
+			all_exchanges = await get_day_exchanges(days_ago)
+			# Strip the current recall/status request itself
+			all_exchanges = [m for m in all_exchanges if m["content"].strip() != user_text.strip()]
 			if days_ago == 0:
 				day_label = "today (since midnight UTC)"
 			elif days_ago == 1:
@@ -168,46 +171,73 @@ async def route_message_stream(
 			else:
 				day_label = f"{days_ago} days ago"
 
-			# Server-side pre-filter: only keep messages that look like task requests.
-			# This is more reliable than asking the LLM to decide what counts.
-			# Deduplication: skip messages whose content (stripped) was already seen.
+			user_msgs = [m for m in all_exchanges if m["role"] == "user"]
+			z_msgs = [m for m in all_exchanges if m["role"] == "z"]
+
+			# Server-side pre-filter: only keep user messages that look like task requests.
 			seen_content: set[str] = set()
 			task_msgs: list[dict] = []
-			for m in day_msgs:
+			for m in user_msgs:
 				content = m["content"].strip()
-				# Skip system commands, short follow-ups, and non-task messages
 				if _SKIP_RECALL_RE.match(content):
 					continue
 				if len(content.split()) < 3:
 					continue
 				if not _TASK_SIGNAL_RE.search(content):
 					continue
-				# Dedup: same text sent multiple times → keep first occurrence only
 				key = content.lower()
 				if key in seen_content:
 					continue
 				seen_content.add(key)
 				task_msgs.append(m)
 
+			# Build Z-confirmation lookup: scan Z's replies for action confirmation strings.
+			# Keywords that indicate a successful Planka execution.
+			_CONFIRM_WORDS = ("created", "added", "saved", "scheduled", "set up", "built", "done")
+			_WARN_WORDS = ("\u26a0",)
+
+			def _find_z_status(task_time: str) -> str:
+				"""Find the first Z reply after task_time that contains a confirmation or warning."""
+				for z in z_msgs:
+					if z["at"] > task_time:
+						c = z["content"].lower()
+						if any(w in c for w in _CONFIRM_WORDS):
+							return "confirmed"
+						if any(w in z["content"] for w in _WARN_WORDS):
+							return "failed"
+				return "unknown"
+
 			if task_msgs:
-				block = "\n".join(
-					f"[{m['at'][11:16]}] {m['content']}" for m in task_msgs
-				)
+				lines = []
+				for m in task_msgs:
+					status = _find_z_status(m["at"])
+					if status == "confirmed":
+						status_label = " [confirmed]"
+					elif status == "failed":
+						status_label = " [FAILED - not saved]"
+					else:
+						status_label = " [status unknown]"
+					lines.append(f"[{m['at'][11:16]}] {m['content']}{status_label}")
+				block = "\n".join(lines)
 				injected = (
-					f"The user asked you to recall what they asked you to do {day_label}.\n"
-					f"The following messages have already been pre-filtered to only contain actual task requests.\n"
-					f"Your job: present each one as a concise single line with its timestamp.\n"
-					f"Do NOT add commentary, do NOT re-execute anything, do NOT emit [ACTION: ...] tags.\n\n"
-					f"PRE-FILTERED TASK REQUESTS for {day_label}:\n{block}\n\n---\n{user_text}"
+					f"The user asked you to recall what they asked you to do {day_label}, "
+					f"and whether those actions were actually executed.\n"
+					f"The list below has been pre-filtered to show task requests only. "
+					f"Each line includes a status based on your prior replies:\n"
+					f"  [confirmed] = your reply from that time contained confirmation language\n"
+					f"  [FAILED] = your reply contained a ⚠ warning\n"
+					f"  [status unknown] = no clear confirmation found in your replies\n\n"
+					f"Present each item concisely. If status is unknown, say so honestly "
+					f"and suggest the user check Planka directly. "
+					f"Do NOT re-execute anything. Do NOT emit [ACTION: ...] tags.\n\n"
+					f"TASK REQUESTS for {day_label}:\n{block}\n\n---\n{user_text}"
 				)
-			elif day_msgs:
-				# Messages exist but none passed the task filter — let LLM decide
-				block = "\n".join(
-					f"[{m['at'][11:16]}] {m['content']}" for m in day_msgs
-				)
+			elif user_msgs:
+				# fallback: show all user messages if none passed task filter
+				block = "\n".join(f"[{m['at'][11:16]}] {m['content']}" for m in user_msgs)
 				injected = (
-					f"The user asked you to recall what they asked you to do {day_label}.\n"
-					f"Below are all their messages. Identify any actual requests or tasks.\n"
+					f"The user asked to recall their messages from {day_label}.\n"
+					f"Below are all their messages. Identify actual task requests.\n"
 					f"Do NOT emit [ACTION: ...] tags. Do NOT re-execute anything.\n\n"
 					f"MESSAGES for {day_label}:\n{block}\n\n---\n{user_text}"
 				)

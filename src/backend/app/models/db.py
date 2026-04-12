@@ -201,3 +201,24 @@ async def get_user_messages_for_day(days_ago: int = 0):
         )
         messages = result.scalars().all()
         return [{"content": m.content, "at": m.created_at.isoformat() + "Z"} for m in messages]
+
+
+async def get_day_exchanges(days_ago: int = 0):
+    """Return all user AND z messages for a given day (UTC), ordered chronologically.
+
+    Each dict has: role ('user' or 'z'), content, at (ISO timestamp with Z suffix).
+    Used by the recall intercept to cross-reference what was asked vs what Z confirmed.
+    """
+    now = datetime.datetime.utcnow()
+    target = (now - datetime.timedelta(days=days_ago)).replace(hour=0, minute=0, second=0, microsecond=0)
+    target_end = target + datetime.timedelta(days=1)
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(GlobalMessage)
+            .where(GlobalMessage.role.in_(["user", "z"]))
+            .where(GlobalMessage.created_at >= target)
+            .where(GlobalMessage.created_at < target_end)
+            .order_by(GlobalMessage.created_at.asc())
+        )
+        messages = result.scalars().all()
+        return [{"role": m.role, "content": m.content, "at": m.created_at.isoformat() + "Z"} for m in messages]
