@@ -893,7 +893,6 @@ async def save_personality(data: dict, db: AsyncSession = Depends(get_db)):
 async def dashboard_chat_stream(req: ChatRequest, request: Request, _rl: None = Depends(_check_chat_rate_limit)):
 	"""SSE streaming chat endpoint for real-time token delivery to dashboard."""
 	from starlette.responses import StreamingResponse
-	from app.services.llm import chat_stream_with_context, last_model_used
 	from app.services.message_bus import bus
 
 	msg = req.message.strip()
@@ -908,112 +907,27 @@ async def dashboard_chat_stream(req: ChatRequest, request: Request, _rl: None = 
 			from app.models.db import get_global_history
 			merged_history = await get_global_history(limit=10)
 
-		# --- Auto-route to a specialist crew if the message matches keywords ---
-		from app.services.crews import resolve_active_crews
-		from app.services.crews_native import native_crew_engine
-		routed_crews = await resolve_active_crews(merged_history, msg, lang="en")
-		if routed_crews:
-			chunks: list[str] = []
-			async for chunk in native_crew_engine.run_crew_stream(routed_crews[0], msg):
-				chunks.append(chunk)
-				yield f"data: {json.dumps({'token': chunk})}\n\n"
-			full_response = "".join(chunks)
-			from app.services.llm import rehydrate_response, get_active_rep_map, last_model_used
-			full_response = rehydrate_response(full_response, get_active_rep_map())
-			clean_reply, executed_cmds, pending_actions = await bus.commit_reply(
-				channel="dashboard",
-				raw_reply=full_response,
-				model=f"crew:{routed_crews[0]}",
-				user_text=msg,
-				save=not req.skip_history,
-			)
-			executed_cmds = [c for c in executed_cmds if not c.startswith("__CREW_RUN__:")]
-			yield f"data: {json.dumps({'done': True, 'reply': _sanitise_reply_html(clean_reply), 'actions': executed_cmds, 'pending': pending_actions, 'model': f'crew:{routed_crews[0]}'})}\n\n"
-			return
+		# --- Routing + Z response via unified router ----------------------------
+		# All decisions (keyword crew routing, ROUTE tag, phantom guard, etc.)
+		# are handled by app.services.router.route_message_stream.
+		from app.services.router import route_message_stream
 
-		# --- Slash command: /crew <id> [input] ---
-		# The blocking /chat endpoint handles slash commands but the streaming
-		# endpoint was going directly to the LLM, silently swallowing /crew.
-		if msg.startswith("/crew "):
-			parts = msg.split(" ", 2)
-			crew_id = parts[1]
-			user_input = parts[2] if len(parts) > 2 else "Manual operator trigger"
-			from app.services.crews import crew_registry
-			from app.services.crews_native import native_crew_engine
-			config = crew_registry.get(crew_id)
-			if not config:
-				err = f"❌ Crew '{crew_id}' not found. Use `/crews` to list available crews."
-				yield f"data: {json.dumps({'done': True, 'reply': err, 'actions': [], 'pending': [], 'model': 'system'})}\n\n"
-				return
-			# Stream crew output token-by-token via the same engine the dedicated endpoint uses
-			chunks: list[str] = []
-			async for chunk in native_crew_engine.run_crew_stream(crew_id, user_input):
-				chunks.append(chunk)
-				yield f"data: {json.dumps({'token': chunk})}\n\n"
-			full_response = "".join(chunks)
-			clean_reply, executed_cmds, pending_actions = await bus.commit_reply(
-				channel="dashboard",
-				raw_reply=full_response,
-				model=f"crew:{crew_id}",
-				user_text=msg,
-				save=not req.skip_history,
-			)
-			yield f"data: {json.dumps({'done': True, 'reply': _sanitise_reply_html(clean_reply), 'actions': executed_cmds, 'pending': pending_actions, 'model': f'crew:{crew_id}'})}\n\n"
-			return
-
-		chunks = []
-
-		async for chunk in chat_stream_with_context(
-			msg,
-			history=merged_history,
-			include_projects=True,
-			include_people=True
-		):
-			chunks.append(chunk)
-			yield f"data: {json.dumps({'token': chunk})}\n\n"
-
-		full_response = "".join(chunks)
-		# Final rehydration pass so tokens split across SSE chunks (e.g. "[DATE_" + "3]")
-		# are correctly restored before action parsing and display.
-		from app.services.llm import rehydrate_response, get_active_rep_map
-		full_response = rehydrate_response(full_response, get_active_rep_map())
-
-		# Z-initiated crew routing: if Z emitted [ACTION: ROUTE | CREW: id], discard
-		# Z's response and re-dispatch the original user text to the crew instead.
-		import re as _re_dash
-		_route_m = _re_dash.search(r'\[(?:ACTION:\s*)?ROUTE\s*\|\s*CREW:\s*([a-z0-9_-]+)\s*\]?', full_response, _re_dash.IGNORECASE)
-		if _route_m:
-			crew_id_r = _route_m.group(1).strip().lower()
-			from app.services.crews_native import native_crew_engine as _nce
-			r_chunks: list[str] = []
-			async for chunk in _nce.run_crew_stream(crew_id_r, msg):
-				r_chunks.append(chunk)
-				yield f"data: {json.dumps({'token': chunk})}\n\n"
-			r_full = "".join(r_chunks)
-			r_clean, r_cmds, r_pending = await bus.commit_reply(
-				channel="dashboard", raw_reply=r_full,
-				model=f"crew:{crew_id_r}", user_text=msg, save=not req.skip_history,
-			)
-			r_cmds = [c for c in r_cmds if not c.startswith("__CREW_RUN__:")]
-			yield f"data: {json.dumps({'done': True, 'reply': _sanitise_reply_html(r_clean), 'actions': r_cmds, 'pending': r_pending, 'model': f'crew:{crew_id_r}'})}\n\n"
-			return
-
-		clean_reply, executed_cmds, pending_actions = await bus.commit_reply(
-			channel="dashboard",
-			raw_reply=full_response,
-			model=last_model_used.get(),
+		token_stream, result_fut = await route_message_stream(
 			user_text=msg,
-			save=not req.skip_history,
+			history=merged_history,
+			channel="dashboard",
+			lang="en",
+			save_history=not req.skip_history,
 		)
 
-		# Reasoning indicator extraction
-		crews = [c.split(":", 1)[1] for c in executed_cmds if c.startswith("__CREW_RUN__:")]
-		executed_cmds = [c for c in executed_cmds if not c.startswith("__CREW_RUN__:")]
-		if crews:
-			clean_reply += f"\n\n*(Reasoning by crew {', '.join(crews)})*"
+		async for token in token_stream:
+			yield f"data: {json.dumps({'token': token})}\n\n"
 
-		model_label = last_model_used.get()
-		yield f"data: {json.dumps({'done': True, 'reply': _sanitise_reply_html(clean_reply), 'actions': executed_cmds, 'pending': pending_actions, 'model': model_label})}\n\n"
+		result = await result_fut
+
+		from app.services.llm import last_model_used
+		model_label = result.model or last_model_used.get()
+		yield f"data: {json.dumps({'done': True, 'reply': _sanitise_reply_html(result.reply), 'actions': result.executed_cmds, 'pending': result.pending_actions, 'model': model_label})}\n\n"
 
 	return StreamingResponse(
 		event_generator(),
