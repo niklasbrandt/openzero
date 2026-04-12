@@ -845,10 +845,31 @@ async def build_system_prompt(user_name: str, user_profile: dict, include_agent_
 		f"Use these exact names when referencing or creating tasks."
 	)
 
+	# ── 1. Static Prefix Caching Strategy ────────────────────────────────
+	# We structure the prompt so static instructions (Rules, ACTION tags)
+	# come FIRST. Dynamic data (Time, Profile, Lang) comes LAST in a
+	# <context> block. This allows llama.cpp to cache the KV-prefix.
+
 	formatted_system_prompt = SYSTEM_PROMPT_CHAT.format(
-		current_time=simplified_time,
-		user_name=user_name
-	) + personal_block + agent_skills_block + user_id_context + lang_directive + _operator_board_rule + ("\n\n" + personality_directive if personality_directive else "")
+		current_time="[PRE-CACHED]",
+		user_name="[SUBJECT ZERO]"
+	)
+
+	# Build the dynamic <context> block
+	dynamic_context = (
+		" <context>\n"
+		f"CURRENT_TIME: {simplified_time}\n"
+		f"USER_NAME: {user_name}\n"
+		f"{user_id_context}\n"
+		f"{lang_directive}\n"
+		f"{_operator_board_rule}\n"
+		f"{personality_directive}\n"
+		f"{personal_block}\n"
+		f"{agent_skills_block}\n"
+		" </context>"
+	)
+
+	formatted_system_prompt += dynamic_context
 
 	context_header = f"Current Local Time (Raw): {format_date_full(now)}\n"
 	context_header += f"Current Formatted Time (Use This): {simplified_time}\n\n"
@@ -1527,7 +1548,14 @@ async def chat_with_context(
 					if _h.get("role") != "user":
 						_last_z = (_h.get("content") or "")[:200]
 						if _last_z:
-							search_query = f"{_last_z} {user_message}"
+							# ── 3. Multi-Query Intent Expansion ─────────────────
+							expansion_prompt = (
+								f"Context: \"{_last_z}\"\n"
+								f"User asked: \"{user_message}\"\n"
+								"Extract the real subjects. Output exactly 2-3 search terms, comma separated."
+							)
+							expanded = await chat(expansion_prompt, tier="fast")
+							search_query = f"{user_message}, {expanded}"
 						break
 			result = await semantic_search(search_query, top_k=3)
 			if result and "No memories found" not in result and "Memory system" not in result:
@@ -1901,7 +1929,14 @@ async def chat_stream_with_context(
 					if _h.get("role") != "user":
 						_last_z = (_h.get("content") or "")[:200]
 						if _last_z:
-							search_query = f"{_last_z} {user_message}"
+							# ── 3. Multi-Query Intent Expansion ─────────────────
+							expansion_prompt = (
+								f"Context: \"{_last_z}\"\n"
+								f"User asked: \"{user_message}\"\n"
+								"Extract the real subjects. Output exactly 2-3 search terms, comma separated."
+							)
+							expanded = await chat(expansion_prompt, tier="fast")
+							search_query = f"{user_message}, {expanded}"
 						break
 			result = await semantic_search(search_query, top_k=3)
 			if result and "No memories found" not in result and "Memory system" not in result:
