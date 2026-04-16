@@ -64,6 +64,7 @@ class PeerState:
 	url: str						# base URL, no trailing slash
 	model: str = ""					# detected or configured model name
 	server_type: str = ""			# "llamacpp" | "ollama" | ""
+	ollama_api: str = "generate"		# Ollama endpoint variant: "generate" | "chat"
 	online: bool = False
 	latency_ms: float = float("inf")
 	toks_per_sec: float = 0.0		# measured inference speed; 0 = not yet known
@@ -131,41 +132,65 @@ async def _detect_model_llamacpp(client: httpx.AsyncClient, url: str, fallback: 
 	return fallback
 
 
-async def _measure_speed(url: str, server_type: str, model: str) -> tuple[float, str]:
+async def _measure_speed(url: str, server_type: str, model: str, ollama_api: str = "generate") -> tuple[float, str, str]:
 	"""
-	Send a minimal completion request and return (toks_per_sec, error_str).
+	Send a minimal completion request and return (toks_per_sec, error_str, detected_ollama_api).
 
 	A non-zero error_str means the peer is reachable but malfunctioning.
 	toks_per_sec is 0.0 on any error.
+	detected_ollama_api is "generate" or "chat" for Ollama peers; "" for llama.cpp.
+	For Ollama, the preferred endpoint is tried first; a 404 triggers a fallback to
+	the other variant so the caller can cache the working endpoint and avoid future 404s.
 	"""
 	try:
 		async with httpx.AsyncClient(timeout=_SPEED_PROBE_TIMEOUT_S) as client:
-			t0 = time.monotonic()
 			if server_type == "ollama":
-				payload = {
-					"model": model,
-					"prompt": _SPEED_PROBE_PROMPT,
-					"stream": False,
-					"options": {"num_predict": _SPEED_PROBE_MAX_TOKENS},
-				}
-				resp = await client.post(f"{url}/api/generate", json=payload)
-				elapsed = time.monotonic() - t0
-				if resp.status_code != 200:
-					return 0.0, f"HTTP {resp.status_code}"
+				# Build ordered list: preferred variant first, then the fallback.
+				apis_to_try = [ollama_api, "chat" if ollama_api == "generate" else "generate"]
+				resp = None
+				elapsed = 0.0
+				detected_api = ollama_api
+				for api_variant in apis_to_try:
+					if api_variant == "generate":
+						request_payload: dict = {
+							"model": model,
+							"prompt": _SPEED_PROBE_PROMPT,
+							"stream": False,
+							"options": {"num_predict": _SPEED_PROBE_MAX_TOKENS},
+						}
+						endpoint = f"{url}/api/generate"
+					else:
+						request_payload = {
+							"model": model,
+							"messages": [{"role": "user", "content": _SPEED_PROBE_PROMPT}],
+							"stream": False,
+							"options": {"num_predict": _SPEED_PROBE_MAX_TOKENS},
+						}
+						endpoint = f"{url}/api/chat"
+					t0 = time.monotonic()
+					resp = await client.post(endpoint, json=request_payload)
+					elapsed = time.monotonic() - t0
+					detected_api = api_variant
+					if resp.status_code != 404:
+						break
+					logger.debug("Ollama %s returned 404, retrying with other endpoint variant", endpoint)
+				if resp is None or resp.status_code != 200:
+					code = resp.status_code if resp is not None else 0
+					return 0.0, f"HTTP {code}", detected_api
 				data = resp.json()
-				# Ollama reports eval_count (output tokens) and eval_duration (ns)
+				# Both /api/generate and /api/chat report eval_count and eval_duration at top level.
 				n_eval = data.get("eval_count", 0)
 				eval_ns = data.get("eval_duration", 0)
 				if eval_ns > 0 and n_eval > 0:
 					tps = n_eval / (eval_ns / 1e9)
 				elif elapsed > 0:
-					# Fallback: rough estimate from total tokens / wall time
-					resp_text = data.get("response", "")
+					# Fallback: rough wall-clock estimate; use response/message.content depending on variant.
+					resp_text = data.get("response") or (data.get("message") or {}).get("content", "")
 					n_approx = max(len(resp_text.split()), 1)
 					tps = n_approx / elapsed
 				else:
 					tps = 0.0
-				return round(tps, 1), ""
+				return round(tps, 1), "", detected_api
 			else:
 				# llama.cpp OpenAI-compatible
 				payload = {
@@ -174,10 +199,11 @@ async def _measure_speed(url: str, server_type: str, model: str) -> tuple[float,
 					"max_tokens": _SPEED_PROBE_MAX_TOKENS,
 					"stream": False,
 				}
+				t0 = time.monotonic()
 				resp = await client.post(f"{url}/v1/chat/completions", json=payload)
 				elapsed = time.monotonic() - t0
 				if resp.status_code != 200:
-					return 0.0, f"HTTP {resp.status_code}"
+					return 0.0, f"HTTP {resp.status_code}", ""
 				data = resp.json()
 				usage = data.get("usage", {})
 				n_completion = usage.get("completion_tokens", 0)
@@ -185,11 +211,11 @@ async def _measure_speed(url: str, server_type: str, model: str) -> tuple[float,
 					tps = n_completion / elapsed
 				else:
 					tps = 0.0
-				return round(tps, 1), ""
+				return round(tps, 1), "", ""
 	except httpx.TimeoutException:
-		return 0.0, "inference timeout"
+		return 0.0, "inference timeout", ""
 	except Exception as exc:
-		return 0.0, str(exc)[:80]
+		return 0.0, str(exc)[:80], ""
 
 
 async def _probe_peer(
@@ -208,7 +234,7 @@ async def _probe_peer(
 	lat = await _probe_llamacpp(client, peer.url)
 	if lat is not None:
 		model = await _detect_model_llamacpp(client, peer.url, peer.model or fallback_model)
-		tps, err = await _measure_speed(peer.url, "llamacpp", model)
+		tps, err, _ = await _measure_speed(peer.url, "llamacpp", model)
 		return PeerState(
 			url=peer.url, model=model, server_type="llamacpp",
 			online=True, latency_ms=lat,
@@ -221,9 +247,11 @@ async def _probe_peer(
 	if ollama_result is not None:
 		lat, model_name = ollama_result
 		model = model_name or peer.model or fallback_model
-		tps, err = await _measure_speed(peer.url, "ollama", model)
+		# Pass the previously-detected api variant so it is tried first; falls back on 404.
+		tps, err, detected_api = await _measure_speed(peer.url, "ollama", model, peer.ollama_api)
 		return PeerState(
 			url=peer.url, model=model, server_type="ollama",
+			ollama_api=detected_api or peer.ollama_api,
 			online=True, latency_ms=lat,
 			toks_per_sec=tps, last_error=err,
 			is_vps_local=peer.is_vps_local, hostname=peer.hostname,
