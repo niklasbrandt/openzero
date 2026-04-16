@@ -136,6 +136,77 @@ async def _handle_inbound(sender: str, text: str) -> None:
 	await send_whatsapp_message(reply)
 
 
+async def _download_whatsapp_media(media_id: str) -> bytes:
+	"""Download a WhatsApp media object by ID using the Graph API."""
+	headers = {"Authorization": f"Bearer {settings.WHATSAPP_ACCESS_TOKEN}"}
+	async with httpx.AsyncClient(timeout=30.0) as client:
+		# Step 1: retrieve the download URL
+		meta_resp = await client.get(
+			f"{_WA_API_BASE}/{media_id}",
+			headers=headers,
+		)
+		meta_resp.raise_for_status()
+		download_url = meta_resp.json().get("url", "")
+		if not download_url:
+			raise ValueError(f"No URL returned for media_id {media_id}")
+		# Step 2: download the binary content
+		media_resp = await client.get(download_url, headers=headers)
+		media_resp.raise_for_status()
+		return media_resp.content
+
+
+async def _handle_inbound_image(sender: str, media_id: str, user_hint: str) -> None:
+	"""Download a WhatsApp image, caption it via the vision service, and route through Z."""
+	from app.services.vision import caption_image
+	from app.services.message_bus import bus
+	from app.services.router import route_message_stream
+	from app.services.crews import resolve_active_crews
+
+	try:
+		image_bytes = await _download_whatsapp_media(media_id)
+	except Exception as exc:
+		logger.error("WhatsApp: media download failed for %s: %s", media_id, exc)
+		await send_whatsapp_message("Could not download your image.")
+		return
+
+	caption = await caption_image(image_bytes, user_hint)
+	if not caption or caption.startswith("["):
+		await send_whatsapp_message(caption or "Could not process image.")
+		return
+
+	logger.info("WhatsApp vision caption: %s", caption[:120])
+
+	history = await bus.ingest("whatsapp", caption)
+
+	routed_crews = await resolve_active_crews(history, caption, lang="en")
+	if routed_crews:
+		from app.services.crews_native import native_crew_engine
+		from app.services.llm import last_model_used
+		result = await native_crew_engine.run_crew(routed_crews[0], caption)
+		reply, _, _ = await bus.commit_reply(
+			channel="whatsapp",
+			raw_reply=result,
+			model=last_model_used.get(),
+			user_text=caption,
+		)
+		await send_whatsapp_message(reply)
+		return
+
+	token_stream, result_fut = await route_message_stream(
+		user_text=caption,
+		history=history,
+		channel="whatsapp",
+		lang="en",
+		save_history=True,
+	)
+	async for _ in token_stream:
+		pass
+	result = await result_fut
+
+	if result.reply.strip():
+		await send_whatsapp_message(result.reply)
+
+
 # ─── Webhook Routes ───────────────────────────────────────────────────────────
 
 @router.get("/webhook", response_class=PlainTextResponse)
@@ -214,6 +285,12 @@ async def webhook_receive(
 					if text:
 						logger.info("WhatsApp inbound from %s: %s", sender.replace('\n', ' ').replace('\r', ' '), text[:80].replace('\n', ' ').replace('\r', ' '))
 						background_tasks.add_task(_handle_inbound, sender, text)
+				elif msg_type == "image":
+					media_id = msg.get("image", {}).get("id", "")
+					user_hint = msg.get("image", {}).get("caption", "")
+					if media_id:
+						logger.info("WhatsApp image inbound from %s (media_id=%s)", sender.replace('\n', ' ').replace('\r', ' '), media_id)
+						background_tasks.add_task(_handle_inbound_image, sender, media_id, user_hint)
 				else:
 					logger.info(
 						"WhatsApp: unsupported message type %r from %s — skipped.",
