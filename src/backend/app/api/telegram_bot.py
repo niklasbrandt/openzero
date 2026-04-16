@@ -288,7 +288,7 @@ async def _send_changes_notification_if_needed():
 			await _send_online_notification(recovery_html=_md_to_html(clean))
 			return
 	except Exception as _ce:
-		logger.warning("Startup: changes LLM call failed (%s) — using raw fallback.", _ce)
+		logger.warning("Startup: changes LLM call failed (%r) — using raw fallback.", _ce, exc_info=True)
 	fallback_html = _format_raw_changes_html(changes)
 	if fallback_html:
 		_consume_latest_changes()
