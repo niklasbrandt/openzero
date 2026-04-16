@@ -131,6 +131,8 @@ async def start_telegram_bot():
 	bot_app.add_handler(CommandHandler("board", cmd_board))
 	bot_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_freetext))
 	bot_app.add_handler(MessageHandler(filters.VOICE, handle_voice))
+	bot_app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
+	bot_app.add_handler(MessageHandler(filters.Document.IMAGE, handle_photo))
 
 	# Initialize and start polling (non-blocking)
 	logger.debug("start_telegram_bot - step 3: Initializing")
@@ -1148,6 +1150,86 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	except Exception as e:
 		logger.error("handle_voice failed: %s", e)
 		await safe_reply(update, "Voice processing failed. There might be an issue with the transcription or intelligence layer.")
+
+@owner_only
+async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+	"""Process photo and image document messages via the cloud vision LLM."""
+	try:
+		import html as _html
+		status_msg = await update.message.reply_text("<blockquote>👁️ <i>Z is looking...</i></blockquote>", parse_mode="HTML")
+
+		# Download — prefer highest-resolution photo; fall back to document
+		if update.message.photo:
+			tg_file = await context.bot.get_file(update.message.photo[-1].file_id)
+		else:
+			tg_file = await context.bot.get_file(update.message.document.file_id)
+		image_bytes = bytes(await tg_file.download_as_bytearray())
+
+		user_hint = update.message.caption or ""
+
+		from app.services.vision import caption_image
+		caption = await caption_image(image_bytes, user_hint)
+
+		if not caption or caption.startswith("["):
+			await safe_edit(status_msg, f"<blockquote>⚠️ <i>{_html.escape(caption or 'Could not process image.')}</i></blockquote>", parse_mode="HTML")
+			return
+
+		await safe_edit(status_msg, f"<blockquote>🖼️ <b>Seen:</b>\n<i>{_html.escape(caption)}</i>\n\n<i>Thinking...</i></blockquote>", parse_mode="HTML")
+
+		# Feed caption into the full router pipeline (crew routing, memory, etc.)
+		from app.services.message_bus import bus
+		from app.services.router import route_message_stream
+		from app.services.crews import resolve_active_crews
+
+		lang = await get_user_lang()
+		t = get_translations(lang)
+
+		merged_history = await bus.ingest("telegram", caption)
+
+		routed_crews = await resolve_active_crews(merged_history, caption, lang=lang)
+		if routed_crews:
+			try:
+				await status_msg.delete()
+			except Exception:
+				pass
+			await _process_crew_stream(update, context, routed_crews, caption, t, already_ingested=True)
+			return
+
+		token_stream, result_fut = await route_message_stream(
+			user_text=caption,
+			history=merged_history,
+			channel="telegram",
+			lang=lang,
+			save_history=True,
+		)
+		async for _ in token_stream:
+			pass
+		result = await result_fut
+
+		if not result.reply.strip():
+			try:
+				await status_msg.delete()
+			except Exception:
+				pass
+			return
+
+		if result.routed_to_crew:
+			try:
+				await status_msg.delete()
+			except Exception:
+				pass
+			await _process_crew_stream(update, context, [result.routed_to_crew], caption, t, already_ingested=True)
+			return
+
+		clean_reply = strip_llm_time_header(result.reply)
+		html_reply = _md_to_html(clean_reply)
+		display_reply = f"🖼️ <b>Seen:</b>\n<i>{_html.escape(caption)}</i>\n\n<b>{format_time()}</b>\n\n{html_reply}"
+		footer = await _get_stats_footer()
+		await safe_edit(status_msg, f"<blockquote>{display_reply}{footer}</blockquote>", parse_mode="HTML", reply_markup=get_nav_markup(t))
+
+	except Exception as e:
+		logger.error("handle_photo failed: %s", e)
+		await safe_reply(update, "Image processing failed.")
 
 async def handle_crew_abort(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	"""Handles Abort button press during crew execution."""

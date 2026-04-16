@@ -29,7 +29,7 @@ personal/
 src/backend/app/VERSION
 node_modules/
 dist/
-.venv/
+.venv*/
 venv/
 env/
 ENV/
