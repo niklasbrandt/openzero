@@ -50,7 +50,8 @@ class Settings(BaseSettings):
     LLM_CLOUD_API_KEY: str = ""
     LLM_MODEL_CLOUD: str = ""
 
-    # Cloud routing: 2s first-token race — if local responds, use it; else escalate to cloud.
+    # Cloud routing: when True and cloud is configured, use cloud as the primary model for
+    # all interactive requests; fall back to local only if cloud is unavailable.
     # Set False to disable cloud for all interactive chat (air-gapped / cost-zero mode).
     SMART_CLOUD_ROUTING: bool = True
 
