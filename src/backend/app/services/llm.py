@@ -570,6 +570,7 @@ CORE RESPONSE RULE:
 
 ACTIVE LISTENING — CRITICAL:
 - **READ the conversation history CAREFULLY** before responding. The user's earlier messages are FACTS.
+- **FOLLOW-UP MESSAGES**: When the user sends a short or ambiguous message (e.g. "which ones?", "and the fish?", "which fishes"), ALWAYS resolve its meaning from the RECENT CONVERSATION section FIRST. Never ask for clarification when the topic is clear from the prior exchange. Treat the ongoing conversation as continuous — carry the context forward.
 - When the user states they DID something ("I congratulated X", "I finished Y"), treat it as DONE. NEVER ask if they did it.
 - NEVER contradict or question what the user already told you.
 - When the user makes a simple statement or shares something, respond naturally and briefly. Do NOT over-interpret it or turn it into a question.
@@ -1819,11 +1820,11 @@ async def chat_stream_with_context(
 	# Sanitise user input before anything else
 	user_message = sanitise_input(user_message)
 
-	# Filter history: only allow user/assistant roles
+	# Filter history: only allow user/assistant/z roles (DB stores Z's role as "z")
 	if history:
 		history = [
 			h for h in history
-			if h.get("role") in ("user", "assistant")
+			if h.get("role") in ("user", "assistant", "z")
 		]
 
 	start_time = time.time()

@@ -129,7 +129,7 @@ class MessageBus:
 		from app.models.db import get_global_history, save_global_message
 		if save:
 			await save_global_message(channel, "user", user_text)
-		return await get_global_history(limit=10)
+		return await get_global_history(limit=20)
 
 	# ─── Outbound ─────────────────────────────────────────────────────────
 
