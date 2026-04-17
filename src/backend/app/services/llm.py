@@ -965,10 +965,10 @@ def select_tier(user_message: str, tier_override: Optional[str] = None) -> tuple
 	if tier_override:
 		tier = tier_override
 	else:
-		# Default: local tier handles all interactive requests.
-		# Cloud tier is reached via explicit tier='cloud' override (briefings, crews)
-		# or via smart routing in chat_with_context() when cloud is configured.
-		tier = "local"
+		# Prefer cloud for all interactive requests when configured and enabled.
+		# SMART_CLOUD_ROUTING=False forces local-only (air-gapped / cost-zero mode).
+		# Local is used as fallback when cloud is not configured, disabled, or unavailable.
+		tier = "cloud" if (settings.cloud_configured and settings.SMART_CLOUD_ROUTING) else "local"
 
 	# Normalise legacy tier names
 	if tier in ("standard", "deep"):
@@ -1982,30 +1982,32 @@ async def chat_stream_with_context(
 		if len(user_message.strip()) < 30:
 			system_with_context += "\n\nRespond in 1-2 sentences. Ensure logical consistency (e.g. do not say 'Today is tomorrow')."
 
-		# Smart cloud routing for streaming path
-		if settings.SMART_CLOUD_ROUTING and settings.cloud_configured and tier_name != "cloud":
+		# Cloud-primary with local fallback: use cloud when it is the selected tier.
+		# Falls back to local transparently if cloud fails or is unreachable.
+		if tier_name == "cloud" and settings.cloud_configured:
 			try:
-				stream = chat_stream(
+				_cloud_stream = chat_stream(
 					user_message,
 					system_override=system_with_context,
-					tier="local",
+					tier="cloud",
 					sanitize=sanitize,
 					user_name=user_name,
 					user_profile=user_profile,
 				)
-				first_chunk = await asyncio.wait_for(stream.__anext__(), timeout=2.0)
+				first_chunk = await asyncio.wait_for(_cloud_stream.__anext__(), timeout=10.0)
 				cleaned = _strip_emoji(first_chunk)
 				if cleaned:
 					yield cleaned
-				async for chunk in stream:
+				async for chunk in _cloud_stream:
 					cleaned = _strip_emoji(chunk)
 					if cleaned:
 						yield cleaned
 				return
-			except Exception as stream_err:
-				logger.warning("Local stream unavailable (%s) -- falling back to cloud", type(stream_err).__name__)
-				last_model_used.set(f"Cloud: {settings.LLM_MODEL_CLOUD}")
-				tier_name = "cloud"
+			except Exception as _cloud_err:
+				logger.warning("Cloud stream unavailable (%s) -- falling back to local", type(_cloud_err).__name__)
+				from app.services.llm_peers import get_active_local_endpoint
+				last_model_used.set(f"Local: {get_active_local_endpoint()[1]}")
+				tier_name = "local"
 
 		async for chunk in chat_stream(
 			user_message,
