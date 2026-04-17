@@ -215,6 +215,43 @@ _LANG_NAMES: dict[str, str] = {
 # Populated lazily on first resolve; lives for the lifetime of the process.
 _kw_translation_cache: dict[tuple, list] = {}
 
+# ---------------------------------------------------------------------------
+# Crew Session Continuity
+# ---------------------------------------------------------------------------
+# Tracks the last crew that handled a message per channel, enabling follow-up
+# messages to route back to the same crew within a time window even if they
+# don't contain crew-specific keywords.
+# Key: channel string (e.g. "telegram", "dashboard").
+# Value: (crew_id, unix_timestamp).
+_crew_sessions: dict[str, tuple[str, float]] = {}
+
+_CREW_SESSION_MAX_AGE_S: float = 600  # 10 minutes
+
+
+def record_crew_session(channel: str, crew_id: str) -> None:
+	"""Store the active crew for a channel after a successful crew execution."""
+	import time
+	_crew_sessions[channel] = (crew_id, time.time())
+	logger.debug("Crew session recorded: channel=%s crew=%s", channel, crew_id)
+
+
+def get_active_crew_session(channel: str) -> Optional[str]:
+	"""Return the crew_id if the last crew execution on this channel was
+	within the session window, otherwise None."""
+	import time
+	entry = _crew_sessions.get(channel)
+	if not entry:
+		return None
+	crew_id, ts = entry
+	if time.time() - ts > _CREW_SESSION_MAX_AGE_S:
+		return None
+	return crew_id
+
+
+def clear_crew_session(channel: str) -> None:
+	"""Explicitly end a crew session (e.g. when a different crew is triggered)."""
+	_crew_sessions.pop(channel, None)
+
 
 async def _translate_keywords_to_lang(crew_id: str, lang: str, keywords: list) -> list:
 	"""Translate English crew trigger-keywords to `lang` via the fast local LLM.
@@ -452,6 +489,20 @@ async def resolve_active_crew(history: list, user_text: str, lang: str = "en") -
 	for crew, effective in zip(active_crews, kw_lists):
 		if effective and _keyword_matches(effective, lower_text):
 			return crew.id
+
+	# 1.5. Session continuity: if no keyword matched but the user interacted
+	# with a crew recently (within 10 min), route the follow-up back to that
+	# crew. This covers natural follow-ups like "but how to make them money?"
+	# that lack specific crew keywords.
+	# Single-user system: check all channels for a recent session.
+	session_crew: Optional[str] = None
+	for ch in ("telegram", "dashboard", "whatsapp"):
+		session_crew = get_active_crew_session(ch)
+		if session_crew:
+			break
+	if session_crew and crew_registry.get(session_crew):
+		logger.info("Crew session continuity: routing to '%s' (no keyword match, within time window)", session_crew)
+		return session_crew
 
 	# 2. Attribution-based continuation: most recent Z reply attributed to a crew
 	# + referential language in current message → continue with that crew.
