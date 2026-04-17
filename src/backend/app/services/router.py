@@ -384,6 +384,9 @@ async def route_message_stream(
 				executed_cmds=cmds, pending_actions=pending,
 				routed_to_crew=crew_id,
 			))
+			# Record crew session for follow-up continuity
+			from app.services.crews import record_crew_session
+			record_crew_session(channel, crew_id)
 			return
 
 		# ── 2. Z responds ────────────────────────────────────────────────────
@@ -436,6 +439,9 @@ async def route_message_stream(
 				executed_cmds=r_cmds, pending_actions=r_pending,
 				routed_to_crew=crew_id,
 			))
+			# Record crew session for follow-up continuity
+			from app.services.crews import record_crew_session
+			record_crew_session(channel, crew_id)
 			return
 
 		# ── 4. Commit Z's reply ───────────────────────────────────────────────

@@ -453,6 +453,78 @@ async def safe_edit(message, text: str, parse_mode="HTML", reply_markup=None):
 			await message.edit_text(text)
 		except Exception as _pe:
 			logger.debug("safe_edit final fallback failed: %s", _pe)
+
+
+async def _send_chunked_reply(thinking_msg, html_body: str, reply_markup=None):
+	"""Deliver a response via the thinking message.
+
+	If the content fits within Telegram's 4096-char limit, the thinking
+	message is edited in-place.  Otherwise the thinking message is deleted
+	and the response is sent as a sequence of new messages, split at
+	paragraph boundaries to preserve coherence.
+	"""
+	MAX_CHARS = 3800  # Headroom for <blockquote> wrapper tags
+
+	if len(html_body) <= MAX_CHARS:
+		await safe_edit(thinking_msg, f"<blockquote>{html_body}</blockquote>",
+			parse_mode="HTML", reply_markup=reply_markup)
+		return
+
+	# Content too long for a single message -- delete the thinking placeholder
+	# and send as multiple messages.
+	try:
+		await thinking_msg.delete()
+	except Exception as _e:
+		logger.debug("Telegram delete (chunked reply) ignored: %s", _e)
+
+	bot = thinking_msg.get_bot()
+	chat_id = thinking_msg.chat_id
+
+	# Split on paragraph boundaries
+	paragraphs = html_body.split("\n\n")
+	chunks: list[str] = []
+	current = ""
+	for para in paragraphs:
+		segment = (para + "\n\n") if current else para
+		if len(current) + len(segment) > MAX_CHARS and current:
+			chunks.append(current.rstrip())
+			current = para + "\n\n"
+		else:
+			current += segment
+	if current.strip():
+		chunks.append(current.rstrip())
+
+	# Handle oversized single paragraphs by splitting at sentence boundaries
+	final_chunks: list[str] = []
+	for chunk in chunks:
+		if len(chunk) <= MAX_CHARS:
+			final_chunks.append(chunk)
+		else:
+			sentences = re.split(r'(?<=[.!?])\s+', chunk)
+			sub = ""
+			for s in sentences:
+				if len(sub) + len(s) + 1 > MAX_CHARS and sub:
+					final_chunks.append(sub.rstrip())
+					sub = s
+				else:
+					sub = f"{sub} {s}" if sub else s
+			if sub.strip():
+				final_chunks.append(sub.rstrip())
+
+	if not final_chunks:
+		return
+
+	for i, chunk in enumerate(final_chunks):
+		is_last = (i == len(final_chunks) - 1)
+		try:
+			await bot.send_message(
+				chat_id=chat_id,
+				text=f"<blockquote>{chunk}</blockquote>",
+				parse_mode="HTML",
+				reply_markup=reply_markup if is_last else None,
+			)
+		except Exception as e:
+			logger.warning("Chunked reply chunk %d failed: %s", i, e)
 @owner_only
 async def cmd_board(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	"""Show the exact Planka project → board → lists that Z targets, with a clickable link."""
@@ -1095,9 +1167,9 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 
 	clean_reply = strip_llm_time_header(result.reply)
 	html_reply = _md_to_html(clean_reply)
-	display_reply = f"<b>{format_time()}</b>\n\n{html_reply}"
 	footer = await _get_stats_footer()
-	await safe_edit(thinking_msg, f"<blockquote>{display_reply}{footer}</blockquote>", parse_mode="HTML", reply_markup=get_nav_markup(t))
+	display_reply = f"<b>{format_time()}</b>\n\n{html_reply}{footer}"
+	await _send_chunked_reply(thinking_msg, display_reply, reply_markup=get_nav_markup(t))
 
 @owner_only
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1373,7 +1445,11 @@ async def _process_crew_stream(update: Update, context: ContextTypes.DEFAULT_TYP
 
 		# Attribution already included in last section via commit — no extra append needed.
 		display_final = f"<b>{format_time()}</b>\n\n{_md_to_html(clean_reply)}"
-		await safe_edit(thinking_msg, f"<blockquote>{display_final}</blockquote>", parse_mode="HTML", reply_markup=get_nav_markup(t))
+		await _send_chunked_reply(thinking_msg, display_final, reply_markup=get_nav_markup(t))
+
+		# Record crew session so follow-up messages route back to this crew
+		from app.services.crews import record_crew_session
+		record_crew_session("telegram", primary_id)
 
 	except Exception as e:
 		logger.error("Telegram Crew Stream Failed: %s", e)

@@ -188,6 +188,16 @@ class NativeCrewEngine:
 					continue  # skip irrelevant older history for keyword-scoped crews
 			history_messages.append({"role": "user", "content": content})
 
+		# Include the last assistant response so the crew knows what was already
+		# said and can avoid repeating itself on follow-up questions.
+		assistant_msgs = [m for m in history if m["role"] == "assistant"]
+		last_z_summary = ""
+		if assistant_msgs:
+			last_raw = assistant_msgs[-1].get("content", "") or ""
+			last_z_summary = last_raw[:600]
+			if len(last_raw) > 600:
+				last_z_summary += "..."
+
 		# Keep history small for local model (CTX_SIZE=4096 — prompt alone can be 2k+ tokens)
 		max_history = 5 if not settings.cloud_configured else 20
 
@@ -201,6 +211,15 @@ class NativeCrewEngine:
 				"content": "PRIOR USER MESSAGES (conversation history — use only as reference to find content the user shared, do not echo or repeat them):"
 			})
 			messages.extend(history_messages[-max_history:])
+		if last_z_summary:
+			messages.append({
+				"role": "system",
+				"content": (
+					"YOUR LAST RESPONSE (already delivered to the user — do NOT repeat, "
+					"rephrase, or summarise this. If the user is following up, answer "
+					"ONLY the new question concisely):\n" + last_z_summary
+				)
+			})
 		messages.append({"role": "user", "content": user_input})
 
 		# Local model: CTX_SIZE=4096, so cap max_tokens to leave room for the prompt
