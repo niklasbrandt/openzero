@@ -189,6 +189,8 @@ async def _handle_inbound_image(sender: str, media_id: str, user_hint: str) -> N
 			model=last_model_used.get(),
 			user_text=caption,
 		)
+		from app.services.crews import record_crew_session
+		record_crew_session("whatsapp", routed_crews[0])
 		await send_whatsapp_message(reply)
 		return
 
