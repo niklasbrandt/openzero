@@ -532,6 +532,29 @@ Now you can reach your dashboard at `http://open.zero/dashboard`.
 
 ---
 
+## Self-Audit (Optional)
+
+The self-audit system periodically cross-checks Z's claimed actions against Planka's actual state, scans for factual contradictions against your personal context, and flags duplicate or misplaced Planka items. Results are delivered via Telegram/Dashboard as advisory notifications — nothing is auto-modified.
+
+No required configuration. Two optional env vars control its behavior:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `AUDIT_MY_PROJECTS_PARENT` | `"My Projects"` | Name of the Planka project that should contain user project boards. The audit flags any user-initiated project that was created as a top-level Planka project instead of as a board under this parent. Set to `""` to disable the placement check. |
+| `AUDIT_INTERVAL_HOURS` | `6` | Hours between full audit runs. |
+
+Add Planka to make the placement check meaningful:
+
+```env
+# .env (optional overrides — defaults work for most setups)
+AUDIT_MY_PROJECTS_PARENT=My Projects
+AUDIT_INTERVAL_HOURS=6
+```
+
+See `docs/artifacts/self_audit.md` for a full description of the audit design.
+
+---
+
 ## 🎨 Phase 9: Customizing the Interface (UI & Theming)
 
 The openZero dashboard features a high-performance mission-control interface. You can customize its appearance and behaviors directly from the **User Card** in the top-right corner.

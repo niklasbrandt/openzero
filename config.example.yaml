@@ -71,3 +71,17 @@ intelligence:
   # Whether to attempt cloud routing for interactive messages
   # Set to false for fully air-gapped / offline deployments
   smart_cloud_routing: true
+
+# ------------------------------------------------------------------------------
+# 5. Self-Audit
+# ------------------------------------------------------------------------------
+self_audit:
+  # How many hours between full self-audit runs.
+  # Each run checks action fulfillment, possible contradictions, and Planka redundancy.
+  interval_hours: 6
+
+  # The Planka project whose boards represent the user's personal projects.
+  # When set, the audit flags any user project that was created as a top-level
+  # Planka project instead of as a board under this parent.
+  # Set to "" to disable the placement check.
+  my_projects_parent: "My Projects"
