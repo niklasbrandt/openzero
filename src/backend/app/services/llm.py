@@ -62,6 +62,13 @@ _CONTROL_TOKEN_RE = re.compile(
 	re.IGNORECASE,
 )
 
+# Regex for PII anonymization tokens created by sanitize_prompt (e.g. [ORG_1], [PERSON_2]).
+# These tokens are EPHEMERAL — only valid for the request that created them.
+# If they end up in stored history or Qdrant memories they cannot be rehydrated
+# in subsequent requests, causing them to leak raw into LLM output.
+# Strip these tokens at every injection point before the LLM sees them.
+_ANON_TOKEN_RE = re.compile(r'\[[A-Z]+_\d+\]')
+
 # Max input length (characters) accepted from any user surface.
 _MAX_INPUT_LENGTH = 8000
 
@@ -850,15 +857,24 @@ async def build_system_prompt(user_name: str, user_profile: dict, include_agent_
 		user_name="[SUBJECT ZERO]"
 	)
 
-	# Build the dynamic <context> block
+	# Bug-1 guard: if get_agent_personality() returned empty due to a DB error,
+	# fall back to the minimal Z persona so the archetype is never absent.
+	if not personality_directive:
+		personality_directive = "You are Z. Talk like a real person. Be direct, natural, and honest. No filler."
+
+	# Build the dynamic <context> block.
+	# ORDERING: personality_directive comes FIRST so small local models give it full
+	# attention regardless of conversation history length.  Placing it at the top of
+	# the dynamic section (after the static SYSTEM_PROMPT_CHAT, preserving KV-cache)
+	# ensures the archetype is applied consistently to both initial and follow-up turns.
 	dynamic_context = (
 		" <context>\n"
+		f"{personality_directive}\n"
 		f"CURRENT_TIME: {simplified_time}\n"
 		f"USER_NAME: {user_name}\n"
 		f"{user_id_context}\n"
 		f"{lang_directive}\n"
 		f"{_operator_board_rule}\n"
-		f"{personality_directive}\n"
 		f"{personal_block}\n"
 		f"{agent_skills_block}\n"
 		" </context>"
@@ -1557,6 +1573,10 @@ async def chat_with_context(
 				# Strip any action tags that may have been poisoned into memory
 				# (Finding 3 -- action tags must only come from assistant responses)
 				result = re.sub(r'\[ACTION:[^\]]*\]', '', result, flags=re.IGNORECASE)
+				# Bug-2 fix: strip ephemeral anonymization tokens that were stored
+				# without full rehydration — they cannot be reversed in a new request
+				# and would be echoed verbatim by the model.
+				result = _ANON_TOKEN_RE.sub('', result)
 				result = result.strip()
 				if result:
 					_history_note = (
@@ -1942,6 +1962,10 @@ async def chat_stream_with_context(
 					return ""
 				# Strip any action tags that may have been poisoned into memory
 				result = re.sub(r'\[ACTION:[^\]]*\]', '', result, flags=re.IGNORECASE)
+				# Bug-2 fix: strip ephemeral anonymization tokens that were stored
+				# without full rehydration — they cannot be reversed in a new request
+				# and would be echoed verbatim by the model.
+				result = _ANON_TOKEN_RE.sub('', result)
 				result = result.strip()
 				if result:
 					_history_note = (
@@ -2040,6 +2064,11 @@ def _build_history_text(history: Optional[list] = None) -> str:
 		raw = m.get('content', '') or ""
 		# Keep user messages in full; truncate Z's output to save prompt tokens
 		content = raw if role == "User" else raw[:500]
+		# Bug-2 fix: strip ephemeral anonymization tokens ([ORG_1], [PERSON_2], etc.)
+		# from ALL history messages.  These tokens are only valid within the request
+		# that created them; in subsequent requests the model echoes them raw and
+		# rehydrate_response has no mapping to reverse them.
+		content = _ANON_TOKEN_RE.sub('', content)
 		history_lines.append(f"{role}: {content}")
 	return "RECENT CONVERSATION:\n" + "\n".join(history_lines)
 

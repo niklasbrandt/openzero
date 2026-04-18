@@ -1,5 +1,6 @@
 import logging
 import json
+import re
 import httpx
 from typing import Optional
 from app.config import settings
@@ -11,6 +12,11 @@ from datetime import datetime, timezone
 from app.services.llm import ACTION_TAG_DOCS, get_agent_personality
 from app.services.crew_memory import get_crew_memory_context
 from app.models.db import get_global_history
+
+# Bug-2 guard: ephemeral PII tokens ([ORG_1], [PERSON_2], ...) from previous
+# cloud-sanitized requests must not propagate into crew context where they
+# would be echoed without any rehydration mapping available.
+_ANON_TOKEN_RE = re.compile(r'\[[A-Z]+_\d+\]')
 
 logger = logging.getLogger(__name__)
 
@@ -197,6 +203,9 @@ class NativeCrewEngine:
 			last_z_summary = last_raw[:600]
 			if len(last_raw) > 600:
 				last_z_summary += "..."
+			# Bug-2 fix: strip ephemeral anonymization tokens so the crew never
+			# echoes unrehydratable PII placeholders back to the user.
+			last_z_summary = _ANON_TOKEN_RE.sub('', last_z_summary)
 
 		# Keep history small for local model (CTX_SIZE=4096 — prompt alone can be 2k+ tokens)
 		max_history = 5 if not settings.cloud_configured else 20
