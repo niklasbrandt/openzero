@@ -224,15 +224,17 @@ async def store_memory(text: str, metadata: Optional[dict] = None):
 
 
 async def semantic_search(query: str, top_k: int = 5) -> str:
-	"""Search memory and return formatted results."""
+	"""Search memory and return formatted results above the configured score threshold."""
 	client = get_qdrant()
 	query_vector = await encode_async(query)
 	try:
-		# Use modern query_points API which is more robust
+		# Use modern query_points API which is more robust.
+		# score_threshold filters out low-relevance results before they reach context injection.
 		response = client.query_points(
 			collection_name=COLLECTION_NAME,
 			query=query_vector,
 			limit=top_k,
+			score_threshold=settings.MEMORY_MIN_SCORE,
 		)
 		points = response.points
 	except Exception as e:
