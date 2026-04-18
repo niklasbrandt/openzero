@@ -78,9 +78,41 @@ Channel adapters own only the channel-specific parts:
 
 import asyncio
 import logging
+from datetime import datetime, timedelta
 from typing import Any, Awaitable, Callable
+from uuid import uuid4
 
 logger = logging.getLogger(__name__)
+
+
+def _schedule_reactive_audit() -> None:
+	"""Schedule a one-shot self-audit after AUDIT_REACTIVE_DELAY_SECONDS.
+
+	Debounced: if a reactive job is already pending, skip scheduling a new one
+	and let the existing job handle the batch of recent [AUDIT:...] claims.
+	"""
+	try:
+		from app.common.scheduler_instance import scheduler
+		from app.config import settings
+		from app.tasks.self_audit import run_self_audit
+		from apscheduler.triggers.date import DateTrigger
+
+		pending = [j for j in scheduler.get_jobs() if j.id.startswith("self_audit_reactive_")]
+		if pending:
+			logger.debug("Reactive audit debounced — job %s already pending", pending[0].id)
+			return
+
+		job_id = f"self_audit_reactive_{uuid4().hex[:8]}"
+		run_date = datetime.utcnow() + timedelta(seconds=settings.AUDIT_REACTIVE_DELAY_SECONDS)
+		scheduler.add_job(
+			run_self_audit,
+			DateTrigger(run_date=run_date),
+			id=job_id,
+			replace_existing=False,
+		)
+		logger.info("Reactive audit scheduled: job=%s delay=%ds", job_id, settings.AUDIT_REACTIVE_DELAY_SECONDS)
+	except Exception as exc:
+		logger.warning("Failed to schedule reactive audit: %s", exc)
 
 _PushFn = Callable[[str], Awaitable[None]]
 
@@ -176,6 +208,9 @@ class MessageBus:
 
 		if save:
 			await save_global_message(channel, "z", clean_reply, model=model)
+			# Reactive audit: if Z claimed a structural action, verify it shortly after
+			if "[AUDIT:" in raw_reply:
+				_schedule_reactive_audit()
 
 		if user_text:
 			from app.services.learning import extract_and_store_facts
