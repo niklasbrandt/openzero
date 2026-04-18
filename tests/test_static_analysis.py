@@ -44,7 +44,8 @@ REPO_ROOT = pathlib.Path(__file__).parent.parent
 
 PY_SOURCES: List[pathlib.Path] = sorted(
 	p for p in REPO_ROOT.glob("src/backend/**/*.py")
-	if ".venv" not in p.parts and "__pycache__" not in p.parts
+	if not any(part.startswith(".venv") for part in p.parts)
+	and "__pycache__" not in p.parts
 )
 
 TS_SOURCES: List[pathlib.Path] = sorted(
