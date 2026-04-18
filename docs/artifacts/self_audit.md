@@ -43,6 +43,19 @@ possible; the user is expected to review and dismiss irrelevant flags.
 - Lists whose names contain a crew id keyword but reside on a board other than the
   expected crew board are flagged as potentially misplaced (advisory only).
 
+### 4. Missing Descriptions (advisory)
+
+Cards on task boards are flagged when they are likely to need a description but lack one.
+A card is flagged when **all** of the following apply:
+
+- The board is a task board — board name does not contain any of the list-board keywords:
+  `nutrition`, `shopping`, `grocery`, `einkauf`, `lebensmittel`, `rezept`, `recipe`.
+- The card has no description.
+- The card has no checklist tasks (a checklist is treated as self-documenting).
+- The card name is vague — fewer than 4 words (e.g. "Fix thing", "Review", "New task").
+
+This check is advisory only. No cards are modified automatically.
+
 Crew-to-board mapping is derived from `crews.yaml` at runtime (crew id/name matched
 against Planka board names).
 
