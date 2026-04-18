@@ -85,3 +85,7 @@ self_audit:
   # Planka project instead of as a board under this parent.
   # Set to "" to disable the placement check.
   my_projects_parent: "My Projects"
+
+  # How many hours back to scan Z's stored messages when running an audit (periodic or on-demand).
+  # Corresponds to env var AUDIT_LOOKBACK_HOURS. Default 48 covers two full days of activity.
+  lookback_hours: 48
