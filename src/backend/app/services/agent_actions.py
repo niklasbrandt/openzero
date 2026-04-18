@@ -265,13 +265,52 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 
 		async def _exec_project(name=name, desc=desc):
 			try:
-				result = await planka_create_project(name=name, description=desc)
-				if result:
-					proj_id = result.get("id") if isinstance(result, dict) else None
-					if proj_id:
-						newly_created_projects[name.lower()] = proj_id
-					return f"Project '{name}' created."
-				return f"\u26a0 Failed to create project '{name}'. Check Planka connection."
+				from app.config import settings as _cfg
+				from app.services.translations import get_all_values as _gav
+				from app.services.planka_common import get_planka_auth_token as _gat
+				import httpx as _httpx
+				# System projects (Crews in every language) must stay as root-level Planka
+				# projects because crew boards are nested directly inside them.
+				_all_crew_names = _gav("crews_project_name")
+				_parent_name = _cfg.AUDIT_MY_PROJECTS_PARENT
+				_is_system = (
+					name.lower() in {n.lower() for n in _all_crew_names}
+					or name.lower() == _parent_name.lower()
+				)
+				if _is_system:
+					result = await planka_create_project(name=name, description=desc)
+					if result:
+						proj_id = result.get("id") if isinstance(result, dict) else None
+						if proj_id:
+							newly_created_projects[name.lower()] = proj_id
+						return f"Project '{name}' created."
+					return f"\u26a0 Failed to create project '{name}'. Check Planka connection."
+				# User-initiated project: create a board inside the parent project
+				# (default "My Projects") rather than a new root-level project.
+				_tok = await _gat()
+				async with _httpx.AsyncClient(
+					base_url=_cfg.PLANKA_BASE_URL, timeout=15.0,
+					headers={"Authorization": f"Bearer {_tok}"},
+				) as _client:
+					_pr = await _client.get("/api/projects")
+					_pr.raise_for_status()
+					_parent = next(
+						(p for p in _pr.json().get("items", []) if p["name"].lower() == _parent_name.lower()),
+						None,
+					)
+					if not _parent:
+						# Create the parent project on first use
+						_cp = await _client.post("/api/projects", json={"name": _parent_name, "type": "private"})
+						if _cp.status_code >= 400:
+							_cp = await _client.post("/api/projects", json={"name": _parent_name, "isPublic": False})
+						_cp.raise_for_status()
+						_parent = _cp.json().get("item") or _cp.json()
+					_parent_id = _parent["id"]
+					_board = await planka_create_board(project_id=_parent_id, name=name)
+					if _board and _board.get("id"):
+						newly_created_boards[name.lower()] = _board["id"]
+						return f"Project '{name}' created as a board in '{_parent_name}'."
+					return f"\u26a0 Failed to create project '{name}' in '{_parent_name}'. Check Planka connection."
 			except Exception as _e:
 				logger.error("CREATE_PROJECT failed: %s", _e)
 				return f"\u26a0 Failed to create project '{name}'. System error."
@@ -289,6 +328,11 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 
 		async def _exec_board(proj_name=proj_name, board_name=board_name):
 			try:
+				# If CREATE_PROJECT was redirected to a board inside "My Projects",
+				# there is no Planka project with proj_name to nest a second board into.
+				# The project-as-board is already in newly_created_boards — skip.
+				if proj_name.lower() in newly_created_boards:
+					return f"Board '{proj_name}' already created in 'My Projects' — skipping nested board '{board_name}'."
 				from app.services.planka import get_planka_auth_token
 				import httpx
 				from app.config import settings

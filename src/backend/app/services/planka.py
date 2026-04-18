@@ -413,16 +413,6 @@ async def create_board(project_id: str, name: str) -> dict:
 			logger.debug("create_board failed for project %s: %s", _sanitize_for_log(project_id), _sanitize_for_log(e))
 			return None
 
-		# Also create a default 'Inbox' list
-		try:
-			await client.post(f"/api/boards/{board['id']}/lists", json={
-				"name": "Inbox",
-				"type": "active",
-				"position": 65535
-			})
-		except Exception as e:
-			logger.debug("Failed to create default Inbox list: %s", e)
-
 		return board
 
 async def move_card(card_title_fragment: str, destination_list: str, board_name: str = "") -> bool:
