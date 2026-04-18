@@ -121,6 +121,14 @@ class Settings(BaseSettings):
     # Briefing
     BRIEFING_CALIBRATION: bool = True
 
+    # Self-audit
+    # Name of the Planka project that serves as the container for user-initiated projects.
+    # When set, the audit checks that newly created projects became boards under this parent
+    # rather than top-level Planka projects.
+    AUDIT_MY_PROJECTS_PARENT: str = "My Projects"
+    # How many hours between full self-audit runs (action fulfillment + hallucination + redundancy).
+    AUDIT_INTERVAL_HOURS: int = 6
+
 
     model_config = SettingsConfigDict(
         env_file=os.path.join(os.path.dirname(__file__), "../../../.env"),
