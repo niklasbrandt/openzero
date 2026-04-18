@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 # Constants
 # ---------------------------------------------------------------------------
 
-_AUDIT_LOOKBACK_DAYS: int = 2  # how far back to scan Z's messages for tags
+# _AUDIT_LOOKBACK_DAYS is intentionally removed -- use settings.AUDIT_LOOKBACK_HOURS instead.
 
 # [AUDIT:action_type:subject] or [AUDIT:action_type:subject|key=value|...]
 # Linear pattern — no nested quantifiers — avoids catastrophic backtracking.
@@ -85,15 +85,17 @@ def _parse_tag_attrs(attrs_str: str) -> dict[str, str]:
 # Claim extraction
 # ---------------------------------------------------------------------------
 
-async def extract_audit_claims(days: int = _AUDIT_LOOKBACK_DAYS) -> list[dict[str, Any]]:
-	"""Return all [AUDIT:...] tags found in Z's replies in the last N days.
+async def extract_audit_claims(hours: int | None = None) -> list[dict[str, Any]]:
+	"""Return all [AUDIT:...] tags found in Z's replies in the last N hours.
 
+	Defaults to settings.AUDIT_LOOKBACK_HOURS (48 h) when no override is supplied.
 	Returns a list of dicts with keys: action, subject, attrs, at, message_id.
 	"""
 	from app.models.db import AsyncSessionLocal, GlobalMessage
 	from sqlalchemy import select
 
-	cutoff = datetime.utcnow() - timedelta(days=days)
+	lookback_hours = hours if hours is not None else settings.AUDIT_LOOKBACK_HOURS
+	cutoff = datetime.utcnow() - timedelta(hours=lookback_hours)
 	async with AsyncSessionLocal() as session:
 		result = await session.execute(
 			select(GlobalMessage)
@@ -295,7 +297,7 @@ async def run_hallucination_check() -> list[str]:
 	from app.services.personal_context import get_personal_context_for_prompt
 	from sqlalchemy import select
 
-	cutoff = datetime.utcnow() - timedelta(days=_AUDIT_LOOKBACK_DAYS)
+	cutoff = datetime.utcnow() - timedelta(hours=settings.AUDIT_LOOKBACK_HOURS)
 	async with AsyncSessionLocal() as session:
 		result = await session.execute(
 			select(GlobalMessage)
