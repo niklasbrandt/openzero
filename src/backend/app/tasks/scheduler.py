@@ -271,6 +271,17 @@ async def start_scheduler():
 		replace_existing=True,
 	)
 
+	# Self-Verification & Action Fulfillment Audit — configurable interval (default 6 h)
+	# Checks [AUDIT:...] claims vs Planka state, scans for hallucinations, and
+	# flags duplicate or misplaced Planka items. Advisory only — nothing is changed.
+	from app.tasks.self_audit import run_self_audit
+	scheduler.add_job(
+		run_self_audit,
+		IntervalTrigger(hours=settings.AUDIT_INTERVAL_HOURS),
+		id="self_audit",
+		replace_existing=True,
+	)
+
 	# 2. Load User-Defined Persistent Custom Tasks
 	await load_custom_tasks()
 
