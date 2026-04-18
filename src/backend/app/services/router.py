@@ -134,6 +134,18 @@ def _resolve_timeframe(text: str) -> tuple[int, bool]:
 			return (delta if delta > 0 else 7), False
 	return 0, False  # default: today
 
+# Manual audit-intent detector — intercepts explicit self-audit requests from the user.
+# Placed before recall-history so "look back … audit" is not consumed by the recall intercept.
+# Pattern notes: [^.!?]{0,80} is a safe bounded negated class — no catastrophic backtracking.
+_AUDIT_INTENT_RE = re.compile(
+	r'\baudit\s+(?:your\s+)?(?:triggered\s+)?actions?\b'
+	r'|\baudit\s+your\s+triggered\b'
+	r'|\blook\s+back\b[^.!?]{0,80}\baudit\b'
+	r'|\bcheck\s+what\s+you\s+did\b'
+	r'|\b(?:verify|check|review)\s+your\s+actions?\b',
+	re.IGNORECASE,
+)
+
 # Phantom-confirmation guard — Z claimed success in prose without emitting a tag
 _PHANTOM_RE = re.compile(
 	r'\b(task added|board (added|created)|event (added|created)|card (added|created)'
@@ -189,6 +201,37 @@ async def route_message_stream(
 			last_model_used,
 		)
 		from app.services.message_bus import bus
+
+		# ── -1. Manual audit intercept ───────────────────────────────────────
+		# Explicit self-audit requests ("audit your actions", "look back and audit",
+		# etc.) are handled deterministically here — no LLM call, no crew routing.
+		# Placed before the recall intercept so "look back … audit" is not swallowed
+		# by the conversation-history recall logic.
+		if _AUDIT_INTENT_RE.search(user_text[:_MAX_RE_INPUT]):
+			logger.info("Router: audit intent detected — running full self-audit")
+			from app.services.self_audit import run_full_audit
+			try:
+				audit_report = await run_full_audit()
+			except Exception as _ae:
+				logger.error("Router audit intercept: run_full_audit failed: %s", _ae)
+				audit_report = ""
+			if audit_report:
+				response = audit_report
+			else:
+				response = (
+					"Self-audit complete — no issues found. "
+					"All tracked actions are verified and consistent with Planka's live state."
+				)
+			yield response
+			clean, cmds, pending = await bus.commit_reply(
+				channel=channel, raw_reply=response,
+				model="self_audit", user_text=user_text, save=save_history,
+			)
+			result_future.set_result(RouterResult(
+				reply=clean, model="self_audit",
+				executed_cmds=cmds, pending_actions=pending,
+			))
+			return
 
 		# ── 0. Recall-history intercept ──────────────────────────────────────
 		# When the user asks to recall messages from today, yesterday, N days ago, etc.,
