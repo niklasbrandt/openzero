@@ -128,6 +128,9 @@ class Settings(BaseSettings):
     AUDIT_MY_PROJECTS_PARENT: str = "My Projects"
     # How many hours between full self-audit runs (action fulfillment + hallucination + redundancy).
     AUDIT_INTERVAL_HOURS: int = 6
+    # Seconds to wait after a Z reply containing [AUDIT:...] tags before firing the reactive one-shot audit.
+    # Gives Planka and other downstream systems time to process the action before the verifier checks them.
+    AUDIT_REACTIVE_DELAY_SECONDS: int = 15
 
 
     model_config = SettingsConfigDict(

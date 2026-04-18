@@ -542,6 +542,7 @@ No required configuration. Two optional env vars control its behavior:
 |---|---|---|
 | `AUDIT_MY_PROJECTS_PARENT` | `"My Projects"` | Name of the Planka project that should contain user project boards. The audit flags any user-initiated project that was created as a top-level Planka project instead of as a board under this parent. Set to `""` to disable the placement check. |
 | `AUDIT_INTERVAL_HOURS` | `6` | Hours between full audit runs. |
+| `AUDIT_REACTIVE_DELAY_SECONDS` | `15` | Seconds to wait after a reply containing `[AUDIT:...]` tags before firing a reactive one-shot audit. Gives Planka time to process the action first. |
 
 Add Planka to make the placement check meaningful:
 
@@ -549,6 +550,7 @@ Add Planka to make the placement check meaningful:
 # .env (optional overrides — defaults work for most setups)
 AUDIT_MY_PROJECTS_PARENT=My Projects
 AUDIT_INTERVAL_HOURS=6
+AUDIT_REACTIVE_DELAY_SECONDS=15
 ```
 
 See `docs/artifacts/self_audit.md` for a full description of the audit design.
