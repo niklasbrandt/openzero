@@ -860,6 +860,28 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 		'', clean_reply, flags=re.IGNORECASE
 	).strip()
 
+	# Strip [AUDIT:...] tags from visible reply — these are internal self-verification
+	# markers only. Agent-rules.md states they are never shown to the user.
+	# Linear pattern [^\]] avoids catastrophic backtracking (CWE-1333).
+	clean_reply = re.sub(
+		r'\[AUDIT:[^\]]{0,300}\]?',
+		'', clean_reply, flags=re.IGNORECASE
+	).strip()
+
+	# Strip lines that look like leaked internal instruction fragments.
+	# These patterns match confabulated audit/system prompt echoes produced by
+	# small models when audit context is present in the conversation history.
+	_INTERNAL_INSTRUCTION_RE = re.compile(
+		r'^\s*(?:tags from conversations\b|Verify all actions\b|\[AUDIT:|\[ACTION:)',
+		re.IGNORECASE | re.MULTILINE,
+	)
+	if _INTERNAL_INSTRUCTION_RE.search(clean_reply):
+		lines_out = [
+			l for l in clean_reply.splitlines()
+			if not _INTERNAL_INSTRUCTION_RE.match(l)
+		]
+		clean_reply = '\n'.join(lines_out).strip()
+
 	return clean_reply, executed_cmds, pending_actions
 
 async def execute_crew_programmatically(crew_id: str, input_context: str = "Scheduled execution sequence"):
