@@ -39,6 +39,11 @@ logger = logging.getLogger(__name__)
 
 # _AUDIT_LOOKBACK_DAYS is intentionally removed -- use settings.AUDIT_LOOKBACK_HOURS instead.
 
+# Board name keywords that indicate a list/shopping/nutrition board where description is optional.
+_LIST_BOARD_KEYWORDS = frozenset([
+	"nutrition", "shopping", "grocery", "einkauf", "lebensmittel", "rezept", "recipe",
+])
+
 # [AUDIT:action_type:subject] or [AUDIT:action_type:subject|key=value|...]
 # Linear pattern — no nested quantifiers — avoids catastrophic backtracking.
 _AUDIT_TAG_RE = re.compile(
@@ -187,10 +192,20 @@ async def _get_planka_snapshot() -> dict[str, Any]:
 						"board_id": b_meta["id"],
 						"board_name": b_meta["name"],
 					})
+				# Build per-card task count from included tasks (present when Planka returns them).
+				tasks_in_board = b_data.get("included", {}).get("tasks", [])
+				task_count_by_card: dict[str, int] = defaultdict(int)
+				for t in tasks_in_board:
+					cid = t.get("cardId", "")
+					if cid:
+						task_count_by_card[cid] += 1
+
 				for card in b_data.get("included", {}).get("cards", []):
 					snapshot["cards"].append({
 						"id": card["id"],
 						"name": card.get("name", ""),
+						"description": card.get("description") or "",
+						"has_tasks": task_count_by_card.get(card["id"], 0) > 0,
 						"list_id": card.get("listId", ""),
 						"board_name": b_meta["name"],
 						"created_at": card.get("createdAt", ""),
@@ -198,6 +213,47 @@ async def _get_planka_snapshot() -> dict[str, Any]:
 	except Exception as e:
 		logger.warning("self_audit: _get_planka_snapshot failed: %s", _sanitize_for_log(e))
 	return snapshot
+
+
+# ---------------------------------------------------------------------------
+# Check 4 — Missing Descriptions
+# ---------------------------------------------------------------------------
+
+def _check_missing_descriptions(cards: list[dict[str, Any]]) -> list[str]:
+	"""Return advisory flags for task-board cards with vague names and no description or tasks.
+
+	Heuristic: only flag a card when ALL of the following are true:
+	  - The board is a task board (board name does not match _LIST_BOARD_KEYWORDS).
+	  - The card has no description.
+	  - The card has no tasks/checklist items.
+	  - The card name is vague (fewer than 4 words).
+	"""
+	flags: list[str] = []
+	for card in cards:
+		board_name = card.get("board_name", "")
+		board_lc = board_name.lower()
+		# Skip list/shopping/nutrition boards — descriptions are optional there.
+		if any(kw in board_lc for kw in _LIST_BOARD_KEYWORDS):
+			continue
+		# Skip if a description exists.
+		if (card.get("description") or "").strip():
+			continue
+		# Skip if the card has tasks (self-documenting via checklist).
+		if card.get("has_tasks"):
+			continue
+		# Only flag vague titles (fewer than 4 words).
+		name = card.get("name", "")
+		if len(name.split()) < 4:
+			flags.append(
+				f"Card '{name}' on board '{board_name}' has no description (vague title, task board)."
+			)
+	return flags
+
+
+async def run_missing_description_check() -> list[str]:
+	"""Fetch a Planka snapshot and return advisory flags for undescribed vague-title cards."""
+	snapshot = await _get_planka_snapshot()
+	return _check_missing_descriptions(snapshot["cards"])
 
 
 # ---------------------------------------------------------------------------
@@ -473,17 +529,18 @@ async def run_redundancy_check() -> list[str]:
 # ---------------------------------------------------------------------------
 
 async def run_full_audit() -> str:
-	"""Run all three checks in parallel and return a formatted advisory report.
+	"""Run all checks in parallel and return a formatted advisory report.
 
 	Returns an empty string when no flags are raised (caller should skip sending).
 	"""
-	fulfillment_flags, hallucination_flags, redundancy_flags = await asyncio.gather(
+	fulfillment_flags, hallucination_flags, redundancy_flags, description_flags = await asyncio.gather(
 		run_action_fulfillment_check(),
 		run_hallucination_check(),
 		run_redundancy_check(),
+		run_missing_description_check(),
 	)
 
-	total = len(fulfillment_flags) + len(hallucination_flags) + len(redundancy_flags)
+	total = len(fulfillment_flags) + len(hallucination_flags) + len(redundancy_flags) + len(description_flags)
 	if total == 0:
 		return ""
 
@@ -504,5 +561,10 @@ async def run_full_audit() -> str:
 		for f in redundancy_flags:
 			lines.append(f"• {f}")
 
-	lines.append("\n_Action fulfillment and contradiction flags are advisory. Duplicate cards have been auto-removed._")
+	if description_flags:
+		lines.append("\n*Missing Descriptions*")
+		for f in description_flags:
+			lines.append(f"• {f}")
+
+	lines.append("\n_Action fulfillment, contradiction, and missing-description flags are advisory. Duplicate cards have been auto-removed._")
 	return "\n".join(lines)
