@@ -210,6 +210,7 @@ async def route_message_stream(
 		if _AUDIT_INTENT_RE.search(user_text[:_MAX_RE_INPUT]):
 			logger.info("Router: audit intent detected — running full self-audit")
 			from app.services.self_audit import run_full_audit
+			from app.services.translations import get_translations, get_user_lang
 			try:
 				audit_report = await run_full_audit()
 			except Exception as _ae:
@@ -218,9 +219,12 @@ async def route_message_stream(
 			if audit_report:
 				response = audit_report
 			else:
-				response = (
+				_lang = await get_user_lang()
+				_t = get_translations(_lang)
+				response = _t.get(
+					"audit_clean_msg",
 					"Self-audit complete — no issues found. "
-					"All tracked actions are verified and consistent with Planka's live state."
+					"All tracked actions are verified and consistent with Planka's live state.",
 				)
 			yield response
 			clean, cmds, pending = await bus.commit_reply(

@@ -417,4 +417,11 @@ translations: dict[str, str] = {
         "aria_date_format": "Date format for cards and logs",
         "abort": "Cancel",
         "aria_abort_crew": "Cancel crew execution",
+	"audit_report_header": "*Self-Audit Report*",
+	"audit_section_fulfillment": "*Action Fulfillment Gaps*",
+	"audit_section_contradictions": "*Possible Contradictions*",
+	"audit_section_redundancy": "*Redundancy / Coherence*",
+	"audit_section_missing_desc": "*Missing Descriptions*",
+	"audit_report_footer": "_Action fulfillment, contradiction, and missing-description flags are advisory. Duplicate cards have been auto-removed._",
+	"audit_clean_msg": "Self-audit complete — no issues found. All tracked actions are verified and consistent with Planka's live state.",
 }
