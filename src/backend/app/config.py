@@ -131,6 +131,9 @@ class Settings(BaseSettings):
     # Seconds to wait after a Z reply containing [AUDIT:...] tags before firing the reactive one-shot audit.
     # Gives Planka and other downstream systems time to process the action before the verifier checks them.
     AUDIT_REACTIVE_DELAY_SECONDS: int = 15
+    # How many hours back to scan Z's stored messages when running any audit (periodic or on-demand).
+    # 48 covers two full days of activity and matches the typical "look back at the last two days" user intent.
+    AUDIT_LOOKBACK_HOURS: int = 48
 
 
     model_config = SettingsConfigDict(
