@@ -2,13 +2,14 @@
 Self-Verification & Action Fulfillment Audit Service
 ─────────────────────────────────────────────────────
 Three periodic checks surfaced via the existing notifier (Telegram/Dashboard).
-Nothing is auto-fixed — all recommendations are advisory only.
+Duplicate cards are auto-removed; all other findings are advisory only.
 
   1. Action fulfillment — [AUDIT:...] claim tags in Z's stored replies vs
      Planka's actual state (cards, lists, board placement).
   2. Hallucination flags — Z's factual assertions about the user cross-
      referenced against personal context loaded from /personal/*.
-  3. Redundancy / coherence — duplicate card names, crew lists on wrong boards.
+  3. Redundancy / coherence — duplicate card names are automatically deleted
+     (oldest kept); misplaced crew lists are flagged as advisory.
 
 Tag format used by Z in replies (see agent/agent-rules.md):
   [AUDIT:create_project:ProjectName]
@@ -192,6 +193,7 @@ async def _get_planka_snapshot() -> dict[str, Any]:
 						"name": card.get("name", ""),
 						"list_id": card.get("listId", ""),
 						"board_name": b_meta["name"],
+						"created_at": card.get("createdAt", ""),
 					})
 	except Exception as e:
 		logger.warning("self_audit: _get_planka_snapshot failed: %s", _sanitize_for_log(e))
@@ -352,28 +354,84 @@ async def run_hallucination_check() -> list[str]:
 # Check 3 — Redundancy & Coherence
 # ---------------------------------------------------------------------------
 
-async def run_redundancy_check() -> list[str]:
-	"""Detect duplicate card names and crew lists that may have landed on the wrong board.
+async def _delete_planka_card(client: httpx.AsyncClient, card_id: str) -> bool:
+	"""Delete a single Planka card by ID. Returns True on success, False on failure."""
+	try:
+		resp = await client.delete(f"/api/cards/{card_id}")
+		resp.raise_for_status()
+		return True
+	except Exception as e:
+		logger.error("self_audit: failed to delete card %s: %s", _sanitize_for_log(card_id), _sanitize_for_log(e))
+		return False
 
-	Returns a list of advisory flag strings. Nothing is deleted or moved.
+
+async def run_redundancy_check() -> list[str]:
+	"""Detect duplicate card names on the same Planka board and automatically delete extras.
+
+	For each group of duplicates, the card with the earliest createdAt (or lowest id
+	as a tie-breaker) is kept. All later duplicates are deleted via the Planka API.
+
+	Also flags crew lists that may have landed on the wrong board (advisory only).
+
+	Returns a list of result strings describing what was removed or could not be removed.
 	"""
+	from app.services.planka_common import get_planka_auth_token
+
 	snapshot = await _get_planka_snapshot()
 	flags: list[str] = []
 
-	# 3a. Duplicate card names on the same board
+	# 3a. Duplicate card names on the same board — auto-delete extras
 	cards_by_board: dict[str, list[dict]] = defaultdict(list)
 	for card in snapshot["cards"]:
 		cards_by_board[card["board_name"]].append(card)
 
+	# Collect all (board_name, card_name_lc, duplicates_to_delete) tuples first
+	deletions: list[tuple[str, str, list[dict]]] = []
 	for board_name, cards in cards_by_board.items():
-		name_counts: dict[str, int] = defaultdict(int)
+		name_groups: dict[str, list[dict]] = defaultdict(list)
 		for card in cards:
-			name_counts[card["name"].lower()] += 1
-		for card_name, count in name_counts.items():
-			if count > 1:
+			name_groups[card["name"].lower()].append(card)
+		for card_name_lc, group in name_groups.items():
+			if len(group) < 2:
+				continue
+			# Sort: earliest createdAt first; fall back to lexicographic id sort
+			def _sort_key(c: dict) -> tuple:
+				ts = c.get("created_at") or ""
+				return (ts, c["id"])
+			group_sorted = sorted(group, key=_sort_key)
+			keep = group_sorted[0]
+			duplicates = group_sorted[1:]
+			deletions.append((board_name, keep["name"], duplicates))
+
+	if deletions:
+		try:
+			token = await get_planka_auth_token()
+			headers = {"Authorization": f"Bearer {token}"}
+			async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, timeout=20.0, headers=headers) as client:
+				for board_name, canonical_name, dupes in deletions:
+					removed: list[str] = []
+					failed: list[str] = []
+					for dupe in dupes:
+						ok = await _delete_planka_card(client, dupe["id"])
+						if ok:
+							removed.append(dupe["id"])
+						else:
+							failed.append(dupe["id"])
+					if removed:
+						flags.append(
+							f"Removed {len(removed)} duplicate card(s) '{canonical_name}' from board '{board_name}'."
+						)
+					if failed:
+						flags.append(
+							f"Could not remove {len(failed)} duplicate card(s) '{canonical_name}' "
+							f"from board '{board_name}' (API error — see logs)."
+						)
+		except Exception as e:
+			logger.error("self_audit: duplicate card cleanup failed: %s", _sanitize_for_log(e))
+			for board_name, canonical_name, dupes in deletions:
 				flags.append(
-					f"Duplicate card '{card_name}' appears {count}x on board '{board_name}'. "
-					f"Consider merging or removing the extra."
+					f"Could not remove {len(dupes)} duplicate card(s) '{canonical_name}' "
+					f"from board '{board_name}' (auth/connection error — see logs)."
 				)
 
 	# 3b. Crew board hygiene — lists that contain a crew id keyword but live on the wrong board
@@ -446,5 +504,5 @@ async def run_full_audit() -> str:
 		for f in redundancy_flags:
 			lines.append(f"• {f}")
 
-	lines.append("\n_These are advisory recommendations only. Nothing has been changed._")
+	lines.append("\n_Action fulfillment and contradiction flags are advisory. Duplicate cards have been auto-removed._")
 	return "\n".join(lines)

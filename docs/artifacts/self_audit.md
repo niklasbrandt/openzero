@@ -4,7 +4,8 @@
 
 The self-audit system is a background integrity layer for the openZero AI assistant (Z).
 It runs periodically and surfaces three classes of issues as advisory reports via the
-existing Telegram/Dashboard notifier. It never auto-modifies any data.
+existing Telegram/Dashboard notifier. Duplicate cards are automatically removed; all
+other findings remain advisory.
 
 ## Three Checks
 
@@ -15,6 +16,7 @@ Z tags every confirmed structural action in its replies with an `[AUDIT:...]` ma
 `global_messages` for these tags and cross-references them against Planka's live state.
 
 Currently checked:
+
 - `[AUDIT:create_project:Name]` — project exists in Planka; if a "My Projects" parent
   project exists, the item should have landed as a board under it, not as a root project.
 - `[AUDIT:create_task:Title|board=BoardName]` — a card matching the title exists; if a
@@ -34,9 +36,12 @@ possible; the user is expected to review and dismiss irrelevant flags.
 
 ### 3. Redundancy / Coherence Audit
 
-- Duplicate card names on the same Planka board are flagged.
+- Duplicate card names on the same Planka board are **automatically deleted** — the oldest
+  card (earliest `createdAt`, tie-broken by id) is kept and all later duplicates are
+  removed via `DELETE /api/cards/{id}`. The audit report states what was removed (or
+  "could not remove" if the API call fails).
 - Lists whose names contain a crew id keyword but reside on a board other than the
-  expected crew board are flagged as potentially misplaced.
+  expected crew board are flagged as potentially misplaced (advisory only).
 
 Crew-to-board mapping is derived from `crews.yaml` at runtime (crew id/name matched
 against Planka board names).
@@ -55,30 +60,30 @@ for the verifier to retrieve.
 
 ## Data Sources
 
-| Source | Used for |
-|---|---|
-| `global_messages` (PostgreSQL) | Extract Z's `[AUDIT:...]` claims and assertion sentences |
-| Planka REST API | Fetch live projects / boards / lists / cards snapshot |
-| `/personal/*.md` (disk) | Ground-truth personal context for contradiction checks |
-| `crews.yaml` (via `crew_registry`) | Crew-to-board mapping for hygiene checks |
+| Source                             | Used for                                                 |
+| ---------------------------------- | -------------------------------------------------------- |
+| `global_messages` (PostgreSQL)     | Extract Z's `[AUDIT:...]` claims and assertion sentences |
+| Planka REST API                    | Fetch live projects / boards / lists / cards snapshot    |
+| `/personal/*.md` (disk)            | Ground-truth personal context for contradiction checks   |
+| `crews.yaml` (via `crew_registry`) | Crew-to-board mapping for hygiene checks                 |
 
 ## Implementation
 
-| File | Role |
-|---|---|
-| `src/backend/app/services/self_audit.py` | All three check functions + `run_full_audit()` |
-| `src/backend/app/tasks/self_audit.py` | Thin task wrapper — calls `run_full_audit()` and notifies |
-| `src/backend/app/tasks/scheduler.py` | Registers `run_self_audit` on `IntervalTrigger(hours=AUDIT_INTERVAL_HOURS)` |
+| File                                      | Role                                                                                         |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `src/backend/app/services/self_audit.py`  | All three check functions + `run_full_audit()`                                               |
+| `src/backend/app/tasks/self_audit.py`     | Thin task wrapper — calls `run_full_audit()` and notifies                                    |
+| `src/backend/app/tasks/scheduler.py`      | Registers `run_self_audit` on `IntervalTrigger(hours=AUDIT_INTERVAL_HOURS)`                  |
 | `src/backend/app/services/message_bus.py` | Calls `_schedule_reactive_audit()` in `commit_reply` when `[AUDIT:` is detected in raw reply |
-| `agent/agent-rules.md` | Action-tagging protocol for Z |
+| `agent/agent-rules.md`                    | Action-tagging protocol for Z                                                                |
 
 ## Configuration
 
-| Variable | Default | Purpose |
-|---|---|---|
-| `AUDIT_MY_PROJECTS_PARENT` | `"My Projects"` | Planka project that should contain user project boards |
-| `AUDIT_INTERVAL_HOURS` | `6` | Hours between full audit runs |
-| `AUDIT_REACTIVE_DELAY_SECONDS` | `15` | Seconds to wait after a reply containing `[AUDIT:...]` before the reactive one-shot audit fires |
+| Variable                       | Default         | Purpose                                                                                         |
+| ------------------------------ | --------------- | ----------------------------------------------------------------------------------------------- |
+| `AUDIT_MY_PROJECTS_PARENT`     | `"My Projects"` | Planka project that should contain user project boards                                          |
+| `AUDIT_INTERVAL_HOURS`         | `6`             | Hours between full audit runs                                                                   |
+| `AUDIT_REACTIVE_DELAY_SECONDS` | `15`            | Seconds to wait after a reply containing `[AUDIT:...]` before the reactive one-shot audit fires |
 
 All settings are optional and have safe defaults.
 
