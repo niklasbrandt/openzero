@@ -242,7 +242,21 @@ def sanitise_output(text: str) -> str:
 		logger.warning('sanitise_output: system prompt echo detected — suppressing response')
 		return "I can't share that information."
 
-	# 5. Collapse multiple blank lines to at most two
+	# 5. Strip lines that are leaked internal instruction fragments.
+	# Matches lines that start with known internal-system prefixes — produced when
+	# small models echo audit context or system prompt fragments back to the user.
+	# Pattern anchored at line-start; bounded negated-class avoids backtracking.
+	_INTERNAL_LINE_RE = re.compile(
+		r'^[ \t]*(?:tags from conversations\b|Verify all actions\b|\[AUDIT:[^\]]{0,200}\]?|\[ACTION:[^\]]{0,200}\]?)',
+		re.IGNORECASE | re.MULTILINE,
+	)
+	if _INTERNAL_LINE_RE.search(text):
+		text = '\n'.join(
+			ln for ln in text.splitlines()
+			if not _INTERNAL_LINE_RE.match(ln)
+		)
+
+	# 6. Collapse multiple blank lines to at most two
 	text = re.sub(r"\n{3,}", "\n\n", text)
 
 	return text.strip()
