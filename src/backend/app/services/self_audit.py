@@ -544,27 +544,40 @@ async def run_full_audit() -> str:
 	if total == 0:
 		return ""
 
-	lines: list[str] = [f"*Self-Audit Report* — {datetime.utcnow().strftime('%Y-%m-%d %H:%M')} UTC"]
+	from app.services.translations import get_translations, get_user_lang
+	lang = await get_user_lang()
+	t = get_translations(lang)
+
+	lines: list[str] = [
+		t.get("audit_report_header", "*Self-Audit Report*")
+		+ f" — {datetime.utcnow().strftime('%Y-%m-%d %H:%M')} UTC"
+	]
 
 	if fulfillment_flags:
-		lines.append("\n*Action Fulfillment Gaps*")
+		lines.append("\n" + t.get("audit_section_fulfillment", "*Action Fulfillment Gaps*"))
 		for f in fulfillment_flags:
 			lines.append(f"• {f}")
 
 	if hallucination_flags:
-		lines.append("\n*Possible Contradictions*")
+		lines.append("\n" + t.get("audit_section_contradictions", "*Possible Contradictions*"))
 		for f in hallucination_flags:
 			lines.append(f"• {f}")
 
 	if redundancy_flags:
-		lines.append("\n*Redundancy / Coherence*")
+		lines.append("\n" + t.get("audit_section_redundancy", "*Redundancy / Coherence*"))
 		for f in redundancy_flags:
 			lines.append(f"• {f}")
 
 	if description_flags:
-		lines.append("\n*Missing Descriptions*")
+		lines.append("\n" + t.get("audit_section_missing_desc", "*Missing Descriptions*"))
 		for f in description_flags:
 			lines.append(f"• {f}")
 
-	lines.append("\n_Action fulfillment, contradiction, and missing-description flags are advisory. Duplicate cards have been auto-removed._")
+	lines.append(
+		"\n" + t.get(
+			"audit_report_footer",
+			"_Action fulfillment, contradiction, and missing-description flags are advisory. "
+			"Duplicate cards have been auto-removed._",
+		)
+	)
 	return "\n".join(lines)
