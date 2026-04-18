@@ -72,6 +72,13 @@ intelligence:
   # Set to false for fully air-gapped / offline deployments
   smart_cloud_routing: true
 
+  # Minimum cosine similarity score (0.0–1.0) for a Qdrant memory result to be
+  # injected into the chat prompt context.  Results below this threshold are
+  # silently discarded.  Raise to reduce topically unrelated memory leakage;
+  # lower if relevant memories are being missed.
+  # Corresponds to env var MEMORY_MIN_SCORE. Default 0.72.
+  memory_min_score: 0.72
+
 # ------------------------------------------------------------------------------
 # 5. Self-Audit
 # ------------------------------------------------------------------------------

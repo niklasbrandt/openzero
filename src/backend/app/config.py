@@ -72,6 +72,10 @@ class Settings(BaseSettings):
     QDRANT_HOST: str = "qdrant"
     QDRANT_PORT: int = 6333
     QDRANT_API_KEY: str = os.getenv("QDRANT_API_KEY", "")
+    # Minimum cosine similarity score for injecting a retrieved memory into the chat
+    # context.  Results below this threshold are silently discarded so topically
+    # unrelated memories do not bleed into unrelated conversations.
+    MEMORY_MIN_SCORE: float = 0.72
 
     # Dashboard Authentication
     DASHBOARD_TOKEN: str = ""
