@@ -8,12 +8,12 @@ This guide is designed for anyone—even if you've never used a server before. F
 
 Z uses a **local + optional cloud** LLM architecture. A local llama.cpp model runs on your server for all interactive tasks. An optional cloud API (OpenAI-compatible) can be configured for complex reasoning tasks.
 
-| Profile | RAM | vCPU | Local tier model | Notes |
-|---------|-----|------|-------------------|-------|
-| A -- Minimal | 8 GB | 4 | Qwen3-1.7B Q4_K_M | Pi 5 or budget cloud VPS (~4 EUR/mo, 4 vCPU / 8 GB) -- auto-detected. Voice (TTS/Whisper) disabled by default. |
-| B -- Standard | 12 GB | 4-6 | Qwen3-1.7B Q4_K_M | Auto-detected -- no manual tuning needed |
-| C -- Comfortable | 24 GB | 8 | Qwen3-4B Q4_K_M | Set `LLM_LOCAL_MODEL_URL` + `LLM_LOCAL_MODEL_FILE` only |
-| D -- High-end | 64 GB+ | 16+ | Qwen3-8B Q4_K_M | Set `LLM_LOCAL_MODEL_URL` + `LLM_LOCAL_MODEL_FILE` only |
+| Profile          | RAM    | vCPU | Local tier model  | Notes                                                                                                          |
+| ---------------- | ------ | ---- | ----------------- | -------------------------------------------------------------------------------------------------------------- |
+| A -- Minimal     | 8 GB   | 4    | Qwen3-1.7B Q4_K_M | Pi 5 or budget cloud VPS (~4 EUR/mo, 4 vCPU / 8 GB) -- auto-detected. Voice (TTS/Whisper) disabled by default. |
+| B -- Standard    | 12 GB  | 4-6  | Qwen3-1.7B Q4_K_M | Auto-detected -- no manual tuning needed                                                                       |
+| C -- Comfortable | 24 GB  | 8    | Qwen3-4B Q4_K_M   | Set `LLM_LOCAL_MODEL_URL` + `LLM_LOCAL_MODEL_FILE` only                                                        |
+| D -- High-end    | 64 GB+ | 16+  | Qwen3-8B Q4_K_M   | Set `LLM_LOCAL_MODEL_URL` + `LLM_LOCAL_MODEL_FILE` only                                                        |
 
 The LLM container reads your server's RAM and CPU count on every start and picks the right context size, thread count, batch size, and memory strategy automatically. You do not need to set `LLM_LOCAL_CTX`, `LLM_LOCAL_THREADS`, or `LLM_LOCAL_CACHE_RAM` unless you want to override a specific value.
 
@@ -307,9 +307,9 @@ When the cloud tier has tool-calling enabled, the model can autonomously decide 
 - Limited to a single tool round per request to prevent infinite loops.
 - To **disable**, add to your `.env`:
 
-	```env
-	CLOUD_LLM_TOOLS=false
-	```
+    ```env
+    CLOUD_LLM_TOOLS=false
+    ```
 
 ### 5d. Set Up Personal Context Folder
 
@@ -332,8 +332,8 @@ The `personal/` folder is the highest-authority context source for Z. Files here
     ```
 
     Then copy your personal files to the server over your Tailscale connection if you want Z to have access to them there.
-    
-    *(Alternatively, you can run `./scripts/sync_overwrite_personal.sh` from your laptop to forcefully overwrite the remote personal directory with your local contents).*
+
+    _(Alternatively, you can run `./scripts/sync_overwrite_personal.sh` from your laptop to forcefully overwrite the remote personal directory with your local contents)._
 
 ### 5e. Set Up Agent Skills Folder
 
@@ -360,8 +360,8 @@ The `agent/` folder lets you drop in skill modules — methodology files, tool g
     ```
 
     Then copy your skill files to the server over your Tailscale connection.
-    
-    *(Alternatively, you can run `./scripts/sync_overwrite_agent.sh` from your laptop to forcefully overwrite the remote agent directory and auto-restart the backend to seamlessly load new crews).*
+
+    _(Alternatively, you can run `./scripts/sync_overwrite_agent.sh` from your laptop to forcefully overwrite the remote agent directory and auto-restart the backend to seamlessly load new crews)._
 
 ### 5f. Set Up Native Crews
 
@@ -387,31 +387,31 @@ This uses the **Meta WhatsApp Cloud API** (free tier, no monthly fee). You need 
 #### Step-by-step
 
 1. **Create a Meta App:**
-   - Go to developers.facebook.com > My Apps > Create App.
-   - Choose "Business" type.
-   - Add the "WhatsApp" product to your app.
+    - Go to developers.facebook.com > My Apps > Create App.
+    - Choose "Business" type.
+    - Add the "WhatsApp" product to your app.
 
 2. **Get your credentials** (from the WhatsApp > API Setup page):
-   - **Phone Number ID** — shown on the API Setup page next to your number. Copy it.
-   - **Access Token** — generate a permanent System User token in the Business Manager (Settings > System Users > Generate Token, scope: `whatsapp_business_messaging`).
-   - **App Secret** — from your app's Settings > Basic page.
+    - **Phone Number ID** — shown on the API Setup page next to your number. Copy it.
+    - **Access Token** — generate a permanent System User token in the Business Manager (Settings > System Users > Generate Token, scope: `whatsapp_business_messaging`).
+    - **App Secret** — from your app's Settings > Basic page.
 
 3. **Add to your `.env`:**
 
-	```env
-	WHATSAPP_PHONE_NUMBER_ID=your_phone_number_id
-	WHATSAPP_ACCESS_TOKEN=your_permanent_system_user_token
-	WHATSAPP_APP_SECRET=your_app_secret
-	WHATSAPP_WEBHOOK_VERIFY_TOKEN=pick_any_random_secret_string
-	WHATSAPP_ALLOWED_PHONE=15551234567   # Your personal WhatsApp number in E.164 without '+'
-	```
+    ```env
+    WHATSAPP_PHONE_NUMBER_ID=your_phone_number_id
+    WHATSAPP_ACCESS_TOKEN=your_permanent_system_user_token
+    WHATSAPP_APP_SECRET=your_app_secret
+    WHATSAPP_WEBHOOK_VERIFY_TOKEN=pick_any_random_secret_string
+    WHATSAPP_ALLOWED_PHONE=15551234567   # Your personal WhatsApp number in E.164 without '+'
+    ```
 
 4. **Register the webhook in the Meta developer portal:**
-   - Go to WhatsApp > Configuration > Webhook.
-   - Set the **Callback URL** to:  `https://your-domain-or-ip/api/whatsapp/webhook`
-   - Set the **Verify Token** to the same value as `WHATSAPP_WEBHOOK_VERIFY_TOKEN` above.
-   - Click **Verify and Save**.
-   - Subscribe to the **messages** field.
+    - Go to WhatsApp > Configuration > Webhook.
+    - Set the **Callback URL** to: `https://your-domain-or-ip/api/whatsapp/webhook`
+    - Set the **Verify Token** to the same value as `WHATSAPP_WEBHOOK_VERIFY_TOKEN` above.
+    - Click **Verify and Save**.
+    - Subscribe to the **messages** field.
 
 5. **Deploy:** Run `bash scripts/sync.sh` from your laptop. The backend will log `WhatsApp channel registered.` on startup if the credentials are present.
 
@@ -538,11 +538,11 @@ The self-audit system periodically cross-checks Z's claimed actions against Plan
 
 No required configuration. Two optional env vars control its behavior:
 
-| Variable | Default | Purpose |
-|---|---|---|
-| `AUDIT_MY_PROJECTS_PARENT` | `"My Projects"` | Name of the Planka project that should contain user project boards. The audit flags any user-initiated project that was created as a top-level Planka project instead of as a board under this parent. Set to `""` to disable the placement check. |
-| `AUDIT_INTERVAL_HOURS` | `6` | Hours between full audit runs. |
-| `AUDIT_REACTIVE_DELAY_SECONDS` | `15` | Seconds to wait after a reply containing `[AUDIT:...]` tags before firing a reactive one-shot audit. Gives Planka time to process the action first. |
+| Variable                       | Default         | Purpose                                                                                                                                                                                                                                            |
+| ------------------------------ | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AUDIT_MY_PROJECTS_PARENT`     | `"My Projects"` | Name of the Planka project that should contain user project boards. The audit flags any user-initiated project that was created as a top-level Planka project instead of as a board under this parent. Set to `""` to disable the placement check. |
+| `AUDIT_INTERVAL_HOURS`         | `6`             | Hours between full audit runs.                                                                                                                                                                                                                     |
+| `AUDIT_REACTIVE_DELAY_SECONDS` | `15`            | Seconds to wait after a reply containing `[AUDIT:...]` tags before firing a reactive one-shot audit. Gives Planka time to process the action first.                                                                                                |
 
 Add Planka to make the placement check meaningful:
 
@@ -574,6 +574,7 @@ The openZero dashboard features a high-performance mission-control interface. Yo
 ### 3. Motion & Performance
 
 - **Cursor Parallax:** The background glow and accent highlights track your mouse movements using a hardware-accelerated `lerp` engine.
+
 ### 4. Agent Personality
 
 - You can now configure Z's **Communication Style**, **Emotional Tone**, and **Agency Level** directly from the User Card.
