@@ -69,6 +69,7 @@ for the verifier to retrieve.
 | `src/backend/app/services/self_audit.py` | All three check functions + `run_full_audit()` |
 | `src/backend/app/tasks/self_audit.py` | Thin task wrapper — calls `run_full_audit()` and notifies |
 | `src/backend/app/tasks/scheduler.py` | Registers `run_self_audit` on `IntervalTrigger(hours=AUDIT_INTERVAL_HOURS)` |
+| `src/backend/app/services/message_bus.py` | Calls `_schedule_reactive_audit()` in `commit_reply` when `[AUDIT:` is detected in raw reply |
 | `agent/agent-rules.md` | Action-tagging protocol for Z |
 
 ## Configuration
@@ -77,8 +78,9 @@ for the verifier to retrieve.
 |---|---|---|
 | `AUDIT_MY_PROJECTS_PARENT` | `"My Projects"` | Planka project that should contain user project boards |
 | `AUDIT_INTERVAL_HOURS` | `6` | Hours between full audit runs |
+| `AUDIT_REACTIVE_DELAY_SECONDS` | `15` | Seconds to wait after a reply containing `[AUDIT:...]` before the reactive one-shot audit fires |
 
-Both settings are optional and have safe defaults. No new required env vars.
+All settings are optional and have safe defaults.
 
 ## Output
 
@@ -103,8 +105,16 @@ When all checks are clean, no notification is sent.
 
 ## Scheduling
 
-The task fires at boot via APScheduler `IntervalTrigger`. Default: every 6 hours.
-The interval is controlled by `AUDIT_INTERVAL_HOURS` in `.env` / `config.yaml`.
+The audit fires in two modes:
+
+**Periodic (background):** APScheduler `IntervalTrigger` at startup. Default: every 6 hours.
+Controlled by `AUDIT_INTERVAL_HOURS` in `.env`.
+
+**Reactive (event-driven):** `MessageBus.commit_reply` detects `[AUDIT:` in Z's raw reply
+and calls `_schedule_reactive_audit()`, which adds a one-shot `DateTrigger` job firing after
+`AUDIT_REACTIVE_DELAY_SECONDS` (default 15 s). A debounce guard skips scheduling if a
+reactive job with id prefix `self_audit_reactive_` is already queued, so rapid consecutive
+replies only produce one verification pass.
 
 ## Security Notes
 
