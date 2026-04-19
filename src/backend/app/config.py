@@ -110,9 +110,11 @@ class Settings(BaseSettings):
     LLM_PROVIDER: str = "local"
     GROQ_API_KEY: Optional[str] = None
     OPENAI_API_KEY: Optional[str] = None
-    # PII sanitization for outbound cloud LLM calls (Groq, OpenAI)
-    # Set to false to disable for all cloud providers globally.
-    CLOUD_LLM_SANITIZE: bool = True
+    # PII sanitization for outbound cloud LLM calls (Groq, OpenAI).
+    # Disabled by default — the spaCy NER model produces false-positives on
+    # non-personal payloads (scientific names, project IDs, etc.).
+    # Set to true only when sending genuinely personal data to cloud providers.
+    CLOUD_LLM_SANITIZE: bool = False
     # Cloud tool-calling: enable the model to autonomously call tools
     # (web search, etc.) via standard function-calling on /v1/chat/completions.
     # Disabled by default until verified with the configured provider.

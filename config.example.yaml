@@ -72,6 +72,13 @@ intelligence:
   # Set to false for fully air-gapped / offline deployments
   smart_cloud_routing: true
 
+  # PII sanitisation for outbound cloud LLM calls.
+  # Strips named entities (people, locations, emails) via offline spaCy NER before
+  # prompts leave the VPS; re-hydrates tokens in the response.  Off by default
+  # to avoid false-positives on non-personal payloads.  Enable for personal data.
+  # Corresponds to env var CLOUD_LLM_SANITIZE.
+  cloud_llm_sanitize: false
+
   # Minimum cosine similarity score (0.0–1.0) for a Qdrant memory result to be
   # injected into the chat prompt context.  Results below this threshold are
   # silently discarded.  Raise to reduce topically unrelated memory leakage;
