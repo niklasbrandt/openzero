@@ -239,7 +239,7 @@ async def run_proactive_follow_up() -> None:
 				"One or two sentences, natural and human. No labels, no headers."
 			)
 			from app.services.llm import chat
-			from app.services.notifier import send_notification, get_stats_footer as _get_stats_footer, get_nav_markup
+			from app.services.notifier import send_notification, get_stats_footer as _get_stats_footer, get_nav_footer
 			from app.services.translations import get_user_lang, get_translations
 			nudge = await chat(prompt, _feature="follow_up_nudge")
 			# Guard: skip sending if the LLM returned an error string or empty response
@@ -250,7 +250,7 @@ async def run_proactive_follow_up() -> None:
 			footer = await _get_stats_footer()
 			lang = await get_user_lang()
 			t = get_translations(lang)
-			await send_notification(f"{nudge}{footer}", reply_markup=get_nav_markup(t))
+			await send_notification(f"{nudge}{footer}", nav_footer=get_nav_footer(t))
 			logger.info("Follow-up: Sent nudge for %s tasks.", len(due_cards))
 
 	except Exception as e:
@@ -292,7 +292,7 @@ async def evening_reminder() -> None:
 				"Keep it short and natural — like something a close friend might send. No headers or labels."
 			)
 			from app.services.llm import chat
-			from app.services.notifier import send_notification, get_stats_footer as _get_stats_footer, get_nav_markup
+			from app.services.notifier import send_notification, get_stats_footer as _get_stats_footer, get_nav_footer
 			from app.services.translations import get_user_lang, get_translations
 			nudge = await chat(prompt, _feature="evening_reminder")
 			_LLM_ERR = ("having trouble reaching", "still waking up", "warming up my local")
@@ -302,7 +302,7 @@ async def evening_reminder() -> None:
 			footer = await _get_stats_footer()
 			lang = await get_user_lang()
 			t = get_translations(lang)
-			await send_notification(f"{nudge}{footer}", reply_markup=get_nav_markup(t))
+			await send_notification(f"{nudge}{footer}", nav_footer=get_nav_footer(t))
 			logger.info("Evening reminder: sent for %d tasks.", len(today_cards))
 	except Exception as e:
 		logger.error("Evening reminder failed: %s", e)
@@ -337,7 +337,7 @@ async def check_active_tracking_sessions() -> None:
 						"Short and casual, no jargon."
 						)
 						from app.services.llm import chat
-						from app.services.notifier import send_notification, get_stats_footer as _get_stats_footer, get_nav_markup
+						from app.services.notifier import send_notification, get_stats_footer as _get_stats_footer, get_nav_footer
 						from app.services.translations import get_user_lang, get_translations
 						nudge = await chat(prompt)
 						if not nudge.strip():
@@ -347,7 +347,7 @@ async def check_active_tracking_sessions() -> None:
 							footer = await _get_stats_footer()
 							lang = await get_user_lang()
 							t = get_translations(lang)
-							await send_notification(f"{nudge}{footer}", reply_markup=get_nav_markup(t))
+							await send_notification(f"{nudge}{footer}", nav_footer=get_nav_footer(t))
 							m["sent"] = True
 						modified = True
 				
@@ -360,14 +360,14 @@ async def check_active_tracking_sessions() -> None:
 						"Conversational, no corporate framing."
 					)
 					from app.services.llm import chat
-					from app.services.notifier import send_notification, get_stats_footer as _get_stats_footer, get_nav_markup
+					from app.services.notifier import send_notification, get_stats_footer as _get_stats_footer, get_nav_footer
 					from app.services.translations import get_user_lang, get_translations
 					nudge = await chat(prompt)
 					if nudge.strip():
 						footer = await _get_stats_footer()
 						lang = await get_user_lang()
 						t = get_translations(lang)
-						await send_notification(f"{nudge}{footer}", reply_markup=get_nav_markup(t))
+						await send_notification(f"{nudge}{footer}", nav_footer=get_nav_footer(t))
 					else:
 						logger.warning("Proximity final wrap-up: LLM returned empty nudge, skipping send")
 					session.final_nudge_sent = True

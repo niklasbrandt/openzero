@@ -35,8 +35,8 @@ async def _get_stats_footer() -> str:
 	stats_text = f"{t.get('memories_found', 'Memories')}: {stats['points']}{model_tag}" if stats['status'] != 'error' else f"{t.get('memory_search', 'Memory')}: Offline"
 	return f"\n\n<i>{stats_text}</i>"
 
-def get_nav_markup(t: Optional[dict] = None, token: str = "") -> InlineKeyboardMarkup:
-	"""Standard navigation buttons (Large touch targets)."""
+def get_nav_footer(t: Optional[dict] = None, token: str = "") -> str:
+	"""Return standard navigation as inline HTML links for embedding in message body."""
 	if not t:
 		t = get_translations("en")
 
@@ -44,22 +44,22 @@ def get_nav_markup(t: Optional[dict] = None, token: str = "") -> InlineKeyboardM
 		token = settings.DASHBOARD_TOKEN
 
 	base_url = settings.BASE_URL.rstrip('/')
-	auth_qs = f"/api/dashboard/auth?token={token}" if token else ""
-	keyboard = [
-		[
-			InlineKeyboardButton(f"🏠 {t.get('dashboard', 'Dashboard')}", url=f"{base_url}{auth_qs + '&redirect=/dashboard' if auth_qs else '/dashboard'}"),
-			InlineKeyboardButton(f"📅 {t.get('calendar', 'Calendar')}", url=f"{base_url}{auth_qs + '&redirect=/calendar' if auth_qs else '/calendar'}")
-		],
-		[
-			InlineKeyboardButton(f"📋 {t.get('operator_board', 'Operator')}", url=f"{base_url}/api/dashboard/planka-redirect?target=operator"),
-			InlineKeyboardButton(f"📁 {t.get('projects', 'Projects')}", url=f"{base_url}/api/dashboard/planka-redirect")
-		],
-		[
-			InlineKeyboardButton("🧠 /memories", callback_data="call_memories"),
-			InlineKeyboardButton("❓ /help", callback_data="call_help")
-		]
+	auth_prefix = f"{base_url}/api/dashboard/auth?token={token}&redirect=" if token else f"{base_url}"
+
+	dashboard_url = f"{auth_prefix}/dashboard"
+	calendar_url = f"{auth_prefix}/calendar"
+	operator_url = f"{base_url}/api/dashboard/planka-redirect?target=operator"
+	projects_url = f"{base_url}/api/dashboard/planka-redirect"
+
+	parts = [
+		f'<a href="{dashboard_url}">{t.get("dashboard", "Dashboard")}</a>',
+		f'<a href="{calendar_url}">{t.get("calendar", "Calendar")}</a>',
+		f'<a href="{operator_url}">{t.get("operator_board", "Mission Control")}</a>',
+		f'<a href="{projects_url}">{t.get("projects", "Projects")}</a>',
+		t.get("nav_memories", "/memories"),
+		t.get("nav_help", "/help"),
 	]
-	return InlineKeyboardMarkup(keyboard)
+	return "\n\n" + " · ".join(parts)
 
 # --- Context Persistence ---
 chat_histories: dict[int, list[dict[str, str]]] = {} # chat_id -> list of dicts {'role': 'user/z', 'content': str}
@@ -164,7 +164,7 @@ async def start_telegram_bot():
 		send_html=send_notification_html,
 		send_voice=send_voice_message,
 		stats_footer=_get_stats_footer,
-		nav_markup=get_nav_markup,
+		nav_footer=get_nav_footer,
 	)
 
 	# Register Telegram as a push channel in the message_bus so cross-channel
@@ -216,7 +216,7 @@ async def _send_online_notification(recovery_html: str = ""):
 		else:
 			# Nothing to recover — just a quiet "I'm back".
 			msg = "<i>back.</i>"
-		await send_notification_html(msg, reply_markup=get_nav_markup(t))
+		await send_notification_html(msg, nav_footer=get_nav_footer(t))
 	except Exception as _e:
 		logger.warning("Online notification failed: %s", _e)
 
@@ -316,12 +316,12 @@ async def stop_telegram_bot():
 		except Exception as e:
 			logging.warning("Telegram shutdown warning (non-fatal): %s", e)
 
-async def send_notification(text: str, reply_markup=None):
+async def send_notification(text: str, reply_markup=None, nav_footer: str = ""):
 	"""Send a message to the owner wrapped in an HTML blockquote island.
 
 	Telegram enforces a 4096-character message limit.  Long briefings are
 	split on paragraph boundaries and sent as consecutive messages; the
-	reply_markup is only attached to the final chunk.
+	reply_markup and nav_footer are only attached to the final chunk.
 	"""
 	if not settings.TELEGRAM_BOT_TOKEN or not settings.TELEGRAM_ALLOWED_USER_ID:
 		return
@@ -334,7 +334,7 @@ async def send_notification(text: str, reply_markup=None):
 	if len(html_text) <= MAX_CHARS:
 		await bot.send_message(
 			chat_id=chat_id,
-			text=f"<blockquote>{html_text}</blockquote>",
+			text=f"<blockquote>{html_text}</blockquote>{nav_footer}",
 			parse_mode="HTML",
 			reply_markup=reply_markup,
 		)
@@ -358,19 +358,19 @@ async def send_notification(text: str, reply_markup=None):
 		is_last = (i == len(chunks) - 1)
 		await bot.send_message(
 			chat_id=chat_id,
-			text=f"<blockquote>{chunk}</blockquote>",
+			text=f"<blockquote>{chunk}</blockquote>{nav_footer if is_last else ''}",
 			parse_mode="HTML",
 			reply_markup=reply_markup if is_last else None,
 		)
 
-async def send_notification_html(text: str, reply_markup=None):
+async def send_notification_html(text: str, reply_markup=None, nav_footer: str = ""):
 	"""Send an HTML-formatted message to the owner (already formatted)."""
 	if not settings.TELEGRAM_BOT_TOKEN or not settings.TELEGRAM_ALLOWED_USER_ID:
 		return
 	bot = Bot(token=settings.TELEGRAM_BOT_TOKEN)
 	await bot.send_message(
 		chat_id=int(settings.TELEGRAM_ALLOWED_USER_ID),
-		text=text,
+		text=text + nav_footer,
 		parse_mode="HTML",
 		reply_markup=reply_markup,
 		link_preview_options=LinkPreviewOptions(is_disabled=True),
@@ -433,20 +433,20 @@ def owner_only(func):
 		return await func(update, context)
 	return wrapper
 
-async def safe_reply(update: Update, text: str, reply_markup=None):
+async def safe_reply(update: Update, text: str, reply_markup=None, nav_footer: str = ""):
 	"""Sends a reply wrapped in an HTML blockquote island."""
 	msg = update.effective_message
 	try:
 		html_text = _md_to_html(text)
-		await msg.reply_text(f"<blockquote>{html_text}</blockquote>", parse_mode="HTML", reply_markup=reply_markup)
+		await msg.reply_text(f"<blockquote>{html_text}</blockquote>{nav_footer}", parse_mode="HTML", reply_markup=reply_markup)
 	except Exception as e:
 		logger.debug("HTML reply failed, falling back to plain: %s", e)
 		await msg.reply_text(text, reply_markup=reply_markup)
 
-async def safe_edit(message, text: str, parse_mode="HTML", reply_markup=None):
+async def safe_edit(message, text: str, parse_mode="HTML", reply_markup=None, nav_footer: str = ""):
 	"""Tries to edit a message, falls back to plain text on error."""
 	try:
-		await message.edit_text(text, parse_mode=parse_mode, reply_markup=reply_markup)
+		await message.edit_text(text + nav_footer, parse_mode=parse_mode, reply_markup=reply_markup)
 	except Exception as e:
 		logger.debug("HTML edit failed, falling back to plain: %s", e)
 		try:
@@ -455,7 +455,7 @@ async def safe_edit(message, text: str, parse_mode="HTML", reply_markup=None):
 			logger.debug("safe_edit final fallback failed: %s", _pe)
 
 
-async def _send_chunked_reply(thinking_msg, html_body: str, reply_markup=None):
+async def _send_chunked_reply(thinking_msg, html_body: str, reply_markup=None, nav_footer: str = ""):
 	"""Deliver a response via the thinking message.
 
 	If the content fits within Telegram's 4096-char limit, the thinking
@@ -467,7 +467,7 @@ async def _send_chunked_reply(thinking_msg, html_body: str, reply_markup=None):
 
 	if len(html_body) <= MAX_CHARS:
 		await safe_edit(thinking_msg, f"<blockquote>{html_body}</blockquote>",
-			parse_mode="HTML", reply_markup=reply_markup)
+			parse_mode="HTML", reply_markup=reply_markup, nav_footer=nav_footer)
 		return
 
 	# Content too long for a single message -- delete the thinking placeholder
@@ -519,7 +519,7 @@ async def _send_chunked_reply(thinking_msg, html_body: str, reply_markup=None):
 		try:
 			await bot.send_message(
 				chat_id=chat_id,
-				text=f"<blockquote>{chunk}</blockquote>",
+				text=f"<blockquote>{chunk}</blockquote>{nav_footer if is_last else ''}",
 				parse_mode="HTML",
 				reply_markup=reply_markup if is_last else None,
 			)
@@ -622,7 +622,7 @@ async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
 			f"🤖 <b>{t.get('intelligence', 'Intelligence')}:</b> {l_text}\n\n"
 			f"📍 <b>{weekday_name}, {now_tz.strftime('%H:%M:%S')}</b>"
 		)
-		await safe_reply(update, status_report, reply_markup=get_nav_markup(t))
+		await safe_reply(update, status_report, nav_footer=get_nav_footer(t))
 	except Exception as e:
 		logger.error("cmd_status failed: %s", e)
 		await safe_reply(update, "System Status check failed. Check local backend logs.")
@@ -639,7 +639,7 @@ async def cmd_tree(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		lang = await get_user_lang()
 		t = get_translations(lang)
 		tree = await get_project_tree(as_html=False)
-		await safe_reply(update, tree, reply_markup=get_nav_markup(t))
+		await safe_reply(update, tree, nav_footer=get_nav_footer(t))
 	except Exception as e:
 		await safe_reply(update, f"Failed to fetch mission tree: {e}")
 
@@ -884,7 +884,7 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 			"/purge -- Permanently delete all memories\n\n"
 			"_Tap any command to execute it directly._"
 		)
-	await safe_reply(update, help_text, reply_markup=get_nav_markup(t))
+	await safe_reply(update, help_text, nav_footer=get_nav_footer(t))
 
 @owner_only
 async def cmd_crews(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1169,7 +1169,7 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 	html_reply = _md_to_html(clean_reply)
 	footer = await _get_stats_footer()
 	display_reply = f"<b>{format_time()}</b>\n\n{html_reply}{footer}"
-	await _send_chunked_reply(thinking_msg, display_reply, reply_markup=get_nav_markup(t))
+	await _send_chunked_reply(thinking_msg, display_reply, nav_footer=get_nav_footer(t))
 
 @owner_only
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1218,7 +1218,7 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		display_reply = f"📝 <b>Transcript:</b>\n<i>{_html.escape(transcript)}</i>\n\n<b>{format_time()}</b>\n\n{html_reply}"
 		
 		footer = await _get_stats_footer()
-		await safe_edit(status_msg, f"<blockquote>{display_reply}{footer}</blockquote>", parse_mode="HTML", reply_markup=get_nav_markup())
+		await safe_edit(status_msg, f"<blockquote>{display_reply}{footer}</blockquote>", parse_mode="HTML", nav_footer=get_nav_footer(t))
 	except Exception as e:
 		logger.error("handle_voice failed: %s", e)
 		await safe_reply(update, "Voice processing failed. There might be an issue with the transcription or intelligence layer.")
@@ -1297,7 +1297,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		html_reply = _md_to_html(clean_reply)
 		display_reply = f"🖼️ <b>Seen:</b>\n<i>{_html.escape(caption)}</i>\n\n<b>{format_time()}</b>\n\n{html_reply}"
 		footer = await _get_stats_footer()
-		await safe_edit(status_msg, f"<blockquote>{display_reply}{footer}</blockquote>", parse_mode="HTML", reply_markup=get_nav_markup(t))
+		await safe_edit(status_msg, f"<blockquote>{display_reply}{footer}</blockquote>", parse_mode="HTML", nav_footer=get_nav_footer(t))
 
 	except Exception as e:
 		logger.error("handle_photo failed: %s", e)
@@ -1445,7 +1445,7 @@ async def _process_crew_stream(update: Update, context: ContextTypes.DEFAULT_TYP
 
 		# Attribution already included in last section via commit — no extra append needed.
 		display_final = f"<b>{format_time()}</b>\n\n{_md_to_html(clean_reply)}"
-		await _send_chunked_reply(thinking_msg, display_final, reply_markup=get_nav_markup(t))
+		await _send_chunked_reply(thinking_msg, display_final, nav_footer=get_nav_footer(t))
 
 		# Record crew session so follow-up messages route back to this crew
 		from app.services.crews import record_crew_session

@@ -79,7 +79,7 @@ async def check_unanswered_messages() -> None:
 async def _do_check_unanswered() -> None:
 	from app.models.db import get_global_history
 	from app.api.telegram_bot import (
-		_is_error_stub, _is_system_message, send_notification_html, get_nav_markup,
+		_is_error_stub, _is_system_message, send_notification_html, get_nav_footer,
 		strip_llm_time_header, _md_to_html,
 	)
 	from app.services.translations import get_user_lang, get_translations
@@ -154,7 +154,7 @@ async def _do_check_unanswered() -> None:
 	clean = strip_llm_time_header(result.reply)
 	await send_notification_html(
 		f"<blockquote>{_md_to_html(clean)}</blockquote>",
-		reply_markup=get_nav_markup(t),
+		nav_footer=get_nav_footer(t),
 	)
 	logger.info("Watchdog: recovery reply delivered.")
 
@@ -183,7 +183,7 @@ async def audit_action_integrity() -> None:
 
 async def _do_audit_actions() -> None:
 	from app.models.db import get_global_history
-	from app.api.telegram_bot import send_notification_html, get_nav_markup, _md_to_html
+	from app.api.telegram_bot import send_notification_html, get_nav_footer, _md_to_html
 	from app.services.translations import get_user_lang, get_translations
 
 	history = await get_global_history(limit=20)
@@ -249,7 +249,7 @@ async def _do_audit_actions() -> None:
 
 		await send_notification_html(
 			f"<blockquote>{alert}</blockquote>",
-			reply_markup=get_nav_markup(t),
+			nav_footer=get_nav_footer(t),
 		)
 
 	logger.info("Watchdog: %d action failure alert(s) delivered.", len(failures))
