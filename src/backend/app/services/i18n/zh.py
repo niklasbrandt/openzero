@@ -402,4 +402,5 @@ translations: dict[str, str] = {
 	'tip_bench_all': '按顺序运行两个层级基准测试，以获得完整的性能概览。',
 	'tip_bench_cloud': '云端层级基准测试。用于复杂分析和推理任务。',
 	'tip_bench_local': '本地层级基准测试（̄0.6B模型）。用于问候等快速任务。',
+        'status_online': '我回来了！',
 }
