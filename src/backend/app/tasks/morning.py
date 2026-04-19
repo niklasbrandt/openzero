@@ -325,7 +325,7 @@ async def morning_briefing():
 			logger.warning("morning_briefing — Precision SLEEP failed, falling back to immediate delivery: %s", e)
 
 		# 6. Send text notification to Telegram immediately (does not wait for TTS)
-		from app.services.notifier import send_notification, send_voice_message, get_nav_markup
+		from app.services.notifier import send_notification, send_voice_message, get_nav_footer
 		lang = "en"
 		async with AsyncSessionLocal() as session:
 			res = await session.execute(select(Person).where(Person.circle_type == "identity"))
@@ -337,7 +337,7 @@ async def morning_briefing():
 
 		await send_notification(
 			f"---\n{content}",
-			reply_markup=get_nav_markup(t)
+			nav_footer=get_nav_footer(t)
 		)
 
 		# 6b. Persist to global_messages NOW — after delivery so dashboard and

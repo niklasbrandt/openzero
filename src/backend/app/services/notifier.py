@@ -15,7 +15,7 @@ Registration by telegram_bot.py at startup:
         send_html=send_notification_html,
         send_voice=send_voice_message,
         stats_footer=_get_stats_footer,
-        nav_markup=get_nav_markup,
+        nav_footer=get_nav_footer,
     )
 """
 from typing import Any, Awaitable, Callable, Optional
@@ -30,7 +30,7 @@ _fn_send: Optional[Callable[..., Awaitable[None]]] = None
 _fn_send_html: Optional[Callable[..., Awaitable[None]]] = None
 _fn_send_voice: Optional[Callable[..., Awaitable[None]]] = None
 _fn_stats_footer: Optional[Callable[[], Awaitable[str]]] = None
-_fn_nav_markup: Optional[Callable[..., Any]] = None
+_fn_nav_footer: Optional[Callable[..., Any]] = None
 
 
 def register(
@@ -38,15 +38,15 @@ def register(
 	send_html: Callable[..., Awaitable[None]],
 	send_voice: Callable[..., Awaitable[None]],
 	stats_footer: Callable[[], Awaitable[str]],
-	nav_markup: Callable[..., Any],
+	nav_footer: Callable[..., Any],
 ) -> None:
 	"""Register Telegram send functions. Called once by start_telegram_bot()."""
-	global _fn_send, _fn_send_html, _fn_send_voice, _fn_stats_footer, _fn_nav_markup
+	global _fn_send, _fn_send_html, _fn_send_voice, _fn_stats_footer, _fn_nav_footer
 	_fn_send = send
 	_fn_send_html = send_html
 	_fn_send_voice = send_voice
 	_fn_stats_footer = stats_footer
-	_fn_nav_markup = nav_markup
+	_fn_nav_footer = nav_footer
 	logger.debug("notifier: Telegram send functions registered")
 
 
@@ -85,8 +85,8 @@ async def get_stats_footer() -> str:
 	return await _fn_stats_footer()
 
 
-def get_nav_markup(*args: Any, **kwargs: Any) -> Any:
-	"""Return the standard navigation InlineKeyboardMarkup, or None if bot not ready."""
-	if _fn_nav_markup is None:
-		return None
-	return _fn_nav_markup(*args, **kwargs)
+def get_nav_footer(*args: Any, **kwargs: Any) -> str:
+	"""Return the standard navigation footer string, or empty string if bot not ready."""
+	if _fn_nav_footer is None:
+		return ""
+	return _fn_nav_footer(*args, **kwargs)
