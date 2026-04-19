@@ -1293,6 +1293,9 @@ async def planka_redirect(request: Request, target: str = "", background: bool =
 						redirect_url = f"{public_base}/projects/{proj_id}"
 					else:
 						redirect_url = f"{public_base}/projects" # Planka may still 404 but it's the expected path
+			elif target == "projects":
+				# Always redirect to Planka projects overview (root) -- never a specific board/project ID
+				redirect_url = public_base
 			else:
 				# Default 'Board Overview' -> Dynamically find first project to avoid /boards 404
 				proj_id = PLANKA_ID_CACHE.get("oz_project_id")
