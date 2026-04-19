@@ -778,6 +778,10 @@ CRITICAL — RETRY PROMISE: If you write "let me try again", "trying now", "I'll
   (Use when the user says a task is done/completed/sent/finished/submitted — moves the card to the "Done" column. Examples: "job application sent", "fixed the bug", "email sent")
 - Archive Card: `[ACTION: ARCHIVE_CARD | CARD: title fragment | BOARD: board name (optional)]`
   (Moves a card to the "Archive" list — use this instead of deleting. Preferred for cleanup, completed long-running work, or anything that may need to be recovered.)
+- Move Board: `[ACTION: MOVE_BOARD | BOARD: board name | TO_PROJECT: project name]`
+  (Moves an existing board from one project to another. Use when the user asks to reorganise boards between projects. Planka has no native UI for this — this is the only way to do it.)
+  IMPORTANT: "My Projects" is the user's personal board folder. "Operations" is Z's own internal task board. These are different. Never confuse them.
+  Example: user says "move the Shopping board to My Projects" → `[ACTION: MOVE_BOARD | BOARD: Shopping | TO_PROJECT: My Projects]`
 - Append Shopping List: `[ACTION: APPEND_SHOPPING | ITEMS: item1\nitem2\nitem3]`
   (Appends grocery items to the current week's shopping list card on the Nutrition board. Use when the user mentions what they'll cook/eat, or when generating recipes. List each ingredient on a separate line with quantities.)
 - Route to Specialist Crew: `[ACTION: ROUTE | CREW: crew_id]`

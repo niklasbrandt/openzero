@@ -415,6 +415,20 @@ async def create_board(project_id: str, name: str) -> dict:
 
 		return board
 
+async def move_board(board_id: str, new_project_id: str) -> bool:
+	"""Move a board to a different project by patching its projectId. Returns True on success."""
+	try:
+		token = await get_planka_auth_token()
+		headers = {"Authorization": f"Bearer {token}"}
+		async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, headers=headers, timeout=15.0) as client:
+			resp = await client.patch(f"/api/boards/{board_id}", json={"projectId": new_project_id})
+			resp.raise_for_status()
+			logger.debug("move_board: board %s moved to project %s", _sanitize_for_log(board_id), _sanitize_for_log(new_project_id))
+			return True
+	except Exception as e:
+		logger.error("move_board failed: %s", _sanitize_for_log(e))
+		return False
+
 async def move_card(card_title_fragment: str, destination_list: str, board_name: str = "") -> bool:
 	"""Find a card by name fragment (case-insensitive) and move it to the target list column.
 
