@@ -401,4 +401,5 @@ translations: dict[str, str] = {
 	'tip_bench_all': 'Execute ambos os benchmarks sequencialmente para uma imagem completa de desempenho.',
 	'tip_bench_cloud': 'Benchmark do nível de nuvem. Para análises complexas e raciocínio.',
 	'tip_bench_local': 'Benchmark do nível local (~0.6B). Para tarefas rápidas como cumprimentos.',
+        'status_online': 'Estou de volta!',
 }
