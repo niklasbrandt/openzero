@@ -120,7 +120,14 @@ async def lifespan(app: FastAPI):
                     await loop.run_in_executor(None, get_embedder)
                 except Exception as _mem_err:
                     logging.warning("⚠ Embedder warming warning: %s", _mem_err)
-                
+
+                # Pre-load person name cache for cloud PII sanitiser
+                try:
+                    from app.services.llm import _ensure_person_names_loaded
+                    await _ensure_person_names_loaded()
+                except Exception as _pii_err:
+                    logging.warning("⚠ Person names pre-load warning: %s", _pii_err)
+
                 logging.info("✓ Background heartbeat: All systems fully operational.")
 
             except Exception as _bg_err:
