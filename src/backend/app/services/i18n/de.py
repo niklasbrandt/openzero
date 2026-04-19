@@ -427,4 +427,5 @@ translations: dict[str, str] = {
 	"projects": "Projekte",
 	"nav_memories": "Erinnerungen",
 	"nav_help": "Hilfe",
+        "status_online": "Ich bin wieder da!",
 }

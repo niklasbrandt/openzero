@@ -220,10 +220,11 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 	def strip_tag(text, tag_match):
 		return text.replace(tag_match, "").strip()
 
-	async def handle_action(action_type, raw_tag, executor_coro, description):
-		if raw_tag in seen_raw_tags:
+	async def handle_action(action_type, raw_tag, executor_coro, description, dedup_key=None):
+		_key = dedup_key if dedup_key is not None else raw_tag
+		if _key in seen_raw_tags:
 			return True
-		seen_raw_tags.add(raw_tag)
+		seen_raw_tags.add(_key)
 		if require_hitl and action_type in SENSITIVE_ACTIONS:
 			# Store in pending queue
 			action_id = await store_pending_thought(f"ACTION:{action_type}", json.dumps({
@@ -316,7 +317,8 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 				logger.error("CREATE_PROJECT failed: %s", _e)
 				return f"\u26a0 Failed to create project '{name}'. System error."
 
-		await handle_action("CREATE_PROJECT", raw_tag, _exec_project, f"Create project '{name}'")
+		_dedup_proj = f"CREATE_PROJECT:{name.strip().lower()}"
+		await handle_action("CREATE_PROJECT", raw_tag, _exec_project, f"Create project '{name}'", dedup_key=_dedup_proj)
 		clean_reply = strip_tag(clean_reply, raw_tag)
 
 	# 2. Create Board Tag — uses newly_created_projects as a fast path.
@@ -359,7 +361,8 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 				logger.error("CREATE_BOARD failed: %s", _e)
 				return f"\u26a0 Failed to create board '{board_name}'. System error."
 
-		await handle_action("CREATE_BOARD", raw_tag, _exec_board, f"Create board '{board_name}' in project '{proj_name}'")
+		_dedup_board = f"CREATE_BOARD:{proj_name.strip().lower()}:{board_name.strip().lower()}"
+		await handle_action("CREATE_BOARD", raw_tag, _exec_board, f"Create board '{board_name}' in project '{proj_name}'", dedup_key=_dedup_board)
 		clean_reply = strip_tag(clean_reply, raw_tag)
 
 	# 3. Create List (Column) Tag — with auto-board-creation fallback.
@@ -467,7 +470,8 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 				logger.error("CREATE_LIST failed: %s", _e)
 				return f"\u26a0 Failed to create list '{list_name}'. System error."
 
-		await handle_action("CREATE_LIST", raw_tag, _exec_list, f"Create list '{list_name}' on board '{board_name}'")
+		_dedup_list = f"CREATE_LIST:{board_name.strip().lower()}:{list_name.strip().lower()}"
+		await handle_action("CREATE_LIST", raw_tag, _exec_list, f"Create list '{list_name}' on board '{board_name}'", dedup_key=_dedup_list)
 		clean_reply = strip_tag(clean_reply, raw_tag)
 
 	# 4. Create Task Tag — runs AFTER scaffolding so the board/list already exists.
@@ -489,7 +493,8 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 				return f"Task '{title}' created in {path}."
 			return f"\u26a0 Failed to create task '{title}'. Check Planka connection."
 
-		await handle_action("CREATE_TASK", raw_tag, _exec_task, f"Create task '{title}' on {board}")
+		_dedup_task = f"CREATE_TASK:{board.strip().lower()}:{llist.strip().lower()}:{title.strip().lower()}"
+		await handle_action("CREATE_TASK", raw_tag, _exec_task, f"Create task '{title}' on {board}", dedup_key=_dedup_task)
 		clean_reply = strip_tag(clean_reply, raw_tag)
 
 	# 3. Create Event Tag
@@ -868,8 +873,10 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 					board_id = None
 					for p in projects:
 						p_det = await client.get(f"/api/projects/{p['id']}")
-						boards = p_det.json().get("included", {}).get("boards", [])
-						match_b = next((b for b in boards if b["name"].lower() == mb_board_name.lower()), None)
+						p_det.raise_for_status()
+						p_det_json = p_det.json()
+						boards = p_det_json.get("included", {}).get("boards", []) or p_det_json.get("boards", [])
+						match_b = next((b for b in boards if (b.get("name") or "").lower() == mb_board_name.lower()), None)
 						if match_b:
 							board_id = match_b["id"]
 							break
@@ -883,7 +890,8 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 				logger.error("MOVE_BOARD failed: %s", _e)
 				return f"\u26a0 Failed to move board '{mb_board_name}'. System error."
 
-		await handle_action("MOVE_BOARD", raw_tag, _exec_move_board, f"Move board '{mb_board_name}' to project '{mb_target_project}'")
+		_dedup_mb = f"MOVE_BOARD:{mb_board_name.strip().lower()}:{mb_target_project.strip().lower()}"
+		await handle_action("MOVE_BOARD", raw_tag, _exec_move_board, f"Move board '{mb_board_name}' to project '{mb_target_project}'", dedup_key=_dedup_mb)
 		clean_reply = strip_tag(clean_reply, raw_tag)
 
 	# --- FINAL AGGRESSIVE HYGIENE ---
