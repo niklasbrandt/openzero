@@ -4,15 +4,33 @@
 
 Planka is the project management tool integrated into this system. Z has access to the Planka API to read and manage boards, lists, cards, and labels.
 
-### Canonical Column Order
+### Board Type: Task/Workflow Board vs Reference/Content Board
 
-All boards use this standard column layout:
+Before creating any lists on a new board, determine its type:
+
+**Task/workflow board** — used when the work has a lifecycle: something moves from "not started" through "doing" to "done". Examples: software releases, fitness programmes, job applications, complex projects with subtasks.
+
+**Reference/content board** — used when the board is a collection of information on a topic with no inherent workflow. Examples: aquarium planning, reading lists, recipe collections, travel ideas, hobby research, shopping categories, reference notes.
+
+### Canonical Column Order (task/workflow boards only)
+
+Task/workflow boards use this standard column layout:
 
 ```
 Backlog | Next Up | In Progress | Review | Done
 ```
 
-Never create columns with different names without explicit user instruction. If a board is missing a column from this list, flag it as a structural inconsistency.
+Never create columns with different names on a task board without explicit user instruction. If a task board is missing a column from this list, flag it as a structural inconsistency.
+
+### Lists for Reference/Content Boards
+
+Reference/content boards MUST NOT use workflow columns (Backlog, In Progress, Done, etc.). Instead, create one or a few thematic lists that reflect the natural categories of the topic.
+
+**Rules:**
+- When in doubt about what lists the user wants, create ONE list named after the board topic and stop. Let the user add more lists later.
+- If the topic suggests obvious natural categories, create those directly (e.g. an aquarium board → "Species", "Equipment", "Notes").
+- Never exceed three lists on initial scaffold unless the user specified them.
+- Never add "To Do", "In Progress", "Done", "Backlog", "Next Up", or "Review" lists to a reference/content board.
 
 ## Card Conventions
 
