@@ -401,4 +401,5 @@ translations: dict[str, str] = {
 	'tip_bench_all': '완전한 성능 그림을 위해 두 티어 벤치마크를 순차적으로 실행하세요.',
 	'tip_bench_cloud': '클라우드 티어 벤치마크. 복잡한 분석 및 추론 작업에 사용.',
 	'tip_bench_local': '로컈 티어 벤치마크 (~0.6B). 인사 등 빠른 작업에 사용.',
+	'status_online': '돌아왔습니다!',
 }
