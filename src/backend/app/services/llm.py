@@ -316,6 +316,92 @@ _PHONE_RE = re.compile(
 	r"(?!\w)",
 )
 
+# ---------------------------------------------------------------------------
+# PERSON-entity false-positive guard (scientific / non-personal proper nouns)
+# ---------------------------------------------------------------------------
+# spaCy en_core_web_sm can mis-tag single-word Latinate genus/species names
+# (e.g. Goniopora, Discosoma, Caulastrea, Sarcophyton) as PERSON entities.
+# These guards prevent the sanitiser replacing scientific names, brand names,
+# and other generic proper nouns that carry no privacy risk for the user.
+
+# Latinate/Greek taxonomic suffixes common in coral, plant, and animal taxa.
+# A single-word PERSON entity ending with one of these is almost certainly a
+# genus or species name, not a personal identifier.
+_SCIENTIFIC_SUFFIX_RE = re.compile(
+	r'(?i)(pora|astrea|strea|phyton|phyllia|zoanthid|anthid|'
+	r'idae|inae|aceae|opsida|phycota|oidea|soma|theca|morpha|'
+	r'lophyllia|acropora|montipora|dendrophyllia)$'
+)
+
+# Module-level cache of individual name tokens from the people DB table.
+# Populated once per process by _ensure_person_names_loaded().
+# An empty set is safe: falls back to heuristic-only filtering.
+_known_person_names: set[str] = set()
+_known_person_names_loaded: bool = False
+
+
+async def _ensure_person_names_loaded() -> None:
+	"""Populate _known_person_names from the people DB table (once per process).
+
+	Called from main.py run_delayed_init() so the cache is ready before the
+	first cloud LLM call.  Safe to call multiple times; only runs once.
+	"""
+	global _known_person_names, _known_person_names_loaded
+	if _known_person_names_loaded:
+		return
+	try:
+		async with AsyncSessionLocal() as session:
+			result = await session.execute(select(Person.name))
+			names = result.scalars().all()
+		for n in names:
+			for part in (n or "").strip().split():
+				if len(part) >= 3:
+					_known_person_names.add(part.lower())
+		_known_person_names_loaded = True
+		logger.debug("cloud_sanitize: loaded %d person name tokens from people DB", len(_known_person_names))
+	except Exception as exc:
+		logger.warning("cloud_sanitize: could not load person names from DB (%s) — heuristic-only", exc)
+		_known_person_names_loaded = True  # do not retry on every cloud call
+
+
+def _should_replace_person_entity(word: str, full_text: str) -> bool:
+	"""Return True if this spaCy PERSON entity should be anonymised.
+
+	Guards against false positives — scientific genus names, repeated topic
+	words, and other non-personal proper nouns that spaCy en_core_web_sm
+	mis-labels as PERSON — while keeping genuine person names (contacts,
+	owner) intact.
+
+	Rules applied in order:
+	1. Multi-word entity ("John Smith") → always replace (real person pattern).
+	2. Single-word entity present in the DB contacts cache → always replace.
+	3. Single-word entity with Latinate/scientific suffix → skip.
+	4. Single-word entity appearing 3+ times in the text → topic/species, skip.
+	5. Otherwise → replace (conservative default keeps genuine PII protected).
+	"""
+	tokens = word.split()
+	# Rule 1: multi-word → almost certainly a real person name
+	if len(tokens) >= 2:
+		return True
+
+	single = tokens[0] if tokens else ""
+	if not single:
+		return False
+
+	# Rule 2: known contact / owner name → always anonymise
+	if single.lower() in _known_person_names:
+		return True
+
+	# Rule 3: Latinate/Greek taxonomic suffix → genus or species name
+	if _SCIENTIFIC_SUFFIX_RE.search(single):
+		return False
+
+	# Rule 4: word appears 3+ times → it is a topic being discussed, not a name
+	if full_text.lower().count(single.lower()) >= 3:
+		return False
+
+	return True
+
 
 def sanitize_prompt(
 	text: str,
@@ -391,6 +477,10 @@ def sanitize_prompt(
 			label = ent.label_
 			original = ent.text.strip()
 			if not original or label not in _LABEL_PREFIX:
+				continue
+			# For PERSON entities apply false-positive guards: scientific names,
+			# brand names, and high-frequency topic words must not be replaced.
+			if label == "PERSON" and not _should_replace_person_entity(original, text):
 				continue
 			if original in replacement_map:
 				continue  # already covered by regex or earlier NER hit
