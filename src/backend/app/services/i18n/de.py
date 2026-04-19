@@ -423,4 +423,8 @@ translations: dict[str, str] = {
 	'diag_cloud_opt_api_title': 'Inferenz-API',
 	'diag_cloud_opt_gpu_title': 'Heim-GPU-Server',
 	'diag_cloud_or': 'oder',
+	"dashboard": "Dashboard",
+	"projects": "Projekte",
+	"nav_memories": "Erinnerungen",
+	"nav_help": "Hilfe",
 }
