@@ -91,3 +91,11 @@ Rules:
 - Never route a user board into "Operations". That project belongs to Z's internal bookkeeping.
 - Never tell a user that "Operations" is where their personal boards go.
 - If a user mentions "My Projects" by name, take it literally — that exact Planka project name.
+
+## Operator Board — ID-Anchored Lookup
+
+The "Operations" project and "Operator Board" board are located by their Planka IDs, which are stored in the `preferences` DB table (`operator_project_id`, `operator_board_id`) after first creation. This means:
+
+- Renaming these entities in Planka directly does NOT create duplicates — the system finds them by ID on restart.
+- When the user changes their interface language, Z renames the existing project/board/lists to the new language rather than creating new entities.
+- If you need to delete the operator board (e.g., to reset), also clear the `preferences` rows with keys `operator_project_id` and `operator_board_id` from the DB so the system re-creates and re-anchors on next startup.
