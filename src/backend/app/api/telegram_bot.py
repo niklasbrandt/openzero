@@ -214,8 +214,8 @@ async def _send_online_notification(recovery_html: str = ""):
 			# LLM response already carries the greeting — send it as-is.
 			msg = recovery_html
 		else:
-			# Nothing to recover — just a quiet "I'm back".
-			msg = "<i>back.</i>"
+			# Nothing to recover — just a warm translated greeting.
+			msg = f"<i>{t.get('status_online', 'I\'m back!')}</i>"
 		await send_notification_html(msg, nav_footer=get_nav_footer(t))
 	except Exception as _e:
 		logger.warning("Online notification failed: %s", _e)
@@ -244,19 +244,22 @@ def _consume_latest_changes():
 	except Exception as _e:
 		logger.debug("Could not remove latest-changes file: %s", _e)
 
-def _format_raw_changes_html(changes: str) -> str:
+def _format_raw_changes_html(changes: str, online_label: str = "I'm back!") -> str:
 	"""Format raw commit messages as a minimal HTML fallback."""
 	lines = [l.strip() for l in changes.splitlines() if l.strip().startswith("- ")]
 	if not lines:
 		return ""
 	formatted = "\n".join(lines[:10])
-	return f"<i>back.</i>\n\n<pre>{formatted}</pre>"
+	return f"<i>{online_label}</i>\n\n<pre>{formatted}</pre>"
 
 async def _send_changes_notification_if_needed():
 	"""Send the deployment-changes banner if a latest_changes.txt exists.
 	Called at startup after watchdog recovery handles any unanswered messages."""
 	await asyncio.sleep(15)
 	changes = _read_latest_changes()
+	lang = await get_user_lang()
+	t = get_translations(lang)
+	online_label = t.get('status_online', "I'm back!")
 	if not changes:
 		await _send_online_notification()
 		return
@@ -289,7 +292,7 @@ async def _send_changes_notification_if_needed():
 			return
 	except Exception as _ce:
 		logger.warning("Startup: changes LLM call failed (%r) — using raw fallback.", _ce, exc_info=True)
-	fallback_html = _format_raw_changes_html(changes)
+	fallback_html = _format_raw_changes_html(changes, online_label=online_label)
 	if fallback_html:
 		_consume_latest_changes()
 		await _send_online_notification(recovery_html=fallback_html)

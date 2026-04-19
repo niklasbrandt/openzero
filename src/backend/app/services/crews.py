@@ -297,6 +297,23 @@ async def _translate_keywords_to_lang(crew_id: str, lang: str, keywords: list) -
 	_kw_translation_cache[cache_key] = keywords
 	return keywords
 
+# Structural Planka operations (move board, create task, delete card, etc.) are
+# handled by Z's action processor and must NEVER be routed to a crew.
+# Routing to a crew causes persona/dialect bleed in what should be a neutral
+# one-line confirmation. Matches the current-message text only; safe patterns
+# use explicit noun anchors so regex cannot backtrack on long input (CWE-1333).
+_SYSTEM_ACTION_RE = re.compile(
+	r'\b(?:'
+	r'move\s+(?:board|card|task|list)\b'
+	r'|create\s+(?:a\s+)?(?:board|card|task|list|project)\b'
+	r'|delete\s+(?:a\s+)?(?:board|card|task|list|project)\b'
+	r'|rename\s+(?:a\s+)?(?:board|card|task|list|project)\b'
+	r'|archive\s+(?:a\s+)?(?:board|card|task|list|project)\b'
+	r'|add\s+(?:a\s+)?(?:card|task)\s+to\s+(?:board|list)\b'
+	r')',
+	re.IGNORECASE,
+)
+
 # Messages that ask about the OUTCOME of a previous action ("did you do it?",
 # "no feedback from you", "did it work?") should NEVER route to a crew — the
 # crew has no context about what Z did and will respond with irrelevant domain
@@ -469,6 +486,14 @@ async def resolve_active_crew(history: list, user_text: str, lang: str = "en") -
 	Returns crew_id string or None (let Z handle it normally).
 	"""
 	lower_text = user_text.lower()
+
+	# -2. System action guard: structural Planka operations (move/create/delete board,
+	# card, task, list, project) are handled by Z's action processor. Routing to any
+	# crew causes persona/dialect bleed in what must be a plain, language-correct
+	# confirmation. Bypass ALL crew routing — session continuity included.
+	if _SYSTEM_ACTION_RE.search(user_text[:500]):
+		logger.debug("Router: system action detected — bypassing crew routing")
+		return None
 
 	# -1. Operational query guard: status / confirmation questions skip all crew routing.
 	if _OPERATIONAL_QUERY_RE.search(user_text[:2000]):
