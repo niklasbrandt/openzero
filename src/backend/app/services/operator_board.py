@@ -175,16 +175,32 @@ class OperatorBoardService:
 		# 2. Name-based fallback: search ALL translated variants to avoid creating duplicates
 		# 2a. Get/Create Project
 		all_project_names = get_all_values("project_name")
-		# Also match legacy names that may still exist
-		all_project_names.update({"openZero", "Boards"})
+		# Legacy/placeholder names that have ever been used in Planka (including bad-translation artifacts)
+		all_project_names.update({"openZero", "Boards", "Projektname", "Operationen"})
 
 		projects_resp = await client.get("/api/projects")
 		projects = projects_resp.json().get("items", [])
-		project = next(
-			(p for p in projects if p["name"] in all_project_names),
-			None,
-		)
-		
+		matching_projects = [p for p in projects if p["name"] in all_project_names]
+
+		if len(matching_projects) > 1:
+			# One-time startup cleanup: multiple operator projects found — keep the one with real content
+			project = await self._resolve_duplicate_projects(client, matching_projects)
+		elif matching_projects:
+			project = matching_projects[0]
+		else:
+			project = None
+
+		# Rename to current language immediately — don't wait for next startup cycle
+		if project and project["name"] != self.project_name:
+			r = await client.patch(
+				f"/api/projects/{project['id']}",
+				json={"name": self.project_name},
+			)
+			if r.status_code == 200:
+				logger.info("Renamed operator project '%s' -> '%s'",
+							project["name"], self.project_name)
+				project = r.json().get("item", project)
+
 		if not project:
 			logger.info("Creating project %s", self.project_name)
 			try:
@@ -203,8 +219,19 @@ class OperatorBoardService:
 		detail = detail_resp.json()
 		boards = detail.get("included", {}).get("boards", [])
 		all_board_names = get_all_values("board_name")
-		all_board_names.add("Operator Board")  # legacy
+		all_board_names.update({"Operator Board", "Boardname"})  # legacy + placeholder artifact
 		board = next((b for b in boards if b["name"] in all_board_names), None)
+
+		# Rename to current language immediately
+		if board and board["name"] != self.board_name:
+			r = await client.patch(
+				f"/api/boards/{board['id']}",
+				json={"name": self.board_name},
+			)
+			if r.status_code == 200:
+				logger.info("Renamed operator board '%s' -> '%s'",
+							board["name"], self.board_name)
+				board = r.json().get("item", board)
 
 		if not board:
 			logger.info("Creating board %s", self.board_name)
@@ -224,6 +251,83 @@ class OperatorBoardService:
 		await self._save_persisted_ids(project["id"], board["id"])
 
 		return project["id"], board["id"]
+
+	async def _resolve_duplicate_projects(
+		self, client: httpx.AsyncClient, candidates: list[dict]
+	) -> dict:
+		"""Called when multiple Planka projects match a known operator project name.
+
+		Counts total cards in each candidate.  Deletes any project with zero cards.
+		Keeps and returns the project with the most content.  If two projects share
+		the same non-zero card count, logs a warning and keeps the first one found.
+		"""
+		async def _count_cards(proj: dict) -> int:
+			try:
+				detail = (await client.get(f"/api/projects/{proj['id']}")).json()
+				boards = detail.get("included", {}).get("boards", [])
+				total = 0
+				for board in boards:
+					b_detail = (
+						await client.get(
+							f"/api/boards/{board['id']}",
+							params={"included": "cards"},
+						)
+					).json()
+					total += len(b_detail.get("included", {}).get("cards", []))
+				return total
+			except Exception as _ce:
+				logger.warning("Could not count cards for project %s: %s", proj["id"], _ce)
+				return 0
+
+		card_counts = {p["id"]: await _count_cards(p) for p in candidates}
+		for p in candidates:
+			logger.info(
+				"Operator project candidate '%s' (id=%s): %d cards",
+				p["name"], p["id"], card_counts[p["id"]],
+			)
+
+		best = max(candidates, key=lambda p: card_counts[p["id"]])
+		best_count = card_counts[best["id"]]
+
+		# Warn if multiple candidates tie on content
+		ties = [p for p in candidates if card_counts[p["id"]] == best_count and p["id"] != best["id"]]
+		if ties:
+			logger.warning(
+				"Multiple operator project candidates share the highest card count (%d). "
+				"Keeping '%s' (id=%s). Manual review may be needed.",
+				best_count, best["name"], best["id"],
+			)
+
+		# Delete empty duplicates; leave non-empty ones for manual review
+		for p in candidates:
+			if p["id"] == best["id"]:
+				continue
+			if card_counts[p["id"]] == 0:
+				try:
+					r = await client.delete(f"/api/projects/{p['id']}")
+					if r.status_code in (200, 204):
+						logger.info(
+							"Deleted empty duplicate operator project '%s' (id=%s)",
+							p["name"], p["id"],
+						)
+					else:
+						logger.warning(
+							"Could not delete duplicate operator project '%s' (id=%s): HTTP %s",
+							p["name"], p["id"], r.status_code,
+						)
+				except Exception as _de:
+					logger.warning(
+						"Exception deleting duplicate operator project '%s': %s",
+						p["name"], _de,
+					)
+			else:
+				logger.warning(
+					"Duplicate operator project '%s' (id=%s) has %d cards — NOT auto-deleting. "
+					"Manual cleanup required.",
+					p["name"], p["id"], card_counts[p["id"]],
+				)
+
+		return best
 
 	async def _ensure_lists(self, client: httpx.AsyncClient) -> None:
 		"""Create any missing Operator Board lists. Does not rename existing lists."""
