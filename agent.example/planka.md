@@ -27,6 +27,7 @@ Never create columns with different names on a task board without explicit user 
 Reference/content boards MUST NOT use workflow columns (Backlog, In Progress, Done, etc.). Instead, create one or a few thematic lists that reflect the natural categories of the topic.
 
 **Rules:**
+
 - When in doubt about what lists the user wants, create ONE list named after the board topic and stop. Let the user add more lists later.
 - If the topic suggests obvious natural categories, create those directly (e.g. an aquarium board → "Species", "Equipment", "Notes").
 - Never exceed three lists on initial scaffold unless the user specified them.
@@ -42,6 +43,7 @@ Reference/content boards MUST NOT use workflow columns (Backlog, In Progress, Do
 ## WIP Enforcement
 
 Follow the WIP limits defined in the Kanban skill module. When creating or moving cards:
+
 1. Check the target column count before moving.
 2. If at limit, report the violation and ask which existing card should be moved or blocked instead.
 3. Never silently exceed a WIP limit.
@@ -49,6 +51,7 @@ Follow the WIP limits defined in the Kanban skill module. When creating or movin
 ## Task Decomposition
 
 When a user describes a large piece of work:
+
 1. Create one card per discrete deliverable.
 2. Add a parent card or use the card description to link related cards if Planka does not support sub-tasks.
 3. Place new cards in Backlog unless the user explicitly asks for Next Up or In Progress.
@@ -81,12 +84,13 @@ Planka has no native UI to drag a board from one project to another. The Planka 
 
 These two Planka projects are completely different and must NEVER be confused:
 
-| Project | Purpose | Owner |
-|---|---|---|
-| **My Projects** | User's personal board folder. All single-topic user boards live here (shopping lists, hobby planning, reading lists, one-off tasks). | User |
-| **Operations** | Z's own internal operator board project. Contains Z's task-tracking board ("Operator Board"). | Z / system |
+| Project         | Purpose                                                                                                                              | Owner      |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ---------- |
+| **My Projects** | User's personal board folder. All single-topic user boards live here (shopping lists, hobby planning, reading lists, one-off tasks). | User       |
+| **Operations**  | Z's own internal operator board project. Contains Z's task-tracking board ("Operator Board").                                        | Z / system |
 
 Rules:
+
 - When a user asks to move a board to "My Projects", use `TO_PROJECT: My Projects` — never substitute "Operations".
 - Never route a user board into "Operations". That project belongs to Z's internal bookkeeping.
 - Never tell a user that "Operations" is where their personal boards go.
