@@ -176,7 +176,30 @@ class OperatorBoardService:
 		# 2a. Get/Create Project
 		all_project_names = get_all_values("project_name")
 		# Legacy/placeholder names that have ever been used in Planka (including bad-translation artifacts)
-		all_project_names.update({"openZero", "Boards", "Projektname", "Operationen"})
+		all_project_names.update({
+			# English
+			"Operations", "openZero", "Boards",
+			# German
+			"Projektname", "Operationen",
+			# Spanish
+			"Operaciones",
+			# French
+			"Opérations",
+			# Arabic
+			"العمليات",
+			# Japanese
+			"オペレーション",
+			# Chinese
+			"运营",
+			# Hindi
+			"संचालन",
+			# Portuguese
+			"Operações",
+			# Korean
+			"운영",
+			# Russian
+			"Операции",
+		})
 
 		projects_resp = await client.get("/api/projects")
 		projects = projects_resp.json().get("items", [])
@@ -219,7 +242,30 @@ class OperatorBoardService:
 		detail = detail_resp.json()
 		boards = detail.get("included", {}).get("boards", [])
 		all_board_names = get_all_values("board_name")
-		all_board_names.update({"Operator Board", "Boardname"})  # legacy + placeholder artifact
+		all_board_names.update({  # legacy + placeholder artifacts across all languages
+			# English
+			"Operator Board", "Operations",
+			# German
+			"Boardname", "Operator-Board",
+			# Spanish
+			"Tablero de Operaciones",
+			# French
+			"Tableau de Bord",
+			# Arabic
+			"لوحة العمليات",
+			# Japanese
+			"オペレーターボード",
+			# Chinese
+			"操作员看板",
+			# Hindi
+			"ऑपरेटर बोर्ड",
+			# Portuguese
+			"Painel de Operações",
+			# Korean
+			"운영자 보드",
+			# Russian
+			"Доска оператора",
+		})
 		board = next((b for b in boards if b["name"] in all_board_names), None)
 
 		# Rename to current language immediately
