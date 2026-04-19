@@ -56,4 +56,5 @@ Whenever Z confirms that a structural action has been taken — creating a proje
 - The subject must match the exact name used when creating the item.
 - Always include `board=` for task and list tags.
 - For user-initiated projects, default to creating them as boards inside "My Projects", not as root-level Planka projects unless explicitly instructed otherwise.
+- **"My Projects" and "Operations" are different things.** "My Projects" is the user's personal board folder. "Operations" is Z's own internal project holding the Operator Board. Never redirect a user who says "My Projects" to "Operations".
 - No `[AUDIT:...]` tags in speculative or conditional replies ("I could create...").

@@ -191,7 +191,7 @@ from app.services.web_search import web_search
 
 AVAILABLE_TOOLS = [create_task, create_project, create_event, learn_memory, schedule_reminder, schedule_persistent_custom, move_card, run_crew, web_search]
 
-SENSITIVE_ACTIONS = {"SCHEDULE_CUSTOM", "LEARN", "CREATE_PROJECT", "ADD_PERSON", "CREATE_BOARD", "CREATE_LIST", "PROXIMITY_TRACK", "RUN_CREW", "SCHEDULE_CREW"}
+SENSITIVE_ACTIONS = {"SCHEDULE_CUSTOM", "LEARN", "CREATE_PROJECT", "ADD_PERSON", "CREATE_BOARD", "CREATE_LIST", "MOVE_BOARD", "PROXIMITY_TRACK", "RUN_CREW", "SCHEDULE_CREW"}
 
 async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = False):
 	"""
@@ -205,6 +205,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 	from app.services.planka import create_list as planka_create_list
 	from app.services.planka import move_card as planka_move_card
 	from app.services.planka import archive_card as planka_archive_card
+	from app.services.planka import move_board as planka_move_board
 	from app.models.db import store_pending_thought
 	import json
 	
@@ -843,6 +844,46 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 			return f"\u26a0 Could not archive card '{card_frag}'. Check Planka board."
 
 		await handle_action("ARCHIVE_CARD", raw_tag, _exec_archive_card, f"Archive card '{card_frag}'")
+		clean_reply = strip_tag(clean_reply, raw_tag)
+
+	# Move Board Tag — patches a board's projectId to move it to a different project.
+	move_board_pattern = r"\[?ACTION: MOVE_BOARD \| BOARD: ([^\|\]]+) \| TO_PROJECT: ([^\|\]]+)\]?"
+	for match in re.finditer(move_board_pattern, reply):
+		raw_tag = match.group(0)
+		mb_board_name = match.group(1).strip().strip('"\'')
+		mb_target_project = match.group(2).strip().strip('"\'"')
+
+		async def _exec_move_board(mb_board_name=mb_board_name, mb_target_project=mb_target_project):
+			try:
+				from app.services.planka_common import get_planka_auth_token as _gat
+				import httpx as _httpx
+				token = await _gat()
+				async with _httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, timeout=15.0, headers={"Authorization": f"Bearer {token}"}) as client:
+					pr = await client.get("/api/projects")
+					pr.raise_for_status()
+					projects = pr.json().get("items", [])
+					target_proj = next((p for p in projects if p["name"].lower() == mb_target_project.lower()), None)
+					if not target_proj:
+						return f"\u26a0 Project '{mb_target_project}' not found. Check the project name in Planka."
+					board_id = None
+					for p in projects:
+						p_det = await client.get(f"/api/projects/{p['id']}")
+						boards = p_det.json().get("included", {}).get("boards", [])
+						match_b = next((b for b in boards if b["name"].lower() == mb_board_name.lower()), None)
+						if match_b:
+							board_id = match_b["id"]
+							break
+					if not board_id:
+						return f"\u26a0 Board '{mb_board_name}' not found. Check the board name in Planka."
+					success = await planka_move_board(board_id=board_id, new_project_id=target_proj["id"])
+					if success:
+						return f"Board '{mb_board_name}' moved to '{mb_target_project}'."
+					return f"\u26a0 Failed to move board '{mb_board_name}' to '{mb_target_project}'. Check Planka."
+			except Exception as _e:
+				logger.error("MOVE_BOARD failed: %s", _e)
+				return f"\u26a0 Failed to move board '{mb_board_name}'. System error."
+
+		await handle_action("MOVE_BOARD", raw_tag, _exec_move_board, f"Move board '{mb_board_name}' to project '{mb_target_project}'")
 		clean_reply = strip_tag(clean_reply, raw_tag)
 
 	# --- FINAL AGGRESSIVE HYGIENE ---
