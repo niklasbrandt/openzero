@@ -926,6 +926,7 @@ async def chat(
 	):
 		chunks.append(chunk)
 	result = "".join(chunks)
+	result = rehydrate_response(result, get_active_rep_map())
 
 	# Record metric (fire-and-forget)
 	_feature = kwargs.get("_feature", "unknown")
