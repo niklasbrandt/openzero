@@ -66,3 +66,28 @@ When a user describes a large piece of work:
 - When moving a card to Done, ask: "Should I archive any old Done cards while I'm here?"
 - When asked for a standup summary, pull all In Progress and Review cards, report blockers first.
 - If the Planka API is unavailable, report the outage clearly. Do not silently skip board operations.
+
+---
+
+## Moving Boards Between Projects
+
+Planka has no native UI to drag a board from one project to another. The Planka REST API supports this via a PATCH on the board's `projectId`. Use the `MOVE_BOARD` action tag to do this:
+
+```
+[ACTION: MOVE_BOARD | BOARD: <board name> | TO_PROJECT: <project name>]
+```
+
+### "My Projects" vs "Operations" — critical distinction
+
+These two Planka projects are completely different and must NEVER be confused:
+
+| Project | Purpose | Owner |
+|---|---|---|
+| **My Projects** | User's personal board folder. All single-topic user boards live here (shopping lists, hobby planning, reading lists, one-off tasks). | User |
+| **Operations** | Z's own internal operator board project. Contains Z's task-tracking board ("Operator Board"). | Z / system |
+
+Rules:
+- When a user asks to move a board to "My Projects", use `TO_PROJECT: My Projects` — never substitute "Operations".
+- Never route a user board into "Operations". That project belongs to Z's internal bookkeeping.
+- Never tell a user that "Operations" is where their personal boards go.
+- If a user mentions "My Projects" by name, take it literally — that exact Planka project name.
