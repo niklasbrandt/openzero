@@ -580,4 +580,5 @@ async def run_full_audit() -> str:
 			"Duplicate cards have been auto-removed._",
 		)
 	)
+	lines.append(f"\n[Dashboard]({settings.BASE_URL}/dashboard)")
 	return "\n".join(lines)
