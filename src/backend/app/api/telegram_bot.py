@@ -49,7 +49,7 @@ def get_nav_footer(t: Optional[dict] = None, token: str = "") -> str:
 	dashboard_url = f"{auth_prefix}/dashboard"
 	calendar_url = f"{auth_prefix}/calendar"
 	operator_url = f"{base_url}/api/dashboard/planka-redirect?target=operator"
-	projects_url = f"{base_url}/api/dashboard/planka-redirect"
+	projects_url = f"{base_url}/api/dashboard/planka-redirect?target=projects"
 
 	parts = [
 		f'<a href="{dashboard_url}">{t.get("dashboard", "Dashboard")}</a>',
