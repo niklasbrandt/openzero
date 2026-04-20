@@ -10,7 +10,7 @@ from app.services.agent_context import get_agent_skills_for_prompt, refresh_agen
 import asyncio
 from datetime import datetime, timezone
 from app.services.llm import ACTION_TAG_DOCS, get_agent_personality
-from app.services.crew_memory import get_crew_memory_context
+from app.services.crew_memory import get_crew_memory_context, get_crew_board_work_context
 from app.models.db import get_global_history
 
 # Bug-2 guard: ephemeral PII tokens ([ORG_1], [PERSON_2], ...) from previous
@@ -70,7 +70,7 @@ class NativeCrewEngine:
 			full_res += chunk
 		return full_res
 
-	async def run_crew_stream(self, crew_id: str, user_input: str, history: Optional[list] = None):
+	async def run_crew_stream(self, crew_id: str, user_input: str, history: Optional[list] = None, slash_invoked: bool = False):
 		"""Executes a crew mission and yields tokens in real-time.
 
 		Args:
@@ -92,19 +92,24 @@ class NativeCrewEngine:
 		# Define tasks for parallel execution
 		tasks = [
 			get_agent_personality(),
-			get_crew_memory_context(crew_id)
+			get_crew_memory_context(crew_id),
+			get_crew_board_work_context(crew_id),
 		]
-		
+
 		results = await asyncio.gather(*tasks, return_exceptions=True)
-		
+
 		# Unpack results with safety checks
 		personality = results[0] if not isinstance(results[0], Exception) else ""
 		if isinstance(results[0], Exception):
 			logger.debug("Native Engine: Failed to load agent personality: %s", results[0])
-			
+
 		mem_ctx = results[1] if not isinstance(results[1], Exception) else ""
 		if isinstance(results[1], Exception):
 			logger.debug("Native Engine: Failed to load crew memory context: %s", results[1])
+
+		board_work_ctx = results[2] if not isinstance(results[2], Exception) else ""
+		if isinstance(results[2], Exception):
+			logger.debug("Native Engine: Failed to load crew board work context: %s", results[2])
 
 		# For "agent"-type crews, build a leading system message that combines the
 		# globally configured archetype WITH the prose-only format rule. Placing
@@ -165,6 +170,11 @@ class NativeCrewEngine:
 		if mem_ctx:
 			instructions += f"\n\n{mem_ctx}"
 
+		# 3c. Crew board work context — actual output cards from the crew's Planka board.
+		# Primary reference for "last suggestion", "what did we decide", "previous idea" queries.
+		if board_work_ctx:
+			instructions += f"\n\n{board_work_ctx}"
+
 		# 4. Action tag vocabulary — always included (1.7B+ has 32k ctx)
 		instructions += f"\n\n{ACTION_TAG_DOCS}"
 
@@ -185,7 +195,14 @@ class NativeCrewEngine:
 		# the user just did / said — regardless of keyword filtering.  This
 		# prevents the crew from re-suggesting an exercise or action the user
 		# already reported completing in the immediately prior turn.
-		always_include = {id(m) for m in user_msgs[-3:]}
+		# Exception: when the user explicitly invokes a crew via /crew <id>, suppress
+		# the unconditional inclusion so unrelated conversation context (e.g. an
+		# aquarium discussion) does not bleed into the crew session.  Keyword-
+		# matching history is still included.
+		if slash_invoked:
+			always_include: set = set()
+		else:
+			always_include = {id(m) for m in user_msgs[-3:]}
 		for m in user_msgs:
 			content = m["content"]
 			if id(m) not in always_include and crew_keywords:

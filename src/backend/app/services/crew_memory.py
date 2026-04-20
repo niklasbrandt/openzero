@@ -271,6 +271,97 @@ async def append_crew_exchange(crew_id: str, user_msg: str, crew_response: str) 
 		logger.warning("crew_memory: append_crew_exchange failed: %s", e)
 
 
+MAX_BOARD_CONTEXT_CHARS = 2000
+
+
+async def get_crew_board_work_context(crew_id: str) -> str:
+	"""
+	Read all non-Conversation lists from the crew's Planka board and return a
+	formatted summary of their card names and descriptions.
+
+	This is the primary reference for follow-up questions like "describe your
+	last suggestion" or "what did we decide?" — the crew consults its own board
+	history rather than the general Telegram conversation thread.
+
+	Returns empty string if the board does not exist or on any error.
+	"""
+	try:
+		from app.services.translations import get_translations, get_user_lang
+		lang = await get_user_lang()
+		t = get_translations(lang)
+		project_name: str = t.get("crews_project_name", "Crews")
+		conversation_list_name: str = t.get("crew_conversation_list", "Conversation")
+		board_name = _crew_board_name(crew_id)
+
+		async with await _planka_client() as client:
+			resp = await client.get("/api/projects")
+			resp.raise_for_status()
+			project_id = next(
+				(p["id"] for p in resp.json().get("items", [])
+				 if (p.get("name") or "").lower() == project_name.lower()),
+				None,
+			)
+			if not project_id:
+				return ""
+
+			det = await client.get(f"/api/projects/{project_id}")
+			det.raise_for_status()
+			boards = det.json().get("included", {}).get("boards", [])
+			board_id = next(
+				(b["id"] for b in boards if (b.get("name") or "").lower() == board_name.lower()),
+				None,
+			)
+			if not board_id:
+				return ""
+
+			bd = await client.get(f"/api/boards/{board_id}", params={"included": "lists,cards"})
+			bd.raise_for_status()
+			bd_data = bd.json()
+			lists = bd_data.get("included", {}).get("lists", []) or []
+			cards = bd_data.get("included", {}).get("cards", []) or []
+
+		work_lists = [
+			lst for lst in lists
+			if (lst.get("name") or "").lower() != conversation_list_name.lower()
+		]
+		if not work_lists:
+			return ""
+
+		work_lists.sort(key=lambda x: x.get("position", 0))
+
+		lines: list[str] = [
+			f"CREW BOARD HISTORY — {board_name} "
+			"(primary reference for past work, suggestions, and decisions — "
+			"use this when the user asks about previous ideas or last suggestions):"
+		]
+		found_any = False
+		for lst in work_lists:
+			lst_cards = [c for c in cards if c.get("listId") == lst["id"]]
+			if not lst_cards:
+				continue
+			found_any = True
+			lst_cards.sort(key=lambda x: x.get("position", 0))
+			lines.append(f"\n[{lst['name']}]")
+			for c in lst_cards:
+				card_line = f"  - {c['name']}"
+				desc = (c.get("description") or "").strip()
+				if desc:
+					short_desc = desc[:300] + ("..." if len(desc) > 300 else "")
+					card_line += f": {short_desc}"
+				lines.append(card_line)
+
+		if not found_any:
+			return ""
+
+		full = "\n".join(lines)
+		if len(full) > MAX_BOARD_CONTEXT_CHARS:
+			full = "[...earlier board entries omitted...]\n" + full[-MAX_BOARD_CONTEXT_CHARS:]
+		return full
+	except Exception as e:
+		logger.warning("crew_memory: get_crew_board_work_context failed: %s", e)
+		return ""
+
+
 async def get_crew_memory_context(crew_id: str) -> str:
 	"""
 	Load the last CONTEXT_DAYS days of conversation cards for this crew and
