@@ -872,25 +872,42 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 					pr = await client.get("/api/projects")
 					pr.raise_for_status()
 					projects = pr.json().get("items", [])
+					# 1. Exact case-insensitive project match
 					target_proj = next((p for p in projects if p["name"].lower() == mb_target_project.lower()), None)
+					if not target_proj:
+						# 2. Substring fallback for project name
+						proj_candidates = [p for p in projects if mb_target_project.lower() in p["name"].lower() or p["name"].lower() in mb_target_project.lower()]
+						if proj_candidates:
+							target_proj = min(proj_candidates, key=lambda p: abs(len(p["name"]) - len(mb_target_project)))
+							logger.info("MOVE_BOARD: fuzzy-matched project '%s' -> '%s'", mb_target_project, target_proj["name"])
 					if not target_proj:
 						return f"\u26a0 Project '{mb_target_project}' not found. Check the project name in Planka."
 					board_id = None
+					matched_board_name = None
 					for p in projects:
 						p_det = await client.get(f"/api/projects/{p['id']}")
 						p_det.raise_for_status()
 						p_det_json = p_det.json()
 						boards = p_det_json.get("included", {}).get("boards", []) or p_det_json.get("boards", [])
+						# 1. Exact case-insensitive board match
 						match_b = next((b for b in boards if (b.get("name") or "").lower() == mb_board_name.lower()), None)
+						if not match_b:
+							# 2. Substring fallback for board name
+							b_candidates = [b for b in boards if mb_board_name.lower() in (b.get("name") or "").lower() or (b.get("name") or "").lower() in mb_board_name.lower()]
+							if b_candidates:
+								match_b = min(b_candidates, key=lambda b: abs(len(b.get("name") or "") - len(mb_board_name)))
+								logger.info("MOVE_BOARD: fuzzy-matched board '%s' -> '%s'", mb_board_name, match_b.get("name"))
 						if match_b:
 							board_id = match_b["id"]
+							matched_board_name = match_b.get("name", mb_board_name)
+							logger.info("MOVE_BOARD: using board id=%s name='%s'", board_id, matched_board_name)
 							break
 					if not board_id:
 						return f"\u26a0 Board '{mb_board_name}' not found. Check the board name in Planka."
 					success = await planka_move_board(board_id=board_id, new_project_id=target_proj["id"])
 					if success:
-						return f"Board '{mb_board_name}' moved to '{mb_target_project}'."
-					return f"\u26a0 Failed to move board '{mb_board_name}' to '{mb_target_project}'. Check Planka."
+						return f"Board '{matched_board_name}' moved to '{target_proj['name']}'."
+					return f"\u26a0 Failed to move board '{matched_board_name}' to '{target_proj['name']}'. Check Planka."
 			except Exception as _e:
 				logger.error("MOVE_BOARD failed: %s", _e)
 				return f"\u26a0 Failed to move board '{mb_board_name}'. System error."
