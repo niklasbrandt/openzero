@@ -1169,6 +1169,22 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 		return
 
 	clean_reply = strip_llm_time_header(result.reply)
+
+	# Anti-hallucination guard: if the reply contains action-confirmation phrases
+	# but no action was actually executed or queued, warn the user.
+	_ACTION_CONFIRM_WORDS = (
+		"verschoben", "moved", "déplacé", "bewegt", "board moved",
+		"projekt verschoben", "card created", "erstellt", "créé",
+		"task added", "board created", "added to", "saved", "set up",
+	)
+	if (
+		not result.executed_cmds
+		and not result.pending_actions
+		and any(w in clean_reply.lower() for w in _ACTION_CONFIRM_WORDS)
+	):
+		clean_reply += "\n\n\u26a0 " + t.get("action_not_executed", "No action was executed — please try again.")
+		logger.warning("_process_freetext: phantom confirmation detected (no executed_cmds) — appended warning")
+
 	html_reply = _md_to_html(clean_reply)
 	footer = await _get_stats_footer()
 	display_reply = f"<b>{format_time()}</b>\n\n{html_reply}{footer}"
