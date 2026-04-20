@@ -70,6 +70,33 @@ async def _get_user_timezone():
 		return timezone.utc
 
 
+# All known historical names for the conversation list across all languages and legacy variants.
+# Used for name-based dedup when no persisted ID is available.
+_CONVERSATION_LIST_LEGACY_NAMES: set[str] = {
+	# EN
+	"Conversation", "Conversations",
+	# DE
+	"Gespr\u00e4ch", "Konversation", "Unterhaltung",
+	# ES
+	"Conversaci\u00f3n",
+	# FR (same as EN)
+	# AR
+	"\u0645\u062d\u0627\u062f\u062b\u0629",
+	# JA
+	"\u4f1a\u8a71",
+	# ZH
+	"\u5bf9\u8bdd",
+	# HI
+	"\u0935\u093e\u0930\u094d\u0924\u093e\u0932\u093e\u092a", "\u092c\u093e\u0924\u091a\u0940\u0924",
+	# PT
+	"Conversa",
+	# KO
+	"\ub300\ud654",
+	# RU
+	"\u0420\u0430\u0437\u0433\u043e\u0432\u043e\u0440",
+}
+
+
 def _crew_board_name(crew_id: str) -> str:
 	"""Convert crew_id to a human-readable board name. e.g. 'market-intel' -> 'Market Intel'"""
 	return crew_id.replace("-", " ").title()
@@ -136,21 +163,109 @@ async def _get_or_create_crew_board(
 		return None
 
 
+async def _load_crew_list_id(crew_id: str, purpose: str) -> str | None:
+	"""Load a persisted Planka list ID from the Preference table."""
+	try:
+		from app.models.db import AsyncSessionLocal, Preference
+		from sqlalchemy import select
+		key = f"crew_list_{crew_id}_{purpose}"
+		async with AsyncSessionLocal() as session:
+			res = await session.execute(select(Preference).where(Preference.key == key))
+			pref = res.scalar_one_or_none()
+			return pref.value if pref else None
+	except Exception as e:
+		logger.warning("crew_memory: could not load list ID for %s/%s: %s", crew_id, purpose, e)
+		return None
+
+
+async def _save_crew_list_id(crew_id: str, purpose: str, list_id: str) -> None:
+	"""Persist a Planka list ID to the Preference table."""
+	try:
+		from app.models.db import AsyncSessionLocal, Preference
+		from sqlalchemy import select
+		key = f"crew_list_{crew_id}_{purpose}"
+		async with AsyncSessionLocal() as session:
+			res = await session.execute(select(Preference).where(Preference.key == key))
+			pref = res.scalar_one_or_none()
+			if pref:
+				pref.value = list_id
+			else:
+				session.add(Preference(key=key, value=list_id))
+			await session.commit()
+		logger.info("crew_memory: persisted list ID crew_id=%s purpose=%s id=%s", crew_id, purpose, list_id)
+	except Exception as e:
+		logger.warning("crew_memory: could not persist list ID for %s/%s: %s", crew_id, purpose, e)
+
+
 async def _get_or_create_conversation_list(
 	client: httpx.AsyncClient,
 	board_id: str,
 	list_name: str,
+	crew_id: str,
 ) -> str | None:
-	"""Return list_id for the Conversation list on the board."""
+	"""Return list_id for the Conversation list on the board.
+
+	Lookup strategy (mirrors OperatorBoardService list ID persistence):
+	1. DB-persisted ID: validate against live board lists by ID.
+	   If valid, rename to current-language name if it has drifted.
+	2. Name-based dedup across all known language variants + legacy names.
+	   Pick the list with the most cards (winner), delete empty duplicates,
+	   rename winner to current language, persist winner's ID.
+	3. Create a new list if nothing found, persist its ID.
+	"""
 	try:
-		b_detail = await client.get(f"/api/boards/{board_id}", params={"included": "lists"})
+		from app.services.translations import get_all_values
+		all_conv_names: set[str] = get_all_values("crew_conversation_list") | _CONVERSATION_LIST_LEGACY_NAMES
+
+		# Fetch lists + cards in one request (reused by all strategies)
+		b_detail = await client.get(f"/api/boards/{board_id}", params={"included": "lists,cards"})
 		b_detail.raise_for_status()
 		b_data = b_detail.json()
 		lists = b_data.get("included", {}).get("lists", []) or b_data.get("lists", [])
-		for lst in lists:
-			if (lst.get("name") or "").lower() == list_name.lower():
-				return lst["id"]
-		# Create conversation list
+		cards = b_data.get("included", {}).get("cards", []) or []
+
+		def _card_count(lst_id: str) -> int:
+			return sum(1 for c in cards if c.get("listId") == lst_id)
+
+		# --- Strategy 1: persisted ID ---
+		persisted_id = await _load_crew_list_id(crew_id, "conversation")
+		if persisted_id:
+			matched = next((lst for lst in lists if lst["id"] == persisted_id), None)
+			if matched:
+				if matched.get("name") != list_name:
+					r = await client.patch(f"/api/lists/{persisted_id}", json={"name": list_name})
+					if r.status_code == 200:
+						logger.info("crew_memory: renamed conversation list '%s' -> '%s' for crew '%s'",
+									matched.get("name"), list_name, crew_id)
+				return persisted_id
+			logger.warning("crew_memory: persisted list ID %s not found on board %s — falling back to name search",
+						   persisted_id, board_id)
+
+		# --- Strategy 2: name-based dedup across all language variants ---
+		candidates = [lst for lst in lists if (lst.get("name") or "") in all_conv_names]
+		if candidates:
+			winner = max(candidates, key=lambda lst: _card_count(lst["id"]))
+			# Delete empty duplicates
+			for lst in candidates:
+				if lst["id"] == winner["id"]:
+					continue
+				if _card_count(lst["id"]) == 0:
+					r = await client.delete(f"/api/lists/{lst['id']}")
+					logger.info("crew_memory: deleted empty duplicate conversation list '%s' (id=%s) on board %s",
+								lst.get("name"), lst["id"], board_id)
+				else:
+					logger.warning("crew_memory: non-empty duplicate conversation list '%s' (id=%s) — not auto-deleting",
+								   lst.get("name"), lst["id"])
+			# Rename winner to current language if needed
+			if winner.get("name") != list_name:
+				r = await client.patch(f"/api/lists/{winner['id']}", json={"name": list_name})
+				if r.status_code == 200:
+					logger.info("crew_memory: renamed conversation list '%s' -> '%s' for crew '%s'",
+								winner.get("name"), list_name, crew_id)
+			await _save_crew_list_id(crew_id, "conversation", winner["id"])
+			return winner["id"]
+
+		# --- Strategy 3: create new list ---
 		r = await client.post(f"/api/boards/{board_id}/lists", json={
 			"name": list_name,
 			"type": "active",
@@ -159,7 +274,10 @@ async def _get_or_create_conversation_list(
 		r.raise_for_status()
 		data = r.json()
 		item = data.get("item") or data
-		return item.get("id")
+		new_id = item.get("id")
+		if new_id:
+			await _save_crew_list_id(crew_id, "conversation", new_id)
+		return new_id
 	except Exception as e:
 		logger.warning("crew_memory: _get_or_create_conversation_list failed: %s", e)
 		return None
@@ -258,7 +376,7 @@ async def append_crew_exchange(crew_id: str, user_msg: str, crew_response: str) 
 			board_id = await _get_or_create_crew_board(client, project_id, board_name)
 			if not board_id:
 				return
-			list_id = await _get_or_create_conversation_list(client, board_id, list_name)
+			list_id = await _get_or_create_conversation_list(client, board_id, list_name, crew_id)
 			if not list_id:
 				return
 			card_id, current_desc = await _get_or_create_today_card(client, board_id, list_id, date_str)
@@ -320,9 +438,11 @@ async def get_crew_board_work_context(crew_id: str) -> str:
 			lists = bd_data.get("included", {}).get("lists", []) or []
 			cards = bd_data.get("included", {}).get("cards", []) or []
 
+		from app.services.translations import get_all_values
+		all_conv_names_lower = {n.lower() for n in (get_all_values("crew_conversation_list") | _CONVERSATION_LIST_LEGACY_NAMES)}
 		work_lists = [
 			lst for lst in lists
-			if (lst.get("name") or "").lower() != conversation_list_name.lower()
+			if (lst.get("name") or "").lower() not in all_conv_names_lower
 		]
 		if not work_lists:
 			return ""
@@ -389,6 +509,9 @@ async def get_crew_memory_context(crew_id: str) -> str:
 			for i in range(CONTEXT_DAYS)
 		}
 
+		from app.services.translations import get_all_values
+		all_conv_names = get_all_values("crew_conversation_list") | _CONVERSATION_LIST_LEGACY_NAMES
+
 		async with await _planka_client() as client:
 			# Locate project
 			resp = await client.get("/api/projects")
@@ -412,22 +535,26 @@ async def get_crew_memory_context(crew_id: str) -> str:
 			if not board_id:
 				return ""
 
-			# Locate conversation list
-			bl = await client.get(f"/api/boards/{board_id}", params={"included": "lists"})
-			bl.raise_for_status()
-			lists = bl.json().get("included", {}).get("lists", []) or bl.json().get("lists", [])
-			list_id = next(
-				(lst["id"] for lst in lists if (lst.get("name") or "").lower() == list_name.lower()),
-				None,
-			)
-			if not list_id:
-				return ""
-
-			# Fetch cards from board detail (Planka has no GET /api/lists/{id}/cards)
+			# Fetch board lists + cards in one request
 			bd = await client.get(f"/api/boards/{board_id}", params={"included": "lists,cards"})
 			bd.raise_for_status()
 			bd_data = bd.json()
+			all_lists = bd_data.get("included", {}).get("lists", []) or bd_data.get("lists", [])
 			all_cards = bd_data.get("included", {}).get("cards", []) or bd_data.get("cards", [])
+
+			# Locate conversation list: persisted ID first, then name-based across all variants
+			list_id = await _load_crew_list_id(crew_id, "conversation")
+			if list_id:
+				if not any(lst["id"] == list_id for lst in all_lists):
+					logger.warning("crew_memory: persisted list ID %s not found in board lists — falling back to name search", list_id)
+					list_id = None
+			if not list_id:
+				matched = next((lst for lst in all_lists if (lst.get("name") or "") in all_conv_names), None)
+				if matched:
+					list_id = matched["id"]
+			if not list_id:
+				return ""
+
 			cards = [c for c in all_cards if c.get("listId") == list_id]
 
 		matching = [
