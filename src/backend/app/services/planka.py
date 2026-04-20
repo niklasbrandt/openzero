@@ -495,10 +495,14 @@ async def move_board(board_id: str, new_project_id: str) -> bool:
 			del_resp = await client.delete(f"/api/boards/{board_id}")
 			if del_resp.status_code >= 400:
 				logger.warning("move_board migration: could not delete original board %s (status %s) — it may remain as a duplicate", _sanitize_for_log(board_id), del_resp.status_code)
+				migration_success = False
+				logger.info("MOVE_BOARD: migration incomplete, original board not deleted")
 			else:
 				logger.info("move_board migration: original board %s deleted", _sanitize_for_log(board_id))
+				migration_success = True
+				logger.info("MOVE_BOARD: migration complete, original board deleted")
 
-			return True
+			return migration_success
 	except Exception as e:
 		logger.error("move_board failed: %s", _sanitize_for_log(e))
 		return False

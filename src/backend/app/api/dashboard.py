@@ -706,6 +706,24 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		if crews:
 			clean_reply += f"\n\n*(Reasoning by crew {', '.join(crews)})*"
 
+		# Anti-hallucination guard: if the reply contains action-confirmation phrases
+		# but no action was actually executed or queued, warn the user.
+		_ACTION_CONFIRM_WORDS = (
+			"verschoben", "moved", "déplacé", "bewegt", "board moved",
+			"projekt verschoben", "card created", "erstellt", "créé",
+			"task added", "board created", "added to", "saved", "set up",
+		)
+		if (
+			not executed_cmds
+			and not pending_actions
+			and any(w in clean_reply.lower() for w in _ACTION_CONFIRM_WORDS)
+		):
+			from app.services.translations import get_translations, get_user_lang
+			_lang = await get_user_lang()
+			_t = get_translations(_lang)
+			clean_reply += "\n\n\u26a0 " + _t.get("action_not_executed", "No action was executed — please try again.")
+			logger.warning("dashboard_chat: phantom confirmation detected (no executed_cmds) — appended warning")
+
 		safe_executed = [str(c) for c in executed_cmds]
 		safe_pending = [{"description": str(p.get("description", "Action")), "type": str(p.get("type", "UNKNOWN"))} for p in pending_actions]
 		

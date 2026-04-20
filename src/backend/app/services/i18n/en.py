@@ -424,6 +424,7 @@ translations: dict[str, str] = {
 	"audit_section_missing_desc": "*Missing Descriptions*",
 	"audit_report_footer": "_Action fulfillment, contradiction, and missing-description flags are advisory. Duplicate cards have been auto-removed._",
 	"audit_clean_msg": "Self-audit complete — no issues found. All tracked actions are verified and consistent with Planka's live state.",
+	"action_not_executed": "No action was executed — please try again.",
 	"status_online": "I'm back!",
 	"dashboard": "Dashboard",
 	"projects": "Projects",
