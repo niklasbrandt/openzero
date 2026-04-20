@@ -244,6 +244,10 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 			if res:
 				if isinstance(res, str):
 					executed_cmds.append(res)
+					# Surface ⚠ errors to the user so Z never falsely confirms a failed action
+					if res.startswith("\u26a0"):
+						nonlocal clean_reply
+						clean_reply = clean_reply.rstrip() + "\n\n" + res
 				else:
 					executed_cmds.append(f"{action_type} executed.")
 			return True
@@ -860,10 +864,11 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 
 		async def _exec_move_board(mb_board_name=mb_board_name, mb_target_project=mb_target_project):
 			try:
+				from app.config import settings as _cfg
 				from app.services.planka_common import get_planka_auth_token as _gat
 				import httpx as _httpx
 				token = await _gat()
-				async with _httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, timeout=15.0, headers={"Authorization": f"Bearer {token}"}) as client:
+				async with _httpx.AsyncClient(base_url=_cfg.PLANKA_BASE_URL, timeout=15.0, headers={"Authorization": f"Bearer {token}"}) as client:
 					pr = await client.get("/api/projects")
 					pr.raise_for_status()
 					projects = pr.json().get("items", [])
