@@ -396,6 +396,7 @@ translations: dict[str, str] = {
 	"audit_section_missing_desc": "*Fehlende Beschreibungen*",
 	"audit_report_footer": "_Ausführungs-, Widerspruchs- und Beschreibungshinweise sind beratend. Doppelte Karten wurden automatisch entfernt._",
 	"audit_clean_msg": "Selbst-Audit abgeschlossen — keine Probleme gefunden. Alle nachverfolgten Aktionen sind verifiziert und konsistent mit Plankas aktuellem Stand.",
+	"action_not_executed": "Keine Aktion wurde ausgeführt — bitte erneut versuchen.",
 	'diag_cloud_not_configured': 'Nicht konfiguriert',
 	'diag_cloud_set_env': 'LLM_CLOUD_BASE_URL + API-Schlüssel in .env',
 	'diag_cloud_why': 'Komplexes Denken & kontextintensive Aufgaben jenseits lokaler Kapazität.',
