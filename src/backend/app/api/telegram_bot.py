@@ -903,7 +903,7 @@ async def cmd_crews(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		
 		config = crew_registry.get(crew_id)
 		if config and config.enabled:
-			await _process_crew_stream(update, context, crew_id, user_input, t)
+			await _process_crew_stream(update, context, crew_id, user_input, t, slash_invoked=True)
 			return
 		elif config and not config.enabled:
 			import html as _html
@@ -1319,7 +1319,7 @@ async def handle_crew_abort(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		logger.debug("crew_abort callback parse ignored: %s", _e)
 
 
-async def _process_crew_stream(update: Update, context: ContextTypes.DEFAULT_TYPE, crew_ids: "str | list", user_input: str, t: dict, already_ingested: bool = False):
+async def _process_crew_stream(update: Update, context: ContextTypes.DEFAULT_TYPE, crew_ids: "str | list", user_input: str, t: dict, already_ingested: bool = False, slash_invoked: bool = False):
 	"""Executes a crew mission (or panel of crews) with progressive Telegram message updates."""
 	from app.services.crews_native import native_crew_engine
 	from app.services.message_bus import bus
@@ -1367,7 +1367,7 @@ async def _process_crew_stream(update: Update, context: ContextTypes.DEFAULT_TYP
 		stream = (
 			native_crew_engine.run_crew_panel(crew_ids, user_input)
 			if len(crew_ids) > 1
-			else native_crew_engine.run_crew_stream(primary_id, user_input)
+			else native_crew_engine.run_crew_stream(primary_id, user_input, slash_invoked=slash_invoked)
 		)
 
 		async for chunk in stream:
