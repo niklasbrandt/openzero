@@ -3,6 +3,7 @@ import time
 import datetime
 import logging
 import json
+from app.services.translations import get_all_values
 
 # Record when this module was first loaded (proxy for container startup time).
 _STARTUP_TIME: float = time.monotonic()
@@ -163,9 +164,10 @@ async def run_proactive_follow_up() -> None:
 			lists = included.get("lists", [])
 			cards = included.get("cards", [])
 
-			today_list = next((l for l in lists if l["name"] == "Today"), None)
+			_today_names = get_all_values("list_today")
+			today_list = next((l for l in lists if l["name"] in _today_names), None)
 			if not today_list:
-				logger.warning("Follow-up: 'Today' list not found on Operator Board.")
+				logger.warning("Follow-up: 'Today' list not found on Operator Board (checked names: %s).", _today_names)
 				return
 
 			today_cards = [c for c in cards if c["listId"] == today_list["id"]]
@@ -273,8 +275,10 @@ async def evening_reminder() -> None:
 			lists = included.get("lists", [])
 			cards = included.get("cards", [])
 
-			today_list = next((l for l in lists if l["name"] == "Today"), None)
+			_today_names = get_all_values("list_today")
+			today_list = next((l for l in lists if l["name"] in _today_names), None)
 			if not today_list:
+				logger.warning("Evening reminder: 'Today' list not found on Operator Board (checked names: %s).", _today_names)
 				return
 
 			today_cards = [c for c in cards if c["listId"] == today_list["id"]]
@@ -282,7 +286,7 @@ async def evening_reminder() -> None:
 				logger.info("Evening reminder: Today list is clear, skipping.")
 				return
 
-			task_names = ", ".join(c["name"] for c in today_cards[:8])
+			task_names = ", ".join(c["name"] for c in today_cards)
 			hour = datetime.datetime.now().hour
 			time_label = "end of day" if hour >= 19 else "this evening"
 
