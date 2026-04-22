@@ -219,6 +219,20 @@ async def _get_planka_snapshot() -> dict[str, Any]:
 # Check 4 — Missing Descriptions
 # ---------------------------------------------------------------------------
 
+_VERB_SUFFIX_RE = re.compile(
+	r'\b\w+(?:en|ern|eln|ieren)\b'  # German infinitives: waschen, kaufen, abhängen, organisieren
+	r'|'
+	r'\b(?:buy|get|fix|clean|order|check|call|send|book|find|write|read|do|make|take|'
+	r'move|add|update|remove|delete|install|repair|return|pick|drop|pack|build|set|'
+	r'create|review|prepare|schedule|organize|finish|start|test|run|go|bring)\b',  # common English verbs
+	re.IGNORECASE,
+)
+
+
+def _title_has_verb(name: str) -> bool:
+	return bool(_VERB_SUFFIX_RE.search(name))
+
+
 def _check_missing_descriptions(cards: list[dict[str, Any]]) -> list[str]:
 	"""Return advisory flags for task-board cards with vague names and no description or tasks.
 
@@ -226,7 +240,8 @@ def _check_missing_descriptions(cards: list[dict[str, Any]]) -> list[str]:
 	  - The board is a task board (board name does not match _LIST_BOARD_KEYWORDS).
 	  - The card has no description.
 	  - The card has no tasks/checklist items.
-	  - The card name is vague (fewer than 4 words).
+	  - The card name is genuinely ambiguous: 1-2 words AND contains no verb.
+	    Titles with 3+ words, or any verb, are considered self-explanatory.
 	"""
 	flags: list[str] = []
 	for card in cards:
@@ -241,12 +256,18 @@ def _check_missing_descriptions(cards: list[dict[str, Any]]) -> list[str]:
 		# Skip if the card has tasks (self-documenting via checklist).
 		if card.get("has_tasks"):
 			continue
-		# Only flag vague titles (fewer than 4 words).
 		name = card.get("name", "")
-		if len(name.split()) < 4:
-			flags.append(
-				f"Card '{name}' on board '{board_name}' has no description (vague title, task board)."
-			)
+		words = name.split()
+		# 3+ words: descriptive enough regardless of content.
+		if len(words) >= 3:
+			continue
+		# Contains a verb: action is clear.
+		if _title_has_verb(name):
+			continue
+		# 1-2 word noun-only titles are genuinely ambiguous (e.g. "macbook", "TV", "PC Case").
+		flags.append(
+			f"Card '{name}' on board '{board_name}' has no description (ambiguous title, task board)."
+		)
 	return flags
 
 
