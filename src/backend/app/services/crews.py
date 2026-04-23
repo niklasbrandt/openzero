@@ -110,6 +110,7 @@ class CrewConfig(BaseModel):
 	briefing_dom: Optional[str] = None
 	briefing_months: Optional[str] = None
 	lead_time: Optional[int] = None
+	health_context: bool = False  # If True, health.md is included in the injected personal context
 
 class CrewRegistry:
 	def __init__(self, agent_dir: str):
@@ -148,7 +149,8 @@ class CrewRegistry:
 				briefing_day=c.get("briefing_day"),
 				briefing_dom=c.get("briefing_dom"),
 				briefing_months=c.get("briefing_months"),
-				lead_time=c.get("lead_time")
+				lead_time=c.get("lead_time"),
+				health_context=c.get("health_context", False),
 			)
 			self._crews[config.id] = config
 		logger.info("Registry: Successfully loaded %d active crews.", len(self._crews))

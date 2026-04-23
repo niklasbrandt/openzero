@@ -80,12 +80,18 @@ async def _do_check_unanswered() -> None:
 	from app.models.db import get_global_history
 	from app.api.telegram_bot import (
 		_is_error_stub, _is_system_message, send_notification_html, get_nav_footer,
-		strip_llm_time_header, _md_to_html,
+		strip_llm_time_header, _md_to_html, is_any_message_processing,
 	)
 	from app.services.translations import get_user_lang, get_translations
 
 	history = await get_global_history(limit=30)
 	if not history:
+		return
+
+	# If any chat currently holds a thinking lock, a live handler is still running.
+	# Skip recovery to prevent duplicate responses during slow cloud-model calls.
+	if is_any_message_processing():
+		logger.debug("Watchdog: skipping recovery — live handler in progress.")
 		return
 
 	now_utc = datetime.now(timezone.utc)
@@ -108,8 +114,9 @@ async def _do_check_unanswered() -> None:
 		try:
 			msg_ts = datetime.fromisoformat(msg["at"]).replace(tzinfo=timezone.utc)
 			age_s = (now_utc - msg_ts).total_seconds()
-			if age_s < 90:
+			if age_s < 360:
 				# Too recent — live handle_freetext may still be processing
+				# (360 s / 6 min exceeds the worst-case cloud-model SLA)
 				continue
 		except Exception as _e:
 			logger.debug("Watchdog: could not parse message timestamp: %s", _e)
