@@ -785,6 +785,7 @@ CRITICAL — RETRY PROMISE: If you write "let me try again", "trying now", "I'll
   Example: user says "move the Shopping board to My Projects" → `[ACTION: MOVE_BOARD | BOARD: Shopping | TO_PROJECT: My Projects]`
   Example: [ACTION: MOVE_BOARD | BOARD: 30L nano reef tank | TO_PROJECT: My projects]
   CRITICAL: When the user asks to move a board, you MUST emit the MOVE_BOARD action tag. Do not only describe the action in text — the tag is required for execution.
+  CRITICAL: NEVER write "Done", "moved", "transferred", or any past-tense success phrase for MOVE_BOARD in your prose. Write a single neutral present-tense sentence such as "Moving board '[name]' to '[project]'." before the tag, then stop. The system will append the authoritative result after verifying with Planka. If you pre-confirm success and the move fails, the user sees a direct contradiction.
 - Append Shopping List: `[ACTION: APPEND_SHOPPING | ITEMS: item1\nitem2\nitem3]`
   (Appends grocery items to the current week's shopping list card on the Nutrition board. Use when the user mentions what they'll cook/eat, or when generating recipes. List each ingredient on a separate line with quantities.)
 - Route to Specialist Crew: `[ACTION: ROUTE | CREW: crew_id]`
