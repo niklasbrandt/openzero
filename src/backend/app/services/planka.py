@@ -166,7 +166,7 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 	if board_name.lower() in {n.lower() for n in all_board_names}:
 		board_name = "Operator Board"
 
-	logger.debug("create_task requested -> Board: %s, List: %s, Title: %s", _sanitize_for_log(board_name), _sanitize_for_log(list_name), _sanitize_for_log(title))
+		logger.info("create_task requested -> Board: %s, List: %s, Title: %s", _sanitize_for_log(board_name), _sanitize_for_log(list_name), _sanitize_for_log(title))
 	try:
 		from app.services.operator_board import operator_service
 		token = await get_planka_auth_token()
@@ -176,7 +176,7 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 			# 1. SPECIAL CASE: Operator Board
 			target_board = None
 			if board_name.lower() == "operator board":
-				logger.debug("Targeting Operator Board, ensuring initialization...")
+				logger.info("Targeting Operator Board, ensuring initialization...")
 				_, b_id = await operator_service.initialize_board(client)
 				target_board = {"id": b_id, "name": "Operator Board"}
 			else:
@@ -234,7 +234,7 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 			except Exception:
 				logger.debug("create_task: operator_service not ready, using default project name")
 			path = f"{project_name} → {target_board['name']} → {target_list['name']}"
-			logger.debug("Card created successfully: %s", path)
+			logger.info("Card created successfully: %s", path)
 			return path
 	except Exception as e:
 		logger.warning("create_task failed: %s", _sanitize_for_log(e))
