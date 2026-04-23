@@ -423,6 +423,19 @@ def get_personal_context_for_prompt() -> str:
 	return _state.prompt_block
 
 
+def get_personal_context_for_prompt_no_health() -> str:
+	"""Return the cached personal context block with health.md excluded.
+
+	Used for crews whose domain is not food, nutrition, health, or wellness.
+	Health-specific data (histamine intolerance, dietary restrictions, medical
+	conditions) must not appear in prompts for unrelated crews.
+	"""
+	filtered = {k: v for k, v in _state.final.items() if k != "health.md"}
+	if not filtered:
+		return ""
+	return _assemble_block(filtered)
+
+
 def get_personal_context_debug_report() -> str:
 	"""Return the exact content Z injects as personal context, per file."""
 	if not _state.prompt_block:

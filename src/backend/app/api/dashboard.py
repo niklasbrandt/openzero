@@ -709,9 +709,9 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		# Anti-hallucination guard: if the reply contains action-confirmation phrases
 		# but no action was actually executed or queued, warn the user.
 		_ACTION_CONFIRM_WORDS = (
-			"verschoben", "moved", "déplacé", "bewegt", "board moved",
-			"projekt verschoben", "card created", "erstellt", "créé",
-			"task added", "board created", "added to", "saved", "set up",
+			"verschoben", "has been moved", "was moved", "déplacé", "wurde bewegt", "board moved",
+			"projekt verschoben", "card created", "wurde erstellt", "a été créé",
+			"task added", "board created", "added to", "saved to", "was set up",
 		)
 		if (
 			not executed_cmds

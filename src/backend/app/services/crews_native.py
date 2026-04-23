@@ -5,7 +5,7 @@ import httpx
 from typing import Optional
 from app.config import settings
 from app.services.crews import crew_registry, SYSTEM_TEMPLATE
-from app.services.personal_context import get_personal_context_for_prompt, refresh_personal_context
+from app.services.personal_context import get_personal_context_for_prompt, get_personal_context_for_prompt_no_health, refresh_personal_context
 from app.services.agent_context import get_agent_skills_for_prompt, refresh_agent_context
 import asyncio
 from datetime import datetime, timezone
@@ -38,14 +38,15 @@ class NativeCrewEngine:
 		if not self.llm_url.endswith("/v1"):
 			self.llm_url += "/v1"
 
-	async def _get_crew_context(self) -> str:
+	async def _get_crew_context(self, include_health: bool = True) -> str:
 		"""Fetch personal and agent context for crew injection."""
 		# 1. Personal context (Allergies, Profile, Behavioral Rules)
-		p_ctx = get_personal_context_for_prompt()
+		_get_ctx = get_personal_context_for_prompt if include_health else get_personal_context_for_prompt_no_health
+		p_ctx = _get_ctx()
 		if not p_ctx:
 			try:
 				await refresh_personal_context()
-				p_ctx = get_personal_context_for_prompt()
+				p_ctx = _get_ctx()
 			except Exception as e:
 				logger.debug("Native Engine: Failed to refresh personal context: %s", e)
 		
@@ -151,18 +152,21 @@ class NativeCrewEngine:
 		# 3. Context Injection
 		# Local: personal context only (agent_context is large and not needed for most crew tasks)
 		# Cloud: full personal + agent context
+		# health_context=True crews (nutrition, health, fitness) receive health.md.
+		# All other crews receive personal context with health.md stripped.
 		if is_local:
-			p_ctx = get_personal_context_for_prompt()
+			_get_ctx = get_personal_context_for_prompt if config.health_context else get_personal_context_for_prompt_no_health
+			p_ctx = _get_ctx()
 			if not p_ctx:
 				try:
 					await refresh_personal_context()
-					p_ctx = get_personal_context_for_prompt()
+					p_ctx = _get_ctx()
 				except Exception as e:
 					logger.debug("Native Engine: Failed to refresh personal context: %s", e)
 			if p_ctx:
 				instructions += f"\n\n{p_ctx}"
 		else:
-			context_block = await self._get_crew_context()
+			context_block = await self._get_crew_context(include_health=config.health_context)
 			if context_block:
 				instructions += f"\n\n{context_block}"
 
