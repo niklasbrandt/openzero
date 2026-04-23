@@ -433,15 +433,20 @@ async def move_board(board_id: str, new_project_id: str) -> bool:
 			resp_body = resp.json()
 			logger.info("move_board PATCH response: %s", _sanitize_for_log(str(resp_body)[:400]))
 
-			# --- Step 2: Verify the PATCH actually moved the board ---
-			item = resp_body.get("item") or resp_body
-			actual_project_id = str(item.get("projectId", ""))
+			# --- Step 2: Verify via re-GET — do NOT trust the PATCH response body.
+			# Planka echoes back the PATCH payload without necessarily applying it,
+			# so checking resp_body.projectId always returns the requested value even
+			# when the board was not actually moved.
+			verify_resp = await client.get(f"/api/boards/{board_id}")
+			verify_resp.raise_for_status()
+			verify_item = verify_resp.json().get("item") or verify_resp.json()
+			actual_project_id = str(verify_item.get("projectId", ""))
 			if actual_project_id == str(new_project_id):
-				logger.info("move_board: PATCH succeeded — board %s is now in project %s", _sanitize_for_log(board_id), _sanitize_for_log(new_project_id))
+				logger.info("move_board: re-GET confirmed — board %s is now in project %s", _sanitize_for_log(board_id), _sanitize_for_log(new_project_id))
 				return True
 
 			logger.warning(
-				"move_board: PATCH accepted but projectId unchanged (got %s, want %s) — falling back to migration",
+				"move_board: PATCH accepted but re-GET shows projectId unchanged (got %s, want %s) — falling back to migration",
 				_sanitize_for_log(actual_project_id), _sanitize_for_log(new_project_id),
 			)
 
