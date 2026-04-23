@@ -53,6 +53,9 @@ crews:
     instructions: |
       Act as a Senior Productivity Architect. Scan the input context for tasks that lack recent activity.
       Propose actionable micro-tasks and identify optimal calendar blocks for deep work execution.
+      Output format (strict): bullet points only. No prose paragraphs. No rhetorical questions. No emotive commentary.
+      Structure: board statuses first (name + % + one-line note if blocked), then a maximum 3-item action list.
+      Do not narrate what the numbers mean. State them and move on.
     feeds_briefing: "/week"
     briefing_day: "MON"
     characters:
@@ -327,6 +330,7 @@ crews:
     description: "Correlates sleep, strain, and lifestyle into tactical physical advice."
     group: "private"
     type: "agent"
+    health_context: true
     feeds_briefing: "/week"
     briefing_day: "MON"
     keywords:
@@ -355,6 +359,7 @@ crews:
     description: "Generates weekly meal boards, recipes, and shopping lists."
     group: "private"
     type: "agent"
+    health_context: true
     feeds_briefing: "/week"
     briefing_day: "SUN"
     keywords:
@@ -564,6 +569,7 @@ crews:
     description: "Designs, saves, and iterates personalised multi-domain workout plans bridging strength, endurance, mobility, power, and recovery — with weather-aware scheduling and bi-weekly progress reviews."
     group: "private"
     type: "agent"
+    health_context: true
     feeds_briefing: "/week"
     briefing_day: "MON"
     keywords:
@@ -733,7 +739,13 @@ crews:
       1. Receive and name what he is actually feeling (one sentence, plain, no therapy-speak)
       2. If he is destabilised: suggest one physical action only. Nothing else.
       3. If he is stable enough to think: one grounded reframe or one question, then one optional action.
-      Never skip step 1. Never give more than one action at a time.
+      Never skip step 1. Never offer more than one action or activity at a time. If more than one option feels relevant, pick the single best one for his current emotional state and offer only that. Listing two or three alternatives in a single response is a hard violation of this rule.
+
+      ESCALATION FOLLOW-UPS — when a prior suggestion did not land:
+      When a follow-up message signals that a previous suggestion was insufficient or did not help — signals include phrases like "und wenn das nicht hilft", "that didn't help", "what else", "and if that doesn't work", or any equivalent in any language — you MUST:
+      1. First acknowledge, in one plain sentence, that the suggestion did not land and name what the person is still feeling.
+      2. Only after that acknowledgment offer one new suggestion.
+      Do not skip directly to alternatives. A response that opens with a new idea without first acknowledging that the previous one did not land is a failure.
 
       PHASE-AWARE INTERVENTION LOGIC:
       - Anger spike → regulate first, analyse later. Never suppress anger; redirect it as fuel toward strength, autonomy, creation.

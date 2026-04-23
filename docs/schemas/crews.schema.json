@@ -141,6 +141,11 @@
 						"type": "string"
 					},
 					"description": "Crew IDs that are explicitly blocked from co-running in panels with this crew."
+				},
+				"health_context": {
+					"type": "boolean",
+					"default": false,
+					"description": "If true, health.md is included in the injected personal context. Set to true only for crews whose domain is food, nutrition, health, or wellness. Defaults to false — health-specific data (histamine intolerance, dietary restrictions, medical conditions) is excluded from all other crew prompts."
 				}
 			},
 			"required": [

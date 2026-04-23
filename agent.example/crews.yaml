@@ -54,6 +54,9 @@ crews:
     instructions: |
       Act as a Senior Productivity Architect. Scan the input context for tasks that lack recent activity.
       Propose actionable micro-tasks and identify optimal calendar blocks for deep work execution.
+      Output format (strict): bullet points only. No prose paragraphs. No rhetorical questions. No emotive commentary.
+      Structure: board statuses first (name + % + one-line note if blocked), then a maximum 3-item action list.
+      Do not narrate what the numbers mean. State them and move on.
     feeds_briefing: "/week"
     briefing_day: "MON"
     characters:
@@ -235,6 +238,7 @@ crews:
     description: "Correlates sleep, strain, and lifestyle into tactical physical advice."
     group: "private"
     type: "agent"
+    health_context: true
     feeds_briefing: "/week"
     briefing_day: "MON"
     instructions: |
@@ -252,6 +256,7 @@ crews:
     description: "Generates weekly meal boards, recipes, and shopping lists."
     group: "private"
     type: "agent"
+    health_context: true
     feeds_briefing: "/week"
     briefing_day: "SUN"
     keywords:
@@ -440,6 +445,7 @@ crews:
     description: "Designs, saves, and iterates personalised multi-domain workout plans bridging strength, endurance, mobility, power, and recovery — with weather-aware scheduling and bi-weekly progress reviews."
     group: "private"
     type: "agent"
+    health_context: true
     feeds_briefing: "/week"
     briefing_day: "MON"
     instructions: |

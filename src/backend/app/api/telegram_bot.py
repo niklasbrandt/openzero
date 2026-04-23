@@ -9,7 +9,7 @@ from telegram.ext import (
 	ContextTypes,
 )
 from app.config import settings
-from app.services.timezone import format_time, get_user_timezone
+from app.services.timezone import format_time, get_now, get_user_timezone
 import asyncio
 import pytz
 import re
@@ -77,6 +77,14 @@ _background_tasks: set = set()
 
 # Abort events for in-flight crew executions, keyed by thinking_msg.message_id.
 _crew_abort_events: dict[int, asyncio.Event] = {}
+
+def is_any_message_processing() -> bool:
+	"""Return True if any chat currently holds a thinking lock (LLM in flight).
+
+	Used by message_watchdog to skip recovery when a real handler is still running,
+	preventing duplicate responses from the watchdog firing during slow cloud-model calls.
+	"""
+	return any(lock.locked() for lock in _thinking_locks.values())
 
 async def start_telegram_bot():
 	"""Start the Telegram bot in polling mode within the FastAPI event loop."""
@@ -1091,6 +1099,10 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 	from app.services.router import route_message_stream
 	from app.services.crews import resolve_active_crews
 
+	# Capture receipt time before any LLM call so the timestamp header reflects
+	# when the user's message arrived, not when the model finished generating.
+	receipt_dt = get_now()
+
 	lang = await get_user_lang()
 	t = get_translations(lang)
 
@@ -1173,9 +1185,9 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 	# Anti-hallucination guard: if the reply contains action-confirmation phrases
 	# but no action was actually executed or queued, warn the user.
 	_ACTION_CONFIRM_WORDS = (
-		"verschoben", "moved", "déplacé", "bewegt", "board moved",
-		"projekt verschoben", "card created", "erstellt", "créé",
-		"task added", "board created", "added to", "saved", "set up",
+		"verschoben", "has been moved", "was moved", "déplacé", "wurde bewegt", "board moved",
+		"projekt verschoben", "card created", "wurde erstellt", "a été créé",
+		"task added", "board created", "added to", "saved to", "was set up",
 	)
 	if (
 		not result.executed_cmds
@@ -1185,9 +1197,13 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 		clean_reply += "\n\n\u26a0 " + t.get("action_not_executed", "No action was executed — please try again.")
 		logger.warning("_process_freetext: phantom confirmation detected (no executed_cmds) — appended warning")
 
-	html_reply = _md_to_html(clean_reply)
+	# Strip attribution footer from display path — raw_reply in DB already stores it
+	# for crew follow-up routing; stripping here prevents "(Reasoning by crew X)" leaking to chat.
+	display_clean = re.sub(r'\n\n_?\(Reasoning by crew [^)]+\)_?', '', clean_reply).strip()
+
+	html_reply = _md_to_html(display_clean)
 	footer = await _get_stats_footer()
-	display_reply = f"<b>{format_time()}</b>\n\n{html_reply}{footer}"
+	display_reply = f"<b>{format_time(dt=receipt_dt)}</b>\n\n{html_reply}{footer}"
 	await _send_chunked_reply(thinking_msg, display_reply, nav_footer=get_nav_footer(t))
 
 @owner_only
@@ -1341,6 +1357,10 @@ async def _process_crew_stream(update: Update, context: ContextTypes.DEFAULT_TYP
 	from app.services.message_bus import bus
 	import time
 
+	# Capture receipt time before crew execution so the timestamp header reflects
+	# when the user's message arrived, not when the crew finished generating.
+	receipt_dt = get_now()
+
 	# Normalise to list so the rest of the function handles both call styles.
 	if isinstance(crew_ids, str):
 		crew_ids = [crew_ids]
@@ -1463,7 +1483,9 @@ async def _process_crew_stream(update: Update, context: ContextTypes.DEFAULT_TYP
 			logger.info("Crew panel '%s' executed actions: %s", crew_display, all_executed_cmds)
 
 		# Attribution already included in last section via commit — no extra append needed.
-		display_final = f"<b>{format_time()}</b>\n\n{_md_to_html(clean_reply)}"
+		# Strip attribution footer from display path; DB copy (via commit_reply) retains it.
+		display_clean = re.sub(r'\n\n_?\(Reasoning by crew [^)]+\)_?', '', clean_reply).strip()
+		display_final = f"<b>{format_time(dt=receipt_dt)}</b>\n\n{_md_to_html(display_clean)}"
 		await _send_chunked_reply(thinking_msg, display_final, nav_footer=get_nav_footer(t))
 
 		# Record crew session so follow-up messages route back to this crew
