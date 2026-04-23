@@ -1188,6 +1188,7 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 		"verschoben", "has been moved", "was moved", "déplacé", "wurde bewegt", "board moved",
 		"projekt verschoben", "card created", "wurde erstellt", "a été créé",
 		"task added", "board created", "added to", "saved to", "was set up",
+		"hinzugefügt", "wurde hinzugefügt", "wurde verschoben", "erfolgreich hinzugefügt", "erfolgreich verschoben",
 	)
 	if (
 		not result.executed_cmds
