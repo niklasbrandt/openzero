@@ -416,98 +416,37 @@ async def create_board(project_id: str, name: str) -> dict:
 		return board
 
 async def move_board(board_id: str, new_project_id: str) -> bool:
-	"""Move a board to a different project.
+	"""Move a board to a different project via PATCH /api/boards/{id}.
 
-	Attempts PATCH /api/boards/{id} with projectId first. If Planka ignores the field
-	(Planka 2.x silently accepts it but does not move), falls back to a full migration:
-	create new board in target project, recreate lists and cards, delete original.
-	Returns True on success.
+	Planka echoes back the sent projectId in the PATCH response body even when
+	the field is ignored, so we verify with a single re-GET (with a 0.3 s grace
+	delay to allow propagation). Returns True on confirmed move, False otherwise.
+	No retry loop — a mismatch after the re-GET is surfaced immediately as a failure.
 	"""
 	try:
 		token = await get_planka_auth_token()
 		headers = {"Authorization": f"Bearer {token}"}
 		async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, headers=headers, timeout=30.0) as client:
-			# --- Step 1: Try native PATCH ---
+			# Step 1: PATCH
 			resp = await client.patch(f"/api/boards/{board_id}", json={"projectId": new_project_id})
 			resp.raise_for_status()
-			resp_body = resp.json()
-			logger.info("move_board PATCH response: %s", _sanitize_for_log(str(resp_body)[:400]))
+			logger.info("move_board PATCH response: %s", _sanitize_for_log(str(resp.json())[:400]))
 
-			# --- Step 2: Verify via re-GET — do NOT trust the PATCH response body.
-			# Planka echoes back the PATCH payload without necessarily applying it,
-			# so checking resp_body.projectId always returns the requested value even
-			# when the board was not actually moved.
+			# Step 2: Single re-GET after a short grace delay — no loop, no retry.
+			await asyncio.sleep(0.3)
 			verify_resp = await client.get(f"/api/boards/{board_id}")
 			verify_resp.raise_for_status()
 			verify_item = verify_resp.json().get("item") or verify_resp.json()
 			actual_project_id = str(verify_item.get("projectId", ""))
 			if actual_project_id == str(new_project_id):
-				logger.info("move_board: re-GET confirmed — board %s is now in project %s", _sanitize_for_log(board_id), _sanitize_for_log(new_project_id))
+				logger.info("move_board: confirmed — board %s is now in project %s", _sanitize_for_log(board_id), _sanitize_for_log(new_project_id))
 				return True
 
-			logger.warning(
-				"move_board: PATCH accepted but re-GET shows projectId unchanged (got %s, want %s) — falling back to migration",
+			logger.error(
+				"move_board: PATCH accepted but re-GET shows projectId unchanged (got %s, want %s) — aborting",
 				_sanitize_for_log(actual_project_id), _sanitize_for_log(new_project_id),
 			)
-
-			# --- Step 3: Migration fallback — clone board structure then delete original ---
-			# Fetch full board detail (lists + cards)
-			b_det = await client.get(f"/api/boards/{board_id}", params={"included": "lists,cards"})
-			b_det.raise_for_status()
-			b_data = b_det.json()
-			board_name = (b_data.get("item") or b_data).get("name", "Moved Board")
-			included = b_data.get("included", {})
-			old_lists = sorted(included.get("lists", []), key=lambda l: l.get("position", 0))
-			all_cards = included.get("cards", [])
-
-			# Create new board in target project
-			new_board_resp = await client.post(f"/api/projects/{new_project_id}/boards", json={
-				"name": board_name,
-				"position": 65535,
-			})
-			new_board_resp.raise_for_status()
-			new_board = new_board_resp.json().get("item") or new_board_resp.json()
-			new_board_id = new_board["id"]
-			logger.info("move_board migration: created new board '%s' (id=%s) in project %s", _sanitize_for_log(board_name), _sanitize_for_log(new_board_id), _sanitize_for_log(new_project_id))
-
-			# Recreate lists and cards in order
-			for lst in old_lists:
-				lst_resp = await client.post(f"/api/boards/{new_board_id}/lists", json={
-					"name": lst["name"],
-					"position": lst.get("position", 65535),
-				})
-				if lst_resp.status_code >= 400:
-					logger.warning("move_board migration: failed to create list '%s': %s", _sanitize_for_log(lst["name"]), lst_resp.status_code)
-					continue
-				new_list_id = (lst_resp.json().get("item") or lst_resp.json())["id"]
-				# Cards belonging to this list
-				list_cards = sorted(
-					[c for c in all_cards if c.get("listId") == lst["id"]],
-					key=lambda c: c.get("position", 0),
-				)
-				for card in list_cards:
-					card_payload: dict[str, Any] = {
-						"name": card.get("name", ""),
-						"position": card.get("position", 65535),
-					}
-					if card.get("description"):
-						card_payload["description"] = card["description"]
-					c_resp = await client.post(f"/api/lists/{new_list_id}/cards", json=card_payload)
-					if c_resp.status_code >= 400:
-						logger.warning("move_board migration: failed to create card '%s': %s", _sanitize_for_log(card.get("name", "")), c_resp.status_code)
-
-			# Delete original board
-			del_resp = await client.delete(f"/api/boards/{board_id}")
-			if del_resp.status_code >= 400:
-				logger.warning("move_board migration: could not delete original board %s (status %s) — it may remain as a duplicate", _sanitize_for_log(board_id), del_resp.status_code)
-				migration_success = False
-				logger.info("MOVE_BOARD: migration incomplete, original board not deleted")
-			else:
-				logger.info("move_board migration: original board %s deleted", _sanitize_for_log(board_id))
-				migration_success = True
-				logger.info("MOVE_BOARD: migration complete, original board deleted")
-
-			return migration_success
+			return False
 	except Exception as e:
 		logger.error("move_board failed: %s", _sanitize_for_log(e))
 		return False
