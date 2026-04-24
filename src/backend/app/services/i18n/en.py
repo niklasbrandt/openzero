@@ -432,6 +432,8 @@ translations: dict[str, str] = {
 	"intent_router_board_not_found": "I couldn't find a board matching '{query}'.",
 	"intent_router_project_not_found": "I couldn't find a project matching '{query}'.",
 	"intent_router_card_not_found": "I couldn't find a card matching '{query}'.",
+	"intent_router_create_card_success": "Card '{title}' added to '{dest}'.",
+	"intent_router_create_card_dest_not_found": "Could not create card '{title}' — destination '{dest}' not found.",
 	"status_online": "I'm back!",
 	"dashboard": "Dashboard",
 	"projects": "Projects",

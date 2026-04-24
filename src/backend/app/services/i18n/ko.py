@@ -409,4 +409,8 @@ translations: dict[str, str] = {
         'intent_router_board_not_found': "'{query}'에 일치하는 보드를 찾을 수 없습니다.",
         'intent_router_project_not_found': "'{query}'에 일치하는 프로젝트를 찾을 수 없습니다.",
         'intent_router_card_not_found': "'{query}'에 일치하는 카드를 찾을 수 없습니다.",
+        'intent_router_create_card_success': "'{title}'이(가) '{dest}'에 추가되었습니다.",
+        'intent_router_create_card_dest_not_found': "카드 '{title}'을 만들 수 없습니다 — 대상 '{dest}'을(를) 찾을 수 없습니다.",
+        'intent_router_create_card_success': "'{title}'이(가) '{dest}'에 추가되었습니다.",
+        'intent_router_create_card_dest_not_found': "카드 '{title}'을 만들 수 없습니다 — 대상 '{dest}'을(를) 찾을 수 없습니다.",
 }
