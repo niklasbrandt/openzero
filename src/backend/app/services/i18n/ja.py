@@ -434,4 +434,10 @@ translations: dict[str, str] = {
         'intent_router_delete_list_not_found': 'リスト「{list}」を削除できませんでした — リストが見つかりません。',
         'intent_router_delete_card_task_success': 'カード「{card}」からタスク「{task}」を削除しました。',
         'intent_router_delete_card_task_not_found': 'カード「{card}」からタスク「{task}」を削除できませんでした — 見つかりません。',
+        'intent_router_create_board_success': 'ボード「{board}」を作成しました。',
+        'intent_router_create_board_not_found': 'ボード「{board}」を作成できませんでした — プロジェクトが見つかりません。',
+        'intent_router_rename_board_success': 'ボード「{board}」を「{new_name}」に変更しました。',
+        'intent_router_rename_board_not_found': 'ボード「{board}」の名前を変更できませんでした — ボードが見つかりません。',
+        'intent_router_delete_board_success': 'ボード「{board}」を削除しました。',
+        'intent_router_delete_board_not_found': 'ボード「{board}」を削除できませんでした — ボードが見つかりません。',
 }

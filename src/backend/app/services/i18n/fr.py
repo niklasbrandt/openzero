@@ -433,4 +433,10 @@ translations: dict[str, str] = {
         'intent_router_delete_list_not_found': "Impossible de supprimer la liste '{list}' — liste introuvable.",
         'intent_router_delete_card_task_success': "Tâche '{task}' supprimée de la carte '{card}'.",
         'intent_router_delete_card_task_not_found': "Impossible de supprimer la tâche '{task}' de la carte '{card}' — introuvable.",
+        'intent_router_create_board_success': "Tableau '{board}' créé.",
+        'intent_router_create_board_not_found': "Impossible de créer le tableau '{board}' — projet introuvable.",
+        'intent_router_rename_board_success': "Tableau '{board}' renommé en '{new_name}'.",
+        'intent_router_rename_board_not_found': "Impossible de renommer le tableau '{board}' — tableau introuvable.",
+        'intent_router_delete_board_success': "Tableau '{board}' supprimé.",
+        'intent_router_delete_board_not_found': "Impossible de supprimer le tableau '{board}' — tableau introuvable.",
 }

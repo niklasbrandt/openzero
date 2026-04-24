@@ -433,4 +433,10 @@ translations: dict[str, str] = {
         'intent_router_delete_list_not_found': "सूची '{list}' को हटाया नहीं जा सका — सूची नहीं मिली।",
         'intent_router_delete_card_task_success': "कार्ड '{card}' से कार्य '{task}' हटा दिया गया।",
         'intent_router_delete_card_task_not_found': "कार्ड '{card}' से कार्य '{task}' को हटाया नहीं जा सका — नहीं मिला।",
+        'intent_router_create_board_success': "बोर्ड '{board}' बना दिया गया।",
+        'intent_router_create_board_not_found': "बोर्ड '{board}' नहीं बनाया जा सका — प्रोजेक्ट नहीं मिला।",
+        'intent_router_rename_board_success': "बोर्ड '{board}' का नाम बदलकर '{new_name}' किया गया।",
+        'intent_router_rename_board_not_found': "बोर्ड '{board}' का नाम नहीं बदला जा सका — बोर्ड नहीं मिला।",
+        'intent_router_delete_board_success': "बोर्ड '{board}' हटा दिया गया।",
+        'intent_router_delete_board_not_found': "बोर्ड '{board}' को हटाया नहीं जा सका — बोर्ड नहीं मिला।",
 }

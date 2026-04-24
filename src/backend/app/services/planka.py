@@ -999,6 +999,104 @@ async def delete_card_task(card_fragment: str, task_fragment: str, board_name: s
 		return False
 
 
+async def create_board_in_project(board_name: str, project_fragment: str = "") -> dict:
+	"""Find a project by name fragment and create a board in it. Returns the new board dict on success."""
+	board_name = board_name.strip().strip('"\'')
+	project_fragment = project_fragment.strip().strip('"\'').lower()
+	if not board_name:
+		logger.warning("create_board_in_project: refusing to create board with empty name")
+		return None
+	logger.debug("create_board_in_project: board=%s, project=%s", _sanitize_for_log(board_name), _sanitize_for_log(project_fragment))
+	try:
+		token = await get_planka_auth_token()
+		headers = {"Authorization": f"Bearer {token}"}
+		async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, timeout=10.0, headers=headers) as client:
+			projects_resp = await client.get("/api/projects")
+			projects_resp.raise_for_status()
+			projects = projects_resp.json().get("items", [])
+			found_project = None
+			for p in projects:
+				if not project_fragment or project_fragment in (p.get("name") or "").lower():
+					found_project = p
+					break
+			if not found_project:
+				logger.debug("create_board_in_project: no project matching %r found", project_fragment)
+				return None
+			return await create_board(found_project["id"], board_name)
+	except Exception as e:
+		logger.debug("create_board_in_project failed: %s", e)
+		return None
+
+
+async def rename_board(board_fragment: str, new_name: str) -> bool:
+	"""Find a board by name fragment and rename it. Returns True on success."""
+	board_fragment = board_fragment.strip().strip('"\'').lower()
+	new_name = new_name.strip().strip('"\'')
+	if not new_name:
+		logger.warning("rename_board: refusing to rename to empty string")
+		return False
+	logger.debug("rename_board: fragment=%s, new_name=%s", _sanitize_for_log(board_fragment), _sanitize_for_log(new_name))
+	try:
+		token = await get_planka_auth_token()
+		headers = {"Authorization": f"Bearer {token}"}
+		async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, timeout=10.0, headers=headers) as client:
+			projects_resp = await client.get("/api/projects")
+			projects_resp.raise_for_status()
+			projects = projects_resp.json().get("items", [])
+			found_board = None
+			for p in projects:
+				p_det = await client.get(f"/api/projects/{p['id']}")
+				boards = p_det.json().get("included", {}).get("boards", [])
+				for b in boards:
+					if board_fragment in (b.get("name") or "").lower():
+						found_board = b
+						break
+				if found_board:
+					break
+			if not found_board:
+				logger.debug("rename_board: no board matching %r found", board_fragment)
+				return False
+			patch_resp = await client.patch(f"/api/boards/{found_board['id']}", json={"name": new_name})
+			patch_resp.raise_for_status()
+			logger.debug("rename_board: board %r renamed to %r", found_board["name"], new_name)
+			return True
+	except Exception as e:
+		logger.debug("rename_board failed: %s", e)
+		return False
+
+
+async def delete_board(board_fragment: str) -> bool:
+	"""Find a board by name fragment and permanently delete it. Returns True on success."""
+	board_fragment = board_fragment.strip().strip('"\'').lower()
+	logger.debug("delete_board: fragment=%s", _sanitize_for_log(board_fragment))
+	try:
+		token = await get_planka_auth_token()
+		headers = {"Authorization": f"Bearer {token}"}
+		async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, timeout=10.0, headers=headers) as client:
+			projects_resp = await client.get("/api/projects")
+			projects_resp.raise_for_status()
+			projects = projects_resp.json().get("items", [])
+			found_board = None
+			for p in projects:
+				p_det = await client.get(f"/api/projects/{p['id']}")
+				boards = p_det.json().get("included", {}).get("boards", [])
+				for b in boards:
+					if board_fragment in (b.get("name") or "").lower():
+						found_board = b
+						break
+				if found_board:
+					break
+			if not found_board:
+				logger.debug("delete_board: no board matching %r found", board_fragment)
+				return False
+			del_resp = await client.delete(f"/api/boards/{found_board['id']}")
+			del_resp.raise_for_status()
+			logger.debug("delete_board: deleted board %r", found_board["name"])
+			return True
+	except Exception as e:
+		logger.debug("delete_board failed: %s", e)
+		return False
+
 async def create_list(board_name: str, list_name: str, project_name: Optional[str] = None) -> Optional[dict]:
 	"""Create a new list (column) in a board. Returns existing list if name matches (idempotent)."""
 	if not list_name or not list_name.strip():

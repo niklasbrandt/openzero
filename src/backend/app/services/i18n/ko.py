@@ -433,4 +433,10 @@ translations: dict[str, str] = {
         'intent_router_delete_list_not_found': "목록 '{list}'을(를) 삭제할 수 없습니다 — 목록을 찾을 수 없습니다.",
         'intent_router_delete_card_task_success': "카드 '{card}'에서 작업 '{task}'이(가) 삭제되었습니다.",
         'intent_router_delete_card_task_not_found': "카드 '{card}'에서 작업 '{task}'을(를) 삭제할 수 없습니다 — 찾을 수 없습니다.",
+        'intent_router_create_board_success': "보드 '{board}'가(이) 생성되었습니다.",
+        'intent_router_create_board_not_found': "보드 '{board}'을(를) 생성할 수 없습니다 — 프로젝트를 찾을 수 없습니다.",
+        'intent_router_rename_board_success': "보드 '{board}'가(이) '{new_name}'으로(로) 이름 변경되었습니다.",
+        'intent_router_rename_board_not_found': "보드 '{board}'의 이름을 변경할 수 없습니다 — 보드를 찾을 수 없습니다.",
+        'intent_router_delete_board_success': "보드 '{board}'가(이) 삭제되었습니다.",
+        'intent_router_delete_board_not_found': "보드 '{board}'을(를) 삭제할 수 없습니다 — 보드를 찾을 수 없습니다.",
 }

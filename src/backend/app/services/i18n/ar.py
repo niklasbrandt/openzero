@@ -434,4 +434,10 @@ translations: dict[str, str] = {
         'intent_router_delete_list_not_found': "تعذر حذف القائمة '{list}' — القائمة غير موجودة.",
         'intent_router_delete_card_task_success': "تم حذف المهمة '{task}' من البطاقة '{card}'.",
         'intent_router_delete_card_task_not_found': "تعذر حذف المهمة '{task}' من البطاقة '{card}' — غير موجودة.",
+        'intent_router_create_board_success': "تم إنشاء اللوحة '{board}'.",
+        'intent_router_create_board_not_found': "تعذر إنشاء اللوحة '{board}' — المشروع غير موجود.",
+        'intent_router_rename_board_success': "تمت إعادة تسمية اللوحة '{board}' إلى '{new_name}'.",
+        'intent_router_rename_board_not_found': "تعذر إعادة تسمية اللوحة '{board}' — اللوحة غير موجودة.",
+        'intent_router_delete_board_success': "تم حذف اللوحة '{board}'.",
+        'intent_router_delete_board_not_found': "تعذر حذف اللوحة '{board}' — اللوحة غير موجودة.",
 }

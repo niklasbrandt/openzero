@@ -128,6 +128,16 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 		"delete_card_task": [
 			re.compile(r'\b(?:delete|remove)\s+(?:the\s+)?(?:task|item|todo)\s+(.{1,80}?)\s+(?:from|in|on)\s+(?:the\s+)?(?:card\s+)?(.{1,80})', re.IGNORECASE),
 		],
+		"create_board": [
+			re.compile(r'\b(?:create|add|make|new)\s+(?:a\s+)?board\s+(?:called\s+|named\s+)?(.{1,80}?)(?:\s+(?:in|to|inside|under)\s+(?:the\s+)?(?:project\s+)?(.{1,80}))?$', re.IGNORECASE),
+		],
+		"rename_board": [
+			re.compile(r'\b(?:rename|change\s+the\s+name\s+of)\s+(?:the\s+)?board\s+(.{1,80}?)\s+to\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\bchange\s+(?:the\s+)?board\s+name\s+(.{1,80}?)\s+to\s+(.{1,80})', re.IGNORECASE),
+		],
+		"delete_board": [
+			re.compile(r'\b(?:delete|remove|discard|trash)\s+(?:the\s+)?board\s+(.{1,80})', re.IGNORECASE),
+		],
 		"hedges": [
 			re.compile(r'\b(?:thinking\s+about|considering|maybe|might|should\s+i|could\s+i|how\s+(?:do|to|can)\s+i|what\s+(?:does|is|happens)|why\s+(?:would|should))\b', re.IGNORECASE),
 			re.compile(r"\b(?:was|were)\s+(?:thinking|planning|considering)\b", re.IGNORECASE),
@@ -191,6 +201,16 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 		"delete_card_task": [
 			re.compile(r'\b(?:lösch[e]?|entfern[e]?)\s+(?:die\s+)?aufgabe\s+(.{1,80}?)\s+(?:von|aus|in|auf)\s+(?:der\s+)?(?:karte\s+)?(.{1,80})', re.IGNORECASE),
 		],
+		"create_board": [
+			re.compile(r'\b(?:erstell[e]?|leg[e]\s+an|f\u00fcge?\s+hinzu|neue[sr]?)\s+(?:ein(?:em?)?\s+)?(?:Board|Tafel|Pinnwand)\s+(?:namens\s+|mit\s+(?:dem\s+)?Namen\s+)?(.{1,80}?)(?:\s+(?:in|bei|unter)\s+(.{1,80}))?$', re.IGNORECASE),
+		],
+		"rename_board": [
+			re.compile(r'\b(?:benennt?\s+um|umbenenn(?:e|en)?)\s+(?:das\s+)?(?:Board|Tafel|Pinnwand)\s+(.{1,80}?)\s+(?:in|zu)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b\u00e4ndere?\s+(?:den\s+)?Namen\s+(?:des\s+)?(?:Boards?|Tafel)\s+(.{1,80}?)\s+(?:in|zu)\s+(.{1,80})', re.IGNORECASE),
+		],
+		"delete_board": [
+			re.compile(r'\b(?:l\u00f6sch[e]?|entfern[e]?)\s+(?:das\s+)?(?:Board|Tafel|Pinnwand)\s+(.{1,80})', re.IGNORECASE),
+		],
 		"hedges": [
 			re.compile(r'\b(?:vielleicht|eventuell|sollte\s+ich|könnte\s+ich|wie\s+(?:kann|soll)\s+ich|was\s+(?:bedeutet|ist|passiert)|warum)\b', re.IGNORECASE),
 			re.compile(r'\b(?:erkläre|erklär|sag\s+mir|beschreibe)\b', re.IGNORECASE),
@@ -247,6 +267,16 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 		],
 		"delete_card_task": [
 			re.compile(r'\b(?:eliminar?|borra[r]?|quitar?)\s+(?:la\s+)?tarea\s+(.{1,80}?)\s+(?:de|en)\s+(?:la\s+)?(?:tarjeta\s+)?(.{1,80})', re.IGNORECASE),
+		],
+		"create_board": [
+			re.compile(r'\b(?:crear?|a\u00f1adir?|agregar?|nuevo|nueva)\s+(?:un\s+)?(?:tablero|board)\s+(?:llamado\s+|con\s+nombre\s+)?(.{1,80}?)(?:\s+(?:en|dentro\s+de)\s+(.{1,80}))?$', re.IGNORECASE),
+		],
+		"rename_board": [
+			re.compile(r'\b(?:renombrar?)\s+(?:el\s+)?(?:tablero|board)\s+(.{1,80}?)\s+(?:a|por)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\bcambiar?\s+(?:el\s+)?nombre\s+(?:del?\s+)?(?:tablero|board)\s+(.{1,80}?)\s+(?:a|por)\s+(.{1,80})', re.IGNORECASE),
+		],
+		"delete_board": [
+			re.compile(r'\b(?:eliminar?|borrar?|suprimir)\s+(?:el\s+)?(?:tablero|board)\s+(.{1,80})', re.IGNORECASE),
 		],
 		"hedges": [
 			re.compile(r'\b(?:estaba\s+pensando|tal\s+vez|quizás|quiza|debería|deberia|cómo|como\s+se|qué\s+significa|que\s+significa|por\s+qué|por\s+que)\b', re.IGNORECASE),
@@ -306,6 +336,16 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 		"delete_card_task": [
 			re.compile(r'\b(?:supprimer?|supprime[rz]?|effacer?|enlever?)\s+(?:la\s+)?(?:t[\xe2a]che|[\xe9e]l[\xe9e]ment)\s+(.{1,80}?)\s+(?:de|dans)\s+(?:la\s+)?(?:carte\s+)?(.{1,80})', re.IGNORECASE),
 		],
+		"create_board": [
+			re.compile(r'\b(?:cr\u00e9e[r]?|ajouter?|nouveau|nouvelle)\s+(?:un\s+)?(?:tableau|board)\s+(?:appel\u00e9\s+|nomm\u00e9\s+)?(.{1,80}?)(?:\s+(?:dans|en)\s+(.{1,80}))?$', re.IGNORECASE),
+		],
+		"rename_board": [
+			re.compile(r'\b(?:renomme[r]?)\s+(?:le\s+)?(?:tableau|board)\s+(.{1,80}?)\s+(?:en|par)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\bchanger?\s+(?:le\s+)?nom\s+(?:du\s+)?(?:tableau|board)\s+(.{1,80}?)\s+(?:en|par)\s+(.{1,80})', re.IGNORECASE),
+		],
+		"delete_board": [
+			re.compile(r'\b(?:supprime[r]?|efface[r]?|enl\u00e8ve[r]?)\s+(?:le\s+)?(?:tableau|board)\s+(.{1,80})', re.IGNORECASE),
+		],
 		"hedges": [
 			re.compile(r'\b(?:je\s+pensais|peut[- ]être|devrais[- ]je|pourrais[- ]je|comment\s+(?:est-ce|puis|dois)|qu(?:e|\u2019)est[- ]ce\s+que|pourquoi)\b', re.IGNORECASE),
 			re.compile(r'\b(?:explique|décris|decris|raconte)\b', re.IGNORECASE),
@@ -360,6 +400,16 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 		],
 		"delete_card_task": [
 			re.compile(r'\b(?:excluir?|apaga[r]?|remover?)\s+(?:a\s+)?tarefa\s+(.{1,80}?)\s+(?:de|do|da)\s+(?:cart[a\xe3]o\s+)?(.{1,80})', re.IGNORECASE),
+		],
+		"create_board": [
+			re.compile(r'\b(?:cria[r]?|adiciona[r]?|novo|nova)\s+(?:um\s+)?(?:quadro|board)\s+(?:chamado\s+|com\s+(?:o\s+)?nome\s+)?(.{1,80}?)(?:\s+(?:em|no|na|dentro\s+de)\s+(.{1,80}))?$', re.IGNORECASE),
+		],
+		"rename_board": [
+			re.compile(r'\b(?:renomear?)\s+(?:o\s+)?(?:quadro|board)\s+(.{1,80}?)\s+para\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\bmuda[r]?\s+(?:o\s+)?nome\s+(?:do\s+)?(?:quadro|board)\s+(.{1,80}?)\s+para\s+(.{1,80})', re.IGNORECASE),
+		],
+		"delete_board": [
+			re.compile(r'\b(?:excluir?|apaga[r]?|remove[r]?|deleta[r]?)\s+(?:o\s+)?(?:quadro|board)\s+(.{1,80})', re.IGNORECASE),
 		],
 		"hedges": [
 			re.compile(r'\b(?:estava\s+pensando|talvez|deveria|poderia|como\s+(?:eu|posso)|o\s+que\s+significa|por\s+que|por\s+quê)\b', re.IGNORECASE),
@@ -417,6 +467,16 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 		"delete_card_task": [
 			re.compile(r'(?:удали[тьет]?|убери|удалить)\s+(?:задачу|задание)\s+(.{1,80}?)\s+(?:из|от)\s+(?:карточк[иу]\s+)?(.{1,80})', re.IGNORECASE),
 		],
+		"create_board": [
+			re.compile(r'\b(?:создай|создать|добавь|добавить|новую?)\s+(?:доску|борд)\s+(?:с\s+(?:именем|названием)\s+|под\s+названием\s+)?(.{1,80}?)(?:\s+(?:в|для)\s+(.{1,80}))?$', re.IGNORECASE),
+		],
+		"rename_board": [
+			re.compile(r'\b(?:переименуй?|переименовать)\s+(?:доску|борд)\s+(.{1,80}?)\s+(?:на|в)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\bсмени?\s+название\s+(?:доски|борда)\s+(.{1,80}?)\s+(?:на|в)\s+(.{1,80})', re.IGNORECASE),
+		],
+		"delete_board": [
+			re.compile(r'\b(?:удали?|удалить|убери?|убрать)\s+(?:доску|борд)\s+(.{1,80})', re.IGNORECASE),
+		],
 		"hedges": [
 			re.compile(r'(?:может\s+быть|возможно|следует\s+ли|стоит\s+ли|как\s+(?:мне|можно)|что\s+значит|зачем|почему)', re.IGNORECASE),
 			re.compile(r'(?:объясни|расскажи|опиши)', re.IGNORECASE),
@@ -473,6 +533,16 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 		],
 		"delete_card_task": [
 			re.compile(r'(?:タスク|作業|課題)(.{1,80}?)をカード(.{1,80}?)(?:から)?削除'),
+		],
+		"create_board": [
+			re.compile(r'(.{1,80}?)という?ボードを(?:作成|追加)'),
+			re.compile(r'(?:ボード|掲示板)(.{1,80}?)を(?:作成|追加)'),
+		],
+		"rename_board": [
+			re.compile(r'(?:ボード|掲示板)(.{1,80}?)の名前を(.{1,80}?)(?:に|へ)?(?:変更|変え|リネーム)'),
+		],
+		"delete_board": [
+			re.compile(r'(?:ボード|掲示板)(.{1,80}?)(?:を)?削除'),
 		],
 		"hedges": [
 			re.compile(r'(?:考えていた|かもしれない|べきか|どうやって|どうすれば|どういう意味|なぜ)'),
@@ -532,6 +602,15 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 		"delete_card_task": [
 			re.compile(r'删除(?:任务|事项)(.{1,80}?)(?:从|自)(?:卡片)?(.{1,80})'),
 		],
+		"create_board": [
+			re.compile(r'(?:添加|创建|新建|增加)(?:一个)?(?:看板|面板|board)(.{1,80}?)(?:到|至|在)?(.{1,80})?'),
+		],
+		"rename_board": [
+			re.compile(r'(?:把|将|將)?(?:看板|面板|board)(.{1,80}?)(?:重命名|改名)为(.{1,80})'),
+		],
+		"delete_board": [
+			re.compile(r'(?:删除|移除|删去)(?:看板|面板|board)(.{1,80})'),
+		],
 		"hedges": [
 			re.compile(r'(?:在想|可能|也许|也許|应该|應該|怎么|怎麼|如何|什么意思|什麼意思|为什么|為什麼)'),
 			re.compile(r'(?:解释|解釋|说明|說明|告诉我|告訴我)'),
@@ -587,6 +666,16 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 		],
 		"delete_card_task": [
 			re.compile(r'(?:작업|태스크)\s*(.{1,80}?)(?:을|를)?\s*카드\s*(.{1,80}?)(?:에서|에서의)?\s*(?:삭제|제거)'),
+		],
+		"create_board": [
+			re.compile(r'(.{1,80}?)에서?의?\s*보드(?:를|을)?\s*(?:만들|추가)(?:어|여|해)'),
+			re.compile(r'(.{1,80}?)\s*(?:명의|이름의)?\s*보드(?:를|을)?\s*(?:만들|추가)'),
+		],
+		"rename_board": [
+			re.compile(r'보드(.{1,80}?)이름(?:을|를)\s*(.{1,80})(?:으로|로)\s*(?:변경|바꾸)'),
+		],
+		"delete_board": [
+			re.compile(r'보드(.{1,80})(?:를|을)?\s*(?:삭제|제거)'),
 		],
 		"hedges": [
 			re.compile(r'(?:생각하고\s+있었|혹시|할까요|어떻게|무슨\s+뜻|왜)'),
@@ -645,6 +734,15 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 		"delete_card_task": [
 			re.compile(r'(?:कार्य|टास्क)\s+(.{1,80}?)\s+(?:को\s+)?(?:कार्ड)?\s*(.{1,80}?)\s+से\s+(?:हटाएं|हटाएँ|डिलीट\s*करें)'),
 		],
+		"create_board": [
+			re.compile(r'\b(?:बनाओ|बनाएं|जोड़ो|जोड़ें|नया|नई)\s+बोर्ड\s+(.{1,80}?)(?:\s+(?:में|पर)\s+(.{1,80}))?$', re.IGNORECASE),
+		],
+		"rename_board": [
+			re.compile(r'\bबोर्ड\s+(.{1,80}?)\s+(?:का\s+नाम\s+बदलकर|को)\s+(.{1,80}?)\s+(?:करें|करो|रखें)', re.IGNORECASE),
+		],
+		"delete_board": [
+			re.compile(r'\b(?:हटाओ|हटाएं|मिटाओ|मिटाएं)\s+बोर्ड\s+(.{1,80})', re.IGNORECASE),
+		],
 		"hedges": [
 			re.compile(r'(?:सोच\s+रहा\s+था|शायद|क्या\s+मुझे|कैसे|मतलब\s+क्या|क्यों)'),
 			re.compile(r'(?:समझाओ|बताओ|वर्णन)'),
@@ -702,6 +800,16 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 		],
 		"delete_card_task": [
 			re.compile(r'(?:احذف|حذف|أحذف)\s+(?:مهمة|عنصر)\s+(.{1,80}?)\s+(?:من|في)\s+(?:بطاقة\s+)?(.{1,80})'),
+		],
+		"create_board": [
+			re.compile(r'(?:أنشئ|انشئ|أضف|اضف)\s+(?:لوحة|بورد|board)\s+(?:باسم\s+|تسمى\s+)?(.{1,80}?)(?:\s+(?:في|إلى|الى)\s+(.{1,80}))?$'),
+		],
+		"rename_board": [
+			re.compile(r'(?:أعد|اعد)\s+تسمية\s+(?:اللوحة\s+)?(.{1,80}?)\s+(?:إلى|الى)\s+(.{1,80})'),
+			re.compile(r'(?:غيّر|غير)\s+(?:اسم\s+)?(?:اللوحة\s+)?(.{1,80}?)\s+(?:إلى|الى)\s+(.{1,80})'),
+		],
+		"delete_board": [
+			re.compile(r'(?:احذف|حذف|أحذف)\s+(?:اللوحة|لوحة)\s+(.{1,80})'),
 		],
 		"hedges": [
 			re.compile(r'(?:كنت\s+أفكر|ربما|هل\s+يجب|هل\s+ينبغي|كيف\s+(?:يمكن|أستطيع)|ماذا\s+يعني|لماذا)'),
@@ -1075,8 +1183,27 @@ async def classify_structural_intent(text: str, lang: str) -> Optional[Structura
 				confidence=0.85,
 			)
 
+	# ── RENAME_BOARD ─────────────────────────────────────────────────────
+	# Checked before RENAME_CARD and RENAME_LIST: "rename board X to Y" is more
+	# specific and must be resolved first to avoid the broad rename_card pattern
+	# capturing "board" as a card name.
+	for pat in _patterns_for("rename_board", lang):
+		m = pat.search(snippet)
+		if m:
+			board_q = _strip_filler(m.group(1)) if m.lastindex and m.lastindex >= 1 else ""
+			new_name_q = _strip_filler(m.group(2)) if m.lastindex and m.lastindex >= 2 and m.group(2) else ""
+			if not board_q or not new_name_q:
+				continue
+			return StructuralIntent(
+				verb="RENAME_BOARD",
+				entities={"board_fragment": board_q, "new_name": new_name_q},
+				raw_text=snippet,
+				confidence=0.85,
+			)
+
 	# ── RENAME_CARD ───────────────────────────────────────────────────────
-	# Checked after RENAME_LIST since generic "rename X to Y" would shadow it.
+	# Checked after RENAME_LIST and RENAME_BOARD since generic "rename X to Y"
+	# would shadow both.
 	for pat in _patterns_for("rename_card", lang):
 		m = pat.search(snippet)
 		if m:
@@ -1186,6 +1313,35 @@ async def classify_structural_intent(text: str, lang: str) -> Optional[Structura
 				confidence=0.85,
 			)
 
+	# ── DELETE_BOARD ─────────────────────────────────────────────────────
+	for pat in _patterns_for("delete_board", lang):
+		m = pat.search(snippet)
+		if m:
+			board_q = _strip_filler(m.group(1)) if m.lastindex and m.lastindex >= 1 else ""
+			if not board_q:
+				continue
+			return StructuralIntent(
+				verb="DELETE_BOARD",
+				entities={"board_fragment": board_q},
+				raw_text=snippet,
+				confidence=0.85,
+			)
+
+	# ── CREATE_BOARD ──────────────────────────────────────────────────────
+	for pat in _patterns_for("create_board", lang):
+		m = pat.search(snippet)
+		if m:
+			board_name_q = _strip_filler(m.group(1)) if m.lastindex and m.lastindex >= 1 else ""
+			project_q = _strip_filler(m.group(2)) if m.lastindex and m.lastindex >= 2 and m.group(2) else ""
+			if not board_name_q:
+				continue
+			return StructuralIntent(
+				verb="CREATE_BOARD",
+				entities={"board_name": board_name_q, "project_fragment": project_q},
+				raw_text=snippet,
+				confidence=0.85,
+			)
+
 	# ── CREATE_CARD ───────────────────────────────────────────────────────
 	for pat in _patterns_for("create_card", lang):
 		m = pat.search(snippet)
@@ -1218,6 +1374,7 @@ async def dispatch_structural_intent(intent: StructuralIntent, lang: str) -> str
 		execute_set_card_desc, execute_add_card_task,
 		execute_check_card_task, execute_uncheck_card_task, execute_rename_card_task,
 		execute_delete_card, execute_delete_list, execute_delete_card_task,
+		execute_create_board, execute_rename_board, execute_delete_board,
 	)
 	t = get_translations(lang)
 
@@ -1419,6 +1576,38 @@ async def dispatch_structural_intent(intent: StructuralIntent, lang: str) -> str
 		audit = f"[AUDIT:delete_card_task:{ent['task_fragment']}|card={ent['card_fragment']}]"
 		return f"{msg}\n{audit}"
 
-	# Unknown verb — defensive fallback, should not be reachable.
+	if verb == "CREATE_BOARD":
+		raw = await execute_create_board(ent["board_name"], ent.get("project_fragment", ""), lang)
+		if raw.startswith("⚠"):
+			return raw
+		msg = _localise(
+			"intent_router_create_board_success",
+			"Board '{board}' created.",
+			board=ent["board_name"],
+		)
+		audit = f"[AUDIT:create_board:{ent['board_name']}|project={ent.get('project_fragment', '')}]"
+		return f"{msg}\n{audit}"
+
+	if verb == "RENAME_BOARD":
+		raw = await execute_rename_board(ent["board_fragment"], ent["new_name"], lang)
+		if raw.startswith("⚠"):
+			return raw
+		msg = _localise(
+			"intent_router_rename_board_success",
+			"Board '{board}' renamed to '{new_name}'.",
+			board=ent["board_fragment"], new_name=ent["new_name"],
+		)
+		audit = f"[AUDIT:rename_board:{ent['board_fragment']}|new_name={ent['new_name']}]"
+		return f"{msg}\n{audit}"
+
+	if verb == "DELETE_BOARD":
+		raw = await execute_delete_board(ent["board_fragment"], lang)
+		if raw.startswith("⚠"):
+			return raw
+		msg = _localise("intent_router_delete_board_success", "Board '{board}' deleted.", board=ent["board_fragment"])
+		audit = f"[AUDIT:delete_board:{ent['board_fragment']}]"
+		return f"{msg}\n{audit}"
+
+        # Unknown verb — defensive fallback, should not be reachable.
 	logger.warning("intent_router: dispatch called with unknown verb %s", verb)
 	return ""
