@@ -413,8 +413,6 @@ translations: dict[str, str] = {
         'intent_router_create_card_dest_not_found': "카드 '{title}'을 만들 수 없습니다 — 대상 '{dest}'을(를) 찾을 수 없습니다.",
         'intent_router_create_list_success': "'{board}'에 목록 '{list_name}'이(가) 생성되었습니다.",
         'intent_router_create_list_board_not_found': "목록 '{list_name}'을 만들 수 없습니다 — 보드 '{board}'을(를) 찾을 수 없습니다.",
-        'intent_router_create_card_success': "'{title}'이(가) '{dest}'에 추가되었습니다.",
-        'intent_router_create_card_dest_not_found': "카드 '{title}'을 만들 수 없습니다 — 대상 '{dest}'을(를) 찾을 수 없습니다.",
-        'intent_router_create_list_success': "'{board}'에 목록 '{list_name}'이(가) 생성되었습니다.",
-        'intent_router_create_list_board_not_found': "목록 '{list_name}'을 만들 수 없습니다 — 보드 '{board}'을(를) 찾을 수 없습니다.",
+        'intent_router_rename_card_success': "카드 '{card}'이(가) '{new_name}'으로 이름이 변경되었습니다.",
+        'intent_router_rename_card_not_found': "카드 '{card}'의 이름을 변경할 수 없습니다 — 카드를 찾을 수 없습니다.",
 }

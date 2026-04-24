@@ -294,6 +294,14 @@ async def execute_create_card(title: str, destination: str = "", lang: str = "en
 	return f"\u26a0 Could not create card '{title}'. Destination '{destination}' not found."
 
 
+async def execute_rename_card(card_fragment: str, new_name: str, lang: str = "en") -> str:
+	"""Find a Planka card by fragment and rename it."""
+	from app.services.planka import rename_card as planka_rename_card
+	success = await planka_rename_card(card_title_fragment=card_fragment, new_name=new_name)
+	if success:
+		return f"Card '{card_fragment}' renamed to '{new_name}'."
+	return f"\u26a0 Could not rename card '{card_fragment}' — card not found."
+
 async def execute_create_list(list_name: str, board_name: str = "", lang: str = "en") -> str:
 	"""Create a new Planka list on the given board. Falls back to Operator Board if no board specified."""
 	from app.services.planka import create_list as planka_create_list

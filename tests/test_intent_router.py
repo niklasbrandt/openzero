@@ -399,3 +399,59 @@ def test_create_list_dispatch_calls_executor():
 	assert "Waiting" in result
 	assert "[AUDIT:create_list:" in result
 
+
+# ── RENAME_CARD tests ─────────────────────────────────────────────────────────
+
+@pytest.mark.parametrize("text,lang", [
+	("rename the Buy Milk card to Buy Oat Milk", "en"),
+	("rename Fix login to Fix SSO login", "en"),
+	("umbenennen Milch kaufen in Hafermilch kaufen", "de"),
+	("benenne die Karte Milch kaufen in Hafermilch um", "de"),
+	("renombrar la tarjeta Comprar leche a Comprar avena", "es"),
+	("renommer la carte Acheter lait en Acheter avoine", "fr"),
+	("renomear o cartão Comprar leite para Comprar aveia", "pt"),
+	("переименовать карточку Купить молоко в Купить овсяное молоко", "ru"),
+])
+def test_rename_card_pattern_classifies(text, lang):
+	"""RENAME_CARD verb is detected from basic input across languages."""
+	result = asyncio.get_event_loop().run_until_complete(
+		ir.classify_structural_intent(text, lang)
+	)
+	assert result is not None, f"[{lang}] classified as None for: {text!r}"
+	assert result.verb == "RENAME_CARD", f"[{lang}] expected RENAME_CARD, got {result.verb!r}"
+	assert result.entities.get("card_fragment"), f"[{lang}] card_fragment entity missing"
+	assert result.entities.get("new_name"), f"[{lang}] new_name entity missing"
+
+
+def test_rename_card_dispatch_calls_executor():
+	"""dispatch_structural_intent with RENAME_CARD calls execute_rename_card and returns localised result."""
+	from app.services.intent_router import StructuralIntent, dispatch_structural_intent
+	intent = StructuralIntent(
+		verb="RENAME_CARD",
+		entities={"card_fragment": "Buy Milk", "new_name": "Buy Oat Milk"},
+		raw_text="rename the Buy Milk card to Buy Oat Milk",
+		confidence=0.85,
+	)
+	with patch("app.services.agent_actions.execute_rename_card", new=AsyncMock(return_value="Card 'Buy Milk' renamed to 'Buy Oat Milk'.")):
+		result = asyncio.get_event_loop().run_until_complete(
+			dispatch_structural_intent(intent, "en")
+		)
+	assert "Buy Milk" in result
+	assert "[AUDIT:rename_card:" in result
+
+
+def test_rename_card_dispatch_returns_warning_on_failure():
+	"""dispatch returns warning string when executor signals failure."""
+	from app.services.intent_router import StructuralIntent, dispatch_structural_intent
+	intent = StructuralIntent(
+		verb="RENAME_CARD",
+		entities={"card_fragment": "nonexistent card", "new_name": "New Name"},
+		raw_text="rename nonexistent card to New Name",
+		confidence=0.85,
+	)
+	with patch("app.services.agent_actions.execute_rename_card", new=AsyncMock(return_value="\u26a0 Could not rename card 'nonexistent card' \u2014 card not found.")):
+		result = asyncio.get_event_loop().run_until_complete(
+			dispatch_structural_intent(intent, "en")
+		)
+	assert result.startswith("\u26a0")
+
