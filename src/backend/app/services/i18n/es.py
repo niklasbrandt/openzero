@@ -409,4 +409,8 @@ translations: dict[str, str] = {
         'intent_router_board_not_found': "No encontré ningún tablero que coincida con '{query}'.",
         'intent_router_project_not_found': "No encontré ningún proyecto que coincida con '{query}'.",
         'intent_router_card_not_found': "No encontré ninguna tarjeta que coincida con '{query}'.",
+        'intent_router_create_card_success': "Tarjeta '{title}' añadida a '{dest}'.",
+        'intent_router_create_card_dest_not_found': "No se pudo crear la tarjeta '{title}' — destino '{dest}' no encontrado.",
+        'intent_router_create_card_success': "Tarjeta '{title}' añadida a '{dest}'.",
+        'intent_router_create_card_dest_not_found': "No se pudo crear la tarjeta '{title}' — destino '{dest}' no encontrado.",
 }
