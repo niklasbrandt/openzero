@@ -900,7 +900,7 @@ async def get_agent_personality() -> str:
 	except Exception:
 		return ""
 
-async def build_system_prompt(user_name: str, user_profile: dict, include_agent_skills: bool = True) -> tuple[str, str, str]:
+async def build_system_prompt(user_name: str, user_profile: dict, include_agent_skills: bool = True, include_health: bool = True) -> tuple[str, str, str]:
 	from app.services.timezone import format_time, format_date_full, get_now
 	
 	now = get_now()
@@ -932,7 +932,7 @@ async def build_system_prompt(user_name: str, user_profile: dict, include_agent_
 		lang_directive = f"\n\nLANGUAGE DIRECTIVE: You MUST respond in {lang_name}. All responses, briefings, and notifications must be in {lang_name}. Think in {lang_name}. Only use English for technical terms that have no natural translation."
 
 	# Parallel context fetching: personal and agent context (zero overhead when cached)
-	from app.services.personal_context import get_personal_context_for_prompt, refresh_personal_context
+	from app.services.personal_context import get_personal_context_for_prompt, get_personal_context_for_prompt_no_health, refresh_personal_context
 	from app.services.agent_context import get_agent_skills_for_prompt, refresh_agent_context
 
 	_p_coro = refresh_personal_context() if not get_personal_context_for_prompt() else asyncio.sleep(0)
@@ -942,7 +942,7 @@ async def build_system_prompt(user_name: str, user_profile: dict, include_agent_
 	await asyncio.gather(_p_coro, _a_coro)
 	personality_directive = await _personality_coro
 
-	personal_ctx = get_personal_context_for_prompt()
+	personal_ctx = get_personal_context_for_prompt() if include_health else get_personal_context_for_prompt_no_health()
 	personal_block = ("\n\n" + personal_ctx) if personal_ctx else ""
 
 	agent_skills_block = ""
@@ -1168,7 +1168,8 @@ async def chat_stream(
 		else:
 			system_prompt = system_override
 	else:
-		formatted_system_prompt, context_header, simplified_time = await build_system_prompt(user_name, user_profile)
+		_include_health = kwargs.get("include_health", True)
+		formatted_system_prompt, context_header, simplified_time = await build_system_prompt(user_name, user_profile, include_health=_include_health)
 		system_prompt = context_header + formatted_system_prompt
 
 	provider = (provider or settings.LLM_PROVIDER).lower()
