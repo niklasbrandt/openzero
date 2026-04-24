@@ -428,4 +428,10 @@ translations: dict[str, str] = {
         'intent_router_uncheck_card_task_not_found': "تعذر إلغاء تحديد المهمة '{task}' في '{card}' — غير موجودة.",
         'intent_router_rename_card_task_success': "تمت إعادة تسمية المهمة '{task}' في البطاقة '{card}' إلى '{new_name}'.",
         'intent_router_rename_card_task_not_found': "تعذر إعادة تسمية المهمة '{task}' في '{card}' — غير موجودة.",
+        'intent_router_delete_card_success': "تم حذف البطاقة '{card}'.",
+        'intent_router_delete_card_not_found': "تعذر حذف البطاقة '{card}' — البطاقة غير موجودة.",
+        'intent_router_delete_list_success': "تم حذف القائمة '{list}'.",
+        'intent_router_delete_list_not_found': "تعذر حذف القائمة '{list}' — القائمة غير موجودة.",
+        'intent_router_delete_card_task_success': "تم حذف المهمة '{task}' من البطاقة '{card}'.",
+        'intent_router_delete_card_task_not_found': "تعذر حذف المهمة '{task}' من البطاقة '{card}' — غير موجودة.",
 }

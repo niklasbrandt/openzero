@@ -428,4 +428,10 @@ translations: dict[str, str] = {
         'intent_router_uncheck_card_task_not_found': 'カード『{card}』でタスク『{task}』のチェックを外せませんでした — 見つかりません。',
         'intent_router_rename_card_task_success': 'カード『{card}』のタスク『{task}』を『{new_name}』に変更しました。',
         'intent_router_rename_card_task_not_found': 'カード『{card}』のタスク『{task}』の名前を変更できませんでした — 見つかりません。',
+        'intent_router_delete_card_success': 'カード「{card}」を削除しました。',
+        'intent_router_delete_card_not_found': 'カード「{card}」を削除できませんでした — カードが見つかりません。',
+        'intent_router_delete_list_success': 'リスト「{list}」を削除しました。',
+        'intent_router_delete_list_not_found': 'リスト「{list}」を削除できませんでした — リストが見つかりません。',
+        'intent_router_delete_card_task_success': 'カード「{card}」からタスク「{task}」を削除しました。',
+        'intent_router_delete_card_task_not_found': 'カード「{card}」からタスク「{task}」を削除できませんでした — 見つかりません。',
 }
