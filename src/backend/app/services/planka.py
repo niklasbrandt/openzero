@@ -207,9 +207,11 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 			target_list = next((l for l in lists if (l.get("name") or "").lower() == list_name.lower()), None)
 
 			if not target_list:
-				# Fall back to first available list, or create 'Inbox' if board is empty
-				if lists:
-					target_list = lists[0]
+				# Fall back to first active named list — never use archive/trash lists (cards would be invisible).
+				active_lists = [l for l in lists if l.get("type") == "active" and (l.get("name") or "").strip()]
+				if active_lists:
+					target_list = active_lists[0]
+					logger.info("create_task: list '%s' not found on board '%s', falling back to '%s'", _sanitize_for_log(list_name), _sanitize_for_log(target_board["name"]), _sanitize_for_log(target_list.get("name")))
 				else:
 					l_resp = await client.post(f"/api/boards/{board_id}/lists", json={"name": "Inbox", "type": "active", "position": 65535})
 					l_resp.raise_for_status()
@@ -515,6 +517,9 @@ async def move_card(card_title_fragment: str, destination_list: str, board_name:
 
 async def create_list(board_name: str, list_name: str, project_name: Optional[str] = None) -> Optional[dict]:
 	"""Create a new list (column) in a board. Returns existing list if name matches (idempotent)."""
+	if not list_name or not list_name.strip():
+		logger.warning("create_list: refusing to create list with empty name on board '%s'", _sanitize_for_log(board_name))
+		return None
 	token = await get_planka_auth_token()
 	headers = {"Authorization": f"Bearer {token}"}
 	async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, headers=headers) as client:
@@ -549,6 +554,8 @@ async def create_list(board_name: str, list_name: str, project_name: Optional[st
 			b_detail.raise_for_status()
 			existing_lists = b_detail.json().get("included", {}).get("lists", [])
 			for lst in existing_lists:
+				if lst.get("type") in ("archive", "trash"):
+					continue
 				if (lst.get("name") or "").lower() == list_name.lower():
 					logger.debug("create_list: '%s' already exists on board '%s' (id=%s), returning existing", _sanitize_for_log(list_name), _sanitize_for_log(board_name), lst["id"])
 					return lst

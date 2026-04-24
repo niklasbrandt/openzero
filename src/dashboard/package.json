@@ -15,7 +15,6 @@
 	},
 	"devDependencies": {
 		"@axe-core/playwright": "^4.10.1",
-		"@lhci/cli": "^0.15.1",
 		"@playwright/test": "^1.51.0",
 		"eslint": "^10.0.3",
 		"lighthouse": "^12.0.0",
@@ -30,6 +29,7 @@
 		"tmp": "^0.2.5",
 		"yauzl": "^3.2.1",
 		"lodash": "^4.18.1",
-		"lodash-es": "^4.18.1"
+		"lodash-es": "^4.18.1",
+		"basic-ftp": ">=5.2.3"
 	}
 }
