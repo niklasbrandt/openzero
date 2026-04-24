@@ -291,7 +291,7 @@ async def webhook_receive(
 					media_id = msg.get("image", {}).get("id", "")
 					user_hint = msg.get("image", {}).get("caption", "")
 					if media_id:
-						logger.info("WhatsApp image inbound from %s (media_id=%s)", sender.replace('\n', ' ').replace('\r', ' '), media_id)
+						logger.info("WhatsApp image inbound from %s (media_id=%s)", sender.replace('\n', ' ').replace('\r', ' '), media_id.replace('\n', ' ').replace('\r', ' '))
 						background_tasks.add_task(_handle_inbound_image, sender, media_id, user_hint)
 				else:
 					logger.info(

@@ -46,17 +46,17 @@ _ROUTE_RE = re.compile(
 _RECALL_HISTORY_RE = re.compile(
 	r'(?:'
 	r'\b(?:recall|look\s+up|review|show\s+me|list|go\s+through)\b'
-	r'\s+(?:.{0,60}\s+)?(?:i\s+)?(?:asked|sent|gave|told|messaged)\s+you\b'
-	r'|\brecall\b.{0,80}\b(?:today|this\s+morning|earlier\s+today|yesterday|\d+\s+days?\s+ago|last\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|week)|last\s+two\s+weeks?|past\s+(?:two\s+)?weeks?|this\s+week|recently)\b'
-	r'|\bwhat\s+(?:did\s+i|have\s+i)\s+ask(?:ed)?.{0,60}\b(?:today|this\s+morning|yesterday|\d+\s+days?\s+ago)\b'
-	r'|\b(?:list|show\s+me|review|go\s+through)\b.{0,60}\b(?:my\s+messages?|what\s+i\s+ask(?:ed)?)\b'
-	r'|\b(?:my\s+)?(?:tasks?|requests?|things?)\s+(?:i\s+)?(?:asked|gave|told|sent).{0,40}\b(?:today|yesterday|\d+\s+days?\s+ago)\b'
+	r'\s+(?:\S[^\n]{0,59}\s+)?(?:i\s+)?(?:asked|sent|gave|told|messaged)\s+you\b'
+	r'|\brecall\b[^\n]{0,80}\b(?:today|this\s+morning|earlier\s+today|yesterday|\d{1,4}\s{1,20}days?\s{1,20}ago|last\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|week)|last\s+two\s+weeks?|past\s+(?:two\s+)?weeks?|this\s+week|recently)\b'
+	r'|\bwhat\s+(?:did\s+i|have\s+i)\s+ask(?:ed)?[^\n]{0,60}\b(?:today|this\s+morning|yesterday|\d{1,4}\s{1,20}days?\s{1,20}ago)\b'
+	r'|\b(?:list|show\s+me|review|go\s+through)\b[^\n]{0,60}\b(?:my\s+messages?|what\s+i\s+ask(?:ed)?)\b'
+	r'|\b(?:my\s+)?(?:tasks?|requests?|things?)\s+(?:i\s+)?(?:asked|gave|told|sent)[^\n]{0,40}\b(?:today|yesterday|\d{1,4}\s{1,20}days?\s{1,20}ago)\b'
 	r'|(?:and\s+)?i\s+asked\s+(?:today\s+)?(?:about\s+)?(?:an?\s+)?other\s+thing\b'
 	r'|\bdid\s+you\s+(?:do|create|add|make|get)\s+(?:it|that|them)\b'
 	r'|\b(?:so\s+)?(?:are|were|was)\s+(?:they|it|those)\s+(?:created|added|saved|built|done|set\s+up|executed)\b'
 	r'|\bdid\s+(?:those|they|it|that)\s+(?:get\s+)?(?:created|added|saved|go\s+through|work|execute)\b'
 	r'|\bwas\s+(?:it|that|the\s+(?:task|board|card|todo))\s+(?:created|added|saved|done|executed)\b'
-	r'|\bcheck\b.{0,60}\b(?:uncreated|missing|unfinished|pending|unexecuted)\b.{0,60}\b(?:tasks?|todos?|items?)\b'
+	r'|\bcheck\b[^\n]{0,60}\b(?:uncreated|missing|unfinished|pending|unexecuted)\b[^\n]{0,60}\b(?:tasks?|todos?|items?)\b'
 	r'|\b(?:uncreated|missing)\s+(?:tasks?|todos?|items?)\b'
 	r'|\bwhich\s+(?:tasks?|todos?|items?)\s+(?:were\s+not|weren.t|have\s+not\s+been|haven.t\s+been|did\s+not|didn.t)\s+(?:created|saved|added|executed|done)\b'
 	r')',
@@ -93,7 +93,7 @@ _SKIP_RECALL_RE = re.compile(
 )
 
 # Relative-date extractor used by the recall intercept
-_DAYS_AGO_RE = re.compile(r'(\d+)\s+days?\s+ago', re.IGNORECASE)
+_DAYS_AGO_RE = re.compile(r'(\d{1,4})\s{1,20}days?\s{1,20}ago', re.IGNORECASE)
 _WEEKDAY_MAP = {
 	'monday': 0, 'tuesday': 1, 'wednesday': 2, 'thursday': 3,
 	'friday': 4, 'saturday': 5, 'sunday': 6,
@@ -107,14 +107,14 @@ def _resolve_timeframe(text: str) -> tuple[int, bool]:
 	  is_range=False -> fetch a specific single day by offset (get_day_exchanges)
 	"""
 	import datetime as _dt
-	lower = text.lower()
+	lower = text[:_MAX_RE_INPUT].lower()
 	# Multi-day range patterns
 	if re.search(r'two\s+weeks?', lower):
 		return 14, True
-	m_nw = re.search(r'(\d+)\s+weeks?', lower)
+	m_nw = re.search(r'(\d{1,4})\s{1,20}weeks?', lower)
 	if m_nw:
 		return int(m_nw.group(1)) * 7, True
-	m_nd = re.search(r'(?:last|past)\s+(\d+)\s+days?', lower)
+	m_nd = re.search(r'(?:last|past)\s{1,20}(\d{1,4})\s{1,20}days?', lower)
 	if m_nd:
 		return int(m_nd.group(1)), True
 	if re.search(r'(?:last|this|past)\s+week\b|over\s+the\s+(?:last|past)\s+week\b', lower):
@@ -381,6 +381,41 @@ async def route_message_stream(
 				executed_cmds=cmds, pending_actions=pending,
 			))
 			return
+
+		# ── 0.5 Deterministic structural-intent intercept ────────────────────
+		# Pre-LLM router for high-confidence Planka mutations (move/archive/
+		# mark-done). Bypasses the chat LLM entirely so verbs that the cloud
+		# model occasionally describes in prose without emitting an ACTION tag
+		# still execute. Falls through to crew/LLM when no intent matches.
+		try:
+			from app.services.intent_router import (
+				classify_structural_intent, dispatch_structural_intent,
+			)
+			intent = await classify_structural_intent(user_text, lang)
+		except Exception as _ie:
+			logger.warning("intent_router: classify failed: %s", _ie)
+			intent = None
+		if intent and intent.confidence >= 0.85:
+			logger.info(
+				"Router: structural intent '%s' (conf=%.2f) for '%s...'",
+				intent.verb, intent.confidence, _sanitize_for_log(user_text),
+			)
+			try:
+				result_text = await dispatch_structural_intent(intent, lang)
+			except Exception as _de:
+				logger.error("intent_router: dispatch failed: %s", _de)
+				result_text = ""
+			if result_text:
+				yield result_text
+				clean, cmds, pending = await bus.commit_reply(
+					channel=channel, raw_reply=result_text,
+					model="intent_router", user_text=user_text, save=save_history,
+				)
+				result_future.set_result(RouterResult(
+					reply=clean, model="intent_router",
+					executed_cmds=cmds, pending_actions=pending,
+				))
+				return
 
 		# ── 1. Keyword-based crew routing ────────────────────────────────────
 		routed_crews = await resolve_active_crews(history, user_text, lang=lang)

@@ -25,6 +25,9 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
+def _sl(v) -> str:
+	return str(v).replace('\n', ' ').replace('\r', ' ')
+
 # Maximum characters kept in the card description before truncation
 MAX_DESC_CHARS = 4000
 # How many past days to load for context injection
@@ -174,7 +177,7 @@ async def _load_crew_list_id(crew_id: str, purpose: str) -> str | None:
 			pref = res.scalar_one_or_none()
 			return pref.value if pref else None
 	except Exception as e:
-		logger.warning("crew_memory: could not load list ID for %s/%s: %s", crew_id, purpose, e)
+		logger.warning("crew_memory: could not load list ID for %s/%s: %s", _sl(crew_id), purpose, e)
 		return None
 
 
@@ -192,9 +195,9 @@ async def _save_crew_list_id(crew_id: str, purpose: str, list_id: str) -> None:
 			else:
 				session.add(Preference(key=key, value=list_id))
 			await session.commit()
-		logger.info("crew_memory: persisted list ID crew_id=%s purpose=%s id=%s", crew_id, purpose, list_id)
+		logger.info("crew_memory: persisted list ID crew_id=%s purpose=%s id=%s", _sl(crew_id), purpose, _sl(list_id))
 	except Exception as e:
-		logger.warning("crew_memory: could not persist list ID for %s/%s: %s", crew_id, purpose, e)
+		logger.warning("crew_memory: could not persist list ID for %s/%s: %s", _sl(crew_id), purpose, e)
 
 
 async def _get_or_create_conversation_list(
@@ -236,7 +239,7 @@ async def _get_or_create_conversation_list(
 					r = await client.patch(f"/api/lists/{persisted_id}", json={"name": list_name})
 					if r.status_code == 200:
 						logger.info("crew_memory: renamed conversation list '%s' -> '%s' for crew '%s'",
-									matched.get("name"), list_name, crew_id)
+									_sl(matched.get("name")), _sl(list_name), _sl(crew_id))
 				return persisted_id
 			logger.warning("crew_memory: persisted list ID %s not found on board %s — falling back to name search",
 						   persisted_id, board_id)
@@ -261,7 +264,7 @@ async def _get_or_create_conversation_list(
 				r = await client.patch(f"/api/lists/{winner['id']}", json={"name": list_name})
 				if r.status_code == 200:
 					logger.info("crew_memory: renamed conversation list '%s' -> '%s' for crew '%s'",
-								winner.get("name"), list_name, crew_id)
+								_sl(winner.get("name")), _sl(list_name), _sl(crew_id))
 			await _save_crew_list_id(crew_id, "conversation", winner["id"])
 			return winner["id"]
 
