@@ -42,15 +42,10 @@ async def morning_briefing():
 			return data
 
 		inner_circle_tasks = [get_person_briefing_data(p) for p in people if p.circle_type == "inner"]
-		close_circle_tasks = [get_person_briefing_data(p) for p in people if p.circle_type == "close"]
 
-		inner_context_list, close_context_list = await asyncio.gather(
-			asyncio.gather(*inner_circle_tasks),
-			asyncio.gather(*close_circle_tasks),
-		)
+		inner_context_list = await asyncio.gather(*inner_circle_tasks)
 
 		inner_context = "\n".join(inner_context_list) if inner_context_list else "No primary family focus today."
-		close_context = "\n".join(close_context_list) if close_context_list else "No specific friend connections planned."
 
 		# 2.2 Batch 1 — calendar + automation in parallel (both independent)
 		logger.debug("morning_briefing — starting batch-1 gather (calendar + automation)")
@@ -144,37 +139,49 @@ async def morning_briefing():
 		full_prompt = (
 			"Z, it's morning. Write the daily briefing for the user.\n\n"
 			"VOICE & STYLE:\n"
-			"- Stay fully in your configured character. Your persona, speech patterns, and attitude apply to EVERY sentence — "
-			"this is not a neutral report, it is YOU talking to someone you know well.\n"
-			"- Write in flowing, interconnected prose. No headers, no bullet lists, no section labels. "
-			"One continuous message that moves naturally from topic to topic like a real person talking.\n"
-			"- NEVER use emoji characters. Not one. No unicode symbols as decoration. Plain text only.\n"
-			"- Aim for at least 400 words. Be thorough and substantive, not a skim.\n\n"
-			"CONTENT — weave ALL of these naturally into the prose:\n"
-			"- Weather: temperature, conditions through the day, what to wear or plan around.\n"
-			"- Calendar events with times and what to expect.\n"
-			"- Active projects: name specific boards, cards, and what moved or stalled.\n"
-			"- People context: family, friends — mention anyone relevant by name with real context.\n"
+			"- Your character lives in word choice, directness, and attitude — one line at a time. NOT in paragraph length.\n"
+			"- NEVER use emoji characters. No unicode symbols as decoration. Plain text only.\n"
+			"- ZERO narrative prose. ZERO metaphors. ZERO scene-setting. ZERO atmospheric descriptions of weather, mood, or light.\n"
+			"- NO flowing paragraphs. NO 'One continuous message'. This is a structured information dump.\n"
+			"- Target 150-250 words total. Under 250 is correct. Over 400 is a failure.\n\n"
+			"REQUIRED OUTPUT FORMAT — follow this structure exactly:\n"
+			"[One-line opener: temperature, conditions, one clothing note if relevant. Facts only. No narrative.]\n\n"
+			"Calendar: [events with times, one line each — or 'clear']\n"
+			"Email: [notable items one line each — or 'nothing urgent']\n\n"
+			"Board (Today):\n"
+			"- [card] -> [status] ([short reason])\n\n"
+			"[One labeled block per active crew that has something relevant for today, e.g.:]\n"
+			"Fitness: [session type, time, duration]\n"
+			"Nutrition: [meal or prep note]\n"
+			"[Kids / People: one line per person if relevant]\n\n"
+			"ANTI-PATTERNS — these make the output invalid:\n"
+			"WRONG: 'You wake up to the kind of grey light that doesn't promise much but doesn't lie either...'\n"
+			"RIGHT: '12C, drizzle all day, 9C by evening. Wear a shell.'\n"
+			"WRONG: 'On the Operator Board, the Today list is lean but not empty. The backend card moved to In Progress after the crew finally unblocked the issue — turns out the config was reading the wrong env file, classic.'\n"
+			"RIGHT: '- openZero backend -> In Progress (TURN server fix)'\n\n"
+			"CONTENT — cover ALL of these using the structure above:\n"
+			"- Weather: temperature and conditions. One line.\n"
+			"- Calendar events with times.\n"
+			"- Active projects: boards, cards, status changes.\n"
+			"- People context: mention anyone relevant by name.\n"
 			"- Emails worth noting.\n\n"
 			"PROACTIVE SUGGESTIONS — this is critical:\n"
 			"Based on the user's known personal context (health goals, career aspirations, family situation, "
 			"fitness preferences, nutrition needs, life circumstances), actively suggest concrete things "
 			"they could do today. Do not wait to be asked. Examples of proactive thinking:\n"
-			"- If health.md mentions training preferences, suggest a specific workout window based on weather and calendar gaps.\n"
+			"- If the fitness or health crew has produced a plan, suggest today's workout window based on weather and calendar gaps.\n"
 			"- If career goals exist (e.g., Senior Design Engineer), suggest a concrete skill-building action for today.\n"
 			"- If there are kids, think about what would be good for them today given weather and schedule.\n"
 			"- If nutrition crew is active, mention meal prep or cooking worth tackling.\n"
 			"- If stagnant projects exist in the tree, nudge on the most impactful one.\n"
 			"- If the weather is good, suggest something outdoors. If bad, suggest something productive indoors.\n"
 			"- Think about the whole person: body, mind, work, relationships, rest.\n"
-			"Make these suggestions feel natural and woven in, not a separate checklist.\n\n"
+			"Add each suggestion as a labeled one-line bullet under the relevant section (Fitness:, Nutrition:, Kids:, etc.).\n\n"
 			"CREW AWARENESS — the user has these active autonomous crews working for them:\n"
 			f"{crew_context if crew_context else 'No active crews detected.'}\n"
-			"Reference relevant crews naturally where they connect to the day. For instance, "
-			"if the fitness crew designed a plan, mention today's session. If the nutrition crew "
-			"produced a meal plan, weave in what's on the menu. If the coach crew flagged something, "
-			"surface it. If health or dependents crews have context, let it inform your suggestions. "
-			"Do not list crews mechanically — only mention the ones that matter for TODAY.\n\n"
+			"Surface relevant crew output as labeled single-line facts in the structure above. "
+			"If the fitness crew has a plan, one line under 'Fitness:'. If the nutrition crew has a meal, one line under 'Nutrition:'. "
+			"Only include crews that have something concrete for TODAY. No prose linking them together.\n\n"
 			"STRICT RULES:\n"
 			"- NEVER invent names, tasks, projects, or events not present in CONTEXT.\n"
 			"- IGNORE any placeholder or '[e.g., ...]' values in personal files.\n"
@@ -205,7 +212,6 @@ async def morning_briefing():
 			"not the mechanical steps. Any sentence describing the action will appear verbatim to the user.\n\n"
 			f"AUTOMATED SYSTEM ACTIONS:\n{automation_summary}\n\n"
 			f"INNER CIRCLE (Family/Care):\n{inner_context}\n\n"
-			f"CLOSE CIRCLE (Friends/Social):\n{close_context}\n\n"
 			f"CALENDAR TODAY:\n{calendar_summary}\n\n"
 			f"WEATHER FORECAST:\n{weather_report}\n\n"
 			f"RECENT ACTIVITY (LAST 24H):\n{activity}\n\n"
@@ -218,10 +224,10 @@ async def morning_briefing():
 		_t3 = asyncio.get_event_loop().time()
 		try:
 			logger.info("Generating morning briefing (600s budget)...")
-			raw_content = await asyncio.wait_for(chat(full_prompt, tier="cloud", _feature="morning_briefing"), timeout=600.0)
+			raw_content = await asyncio.wait_for(chat(full_prompt, tier="cloud", _feature="morning_briefing", include_health=False), timeout=600.0)
 		except asyncio.TimeoutError:
 			logger.warning("morning_briefing — cloud tier timed out after 600s, retrying")
-			raw_content = await chat(full_prompt, tier="cloud", _feature="morning_briefing")
+			raw_content = await chat(full_prompt, tier="cloud", _feature="morning_briefing", include_health=False)
 		logger.debug("morning_briefing — LLM done in %.1fs", asyncio.get_event_loop().time() - _t3)
 
 		# 3.2 Post-Processing & Cleanup
