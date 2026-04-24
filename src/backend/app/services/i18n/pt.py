@@ -413,8 +413,6 @@ translations: dict[str, str] = {
         'intent_router_create_card_dest_not_found': "Não foi possível criar o cartão '{title}' — destino '{dest}' não encontrado.",
         'intent_router_create_list_success': "Lista '{list_name}' criada em '{board}'.",
         'intent_router_create_list_board_not_found': "Não foi possível criar a lista '{list_name}' — quadro '{board}' não encontrado.",
-        'intent_router_create_card_success': "Cartão '{title}' adicionado a '{dest}'.",
-        'intent_router_create_card_dest_not_found': "Não foi possível criar o cartão '{title}' — destino '{dest}' não encontrado.",
-        'intent_router_create_list_success': "Lista '{list_name}' criada em '{board}'.",
-        'intent_router_create_list_board_not_found': "Não foi possível criar a lista '{list_name}' — quadro '{board}' não encontrado.",
+        'intent_router_rename_card_success': "Cartão '{card}' renomeado para '{new_name}'.",
+        'intent_router_rename_card_not_found': "Não foi possível renomear o cartão '{card}' — cartão não encontrado.",
 }
