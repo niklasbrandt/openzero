@@ -230,6 +230,11 @@ async def _probe_peer(
 	   on completions is recorded as online=True with toks_per_sec=0 so it
 	   still shows up in the dashboard but is excluded from routing.
 	"""
+	# Sticky circuit-breaker: a peer previously confirmed dead (HTTP 404 on
+	# inference endpoints) stays disabled for the lifetime of the process to
+	# stop the discovery loop from re-probing every 30 s and flooding logs.
+	if peer.last_error == "dead (HTTP 404)":
+		return peer
 	# Try llama.cpp first — faster probe since it needs only /health
 	lat = await _probe_llamacpp(client, peer.url)
 	if lat is not None:
@@ -249,6 +254,19 @@ async def _probe_peer(
 		model = model_name or peer.model or fallback_model
 		# Pass the previously-detected api variant so it is tried first; falls back on 404.
 		tps, err, detected_api = await _measure_speed(peer.url, "ollama", model, peer.ollama_api)
+		# Circuit-breaker: a peer whose /api/tags is reachable but whose /api/chat
+		# and /api/generate both 404 is a misconfigured Ollama. Mark it offline so
+		# the discovery loop stops probing it every 30 s and floods the logs.
+		if err == "HTTP 404":
+			logger.warning(
+				"LLM peer: %s reachable but inference endpoints 404 — marking offline",
+				peer.url,
+			)
+			return PeerState(
+				url=peer.url, model=peer.model, server_type=peer.server_type,
+				online=False, latency_ms=float("inf"), last_error="dead (HTTP 404)",
+				is_vps_local=peer.is_vps_local, hostname=peer.hostname,
+			)
 		return PeerState(
 			url=peer.url, model=model, server_type="ollama",
 			ollama_api=detected_api or peer.ollama_api,
