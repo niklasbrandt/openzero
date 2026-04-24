@@ -382,9 +382,16 @@ def _is_followup_text(text: str) -> bool:
 	Punctuation is stripped from each token so that "now?" matches "now",
 	"it." matches "it", etc.
 	"""
-	# Strip leading/trailing punctuation from each token before comparing
-	tokens = {re.sub(r'^[^\w]+|[^\w]+$', '', w) for w in text.lower().split()}
-	tokens.discard("")
+	# Strip leading/trailing non-word chars from each token (O(N), no ReDoS — CWE-1333).
+	tokens = set()
+	for w in text[:2000].lower().split():
+		i, j = 0, len(w)
+		while i < j and not (w[i].isalnum() or w[i] == '_'):
+			i += 1
+		while j > i and not (w[j - 1].isalnum() or w[j - 1] == '_'):
+			j -= 1
+		if i < j:
+			tokens.add(w[i:j])
 	return bool(tokens & _FOLLOWUP_SIGNALS)
 
 

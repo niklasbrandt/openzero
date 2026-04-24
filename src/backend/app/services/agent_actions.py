@@ -193,6 +193,90 @@ AVAILABLE_TOOLS = [create_task, create_project, create_event, learn_memory, sche
 
 SENSITIVE_ACTIONS = {"SCHEDULE_CUSTOM", "LEARN", "CREATE_PROJECT", "ADD_PERSON", "CREATE_BOARD", "CREATE_LIST", "MOVE_BOARD", "PROXIMITY_TRACK", "RUN_CREW", "SCHEDULE_CREW"}
 
+
+# ─── Module-level executors for Planka mutations ─────────────────────────────
+# These were previously inner closures inside parse_and_execute_actions; lifted
+# so the deterministic intent_router can invoke them directly without going
+# through the LLM tag parser. Behaviour is identical — the inner-closure
+# wrappers call these and return the same strings.
+
+async def execute_move_board(board_name: str, target_project: str) -> str:
+	"""Move a Planka board to a different project. Returns a result string."""
+	from app.services.planka import move_board as planka_move_board
+	from app.config import settings as _cfg
+	from app.services.planka_common import get_planka_auth_token as _gat
+	import httpx as _httpx
+	try:
+		token = await _gat()
+		async with _httpx.AsyncClient(base_url=_cfg.PLANKA_BASE_URL, timeout=15.0, headers={"Authorization": f"Bearer {token}"}) as client:
+			pr = await client.get("/api/projects")
+			pr.raise_for_status()
+			projects = pr.json().get("items", [])
+			# 1. Exact case-insensitive project match
+			target_proj = next((p for p in projects if p["name"].lower() == target_project.lower()), None)
+			if not target_proj:
+				# 2. Substring fallback (forward direction only)
+				proj_candidates = [p for p in projects if target_project.lower() in p["name"].lower()]
+				if proj_candidates:
+					target_proj = min(proj_candidates, key=lambda p: abs(len(p["name"]) - len(target_project)))
+					logger.info("MOVE_BOARD: fuzzy-matched project '%s' -> '%s'", target_project, target_proj["name"])
+			if not target_proj:
+				return f"\u26a0 Project '{target_project}' not found. Check the project name in Planka."
+			board_id = None
+			matched_board_name = None
+			for p in projects:
+				p_det = await client.get(f"/api/projects/{p['id']}")
+				p_det.raise_for_status()
+				p_det_json = p_det.json()
+				boards = p_det_json.get("included", {}).get("boards", []) or p_det_json.get("boards", [])
+				match_b = next((b for b in boards if (b.get("name") or "").lower() == board_name.lower()), None)
+				if not match_b:
+					b_candidates = [b for b in boards if board_name.lower() in (b.get("name") or "").lower()]
+					if b_candidates:
+						match_b = min(b_candidates, key=lambda b: abs(len(b.get("name") or "") - len(board_name)))
+						logger.info("MOVE_BOARD: fuzzy-matched board '%s' -> '%s'", board_name, match_b.get("name"))
+				if match_b:
+					board_id = match_b["id"]
+					matched_board_name = match_b.get("name", board_name)
+					logger.info("MOVE_BOARD: using board id=%s name='%s'", board_id, matched_board_name)
+					break
+			if not board_id:
+				return f"\u26a0 Board '{board_name}' not found. Check the board name in Planka."
+			success = await planka_move_board(board_id=board_id, new_project_id=target_proj["id"])
+			if success:
+				return f"Board '{matched_board_name}' moved to '{target_proj['name']}'."
+			return f"\u26a0 Failed to move board '{matched_board_name}' to '{target_proj['name']}'. Check Planka."
+	except Exception as _e:
+		logger.error("execute_move_board failed: %s", _e)
+		return f"\u26a0 Failed to move board '{board_name}'. System error."
+
+
+async def execute_move_card(card_fragment: str, dest_list: str, board_name: str = "") -> str:
+	"""Move a Planka card to a different list. Returns a result string."""
+	from app.services.planka import move_card as planka_move_card
+	success = await planka_move_card(card_title_fragment=card_fragment, destination_list=dest_list, board_name=board_name)
+	if success:
+		return f"Card '{card_fragment}' moved to '{dest_list}'."
+	return f"\u26a0 Could not find card matching '{card_fragment}'. Check Planka board."
+
+
+async def execute_archive_card(card_fragment: str, board_name: str = "") -> str:
+	"""Archive a Planka card (move it to the Archive list). Returns a result string."""
+	from app.services.planka import archive_card as planka_archive_card
+	success = await planka_archive_card(card_title_fragment=card_fragment, board_name=board_name)
+	if success:
+		return f"Card '{card_fragment}' archived (moved to Archive list)."
+	return f"\u26a0 Could not archive card '{card_fragment}'. Check Planka board."
+
+
+async def execute_mark_done(card_fragment: str) -> str:
+	"""Mark a Planka card as done by moving it to the Done list."""
+	from app.services.planka import move_card as planka_move_card
+	success = await planka_move_card(card_title_fragment=card_fragment, destination_list="Done", board_name="")
+	if success:
+		return f"Card '{card_fragment}' marked done."
+	return f"\u26a0 Could not find card matching '{card_fragment}'. Check Planka board."
+
 async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = False):
 	"""
 	Parses Semantic Action Tags from the AI reply and executes them.
@@ -203,9 +287,6 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 	from app.services.planka import create_project as planka_create_project
 	from app.services.planka import create_board as planka_create_board
 	from app.services.planka import create_list as planka_create_list
-	from app.services.planka import move_card as planka_move_card
-	from app.services.planka import archive_card as planka_archive_card
-	from app.services.planka import move_board as planka_move_board
 	from app.models.db import store_pending_thought
 	import json
 	
@@ -215,6 +296,9 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 	# Dedup: small local models often repeat identical action tags multiple times.
 	# Track raw tag strings; skip any tag we have already processed in this response.
 	seen_raw_tags: set[str] = set()
+	# Detect whether the raw reply contained mutating ACTION tags (language-agnostic phantom guard).
+	_MUTATING_TAG_RE = re.compile(r'\[?ACTION:\s*(?:CREATE_TASK|CREATE_BOARD|CREATE_LIST|CREATE_PROJECT|MOVE_BOARD|MOVE_CARD|MARK_DONE|ARCHIVE_CARD|APPEND_SHOPPING|DELETE_BOARD|DELETE_CARD|DELETE_LIST|DELETE_PROJECT)\b', re.IGNORECASE)
+	_reply_had_mutating_tags = bool(_MUTATING_TAG_RE.search(reply))
 
 	# helper to clean tag from reply
 	def strip_tag(text, tag_match):
@@ -379,6 +463,11 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 		board_name = board_name.strip().strip('"\'')
 		list_name = list_name.strip().strip('"\'')
 
+		if not list_name:
+			logger.warning("CREATE_LIST: skipping tag with empty list name (board='%s')", board_name)
+			clean_reply = strip_tag(clean_reply, raw_tag)
+			continue
+
 		async def _exec_list(board_name=board_name, list_name=list_name):
 			try:
 				from app.services.planka_common import get_planka_auth_token
@@ -482,7 +571,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 	# DESCRIPTION is optional — captured when present, defaults to empty string.
 	# Pattern allows ] inside description content via a bounded capture group.
 	# Input is capped before iteration to prevent polynomial backtracking (CWE-1333).
-	task_pattern = r"\[?ACTION: CREATE_TASK \| BOARD: ([^\|\]]+) \| LIST: ([^\|\]]+) \| TITLE: ([^\|\]]+)(?:\s*\|\s*DESCRIPTION:\s*([\s\S]{0,20000}?))?\]"
+	task_pattern = r"\[?ACTION: CREATE_TASK \| BOARD: ([^\|\]]{1,500}) \| LIST: ([^\|\]]{1,500}) \| TITLE: ([^\|\]]{1,500})(?:\s*\|\s*DESCRIPTION:\s*([\s\S]{0,20000}?))?\]"
 	for match in re.finditer(task_pattern, reply[:200_000]):
 		raw_tag = match.group(0)
 		board, llist, title, desc = match.groups()
@@ -769,10 +858,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 		board = (match.group(3) or "").strip()
 		
 		async def _exec_move(card_frag=card_frag, dest_list=dest_list, board=board):
-			success = await planka_move_card(card_title_fragment=card_frag, destination_list=dest_list, board_name=board)
-			if success:
-				return f"Card '{card_frag}' moved to '{dest_list}'."
-			return f"\u26a0 Could not find card matching '{card_frag}'. Check Planka board."
+			return await execute_move_card(card_frag, dest_list, board)
 
 		await handle_action("MOVE_CARD", raw_tag, _exec_move, f"Move card '{card_frag}' to '{dest_list}'")
 		clean_reply = strip_tag(clean_reply, raw_tag)
@@ -784,10 +870,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 		card_frag = match.group(1).strip()
 
 		async def _exec_done(card_frag=card_frag):
-			success = await planka_move_card(card_title_fragment=card_frag, destination_list="Done", board_name="")
-			if success:
-				return f"Card '{card_frag}' marked done."
-			return f"\u26a0 Could not find card matching '{card_frag}'. Check Planka board."
+			return await execute_mark_done(card_frag)
 
 		await handle_action("MARK_DONE", raw_tag, _exec_done, f"Mark card '{card_frag}' as done")
 		clean_reply = strip_tag(clean_reply, raw_tag)
@@ -847,10 +930,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 		board = (match.group(2) or "").strip()
 
 		async def _exec_archive_card(card_frag=card_frag, board=board):
-			success = await planka_archive_card(card_title_fragment=card_frag, board_name=board)
-			if success:
-				return f"Card '{card_frag}' archived (moved to Archive list)."
-			return f"\u26a0 Could not archive card '{card_frag}'. Check Planka board."
+			return await execute_archive_card(card_frag, board)
 
 		await handle_action("ARCHIVE_CARD", raw_tag, _exec_archive_card, f"Archive card '{card_frag}'")
 		clean_reply = strip_tag(clean_reply, raw_tag)
@@ -863,60 +943,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 		mb_target_project = match.group(2).strip().strip('"\'"')
 
 		async def _exec_move_board(mb_board_name=mb_board_name, mb_target_project=mb_target_project):
-			try:
-				from app.config import settings as _cfg
-				from app.services.planka_common import get_planka_auth_token as _gat
-				import httpx as _httpx
-				token = await _gat()
-				async with _httpx.AsyncClient(base_url=_cfg.PLANKA_BASE_URL, timeout=15.0, headers={"Authorization": f"Bearer {token}"}) as client:
-					pr = await client.get("/api/projects")
-					pr.raise_for_status()
-					projects = pr.json().get("items", [])
-					# 1. Exact case-insensitive project match
-					target_proj = next((p for p in projects if p["name"].lower() == mb_target_project.lower()), None)
-					if not target_proj:
-						# 2. Substring fallback for project name — forward direction only.
-						# Do NOT use reverse (project_name in query) — short project names would
-						# spuriously match long user phrases.
-						proj_candidates = [p for p in projects if mb_target_project.lower() in p["name"].lower()]
-						if proj_candidates:
-							target_proj = min(proj_candidates, key=lambda p: abs(len(p["name"]) - len(mb_target_project)))
-							logger.info("MOVE_BOARD: fuzzy-matched project '%s' -> '%s'", mb_target_project, target_proj["name"])
-					if not target_proj:
-						return f"\u26a0 Project '{mb_target_project}' not found. Check the project name in Planka."
-					board_id = None
-					matched_board_name = None
-					for p in projects:
-						p_det = await client.get(f"/api/projects/{p['id']}")
-						p_det.raise_for_status()
-						p_det_json = p_det.json()
-						boards = p_det_json.get("included", {}).get("boards", []) or p_det_json.get("boards", [])
-						# 1. Exact case-insensitive board match
-						match_b = next((b for b in boards if (b.get("name") or "").lower() == mb_board_name.lower()), None)
-						if not match_b:
-							# 2. Substring fallback for board name — forward direction only.
-							# Do NOT use reverse (board_name in query): a board named "Tank" would
-							# falsely match the query "tank board" because "tank" is a substring of
-							# "tank board". Only match when the user's query fragment appears inside
-							# the board name (not the other way around).
-							b_candidates = [b for b in boards if mb_board_name.lower() in (b.get("name") or "").lower()]
-							if b_candidates:
-								match_b = min(b_candidates, key=lambda b: abs(len(b.get("name") or "") - len(mb_board_name)))
-								logger.info("MOVE_BOARD: fuzzy-matched board '%s' -> '%s'", mb_board_name, match_b.get("name"))
-						if match_b:
-							board_id = match_b["id"]
-							matched_board_name = match_b.get("name", mb_board_name)
-							logger.info("MOVE_BOARD: using board id=%s name='%s'", board_id, matched_board_name)
-							break
-					if not board_id:
-						return f"\u26a0 Board '{mb_board_name}' not found. Check the board name in Planka."
-					success = await planka_move_board(board_id=board_id, new_project_id=target_proj["id"])
-					if success:
-						return f"Board '{matched_board_name}' moved to '{target_proj['name']}'."
-					return f"\u26a0 Failed to move board '{matched_board_name}' to '{target_proj['name']}'. Check Planka."
-			except Exception as _e:
-				logger.error("MOVE_BOARD failed: %s", _e)
-				return f"\u26a0 Failed to move board '{mb_board_name}'. System error."
+			return await execute_move_board(mb_board_name, mb_target_project)
 
 		_dedup_mb = f"MOVE_BOARD:{mb_board_name.strip().lower()}:{mb_target_project.strip().lower()}"
 		await handle_action("MOVE_BOARD", raw_tag, _exec_move_board, f"Move board '{mb_board_name}' to project '{mb_target_project}'", dedup_key=_dedup_mb)
@@ -1002,6 +1029,23 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 			if not _INTERNAL_INSTRUCTION_RE.match(l)
 		]
 		clean_reply = '\n'.join(lines_out).strip()
+
+	# Structural phantom guard: raw reply contained mutating ACTION tags but nothing ran.
+	# Language-agnostic — does not rely on confirmation phrases.
+	if _reply_had_mutating_tags and not executed_cmds and not pending_actions:
+		try:
+			from app.services.translations import get_translations, get_user_lang
+			_lang = "en"
+			try:
+				_lang = await get_user_lang()
+			except Exception:
+				pass
+			_t = get_translations(_lang)
+			_warn = _t.get("action_not_executed", "No action was executed — please try again.")
+		except Exception:
+			_warn = "No action was executed — please try again."
+		clean_reply = clean_reply.rstrip() + "\n\n\u26a0 " + _warn
+		logger.warning("parse_and_execute_actions: phantom confirmation — raw reply had mutating ACTION tags but nothing executed")
 
 	return clean_reply, executed_cmds, pending_actions
 
