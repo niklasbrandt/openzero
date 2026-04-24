@@ -23,6 +23,7 @@ Confidence threshold for dispatch is decided by the caller (router.py).
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 import time
@@ -122,15 +123,24 @@ async def _get_planka_snapshot(force: bool = False) -> list[dict]:
 		from app.services.planka_common import get_planka_auth_token
 		import httpx
 		token = await get_planka_auth_token()
-		async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, timeout=15.0, headers={"Authorization": f"Bearer {token}"}) as client:
+		async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, timeout=3.0, headers={"Authorization": f"Bearer {token}"}) as client:
 			pr = await client.get("/api/projects")
 			pr.raise_for_status()
 			projects_raw = pr.json().get("items", [])
+			# Parallelise per-project detail fetches (was N+1 sequential).
+			detail_tasks = [client.get(f"/api/projects/{p['id']}") for p in projects_raw]
+			details = await asyncio.gather(*detail_tasks, return_exceptions=True)
 			snapshot: list[dict] = []
-			for p in projects_raw:
-				det = await client.get(f"/api/projects/{p['id']}")
-				det.raise_for_status()
-				det_json = det.json()
+			for p, det in zip(projects_raw, details):
+				if isinstance(det, BaseException):
+					logger.warning("intent_router: project %s detail fetch failed: %s", p.get("id"), det)
+					continue
+				try:
+					det.raise_for_status()
+					det_json = det.json()
+				except Exception as _pe:
+					logger.warning("intent_router: project %s detail parse failed: %s", p.get("id"), _pe)
+					continue
 				boards = det_json.get("included", {}).get("boards", []) or det_json.get("boards", [])
 				snapshot.append({
 					"id": p["id"],
