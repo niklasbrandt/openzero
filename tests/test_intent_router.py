@@ -897,3 +897,148 @@ def test_delete_card_task_dispatch_returns_warning_on_failure():
                         dispatch_structural_intent(intent, "en")
                 )
         assert result.startswith("\u26a0")
+
+
+# ---------------------------------------------------------------------------
+# CREATE_BOARD
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("text,lang", [
+	("create board Finance in My Projects", "en"),
+	("add board Shopping", "en"),
+	("new board Roadmap in Work", "en"),
+])
+def test_create_board_pattern_classifies(text, lang):
+	"""CREATE_BOARD verb is classified from natural-language inputs."""
+	result = asyncio.get_event_loop().run_until_complete(ir.classify_structural_intent(text, lang))
+	assert result is not None, f"[{lang}] classified as None for: {text!r}"
+	assert result.verb == "CREATE_BOARD", f"[{lang}] expected CREATE_BOARD, got {result.verb!r}"
+
+
+def test_create_board_dispatch_calls_executor():
+	"""dispatch_structural_intent routes CREATE_BOARD correctly."""
+	from app.services.intent_router import StructuralIntent, dispatch_structural_intent
+	intent = StructuralIntent(
+		verb="CREATE_BOARD",
+		entities={"board_name": "Finance", "project_fragment": "My Projects"},
+		raw_text="create board Finance in My Projects",
+		confidence=0.85,
+	)
+	with patch("app.services.agent_actions.execute_create_board", new=AsyncMock(return_value="Board 'Finance' created.")):
+		result = asyncio.get_event_loop().run_until_complete(
+			dispatch_structural_intent(intent, "en")
+		)
+	assert "Finance" in result
+	assert "[AUDIT:create_board:" in result
+
+
+def test_create_board_dispatch_returns_warning_on_failure():
+	"""dispatch returns warning string when CREATE_BOARD executor signals failure."""
+	from app.services.intent_router import StructuralIntent, dispatch_structural_intent
+	intent = StructuralIntent(
+		verb="CREATE_BOARD",
+		entities={"board_name": "Finance", "project_fragment": "nonexistent"},
+		raw_text="create board Finance in nonexistent",
+		confidence=0.85,
+	)
+	with patch("app.services.agent_actions.execute_create_board", new=AsyncMock(return_value="\u26a0 Could not create board 'Finance' \u2014 project not found.")):
+		result = asyncio.get_event_loop().run_until_complete(
+			dispatch_structural_intent(intent, "en")
+		)
+	assert result.startswith("\u26a0")
+
+
+# ---------------------------------------------------------------------------
+# RENAME_BOARD
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("text,lang", [
+	("rename board Finance to Investments", "en"),
+	("change board name Shopping to Groceries", "en"),
+])
+def test_rename_board_pattern_classifies(text, lang):
+	"""RENAME_BOARD verb is classified from natural-language inputs."""
+	result = asyncio.get_event_loop().run_until_complete(ir.classify_structural_intent(text, lang))
+	assert result is not None, f"[{lang}] classified as None for: {text!r}"
+	assert result.verb == "RENAME_BOARD", f"[{lang}] expected RENAME_BOARD, got {result.verb!r}"
+
+
+def test_rename_board_dispatch_calls_executor():
+	"""dispatch_structural_intent routes RENAME_BOARD correctly."""
+	from app.services.intent_router import StructuralIntent, dispatch_structural_intent
+	intent = StructuralIntent(
+		verb="RENAME_BOARD",
+		entities={"board_fragment": "Finance", "new_name": "Investments"},
+		raw_text="rename board Finance to Investments",
+		confidence=0.85,
+	)
+	with patch("app.services.agent_actions.execute_rename_board", new=AsyncMock(return_value="Board 'Finance' renamed to 'Investments'.")):
+		result = asyncio.get_event_loop().run_until_complete(
+			dispatch_structural_intent(intent, "en")
+		)
+	assert "Finance" in result
+	assert "[AUDIT:rename_board:" in result
+
+
+def test_rename_board_dispatch_returns_warning_on_failure():
+	"""dispatch returns warning string when RENAME_BOARD executor signals failure."""
+	from app.services.intent_router import StructuralIntent, dispatch_structural_intent
+	intent = StructuralIntent(
+		verb="RENAME_BOARD",
+		entities={"board_fragment": "nonexistent", "new_name": "New Name"},
+		raw_text="rename board nonexistent to New Name",
+		confidence=0.85,
+	)
+	with patch("app.services.agent_actions.execute_rename_board", new=AsyncMock(return_value="\u26a0 Could not rename board 'nonexistent' \u2014 board not found.")):
+		result = asyncio.get_event_loop().run_until_complete(
+			dispatch_structural_intent(intent, "en")
+		)
+	assert result.startswith("\u26a0")
+
+
+# ---------------------------------------------------------------------------
+# DELETE_BOARD
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("text,lang", [
+	("delete board Finance", "en"),
+	("remove board Shopping", "en"),
+])
+def test_delete_board_pattern_classifies(text, lang):
+	"""DELETE_BOARD verb is classified from natural-language inputs."""
+	result = asyncio.get_event_loop().run_until_complete(ir.classify_structural_intent(text, lang))
+	assert result is not None, f"[{lang}] classified as None for: {text!r}"
+	assert result.verb == "DELETE_BOARD", f"[{lang}] expected DELETE_BOARD, got {result.verb!r}"
+
+
+def test_delete_board_dispatch_calls_executor():
+	"""dispatch_structural_intent routes DELETE_BOARD correctly."""
+	from app.services.intent_router import StructuralIntent, dispatch_structural_intent
+	intent = StructuralIntent(
+		verb="DELETE_BOARD",
+		entities={"board_fragment": "Finance"},
+		raw_text="delete board Finance",
+		confidence=0.85,
+	)
+	with patch("app.services.agent_actions.execute_delete_board", new=AsyncMock(return_value="Board 'Finance' deleted.")):
+		result = asyncio.get_event_loop().run_until_complete(
+			dispatch_structural_intent(intent, "en")
+		)
+	assert "Finance" in result
+	assert "[AUDIT:delete_board:" in result
+
+
+def test_delete_board_dispatch_returns_warning_on_failure():
+	"""dispatch returns warning string when DELETE_BOARD executor signals failure."""
+	from app.services.intent_router import StructuralIntent, dispatch_structural_intent
+	intent = StructuralIntent(
+		verb="DELETE_BOARD",
+		entities={"board_fragment": "nonexistent"},
+		raw_text="delete board nonexistent",
+		confidence=0.85,
+	)
+	with patch("app.services.agent_actions.execute_delete_board", new=AsyncMock(return_value="\u26a0 Could not delete board 'nonexistent' \u2014 board not found.")):
+		result = asyncio.get_event_loop().run_until_complete(
+			dispatch_structural_intent(intent, "en")
+		)
+	assert result.startswith("\u26a0")

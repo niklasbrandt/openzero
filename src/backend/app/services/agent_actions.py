@@ -392,6 +392,32 @@ async def execute_create_list(list_name: str, board_name: str = "", lang: str = 
 		return f"List '{list_name}' created on '{target_board}'."
 	return f"\u26a0 Could not create list '{list_name}' on board '{target_board}'. Board not found."
 
+async def execute_create_board(board_name: str, project_fragment: str = "", lang: str = "en") -> str:
+	"""Create a new Planka board in the specified project."""
+	from app.services.planka import create_board_in_project as planka_create_board
+	result = await planka_create_board(board_name=board_name, project_fragment=project_fragment)
+	if result:
+		return f"Board '{board_name}' created."
+	return f"\u26a0 Could not create board '{board_name}' \u2014 project not found."
+
+
+async def execute_rename_board(board_fragment: str, new_name: str, lang: str = "en") -> str:
+	"""Rename a Planka board by name fragment."""
+	from app.services.planka import rename_board as planka_rename_board
+	success = await planka_rename_board(board_fragment=board_fragment, new_name=new_name)
+	if success:
+		return f"Board '{board_fragment}' renamed to '{new_name}'."
+	return f"\u26a0 Could not rename board '{board_fragment}' \u2014 board not found."
+
+
+async def execute_delete_board(board_fragment: str, lang: str = "en") -> str:
+	"""Delete a Planka board by name fragment."""
+	from app.services.planka import delete_board as planka_delete_board
+	success = await planka_delete_board(board_fragment=board_fragment)
+	if success:
+		return f"Board '{board_fragment}' deleted."
+	return f"\u26a0 Could not delete board '{board_fragment}' \u2014 board not found."
+
 async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = False):
 	"""
 	Parses Semantic Action Tags from the AI reply and executes them.
