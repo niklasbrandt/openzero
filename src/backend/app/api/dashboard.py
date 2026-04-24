@@ -936,12 +936,14 @@ async def dashboard_chat_stream(req: ChatRequest, request: Request, _rl: None = 
 		# All decisions (keyword crew routing, ROUTE tag, phantom guard, etc.)
 		# are handled by app.services.router.route_message_stream.
 		from app.services.router import route_message_stream
+		from app.services.translations import get_user_lang
+		_lang = await get_user_lang()
 
 		token_stream, result_fut = await route_message_stream(
 			user_text=msg,
 			history=merged_history,
 			channel="dashboard",
-			lang="en",
+			lang=_lang,
 			save_history=not req.skip_history,
 		)
 
