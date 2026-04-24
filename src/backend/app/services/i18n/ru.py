@@ -427,4 +427,10 @@ translations: dict[str, str] = {
         'intent_router_uncheck_card_task_not_found': "Не удалось снять отметку с задачи '{task}' в '{card}' — не найдена.",
         'intent_router_rename_card_task_success': "Задача '{task}' в карточке '{card}' переименована в '{new_name}'.",
         'intent_router_rename_card_task_not_found': "Не удалось переименовать задачу '{task}' в '{card}' — не найдена.",
+        'intent_router_delete_card_success': "Карточка '{card}' удалена.",
+        'intent_router_delete_card_not_found': "Не удалось удалить карточку '{card}' — карточка не найдена.",
+        'intent_router_delete_list_success': "Список '{list}' удалён.",
+        'intent_router_delete_list_not_found': "Не удалось удалить список '{list}' — список не найден.",
+        'intent_router_delete_card_task_success': "Задача '{task}' удалена из карточки '{card}'.",
+        'intent_router_delete_card_task_not_found': "Не удалось удалить задачу '{task}' из карточки '{card}' — не найдена.",
 }

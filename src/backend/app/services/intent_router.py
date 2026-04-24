@@ -15,6 +15,7 @@ Public API:
 A StructuralIntent has:
 	verb        — one of MOVE_BOARD, MOVE_CARD, RENAME_CARD, RENAME_LIST, RENAME_CARD_TASK,
 	            SET_CARD_DESC, ADD_CARD_TASK, CHECK_CARD_TASK, UNCHECK_CARD_TASK,
+	            DELETE_CARD, DELETE_LIST, DELETE_CARD_TASK,
 	            ARCHIVE_CARD, MARK_DONE
 	entities    — dict with verb-specific keys (board, target_project, card, list, ...)
 	raw_text    — original user text (truncated for logging safety)
@@ -118,6 +119,15 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 			re.compile(r'\b(?:uncheck|untick|unmark|reopen)\s+(?:the\s+)?(?:task|item|todo)\s+(.{1,80}?)\s+(?:in|on|of)\s+(?:the\s+)?(?:card\s+)?(.{1,80})', re.IGNORECASE),
 			re.compile(r'\bmark\s+(?:the\s+)?(?:task|item|todo)\s+(.{1,80}?)\s+(?:in|on|of)\s+(?:the\s+)?(?:card\s+)?(.{1,80}?)\s+(?:as\s+)?(?:not\s+done|undone|incomplete)\b', re.IGNORECASE),
 		],
+		"delete_card": [
+			re.compile(r'\b(?:delete|remove|discard|trash)\s+(?:the\s+)?card\s+(.{1,80})', re.IGNORECASE),
+		],
+		"delete_list": [
+			re.compile(r'\b(?:delete|remove|discard)\s+(?:the\s+)?(?:list|column)\s+(.{1,80})', re.IGNORECASE),
+		],
+		"delete_card_task": [
+			re.compile(r'\b(?:delete|remove)\s+(?:the\s+)?(?:task|item|todo)\s+(.{1,80}?)\s+(?:from|in|on)\s+(?:the\s+)?(?:card\s+)?(.{1,80})', re.IGNORECASE),
+		],
 		"hedges": [
 			re.compile(r'\b(?:thinking\s+about|considering|maybe|might|should\s+i|could\s+i|how\s+(?:do|to|can)\s+i|what\s+(?:does|is|happens)|why\s+(?:would|should))\b', re.IGNORECASE),
 			re.compile(r"\b(?:was|were)\s+(?:thinking|planning|considering)\b", re.IGNORECASE),
@@ -172,6 +182,15 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 		"uncheck_card_task": [
 			re.compile(r'\bmarkiere?\s+(?:die\s+)?(?:Aufgabe|Todo)\s+(.{1,80}?)\s+(?:in|bei|auf)\s+(?:der\s+)?(?:Karte\s+)?(.{1,80}?)\s+als\s+(?:nicht\s+erledigt|offen|unerledigt)\b', re.IGNORECASE),
 		],
+		"delete_card": [
+			re.compile(r'\b(?:lösch[e]?|entfern[e]?)\s+(?:die\s+)?karte\s+(.{1,80})', re.IGNORECASE),
+		],
+		"delete_list": [
+			re.compile(r'\b(?:lösch[e]?|entfern[e]?)\s+(?:die\s+)?(?:liste|spalte)\s+(.{1,80})', re.IGNORECASE),
+		],
+		"delete_card_task": [
+			re.compile(r'\b(?:lösch[e]?|entfern[e]?)\s+(?:die\s+)?aufgabe\s+(.{1,80}?)\s+(?:von|aus|in|auf)\s+(?:der\s+)?(?:karte\s+)?(.{1,80})', re.IGNORECASE),
+		],
 		"hedges": [
 			re.compile(r'\b(?:vielleicht|eventuell|sollte\s+ich|könnte\s+ich|wie\s+(?:kann|soll)\s+ich|was\s+(?:bedeutet|ist|passiert)|warum)\b', re.IGNORECASE),
 			re.compile(r'\b(?:erkläre|erklär|sag\s+mir|beschreibe)\b', re.IGNORECASE),
@@ -219,6 +238,15 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 		],
 		"uncheck_card_task": [
 			re.compile(r'\b(?:desmarca[r]?|quita[r]?\s+la\s+marca)\s+(?:la\s+)?(?:tarea|elemento)\s+(.{1,80}?)\s+(?:en|de)\s+(?:la\s+)?(?:tarjeta\s+)?(.{1,80})', re.IGNORECASE),
+		],
+		"delete_card": [
+			re.compile(r'\b(?:eliminar?|borra[r]?|quitar?)\s+(?:la\s+)?tarjeta\s+(.{1,80})', re.IGNORECASE),
+		],
+		"delete_list": [
+			re.compile(r'\b(?:eliminar?|borra[r]?|quitar?)\s+(?:la\s+)?(?:lista|columna)\s+(.{1,80})', re.IGNORECASE),
+		],
+		"delete_card_task": [
+			re.compile(r'\b(?:eliminar?|borra[r]?|quitar?)\s+(?:la\s+)?tarea\s+(.{1,80}?)\s+(?:de|en)\s+(?:la\s+)?(?:tarjeta\s+)?(.{1,80})', re.IGNORECASE),
 		],
 		"hedges": [
 			re.compile(r'\b(?:estaba\s+pensando|tal\s+vez|quizás|quiza|debería|deberia|cómo|como\s+se|qué\s+significa|que\s+significa|por\s+qué|por\s+que)\b', re.IGNORECASE),
@@ -269,6 +297,15 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 		"uncheck_card_task": [
 			re.compile(r'\b(?:d[\xe9e]cochez?|d[\xe9e]coche[rz]?)\s+(?:la\s+)?(?:t[\xe2a]che|[\xe9e]l[\xe9e]ment)\s+(.{1,80}?)\s+(?:dans|sur|de)\s+(?:la\s+)?(?:carte\s+)?(.{1,80})', re.IGNORECASE),
 		],
+		"delete_card": [
+			re.compile(r'\b(?:supprimer?|supprime[rz]?|effacer?|enlever?)\s+(?:la\s+)?carte\s+(.{1,80})', re.IGNORECASE),
+		],
+		"delete_list": [
+			re.compile(r'\b(?:supprimer?|supprime[rz]?|effacer?|enlever?)\s+(?:la\s+)?(?:liste|colonne)\s+(.{1,80})', re.IGNORECASE),
+		],
+		"delete_card_task": [
+			re.compile(r'\b(?:supprimer?|supprime[rz]?|effacer?|enlever?)\s+(?:la\s+)?(?:t[\xe2a]che|[\xe9e]l[\xe9e]ment)\s+(.{1,80}?)\s+(?:de|dans)\s+(?:la\s+)?(?:carte\s+)?(.{1,80})', re.IGNORECASE),
+		],
 		"hedges": [
 			re.compile(r'\b(?:je\s+pensais|peut[- ]être|devrais[- ]je|pourrais[- ]je|comment\s+(?:est-ce|puis|dois)|qu(?:e|\u2019)est[- ]ce\s+que|pourquoi)\b', re.IGNORECASE),
 			re.compile(r'\b(?:explique|décris|decris|raconte)\b', re.IGNORECASE),
@@ -314,7 +351,17 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 		],
 		"uncheck_card_task": [
 			re.compile(r'\b(?:desmarcar?|desmarque)\s+(?:a\s+)?(?:tarefa|item)\s+(.{1,80}?)\s+(?:no?|em)\s+(?:cart[a\xe3]o\s+)?(.{1,80})', re.IGNORECASE),
-		],		"hedges": [
+		],
+		"delete_card": [
+			re.compile(r'\b(?:excluir?|apaga[r]?|remover?)\s+(?:o\s+|a\s+)?cart[a\xe3]o\s+(.{1,80})', re.IGNORECASE),
+		],
+		"delete_list": [
+			re.compile(r'\b(?:excluir?|apaga[r]?|remover?)\s+(?:a\s+)?(?:lista|coluna)\s+(.{1,80})', re.IGNORECASE),
+		],
+		"delete_card_task": [
+			re.compile(r'\b(?:excluir?|apaga[r]?|remover?)\s+(?:a\s+)?tarefa\s+(.{1,80}?)\s+(?:de|do|da)\s+(?:cart[a\xe3]o\s+)?(.{1,80})', re.IGNORECASE),
+		],
+		"hedges": [
 			re.compile(r'\b(?:estava\s+pensando|talvez|deveria|poderia|como\s+(?:eu|posso)|o\s+que\s+significa|por\s+que|por\s+quê)\b', re.IGNORECASE),
 			re.compile(r'\b(?:explica|explique|descreva|conte)\b', re.IGNORECASE),
 		],
@@ -360,6 +407,15 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 		],
 		"uncheck_card_task": [
 			re.compile(r'(?:снять?\s+отметку|снять?\s+галочку)\s+(?:с\s+)?(?:задачи|задания)\s+(.{1,80}?)\s+(?:в|на)\s+(?:карточке?\s+)?(.{1,80})', re.IGNORECASE),
+		],
+		"delete_card": [
+			re.compile(r'(?:удали[тьет]?|убери|удалить)\s+(?:карточку|карточка)\s+(.{1,80})', re.IGNORECASE),
+		],
+		"delete_list": [
+			re.compile(r'(?:удали[тьет]?|убери|удалить)\s+(?:список|колонку)\s+(.{1,80})', re.IGNORECASE),
+		],
+		"delete_card_task": [
+			re.compile(r'(?:удали[тьет]?|убери|удалить)\s+(?:задачу|задание)\s+(.{1,80}?)\s+(?:из|от)\s+(?:карточк[иу]\s+)?(.{1,80})', re.IGNORECASE),
 		],
 		"hedges": [
 			re.compile(r'(?:может\s+быть|возможно|следует\s+ли|стоит\s+ли|как\s+(?:мне|можно)|что\s+значит|зачем|почему)', re.IGNORECASE),
@@ -408,6 +464,15 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 		],
 		"uncheck_card_task": [
 			re.compile(r'(?:タスク|作業|課題)(.{1,80}?)をカード(.{1,80}?)(?:で|の)?(?:未完了|チェック外|開く)'),
+		],
+		"delete_card": [
+			re.compile(r'(?:カード|タスク)[\u300e]?(.{1,80}?)[\u300f]?(?:を)?削除'),
+		],
+		"delete_list": [
+			re.compile(r'(?:リスト|列)[\u300e]?(.{1,80}?)[\u300f]?(?:を)?削除'),
+		],
+		"delete_card_task": [
+			re.compile(r'(?:タスク|作業|課題)(.{1,80}?)をカード(.{1,80}?)(?:から)?削除'),
 		],
 		"hedges": [
 			re.compile(r'(?:考えていた|かもしれない|べきか|どうやって|どうすれば|どういう意味|なぜ)'),
@@ -458,6 +523,15 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 		"uncheck_card_task": [
 			re.compile(r'(?:取消勾选|取消完成)(?:任务|事项)(.{1,80}?)(?:在|于)(?:卡片)?(.{1,80})'),
 		],
+		"delete_card": [
+			re.compile(r'删除(?:卡片)(.{1,80})'),
+		],
+		"delete_list": [
+			re.compile(r'删除(?:列表|清单)(.{1,80})'),
+		],
+		"delete_card_task": [
+			re.compile(r'删除(?:任务|事项)(.{1,80}?)(?:从|自)(?:卡片)?(.{1,80})'),
+		],
 		"hedges": [
 			re.compile(r'(?:在想|可能|也许|也許|应该|應該|怎么|怎麼|如何|什么意思|什麼意思|为什么|為什麼)'),
 			re.compile(r'(?:解释|解釋|说明|說明|告诉我|告訴我)'),
@@ -504,6 +578,15 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 		],
 		"uncheck_card_task": [
 			re.compile(r'(?:작업|태스크)\s*(.{1,80}?)(?:을|를)?\s*카드\s*(.{1,80}?)(?:에서)?\s*(?:미완료|체크\s*해제)'),
+		],
+		"delete_card": [
+			re.compile(r'카드\s*(.{1,80}?)(?:을|를)?\s*(?:삭제|제거)'),
+		],
+		"delete_list": [
+			re.compile(r'(?:리스트|목록|열)\s*(.{1,80}?)(?:을|를)?\s*(?:삭제|제거)'),
+		],
+		"delete_card_task": [
+			re.compile(r'(?:작업|태스크)\s*(.{1,80}?)(?:을|를)?\s*카드\s*(.{1,80}?)(?:에서|에서의)?\s*(?:삭제|제거)'),
 		],
 		"hedges": [
 			re.compile(r'(?:생각하고\s+있었|혹시|할까요|어떻게|무슨\s+뜻|왜)'),
@@ -553,6 +636,15 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 		"uncheck_card_task": [
 			re.compile(r'(?:कार्य|टास्क)\s+(.{1,80}?)\s+(?:को\s+)?(?:कार्ड)?\s*(.{1,80}?)\s+में\s+(?:अपूर्ण|अनचेक)\s*(?:करें|करो)?'),
 		],
+		"delete_card": [
+			re.compile(r'(?:कार्ड)?\s*(.{1,80}?)\s*को\s*(?:हटाएं|हटाएँ|डिलीट\s*करें)'),
+		],
+		"delete_list": [
+			re.compile(r'(?:सूची|लिस्ट|कॉलम)\s+(.{1,80}?)\s+को\s+(?:हटाएं|हटाएँ|डिलीट\s*करें)'),
+		],
+		"delete_card_task": [
+			re.compile(r'(?:कार्य|टास्क)\s+(.{1,80}?)\s+(?:को\s+)?(?:कार्ड)?\s*(.{1,80}?)\s+से\s+(?:हटाएं|हटाएँ|डिलीट\s*करें)'),
+		],
 		"hedges": [
 			re.compile(r'(?:सोच\s+रहा\s+था|शायद|क्या\s+मुझे|कैसे|मतलब\s+क्या|क्यों)'),
 			re.compile(r'(?:समझाओ|बताओ|वर्णन)'),
@@ -601,6 +693,15 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 		],
 		"uncheck_card_task": [
 			re.compile(r'(?:أزل|ازل)\s+علامة\s+(?:مهمة|عنصر)\s+(.{1,80}?)\s+(?:في|على)\s+(?:بطاقة\s+)?(.{1,80})'),
+		],
+		"delete_card": [
+			re.compile(r'(?:احذف|حذف|أحذف)\s+(?:البطاقة\s+)?(.{1,80})'),
+		],
+		"delete_list": [
+			re.compile(r'(?:احذف|حذف|أحذف)\s+(?:القائمة\s+)?(.{1,80})'),
+		],
+		"delete_card_task": [
+			re.compile(r'(?:احذف|حذف|أحذف)\s+(?:مهمة|عنصر)\s+(.{1,80}?)\s+(?:من|في)\s+(?:بطاقة\s+)?(.{1,80})'),
 		],
 		"hedges": [
 			re.compile(r'(?:كنت\s+أفكر|ربما|هل\s+يجب|هل\s+ينبغي|كيف\s+(?:يمكن|أستطيع)|ماذا\s+يعني|لماذا)'),
@@ -1040,6 +1141,51 @@ async def classify_structural_intent(text: str, lang: str) -> Optional[Structura
 				confidence=0.85,
 			)
 
+	# ── DELETE_CARD_TASK ──────────────────────────────────────────────────
+	# Checked before DELETE_CARD: "remove task X from card Y" would otherwise
+	# be captured by DELETE_CARD's broader pattern.
+	for pat in _patterns_for("delete_card_task", lang):
+		m = pat.search(snippet)
+		if m:
+			task_q = _strip_filler(m.group(1)) if m.lastindex and m.lastindex >= 1 else ""
+			card_q = _strip_filler(m.group(2)) if m.lastindex and m.lastindex >= 2 and m.group(2) else ""
+			if not task_q or not card_q:
+				continue
+			return StructuralIntent(
+				verb="DELETE_CARD_TASK",
+				entities={"task_fragment": task_q, "card_fragment": card_q},
+				raw_text=snippet,
+				confidence=0.85,
+			)
+
+	# ── DELETE_LIST ───────────────────────────────────────────────────────
+	for pat in _patterns_for("delete_list", lang):
+		m = pat.search(snippet)
+		if m:
+			list_q = _strip_filler(m.group(1)) if m.lastindex and m.lastindex >= 1 else ""
+			if not list_q:
+				continue
+			return StructuralIntent(
+				verb="DELETE_LIST",
+				entities={"list_fragment": list_q},
+				raw_text=snippet,
+				confidence=0.85,
+			)
+
+	# ── DELETE_CARD ───────────────────────────────────────────────────────
+	for pat in _patterns_for("delete_card", lang):
+		m = pat.search(snippet)
+		if m:
+			card_q = _strip_filler(m.group(1)) if m.lastindex and m.lastindex >= 1 else ""
+			if not card_q:
+				continue
+			return StructuralIntent(
+				verb="DELETE_CARD",
+				entities={"card_fragment": card_q},
+				raw_text=snippet,
+				confidence=0.85,
+			)
+
 	# ── CREATE_CARD ───────────────────────────────────────────────────────
 	for pat in _patterns_for("create_card", lang):
 		m = pat.search(snippet)
@@ -1071,6 +1217,7 @@ async def dispatch_structural_intent(intent: StructuralIntent, lang: str) -> str
 		execute_create_card, execute_create_list, execute_rename_card, execute_rename_list,
 		execute_set_card_desc, execute_add_card_task,
 		execute_check_card_task, execute_uncheck_card_task, execute_rename_card_task,
+		execute_delete_card, execute_delete_list, execute_delete_card_task,
 	)
 	t = get_translations(lang)
 
@@ -1242,6 +1389,34 @@ async def dispatch_structural_intent(intent: StructuralIntent, lang: str) -> str
 			task=ent["task_fragment"], card=ent["card_fragment"], new_name=ent["new_name"],
 		)
 		audit = f"[AUDIT:rename_card_task:{ent['task_fragment']}|card={ent['card_fragment']}|new_name={ent['new_name']}]"
+		return f"{msg}\n{audit}"
+
+	if verb == "DELETE_CARD":
+		raw = await execute_delete_card(ent["card_fragment"], lang)
+		if raw.startswith("\u26a0"):
+			return raw
+		msg = _localise("intent_router_delete_card_success", "Card '{card}' deleted.", card=ent["card_fragment"])
+		audit = f"[AUDIT:delete_card:{ent['card_fragment']}]"
+		return f"{msg}\n{audit}"
+
+	if verb == "DELETE_LIST":
+		raw = await execute_delete_list(ent["list_fragment"], lang)
+		if raw.startswith("\u26a0"):
+			return raw
+		msg = _localise("intent_router_delete_list_success", "List '{list}' deleted.", list=ent["list_fragment"])
+		audit = f"[AUDIT:delete_list:{ent['list_fragment']}]"
+		return f"{msg}\n{audit}"
+
+	if verb == "DELETE_CARD_TASK":
+		raw = await execute_delete_card_task(ent["card_fragment"], ent["task_fragment"], lang)
+		if raw.startswith("\u26a0"):
+			return raw
+		msg = _localise(
+			"intent_router_delete_card_task_success",
+			"Task '{task}' removed from card '{card}'.",
+			task=ent["task_fragment"], card=ent["card_fragment"],
+		)
+		audit = f"[AUDIT:delete_card_task:{ent['task_fragment']}|card={ent['card_fragment']}]"
 		return f"{msg}\n{audit}"
 
 	# Unknown verb — defensive fallback, should not be reachable.

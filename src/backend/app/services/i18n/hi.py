@@ -427,4 +427,10 @@ translations: dict[str, str] = {
         'intent_router_uncheck_card_task_not_found': "कार्ड '{card}' में कार्य '{task}' का चेक नहीं हटाया जा सका — नहीं मिला।",
         'intent_router_rename_card_task_success': "कार्ड '{card}' में कार्य '{task}' का नाम बदलकर '{new_name}' किया गया।",
         'intent_router_rename_card_task_not_found': "कार्ड '{card}' में कार्य '{task}' का नाम नहीं बदला जा सका — नहीं मिला।",
+        'intent_router_delete_card_success': "कार्ड '{card}' हटा दिया गया।",
+        'intent_router_delete_card_not_found': "कार्ड '{card}' को हटाया नहीं जा सका — कार्ड नहीं मिला।",
+        'intent_router_delete_list_success': "सूची '{list}' हटा दी गई।",
+        'intent_router_delete_list_not_found': "सूची '{list}' को हटाया नहीं जा सका — सूची नहीं मिली।",
+        'intent_router_delete_card_task_success': "कार्ड '{card}' से कार्य '{task}' हटा दिया गया।",
+        'intent_router_delete_card_task_not_found': "कार्ड '{card}' से कार्य '{task}' को हटाया नहीं जा सका — नहीं मिला।",
 }

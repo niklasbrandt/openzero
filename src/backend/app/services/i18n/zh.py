@@ -428,4 +428,10 @@ translations: dict[str, str] = {
         'intent_router_uncheck_card_task_not_found': "无法取消勾选『{card}』中的任务『{task}』——未找到。",
         'intent_router_rename_card_task_success': "卡片『{card}』的任务『{task}』已重命名为『{new_name}』。",
         'intent_router_rename_card_task_not_found': "无法重命名『{card}』中的任务『{task}』——未找到。",
+        'intent_router_delete_card_success': "卡片「{card}」已删除。",
+        'intent_router_delete_card_not_found': "无法删除卡片「{card}」——卡片未找到。",
+        'intent_router_delete_list_success': "列表「{list}」已删除。",
+        'intent_router_delete_list_not_found': "无法删除列表「{list}」——列表未找到。",
+        'intent_router_delete_card_task_success': "已从卡片「{card}」删除任务「{task}」。",
+        'intent_router_delete_card_task_not_found': "无法从卡片「{card}」删除任务「{task}」——未找到。",
 }

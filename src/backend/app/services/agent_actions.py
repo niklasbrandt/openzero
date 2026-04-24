@@ -355,6 +355,34 @@ async def execute_rename_card_task(card_fragment: str, task_fragment: str, new_n
 		return f"Task '{task_fragment}' in card '{card_fragment}' renamed to '{new_name}'."
 	return f"\u26a0 Could not rename task '{task_fragment}' in card '{card_fragment}' — not found."
 
+
+async def execute_delete_card(card_fragment: str, lang: str = "en") -> str:
+	"""Permanently delete a Planka card by name fragment."""
+	from app.services.planka import delete_card as planka_delete_card
+	success = await planka_delete_card(card_fragment=card_fragment)
+	if success:
+		return f"Card '{card_fragment}' deleted."
+	return f"\u26a0 Could not delete card '{card_fragment}' — card not found."
+
+
+async def execute_delete_list(list_fragment: str, lang: str = "en") -> str:
+	"""Permanently delete a Planka list (column) by name fragment."""
+	from app.services.planka import delete_list as planka_delete_list
+	success = await planka_delete_list(list_fragment=list_fragment)
+	if success:
+		return f"List '{list_fragment}' deleted."
+	return f"\u26a0 Could not delete list '{list_fragment}' — list not found."
+
+
+async def execute_delete_card_task(card_fragment: str, task_fragment: str, lang: str = "en") -> str:
+	"""Permanently delete a checklist task from a Planka card."""
+	from app.services.planka import delete_card_task as planka_delete_card_task
+	success = await planka_delete_card_task(card_fragment=card_fragment, task_fragment=task_fragment)
+	if success:
+		return f"Task '{task_fragment}' removed from card '{card_fragment}'."
+	return f"\u26a0 Could not remove task '{task_fragment}' from card '{card_fragment}' — not found."
+
+
 async def execute_create_list(list_name: str, board_name: str = "", lang: str = "en") -> str:
 	"""Create a new Planka list on the given board. Falls back to Operator Board if no board specified."""
 	from app.services.planka import create_list as planka_create_list

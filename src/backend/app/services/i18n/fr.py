@@ -427,4 +427,10 @@ translations: dict[str, str] = {
         'intent_router_uncheck_card_task_not_found': "Impossible de décocher la tâche '{task}' dans '{card}' — introuvable.",
         'intent_router_rename_card_task_success': "Tâche '{task}' dans la carte '{card}' renommée en '{new_name}'.",
         'intent_router_rename_card_task_not_found': "Impossible de renommer la tâche '{task}' dans '{card}' — introuvable.",
+        'intent_router_delete_card_success': "Carte '{card}' supprimée.",
+        'intent_router_delete_card_not_found': "Impossible de supprimer la carte '{card}' — carte introuvable.",
+        'intent_router_delete_list_success': "Liste '{list}' supprimée.",
+        'intent_router_delete_list_not_found': "Impossible de supprimer la liste '{list}' — liste introuvable.",
+        'intent_router_delete_card_task_success': "Tâche '{task}' supprimée de la carte '{card}'.",
+        'intent_router_delete_card_task_not_found': "Impossible de supprimer la tâche '{task}' de la carte '{card}' — introuvable.",
 }

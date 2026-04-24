@@ -427,4 +427,10 @@ translations: dict[str, str] = {
         'intent_router_uncheck_card_task_not_found': "카드 '{card}'에서 작업 '{task}'의 체크를 해제할 수 없습니다 — 찾을 수 없습니다.",
         'intent_router_rename_card_task_success': "카드 '{card}'의 작업 '{task}'이(가) '{new_name}'으로 이름 변경되었습니다.",
         'intent_router_rename_card_task_not_found': "카드 '{card}'에서 작업 '{task}'의 이름을 변경할 수 없습니다 — 찾을 수 없습니다.",
+        'intent_router_delete_card_success': "카드 '{card}'이(가) 삭제되었습니다.",
+        'intent_router_delete_card_not_found': "카드 '{card}'을(를) 삭제할 수 없습니다 — 카드를 찾을 수 없습니다.",
+        'intent_router_delete_list_success': "목록 '{list}'이(가) 삭제되었습니다.",
+        'intent_router_delete_list_not_found': "목록 '{list}'을(를) 삭제할 수 없습니다 — 목록을 찾을 수 없습니다.",
+        'intent_router_delete_card_task_success': "카드 '{card}'에서 작업 '{task}'이(가) 삭제되었습니다.",
+        'intent_router_delete_card_task_not_found': "카드 '{card}'에서 작업 '{task}'을(를) 삭제할 수 없습니다 — 찾을 수 없습니다.",
 }

@@ -754,3 +754,146 @@ def test_rename_card_task_dispatch_returns_warning_on_failure():
 		)
 	assert result.startswith("\u26a0")
 
+
+# ---------------------------------------------------------------------------
+# DELETE_CARD
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("text,lang", [
+        ("delete card Shopping", "en"),
+        ("remove card Meeting notes", "en"),
+])
+def test_delete_card_pattern_classifies(text, lang):
+        """DELETE_CARD verb is classified from natural-language inputs."""
+        result = asyncio.get_event_loop().run_until_complete(ir.classify_structural_intent(text, lang))
+        assert result is not None, f"[{lang}] classified as None for: {text!r}"
+        assert result.verb == "DELETE_CARD", f"[{lang}] expected DELETE_CARD, got {result.verb!r}"
+
+
+def test_delete_card_dispatch_calls_executor():
+        """dispatch_structural_intent routes DELETE_CARD correctly."""
+        from app.services.intent_router import StructuralIntent, dispatch_structural_intent
+        intent = StructuralIntent(
+                verb="DELETE_CARD",
+                entities={"card_fragment": "Shopping"},
+                raw_text="delete card Shopping",
+                confidence=0.85,
+        )
+        with patch("app.services.agent_actions.execute_delete_card", new=AsyncMock(return_value="Card 'Shopping' deleted.")):
+                result = asyncio.get_event_loop().run_until_complete(
+                        dispatch_structural_intent(intent, "en")
+                )
+        assert "Shopping" in result
+        assert "[AUDIT:delete_card:" in result
+
+
+def test_delete_card_dispatch_returns_warning_on_failure():
+        """dispatch returns warning string when DELETE_CARD executor signals failure."""
+        from app.services.intent_router import StructuralIntent, dispatch_structural_intent
+        intent = StructuralIntent(
+                verb="DELETE_CARD",
+                entities={"card_fragment": "Nonexistent"},
+                raw_text="delete card Nonexistent",
+                confidence=0.85,
+        )
+        with patch("app.services.agent_actions.execute_delete_card", new=AsyncMock(return_value="\u26a0 Could not delete card 'Nonexistent' \u2014 card not found.")):
+                result = asyncio.get_event_loop().run_until_complete(
+                        dispatch_structural_intent(intent, "en")
+                )
+        assert result.startswith("\u26a0")
+
+
+# ---------------------------------------------------------------------------
+# DELETE_LIST
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("text,lang", [
+        ("delete list Backlog", "en"),
+        ("remove column In Progress", "en"),
+])
+def test_delete_list_pattern_classifies(text, lang):
+        """DELETE_LIST verb is classified from natural-language inputs."""
+        result = asyncio.get_event_loop().run_until_complete(ir.classify_structural_intent(text, lang))
+        assert result is not None, f"[{lang}] classified as None for: {text!r}"
+        assert result.verb == "DELETE_LIST", f"[{lang}] expected DELETE_LIST, got {result.verb!r}"
+
+
+def test_delete_list_dispatch_calls_executor():
+        """dispatch_structural_intent routes DELETE_LIST correctly."""
+        from app.services.intent_router import StructuralIntent, dispatch_structural_intent
+        intent = StructuralIntent(
+                verb="DELETE_LIST",
+                entities={"list_fragment": "Backlog"},
+                raw_text="delete list Backlog",
+                confidence=0.85,
+        )
+        with patch("app.services.agent_actions.execute_delete_list", new=AsyncMock(return_value="List 'Backlog' deleted.")):
+                result = asyncio.get_event_loop().run_until_complete(
+                        dispatch_structural_intent(intent, "en")
+                )
+        assert "Backlog" in result
+        assert "[AUDIT:delete_list:" in result
+
+
+def test_delete_list_dispatch_returns_warning_on_failure():
+        """dispatch returns warning string when DELETE_LIST executor signals failure."""
+        from app.services.intent_router import StructuralIntent, dispatch_structural_intent
+        intent = StructuralIntent(
+                verb="DELETE_LIST",
+                entities={"list_fragment": "Nonexistent"},
+                raw_text="delete list Nonexistent",
+                confidence=0.85,
+        )
+        with patch("app.services.agent_actions.execute_delete_list", new=AsyncMock(return_value="\u26a0 Could not delete list 'Nonexistent' \u2014 list not found.")):
+                result = asyncio.get_event_loop().run_until_complete(
+                        dispatch_structural_intent(intent, "en")
+                )
+        assert result.startswith("\u26a0")
+
+
+# ---------------------------------------------------------------------------
+# DELETE_CARD_TASK
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("text,lang", [
+        ("remove task Buy milk from card Shopping", "en"),
+        ("delete task Write report from card Work", "en"),
+])
+def test_delete_card_task_pattern_classifies(text, lang):
+        """DELETE_CARD_TASK verb is classified from natural-language inputs."""
+        result = asyncio.get_event_loop().run_until_complete(ir.classify_structural_intent(text, lang))
+        assert result is not None, f"[{lang}] classified as None for: {text!r}"
+        assert result.verb == "DELETE_CARD_TASK", f"[{lang}] expected DELETE_CARD_TASK, got {result.verb!r}"
+
+
+def test_delete_card_task_dispatch_calls_executor():
+        """dispatch_structural_intent routes DELETE_CARD_TASK correctly."""
+        from app.services.intent_router import StructuralIntent, dispatch_structural_intent
+        intent = StructuralIntent(
+                verb="DELETE_CARD_TASK",
+                entities={"card_fragment": "Shopping", "task_fragment": "Buy milk"},
+                raw_text="remove task Buy milk from card Shopping",
+                confidence=0.85,
+        )
+        with patch("app.services.agent_actions.execute_delete_card_task", new=AsyncMock(return_value="Task 'Buy milk' removed from card 'Shopping'.")):
+                result = asyncio.get_event_loop().run_until_complete(
+                        dispatch_structural_intent(intent, "en")
+                )
+        assert "Shopping" in result
+        assert "[AUDIT:delete_card_task:" in result
+
+
+def test_delete_card_task_dispatch_returns_warning_on_failure():
+        """dispatch returns warning string when DELETE_CARD_TASK executor signals failure."""
+        from app.services.intent_router import StructuralIntent, dispatch_structural_intent
+        intent = StructuralIntent(
+                verb="DELETE_CARD_TASK",
+                entities={"card_fragment": "Shopping", "task_fragment": "nonexistent"},
+                raw_text="remove task nonexistent from card Shopping",
+                confidence=0.85,
+        )
+        with patch("app.services.agent_actions.execute_delete_card_task", new=AsyncMock(return_value="\u26a0 Could not remove task 'nonexistent' from card 'Shopping' \u2014 not found.")):
+                result = asyncio.get_event_loop().run_until_complete(
+                        dispatch_structural_intent(intent, "en")
+                )
+        assert result.startswith("\u26a0")
