@@ -391,17 +391,27 @@ async def route_message_stream(
 			from app.services.intent_router import (
 				classify_structural_intent, dispatch_structural_intent,
 			)
-			intent = await classify_structural_intent(user_text, lang)
-		except Exception as _ie:
-			logger.warning("intent_router: classify failed: %s", _ie)
+			intent = await asyncio.wait_for(
+				classify_structural_intent(user_text, lang), timeout=3.0,
+			)
+		except asyncio.TimeoutError:
 			intent = None
+			logger.warning("Router: intent classifier timeout (>3s) — falling through to LLM")
+		except Exception as _ie:
+			intent = None
+			logger.warning("Router: intent classifier failed: %s — falling through to LLM", _ie)
 		if intent and intent.confidence >= 0.85:
 			logger.info(
 				"Router: structural intent '%s' (conf=%.2f) for '%s...'",
 				intent.verb, intent.confidence, _sanitize_for_log(user_text),
 			)
 			try:
-				result_text = await dispatch_structural_intent(intent, lang)
+				result_text = await asyncio.wait_for(
+					dispatch_structural_intent(intent, lang), timeout=10.0,
+				)
+			except asyncio.TimeoutError:
+				logger.error("Router: intent dispatch timeout (>10s) — falling through to LLM")
+				result_text = ""
 			except Exception as _de:
 				logger.error("intent_router: dispatch failed: %s", _de)
 				result_text = ""
