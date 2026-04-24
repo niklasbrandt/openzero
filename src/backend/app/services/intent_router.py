@@ -50,62 +50,327 @@ class StructuralIntent:
 
 # ─── Verb detection patterns ─────────────────────────────────────────────────
 # Bounded quantifiers throughout to avoid catastrophic backtracking.
+#
+# Patterns are organised per language. classify_structural_intent first tries
+# the user's locale, then falls back to every other language so that mixed-
+# language commands (e.g. an English instruction from a Spanish UI) still
+# route deterministically. The actual safety gate is the entity match against
+# the live Planka snapshot — broad regex is safe because unresolved entities
+# return None.
+#
+# For CJK / Arabic / Devanagari we avoid \b (which is unreliable for non-ASCII
+# scripts) and rely on script boundaries / punctuation instead.
 
-# MOVE_BOARD — "move <name> board to <project>" / German variants
-_MOVE_BOARD_PATTERNS = [
-	re.compile(r'\bmove\s+(?:the\s+)?(.{1,80}?)\s+board\s+(?:to|into|under)\s+(.{1,80})', re.IGNORECASE),
-	re.compile(r'\bmove\s+(?:the\s+)?board\s+(.{1,80}?)\s+(?:to|into|under)\s+(.{1,80})', re.IGNORECASE),
-	re.compile(r'\bverschieb[e]?\s+(?:das\s+)?(.{1,80}?)[-\s]board\s+(?:zu|in|nach|unter)\s+(.{1,80})', re.IGNORECASE),
-	re.compile(r'\bverschieb[e]?\s+(?:das\s+)?board\s+(.{1,80}?)\s+(?:zu|in|nach|unter)\s+(.{1,80})', re.IGNORECASE),
-]
+_LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
+	# ── English ───────────────────────────────────────────────────────────
+	"en": {
+		"move_board": [
+			re.compile(r'\bmove\s+(?:the\s+)?(.{1,80}?)\s+board\s+(?:to|into|under)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\bmove\s+(?:the\s+)?board\s+(.{1,80}?)\s+(?:to|into|under)\s+(.{1,80})', re.IGNORECASE),
+		],
+		"move_card": [
+			re.compile(r'\bmove\s+(?:the\s+)?card\s+(.{1,80}?)\s+(?:to|into)\s+(.{1,80})', re.IGNORECASE),
+		],
+		"archive_card": [
+			re.compile(r'\barchive\s+(?:the\s+)?(?:card\s+)?(.{1,120})', re.IGNORECASE),
+		],
+		"mark_done": [
+			re.compile(r'\bmark\s+(?:the\s+)?(?:card\s+)?(.{1,80}?)\s+(?:as\s+)?done\b', re.IGNORECASE),
+			re.compile(r'\b(?:set|move)\s+(?:the\s+)?(?:card\s+)?(.{1,80}?)\s+to\s+done\b', re.IGNORECASE),
+		],
+		"hedges": [
+			re.compile(r'\b(?:thinking\s+about|considering|maybe|might|should\s+i|could\s+i|how\s+(?:do|to|can)\s+i|what\s+(?:does|is|happens)|why\s+(?:would|should))\b', re.IGNORECASE),
+			re.compile(r"\b(?:was|were)\s+(?:thinking|planning|considering)\b", re.IGNORECASE),
+			re.compile(r'\b(?:explain|tell\s+me\s+about|describe)\b', re.IGNORECASE),
+		],
+	},
+	# ── German ────────────────────────────────────────────────────────────
+	"de": {
+		"move_board": [
+			re.compile(r'\bverschieb[e]?\s+(?:das\s+)?(.{1,80}?)[-\s]board\s+(?:zu|in|nach|unter)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\bverschieb[e]?\s+(?:das\s+)?board\s+(.{1,80}?)\s+(?:zu|in|nach|unter)\s+(.{1,80})', re.IGNORECASE),
+		],
+		"move_card": [
+			re.compile(r'\bverschieb[e]?\s+(?:die\s+)?karte\s+(.{1,80}?)\s+(?:zu|in|nach)\s+(.{1,80})', re.IGNORECASE),
+		],
+		"archive_card": [
+			re.compile(r'\barchivier[e]?\s+(?:die\s+)?(?:karte\s+)?(.{1,120})', re.IGNORECASE),
+		],
+		"mark_done": [
+			re.compile(r'\bmarkier[e]?\s+(?:die\s+)?(?:karte\s+)?(.{1,80}?)\s+(?:als\s+)?(?:erledigt|fertig)\b', re.IGNORECASE),
+		],
+		"hedges": [
+			re.compile(r'\b(?:vielleicht|eventuell|sollte\s+ich|könnte\s+ich|wie\s+(?:kann|soll)\s+ich|was\s+(?:bedeutet|ist|passiert)|warum)\b', re.IGNORECASE),
+			re.compile(r'\b(?:erkläre|erklär|sag\s+mir|beschreibe)\b', re.IGNORECASE),
+		],
+	},
+	# ── Spanish ───────────────────────────────────────────────────────────
+	"es": {
+		"move_board": [
+			re.compile(r'\b(?:mueve|mover|muevo)\s+(?:el|la)?\s*tablero\s+(.{1,80}?)\s+(?:a|hacia|hasta|en)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:mueve|mover|muevo)\s+(?:el|la)?\s*(.{1,80}?)\s+tablero\s+(?:a|hacia|hasta|en)\s+(.{1,80})', re.IGNORECASE),
+		],
+		"move_card": [
+			re.compile(r'\b(?:mueve|mover|muevo)\s+(?:la|el)?\s*tarjeta\s+(.{1,80}?)\s+(?:a|hacia|hasta|en)\s+(.{1,80})', re.IGNORECASE),
+		],
+		"archive_card": [
+			re.compile(r'\barchiv(?:a|ar|o)\s+(?:la|el)?\s*(?:tarjeta\s+)?(.{1,120})', re.IGNORECASE),
+		],
+		"mark_done": [
+			re.compile(r'\bmarc(?:a|ar|o)\s+(?:la|el)?\s*(?:tarjeta\s+)?(.{1,80}?)\s+(?:como\s+)?(?:hech[oa]|complet(?:ad[oa]|o)|terminad[oa]|list[oa])\b', re.IGNORECASE),
+		],
+		"hedges": [
+			re.compile(r'\b(?:estaba\s+pensando|tal\s+vez|quizás|quiza|debería|deberia|cómo|como\s+se|qué\s+significa|que\s+significa|por\s+qué|por\s+que)\b', re.IGNORECASE),
+			re.compile(r'\b(?:explica|explícame|explicame|describe|cuéntame|cuentame)\b', re.IGNORECASE),
+		],
+	},
+	# ── French ────────────────────────────────────────────────────────────
+	"fr": {
+		"move_board": [
+			re.compile(r'\bdéplac(?:e|er|ez)\s+(?:le|la)?\s*tableau\s+(.{1,80}?)\s+(?:vers|à|dans|en)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\bdeplac(?:e|er|ez)\s+(?:le|la)?\s*tableau\s+(.{1,80}?)\s+(?:vers|à|dans|en)\s+(.{1,80})', re.IGNORECASE),
+		],
+		"move_card": [
+			re.compile(r'\bdéplac(?:e|er|ez)\s+(?:la|le)?\s*carte\s+(.{1,80}?)\s+(?:vers|à|dans)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\bdeplac(?:e|er|ez)\s+(?:la|le)?\s*carte\s+(.{1,80}?)\s+(?:vers|à|dans)\s+(.{1,80})', re.IGNORECASE),
+		],
+		"archive_card": [
+			re.compile(r'\barchiv(?:e|er|ez)\s+(?:la|le)?\s*(?:carte\s+)?(.{1,120})', re.IGNORECASE),
+		],
+		"mark_done": [
+			re.compile(r'\bmarqu(?:e|er|ez)\s+(?:la|le)?\s*(?:carte\s+)?(.{1,80}?)\s+(?:comme\s+)?(?:terminée?|finie?|faite?|achevée?)\b', re.IGNORECASE),
+		],
+		"hedges": [
+			re.compile(r'\b(?:je\s+pensais|peut[- ]être|devrais[- ]je|pourrais[- ]je|comment\s+(?:est-ce|puis|dois)|qu(?:e|\u2019)est[- ]ce\s+que|pourquoi)\b', re.IGNORECASE),
+			re.compile(r'\b(?:explique|décris|decris|raconte)\b', re.IGNORECASE),
+		],
+	},
+	# ── Portuguese ────────────────────────────────────────────────────────
+	"pt": {
+		"move_board": [
+			re.compile(r'\b(?:mova|mover|move)\s+(?:o|a)?\s*quadro\s+(.{1,80}?)\s+(?:para|a|em)\s+(.{1,80})', re.IGNORECASE),
+		],
+		"move_card": [
+			re.compile(r'\b(?:mova|mover|move)\s+(?:a|o)?\s*(?:cartão|cartao|carta)\s+(.{1,80}?)\s+(?:para|a|em)\s+(.{1,80})', re.IGNORECASE),
+		],
+		"archive_card": [
+			re.compile(r'\barquiv(?:a|ar|e)\s+(?:a|o)?\s*(?:cartão|cartao|carta\s+)?(.{1,120})', re.IGNORECASE),
+		],
+		"mark_done": [
+			re.compile(r'\bmarc(?:a|ar|e)\s+(?:o|a)?\s*(?:cartão|cartao|carta\s+)?(.{1,80}?)\s+(?:como\s+)?(?:concluíd[oa]|concluido|feit[oa]|finalizad[oa]|pront[oa])\b', re.IGNORECASE),
+		],
+		"hedges": [
+			re.compile(r'\b(?:estava\s+pensando|talvez|deveria|poderia|como\s+(?:eu|posso)|o\s+que\s+significa|por\s+que|por\s+quê)\b', re.IGNORECASE),
+			re.compile(r'\b(?:explica|explique|descreva|conte)\b', re.IGNORECASE),
+		],
+	},
+	# ── Russian ───────────────────────────────────────────────────────────
+	"ru": {
+		"move_board": [
+			re.compile(r'(?:переместить?|перенест?и|перенеси|перемести)\s+(?:доску|борд)\s+(.{1,80}?)\s+(?:в|на|к)\s+(.{1,80})', re.IGNORECASE),
+		],
+		"move_card": [
+			re.compile(r'(?:переместить?|перенест?и|перемести)\s+(?:карточку|карту)\s+(.{1,80}?)\s+(?:в|на|к)\s+(.{1,80})', re.IGNORECASE),
+		],
+		"archive_card": [
+			re.compile(r'(?:заархивируй|архивируй|архивировать)\s+(?:карточку\s+)?(.{1,120})', re.IGNORECASE),
+		],
+		"mark_done": [
+			re.compile(r'(?:отметь?|пометь?|отметить)\s+(?:карточку\s+)?(.{1,80}?)\s+(?:как\s+)?(?:готово|выполнено|завершено|сделано|выполнена)', re.IGNORECASE),
+		],
+		"hedges": [
+			re.compile(r'(?:может\s+быть|возможно|следует\s+ли|стоит\s+ли|как\s+(?:мне|можно)|что\s+значит|зачем|почему)', re.IGNORECASE),
+			re.compile(r'(?:объясни|расскажи|опиши)', re.IGNORECASE),
+		],
+	},
+	# ── Japanese ──────────────────────────────────────────────────────────
+	"ja": {
+		"move_board": [
+			re.compile(r'(.{1,80}?)(?:ボード|掲示板)を(.{1,80}?)(?:に|へ)(?:移動|動か)'),
+		],
+		"move_card": [
+			re.compile(r'(.{1,80}?)(?:カード|タスク)を(.{1,80}?)(?:に|へ)(?:移動|動か)'),
+		],
+		"archive_card": [
+			re.compile(r'(.{1,120}?)(?:を)(?:アーカイブ|保管)'),
+		],
+		"mark_done": [
+			re.compile(r'(.{1,80}?)(?:を)(?:完了|終了|済み)(?:に|として)?'),
+		],
+		"hedges": [
+			re.compile(r'(?:考えていた|かもしれない|べきか|どうやって|どうすれば|どういう意味|なぜ)'),
+			re.compile(r'(?:説明して|教えて)'),
+		],
+	},
+	# ── Chinese (Simplified + common Traditional verbs) ───────────────────
+	"zh": {
+		"move_board": [
+			re.compile(r'(?:把|将|將)(.{1,80}?)(?:看板|面板|板)(?:移动|移動|移)到(.{1,80})'),
+		],
+		"move_card": [
+			re.compile(r'(?:把|将|將)(.{1,80}?)(?:卡片|卡)(?:移动|移動|移)到(.{1,80})'),
+		],
+		"archive_card": [
+			re.compile(r'(?:把|将|將)?(.{1,120}?)(?:归档|歸檔|存档|存檔)'),
+		],
+		"mark_done": [
+			re.compile(r'(?:把|将|將)?(.{1,80}?)(?:标记|標記|标|標)?为(?:完成|已完成|已做|done)'),
+		],
+		"hedges": [
+			re.compile(r'(?:在想|可能|也许|也許|应该|應該|怎么|怎麼|如何|什么意思|什麼意思|为什么|為什麼)'),
+			re.compile(r'(?:解释|解釋|说明|說明|告诉我|告訴我)'),
+		],
+	},
+	# ── Korean ────────────────────────────────────────────────────────────
+	"ko": {
+		"move_board": [
+			re.compile(r'(.{1,80}?)\s*(?:보드|판)(?:을|를)?\s*(.{1,80}?)(?:로|으로|에)\s*(?:이동|옮)'),
+		],
+		"move_card": [
+			re.compile(r'(.{1,80}?)\s*카드(?:을|를)?\s*(.{1,80}?)(?:로|으로|에)\s*(?:이동|옮)'),
+		],
+		"archive_card": [
+			re.compile(r'(.{1,120}?)(?:을|를)?\s*(?:보관|아카이브)'),
+		],
+		"mark_done": [
+			re.compile(r'(.{1,80}?)(?:을|를)?\s*(?:완료|끝)'),
+		],
+		"hedges": [
+			re.compile(r'(?:생각하고\s+있었|혹시|할까요|어떻게|무슨\s+뜻|왜)'),
+			re.compile(r'(?:설명|알려)'),
+		],
+	},
+	# ── Hindi ─────────────────────────────────────────────────────────────
+	"hi": {
+		"move_board": [
+			re.compile(r'(.{1,80}?)\s*बोर्ड\s*को\s*(.{1,80}?)\s*(?:में|पर|को)\s*(?:ले\s+जाएं|ले\s+जाओ|स्थानांतरित|मूव)'),
+		],
+		"move_card": [
+			re.compile(r'(.{1,80}?)\s*कार्ड\s*को\s*(.{1,80}?)\s*(?:में|पर)\s*(?:ले\s+जाएं|ले\s+जाओ|मूव)'),
+		],
+		"archive_card": [
+			re.compile(r'(.{1,120}?)\s*को\s*(?:संग्रह|आर्काइव|संग्रहित)'),
+		],
+		"mark_done": [
+			re.compile(r'(.{1,80}?)\s*को\s*(?:पूर्ण|पूरा|पूरा\s+हो\s+गया|समाप्त)'),
+		],
+		"hedges": [
+			re.compile(r'(?:सोच\s+रहा\s+था|शायद|क्या\s+मुझे|कैसे|मतलब\s+क्या|क्यों)'),
+			re.compile(r'(?:समझाओ|बताओ|वर्णन)'),
+		],
+	},
+	# ── Arabic ────────────────────────────────────────────────────────────
+	"ar": {
+		"move_board": [
+			re.compile(r'(?:انقل|نقل|حرّك|حرك)\s+(?:اللوحة|لوحة)\s+(.{1,80}?)\s+(?:إلى|الى|في)\s+(.{1,80})'),
+		],
+		"move_card": [
+			re.compile(r'(?:انقل|نقل|حرّك|حرك)\s+(?:البطاقة|بطاقة)\s+(.{1,80}?)\s+(?:إلى|الى|في)\s+(.{1,80})'),
+		],
+		"archive_card": [
+			re.compile(r'(?:أرشف|ارشف|أرشفة|ارشفة)\s+(?:البطاقة\s+)?(.{1,120})'),
+		],
+		"mark_done": [
+			re.compile(r'(?:علّم|علم|اعتبر|حدد)\s+(?:البطاقة\s+)?(.{1,80}?)\s+(?:كـ?|ك)?(?:منجز|مكتمل|تم|منته[ىي])'),
+		],
+		"hedges": [
+			re.compile(r'(?:كنت\s+أفكر|ربما|هل\s+يجب|هل\s+ينبغي|كيف\s+(?:يمكن|أستطيع)|ماذا\s+يعني|لماذا)'),
+			re.compile(r'(?:اشرح|وضّح|وضح|أخبرني|اخبرني)'),
+		],
+	},
+}
 
-# MOVE_CARD — "move <card> to <list>" / German variants
-# Conservative: requires the word "card"/"karte" or a direct list keyword (today/done/etc.)
-_MOVE_CARD_PATTERNS = [
-	re.compile(r'\bmove\s+(?:the\s+)?card\s+(.{1,80}?)\s+(?:to|into)\s+(.{1,80})', re.IGNORECASE),
-	re.compile(r'\bverschieb[e]?\s+(?:die\s+)?karte\s+(.{1,80}?)\s+(?:zu|in|nach)\s+(.{1,80})', re.IGNORECASE),
-]
+# All language codes with at least one verb pattern. Used by classify() to
+# decide which dicts to iterate. Adding a new language is just adding it here
+# and providing a _LANG_PATTERNS entry above.
+_SUPPORTED_LANGS = set(_LANG_PATTERNS.keys())
 
-# ARCHIVE_CARD — "archive (the card) <name>" / German variants
-_ARCHIVE_CARD_PATTERNS = [
-	re.compile(r'\barchive\s+(?:the\s+)?(?:card\s+)?(.{1,120})', re.IGNORECASE),
-	re.compile(r'\barchivier[e]?\s+(?:die\s+)?(?:karte\s+)?(.{1,120})', re.IGNORECASE),
-]
+# Filler / article / possessive prefixes across all supported languages,
+# stripped from extracted entity strings before fuzzy match.
+_LEADING_FILLER_RE = re.compile(
+	r'^(?:'
+	# EN
+	r'the|my|a|an|'
+	# DE
+	r'der|die|das|den|dem|des|ein|eine|einen|einem|einer|mein|meine|meinen|meinem|meiner|meines|'
+	# ES
+	r'el|la|los|las|un|una|unos|unas|mi|mis|tu|tus|su|sus|'
+	# FR
+	r'le|les|un|une|des|mon|ma|mes|ton|ta|tes|son|sa|ses|du|de\s+la|'
+	# PT
+	r'o|os|as|um|uma|uns|umas|meu|minha|meus|minhas|teu|tua|seu|sua|'
+	# RU (basic possessives/demonstratives)
+	r'мой|моя|моё|мои|этот|эта|это|эти|тот|та|то|те|'
+	# HI
+	r'यह|वह|मेरा|मेरी|मेरे|आपका|आपकी|आपके|'
+	# KO
+	r'이|그|저|내|나의|'
+	# ZH
+	r'这|那|我的|你的|'
+	# AR (definite article handled via prefix removal below; include common possessives)
+	r'هذا|هذه|تلك|ذلك'
+	r')\s+',
+	re.IGNORECASE,
+)
 
-# MARK_DONE — "mark <card> (as) done" / "<card> is done" / German variants
-_MARK_DONE_PATTERNS = [
-	re.compile(r'\bmark\s+(?:the\s+)?(?:card\s+)?(.{1,80}?)\s+(?:as\s+)?done\b', re.IGNORECASE),
-	re.compile(r'\b(?:set|move)\s+(?:the\s+)?(?:card\s+)?(.{1,80}?)\s+to\s+done\b', re.IGNORECASE),
-	re.compile(r'\bmarkier[e]?\s+(?:die\s+)?(?:karte\s+)?(.{1,80}?)\s+(?:als\s+)?(?:erledigt|fertig)\b', re.IGNORECASE),
-]
+# Trailing politeness / filler suffixes across all supported languages.
+_TRAILING_FILLER_RE = re.compile(
+	r'\s+(?:'
+	# EN
+	r'please|thanks|thank\s+you|asap|now|today|'
+	# DE
+	r'bitte|danke|jetzt|heute|'
+	# ES
+	r'por\s+favor|gracias|ahora|hoy|'
+	# FR
+	r's[\u2019\']il\s+(?:vous|te)\s+pla[iî]t|svp|stp|merci|maintenant|aujourd[\u2019\']hui|'
+	# PT
+	r'por\s+favor|obrigad[oa]|agora|hoje|'
+	# RU
+	r'пожалуйста|спасибо|сейчас|сегодня|'
+	# JA (kept for safety; mostly suffix particles)
+	r'お願いします|ください|お願い|'
+	# ZH
+	r'请|麻烦|谢谢|'
+	# KO
+	r'주세요|해주세요|부탁(?:합니다|해요)?|'
+	# HI
+	r'कृपया|धन्यवाद|'
+	# AR
+	r'من\s+فضلك|لو\s+سمحت|شكرا|الآن|اليوم'
+	r')\s*$',
+	re.IGNORECASE,
+)
 
-# Conversational hedges that should suppress a match even if the verb hits.
-# These cover "I was thinking about moving the X board sometime", "what does it
-# mean to move a board", "should I move", "consider moving", etc.
-_HEDGE_PATTERNS = [
-	re.compile(r'\b(?:thinking\s+about|considering|maybe|might|should\s+i|could\s+i|how\s+(?:do|to|can)\s+i|what\s+(?:does|is|happens)|why\s+(?:would|should))\b', re.IGNORECASE),
-	re.compile(r"\b(?:was|were)\s+(?:thinking|planning|considering)\b", re.IGNORECASE),
-	re.compile(r'\b(?:explain|tell\s+me\s+about|describe)\b', re.IGNORECASE),
-]
 
-# Supported languages. Returning None for other languages preserves existing
-# LLM behaviour for users on unsupported locales.
-_SUPPORTED_LANGS = {"en", "de"}
-
-
-def _is_hedged(text: str) -> bool:
-	return any(p.search(text) for p in _HEDGE_PATTERNS)
+def _is_hedged(text: str, lang: str) -> bool:
+	"""True if any hedge pattern from the user's lang OR English fires."""
+	for code in (lang, "en"):
+		patterns = _LANG_PATTERNS.get(code, {}).get("hedges", [])
+		if any(p.search(text) for p in patterns):
+			return True
+	return False
 
 
 def _strip_filler(s: str) -> str:
-	"""Trim quotes, trailing punctuation, leading articles and trailing
-	politeness/filler words (please, bitte, thanks, danke) from an entity."""
+	"""Trim quotes, trailing punctuation, leading articles/possessives and
+	trailing politeness/filler words across all supported languages."""
 	s = s.strip().strip('"\'\u201c\u201d\u2018\u2019')
-	s = s.rstrip('.,;!?')
-	# Strip leading articles / possessives (EN + DE)
-	s = re.sub(r'^(?:the|my|a|an|der|die|das|den|dem|des|ein|eine|einen|einem|einer|mein|meine|meinen|meinem|meiner|meines)\s+', '', s, flags=re.IGNORECASE)
-	# Strip trailing politeness / filler so "my projects bitte" -> "my projects"
-	s = re.sub(r'\s+(?:please|bitte|thanks|thank\s+you|danke|asap|now|today)\s*$', '', s, flags=re.IGNORECASE)
+	s = s.rstrip('.,;!?،۔。、')
+	# Repeat once in case both an article and a possessive stack ("my the X")
+	for _ in range(2):
+		new = _LEADING_FILLER_RE.sub('', s)
+		if new == s:
+			break
+		s = new
+	s = _TRAILING_FILLER_RE.sub('', s)
+	# Arabic definite article "ال" prefix — strip if word starts with it and
+	# the remaining stem is at least 2 chars (avoid stripping "ال" alone).
+	if s.startswith('ال') and len(s) > 4:
+		s_stripped = s[2:]
+		# Only strip when the rest looks like Arabic word characters
+		if re.match(r'^[\u0600-\u06FF]', s_stripped):
+			s = s_stripped
 	return s.strip()
 
 
@@ -172,25 +437,54 @@ def _match_name(query: str, candidates: list[dict]) -> tuple[Optional[dict], flo
 	return None, 0.0
 
 
+def _lang_iter_order(lang: str) -> list[str]:
+	"""Return iteration order: requested lang first, then EN as universal
+	fallback, then every other supported lang (handles mixed-language
+	commands like English instructions from a Spanish UI)."""
+	first = lang if lang in _SUPPORTED_LANGS else "en"
+	rest = [c for c in _LANG_PATTERNS.keys() if c not in (first, "en")]
+	if first == "en":
+		return [first] + rest
+	return [first, "en"] + rest
+
+
+def _patterns_for(verb_key: str, lang: str) -> list[re.Pattern]:
+	"""Yield patterns for a verb across all languages, requested lang first."""
+	out: list[re.Pattern] = []
+	for code in _lang_iter_order(lang):
+		out.extend(_LANG_PATTERNS.get(code, {}).get(verb_key, []))
+	return out
+
+
+# Recognise the word "board" across all supported scripts so that the
+# ARCHIVE_CARD path can refuse to archive boards by mistake.
+_BOARD_WORD_RE = re.compile(
+	r'(?:\bboard\b|tablero|tableau|quadro|доск|ボード|掲示板|看板|面板|보드|बोर्ड|اللوحة|لوحة)',
+	re.IGNORECASE,
+)
+
+
 async def classify_structural_intent(text: str, lang: str) -> Optional[StructuralIntent]:
 	"""Detect a high-confidence Planka mutation intent in the user message.
 
+	Multilingual: tries the user's locale first, then English, then every
+	other supported language. The entity match against live Planka state is
+	the actual safety gate — broad regex is safe because unresolved entities
+	return None.
+
 	Returns None when:
-	  - language is unsupported by Phase 1
-	  - no verb pattern matches
-	  - the message is hedged ("thinking about", "should I", etc.)
+	  - no verb pattern matches in any supported language
+	  - the message is hedged ("thinking about", "should I", "wie kann ich", ...)
 	  - the entity could not be resolved against live Planka state
 	"""
 	if not text:
 		return None
-	if lang not in _SUPPORTED_LANGS:
-		return None
 	snippet = text[:_MAX_INPUT].strip()
-	if _is_hedged(snippet):
+	if _is_hedged(snippet, lang):
 		return None
 
 	# ── MOVE_BOARD ────────────────────────────────────────────────────────
-	for pat in _MOVE_BOARD_PATTERNS:
+	for pat in _patterns_for("move_board", lang):
 		m = pat.search(snippet)
 		if m:
 			board_q = _strip_filler(m.group(1))
@@ -236,7 +530,7 @@ async def classify_structural_intent(text: str, lang: str) -> Optional[Structura
 			)
 
 	# ── MOVE_CARD ─────────────────────────────────────────────────────────
-	for pat in _MOVE_CARD_PATTERNS:
+	for pat in _patterns_for("move_card", lang):
 		m = pat.search(snippet)
 		if m:
 			card_q = _strip_filler(m.group(1))
@@ -252,7 +546,7 @@ async def classify_structural_intent(text: str, lang: str) -> Optional[Structura
 			)
 
 	# ── MARK_DONE ────────────────────────────────────────────────────────
-	for pat in _MARK_DONE_PATTERNS:
+	for pat in _patterns_for("mark_done", lang):
 		m = pat.search(snippet)
 		if m:
 			card_q = _strip_filler(m.group(1))
@@ -266,14 +560,14 @@ async def classify_structural_intent(text: str, lang: str) -> Optional[Structura
 			)
 
 	# ── ARCHIVE_CARD ──────────────────────────────────────────────────────
-	for pat in _ARCHIVE_CARD_PATTERNS:
+	for pat in _patterns_for("archive_card", lang):
 		m = pat.search(snippet)
 		if m:
 			card_q = _strip_filler(m.group(1))
 			if not card_q:
 				continue
-			# Skip if the object looks like a board ("aquarium board") — leave that to the LLM
-			if re.search(r'\bboard\b', card_q, re.IGNORECASE):
+			# Skip if the object looks like a board — leave that to the LLM
+			if _BOARD_WORD_RE.search(card_q):
 				return None
 			return StructuralIntent(
 				verb="ARCHIVE_CARD",

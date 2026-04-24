@@ -403,4 +403,11 @@ translations: dict[str, str] = {
 	'tip_bench_cloud': '云端层级基准测试。用于复杂分析和推理任务。',
 	'tip_bench_local': '本地层级基准测试（̄0.6B模型）。用于问候等快速任务。',
         'status_online': '我回来了！',
+        'intent_router_move_board_success': "看板「{board}」已移动到「{project}」。",
+        'intent_router_move_card_success': "卡片「{card}」已移动到「{dest}」。",
+        'intent_router_mark_done_success': "卡片「{card}」已标记为完成。",
+        'intent_router_archive_success': "卡片「{card}」已归档。",
+        'intent_router_board_not_found': "未找到与「{query}」匹配的看板。",
+        'intent_router_project_not_found': "未找到与「{query}」匹配的项目。",
+        'intent_router_card_not_found': "未找到与「{query}」匹配的卡片。",
 }

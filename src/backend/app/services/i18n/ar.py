@@ -403,4 +403,11 @@ translations: dict[str, str] = {
 	'tip_bench_cloud': 'اختبر مستوى السحابة. يُستخدم للتحليل المعقد ومهام الاستدلال.',
 	'tip_bench_local': 'اختبر المستوى المحلي (~0.6B). يُستخدم للمهام السريعة كالتحيات.',
         'status_online': 'أنا عدت!',
+        'intent_router_move_board_success': "تم نقل اللوحة '{board}' إلى '{project}'.",
+        'intent_router_move_card_success': "تم نقل البطاقة '{card}' إلى '{dest}'.",
+        'intent_router_mark_done_success': "تم تحديد البطاقة '{card}' كمكتملة.",
+        'intent_router_archive_success': "تمت أرشفة البطاقة '{card}'.",
+        'intent_router_board_not_found': "لم أجد لوحة تطابق '{query}'.",
+        'intent_router_project_not_found': "لم أجد مشروعاً يطابق '{query}'.",
+        'intent_router_card_not_found': "لم أجد بطاقة تطابق '{query}'.",
 }

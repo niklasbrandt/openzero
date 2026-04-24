@@ -402,4 +402,11 @@ translations: dict[str, str] = {
 	'tip_bench_cloud': '클라우드 티어 벤치마크. 복잡한 분석 및 추론 작업에 사용.',
 	'tip_bench_local': '로컈 티어 벤치마크 (~0.6B). 인사 등 빠른 작업에 사용.',
 	'status_online': '돌아왔습니다!',
+        'intent_router_move_board_success': "보드 '{board}'을(를) '{project}'(으)로 이동했습니다.",
+        'intent_router_move_card_success': "카드 '{card}'을(를) '{dest}'(으)로 이동했습니다.",
+        'intent_router_mark_done_success': "카드 '{card}'을(를) 완료로 표시했습니다.",
+        'intent_router_archive_success': "카드 '{card}'을(를) 보관했습니다.",
+        'intent_router_board_not_found': "'{query}'에 일치하는 보드를 찾을 수 없습니다.",
+        'intent_router_project_not_found': "'{query}'에 일치하는 프로젝트를 찾을 수 없습니다.",
+        'intent_router_card_not_found': "'{query}'에 일치하는 카드를 찾을 수 없습니다.",
 }
