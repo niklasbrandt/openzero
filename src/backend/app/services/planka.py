@@ -866,6 +866,139 @@ async def rename_card_task(card_fragment: str, task_fragment: str, new_name: str
 		return False
 
 
+async def delete_card(card_fragment: str, board_name: str = "") -> bool:
+	"""Find a card by name fragment and permanently delete it. Returns True on success."""
+	card_fragment = card_fragment.strip().strip('"\'').lower()
+	board_name = board_name.strip().strip('"\'')
+	logger.debug("delete_card: fragment=%s, board=%s", _sanitize_for_log(card_fragment), _sanitize_for_log(board_name))
+	try:
+		token = await get_planka_auth_token()
+		headers = {"Authorization": f"Bearer {token}"}
+		async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, timeout=10.0, headers=headers) as client:
+			projects_resp = await client.get("/api/projects")
+			projects_resp.raise_for_status()
+			projects = projects_resp.json().get("items", [])
+			found_card = None
+			for p in projects:
+				p_det = await client.get(f"/api/projects/{p['id']}")
+				boards = p_det.json().get("included", {}).get("boards", [])
+				for b in boards:
+					if board_name and b["name"].lower() != board_name.lower():
+						continue
+					b_det = await client.get(f"/api/boards/{b['id']}", params={"included": "cards"})
+					cards = b_det.json().get("included", {}).get("cards", [])
+					for c in cards:
+						if card_fragment in c["name"].lower():
+							found_card = c
+							break
+					if found_card:
+						break
+				if found_card:
+					break
+			if not found_card:
+				logger.debug("delete_card: no card matching %r found", card_fragment)
+				return False
+			del_resp = await client.delete(f"/api/cards/{found_card['id']}")
+			del_resp.raise_for_status()
+			logger.debug("delete_card: deleted card %r", found_card["name"])
+			return True
+	except Exception as e:
+		logger.debug("delete_card failed: %s", e)
+		return False
+
+
+async def delete_list(list_fragment: str, board_name: str = "") -> bool:
+	"""Find a list (column) by name fragment and permanently delete it. Returns True on success."""
+	list_fragment = list_fragment.strip().strip('"\'').lower()
+	board_name = board_name.strip().strip('"\'')
+	logger.debug("delete_list: fragment=%s, board=%s", _sanitize_for_log(list_fragment), _sanitize_for_log(board_name))
+	try:
+		token = await get_planka_auth_token()
+		headers = {"Authorization": f"Bearer {token}"}
+		async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, timeout=10.0, headers=headers) as client:
+			projects_resp = await client.get("/api/projects")
+			projects_resp.raise_for_status()
+			projects = projects_resp.json().get("items", [])
+			found_list = None
+			for p in projects:
+				p_det = await client.get(f"/api/projects/{p['id']}")
+				boards = p_det.json().get("included", {}).get("boards", [])
+				for b in boards:
+					if board_name and b["name"].lower() != board_name.lower():
+						continue
+					b_det = await client.get(f"/api/boards/{b['id']}", params={"included": "lists"})
+					lists = b_det.json().get("included", {}).get("lists", [])
+					for lst in lists:
+						if list_fragment in lst["name"].lower():
+							found_list = lst
+							break
+					if found_list:
+						break
+				if found_list:
+					break
+			if not found_list:
+				logger.debug("delete_list: no list matching %r found", list_fragment)
+				return False
+			del_resp = await client.delete(f"/api/lists/{found_list['id']}")
+			del_resp.raise_for_status()
+			logger.debug("delete_list: deleted list %r", found_list["name"])
+			return True
+	except Exception as e:
+		logger.debug("delete_list failed: %s", e)
+		return False
+
+
+async def delete_card_task(card_fragment: str, task_fragment: str, board_name: str = "") -> bool:
+	"""Find a task by fragment within a card and permanently delete it. Returns True on success."""
+	card_fragment = card_fragment.strip().strip('"\'').lower()
+	task_fragment = task_fragment.strip().strip('"\'').lower()
+	board_name = board_name.strip().strip('"\'')
+	logger.debug("delete_card_task: card=%s, task=%s", _sanitize_for_log(card_fragment), _sanitize_for_log(task_fragment))
+	try:
+		token = await get_planka_auth_token()
+		headers = {"Authorization": f"Bearer {token}"}
+		async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, timeout=10.0, headers=headers) as client:
+			projects_resp = await client.get("/api/projects")
+			projects_resp.raise_for_status()
+			projects = projects_resp.json().get("items", [])
+			found_card = None
+			found_board_id = None
+			for p in projects:
+				p_det = await client.get(f"/api/projects/{p['id']}")
+				boards = p_det.json().get("included", {}).get("boards", [])
+				for b in boards:
+					if board_name and b["name"].lower() != board_name.lower():
+						continue
+					b_det = await client.get(f"/api/boards/{b['id']}", params={"included": "cards"})
+					cards = b_det.json().get("included", {}).get("cards", [])
+					for c in cards:
+						if card_fragment in c["name"].lower():
+							found_card = c
+							found_board_id = b["id"]
+							break
+					if found_card:
+						break
+				if found_card:
+					break
+			if not found_card:
+				logger.debug("delete_card_task: no card matching %r found", card_fragment)
+				return False
+			b_full = await client.get(f"/api/boards/{found_board_id}")
+			all_tasks = b_full.json().get("included", {}).get("tasks", [])
+			tasks = [t for t in all_tasks if t.get("cardId") == found_card["id"]]
+			found_task = next((t for t in tasks if task_fragment in t["name"].lower()), None)
+			if not found_task:
+				logger.debug("delete_card_task: no task matching %r in card %r", task_fragment, found_card["name"])
+				return False
+			del_resp = await client.delete(f"/api/tasks/{found_task['id']}")
+			del_resp.raise_for_status()
+			logger.debug("delete_card_task: deleted task %r from card %r", found_task["name"], found_card["name"])
+			return True
+	except Exception as e:
+		logger.debug("delete_card_task failed: %s", e)
+		return False
+
+
 async def create_list(board_name: str, list_name: str, project_name: Optional[str] = None) -> Optional[dict]:
 	"""Create a new list (column) in a board. Returns existing list if name matches (idempotent)."""
 	if not list_name or not list_name.strip():
