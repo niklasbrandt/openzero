@@ -412,6 +412,10 @@ translations: dict[str, str] = {
         'intent_router_card_not_found': '「{query}」に一致するカードが見つかりませんでした。',
         'intent_router_create_card_success': '「{title}」を「{dest}」に追加しました。',
         'intent_router_create_card_dest_not_found': 'カード「{title}」を作成できませんでした — 宛先「{dest}」が見つかりません。',
+        'intent_router_create_list_success': 'リスト「{list_name}」を「{board}」に作成しました。',
+        'intent_router_create_list_board_not_found': 'リスト「{list_name}」を作成できませんでした — ボード「{board}」が見つかりません。',
         'intent_router_create_card_success': '「{title}」を「{dest}」に追加しました。',
         'intent_router_create_card_dest_not_found': 'カード「{title}」を作成できませんでした — 宛先「{dest}」が見つかりません。',
+        'intent_router_create_list_success': 'リスト「{list_name}」を「{board}」に作成しました。',
+        'intent_router_create_list_board_not_found': 'リスト「{list_name}」を作成できませんでした — ボード「{board}」が見つかりません。',
 }

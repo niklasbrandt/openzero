@@ -411,6 +411,10 @@ translations: dict[str, str] = {
         'intent_router_card_not_found': "'{query}' से मेल खाने वाला कोई कार्ड नहीं मिला।",
         'intent_router_create_card_success': "कार्ड '{title}' को '{dest}' में जोड़ा गया।",
         'intent_router_create_card_dest_not_found': "कार्ड '{title}' नहीं बनाया जा सका — गंतव्य '{dest}' नहीं मिला।",
+        'intent_router_create_list_success': "सूची '{list_name}' को '{board}' पर बनाया गया।",
+        'intent_router_create_list_board_not_found': "सूची '{list_name}' नहीं बनाई जा सकी — बोर्ड '{board}' नहीं मिला।",
         'intent_router_create_card_success': "कार्ड '{title}' को '{dest}' में जोड़ा गया।",
         'intent_router_create_card_dest_not_found': "कार्ड '{title}' नहीं बनाया जा सका — गंतव्य '{dest}' नहीं मिला।",
+        'intent_router_create_list_success': "सूची '{list_name}' को '{board}' पर बनाया गया।",
+        'intent_router_create_list_board_not_found': "सूची '{list_name}' नहीं बनाई जा सकी — बोर्ड '{board}' नहीं मिला।",
 }
