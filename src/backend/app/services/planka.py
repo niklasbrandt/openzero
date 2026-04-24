@@ -1045,6 +1045,9 @@ async def create_board_in_project(board_name: str, project_fragment: str = "") -
 	if not board_name:
 		logger.warning("create_board_in_project: refusing to create board with empty name")
 		return None
+	# When no project is specified, default to "My Projects" to avoid landing in Operations
+	if not project_fragment:
+		project_fragment = settings.AUDIT_MY_PROJECTS_PARENT.lower()
 	logger.debug("create_board_in_project: board=%s, project=%s", _sanitize_for_log(board_name), _sanitize_for_log(project_fragment))
 	try:
 		token = await get_planka_auth_token()
@@ -1055,7 +1058,7 @@ async def create_board_in_project(board_name: str, project_fragment: str = "") -
 			projects = projects_resp.json().get("items", [])
 			found_project = None
 			for p in projects:
-				if not project_fragment or project_fragment in (p.get("name") or "").lower():
+				if project_fragment in (p.get("name") or "").lower():
 					found_project = p
 					break
 			if not found_project:
