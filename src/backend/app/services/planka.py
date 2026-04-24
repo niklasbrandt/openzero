@@ -387,6 +387,45 @@ async def find_and_delete_projects_by_prefix(prefix: str) -> list:
 				deleted.append(p["name"])
 	return deleted
 
+async def rename_project(project_fragment: str, new_name: str) -> bool:
+	"""Find a project by name fragment and rename it."""
+	token = await get_planka_auth_token()
+	headers = {"Authorization": f"Bearer {token}"}
+	async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, headers=headers, timeout=15.0) as client:
+		try:
+			resp = await client.get("/api/projects")
+			resp.raise_for_status()
+			projects = resp.json().get("items", [])
+			frag_lower = project_fragment.lower()
+			match = next((p for p in projects if frag_lower in (p.get("name") or "").lower()), None)
+			if not match:
+				return False
+			patch = await client.patch(f"/api/projects/{match['id']}", json={"name": new_name})
+			patch.raise_for_status()
+			logger.debug("Renamed Planka project %s -> %s", _sanitize_for_log(match["name"]), _sanitize_for_log(new_name))
+			return True
+		except Exception as e:
+			logger.error("rename_project failed: %s", _sanitize_for_log(e))
+			return False
+
+async def delete_project_by_name(project_fragment: str) -> bool:
+	"""Find a project by name fragment and cascade-delete it."""
+	token = await get_planka_auth_token()
+	headers = {"Authorization": f"Bearer {token}"}
+	async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, headers=headers, timeout=15.0) as client:
+		try:
+			resp = await client.get("/api/projects")
+			resp.raise_for_status()
+			projects = resp.json().get("items", [])
+		except Exception as e:
+			logger.error("delete_project_by_name lookup failed: %s", _sanitize_for_log(e))
+			return False
+	frag_lower = project_fragment.lower()
+	match = next((p for p in projects if frag_lower in (p.get("name") or "").lower()), None)
+	if not match:
+		return False
+	return await delete_project(match["id"])
+
 async def create_board(project_id: str, name: str) -> dict:
 	"""Create a new board in a project. Returns existing board if name matches (idempotent)."""
 	token = await get_planka_auth_token()

@@ -418,6 +418,32 @@ async def execute_delete_board(board_fragment: str, lang: str = "en") -> str:
 		return f"Board '{board_fragment}' deleted."
 	return f"\u26a0 Could not delete board '{board_fragment}' \u2014 board not found."
 
+async def execute_create_project(project_name: str, lang: str = "en") -> str:
+	"""Create a new Planka project. Returns a status string (may start with ⚠)."""
+	from app.services.planka import create_project
+	result = await create_project(project_name)
+	if not result:
+		return f"⚠ Could not create project '{project_name}'."
+	if result.get("_duplicate"):
+		return f"⚠duplicate:{project_name}"
+	return f"Project '{project_name}' created."
+
+async def execute_rename_project(project_fragment: str, new_name: str, lang: str = "en") -> str:
+	"""Rename a Planka project. Returns a status string (may start with ⚠)."""
+	from app.services.planka import rename_project
+	ok = await rename_project(project_fragment, new_name)
+	if not ok:
+		return f"⚠notfound:{project_fragment}"
+	return f"Project '{project_fragment}' renamed to '{new_name}'."
+
+async def execute_delete_project(project_fragment: str, lang: str = "en") -> str:
+	"""Delete a Planka project by name fragment. Returns a status string (may start with ⚠)."""
+	from app.services.planka import delete_project_by_name
+	ok = await delete_project_by_name(project_fragment)
+	if not ok:
+		return f"⚠notfound:{project_fragment}"
+	return f"Project '{project_fragment}' deleted."
+
 async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = False):
 	"""
 	Parses Semantic Action Tags from the AI reply and executes them.
