@@ -410,4 +410,8 @@ translations: dict[str, str] = {
         'intent_router_board_not_found': "未找到与「{query}」匹配的看板。",
         'intent_router_project_not_found': "未找到与「{query}」匹配的项目。",
         'intent_router_card_not_found': "未找到与「{query}」匹配的卡片。",
+        'intent_router_create_card_success': "已将「{title}」添加到「{dest}」。",
+        'intent_router_create_card_dest_not_found': "无法创建卡片「{title}」——目标「{dest}」未找到。",
+        'intent_router_create_card_success': "已将「{title}」添加到「{dest}」。",
+        'intent_router_create_card_dest_not_found': "无法创建卡片「{title}」——目标「{dest}」未找到。",
 }

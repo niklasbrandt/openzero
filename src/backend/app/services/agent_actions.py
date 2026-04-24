@@ -277,6 +277,22 @@ async def execute_mark_done(card_fragment: str) -> str:
 		return f"Card '{card_fragment}' marked done."
 	return f"\u26a0 Could not find card matching '{card_fragment}'. Check Planka board."
 
+
+async def execute_create_card(title: str, destination: str = "", lang: str = "en") -> str:
+	"""Create a new Planka card with the given title in the destination list/board.
+
+	If destination is empty or cannot be resolved, defaults to the Operator Board Inbox.
+	"""
+	from app.services.planka import create_task as planka_create_task
+	# Destination may be a list name, board name, or empty. Pass as list_name with
+	# fallback to "Inbox". Board resolution is handled inside create_task.
+	list_name = destination.strip() if destination else "Inbox"
+	result = await planka_create_task(board_name="", list_name=list_name, title=title, description="")
+	if result:
+		dest_label = destination or "Inbox"
+		return f"Card '{title}' added to '{dest_label}'."
+	return f"\u26a0 Could not create card '{title}'. Destination '{destination}' not found."
+
 async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = False):
 	"""
 	Parses Semantic Action Tags from the AI reply and executes them.

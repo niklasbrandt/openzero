@@ -409,4 +409,8 @@ translations: dict[str, str] = {
         'intent_router_board_not_found': "'{query}' से मेल खाने वाला कोई बोर्ड नहीं मिला।",
         'intent_router_project_not_found': "'{query}' से मेल खाने वाला कोई प्रोजेक्ट नहीं मिला।",
         'intent_router_card_not_found': "'{query}' से मेल खाने वाला कोई कार्ड नहीं मिला।",
+        'intent_router_create_card_success': "कार्ड '{title}' को '{dest}' में जोड़ा गया।",
+        'intent_router_create_card_dest_not_found': "कार्ड '{title}' नहीं बनाया जा सका — गंतव्य '{dest}' नहीं मिला।",
+        'intent_router_create_card_success': "कार्ड '{title}' को '{dest}' में जोड़ा गया।",
+        'intent_router_create_card_dest_not_found': "कार्ड '{title}' नहीं बनाया जा सका — गंतव्य '{dest}' नहीं मिला।",
 }

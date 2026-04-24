@@ -303,3 +303,60 @@ def test_dispatch_move_board_localised(lang, needle):
 			ir.dispatch_structural_intent(intent, lang)
 		)
 	assert needle in result, f"{lang}: missing {needle!r} in {result!r}"
+
+
+# ── CREATE_CARD tests ─────────────────────────────────────────────────────────
+
+@pytest.mark.parametrize("text,lang", [
+	("add a card buy groceries to Inbox", "en"),
+	("create task meeting prep on Work", "en"),
+	("new card dentist appointment", "en"),
+	("erstelle eine Karte Zahnarzttermin", "de"),
+	("füge hinzu eine Aufgabe Einkaufen in Inbox", "de"),
+	("agrega una tarjeta comprar leche en lista", "es"),
+	("ajouter une carte réunion à Inbox", "fr"),
+	("adicionar um cartão médico em Inbox", "pt"),
+	("добавь карточку купить молоко в список", "ru"),
+])
+def test_create_card_pattern_classifies(text, lang):
+	"""CREATE_CARD verb is detected from basic input in each supported language."""
+	result = asyncio.get_event_loop().run_until_complete(
+		ir.classify_structural_intent(text, lang)
+	)
+	assert result is not None, f"[{lang}] classified as None for: {text!r}"
+	assert result.verb == "CREATE_CARD", f"[{lang}] expected CREATE_CARD, got {result.verb!r}"
+	assert result.entities.get("title"), f"[{lang}] title entity missing"
+
+
+def test_create_card_dispatch_calls_executor():
+	"""dispatch_structural_intent with CREATE_CARD calls execute_create_card and returns localised result."""
+	from app.services.intent_router import StructuralIntent, dispatch_structural_intent
+	intent = StructuralIntent(
+		verb="CREATE_CARD",
+		entities={"title": "buy groceries", "destination": "Inbox"},
+		raw_text="add a card buy groceries to Inbox",
+		confidence=0.85,
+	)
+	with patch("app.services.agent_actions.execute_create_card", new=AsyncMock(return_value="Card 'buy groceries' added to 'Inbox'.")):
+		result = asyncio.get_event_loop().run_until_complete(
+			dispatch_structural_intent(intent, "en")
+		)
+	assert "buy groceries" in result
+	assert "[AUDIT:create_card:" in result
+
+
+def test_create_card_dispatch_returns_warning_on_failure():
+	"""dispatch returns the warning string from execute_create_card when it fails."""
+	from app.services.intent_router import StructuralIntent, dispatch_structural_intent
+	intent = StructuralIntent(
+		verb="CREATE_CARD",
+		entities={"title": "buy groceries", "destination": "BadList"},
+		raw_text="add a card buy groceries to BadList",
+		confidence=0.85,
+	)
+	with patch("app.services.agent_actions.execute_create_card", new=AsyncMock(return_value="⚠ Could not create card 'buy groceries'.")):
+		result = asyncio.get_event_loop().run_until_complete(
+			dispatch_structural_intent(intent, "en")
+		)
+	assert result.startswith("⚠")
+
