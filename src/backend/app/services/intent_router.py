@@ -102,8 +102,8 @@ def _strip_filler(s: str) -> str:
 	politeness/filler words (please, bitte, thanks, danke) from an entity."""
 	s = s.strip().strip('"\'\u201c\u201d\u2018\u2019')
 	s = s.rstrip('.,;!?')
-	# Strip leading articles
-	s = re.sub(r'^(?:the|my|a|an|der|die|das|ein|eine|einen)\s+', '', s, flags=re.IGNORECASE)
+	# Strip leading articles / possessives (EN + DE)
+	s = re.sub(r'^(?:the|my|a|an|der|die|das|den|dem|des|ein|eine|einen|einem|einer|mein|meine|meinen|meinem|meiner|meines)\s+', '', s, flags=re.IGNORECASE)
 	# Strip trailing politeness / filler so "my projects bitte" -> "my projects"
 	s = re.sub(r'\s+(?:please|bitte|thanks|thank\s+you|danke|asap|now|today)\s*$', '', s, flags=re.IGNORECASE)
 	return s.strip()
