@@ -79,6 +79,10 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 			# "add <title> to <list>" (no card noun, but explicit destination)
 			re.compile(r'\b(?:add|put)\s+(.{1,120}?)\s+(?:to|on|onto|in|into)\s+(?:my\s+|the\s+)?(.{1,80}?)(?:\s+(?:list|board))?$', re.IGNORECASE),
 		],
+		"create_list": [
+			re.compile(r'\b(?:add|create|new|make)\s+(?:a\s+|the\s+)?list\s+(?:called\s+|named\s+)?(.{1,80}?)(?:\s+(?:to|on|in|under)\s+(?:the\s+)?(.{1,80}))?$', re.IGNORECASE),
+			re.compile(r'\b(?:add|create|new)\s+(.{1,80}?)\s+list(?:\s+(?:to|on|in|under)\s+(?:the\s+)?(.{1,80}))?$', re.IGNORECASE),
+		],
 		"archive_card": [
 			re.compile(r'\barchive\s+(?:the\s+)?(?:card\s+)?(.{1,120})', re.IGNORECASE),
 		],
@@ -105,6 +109,10 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 			re.compile(r'\b(?:erstell[e]?|f[üu]g[e]?\s+hinzu|leg[e]?\s+an|neu[e]?)\s+(?:eine\s+)?(?:karte|aufgabe|task|todo)\s+(.{1,120}?)(?:\s+(?:zu|in|auf|unter)\s+(.{1,80}))?$', re.IGNORECASE),
 			re.compile(r'\b(?:f[üu]g[e]?)\s+(.{1,120}?)\s+(?:zu|in|auf)\s+(?:meine[rn]?\s+|der\s+|die\s+|das\s+)?(.{1,80}?)(?:\s+(?:hinzu|liste|board))?$', re.IGNORECASE),
 		],
+		"create_list": [
+			re.compile(r'\b(?:erstell[e]?|f[üu]g[e]?\s+hinzu|leg[e]?\s+an|neu[e]?)\s+(?:eine\s+)?(?:liste|spalte)\s+(?:namens?\s+|mit\s+dem\s+namen\s+)?(.{1,80}?)(?:\s+(?:zu[mr]?|in|auf|unter)\s+(?:dem\s+|das\s+|der\s+)?(?:board\s+)?(.{1,80}))?$', re.IGNORECASE),
+			re.compile(r'\b(?:f[üu]g[e]?)\s+(?:eine\s+)?(?:liste|spalte)\s+(.{1,80}?)\s+(?:zu[mr]?|in|auf)\s+(?:dem\s+|das\s+|der\s+)?(.{1,80}?)(?:\s+hinzu)?$', re.IGNORECASE),
+		],
 		"archive_card": [
 			re.compile(r'\barchivier[e]?\s+(?:die\s+)?(?:karte\s+)?(.{1,120})', re.IGNORECASE),
 		],
@@ -128,6 +136,9 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 		"create_card": [
 			re.compile(r'\b(?:agrega[r]?|añade[r]?|crea[r]?|nueva?)\s+(?:una?\s+)?(?:tarjeta|tarea|todo)\s+(.{1,120}?)(?:\s+(?:a|en)\s+(.{1,80}))?$', re.IGNORECASE),
 			re.compile(r'\b(?:agrega[r]?|añade[r]?)\s+(.{1,120}?)\s+(?:a|en)\s+(?:mi\s+|el\s+|la\s+)?(.{1,80}?)(?:\s+(?:lista|tablero))?$', re.IGNORECASE),
+		],
+		"create_list": [
+			re.compile(r'\b(?:agrega[r]?|crea[r]?|nueva?)\s+(?:una?\s+)?(?:lista|columna)\s+(?:llamada?\s+|con\s+nombre\s+)?(.{1,80}?)(?:\s+(?:a|en|sobre)\s+(?:el\s+|la\s+)?(?:board\s+|tablero\s+)?(.{1,80}))?$', re.IGNORECASE),
 		],
 		"archive_card": [
 			re.compile(r'\barchiv(?:a|ar|o)\s+(?:la|el)?\s*(?:tarjeta\s+)?(.{1,120})', re.IGNORECASE),
@@ -154,6 +165,9 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 			re.compile(r'\b(?:ajoute[rz]?|créer?|crée|nouvelle?)\s+(?:une?\s+)?(?:carte|tâche|tache|todo)\s+(.{1,120}?)(?:\s+(?:vers|à|dans|en|sur)\s+(.{1,80}))?$', re.IGNORECASE),
 			re.compile(r'\b(?:ajoute[rz]?)\s+(.{1,120}?)\s+(?:à|dans|en|sur)\s+(?:ma\s+|mon\s+|la\s+|le\s+|les\s+)?(.{1,80}?)(?:\s+(?:liste|tableau))?$', re.IGNORECASE),
 		],
+		"create_list": [
+			re.compile(r'\b(?:ajoute[rz]?|créer?|crée|nouvelle?)\s+(?:une?\s+)?(?:liste|colonne)\s+(?:appelée?\s+|nommée?\s+)?(.{1,80}?)(?:\s+(?:vers|à|dans|en|sur)\s+(?:le\s+|la\s+)?(?:tableau\s+)?(.{1,80}))?$', re.IGNORECASE),
+		],
 		"archive_card": [
 			re.compile(r'\barchiv(?:e|er|ez)\s+(?:la|le)?\s*(?:carte\s+)?(.{1,120})', re.IGNORECASE),
 		],
@@ -176,6 +190,9 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 		"create_card": [
 			re.compile(r'\b(?:adicionar?|adicione|criar?|crie|nova?)\s+(?:um[a]?\s+)?(?:cartão|cartao|tarefa|todo)\s+(.{1,120}?)(?:\s+(?:para|em|n[ao])\s+(.{1,80}))?$', re.IGNORECASE),
 			re.compile(r'\b(?:adicionar?|adicione)\s+(.{1,120}?)\s+(?:para|em|n[ao])\s+(?:minha?\s+|meu\s+|a\s+|o\s+)?(.{1,80}?)(?:\s+(?:lista|quadro))?$', re.IGNORECASE),
+		],
+		"create_list": [
+			re.compile(r'\b(?:adicionar?|adicione|criar?|crie|nova?)\s+(?:uma?\s+)?(?:lista|coluna)\s+(?:chamada?\s+|com\s+nome\s+)?(.{1,80}?)(?:\s+(?:para|em|n[ao])\s+(?:o\s+|a\s+)?(?:quadro\s+)?(.{1,80}))?$', re.IGNORECASE),
 		],
 		"archive_card": [
 			re.compile(r'\barquiv(?:a|ar|e)\s+(?:a|o)?\s*(?:cartão|cartao|carta\s+)?(.{1,120})', re.IGNORECASE),
@@ -200,6 +217,9 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 			re.compile(r'(?:добавь?|создай?|создать|новую?)\s+(?:карточку?|задачу?)?\s+(.{1,120}?)(?:\s+(?:в|на|к)\s+(.{1,80}))?$', re.IGNORECASE),
 			re.compile(r'(?:добавь?)\s+(.{1,120}?)\s+(?:в|на|к)\s+(?:мою?\s+)?(.{1,80}?)(?:\s+(?:список|доску))?$', re.IGNORECASE),
 		],
+		"create_list": [
+			re.compile(r'(?:добавь?|создай?|создать|новый?|новую?)\s+(?:список|колонку|столбец)\s+(?:с\s+названием\s+)?(.{1,80}?)(?:\s+(?:в|на|к)\s+(?:доску?\s+)?(.{1,80}))?$', re.IGNORECASE),
+		],
 		"archive_card": [
 			re.compile(r'(?:заархивируй|архивируй|архивировать)\s+(?:карточку\s+)?(.{1,120})', re.IGNORECASE),
 		],
@@ -222,8 +242,10 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 		"create_card": [
 			re.compile(r'(.{1,120}?)(?:カード|タスク|todo)(?:を)?(?:作成|追加)(?:して)?(?:(.{1,80})に)?'),
 			re.compile(r'(.{1,120}?)を(.{1,80}?)(?:に|へ)追加'),
-		],
-		"archive_card": [
+		],		"create_list": [
+			re.compile(r'(?:リスト|列)(?:を)?(?:作成|追加)(?:して)?(.{1,80}?)(?:(?:に|へ)(.{1,80}))?'),
+			re.compile(r'(.{1,80}?)(?:リスト|列)を(.{1,80}?)(?:に|へ)?(?:作成|追加)'),
+		],		"archive_card": [
 			re.compile(r'(.{1,120}?)(?:を)(?:アーカイブ|保管)'),
 		],
 		"mark_done": [
@@ -245,6 +267,9 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 		"create_card": [
 			re.compile(r'(?:添加|创建|新建|增加)(.{1,120}?)(?:卡片|任务|task)(?:到|至)?(.{1,80})?'),
 			re.compile(r'(?:把|将)(.{1,120}?)(?:加入|进|添加到)(.{1,80})'),
+		],
+		"create_list": [
+			re.compile(r'(?:添加|创建|新建|增加)(?:一个)?(?:列表|清单|栏)(.{1,80}?)(?:到|至|在)?(.{1,80})?'),
 		],
 		"archive_card": [
 			re.compile(r'(?:把|将|將)?(.{1,120}?)(?:归档|歸檔|存档|存檔)'),
@@ -270,6 +295,10 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 			re.compile(r'(.{1,120}?)(?:카드|태스크)\s*(?:추가|등록)'),
 			re.compile(r'(.{1,120}?)\s*(?:에|으로)\s*(?:.{1,80})?\s*(?:추가하기|등록하기|넣기)'),
 		],
+		"create_list": [
+			re.compile(r'(?:리스트|목록|열)\s*(?:를|을)?\s*(?:추가|만들|생성)(.{1,80}?)(?:\s*(?:에|에게|으로)\s*(.{1,80}))?$'),
+			re.compile(r'(.{1,80}?)(?:리스트|목록|열)\s*(?:추가|생성|만들)'),
+		],
 		"archive_card": [
 			re.compile(r'(.{1,120}?)(?:을|를)?\s*(?:보관|아카이브)'),
 		],
@@ -293,6 +322,9 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 			re.compile(r'(?:जोड़ें|जोड़ो|बनाओ|बनाएं|नया)\s+(?:कार्ड|कार्य)?\s+(.{1,120}?)(?:\s+(?:में|पर)\s+(.{1,80}))?$', re.IGNORECASE),
 			re.compile(r'(.{1,120}?)\s+को\s+(?:जोड़ें|जोड़ो)\s+(.{1,80})'),
 		],
+		"create_list": [
+			re.compile(r'(?:जोड़ें|जोड़ो|बनाओ|बनाएं|नई?)\s+(?:सूची|लिस्ट|कॉलम)\s+(.{1,80}?)(?:\s+(?:में|पर)\s+(.{1,80}))?$', re.IGNORECASE),
+		],
 		"archive_card": [
 			re.compile(r'(.{1,120}?)\s*को\s*(?:संग्रह|आर्काइव|संग्रहित)'),
 		],
@@ -315,6 +347,9 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 		"create_card": [
 			re.compile(r'(?:أضف|اضف|أنشئ|انشئ)\s+(?:بطاقة?|مهمة?)?\s*(.{1,120}?)(?:\s+(?:إلى|الى|في)\s+(.{1,80}))?$'),
 			re.compile(r'(?:أضف|اضف)\s+(.{1,120}?)\s+(?:إلى|الى|في)\s+(.{1,80})'),
+		],
+		"create_list": [
+			re.compile(r'(?:أضف|اضف|أنشئ|انشئ)\s+(?:قائمة?|عمود?)?\s*(?:اسمها?\s+)?(.{1,80}?)(?:\s+(?:إلى|الى|في)\s+(?:لوحة\s+)?(.{1,80}))?$'),
 		],
 		"archive_card": [
 			re.compile(r'(?:أرشف|ارشف|أرشفة|ارشفة)\s+(?:البطاقة\s+)?(.{1,120})'),
@@ -625,6 +660,24 @@ async def classify_structural_intent(text: str, lang: str) -> Optional[Structura
 				confidence=0.9,
 			)
 
+	# ── CREATE_LIST ───────────────────────────────────────────────────────
+	# Checked before CREATE_CARD: explicit "list" noun is more specific than
+	# the broad "add X to Y" create_card pattern 3, which would otherwise
+	# steal "add a new list In Progress to Garden".
+	for pat in _patterns_for("create_list", lang):
+		m = pat.search(snippet)
+		if m:
+			name_q = _strip_filler(m.group(1)) if m.lastindex and m.lastindex >= 1 else ""
+			board_q = _strip_filler(m.group(2)) if m.lastindex and m.lastindex >= 2 and m.group(2) else ""
+			if not name_q:
+				continue
+			return StructuralIntent(
+				verb="CREATE_LIST",
+				entities={"list_name": name_q, "board_name": board_q},
+				raw_text=snippet,
+				confidence=0.85,
+			)
+
 	# ── CREATE_CARD ───────────────────────────────────────────────────────
 	for pat in _patterns_for("create_card", lang):
 		m = pat.search(snippet)
@@ -652,7 +705,8 @@ async def dispatch_structural_intent(intent: StructuralIntent, lang: str) -> str
 	"""
 	from app.services.translations import get_translations
 	from app.services.agent_actions import (
-		execute_move_board, execute_move_card, execute_archive_card, execute_mark_done, execute_create_card,
+		execute_move_board, execute_move_card, execute_archive_card, execute_mark_done,
+		execute_create_card, execute_create_list,
 	)
 	t = get_translations(lang)
 
@@ -727,6 +781,19 @@ async def dispatch_structural_intent(intent: StructuralIntent, lang: str) -> str
 			title=ent["title"], dest=dest_label,
 		)
 		audit = f"[AUDIT:create_card:{ent['title']}|dest={dest_label}]"
+		return f"{msg}\n{audit}"
+
+	if verb == "CREATE_LIST":
+		raw = await execute_create_list(ent["list_name"], ent.get("board_name", ""), lang)
+		if raw.startswith("\u26a0"):
+			return raw
+		board_label = ent.get("board_name") or "Operator Board"
+		msg = _localise(
+			"intent_router_create_list_success",
+			"List '{list_name}' created on '{board}'.",
+			list_name=ent["list_name"], board=board_label,
+		)
+		audit = f"[AUDIT:create_list:{ent['list_name']}|board={board_label}]"
 		return f"{msg}\n{audit}"
 
 	# Unknown verb — defensive fallback, should not be reachable.
