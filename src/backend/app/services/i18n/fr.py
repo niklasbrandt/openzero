@@ -439,4 +439,10 @@ translations: dict[str, str] = {
         'intent_router_rename_board_not_found': "Impossible de renommer le tableau '{board}' — tableau introuvable.",
         'intent_router_delete_board_success': "Tableau '{board}' supprimé.",
         'intent_router_delete_board_not_found': "Impossible de supprimer le tableau '{board}' — tableau introuvable.",
+        'intent_router_create_project_success': "Projet '{project}' créé.",
+        'intent_router_create_project_duplicate': "Le projet '{project}' existe déjà.",
+        'intent_router_rename_project_success': "Projet '{project}' renommé en '{new_name}'.",
+        'intent_router_rename_project_not_found': "Impossible de renommer le projet '{project}' — introuvable.",
+        'intent_router_delete_project_success': "Projet '{project}' supprimé.",
+        'intent_router_delete_project_not_found': "Impossible de supprimer le projet '{project}' — introuvable.",
 }
