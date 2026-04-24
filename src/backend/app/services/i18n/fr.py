@@ -409,4 +409,8 @@ translations: dict[str, str] = {
         'intent_router_board_not_found': "Je n'ai trouvé aucun tableau correspondant à '{query}'.",
         'intent_router_project_not_found': "Je n'ai trouvé aucun projet correspondant à '{query}'.",
         'intent_router_card_not_found': "Je n'ai trouvé aucune carte correspondant à '{query}'.",
+        'intent_router_create_card_success': "Carte '{title}' ajoutée à '{dest}'.",
+        'intent_router_create_card_dest_not_found': "Impossible de créer la carte '{title}' — destination '{dest}' introuvable.",
+        'intent_router_create_card_success': "Carte '{title}' ajoutée à '{dest}'.",
+        'intent_router_create_card_dest_not_found': "Impossible de créer la carte '{title}' — destination '{dest}' introuvable.",
 }

@@ -409,4 +409,8 @@ translations: dict[str, str] = {
         'intent_router_board_not_found': "Не нашёл доску, соответствующую '{query}'.",
         'intent_router_project_not_found': "Не нашёл проект, соответствующий '{query}'.",
         'intent_router_card_not_found': "Не нашёл карточку, соответствующую '{query}'.",
+        'intent_router_create_card_success': "Карточка '{title}' добавлена в '{dest}'.",
+        'intent_router_create_card_dest_not_found': "Не удалось создать карточку '{title}' — место назначения '{dest}' не найдено.",
+        'intent_router_create_card_success': "Карточка '{title}' добавлена в '{dest}'.",
+        'intent_router_create_card_dest_not_found': "Не удалось создать карточку '{title}' — место назначения '{dest}' не найдено.",
 }
