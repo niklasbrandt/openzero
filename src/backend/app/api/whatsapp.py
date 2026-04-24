@@ -104,36 +104,59 @@ def _verify_signature(raw_body: bytes, signature_header: Optional[str]) -> bool:
 # ─── Background Message Handler ───────────────────────────────────────────────
 
 async def _handle_inbound(sender: str, text: str) -> None:
-	"""Process an inbound WhatsApp message through the bus and reply."""
-	from app.services.llm import chat_with_context, last_model_used
+	"""Process an inbound WhatsApp message through the unified router and reply.
+
+	Routes through route_message_stream so intent classification (structural
+	verbs like CREATE_PROJECT, MOVE_BOARD, etc.) and crew routing all work
+	identically to the Telegram and Dashboard channels.
+	"""
 	from app.services.message_bus import bus
+	from app.services.router import route_message_stream
+	from app.services.crews import resolve_active_crews
 
 	history = await bus.ingest("whatsapp", text)
 
-	try:
-		raw = await chat_with_context(
-			text,
-			history=history,
-			include_projects=True,
-			include_people=True,
+	# Keyword crew routing (same priority as Telegram)
+	routed_crews = await resolve_active_crews(history, text, lang="en")
+	if routed_crews:
+		from app.services.crews_native import native_crew_engine
+		from app.services.llm import last_model_used
+		try:
+			result = await native_crew_engine.run_crew(routed_crews[0], text)
+		except Exception as exc:
+			logger.error("WhatsApp crew engine failed: %s", exc)
+			await send_whatsapp_message("I encountered an error running that crew. Try again in a moment.")
+			return
+		reply, _, _ = await bus.commit_reply(
+			channel="whatsapp",
+			raw_reply=result,
+			model=last_model_used.get(),
+			user_text=text,
 		)
+		from app.services.crews import record_crew_session
+		record_crew_session("whatsapp", routed_crews[0])
+		await send_whatsapp_message(reply)
+		return
+
+	# Full router — handles intent classification, ACTION tags, phantom guard, memory
+	try:
+		token_stream, result_fut = await route_message_stream(
+			user_text=text,
+			history=history,
+			channel="whatsapp",
+			lang="en",
+			save_history=True,
+		)
+		async for _ in token_stream:
+			pass
+		result = await result_fut
 	except Exception as exc:
-		logger.error("WhatsApp LLM call failed: %s", exc)
+		logger.error("WhatsApp route_message_stream failed: %s", exc)
 		await send_whatsapp_message("I encountered an error reaching my reasoning core. Try again in a moment.")
 		return
 
-	if not raw or not raw.strip():
-		logger.warning("WhatsApp: LLM returned empty response.")
-		return
-
-	reply, _, _ = await bus.commit_reply(
-		channel="whatsapp",
-		raw_reply=raw,
-		model=last_model_used.get(),
-		user_text=text,
-	)
-
-	await send_whatsapp_message(reply)
+	if result.reply.strip():
+		await send_whatsapp_message(result.reply)
 
 
 async def _download_whatsapp_media(media_id: str) -> bytes:
