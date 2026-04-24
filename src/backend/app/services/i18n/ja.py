@@ -403,4 +403,11 @@ translations: dict[str, str] = {
 	'tip_bench_cloud': 'クラウドティアのベンチマーク。複雑な分析と推論タスクに使用。',
 	'tip_bench_local': 'ローカルティアのベンチマーク（～0.6B）。挨拶などの簡単なタスクに使用。',
         'status_online': '戻ってきました！',
+        'intent_router_move_board_success': 'ボード「{board}」を「{project}」に移動しました。',
+        'intent_router_move_card_success': 'カード「{card}」を「{dest}」に移動しました。',
+        'intent_router_mark_done_success': 'カード「{card}」を完了としてマークしました。',
+        'intent_router_archive_success': 'カード「{card}」をアーカイブしました。',
+        'intent_router_board_not_found': '「{query}」に一致するボードが見つかりませんでした。',
+        'intent_router_project_not_found': '「{query}」に一致するプロジェクトが見つかりませんでした。',
+        'intent_router_card_not_found': '「{query}」に一致するカードが見つかりませんでした。',
 }
