@@ -402,4 +402,11 @@ translations: dict[str, str] = {
 	'tip_bench_cloud': 'Тест облачного уровня. Для сложного анализа и рассуждения.',
 	'tip_bench_local': 'Тест локального уровня (~0.6B). Для быстрых задач.',
         'status_online': 'Я вернулся!',
+        'intent_router_move_board_success': "Доска '{board}' перемещена в '{project}'.",
+        'intent_router_move_card_success': "Карточка '{card}' перемещена в '{dest}'.",
+        'intent_router_mark_done_success': "Карточка '{card}' отмечена как выполненная.",
+        'intent_router_archive_success': "Карточка '{card}' заархивирована.",
+        'intent_router_board_not_found': "Не нашёл доску, соответствующую '{query}'.",
+        'intent_router_project_not_found': "Не нашёл проект, соответствующий '{query}'.",
+        'intent_router_card_not_found': "Не нашёл карточку, соответствующую '{query}'.",
 }

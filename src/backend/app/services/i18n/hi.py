@@ -402,4 +402,11 @@ translations: dict[str, str] = {
 	'tip_bench_cloud': 'क्लाउड टियर बेंचमार्क। जटिल विश्लेषण और तर्क कार्यों के लिए।',
 	'tip_bench_local': 'लोकल टियर बेंचमार्क (~0.6B)। त्वरित कार्यों के लिए।',
         'status_online': 'मैं वापस आ गया!',
+        'intent_router_move_board_success': "बोर्ड '{board}' को '{project}' में स्थानांतरित किया गया।",
+        'intent_router_move_card_success': "कार्ड '{card}' को '{dest}' में स्थानांतरित किया गया।",
+        'intent_router_mark_done_success': "कार्ड '{card}' को पूर्ण के रूप में चिह्नित किया गया।",
+        'intent_router_archive_success': "कार्ड '{card}' संग्रहित कर दिया गया।",
+        'intent_router_board_not_found': "'{query}' से मेल खाने वाला कोई बोर्ड नहीं मिला।",
+        'intent_router_project_not_found': "'{query}' से मेल खाने वाला कोई प्रोजेक्ट नहीं मिला।",
+        'intent_router_card_not_found': "'{query}' से मेल खाने वाला कोई कार्ड नहीं मिला।",
 }
