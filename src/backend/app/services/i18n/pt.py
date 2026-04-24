@@ -439,4 +439,10 @@ translations: dict[str, str] = {
         'intent_router_rename_board_not_found': "Não foi possível renomear o quadro '{board}' — quadro não encontrado.",
         'intent_router_delete_board_success': "Quadro '{board}' excluído.",
         'intent_router_delete_board_not_found': "Não foi possível excluir o quadro '{board}' — quadro não encontrado.",
+        'intent_router_create_project_success': "Projeto '{project}' criado.",
+        'intent_router_create_project_duplicate': "O projeto '{project}' já existe.",
+        'intent_router_rename_project_success': "Projeto '{project}' renomeado para '{new_name}'.",
+        'intent_router_rename_project_not_found': "Não foi possível renomear o projeto '{project}' — não encontrado.",
+        'intent_router_delete_project_success': "Projeto '{project}' excluído.",
+        'intent_router_delete_project_not_found': "Não foi possível excluir o projeto '{project}' — não encontrado.",
 }

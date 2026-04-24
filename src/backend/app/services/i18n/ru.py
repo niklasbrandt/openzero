@@ -439,4 +439,10 @@ translations: dict[str, str] = {
         'intent_router_rename_board_not_found': "Не удалось переименовать доску '{board}' — доска не найдена.",
         'intent_router_delete_board_success': "Доска '{board}' удалена.",
         'intent_router_delete_board_not_found': "Не удалось удалить доску '{board}' — доска не найдена.",
+        'intent_router_create_project_success': "Проект '{project}' создан.",
+        'intent_router_create_project_duplicate': "Проект '{project}' уже существует.",
+        'intent_router_rename_project_success': "Проект '{project}' переименован в '{new_name}'.",
+        'intent_router_rename_project_not_found': "Не удалось переименовать проект '{project}' — не найден.",
+        'intent_router_delete_project_success': "Проект '{project}' удалён.",
+        'intent_router_delete_project_not_found': "Не удалось удалить проект '{project}' — не найден.",
 }
