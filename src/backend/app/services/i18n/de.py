@@ -406,6 +406,8 @@ translations: dict[str, str] = {
 	"intent_router_card_not_found": "Keine Karte gefunden, die zu '{query}' passt.",
 	"intent_router_create_card_success": "Karte '{title}' wurde zu '{dest}' hinzugefügt.",
 	"intent_router_create_card_dest_not_found": "Karte '{title}' konnte nicht erstellt werden — Ziel '{dest}' nicht gefunden.",
+	"intent_router_create_list_success": "Liste '{list_name}' wurde auf '{board}' erstellt.",
+	"intent_router_create_list_board_not_found": "Liste '{list_name}' konnte nicht erstellt werden — Board '{board}' nicht gefunden.",
 	'diag_cloud_not_configured': 'Nicht konfiguriert',
 	'diag_cloud_set_env': 'LLM_CLOUD_BASE_URL + API-Schlüssel in .env',
 	'diag_cloud_why': 'Komplexes Denken & kontextintensive Aufgaben jenseits lokaler Kapazität.',

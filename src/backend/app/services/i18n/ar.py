@@ -412,6 +412,10 @@ translations: dict[str, str] = {
         'intent_router_card_not_found': "لم أجد بطاقة تطابق '{query}'.",
         'intent_router_create_card_success': "تمت إضافة البطاقة '{title}' إلى '{dest}'.",
         'intent_router_create_card_dest_not_found': "تعذر إنشاء البطاقة '{title}' — الوجهة '{dest}' غير موجودة.",
+        'intent_router_create_list_success': "تم إنشاء القائمة '{list_name}' على '{board}'.",
+        'intent_router_create_list_board_not_found': "تعذر إنشاء القائمة '{list_name}' — اللوحة '{board}' غير موجودة.",
         'intent_router_create_card_success': "تمت إضافة البطاقة '{title}' إلى '{dest}'.",
         'intent_router_create_card_dest_not_found': "تعذر إنشاء البطاقة '{title}' — الوجهة '{dest}' غير موجودة.",
+        'intent_router_create_list_success': "تم إنشاء القائمة '{list_name}' على '{board}'.",
+        'intent_router_create_list_board_not_found': "تعذر إنشاء القائمة '{list_name}' — اللوحة '{board}' غير موجودة.",
 }

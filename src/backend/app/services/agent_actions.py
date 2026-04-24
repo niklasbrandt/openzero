@@ -293,6 +293,16 @@ async def execute_create_card(title: str, destination: str = "", lang: str = "en
 		return f"Card '{title}' added to '{dest_label}'."
 	return f"\u26a0 Could not create card '{title}'. Destination '{destination}' not found."
 
+
+async def execute_create_list(list_name: str, board_name: str = "", lang: str = "en") -> str:
+	"""Create a new Planka list on the given board. Falls back to Operator Board if no board specified."""
+	from app.services.planka import create_list as planka_create_list
+	target_board = board_name.strip() if board_name else "Operator Board"
+	result = await planka_create_list(board_name=target_board, list_name=list_name)
+	if result:
+		return f"List '{list_name}' created on '{target_board}'."
+	return f"\u26a0 Could not create list '{list_name}' on board '{target_board}'. Board not found."
+
 async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = False):
 	"""
 	Parses Semantic Action Tags from the AI reply and executes them.

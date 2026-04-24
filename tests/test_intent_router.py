@@ -360,3 +360,42 @@ def test_create_card_dispatch_returns_warning_on_failure():
 		)
 	assert result.startswith("⚠")
 
+
+# ── CREATE_LIST tests ─────────────────────────────────────────────────────────
+
+@pytest.mark.parametrize("text,lang", [
+	("create a list called Waiting on Work board", "en"),
+	("add a new list In Progress to Garden", "en"),
+	("erstelle eine Liste Wartend auf Garden board", "de"),
+	("füge eine Liste Fertig zum Garden board hinzu", "de"),
+	("crea una lista Esperando en Garden", "es"),
+	("créer une liste En attente sur Garden", "fr"),
+	("criar uma lista Aguardando em Garden", "pt"),
+	("создай список Ожидание на доске Garden", "ru"),
+])
+def test_create_list_pattern_classifies(text, lang):
+	"""CREATE_LIST verb is detected from basic input across languages."""
+	result = asyncio.get_event_loop().run_until_complete(
+		ir.classify_structural_intent(text, lang)
+	)
+	assert result is not None, f"[{lang}] classified as None for: {text!r}"
+	assert result.verb == "CREATE_LIST", f"[{lang}] expected CREATE_LIST, got {result.verb!r}"
+	assert result.entities.get("list_name"), f"[{lang}] list_name entity missing"
+
+
+def test_create_list_dispatch_calls_executor():
+	"""dispatch_structural_intent with CREATE_LIST calls execute_create_list and returns localised result."""
+	from app.services.intent_router import StructuralIntent, dispatch_structural_intent
+	intent = StructuralIntent(
+		verb="CREATE_LIST",
+		entities={"list_name": "Waiting", "board_name": "Work"},
+		raw_text="create a list called Waiting on Work board",
+		confidence=0.85,
+	)
+	with patch("app.services.agent_actions.execute_create_list", new=AsyncMock(return_value="List 'Waiting' created on 'Work'.")):
+		result = asyncio.get_event_loop().run_until_complete(
+			dispatch_structural_intent(intent, "en")
+		)
+	assert "Waiting" in result
+	assert "[AUDIT:create_list:" in result
+
