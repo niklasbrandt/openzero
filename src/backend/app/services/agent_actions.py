@@ -464,7 +464,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 	# Track raw tag strings; skip any tag we have already processed in this response.
 	seen_raw_tags: set[str] = set()
 	# Detect whether the raw reply contained mutating ACTION tags (language-agnostic phantom guard).
-	_MUTATING_TAG_RE = re.compile(r'\[?ACTION:\s*(?:CREATE_TASK|CREATE_BOARD|CREATE_LIST|CREATE_PROJECT|MOVE_BOARD|MOVE_CARD|MARK_DONE|ARCHIVE_CARD|APPEND_SHOPPING|DELETE_BOARD|DELETE_CARD|DELETE_LIST|DELETE_PROJECT)\b', re.IGNORECASE)
+	_MUTATING_TAG_RE = re.compile(r'\[?ACTION:\s*(?:CREATE_TASK|CREATE_BOARD|CREATE_LIST|CREATE_PROJECT|MOVE_BOARD|MOVE_CARD|MARK_DONE|ARCHIVE_CARD|APPEND_SHOPPING|DELETE_BOARD|DELETE_CARD|DELETE_LIST|DELETE_PROJECT|SET_CARD_DESC)\b', re.IGNORECASE)
 	_reply_had_mutating_tags = bool(_MUTATING_TAG_RE.search(reply))
 
 	# helper to clean tag from reply
@@ -844,7 +844,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 				from app.models.db import Person, AsyncSessionLocal
 				# --- Input validation (M-A2) ---
 				circle_clean = circle.lower()
-				if circle_clean not in {"inner", "close", "outer", "identity"}:
+				if circle_clean not in {"inner", "outer", "identity"}:
 					circle_clean = "outer"
 				async with AsyncSessionLocal() as session:
 					p = Person(name=name[:100], relationship=rel[:100], context=ctx[:1000], circle_type=circle_clean)
@@ -1100,6 +1100,21 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 			return await execute_archive_card(card_frag, board)
 
 		await handle_action("ARCHIVE_CARD", raw_tag, _exec_archive_card, f"Archive card '{card_frag}'")
+		clean_reply = strip_tag(clean_reply, raw_tag)
+
+	# Set Card Description Tag — updates the description field of an existing card.
+	set_desc_pattern = r"\[?ACTION: SET_CARD_DESC \| CARD: ([^\|\]]+) \| DESCRIPTION: ([^\]]+)\]"
+	for match in re.finditer(set_desc_pattern, reply, re.DOTALL):
+		raw_tag = match.group(0)
+		card_frag = match.group(1).strip()
+		desc_text = match.group(2).strip()
+		if not card_frag or not desc_text:
+			continue
+
+		async def _exec_set_desc(card_frag=card_frag, desc_text=desc_text):
+			return await execute_set_card_desc(card_frag, desc_text)
+
+		await handle_action("SET_CARD_DESC", raw_tag, _exec_set_desc, f"Set description on card '{card_frag}'")
 		clean_reply = strip_tag(clean_reply, raw_tag)
 
 	# Move Board Tag — patches a board's projectId to move it to a different project.
