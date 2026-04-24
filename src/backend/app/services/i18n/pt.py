@@ -427,4 +427,10 @@ translations: dict[str, str] = {
         'intent_router_uncheck_card_task_not_found': "Não foi possível desmarcar a tarefa '{task}' em '{card}' — não encontrada.",
         'intent_router_rename_card_task_success': "Tarefa '{task}' no cartão '{card}' renomeada para '{new_name}'.",
         'intent_router_rename_card_task_not_found': "Não foi possível renomear a tarefa '{task}' em '{card}' — não encontrada.",
+        'intent_router_delete_card_success': "Cartão '{card}' excluído.",
+        'intent_router_delete_card_not_found': "Não foi possível excluir o cartão '{card}' — cartão não encontrado.",
+        'intent_router_delete_list_success': "Lista '{list}' excluída.",
+        'intent_router_delete_list_not_found': "Não foi possível excluir a lista '{list}' — lista não encontrada.",
+        'intent_router_delete_card_task_success': "Tarefa '{task}' removida do cartão '{card}'.",
+        'intent_router_delete_card_task_not_found': "Não foi possível remover a tarefa '{task}' do cartão '{card}' — não encontrada.",
 }
