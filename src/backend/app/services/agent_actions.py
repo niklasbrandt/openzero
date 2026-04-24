@@ -310,6 +310,51 @@ async def execute_rename_list(list_fragment: str, new_name: str, lang: str = "en
 		return f"List '{list_fragment}' renamed to '{new_name}'."
 	return f"\u26a0 Could not rename list '{list_fragment}' — list not found."
 
+
+async def execute_set_card_desc(card_fragment: str, description: str, lang: str = "en") -> str:
+	"""Find a Planka card and set its description."""
+	from app.services.planka import set_card_description as planka_set_card_description
+	success = await planka_set_card_description(card_fragment=card_fragment, description=description)
+	if success:
+		return f"Description of '{card_fragment}' updated."
+	return f"\u26a0 Could not update description of '{card_fragment}' — card not found."
+
+
+async def execute_add_card_task(card_fragment: str, task_name: str, lang: str = "en") -> str:
+	"""Add a checklist task to a Planka card."""
+	from app.services.planka import add_card_task as planka_add_card_task
+	success = await planka_add_card_task(card_fragment=card_fragment, task_name=task_name)
+	if success:
+		return f"Task '{task_name}' added to card '{card_fragment}'."
+	return f"\u26a0 Could not add task to '{card_fragment}' — card not found."
+
+
+async def execute_check_card_task(card_fragment: str, task_fragment: str, lang: str = "en") -> str:
+	"""Mark a checklist task as done inside a Planka card."""
+	from app.services.planka import check_card_task as planka_check_card_task
+	success = await planka_check_card_task(card_fragment=card_fragment, task_fragment=task_fragment, is_completed=True)
+	if success:
+		return f"Task '{task_fragment}' in card '{card_fragment}' marked as done."
+	return f"\u26a0 Could not check off task '{task_fragment}' in card '{card_fragment}' — not found."
+
+
+async def execute_uncheck_card_task(card_fragment: str, task_fragment: str, lang: str = "en") -> str:
+	"""Mark a checklist task as not done inside a Planka card."""
+	from app.services.planka import check_card_task as planka_check_card_task
+	success = await planka_check_card_task(card_fragment=card_fragment, task_fragment=task_fragment, is_completed=False)
+	if success:
+		return f"Task '{task_fragment}' in card '{card_fragment}' marked as not done."
+	return f"\u26a0 Could not uncheck task '{task_fragment}' in card '{card_fragment}' — not found."
+
+
+async def execute_rename_card_task(card_fragment: str, task_fragment: str, new_name: str, lang: str = "en") -> str:
+	"""Rename a checklist task inside a Planka card."""
+	from app.services.planka import rename_card_task as planka_rename_card_task
+	success = await planka_rename_card_task(card_fragment=card_fragment, task_fragment=task_fragment, new_name=new_name)
+	if success:
+		return f"Task '{task_fragment}' in card '{card_fragment}' renamed to '{new_name}'."
+	return f"\u26a0 Could not rename task '{task_fragment}' in card '{card_fragment}' — not found."
+
 async def execute_create_list(list_name: str, board_name: str = "", lang: str = "en") -> str:
 	"""Create a new Planka list on the given board. Falls back to Operator Board if no board specified."""
 	from app.services.planka import create_list as planka_create_list
