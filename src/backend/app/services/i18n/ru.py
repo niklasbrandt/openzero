@@ -413,8 +413,6 @@ translations: dict[str, str] = {
         'intent_router_create_card_dest_not_found': "Не удалось создать карточку '{title}' — место назначения '{dest}' не найдено.",
         'intent_router_create_list_success': "Список '{list_name}' создан на доске '{board}'.",
         'intent_router_create_list_board_not_found': "Не удалось создать список '{list_name}' — доска '{board}' не найдена.",
-        'intent_router_create_card_success': "Карточка '{title}' добавлена в '{dest}'.",
-        'intent_router_create_card_dest_not_found': "Не удалось создать карточку '{title}' — место назначения '{dest}' не найдено.",
-        'intent_router_create_list_success': "Список '{list_name}' создан на доске '{board}'.",
-        'intent_router_create_list_board_not_found': "Не удалось создать список '{list_name}' — доска '{board}' не найдена.",
+        'intent_router_rename_card_success': "Карточка '{card}' переименована в '{new_name}'.",
+        'intent_router_rename_card_not_found': "Не удалось переименовать карточку '{card}' — карточка не найдена.",
 }

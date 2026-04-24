@@ -408,6 +408,8 @@ translations: dict[str, str] = {
 	"intent_router_create_card_dest_not_found": "Karte '{title}' konnte nicht erstellt werden — Ziel '{dest}' nicht gefunden.",
 	"intent_router_create_list_success": "Liste '{list_name}' wurde auf '{board}' erstellt.",
 	"intent_router_create_list_board_not_found": "Liste '{list_name}' konnte nicht erstellt werden — Board '{board}' nicht gefunden.",
+	"intent_router_rename_card_success": "Karte '{card}' wurde in '{new_name}' umbenannt.",
+	"intent_router_rename_card_not_found": "Karte '{card}' konnte nicht umbenannt werden — Karte nicht gefunden.",
 	'diag_cloud_not_configured': 'Nicht konfiguriert',
 	'diag_cloud_set_env': 'LLM_CLOUD_BASE_URL + API-Schlüssel in .env',
 	'diag_cloud_why': 'Komplexes Denken & kontextintensive Aufgaben jenseits lokaler Kapazität.',

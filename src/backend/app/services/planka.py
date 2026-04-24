@@ -579,6 +579,53 @@ async def move_card(card_title_fragment: str, destination_list: str, board_name:
 		logger.debug("move_card failed: %s", e)
 		return False
 
+async def rename_card(card_title_fragment: str, new_name: str, board_name: str = "") -> bool:
+	"""Find a card by name fragment and rename it. Returns True on success."""
+	card_title_fragment = card_title_fragment.strip().strip('"\'').lower()
+	new_name = new_name.strip().strip('"\'')
+	board_name = board_name.strip().strip('"\'')
+	if not new_name:
+		logger.warning("rename_card: refusing to rename to empty string")
+		return False
+	logger.debug("rename_card: fragment=%s, new_name=%s, board=%s", _sanitize_for_log(card_title_fragment), _sanitize_for_log(new_name), _sanitize_for_log(board_name))
+	try:
+		token = await get_planka_auth_token()
+		headers = {"Authorization": f"Bearer {token}"}
+		async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, timeout=10.0, headers=headers) as client:
+			projects_resp = await client.get("/api/projects")
+			projects_resp.raise_for_status()
+			projects = projects_resp.json().get("items", [])
+
+			found_card = None
+			for p in projects:
+				p_det = await client.get(f"/api/projects/{p['id']}")
+				boards = p_det.json().get("included", {}).get("boards", [])
+				for b in boards:
+					if board_name and b["name"].lower() != board_name.lower():
+						continue
+					b_det = await client.get(f"/api/boards/{b['id']}", params={"included": "cards"})
+					cards = b_det.json().get("included", {}).get("cards", [])
+					for c in cards:
+						if card_title_fragment in c["name"].lower():
+							found_card = c
+							break
+					if found_card:
+						break
+				if found_card:
+					break
+
+			if not found_card:
+				logger.debug("rename_card: no card matching %r found", card_title_fragment)
+				return False
+
+			patch_resp = await client.patch(f"/api/cards/{found_card['id']}", json={"name": new_name})
+			patch_resp.raise_for_status()
+			logger.debug("rename_card: %r renamed to %r", found_card["name"], new_name)
+			return True
+	except Exception as e:
+		logger.debug("rename_card failed: %s", e)
+		return False
+
 async def create_list(board_name: str, list_name: str, project_name: Optional[str] = None) -> Optional[dict]:
 	"""Create a new list (column) in a board. Returns existing list if name matches (idempotent)."""
 	if not list_name or not list_name.strip():
