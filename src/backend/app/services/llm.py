@@ -772,6 +772,8 @@ CRITICAL — TAG REQUIRED FOR ALL MUTATIONS: EVERY response that includes a task
 - Add Person: `[ACTION: ADD_PERSON | NAME: text | RELATIONSHIP: text | CONTEXT: text | CIRCLE: inner/close]`
 - Learn Information: `[ACTION: LEARN | TEXT: factual statement]`
 - High Proximity Tracking: `[ACTION: PROXIMITY_TRACK | TASKS: item1; item2 | BREAKDOWN: task1 [ends HH:MM]; task2 [ends HH:MM] | END: YYYY-MM-DD HH:MM]`
+- Set Card Description: `[ACTION: SET_CARD_DESC | CARD: card title fragment | DESCRIPTION: full description text]`
+  (Use when the user asks to add or update the description of an existing card. Look at other cards on the same board for style reference if the user says "same as other cards". The description ends at the closing ].)
 - Set Nudge Interval: `[ACTION: SET_NUDGE_INTERVAL | TASK: task name fragment | INTERVAL: minutes]`
   (Use when the user requests a specific nudge frequency for a task, e.g. "remind me about the deploy every 20 minutes")
 - Move Card: `[ACTION: MOVE_CARD | CARD: title fragment | LIST: destination list | BOARD: board name (optional)]`
@@ -1594,12 +1596,10 @@ async def chat_with_context(
 						return f". Note: {p.name}'s birthday is {tag}." if tag else ""
 
 					inner = [f"- {p.name} ({p.relationship}){_birthday_tag(p)}" for p in people if p.circle_type == "inner"]
-					close = [f"- {p.name} ({p.relationship}){_birthday_tag(p)}" for p in people if p.circle_type == "close"]
 					outer = [f"- {p.name} ({p.relationship})" for p in people if p.circle_type == "outer"]
 
 					context = ""
 					if inner: context += "INNER CIRCLE:\n" + "\n".join(inner) + "\n"
-					if close: context += "CLOSE CIRCLE:\n" + "\n".join(close) + "\n"
 					if outer: context += "OUTER CIRCLE (acquaintances -- mention only when directly relevant):\n" + "\n".join(outer)
 					return context[:2000], identity_name, user_profile
 				return "", identity_name, {}
@@ -1993,11 +1993,9 @@ async def chat_stream_with_context(
 						tag = get_birthday_proximity(p.birthday)
 						return f". Note: {p.name}'s birthday is {tag}." if tag else ""
 					inner = [f"- {p.name} ({p.relationship}){_birthday_tag(p)}" for p in people if p.circle_type == "inner"]
-					close = [f"- {p.name} ({p.relationship}){_birthday_tag(p)}" for p in people if p.circle_type == "close"]
 					outer = [f"- {p.name} ({p.relationship})" for p in people if p.circle_type == "outer"]
 					context = ""
 					if inner: context += "INNER CIRCLE:\n" + "\n".join(inner) + "\n"
-					if close: context += "CLOSE CIRCLE:\n" + "\n".join(close) + "\n"
 					if outer: context += "OUTER CIRCLE (acquaintances -- mention only when directly relevant):\n" + "\n".join(outer)
 					return context[:2000], identity_name, user_profile
 				return "", identity_name, {}
