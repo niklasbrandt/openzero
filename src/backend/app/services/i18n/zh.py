@@ -434,4 +434,10 @@ translations: dict[str, str] = {
         'intent_router_delete_list_not_found': "无法删除列表「{list}」——列表未找到。",
         'intent_router_delete_card_task_success': "已从卡片「{card}」删除任务「{task}」。",
         'intent_router_delete_card_task_not_found': "无法从卡片「{card}」删除任务「{task}」——未找到。",
+        'intent_router_create_board_success': "看板「{board}」已创建。",
+        'intent_router_create_board_not_found': "无法创建看板「{board}」——项目未找到。",
+        'intent_router_rename_board_success': "看板「{board}」已重命名为「{new_name}」。",
+        'intent_router_rename_board_not_found': "无法重命名看板「{board}」——看板未找到。",
+        'intent_router_delete_board_success': "看板「{board}」已删除。",
+        'intent_router_delete_board_not_found': "无法删除看板「{board}」——看板未找到。",
 }
