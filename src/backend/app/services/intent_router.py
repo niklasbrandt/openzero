@@ -13,7 +13,7 @@ Public API:
 	dispatch_structural_intent(intent, lang) -> str
 
 A StructuralIntent has:
-	verb        — one of MOVE_BOARD, MOVE_CARD, RENAME_CARD, ARCHIVE_CARD, MARK_DONE
+	verb        — one of MOVE_BOARD, MOVE_CARD, RENAME_CARD, RENAME_LIST, ARCHIVE_CARD, MARK_DONE
 	entities    — dict with verb-specific keys (board, target_project, card, list, ...)
 	raw_text    — original user text (truncated for logging safety)
 	confidence  — 1.0 exact match, 0.9 substring, lower for entity-only fallbacks
@@ -75,6 +75,10 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 			re.compile(r'\brename\s+(?:the\s+)?(?:card\s+)?(.{1,80}?)\s+to\s+(.{1,80})', re.IGNORECASE),
 			re.compile(r'\b(?:change|update)\s+(?:the\s+)?(?:card\s+)?(.{1,80}?)\s+(?:name|title)\s+to\s+(.{1,80})', re.IGNORECASE),
 		],
+		"rename_list": [
+			re.compile(r'\brename\s+(?:the\s+)?(?:list|column)\s+(.{1,80}?)\s+to\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:change|update)\s+(?:the\s+)?(?:list|column)\s+(?:name\s+)?(.{1,80}?)\s+to\s+(.{1,80})', re.IGNORECASE),
+		],
 		"create_card": [
 			# "add/create/new card|task <title> to|on|in <list-or-board>"
 			re.compile(r'\b(?:add|create|new|make)\s+(?:a\s+|the\s+)?(?:card|task|todo|to-do)\s+(.{1,120}?)(?:\s+(?:to|on|in|under)\s+(.{1,80}))?$', re.IGNORECASE),
@@ -113,6 +117,10 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 			re.compile(r'\b(?:umbenenn(?:en?|t)?)\s+(?:die\s+)?(?:karte\s+)?(.{1,80}?)\s+(?:in|zu|nach)\s+(.{1,80})', re.IGNORECASE),
 			re.compile(r'\b(?:benenn[e]?)\s+(?:die\s+)?(?:karte\s+)?(.{1,80}?)\s+(?:in|zu|nach)\s+(.{1,80}?)(?:\s+um)?$', re.IGNORECASE),
 		],
+		"rename_list": [
+			re.compile(r'\b(?:umbenenn(?:en?|t)?)\s+(?:die\s+)?(?:liste|spalte|kolumne)\s+(.{1,80}?)\s+(?:in|zu|nach)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:benenn[e]?)\s+(?:die\s+)?(?:liste|spalte|kolumne)\s+(.{1,80}?)\s+(?:in|zu|nach)\s+(.{1,80}?)(?:\s+um)?$', re.IGNORECASE),
+		],
 		"create_card": [
 			re.compile(r'\b(?:erstell[e]?|f[üu]g[e]?\s+hinzu|leg[e]?\s+an|neu[e]?)\s+(?:eine\s+)?(?:karte|aufgabe|task|todo)\s+(.{1,120}?)(?:\s+(?:zu|in|auf|unter)\s+(.{1,80}))?$', re.IGNORECASE),
 			re.compile(r'\b(?:f[üu]g[e]?)\s+(.{1,120}?)\s+(?:zu|in|auf)\s+(?:meine[rn]?\s+|der\s+|die\s+|das\s+)?(.{1,80}?)(?:\s+(?:hinzu|liste|board))?$', re.IGNORECASE),
@@ -143,6 +151,9 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 		],
 		"rename_card": [
 			re.compile(r'\b(?:renombra[r]?|cambia[r]?\s+(?:el\s+)?nombre)\s+(?:la|el)?\s*(?:tarjeta\s+)?(.{1,80}?)\s+(?:a|por|como)\s+(.{1,80})', re.IGNORECASE),
+		],
+		"rename_list": [
+			re.compile(r'\b(?:renombra[r]?|cambia[r]?\s+(?:el\s+)?nombre)\s+(?:la|el)?\s*(?:lista|columna)\s+(.{1,80}?)\s+(?:a|por|como)\s+(.{1,80})', re.IGNORECASE),
 		],
 		"create_card": [
 			re.compile(r'\b(?:agrega[r]?|añade[r]?|crea[r]?|nueva?)\s+(?:una?\s+)?(?:tarjeta|tarea|todo)\s+(.{1,120}?)(?:\s+(?:a|en)\s+(.{1,80}))?$', re.IGNORECASE),
@@ -175,6 +186,9 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 		"rename_card": [
 			re.compile(r'\brenomm(?:e|er|ez)\s+(?:la|le)?\s*(?:carte\s+)?(.{1,80}?)\s+(?:en|par)\s+(.{1,80})', re.IGNORECASE),
 		],
+		"rename_list": [
+			re.compile(r'\brenomm(?:e|er|ez)\s+(?:la|le)?\s*(?:liste|colonne)\s+(.{1,80}?)\s+(?:en|par)\s+(.{1,80})', re.IGNORECASE),
+		],
 		"create_card": [
 			re.compile(r'\b(?:ajoute[rz]?|créer?|crée|nouvelle?)\s+(?:une?\s+)?(?:carte|tâche|tache|todo)\s+(.{1,120}?)(?:\s+(?:vers|à|dans|en|sur)\s+(.{1,80}))?$', re.IGNORECASE),
 			re.compile(r'\b(?:ajoute[rz]?)\s+(.{1,120}?)\s+(?:à|dans|en|sur)\s+(?:ma\s+|mon\s+|la\s+|le\s+|les\s+)?(.{1,80}?)(?:\s+(?:liste|tableau))?$', re.IGNORECASE),
@@ -204,6 +218,9 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 		"rename_card": [
 			re.compile(r'\b(?:renomear?|renomeie)\s+(?:o|a)?\s*(?:cartão|cartao\s+)?(.{1,80}?)\s+(?:para|como)\s+(.{1,80})', re.IGNORECASE),
 		],
+		"rename_list": [
+			re.compile(r'\b(?:renomear?|renomeie)\s+(?:o|a)?\s*(?:lista|coluna)\s+(.{1,80}?)\s+(?:para|como)\s+(.{1,80})', re.IGNORECASE),
+		],
 		"create_card": [
 			re.compile(r'\b(?:adicionar?|adicione|criar?|crie|nova?)\s+(?:um[a]?\s+)?(?:cartão|cartao|tarefa|todo)\s+(.{1,120}?)(?:\s+(?:para|em|n[ao])\s+(.{1,80}))?$', re.IGNORECASE),
 			re.compile(r'\b(?:adicionar?|adicione)\s+(.{1,120}?)\s+(?:para|em|n[ao])\s+(?:minha?\s+|meu\s+|a\s+|o\s+)?(.{1,80}?)(?:\s+(?:lista|quadro))?$', re.IGNORECASE),
@@ -232,6 +249,9 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 		],
 		"rename_card": [
 			re.compile(r'(?:переименуй|переименовать)\s+(?:карточку\s+)?(.{1,80}?)\s+(?:в|на)\s+(.{1,80})', re.IGNORECASE),
+		],
+		"rename_list": [
+			re.compile(r'(?:переименуй|переименовать)\s+(?:список|колонку|столбец)\s+(.{1,80}?)\s+(?:в|на)\s+(.{1,80})', re.IGNORECASE),
 		],
 		"create_card": [
 			re.compile(r'(?:добавь?|создай?|создать|новую?)\s+(?:карточку?|задачу?)?\s+(.{1,120}?)(?:\s+(?:в|на|к)\s+(.{1,80}))?$', re.IGNORECASE),
@@ -263,6 +283,10 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 			re.compile(r'(.{1,80}?)(?:カード|タスク)?の名前を(.{1,80}?)(?:に|へ)?(?:変更|変え|名前変更)'),
 			re.compile(r'(.{1,80}?)を(.{1,80}?)に(?:名前変更|リネーム)'),
 		],
+		"rename_list": [
+			re.compile(r'(?:リスト|列)(.{1,80}?)の名前を(.{1,80}?)(?:に|へ)?(?:変更|変え)'),
+			re.compile(r'(?:リスト|列)(.{1,80}?)を(.{1,80}?)に(?:名前変更|リネーム)'),
+		],
 		"create_card": [
 			re.compile(r'(.{1,120}?)(?:カード|タスク|todo)(?:を)?(?:作成|追加)(?:して)?(?:(.{1,80})に)?'),
 			re.compile(r'(.{1,120}?)を(.{1,80}?)(?:に|へ)追加'),
@@ -292,6 +316,10 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 			re.compile(r'(?:把|将|將)?(.{1,80}?)(?:卡片|卡)?(?:重命名|改名)为(.{1,80})'),
 			re.compile(r'(?:重命名|改名)(.{1,80}?)(?:为|到)(.{1,80})'),
 		],
+		"rename_list": [
+			re.compile(r'(?:把|将|將)?(.{1,80}?)(?:列表|清单|栅)?(?:重命名|改名)为(.{1,80})'),
+			re.compile(r'(?:将|把)?(?:列表|清单|栅)(.{1,80}?)(?:改名为|重命名为)(.{1,80})'),
+		],
 		"create_card": [
 			re.compile(r'(?:添加|创建|新建|增加)(.{1,120}?)(?:卡片|任务|task)(?:到|至)?(.{1,80})?'),
 			re.compile(r'(?:把|将)(.{1,120}?)(?:加入|进|添加到)(.{1,80})'),
@@ -319,6 +347,9 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 			re.compile(r'(.{1,80}?)\s*카드(?:을|를)?\s*(.{1,80}?)(?:로|으로|에)\s*(?:이동|옮)'),
 		],		"rename_card": [
 			re.compile(r'(.{1,80}?)\s*(?:카드)?\s*이름(?:을|를)?\s*(.{1,80}?)(?:으로|로)\s*(?:변경|바꿰|바교)'),
+		],
+		"rename_list": [
+			re.compile(r'(.{1,80}?)\s*(?:리스트|목록|열)?\s*이름(?:을|를)?\s*(.{1,80}?)(?:으로|로)\s*(?:변경|바꿰|바교)'),
 		],		"create_card": [
 			re.compile(r'(?:카드|태스크|todo)\s*(?:를|을)?\s*(.{1,120}?)(?:\s*(?:에|에게|으로)\s*(.{1,80}))?$'),
 			re.compile(r'(.{1,120}?)(?:카드|태스크)\s*(?:추가|등록)'),
@@ -351,6 +382,9 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 			re.compile(r'(.{1,80}?)\s*(?:कार्ड)?\s*का\s*नाम\s+(.{1,80}?)\s*(?:करें|बदलें|रखें)'),
 			re.compile(r'(?:रीनेम|नाम\s+बदलें)\s+(?:कार्ड\s+)?(.{1,80}?)\s+(?:को|में)\s+(.{1,80})'),
 		],
+		"rename_list": [
+			re.compile(r'(?:सूची|लिस्ट|कॉलम)\s+(.{1,80}?)\s+का\s+नाम\s+(.{1,80}?)\s*(?:करें|बदलें|रखें)'),
+		],
 		"create_card": [
 			re.compile(r'(?:जोड़ें|जोड़ो|बनाओ|बनाएं|नया)\s+(?:कार्ड|कार्य)?\s+(.{1,120}?)(?:\s+(?:में|पर)\s+(.{1,80}))?$', re.IGNORECASE),
 			re.compile(r'(.{1,120}?)\s+को\s+(?:जोड़ें|जोड़ो)\s+(.{1,80})'),
@@ -380,6 +414,10 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 		"rename_card": [
 			re.compile(r'(?:أعد|اعد)\s+تسمية\s+(?:البطاقة\s+)?(.{1,80}?)\s+(?:إلى|الى)\s+(.{1,80})'),
 			re.compile(r'(?:غيّر|غير)\s+(?:اسم\s+)?(?:البطاقة\s+)?(.{1,80}?)\s+(?:إلى|الى)\s+(.{1,80})'),
+		],
+		"rename_list": [
+			re.compile(r'(?:أعد|اعد)\s+تسمية\s+(?:القائمة\s+)?(.{1,80}?)\s+(?:إلى|الى)\s+(.{1,80})'),
+			re.compile(r'(?:غيّر|غير)\s+(?:اسم\s+)?(?:القائمة\s+)?(.{1,80}?)\s+(?:إلى|الى)\s+(.{1,80})'),
 		],
 		"create_card": [
 			re.compile(r'(?:أضف|اضف|أنشئ|انشئ)\s+(?:بطاقة?|مهمة?)?\s*(.{1,120}?)(?:\s+(?:إلى|الى|في)\s+(.{1,80}))?$'),
@@ -697,8 +735,24 @@ async def classify_structural_intent(text: str, lang: str) -> Optional[Structura
 				confidence=0.9,
 			)
 
+	# ── RENAME_LIST ───────────────────────────────────────────────────────
+	# Checked before RENAME_CARD: "rename list X to Y" is more specific.
+	for pat in _patterns_for("rename_list", lang):
+		m = pat.search(snippet)
+		if m:
+			list_q = _strip_filler(m.group(1)) if m.lastindex and m.lastindex >= 1 else ""
+			new_name_q = _strip_filler(m.group(2)) if m.lastindex and m.lastindex >= 2 and m.group(2) else ""
+			if not list_q or not new_name_q:
+				continue
+			return StructuralIntent(
+				verb="RENAME_LIST",
+				entities={"list_fragment": list_q, "new_name": new_name_q},
+				raw_text=snippet,
+				confidence=0.85,
+			)
+
 	# ── RENAME_CARD ───────────────────────────────────────────────────────
-	# Checked before CREATE/MOVE since "rename X to Y" is unambiguous.
+	# Checked after RENAME_LIST since generic "rename X to Y" would shadow it.
 	for pat in _patterns_for("rename_card", lang):
 		m = pat.search(snippet)
 		if m:
@@ -759,7 +813,7 @@ async def dispatch_structural_intent(intent: StructuralIntent, lang: str) -> str
 	from app.services.translations import get_translations
 	from app.services.agent_actions import (
 		execute_move_board, execute_move_card, execute_archive_card, execute_mark_done,
-		execute_create_card, execute_create_list, execute_rename_card,
+		execute_create_card, execute_create_list, execute_rename_card, execute_rename_list,
 	)
 	t = get_translations(lang)
 
@@ -859,6 +913,18 @@ async def dispatch_structural_intent(intent: StructuralIntent, lang: str) -> str
 			card=ent["card_fragment"], new_name=ent["new_name"],
 		)
 		audit = f"[AUDIT:rename_card:{ent['card_fragment']}|new_name={ent['new_name']}]"
+		return f"{msg}\n{audit}"
+
+	if verb == "RENAME_LIST":
+		raw = await execute_rename_list(ent["list_fragment"], ent["new_name"], lang)
+		if raw.startswith("\u26a0"):
+			return raw
+		msg = _localise(
+			"intent_router_rename_list_success",
+			"List '{list}' renamed to '{new_name}'.",
+			list=ent["list_fragment"], new_name=ent["new_name"],
+		)
+		audit = f"[AUDIT:rename_list:{ent['list_fragment']}|new_name={ent['new_name']}]"
 		return f"{msg}\n{audit}"
 
 	# Unknown verb — defensive fallback, should not be reachable.
