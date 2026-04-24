@@ -510,3 +510,247 @@ def test_rename_list_dispatch_returns_warning_on_failure():
 		)
 	assert result.startswith("\u26a0")
 
+
+# ---------------------------------------------------------------------------
+# SET_CARD_DESC
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("text,lang", [
+	("set description of Buy groceries to Monthly shopping list", "en"),
+	("update description of Meeting notes to Quarterly review", "en"),
+	("change the description of Sprint card to Fix bug 42", "en"),
+])
+def test_set_card_desc_pattern_classifies(text, lang):
+	"""SET_CARD_DESC verb is classified from natural-language inputs."""
+	result = asyncio.get_event_loop().run_until_complete(ir.classify_structural_intent(text, lang))
+	assert result is not None, f"[{lang}] classified as None for: {text!r}"
+	assert result.verb == "SET_CARD_DESC", f"[{lang}] expected SET_CARD_DESC, got {result.verb!r}"
+
+
+def test_set_card_desc_dispatch_calls_executor():
+	"""dispatch_structural_intent routes SET_CARD_DESC correctly."""
+	from app.services.intent_router import StructuralIntent, dispatch_structural_intent
+	intent = StructuralIntent(
+		verb="SET_CARD_DESC",
+		entities={"card_fragment": "Buy groceries", "description": "Monthly shopping list"},
+		raw_text="set description of Buy groceries to Monthly shopping list",
+		confidence=0.85,
+	)
+	with patch("app.services.agent_actions.execute_set_card_desc", new=AsyncMock(return_value="Description of 'Buy groceries' updated.")):
+		result = asyncio.get_event_loop().run_until_complete(
+			dispatch_structural_intent(intent, "en")
+		)
+	assert "Buy groceries" in result
+	assert "[AUDIT:set_card_desc:" in result
+
+
+def test_set_card_desc_dispatch_returns_warning_on_failure():
+	"""dispatch returns warning string when SET_CARD_DESC executor signals failure."""
+	from app.services.intent_router import StructuralIntent, dispatch_structural_intent
+	intent = StructuralIntent(
+		verb="SET_CARD_DESC",
+		entities={"card_fragment": "nonexistent", "description": "some text"},
+		raw_text="set description of nonexistent to some text",
+		confidence=0.85,
+	)
+	with patch("app.services.agent_actions.execute_set_card_desc", new=AsyncMock(return_value="\u26a0 Could not update description of 'nonexistent' \u2014 card not found.")):
+		result = asyncio.get_event_loop().run_until_complete(
+			dispatch_structural_intent(intent, "en")
+		)
+	assert result.startswith("\u26a0")
+
+
+# ---------------------------------------------------------------------------
+# ADD_CARD_TASK
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("text,lang", [
+	("add task Buy milk to card Shopping", "en"),
+	("add a task Call dentist to card Health", "en"),
+	("create task Write report in card Work", "en"),
+])
+def test_add_card_task_pattern_classifies(text, lang):
+	"""ADD_CARD_TASK verb is classified from natural-language inputs."""
+	result = asyncio.get_event_loop().run_until_complete(ir.classify_structural_intent(text, lang))
+	assert result is not None, f"[{lang}] classified as None for: {text!r}"
+	assert result.verb == "ADD_CARD_TASK", f"[{lang}] expected ADD_CARD_TASK, got {result.verb!r}"
+
+
+def test_add_card_task_dispatch_calls_executor():
+	"""dispatch_structural_intent routes ADD_CARD_TASK correctly."""
+	from app.services.intent_router import StructuralIntent, dispatch_structural_intent
+	intent = StructuralIntent(
+		verb="ADD_CARD_TASK",
+		entities={"card_fragment": "Shopping", "task_name": "Buy milk"},
+		raw_text="add task Buy milk to card Shopping",
+		confidence=0.85,
+	)
+	with patch("app.services.agent_actions.execute_add_card_task", new=AsyncMock(return_value="Task 'Buy milk' added to card 'Shopping'.")):
+		result = asyncio.get_event_loop().run_until_complete(
+			dispatch_structural_intent(intent, "en")
+		)
+	assert "Shopping" in result
+	assert "[AUDIT:add_card_task:" in result
+
+
+def test_add_card_task_dispatch_returns_warning_on_failure():
+	"""dispatch returns warning string when ADD_CARD_TASK executor signals failure."""
+	from app.services.intent_router import StructuralIntent, dispatch_structural_intent
+	intent = StructuralIntent(
+		verb="ADD_CARD_TASK",
+		entities={"card_fragment": "nonexistent", "task_name": "Buy milk"},
+		raw_text="add task Buy milk to card nonexistent",
+		confidence=0.85,
+	)
+	with patch("app.services.agent_actions.execute_add_card_task", new=AsyncMock(return_value="\u26a0 Could not add task to 'nonexistent' \u2014 card not found.")):
+		result = asyncio.get_event_loop().run_until_complete(
+			dispatch_structural_intent(intent, "en")
+		)
+	assert result.startswith("\u26a0")
+
+
+# ---------------------------------------------------------------------------
+# CHECK_CARD_TASK
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("text,lang", [
+	("check off task Buy milk in card Shopping", "en"),
+	("mark task Buy milk in card Shopping as done", "en"),
+	("complete task Write report in card Work", "en"),
+])
+def test_check_card_task_pattern_classifies(text, lang):
+	"""CHECK_CARD_TASK verb is classified from natural-language inputs."""
+	result = asyncio.get_event_loop().run_until_complete(ir.classify_structural_intent(text, lang))
+	assert result is not None, f"[{lang}] classified as None for: {text!r}"
+	assert result.verb == "CHECK_CARD_TASK", f"[{lang}] expected CHECK_CARD_TASK, got {result.verb!r}"
+
+
+def test_check_card_task_dispatch_calls_executor():
+	"""dispatch_structural_intent routes CHECK_CARD_TASK correctly."""
+	from app.services.intent_router import StructuralIntent, dispatch_structural_intent
+	intent = StructuralIntent(
+		verb="CHECK_CARD_TASK",
+		entities={"card_fragment": "Shopping", "task_fragment": "Buy milk"},
+		raw_text="check off task Buy milk in card Shopping",
+		confidence=0.85,
+	)
+	with patch("app.services.agent_actions.execute_check_card_task", new=AsyncMock(return_value="Task 'Buy milk' in card 'Shopping' marked as done.")):
+		result = asyncio.get_event_loop().run_until_complete(
+			dispatch_structural_intent(intent, "en")
+		)
+	assert "Shopping" in result
+	assert "[AUDIT:check_card_task:" in result
+
+
+def test_check_card_task_dispatch_returns_warning_on_failure():
+	"""dispatch returns warning string when CHECK_CARD_TASK executor signals failure."""
+	from app.services.intent_router import StructuralIntent, dispatch_structural_intent
+	intent = StructuralIntent(
+		verb="CHECK_CARD_TASK",
+		entities={"card_fragment": "Shopping", "task_fragment": "nonexistent task"},
+		raw_text="check off task nonexistent task in card Shopping",
+		confidence=0.85,
+	)
+	with patch("app.services.agent_actions.execute_check_card_task", new=AsyncMock(return_value="\u26a0 Could not check off task 'nonexistent task' in card 'Shopping' \u2014 not found.")):
+		result = asyncio.get_event_loop().run_until_complete(
+			dispatch_structural_intent(intent, "en")
+		)
+	assert result.startswith("\u26a0")
+
+
+# ---------------------------------------------------------------------------
+# UNCHECK_CARD_TASK
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("text,lang", [
+	("uncheck task Buy milk in card Shopping", "en"),
+	("mark task Buy milk in card Shopping as not done", "en"),
+	("reopen task Write report in card Work", "en"),
+])
+def test_uncheck_card_task_pattern_classifies(text, lang):
+	"""UNCHECK_CARD_TASK verb is classified from natural-language inputs."""
+	result = asyncio.get_event_loop().run_until_complete(ir.classify_structural_intent(text, lang))
+	assert result is not None, f"[{lang}] classified as None for: {text!r}"
+	assert result.verb == "UNCHECK_CARD_TASK", f"[{lang}] expected UNCHECK_CARD_TASK, got {result.verb!r}"
+
+
+def test_uncheck_card_task_dispatch_calls_executor():
+	"""dispatch_structural_intent routes UNCHECK_CARD_TASK correctly."""
+	from app.services.intent_router import StructuralIntent, dispatch_structural_intent
+	intent = StructuralIntent(
+		verb="UNCHECK_CARD_TASK",
+		entities={"card_fragment": "Shopping", "task_fragment": "Buy milk"},
+		raw_text="uncheck task Buy milk in card Shopping",
+		confidence=0.85,
+	)
+	with patch("app.services.agent_actions.execute_uncheck_card_task", new=AsyncMock(return_value="Task 'Buy milk' in card 'Shopping' marked as not done.")):
+		result = asyncio.get_event_loop().run_until_complete(
+			dispatch_structural_intent(intent, "en")
+		)
+	assert "Shopping" in result
+	assert "[AUDIT:uncheck_card_task:" in result
+
+
+def test_uncheck_card_task_dispatch_returns_warning_on_failure():
+	"""dispatch returns warning string when UNCHECK_CARD_TASK executor signals failure."""
+	from app.services.intent_router import StructuralIntent, dispatch_structural_intent
+	intent = StructuralIntent(
+		verb="UNCHECK_CARD_TASK",
+		entities={"card_fragment": "Shopping", "task_fragment": "nonexistent task"},
+		raw_text="uncheck task nonexistent task in card Shopping",
+		confidence=0.85,
+	)
+	with patch("app.services.agent_actions.execute_uncheck_card_task", new=AsyncMock(return_value="\u26a0 Could not uncheck task 'nonexistent task' in card 'Shopping' \u2014 not found.")):
+		result = asyncio.get_event_loop().run_until_complete(
+			dispatch_structural_intent(intent, "en")
+		)
+	assert result.startswith("\u26a0")
+
+
+# ---------------------------------------------------------------------------
+# RENAME_CARD_TASK
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("text,lang", [
+	("rename task Buy milk in card Shopping to Buy oat milk", "en"),
+	("rename task Write report in card Work to Finalize report", "en"),
+])
+def test_rename_card_task_pattern_classifies(text, lang):
+	"""RENAME_CARD_TASK verb is classified from natural-language inputs."""
+	result = asyncio.get_event_loop().run_until_complete(ir.classify_structural_intent(text, lang))
+	assert result is not None, f"[{lang}] classified as None for: {text!r}"
+	assert result.verb == "RENAME_CARD_TASK", f"[{lang}] expected RENAME_CARD_TASK, got {result.verb!r}"
+
+
+def test_rename_card_task_dispatch_calls_executor():
+	"""dispatch_structural_intent routes RENAME_CARD_TASK correctly."""
+	from app.services.intent_router import StructuralIntent, dispatch_structural_intent
+	intent = StructuralIntent(
+		verb="RENAME_CARD_TASK",
+		entities={"card_fragment": "Shopping", "task_fragment": "Buy milk", "new_name": "Buy oat milk"},
+		raw_text="rename task Buy milk in card Shopping to Buy oat milk",
+		confidence=0.85,
+	)
+	with patch("app.services.agent_actions.execute_rename_card_task", new=AsyncMock(return_value="Task 'Buy milk' in card 'Shopping' renamed to 'Buy oat milk'.")):
+		result = asyncio.get_event_loop().run_until_complete(
+			dispatch_structural_intent(intent, "en")
+		)
+	assert "Shopping" in result
+	assert "[AUDIT:rename_card_task:" in result
+
+
+def test_rename_card_task_dispatch_returns_warning_on_failure():
+	"""dispatch returns warning string when RENAME_CARD_TASK executor signals failure."""
+	from app.services.intent_router import StructuralIntent, dispatch_structural_intent
+	intent = StructuralIntent(
+		verb="RENAME_CARD_TASK",
+		entities={"card_fragment": "Shopping", "task_fragment": "nonexistent", "new_name": "Buy oat milk"},
+		raw_text="rename task nonexistent in card Shopping to Buy oat milk",
+		confidence=0.85,
+	)
+	with patch("app.services.agent_actions.execute_rename_card_task", new=AsyncMock(return_value="\u26a0 Could not rename task 'nonexistent' in card 'Shopping' \u2014 not found.")):
+		result = asyncio.get_event_loop().run_until_complete(
+			dispatch_structural_intent(intent, "en")
+		)
+	assert result.startswith("\u26a0")
+

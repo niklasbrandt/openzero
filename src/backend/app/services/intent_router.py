@@ -13,7 +13,9 @@ Public API:
 	dispatch_structural_intent(intent, lang) -> str
 
 A StructuralIntent has:
-	verb        — one of MOVE_BOARD, MOVE_CARD, RENAME_CARD, RENAME_LIST, ARCHIVE_CARD, MARK_DONE
+	verb        — one of MOVE_BOARD, MOVE_CARD, RENAME_CARD, RENAME_LIST, RENAME_CARD_TASK,
+	            SET_CARD_DESC, ADD_CARD_TASK, CHECK_CARD_TASK, UNCHECK_CARD_TASK,
+	            ARCHIVE_CARD, MARK_DONE
 	entities    — dict with verb-specific keys (board, target_project, card, list, ...)
 	raw_text    — original user text (truncated for logging safety)
 	confidence  — 1.0 exact match, 0.9 substring, lower for entity-only fallbacks
@@ -98,6 +100,24 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 			re.compile(r'\bmark\s+(?:the\s+)?(?:card\s+)?(.{1,80}?)\s+(?:as\s+)?done\b', re.IGNORECASE),
 			re.compile(r'\b(?:set|move)\s+(?:the\s+)?(?:card\s+)?(.{1,80}?)\s+to\s+done\b', re.IGNORECASE),
 		],
+		"set_card_desc": [
+			re.compile(r'\b(?:set|update|change)\s+(?:the\s+)?desc(?:ription)?\s+(?:of\s+)?(?:the\s+)?(?:card\s+)?(.{1,80}?)\s+to\s+(.{1,200})', re.IGNORECASE),
+			re.compile(r'\bdescribe\s+(?:the\s+)?(?:card\s+)?(.{1,80}?)\s+as\s+(.{1,200})', re.IGNORECASE),
+		],
+		"add_card_task": [
+			re.compile(r'\b(?:add|create)\s+(?:a\s+)?(?:task|item|todo|checklist\s+item)\s+(.{1,120}?)\s+(?:to|on|in)\s+(?:the\s+)?card\s+(.{1,80})', re.IGNORECASE),
+		],
+		"rename_card_task": [
+			re.compile(r'\brename\s+(?:the\s+)?(?:task|item|todo)\s+(.{1,80}?)\s+(?:in|on)\s+(?:the\s+)?(?:card\s+)?(.{1,80}?)\s+to\s+(.{1,80})', re.IGNORECASE),
+		],
+		"check_card_task": [
+			re.compile(r'\b(?:check(?:\s+off)?|tick(?:\s+off)?|complete)\s+(?:the\s+)?(?:task|item|todo)\s+(.{1,80}?)\s+(?:in|on|of)\s+(?:the\s+)?(?:card\s+)?(.{1,80})', re.IGNORECASE),
+			re.compile(r'\bmark\s+(?:the\s+)?(?:task|item|todo)\s+(.{1,80}?)\s+(?:in|on|of)\s+(?:the\s+)?(?:card\s+)?(.{1,80}?)\s+(?:as\s+)?(?!not\s)(?:done|complete|finished)\b', re.IGNORECASE),
+		],
+		"uncheck_card_task": [
+			re.compile(r'\b(?:uncheck|untick|unmark|reopen)\s+(?:the\s+)?(?:task|item|todo)\s+(.{1,80}?)\s+(?:in|on|of)\s+(?:the\s+)?(?:card\s+)?(.{1,80})', re.IGNORECASE),
+			re.compile(r'\bmark\s+(?:the\s+)?(?:task|item|todo)\s+(.{1,80}?)\s+(?:in|on|of)\s+(?:the\s+)?(?:card\s+)?(.{1,80}?)\s+(?:as\s+)?(?:not\s+done|undone|incomplete)\b', re.IGNORECASE),
+		],
 		"hedges": [
 			re.compile(r'\b(?:thinking\s+about|considering|maybe|might|should\s+i|could\s+i|how\s+(?:do|to|can)\s+i|what\s+(?:does|is|happens)|why\s+(?:would|should))\b', re.IGNORECASE),
 			re.compile(r"\b(?:was|were)\s+(?:thinking|planning|considering)\b", re.IGNORECASE),
@@ -135,6 +155,23 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 		"mark_done": [
 			re.compile(r'\bmarkier[e]?\s+(?:die\s+)?(?:karte\s+)?(.{1,80}?)\s+(?:als\s+)?(?:erledigt|fertig)\b', re.IGNORECASE),
 		],
+		"set_card_desc": [
+			re.compile(r'\b(?:setze?|[\xc3\xa4a]ndere?|aktualisiere?)\s+(?:die\s+)?Beschreibung\s+(?:von\s+)?(?:der\s+)?(?:Karte\s+)?(.{1,80}?)\s+(?:auf|zu|in)\s+(.{1,200})', re.IGNORECASE),
+			re.compile(r'\bbeschreibe?\s+(?:die\s+)?(?:Karte\s+)?(.{1,80}?)\s+als\s+(.{1,200})', re.IGNORECASE),
+		],
+		"add_card_task": [
+			re.compile(r'\bf[\xfc u]ge?\s+(?:eine[n]?\s+)?(?:Aufgabe|Todo|Eintrag)\s+(.{1,120}?)\s+zur?\s+(?:der\s+)?Karte\s+(.{1,80})\s+hinzu', re.IGNORECASE),
+		],
+		"rename_card_task": [
+			re.compile(r'\b(?:umbenenn(?:en?|t)?)\s+(?:die\s+)?(?:Aufgabe|Todo)\s+(.{1,80}?)\s+(?:in|bei|von)\s+(?:der\s+)?(?:Karte\s+)?(.{1,80}?)\s+(?:in|zu|nach)\s+(.{1,80})', re.IGNORECASE),
+		],
+		"check_card_task": [
+			re.compile(r'\b(?:abhake?n?|abhak[e]?|erledige?)\s+(?:die\s+)?(?:Aufgabe|Todo)\s+(.{1,80}?)\s+(?:in|bei|auf)\s+(?:der\s+)?(?:Karte\s+)?(.{1,80})', re.IGNORECASE),
+			re.compile(r'\bmarkiere?\s+(?:die\s+)?(?:Aufgabe|Todo)\s+(.{1,80}?)\s+(?:in|bei|auf)\s+(?:der\s+)?(?:Karte\s+)?(.{1,80}?)\s+als\s+(?:erledigt|fertig|abgeschlossen)\b', re.IGNORECASE),
+		],
+		"uncheck_card_task": [
+			re.compile(r'\bmarkiere?\s+(?:die\s+)?(?:Aufgabe|Todo)\s+(.{1,80}?)\s+(?:in|bei|auf)\s+(?:der\s+)?(?:Karte\s+)?(.{1,80}?)\s+als\s+(?:nicht\s+erledigt|offen|unerledigt)\b', re.IGNORECASE),
+		],
 		"hedges": [
 			re.compile(r'\b(?:vielleicht|eventuell|sollte\s+ich|könnte\s+ich|wie\s+(?:kann|soll)\s+ich|was\s+(?:bedeutet|ist|passiert)|warum)\b', re.IGNORECASE),
 			re.compile(r'\b(?:erkläre|erklär|sag\s+mir|beschreibe)\b', re.IGNORECASE),
@@ -167,6 +204,21 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 		],
 		"mark_done": [
 			re.compile(r'\bmarc(?:a|ar|o)\s+(?:la|el)?\s*(?:tarjeta\s+)?(.{1,80}?)\s+(?:como\s+)?(?:hech[oa]|complet(?:ad[oa]|o)|terminad[oa]|list[oa])\b', re.IGNORECASE),
+		],
+		"set_card_desc": [
+			re.compile(r'\b(?:establece[r]?|cambia[r]?|actualiza[r]?)\s+(?:la\s+)?descripci[o\xf3]n\s+(?:de\s+)?(?:la\s+)?(?:tarjeta\s+)?(.{1,80}?)\s+(?:a|como)\s+(.{1,200})', re.IGNORECASE),
+		],
+		"add_card_task": [
+			re.compile(r'\b(?:agrega[r]?|a[\xf1n]ade[r]?)\s+(?:una?\s+)?(?:tarea|elemento|todo)\s+(.{1,120}?)\s+(?:a|en)\s+(?:la\s+)?tarjeta\s+(.{1,80})', re.IGNORECASE),
+		],
+		"rename_card_task": [
+			re.compile(r'\brenombra[r]?\s+(?:la\s+)?(?:tarea|elemento)\s+(.{1,80}?)\s+en\s+(?:la\s+)?(?:tarjeta\s+)?(.{1,80}?)\s+(?:a|como)\s+(.{1,80})', re.IGNORECASE),
+		],
+		"check_card_task": [
+			re.compile(r'\b(?:marca[r]?|completa[r]?)\s+(?:la\s+)?(?:tarea|elemento)\s+(.{1,80}?)\s+(?:en|de)\s+(?:la\s+)?(?:tarjeta\s+)?(.{1,80})', re.IGNORECASE),
+		],
+		"uncheck_card_task": [
+			re.compile(r'\b(?:desmarca[r]?|quita[r]?\s+la\s+marca)\s+(?:la\s+)?(?:tarea|elemento)\s+(.{1,80}?)\s+(?:en|de)\s+(?:la\s+)?(?:tarjeta\s+)?(.{1,80})', re.IGNORECASE),
 		],
 		"hedges": [
 			re.compile(r'\b(?:estaba\s+pensando|tal\s+vez|quizás|quiza|debería|deberia|cómo|como\s+se|qué\s+significa|que\s+significa|por\s+qué|por\s+que)\b', re.IGNORECASE),
@@ -202,6 +254,21 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 		"mark_done": [
 			re.compile(r'\bmarqu(?:e|er|ez)\s+(?:la|le)?\s*(?:carte\s+)?(.{1,80}?)\s+(?:comme\s+)?(?:terminée?|finie?|faite?|achevée?)\b', re.IGNORECASE),
 		],
+		"set_card_desc": [
+			re.compile(r'\b(?:d[\xe9e]fini[rst]?|change[rz]?|mets?|modif(?:ie[rz]?))\s+(?:la\s+)?description\s+(?:de\s+)?(?:la\s+)?(?:carte\s+)?(.{1,80}?)\s+(?:[\xe0a]|en)\s+(.{1,200})', re.IGNORECASE),
+		],
+		"add_card_task": [
+			re.compile(r'\b(?:ajoute[rz]?|ajoute)\s+(?:une?\s+)?(?:t[\xe2a]che|[\xe9e]l[\xe9e]ment|todo)\s+(.{1,120}?)\s+(?:[\xe0a]|dans|sur)\s+(?:la\s+)?carte\s+(.{1,80})', re.IGNORECASE),
+		],
+		"rename_card_task": [
+			re.compile(r'\brennomm(?:ez?|er?)\s+(?:la\s+)?(?:t[\xe2a]che|[\xe9e]l[\xe9e]ment)\s+(.{1,80}?)\s+(?:dans|sur|de)\s+(?:la\s+)?(?:carte\s+)?(.{1,80}?)\s+en\s+(.{1,80})', re.IGNORECASE),
+		],
+		"check_card_task": [
+			re.compile(r'\b(?:coche[rz]?|compl[\xe9e]ter?|marqu[\xe9e]?e?\s+comme\s+termin[\xe9e])\s+(?:la\s+)?(?:t[\xe2a]che|[\xe9e]l[\xe9e]ment)\s+(.{1,80}?)\s+(?:dans|sur|de)\s+(?:la\s+)?(?:carte\s+)?(.{1,80})', re.IGNORECASE),
+		],
+		"uncheck_card_task": [
+			re.compile(r'\b(?:d[\xe9e]cochez?|d[\xe9e]coche[rz]?)\s+(?:la\s+)?(?:t[\xe2a]che|[\xe9e]l[\xe9e]ment)\s+(.{1,80}?)\s+(?:dans|sur|de)\s+(?:la\s+)?(?:carte\s+)?(.{1,80})', re.IGNORECASE),
+		],
 		"hedges": [
 			re.compile(r'\b(?:je\s+pensais|peut[- ]être|devrais[- ]je|pourrais[- ]je|comment\s+(?:est-ce|puis|dois)|qu(?:e|\u2019)est[- ]ce\s+que|pourquoi)\b', re.IGNORECASE),
 			re.compile(r'\b(?:explique|décris|decris|raconte)\b', re.IGNORECASE),
@@ -233,8 +300,21 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 		],
 		"mark_done": [
 			re.compile(r'\bmarc(?:a|ar|e)\s+(?:o|a)?\s*(?:cartão|cartao|carta\s+)?(.{1,80}?)\s+(?:como\s+)?(?:concluíd[oa]|concluido|feit[oa]|finalizad[oa]|pront[oa])\b', re.IGNORECASE),
+		],		"set_card_desc": [
+			re.compile(r'\b(?:definir?|mudar?|atualizar?)\s+(?:a\s+)?descri[c\xe7][a\xe3]o\s+(?:d[oa]\s+)?(?:cart[a\xe3]o\s+)?(.{1,80}?)\s+(?:para|como)\s+(.{1,200})', re.IGNORECASE),
 		],
-		"hedges": [
+		"add_card_task": [
+			re.compile(r'\b(?:adicionar?|adicione?)\s+(?:uma?\s+)?(?:tarefa|item|todo)\s+(.{1,120}?)\s+(?:ao?|no?|em)\s+cart[a\xe3]o\s+(.{1,80})', re.IGNORECASE),
+		],
+		"rename_card_task": [
+			re.compile(r'\brenomear?\s+(?:a\s+)?(?:tarefa|item)\s+(.{1,80}?)\s+(?:no?|em)\s+(?:cart[a\xe3]o\s+)?(.{1,80}?)\s+para\s+(.{1,80})', re.IGNORECASE),
+		],
+		"check_card_task": [
+			re.compile(r'\b(?:marcar?|completar?)\s+(?:a\s+)?(?:tarefa|item)\s+(.{1,80}?)\s+(?:no?|em)\s+(?:cart[a\xe3]o\s+)?(.{1,80}?)\s+(?:como\s+)?(?:conclu[i\xed]d[ao]|feit[ao]|pront[ao])\b', re.IGNORECASE),
+		],
+		"uncheck_card_task": [
+			re.compile(r'\b(?:desmarcar?|desmarque)\s+(?:a\s+)?(?:tarefa|item)\s+(.{1,80}?)\s+(?:no?|em)\s+(?:cart[a\xe3]o\s+)?(.{1,80})', re.IGNORECASE),
+		],		"hedges": [
 			re.compile(r'\b(?:estava\s+pensando|talvez|deveria|poderia|como\s+(?:eu|posso)|o\s+que\s+significa|por\s+que|por\s+quê)\b', re.IGNORECASE),
 			re.compile(r'\b(?:explica|explique|descreva|conte)\b', re.IGNORECASE),
 		],
@@ -265,6 +345,21 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 		],
 		"mark_done": [
 			re.compile(r'(?:отметь?|пометь?|отметить)\s+(?:карточку\s+)?(.{1,80}?)\s+(?:как\s+)?(?:готово|выполнено|завершено|сделано|выполнена)', re.IGNORECASE),
+		],
+		"set_card_desc": [
+			re.compile(r'(?:установить?|изменить?|обновить?)\s+описание\s+(?:карточки\s+)?(.{1,80}?)\s+(?:на|как)\s+(.{1,200})', re.IGNORECASE),
+		],
+		"add_card_task": [
+			re.compile(r'(?:добавить|добавь)\s+(?:задачу|задание|пункт)\s+(.{1,120}?)\s+(?:к|в|на)\s+(?:карточку?\s+)?(.{1,80})', re.IGNORECASE),
+		],
+		"rename_card_task": [
+			re.compile(r'(?:переименовать|переименуй)\s+(?:задачу|задание)\s+(.{1,80}?)\s+(?:в|на)\s+(?:карточке?\s+)?(.{1,80}?)\s+(?:в|на)\s+(.{1,80})', re.IGNORECASE),
+		],
+		"check_card_task": [
+			re.compile(r'(?:отметить?|отметь|выполнить?|выполни)\s+(?:задачу|задание)\s+(.{1,80}?)\s+(?:в|на)\s+(?:карточке?\s+)?(.{1,80})', re.IGNORECASE),
+		],
+		"uncheck_card_task": [
+			re.compile(r'(?:снять?\s+отметку|снять?\s+галочку)\s+(?:с\s+)?(?:задачи|задания)\s+(.{1,80}?)\s+(?:в|на)\s+(?:карточке?\s+)?(.{1,80})', re.IGNORECASE),
 		],
 		"hedges": [
 			re.compile(r'(?:может\s+быть|возможно|следует\s+ли|стоит\s+ли|как\s+(?:мне|можно)|что\s+значит|зачем|почему)', re.IGNORECASE),
@@ -298,6 +393,21 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 		],
 		"mark_done": [
 			re.compile(r'(.{1,80}?)(?:を)(?:完了|終了|済み)(?:に|として)?'),
+		],
+		"set_card_desc": [
+			re.compile(r'(.{1,80}?)(?:カード)?の説明を(.{1,200})(?:に|へ)?(?:設定|変更|更新)'),
+		],
+		"add_card_task": [
+			re.compile(r'(?:タスク|作業|課題)(.{1,80}?)をカード(.{1,80}?)に追加'),
+		],
+		"rename_card_task": [
+			re.compile(r'(?:タスク|作業)(.{1,80}?)をカード(.{1,80}?)で(.{1,80}?)(?:に|へ)リネーム'),
+		],
+		"check_card_task": [
+			re.compile(r'(?:タスク|作業|課題)(.{1,80}?)をカード(.{1,80}?)(?:で|の)?(?:完了|チェック|終了)'),
+		],
+		"uncheck_card_task": [
+			re.compile(r'(?:タスク|作業|課題)(.{1,80}?)をカード(.{1,80}?)(?:で|の)?(?:未完了|チェック外|開く)'),
 		],
 		"hedges": [
 			re.compile(r'(?:考えていた|かもしれない|べきか|どうやって|どうすれば|どういう意味|なぜ)'),
@@ -333,6 +443,21 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 		"mark_done": [
 			re.compile(r'(?:把|将|將)?(.{1,80}?)(?:标记|標記|标|標)?为(?:完成|已完成|已做|done)'),
 		],
+		"set_card_desc": [
+			re.compile(r'(?:设置|更改|更新)(?:卡片)?(.{1,80}?)的描述(?:为|到)(.{1,200})'),
+		],
+		"add_card_task": [
+			re.compile(r'添加(?:任务|事项)(.{1,80}?)(?:到|至)(?:卡片)?(.{1,80})'),
+		],
+		"rename_card_task": [
+			re.compile(r'将(?:任务|事项)(.{1,80}?)(?:在|于)(?:卡片)?(.{1,80}?)重命名为(.{1,80})'),
+		],
+		"check_card_task": [
+			re.compile(r'(?:勾选|完成|标记完成)(?:任务|事项)(.{1,80}?)(?:在|于)(?:卡片)?(.{1,80})'),
+		],
+		"uncheck_card_task": [
+			re.compile(r'(?:取消勾选|取消完成)(?:任务|事项)(.{1,80}?)(?:在|于)(?:卡片)?(.{1,80})'),
+		],
 		"hedges": [
 			re.compile(r'(?:在想|可能|也许|也許|应该|應該|怎么|怎麼|如何|什么意思|什麼意思|为什么|為什麼)'),
 			re.compile(r'(?:解释|解釋|说明|說明|告诉我|告訴我)'),
@@ -364,6 +489,21 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 		],
 		"mark_done": [
 			re.compile(r'(.{1,80}?)(?:을|를)?\s*(?:완료|끝)'),
+		],
+		"set_card_desc": [
+			re.compile(r'(.{1,80})카드의?\s*설명(?:을|를)?\s*(.{1,200})(?:으로|로)\s*(?:설정|변경)'),
+		],
+		"add_card_task": [
+			re.compile(r'(?:작업|태스크|할일)\s*(.{1,80}?)(?:을|를)?\s*카드\s*(.{1,80}?)에\s*추가'),
+		],
+		"rename_card_task": [
+			re.compile(r'(?:작업|태스크)\s*(.{1,80}?)(?:을|를)?\s*카드\s*(.{1,80}?)에서\s*(.{1,80}?)(?:으로|로)\s*이름\s*변경'),
+		],
+		"check_card_task": [
+			re.compile(r'(?:작업|태스크)\s*(.{1,80}?)(?:을|를)?\s*카드\s*(.{1,80}?)(?:에서|에서의)?\s*(?:완료|체크)'),
+		],
+		"uncheck_card_task": [
+			re.compile(r'(?:작업|태스크)\s*(.{1,80}?)(?:을|를)?\s*카드\s*(.{1,80}?)(?:에서)?\s*(?:미완료|체크\s*해제)'),
 		],
 		"hedges": [
 			re.compile(r'(?:생각하고\s+있었|혹시|할까요|어떻게|무슨\s+뜻|왜)'),
@@ -398,6 +538,21 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 		"mark_done": [
 			re.compile(r'(.{1,80}?)\s*को\s*(?:पूर्ण|पूरा|पूरा\s+हो\s+गया|समाप्त)'),
 		],
+		"set_card_desc": [
+			re.compile(r'(?:कार्ड)?\s*(.{1,80}?)\s*का\s+विवरण\s+(.{1,200})\s*(?:करें|बदलें|सेट\s+करें)'),
+		],
+		"add_card_task": [
+			re.compile(r'(?:कार्य|टास्क|काम)\s+(.{1,80}?)\s+(?:को\s+)?(?:कार्ड)?\s*(.{1,80}?)\s+में\s+(?:जोड़ें|जोड़े)'),
+		],
+		"rename_card_task": [
+			re.compile(r'(?:कार्य|टास्क)\s+(.{1,80}?)\s+(?:कार्ड)?\s*(.{1,80}?)\s+में\s+(.{1,80}?)\s+नाम\s+(?:करें|बदलें)'),
+		],
+		"check_card_task": [
+			re.compile(r'(?:कार्य|टास्क)\s+(.{1,80}?)\s+(?:को\s+)?(?:कार्ड)?\s*(.{1,80}?)\s+में\s+(?:पूर्ण|चेक|समाप्त)\s*(?:करें|करो|मार्क)?'),
+		],
+		"uncheck_card_task": [
+			re.compile(r'(?:कार्य|टास्क)\s+(.{1,80}?)\s+(?:को\s+)?(?:कार्ड)?\s*(.{1,80}?)\s+में\s+(?:अपूर्ण|अनचेक)\s*(?:करें|करो)?'),
+		],
 		"hedges": [
 			re.compile(r'(?:सोच\s+रहा\s+था|शायद|क्या\s+मुझे|कैसे|मतलब\s+क्या|क्यों)'),
 			re.compile(r'(?:समझाओ|बताओ|वर्णन)'),
@@ -431,6 +586,21 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 		],
 		"mark_done": [
 			re.compile(r'(?:علّم|علم|اعتبر|حدد)\s+(?:البطاقة\s+)?(.{1,80}?)\s+(?:كـ?|ك)?(?:منجز|مكتمل|تم|منته[ىي])'),
+		],
+		"set_card_desc": [
+			re.compile(r'(?:عيّن|عين|غيّر|غير)\s+وصف\s+(?:البطاقة\s+)?(.{1,80}?)\s+(?:إلى|الى)\s+(.{1,200})'),
+		],
+		"add_card_task": [
+			re.compile(r'(?:أضف|اضف)\s+(?:مهمة|عنصر)\s+(.{1,80}?)\s+(?:إلى|الى|في)\s+(?:بطاقة\s+)?(.{1,80})'),
+		],
+		"rename_card_task": [
+			re.compile(r'(?:أعد|اعد)\s+تسمية\s+(?:مهمة|عنصر)\s+(.{1,80}?)\s+(?:في|على)\s+(?:بطاقة\s+)?(.{1,80}?)\s+(?:إلى|الى)\s+(.{1,80})'),
+		],
+		"check_card_task": [
+			re.compile(r'(?:علّم|علم|أكمل|اكمل)\s+(?:مهمة|عنصر)\s+(.{1,80}?)\s+(?:في|على)\s+(?:بطاقة\s+)?(.{1,80})'),
+		],
+		"uncheck_card_task": [
+			re.compile(r'(?:أزل|ازل)\s+علامة\s+(?:مهمة|عنصر)\s+(.{1,80}?)\s+(?:في|على)\s+(?:بطاقة\s+)?(.{1,80})'),
 		],
 		"hedges": [
 			re.compile(r'(?:كنت\s+أفكر|ربما|هل\s+يجب|هل\s+ينبغي|كيف\s+(?:يمكن|أستطيع)|ماذا\s+يعني|لماذا)'),
@@ -704,6 +874,41 @@ async def classify_structural_intent(text: str, lang: str) -> Optional[Structura
 				confidence=0.9,
 			)
 
+	# ── UNCHECK_CARD_TASK ─────────────────────────────────────────────────
+	# Must come before CHECK_CARD_TASK: CHECK's "mark...done" pattern can
+	# greedily capture "Shopping as not" in card_fragment and still match
+	# "done" at the end unless UNCHECK runs first.
+	for pat in _patterns_for("uncheck_card_task", lang):
+		m = pat.search(snippet)
+		if m:
+			task_q = _strip_filler(m.group(1)) if m.lastindex and m.lastindex >= 1 else ""
+			card_q = _strip_filler(m.group(2)) if m.lastindex and m.lastindex >= 2 and m.group(2) else ""
+			if not task_q or not card_q:
+				continue
+			return StructuralIntent(
+				verb="UNCHECK_CARD_TASK",
+				entities={"task_fragment": task_q, "card_fragment": card_q},
+				raw_text=snippet,
+				confidence=0.85,
+			)
+
+	# ── CHECK_CARD_TASK ────────────────────────────────────────────────────
+	# Must come before MARK_DONE: "mark task X in card Y as done" would
+	# be swallowed by MARK_DONE's looser "mark X as done" pattern.
+	for pat in _patterns_for("check_card_task", lang):
+		m = pat.search(snippet)
+		if m:
+			task_q = _strip_filler(m.group(1)) if m.lastindex and m.lastindex >= 1 else ""
+			card_q = _strip_filler(m.group(2)) if m.lastindex and m.lastindex >= 2 and m.group(2) else ""
+			if not task_q or not card_q:
+				continue
+			return StructuralIntent(
+				verb="CHECK_CARD_TASK",
+				entities={"task_fragment": task_q, "card_fragment": card_q},
+				raw_text=snippet,
+				confidence=0.85,
+			)
+
 	# ── MARK_DONE ────────────────────────────────────────────────────────
 	for pat in _patterns_for("mark_done", lang):
 		m = pat.search(snippet)
@@ -733,6 +938,24 @@ async def classify_structural_intent(text: str, lang: str) -> Optional[Structura
 				entities={"card_fragment": card_q, "board_name": ""},
 				raw_text=snippet,
 				confidence=0.9,
+			)
+
+	# ── RENAME_CARD_TASK ──────────────────────────────────────────────────
+	# Must come before RENAME_LIST/RENAME_CARD: "rename task X in card Y to Z"
+	# would be captured by RENAME_CARD's broad "rename X to Z" pattern.
+	for pat in _patterns_for("rename_card_task", lang):
+		m = pat.search(snippet)
+		if m:
+			task_q = _strip_filler(m.group(1)) if m.lastindex and m.lastindex >= 1 else ""
+			card_q = _strip_filler(m.group(2)) if m.lastindex and m.lastindex >= 2 and m.group(2) else ""
+			new_name_q = _strip_filler(m.group(3)) if m.lastindex and m.lastindex >= 3 and m.group(3) else ""
+			if not task_q or not card_q or not new_name_q:
+				continue
+			return StructuralIntent(
+				verb="RENAME_CARD_TASK",
+				entities={"task_fragment": task_q, "card_fragment": card_q, "new_name": new_name_q},
+				raw_text=snippet,
+				confidence=0.85,
 			)
 
 	# ── RENAME_LIST ───────────────────────────────────────────────────────
@@ -767,6 +990,21 @@ async def classify_structural_intent(text: str, lang: str) -> Optional[Structura
 				confidence=0.85,
 			)
 
+	# ── SET_CARD_DESC ─────────────────────────────────────────────────────
+	for pat in _patterns_for("set_card_desc", lang):
+		m = pat.search(snippet)
+		if m:
+			card_q = _strip_filler(m.group(1)) if m.lastindex and m.lastindex >= 1 else ""
+			desc_q = m.group(2).strip() if m.lastindex and m.lastindex >= 2 and m.group(2) else ""
+			if not card_q or not desc_q:
+				continue
+			return StructuralIntent(
+				verb="SET_CARD_DESC",
+				entities={"card_fragment": card_q, "description": desc_q},
+				raw_text=snippet,
+				confidence=0.85,
+			)
+
 	# ── CREATE_LIST ───────────────────────────────────────────────────────
 	# Checked before CREATE_CARD: explicit "list" noun is more specific than
 	# the broad "add X to Y" create_card pattern 3, which would otherwise
@@ -781,6 +1019,23 @@ async def classify_structural_intent(text: str, lang: str) -> Optional[Structura
 			return StructuralIntent(
 				verb="CREATE_LIST",
 				entities={"list_name": name_q, "board_name": board_q},
+				raw_text=snippet,
+				confidence=0.85,
+			)
+
+	# ── ADD_CARD_TASK ─────────────────────────────────────────────────────
+	# Checked before CREATE_CARD: "add task X to card Y" would otherwise
+	# be captured as CREATE_CARD with dest="card Y".
+	for pat in _patterns_for("add_card_task", lang):
+		m = pat.search(snippet)
+		if m:
+			task_q = _strip_filler(m.group(1)) if m.lastindex and m.lastindex >= 1 else ""
+			card_q = _strip_filler(m.group(2)) if m.lastindex and m.lastindex >= 2 and m.group(2) else ""
+			if not task_q or not card_q:
+				continue
+			return StructuralIntent(
+				verb="ADD_CARD_TASK",
+				entities={"task_name": task_q, "card_fragment": card_q},
 				raw_text=snippet,
 				confidence=0.85,
 			)
@@ -814,6 +1069,8 @@ async def dispatch_structural_intent(intent: StructuralIntent, lang: str) -> str
 	from app.services.agent_actions import (
 		execute_move_board, execute_move_card, execute_archive_card, execute_mark_done,
 		execute_create_card, execute_create_list, execute_rename_card, execute_rename_list,
+		execute_set_card_desc, execute_add_card_task,
+		execute_check_card_task, execute_uncheck_card_task, execute_rename_card_task,
 	)
 	t = get_translations(lang)
 
@@ -925,6 +1182,66 @@ async def dispatch_structural_intent(intent: StructuralIntent, lang: str) -> str
 			list=ent["list_fragment"], new_name=ent["new_name"],
 		)
 		audit = f"[AUDIT:rename_list:{ent['list_fragment']}|new_name={ent['new_name']}]"
+		return f"{msg}\n{audit}"
+
+	if verb == "SET_CARD_DESC":
+		raw = await execute_set_card_desc(ent["card_fragment"], ent["description"], lang)
+		if raw.startswith("\u26a0"):
+			return raw
+		msg = _localise(
+			"intent_router_set_card_desc_success",
+			"Description of '{card}' updated.",
+			card=ent["card_fragment"],
+		)
+		audit = f"[AUDIT:set_card_desc:{ent['card_fragment']}]"
+		return f"{msg}\n{audit}"
+
+	if verb == "ADD_CARD_TASK":
+		raw = await execute_add_card_task(ent["card_fragment"], ent["task_name"], lang)
+		if raw.startswith("\u26a0"):
+			return raw
+		msg = _localise(
+			"intent_router_add_card_task_success",
+			"Task '{task}' added to card '{card}'.",
+			task=ent["task_name"], card=ent["card_fragment"],
+		)
+		audit = f"[AUDIT:add_card_task:{ent['task_name']}|card={ent['card_fragment']}]"
+		return f"{msg}\n{audit}"
+
+	if verb == "CHECK_CARD_TASK":
+		raw = await execute_check_card_task(ent["card_fragment"], ent["task_fragment"], lang)
+		if raw.startswith("\u26a0"):
+			return raw
+		msg = _localise(
+			"intent_router_check_card_task_success",
+			"Task '{task}' in card '{card}' marked as done.",
+			task=ent["task_fragment"], card=ent["card_fragment"],
+		)
+		audit = f"[AUDIT:check_card_task:{ent['task_fragment']}|card={ent['card_fragment']}]"
+		return f"{msg}\n{audit}"
+
+	if verb == "UNCHECK_CARD_TASK":
+		raw = await execute_uncheck_card_task(ent["card_fragment"], ent["task_fragment"], lang)
+		if raw.startswith("\u26a0"):
+			return raw
+		msg = _localise(
+			"intent_router_uncheck_card_task_success",
+			"Task '{task}' in card '{card}' marked as not done.",
+			task=ent["task_fragment"], card=ent["card_fragment"],
+		)
+		audit = f"[AUDIT:uncheck_card_task:{ent['task_fragment']}|card={ent['card_fragment']}]"
+		return f"{msg}\n{audit}"
+
+	if verb == "RENAME_CARD_TASK":
+		raw = await execute_rename_card_task(ent["card_fragment"], ent["task_fragment"], ent["new_name"], lang)
+		if raw.startswith("\u26a0"):
+			return raw
+		msg = _localise(
+			"intent_router_rename_card_task_success",
+			"Task '{task}' in card '{card}' renamed to '{new_name}'.",
+			task=ent["task_fragment"], card=ent["card_fragment"], new_name=ent["new_name"],
+		)
+		audit = f"[AUDIT:rename_card_task:{ent['task_fragment']}|card={ent['card_fragment']}|new_name={ent['new_name']}]"
 		return f"{msg}\n{audit}"
 
 	# Unknown verb — defensive fallback, should not be reachable.
