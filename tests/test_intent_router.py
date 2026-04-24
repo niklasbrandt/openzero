@@ -455,3 +455,58 @@ def test_rename_card_dispatch_returns_warning_on_failure():
 		)
 	assert result.startswith("\u26a0")
 
+
+# ── RENAME_LIST ───────────────────────────────────────────────────────────────
+
+@pytest.mark.parametrize("text,lang", [
+	("rename the list In Progress to Doing", "en"),
+	("rename the column Backlog to Todo", "en"),
+	("change the list name In Progress to Doing", "en"),
+	("update the list In Progress to Doing", "en"),
+	("umbenennen die Liste In Bearbeitung in Erledigt", "de"),
+	("benenne die Liste Wartend in Erledigt um", "de"),
+	("renombrar la lista En progreso a Haciendo", "es"),
+	("renommer la liste En cours en Fait", "fr"),
+	("renomear a lista Em progresso para Fazendo", "pt"),
+	("переименовать список В работе в Готово", "ru"),
+])
+def test_rename_list_pattern_classifies(text, lang):
+	result = asyncio.get_event_loop().run_until_complete(ir.classify_structural_intent(text, lang))
+	assert result is not None, f"[{lang}] classified as None for: {text!r}"
+	assert result.verb == "RENAME_LIST", f"[{lang}] expected RENAME_LIST, got {result.verb!r}"
+	assert result.entities.get("list_fragment"), f"[{lang}] list_fragment entity missing"
+	assert result.entities.get("new_name"), f"[{lang}] new_name entity missing"
+
+
+def test_rename_list_dispatch_calls_executor():
+	"""dispatch_structural_intent routes RENAME_LIST and returns AUDIT tag."""
+	from app.services.intent_router import StructuralIntent, dispatch_structural_intent
+	intent = StructuralIntent(
+		verb="RENAME_LIST",
+		entities={"list_fragment": "In Progress", "new_name": "Doing"},
+		raw_text="rename the list In Progress to Doing",
+		confidence=0.85,
+	)
+	with patch("app.services.agent_actions.execute_rename_list", new=AsyncMock(return_value="List 'In Progress' renamed to 'Doing'.")):
+		result = asyncio.get_event_loop().run_until_complete(
+			dispatch_structural_intent(intent, "en")
+		)
+	assert "In Progress" in result
+	assert "[AUDIT:rename_list:" in result
+
+
+def test_rename_list_dispatch_returns_warning_on_failure():
+	"""dispatch returns warning string when executor signals failure."""
+	from app.services.intent_router import StructuralIntent, dispatch_structural_intent
+	intent = StructuralIntent(
+		verb="RENAME_LIST",
+		entities={"list_fragment": "nonexistent list", "new_name": "New Name"},
+		raw_text="rename the list nonexistent list to New Name",
+		confidence=0.85,
+	)
+	with patch("app.services.agent_actions.execute_rename_list", new=AsyncMock(return_value="\u26a0 Could not rename list 'nonexistent list' \u2014 list not found.")):
+		result = asyncio.get_event_loop().run_until_complete(
+			dispatch_structural_intent(intent, "en")
+		)
+	assert result.startswith("\u26a0")
+

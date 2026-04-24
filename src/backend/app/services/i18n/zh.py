@@ -416,4 +416,6 @@ translations: dict[str, str] = {
         'intent_router_create_list_board_not_found': "无法创建列表「{list_name}」——看板「{board}」未找到。",
         'intent_router_rename_card_success': "卡片『{card}』已重命名为『{new_name}』。",
         'intent_router_rename_card_not_found': "无法重命名卡片『{card}』——卡片未找到。",
+        'intent_router_rename_list_success': "列表『{list}』已重命名为『{new_name}』。",
+        'intent_router_rename_list_not_found': "无法重命名列表『{list}』——列表未找到。",
 }

@@ -415,4 +415,6 @@ translations: dict[str, str] = {
         'intent_router_create_list_board_not_found': "सूची '{list_name}' नहीं बनाई जा सकी — बोर्ड '{board}' नहीं मिला।",
         'intent_router_rename_card_success': "कार्ड '{card}' का नाम बदलकर '{new_name}' किया गया।",
         'intent_router_rename_card_not_found': "कार्ड '{card}' का नाम नहीं बदला जा सका — कार्ड नहीं मिला।",
+        'intent_router_rename_list_success': "सूची '{list}' का नाम बदलकर '{new_name}' किया गया।",
+        'intent_router_rename_list_not_found': "सूची '{list}' का नाम नहीं बदला जा सका — सूची नहीं मिली।",
 }

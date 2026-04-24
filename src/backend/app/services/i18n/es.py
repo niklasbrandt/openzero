@@ -415,4 +415,6 @@ translations: dict[str, str] = {
         'intent_router_create_list_board_not_found': "No se pudo crear la lista '{list_name}' — tablero '{board}' no encontrado.",
         'intent_router_rename_card_success': "Tarjeta '{card}' renombrada a '{new_name}'.",
         'intent_router_rename_card_not_found': "No se pudo renombrar la tarjeta '{card}' — tarjeta no encontrada.",
+        'intent_router_rename_list_success': "Lista '{list}' renombrada a '{new_name}'.",
+        'intent_router_rename_list_not_found': "No se pudo renombrar la lista '{list}' — lista no encontrada.",
 }
