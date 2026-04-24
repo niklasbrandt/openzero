@@ -402,4 +402,11 @@ translations: dict[str, str] = {
 	'tip_bench_cloud': 'Benchmark do nível de nuvem. Para análises complexas e raciocínio.',
 	'tip_bench_local': 'Benchmark do nível local (~0.6B). Para tarefas rápidas como cumprimentos.',
         'status_online': 'Estou de volta!',
+        'intent_router_move_board_success': "Quadro '{board}' movido para '{project}'.",
+        'intent_router_move_card_success': "Cartão '{card}' movido para '{dest}'.",
+        'intent_router_mark_done_success': "Cartão '{card}' marcado como concluído.",
+        'intent_router_archive_success': "Cartão '{card}' arquivado.",
+        'intent_router_board_not_found': "Não encontrei nenhum quadro correspondente a '{query}'.",
+        'intent_router_project_not_found': "Não encontrei nenhum projeto correspondente a '{query}'.",
+        'intent_router_card_not_found': "Não encontrei nenhum cartão correspondente a '{query}'.",
 }
