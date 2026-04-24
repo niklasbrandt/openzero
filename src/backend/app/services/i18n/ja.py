@@ -440,4 +440,10 @@ translations: dict[str, str] = {
         'intent_router_rename_board_not_found': 'ボード「{board}」の名前を変更できませんでした — ボードが見つかりません。',
         'intent_router_delete_board_success': 'ボード「{board}」を削除しました。',
         'intent_router_delete_board_not_found': 'ボード「{board}」を削除できませんでした — ボードが見つかりません。',
+        'intent_router_create_project_success': 'プロジェクト「{project}」を作成しました。',
+        'intent_router_create_project_duplicate': 'プロジェクト「{project}」はすでに存在します。',
+        'intent_router_rename_project_success': 'プロジェクト「{project}」を「{new_name}」に名前変更しました。',
+        'intent_router_rename_project_not_found': 'プロジェクト「{project}」の名前変更に失敗しました — 見つかりません。',
+        'intent_router_delete_project_success': 'プロジェクト「{project}」を削除しました。',
+        'intent_router_delete_project_not_found': 'プロジェクト「{project}」を削除できませんでした — 見つかりません。',
 }

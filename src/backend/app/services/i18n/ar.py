@@ -440,4 +440,10 @@ translations: dict[str, str] = {
         'intent_router_rename_board_not_found': "تعذر إعادة تسمية اللوحة '{board}' — اللوحة غير موجودة.",
         'intent_router_delete_board_success': "تم حذف اللوحة '{board}'.",
         'intent_router_delete_board_not_found': "تعذر حذف اللوحة '{board}' — اللوحة غير موجودة.",
+        'intent_router_create_project_success': "تم إنشاء المشروع '{project}'.",
+        'intent_router_create_project_duplicate': "المشروع '{project}' موجود بالفعل.",
+        'intent_router_rename_project_success': "تمت إعادة تسمية المشروع '{project}' إلى '{new_name}'.",
+        'intent_router_rename_project_not_found': "تعذر إعادة تسمية المشروع '{project}' — غير موجود.",
+        'intent_router_delete_project_success': "تم حذف المشروع '{project}'.",
+        'intent_router_delete_project_not_found': "تعذر حذف المشروع '{project}' — غير موجود.",
 }

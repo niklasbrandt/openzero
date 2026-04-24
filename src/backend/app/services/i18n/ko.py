@@ -439,4 +439,10 @@ translations: dict[str, str] = {
         'intent_router_rename_board_not_found': "보드 '{board}'의 이름을 변경할 수 없습니다 — 보드를 찾을 수 없습니다.",
         'intent_router_delete_board_success': "보드 '{board}'가(이) 삭제되었습니다.",
         'intent_router_delete_board_not_found': "보드 '{board}'을(를) 삭제할 수 없습니다 — 보드를 찾을 수 없습니다.",
+        'intent_router_create_project_success': "프로젝트 '{project}'가 생성되었습니다.",
+        'intent_router_create_project_duplicate': "프로젝트 '{project}'가 이미 존재합니다.",
+        'intent_router_rename_project_success': "프로젝트 '{project}'의 이름이 '{new_name}'으로 변경되었습니다.",
+        'intent_router_rename_project_not_found': "프로젝트 '{project}'의 이름을 변경할 수 없습니다 — 찾을 수 없습니다.",
+        'intent_router_delete_project_success': "프로젝트 '{project}'가 삭제되었습니다.",
+        'intent_router_delete_project_not_found': "프로젝트 '{project}'를 삭제할 수 없습니다 — 찾을 수 없습니다.",
 }

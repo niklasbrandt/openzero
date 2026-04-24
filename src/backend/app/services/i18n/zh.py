@@ -440,4 +440,10 @@ translations: dict[str, str] = {
         'intent_router_rename_board_not_found': "无法重命名看板「{board}」——看板未找到。",
         'intent_router_delete_board_success': "看板「{board}」已删除。",
         'intent_router_delete_board_not_found': "无法删除看板「{board}」——看板未找到。",
+        'intent_router_create_project_success': "项目「{project}」已创建。",
+        'intent_router_create_project_duplicate': "项目「{project}」已存在。",
+        'intent_router_rename_project_success': "项目「{project}」已重命名为「{new_name}」。",
+        'intent_router_rename_project_not_found': "无法重命名项目「{project}」——未找到。",
+        'intent_router_delete_project_success': "项目「{project}」已删除。",
+        'intent_router_delete_project_not_found': "无法删除项目「{project}」——未找到。",
 }

@@ -439,4 +439,10 @@ translations: dict[str, str] = {
         'intent_router_rename_board_not_found': "बोर्ड '{board}' का नाम नहीं बदला जा सका — बोर्ड नहीं मिला।",
         'intent_router_delete_board_success': "बोर्ड '{board}' हटा दिया गया।",
         'intent_router_delete_board_not_found': "बोर्ड '{board}' को हटाया नहीं जा सका — बोर्ड नहीं मिला।",
+        'intent_router_create_project_success': "प्रोजेक्ट '{project}' बनाया गया।",
+        'intent_router_create_project_duplicate': "प्रोजेक्ट '{project}' पहले से मौजूद है।",
+        'intent_router_rename_project_success': "प्रोजेक्ट '{project}' का नाम बदलकर '{new_name}' रखा गया।",
+        'intent_router_rename_project_not_found': "प्रोजेक्ट '{project}' का नाम नहीं बदला जा सका — नहीं मिला।",
+        'intent_router_delete_project_success': "प्रोजेक्ट '{project}' हटाया गया।",
+        'intent_router_delete_project_not_found': "प्रोजेक्ट '{project}' को हटाया नहीं जा सका — नहीं मिला।",
 }

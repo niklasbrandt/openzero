@@ -1042,3 +1042,152 @@ def test_delete_board_dispatch_returns_warning_on_failure():
 			dispatch_structural_intent(intent, "en")
 		)
 	assert result.startswith("\u26a0")
+
+
+# ---------------------------------------------------------------------------
+# CREATE_PROJECT
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("text,lang", [
+	("create a project called Alpha", "en"),
+	("erstelle ein Projekt namens Alpha", "de"),
+	("crea un proyecto llamado Alpha", "es"),
+])
+def test_create_project_pattern_classifies(text, lang):
+	"""CREATE_PROJECT verb is classified from natural-language inputs."""
+	result = asyncio.get_event_loop().run_until_complete(ir.classify_structural_intent(text, lang))
+	assert result is not None, f"[{lang}] classified as None for: {text!r}"
+	assert result.verb == "CREATE_PROJECT", f"[{lang}] expected CREATE_PROJECT, got {result.verb!r}"
+
+
+def test_create_project_dispatch_success():
+	"""dispatch_structural_intent routes CREATE_PROJECT correctly on success."""
+	from app.services.intent_router import StructuralIntent, dispatch_structural_intent
+	intent = StructuralIntent(
+		verb="CREATE_PROJECT",
+		entities={"project_name": "Alpha"},
+		raw_text="create a project called Alpha",
+		confidence=0.85,
+	)
+	with patch("app.services.agent_actions.execute_create_project", new=AsyncMock(return_value="Project 'Alpha' created.")):
+		result = asyncio.get_event_loop().run_until_complete(
+			dispatch_structural_intent(intent, "en")
+		)
+	assert "created" in result
+	assert "[AUDIT:create_project:Alpha]" in result
+
+
+def test_create_project_dispatch_duplicate():
+	"""dispatch returns duplicate message when CREATE_PROJECT executor signals existing project."""
+	from app.services.intent_router import StructuralIntent, dispatch_structural_intent
+	intent = StructuralIntent(
+		verb="CREATE_PROJECT",
+		entities={"project_name": "Alpha"},
+		raw_text="create a project called Alpha",
+		confidence=0.85,
+	)
+	with patch("app.services.agent_actions.execute_create_project", new=AsyncMock(return_value="⚠duplicate:Alpha")):
+		result = asyncio.get_event_loop().run_until_complete(
+			dispatch_structural_intent(intent, "en")
+		)
+	assert "already exists" in result
+	assert "AUDIT" not in result
+
+
+# ---------------------------------------------------------------------------
+# RENAME_PROJECT
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("text,lang", [
+	("rename project Alpha to Beta", "en"),
+])
+def test_rename_project_pattern_classifies(text, lang):
+	"""RENAME_PROJECT verb is classified from natural-language inputs."""
+	result = asyncio.get_event_loop().run_until_complete(ir.classify_structural_intent(text, lang))
+	assert result is not None, f"[{lang}] classified as None for: {text!r}"
+	assert result.verb == "RENAME_PROJECT", f"[{lang}] expected RENAME_PROJECT, got {result.verb!r}"
+	assert result.entities.get("project_fragment") == "Alpha"
+	assert result.entities.get("new_name") == "Beta"
+
+
+def test_rename_project_dispatch_success():
+	"""dispatch_structural_intent routes RENAME_PROJECT correctly on success."""
+	from app.services.intent_router import StructuralIntent, dispatch_structural_intent
+	intent = StructuralIntent(
+		verb="RENAME_PROJECT",
+		entities={"project_fragment": "Alpha", "new_name": "Beta"},
+		raw_text="rename project Alpha to Beta",
+		confidence=0.85,
+	)
+	with patch("app.services.agent_actions.execute_rename_project", new=AsyncMock(return_value="Project 'Alpha' renamed to 'Beta'.")):
+		result = asyncio.get_event_loop().run_until_complete(
+			dispatch_structural_intent(intent, "en")
+		)
+	assert "renamed" in result
+	assert "[AUDIT:rename_project:Alpha->Beta]" in result
+
+
+def test_rename_project_dispatch_not_found():
+	"""dispatch returns not-found message when RENAME_PROJECT executor cannot locate project."""
+	from app.services.intent_router import StructuralIntent, dispatch_structural_intent
+	intent = StructuralIntent(
+		verb="RENAME_PROJECT",
+		entities={"project_fragment": "Alpha", "new_name": "Beta"},
+		raw_text="rename project Alpha to Beta",
+		confidence=0.85,
+	)
+	with patch("app.services.agent_actions.execute_rename_project", new=AsyncMock(return_value="⚠notfound:Alpha")):
+		result = asyncio.get_event_loop().run_until_complete(
+			dispatch_structural_intent(intent, "en")
+		)
+	assert "not found" in result
+	assert "AUDIT" not in result
+
+
+# ---------------------------------------------------------------------------
+# DELETE_PROJECT
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("text,lang", [
+	("delete project Alpha", "en"),
+	("lösche das Projekt Alpha", "de"),
+])
+def test_delete_project_pattern_classifies(text, lang):
+	"""DELETE_PROJECT verb is classified from natural-language inputs."""
+	result = asyncio.get_event_loop().run_until_complete(ir.classify_structural_intent(text, lang))
+	assert result is not None, f"[{lang}] classified as None for: {text!r}"
+	assert result.verb == "DELETE_PROJECT", f"[{lang}] expected DELETE_PROJECT, got {result.verb!r}"
+
+
+def test_delete_project_dispatch_success():
+	"""dispatch_structural_intent routes DELETE_PROJECT correctly on success."""
+	from app.services.intent_router import StructuralIntent, dispatch_structural_intent
+	intent = StructuralIntent(
+		verb="DELETE_PROJECT",
+		entities={"project_fragment": "Alpha"},
+		raw_text="delete project Alpha",
+		confidence=0.85,
+	)
+	with patch("app.services.agent_actions.execute_delete_project", new=AsyncMock(return_value="Project 'Alpha' deleted.")):
+		result = asyncio.get_event_loop().run_until_complete(
+			dispatch_structural_intent(intent, "en")
+		)
+	assert "deleted" in result
+	assert "[AUDIT:delete_project:Alpha]" in result
+
+
+def test_delete_project_dispatch_not_found():
+	"""dispatch returns not-found message when DELETE_PROJECT executor cannot locate project."""
+	from app.services.intent_router import StructuralIntent, dispatch_structural_intent
+	intent = StructuralIntent(
+		verb="DELETE_PROJECT",
+		entities={"project_fragment": "nonexistent"},
+		raw_text="delete project nonexistent",
+		confidence=0.85,
+	)
+	with patch("app.services.agent_actions.execute_delete_project", new=AsyncMock(return_value="⚠notfound:nonexistent")):
+		result = asyncio.get_event_loop().run_until_complete(
+			dispatch_structural_intent(intent, "en")
+		)
+	assert "not found" in result
+	assert "AUDIT" not in result
