@@ -223,7 +223,8 @@ async def _send_online_notification(recovery_html: str = ""):
 			msg = recovery_html
 		else:
 			# Nothing to recover — just a warm translated greeting.
-			msg = f"<i>{t.get('status_online', 'I\'m back!')}</i>"
+			_fallback = "I'm back!"
+			msg = f"<i>{t.get('status_online', _fallback)}</i>"
 		await send_notification_html(msg, nav_footer=get_nav_footer(t))
 	except Exception as _e:
 		logger.warning("Online notification failed: %s", _e)
@@ -1181,22 +1182,6 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 		return
 
 	clean_reply = strip_llm_time_header(result.reply)
-
-	# Anti-hallucination guard: if the reply contains action-confirmation phrases
-	# but no action was actually executed or queued, warn the user.
-	_ACTION_CONFIRM_WORDS = (
-		"verschoben", "has been moved", "was moved", "déplacé", "wurde bewegt", "board moved",
-		"projekt verschoben", "card created", "wurde erstellt", "a été créé",
-		"task added", "board created", "added to", "saved to", "was set up",
-		"hinzugefügt", "wurde hinzugefügt", "wurde verschoben", "erfolgreich hinzugefügt", "erfolgreich verschoben",
-	)
-	if (
-		not result.executed_cmds
-		and not result.pending_actions
-		and any(w in clean_reply.lower() for w in _ACTION_CONFIRM_WORDS)
-	):
-		clean_reply += "\n\n\u26a0 " + t.get("action_not_executed", "No action was executed — please try again.")
-		logger.warning("_process_freetext: phantom confirmation detected (no executed_cmds) — appended warning")
 
 	# Strip attribution footer from display path — raw_reply in DB already stores it
 	# for crew follow-up routing; stripping here prevents "(Reasoning by crew X)" leaking to chat.

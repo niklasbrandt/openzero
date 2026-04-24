@@ -160,6 +160,7 @@ class OperatorBoardService:
 										board_data.get("name"), self.board_name)
 					# Ensure all required lists exist (creates missing ones, does not rename)
 					await self._ensure_lists(client)
+					await self._ensure_archive_trash_lists(client)
 					return self._project_id, self._board_id
 				logger.warning(
 					"Persisted operator IDs no longer valid in Planka (proj=%s board=%s) — "
@@ -292,6 +293,7 @@ class OperatorBoardService:
 		self._project_id = project["id"]
 		self._board_id = board["id"]
 		await self._ensure_lists(client)
+		await self._ensure_archive_trash_lists(client)
 
 		# Persist IDs to DB so future restarts do not need name-based lookup
 		await self._save_persisted_ids(project["id"], board["id"])
@@ -385,7 +387,7 @@ class OperatorBoardService:
 		board_detail_resp = await client.get(f"/api/boards/{self._board_id}", params={"included": "lists"})
 		board_detail_resp.raise_for_status()
 		board_detail = board_detail_resp.json()
-		current_lists = board_detail.get("included", {}).get("lists", [])
+		current_lists = [l for l in board_detail.get("included", {}).get("lists", []) if l.get("type") not in ("archive", "trash")]
 
 		# Build sets for each logical list to match any language variant
 		list_key_all = {
@@ -401,6 +403,9 @@ class OperatorBoardService:
 				None,
 			)
 			if not existing:
+				if not translated_name:
+					logger.warning("_ensure_lists: skipping list for key '%s' — translated name is empty", key)
+					continue
 				logger.info("Creating list %s", translated_name)
 				pos = list(self._list_key_map.keys()).index(key)
 				try:
@@ -416,6 +421,35 @@ class OperatorBoardService:
 						logger.info("List '%s' created successfully.", translated_name)
 				except Exception as _le:
 					logger.warning("Exception creating list '%s': %s", translated_name, _le)
+
+	async def _ensure_archive_trash_lists(self, client: httpx.AsyncClient) -> None:
+		"""Ensure Planka's internal archive and trash lists exist on the Operator Board.
+
+		Planka routes card archive/delete operations to these lists. If they are missing,
+		those operations fail silently in the UI. This guard recreates them if absent.
+		"""
+		import time as _time
+		board_detail_resp = await client.get(f"/api/boards/{self._board_id}", params={"included": "lists"})
+		board_detail_resp.raise_for_status()
+		all_lists = board_detail_resp.json().get("included", {}).get("lists", [])
+		existing_types = {l.get("type") for l in all_lists}
+		for list_type, position in [("archive", 999998), ("trash", 999999)]:
+			if list_type not in existing_types:
+				logger.warning("_ensure_archive_trash_lists: '%s' list missing — recreating", list_type)
+				try:
+					from app.models.db import AsyncSessionLocal
+					from sqlalchemy import text
+					board_id = self._board_id
+					async with AsyncSessionLocal() as session:
+						await session.execute(text(
+							"INSERT INTO list (id, board_id, type, position, name, created_at, updated_at) "
+							"VALUES (:id, :board_id, :type, :position, '', now(), now()) "
+							"ON CONFLICT DO NOTHING"
+						), {"id": int(_time.time() * 1000) + position, "board_id": board_id, "type": list_type, "position": position})
+						await session.commit()
+					logger.info("_ensure_archive_trash_lists: '%s' list recreated for board %s", list_type, board_id)
+				except Exception as _e:
+					logger.error("_ensure_archive_trash_lists: failed to recreate '%s' list: %s", list_type, _e)
 
 	async def sync_operator_tasks(self) -> str:
 		"""
