@@ -188,3 +188,29 @@ def test_dispatch_move_board_de_localised():
 			ir.dispatch_structural_intent(intent, "de")
 		)
 	assert "verschoben" in result.lower()
+
+
+# ─── Project-name fallback (board_q matches a project with one board) ───────
+
+
+@pytest.mark.parametrize("text,lang,proj_name", [
+	("Move aquarium board to my projects", "en", "My projects"),
+	("Verschiebe das aquarium-board zu Meine Projekte", "de", "Meine Projekte"),
+])
+def test_move_board_project_name_fallback(text, lang, proj_name, monkeypatch):
+	snapshot = [
+		{"id": "p_my", "name": proj_name, "boards": [{"id": "b_garden", "name": "Garden"}]},
+		{"id": "p_aq", "name": "Aquarium", "boards": [{"id": "b_reef", "name": "30L nano reef tank"}]},
+	]
+	async def _fake() -> list[dict]:
+		return snapshot
+	monkeypatch.setattr(ir, "_get_planka_snapshot", _fake)
+	ir._cache["ts"] = 0.0
+	ir._cache["projects"] = []
+	intent = asyncio.get_event_loop().run_until_complete(
+		ir.classify_structural_intent(text, lang)
+	)
+	assert intent is not None, f"failed to classify: {text!r}"
+	assert intent.verb == "MOVE_BOARD"
+	assert intent.entities["board_name"] == "30L nano reef tank"
+	assert intent.entities["project_name"] == proj_name

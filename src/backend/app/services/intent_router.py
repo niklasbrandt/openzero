@@ -206,7 +206,21 @@ async def classify_structural_intent(text: str, lang: str) -> Optional[Structura
 			all_boards = [b for p in projects for b in p["boards"]]
 			board_match, board_conf = _match_name(board_q, all_boards)
 			if not board_match:
-				return None
+				# Fallback: user may have said "X board" meaning "the board
+				# inside project X". If board_q matches a project with exactly
+				# one board, use that single board.
+				proj_alt, proj_alt_conf = _match_name(board_q, projects)
+				if proj_alt:
+					proj_boards = proj_alt.get("boards") or []
+					if len(proj_boards) == 1:
+						board_match = proj_boards[0]
+						board_conf = min(proj_alt_conf, 0.85)
+						logger.info(
+							"intent_router: MOVE_BOARD fallback - '%s' matched project '%s' with single board '%s'",
+							board_q, proj_alt.get("name"), board_match.get("name"),
+						)
+				if not board_match:
+					return None
 			return StructuralIntent(
 				verb="MOVE_BOARD",
 				entities={
