@@ -68,85 +68,85 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 	# ── English ───────────────────────────────────────────────────────────
 	"en": {
 		"move_board": [
-			re.compile(r'\bmove\s+(?:the\s+)?(.{1,80}?)\s+board\s+(?:to|into|under)\s+(.{1,80})', re.IGNORECASE),
-			re.compile(r'\bmove\s+(?:the\s+)?board\s+(.{1,80}?)\s+(?:to|into|under)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\bmove\s+(?:the\s+)?(.{1,200}?)\s+board\s+(?:to|into|under)\s+(.{1,200})', re.IGNORECASE),
+			re.compile(r'\bmove\s+(?:the\s+)?board\s+(.{1,200}?)\s+(?:to|into|under)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"move_card": [
-			re.compile(r'\bmove\s+(?:the\s+)?card\s+(.{1,80}?)\s+(?:to|into)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\bmove\s+(?:the\s+)?card\s+(.{1,200}?)\s+(?:to|into)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"rename_card": [
-			re.compile(r'\brename\s+(?:the\s+)?(?:card\s+)?(.{1,80}?)\s+to\s+(.{1,80})', re.IGNORECASE),
-			re.compile(r'\b(?:change|update)\s+(?:the\s+)?(?:card\s+)?(.{1,80}?)\s+(?:name|title)\s+to\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\brename\s+(?:the\s+)?(?:card\s+)?(.{1,200}?)\s+to\s+(.{1,200})', re.IGNORECASE),
+			re.compile(r'\b(?:change|update)\s+(?:the\s+)?(?:card\s+)?(.{1,200}?)\s+(?:name|title)\s+to\s+(.{1,200})', re.IGNORECASE),
 		],
 		"rename_list": [
-			re.compile(r'\brename\s+(?:the\s+)?(?:list|column)\s+(.{1,80}?)\s+to\s+(.{1,80})', re.IGNORECASE),
-			re.compile(r'\b(?:change|update)\s+(?:the\s+)?(?:list|column)\s+(?:name\s+)?(.{1,80}?)\s+to\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\brename\s+(?:the\s+)?(?:list|column)\s+(.{1,200}?)\s+to\s+(.{1,200})', re.IGNORECASE),
+			re.compile(r'\b(?:change|update)\s+(?:the\s+)?(?:list|column)\s+(?:name\s+)?(.{1,200}?)\s+to\s+(.{1,200})', re.IGNORECASE),
 		],
 		"create_card": [
 			# "add/create/new card|task <title> to|on|in <list-or-board>"
-			re.compile(r'\b(?:add|create|new|make)\s+(?:a\s+|the\s+)?(?:card|task|todo|to-do)\s+(?:named\s+|called\s+)?(.{1,120}?)(?:\s+(?:to|on|in|under)\s+(.{1,80}))?$', re.IGNORECASE),
+			re.compile(r'\b(?:add|create|new|make)\s+(?:a\s+|the\s+)?(?:card|task|todo|to-do)\s+(?:named\s+|called\s+)?(.{1,200}?)(?:\s+(?:to|on|in|under)\s+(.{1,200}))?$', re.IGNORECASE),
 			# "add <title> card|task to|on|in <list-or-board>" (postfix noun)
-			re.compile(r'\b(?:add|create|new)\s+(?:a\s+|the\s+)?(.{1,120}?)\s+(?:card|task|todo|to-do)(?:\s+(?:to|on|in|under)\s+(.{1,80}))?$', re.IGNORECASE),
+			re.compile(r'\b(?:add|create|new)\s+(?:a\s+|the\s+)?(.{1,200}?)\s+(?:card|task|todo|to-do)(?:\s+(?:to|on|in|under)\s+(.{1,200}))?$', re.IGNORECASE),
 			# "add <title> to <list>" (no card noun, but explicit destination)
-			re.compile(r'\b(?:add|put)\s+(.{1,120}?)\s+(?:to|on|onto|in|into)\s+(?:my\s+|the\s+)?(.{1,80}?)(?:\s+(?:list|board))?$', re.IGNORECASE),
+			re.compile(r'\b(?:add|put)\s+(.{1,200}?)\s+(?:to|on|onto|in|into)\s+(?:my\s+|the\s+)?(.{1,200}?)(?:\s+(?:list|board))?$', re.IGNORECASE),
 		],
 		"create_list": [
-			re.compile(r'\b(?:add|create|new|make)\s+(?:a\s+|the\s+)?list\s+(?:called\s+|named\s+)?(.{1,80}?)(?:\s+(?:to|on|in|under)\s+(?:the\s+)?(.{1,80}))?$', re.IGNORECASE),
-			re.compile(r'\b(?:add|create|new)\s+(.{1,80}?)\s+list(?:\s+(?:to|on|in|under)\s+(?:the\s+)?(.{1,80}))?$', re.IGNORECASE),
+			re.compile(r'\b(?:add|create|new|make)\s+(?:a\s+|the\s+)?list\s+(?:called\s+|named\s+)?(.{1,200}?)(?:\s+(?:to|on|in|under)\s+(?:the\s+)?(.{1,200}))?$', re.IGNORECASE),
+			re.compile(r'\b(?:add|create|new)\s+(.{1,200}?)\s+list(?:\s+(?:to|on|in|under)\s+(?:the\s+)?(.{1,200}))?$', re.IGNORECASE),
 		],
 		"archive_card": [
-			re.compile(r'\barchive\s+(?:the\s+)?(?:card\s+)?(.{1,120})', re.IGNORECASE),
+			re.compile(r'\barchive\s+(?:the\s+)?(?:card\s+)?(.{1,200})', re.IGNORECASE),
 		],
 		"mark_done": [
-			re.compile(r'\bmark\s+(?:the\s+)?(?:card\s+)?(.{1,80}?)\s+(?:as\s+)?done\b', re.IGNORECASE),
-			re.compile(r'\b(?:set|move)\s+(?:the\s+)?(?:card\s+)?(.{1,80}?)\s+to\s+done\b', re.IGNORECASE),
+			re.compile(r'\bmark\s+(?:the\s+)?(?:card\s+)?(.{1,200}?)\s+(?:as\s+)?done\b', re.IGNORECASE),
+			re.compile(r'\b(?:set|move)\s+(?:the\s+)?(?:card\s+)?(.{1,200}?)\s+to\s+done\b', re.IGNORECASE),
 		],
 		"set_card_desc": [
-			re.compile(r'\b(?:set|update|change)\s+(?:the\s+)?desc(?:ription)?\s+(?:of\s+)?(?:the\s+)?(?:card\s+)?(.{1,80}?)\s+to\s+(.{1,200})', re.IGNORECASE),
-			re.compile(r'\bdescribe\s+(?:the\s+)?(?:card\s+)?(.{1,80}?)\s+as\s+(.{1,200})', re.IGNORECASE),
+			re.compile(r'\b(?:set|update|change)\s+(?:the\s+)?desc(?:ription)?\s+(?:of\s+)?(?:the\s+)?(?:card\s+)?(.{1,200}?)\s+to\s+(.{1,200})', re.IGNORECASE),
+			re.compile(r'\bdescribe\s+(?:the\s+)?(?:card\s+)?(.{1,200}?)\s+as\s+(.{1,200})', re.IGNORECASE),
 		],
 		"add_card_task": [
-			re.compile(r'\b(?:add|create)\s+(?:a\s+)?(?:task|item|todo|checklist\s+item)\s+(.{1,120}?)\s+(?:to|on|in)\s+(?:the\s+)?card\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:add|create)\s+(?:a\s+)?(?:task|item|todo|checklist\s+item)\s+(.{1,200}?)\s+(?:to|on|in)\s+(?:the\s+)?card\s+(.{1,200})', re.IGNORECASE),
 		],
 		"rename_card_task": [
-			re.compile(r'\brename\s+(?:the\s+)?(?:task|item|todo)\s+(.{1,80}?)\s+(?:in|on)\s+(?:the\s+)?(?:card\s+)?(.{1,80}?)\s+to\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\brename\s+(?:the\s+)?(?:task|item|todo)\s+(.{1,200}?)\s+(?:in|on)\s+(?:the\s+)?(?:card\s+)?(.{1,200}?)\s+to\s+(.{1,200})', re.IGNORECASE),
 		],
 		"check_card_task": [
-			re.compile(r'\b(?:check(?:\s+off)?|tick(?:\s+off)?|complete)\s+(?:the\s+)?(?:task|item|todo)\s+(.{1,80}?)\s+(?:in|on|of)\s+(?:the\s+)?(?:card\s+)?(.{1,80})', re.IGNORECASE),
-			re.compile(r'\bmark\s+(?:the\s+)?(?:task|item|todo)\s+(.{1,80}?)\s+(?:in|on|of)\s+(?:the\s+)?(?:card\s+)?(.{1,80}?)\s+(?:as\s+)?(?!not\s)(?:done|complete|finished)\b', re.IGNORECASE),
+			re.compile(r'\b(?:check(?:\s+off)?|tick(?:\s+off)?|complete)\s+(?:the\s+)?(?:task|item|todo)\s+(.{1,200}?)\s+(?:in|on|of)\s+(?:the\s+)?(?:card\s+)?(.{1,200})', re.IGNORECASE),
+			re.compile(r'\bmark\s+(?:the\s+)?(?:task|item|todo)\s+(.{1,200}?)\s+(?:in|on|of)\s+(?:the\s+)?(?:card\s+)?(.{1,200}?)\s+(?:as\s+)?(?!not\s)(?:done|complete|finished)\b', re.IGNORECASE),
 		],
 		"uncheck_card_task": [
-			re.compile(r'\b(?:uncheck|untick|unmark|reopen)\s+(?:the\s+)?(?:task|item|todo)\s+(.{1,80}?)\s+(?:in|on|of)\s+(?:the\s+)?(?:card\s+)?(.{1,80})', re.IGNORECASE),
-			re.compile(r'\bmark\s+(?:the\s+)?(?:task|item|todo)\s+(.{1,80}?)\s+(?:in|on|of)\s+(?:the\s+)?(?:card\s+)?(.{1,80}?)\s+(?:as\s+)?(?:not\s+done|undone|incomplete)\b', re.IGNORECASE),
+			re.compile(r'\b(?:uncheck|untick|unmark|reopen)\s+(?:the\s+)?(?:task|item|todo)\s+(.{1,200}?)\s+(?:in|on|of)\s+(?:the\s+)?(?:card\s+)?(.{1,200})', re.IGNORECASE),
+			re.compile(r'\bmark\s+(?:the\s+)?(?:task|item|todo)\s+(.{1,200}?)\s+(?:in|on|of)\s+(?:the\s+)?(?:card\s+)?(.{1,200}?)\s+(?:as\s+)?(?:not\s+done|undone|incomplete)\b', re.IGNORECASE),
 		],
 		"delete_card": [
-			re.compile(r'\b(?:delete|remove|discard|trash)\s+(?:the\s+)?card\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:delete|remove|discard|trash)\s+(?:the\s+)?card\s+(.{1,200})', re.IGNORECASE),
 		],
 		"delete_list": [
-			re.compile(r'\b(?:delete|remove|discard)\s+(?:the\s+)?(?:list|column)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:delete|remove|discard)\s+(?:the\s+)?(?:list|column)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"delete_card_task": [
-			re.compile(r'\b(?:delete|remove)\s+(?:the\s+)?(?:task|item|todo)\s+(.{1,80}?)\s+(?:from|in|on)\s+(?:the\s+)?(?:card\s+)?(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:delete|remove)\s+(?:the\s+)?(?:task|item|todo)\s+(.{1,200}?)\s+(?:from|in|on)\s+(?:the\s+)?(?:card\s+)?(.{1,200})', re.IGNORECASE),
 		],
 		"create_board": [
-			re.compile(r'\b(?:create|add|make|new)\s+(?:a\s+)?board\s+(?:called\s+|named\s+)?(.{1,80}?)(?:\s+(?:in|to|inside|under)\s+(?:the\s+)?(?:project\s+)?(.{1,80}))?$', re.IGNORECASE),
+			re.compile(r'\b(?:create|add|make|new)\s+(?:a\s+)?board\s+(?:called\s+|named\s+)?(.{1,200}?)(?:\s+(?:in|to|inside|under)\s+(?:the\s+)?(?:project\s+)?(.{1,200}))?$', re.IGNORECASE),
 		],
 		"rename_board": [
-			re.compile(r'\b(?:rename|change\s+the\s+name\s+of)\s+(?:the\s+)?board\s+(.{1,80}?)\s+to\s+(.{1,80})', re.IGNORECASE),
-			re.compile(r'\bchange\s+(?:the\s+)?board\s+name\s+(.{1,80}?)\s+to\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:rename|change\s+the\s+name\s+of)\s+(?:the\s+)?board\s+(.{1,200}?)\s+to\s+(.{1,200})', re.IGNORECASE),
+			re.compile(r'\bchange\s+(?:the\s+)?board\s+name\s+(.{1,200}?)\s+to\s+(.{1,200})', re.IGNORECASE),
 		],
 		"delete_board": [
-			re.compile(r'\b(?:delete|remove|discard|trash)\s+(?:the\s+)?board\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:delete|remove|discard|trash)\s+(?:the\s+)?board\s+(.{1,200})', re.IGNORECASE),
 		],
 		"create_project": [
-			re.compile(r'\b(?:create|add|make|new)\s+(?:a\s+)?project\s+(?:called\s+|named\s+)?(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:create|add|make|new)\s+(?:a\s+)?project\s+(?:called\s+|named\s+)?(.{1,200})', re.IGNORECASE),
 		],
 		"rename_project": [
-			re.compile(r'\b(?:rename|change\s+the\s+name\s+of)\s+(?:the\s+)?project\s+(.{1,80}?)\s+to\s+(.{1,80})', re.IGNORECASE),
-			re.compile(r'\bchange\s+(?:the\s+)?project\s+name\s+(.{1,80}?)\s+to\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:rename|change\s+the\s+name\s+of)\s+(?:the\s+)?project\s+(.{1,200}?)\s+to\s+(.{1,200})', re.IGNORECASE),
+			re.compile(r'\bchange\s+(?:the\s+)?project\s+name\s+(.{1,200}?)\s+to\s+(.{1,200})', re.IGNORECASE),
 		],
 		"delete_project": [
-			re.compile(r'\b(?:delete|remove|discard|trash)\s+(?:the\s+)?project\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:delete|remove|discard|trash)\s+(?:the\s+)?project\s+(.{1,200})', re.IGNORECASE),
 		],
 		"hedges": [
 			re.compile(r'\b(?:thinking\s+about|considering|maybe|might|should\s+i|could\s+i|how\s+(?:do|to|can)\s+i|what\s+(?:does|is|happens)|why\s+(?:would|should))\b', re.IGNORECASE),
@@ -157,79 +157,79 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 	# ── German ────────────────────────────────────────────────────────────
 	"de": {
 		"move_board": [
-			re.compile(r'\bverschieb[e]?\s+(?:das\s+)?(.{1,80}?)[-\s]board\s+(?:zu|in|nach|unter)\s+(.{1,80})', re.IGNORECASE),
-			re.compile(r'\bverschieb[e]?\s+(?:das\s+)?board\s+(.{1,80}?)\s+(?:zu|in|nach|unter)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\bverschieb[e]?\s+(?:das\s+)?(.{1,200}?)[-\s]board\s+(?:zu|in|nach|unter)\s+(.{1,200})', re.IGNORECASE),
+			re.compile(r'\bverschieb[e]?\s+(?:das\s+)?board\s+(.{1,200}?)\s+(?:zu|in|nach|unter)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"move_card": [
-			re.compile(r'\bverschieb[e]?\s+(?:die\s+)?karte\s+(.{1,80}?)\s+(?:zu|in|nach)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\bverschieb[e]?\s+(?:die\s+)?karte\s+(.{1,200}?)\s+(?:zu|in|nach)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"rename_card": [
-			re.compile(r'\b(?:umbenenn(?:en?|t)?)\s+(?:die\s+)?(?:karte\s+)?(.{1,80}?)\s+(?:in|zu|nach)\s+(.{1,80})', re.IGNORECASE),
-			re.compile(r'\b(?:benenn[e]?)\s+(?:die\s+)?(?:karte\s+)?(.{1,80}?)\s+(?:in|zu|nach)\s+(.{1,80}?)(?:\s+um)?$', re.IGNORECASE),
+			re.compile(r'\b(?:umbenenn(?:en?|t)?)\s+(?:die\s+)?(?:karte\s+)?(.{1,200}?)\s+(?:in|zu|nach)\s+(.{1,200})', re.IGNORECASE),
+			re.compile(r'\b(?:benenn[e]?)\s+(?:die\s+)?(?:karte\s+)?(.{1,200}?)\s+(?:in|zu|nach)\s+(.{1,200}?)(?:\s+um)?$', re.IGNORECASE),
 		],
 		"rename_list": [
-			re.compile(r'\b(?:umbenenn(?:en?|t)?)\s+(?:die\s+)?(?:liste|spalte|kolumne)\s+(.{1,80}?)\s+(?:in|zu|nach)\s+(.{1,80})', re.IGNORECASE),
-			re.compile(r'\b(?:benenn[e]?)\s+(?:die\s+)?(?:liste|spalte|kolumne)\s+(.{1,80}?)\s+(?:in|zu|nach)\s+(.{1,80}?)(?:\s+um)?$', re.IGNORECASE),
+			re.compile(r'\b(?:umbenenn(?:en?|t)?)\s+(?:die\s+)?(?:liste|spalte|kolumne)\s+(.{1,200}?)\s+(?:in|zu|nach)\s+(.{1,200})', re.IGNORECASE),
+			re.compile(r'\b(?:benenn[e]?)\s+(?:die\s+)?(?:liste|spalte|kolumne)\s+(.{1,200}?)\s+(?:in|zu|nach)\s+(.{1,200}?)(?:\s+um)?$', re.IGNORECASE),
 		],
 		"create_card": [
-			re.compile(r'\b(?:erstell[e]?|f[üu]g[e]?\s+hinzu|leg[e]?\s+an|neu[e]?)\s+(?:eine\s+)?(?:karte|aufgabe|task|todo)\s+(?:namens?\s+|mit\s+dem\s+namen\s+)?(.{1,120}?)(?:\s+(?:zu|in|auf|unter)\s+(.{1,80}))?$', re.IGNORECASE),
-			re.compile(r'\b(?:f[üu]g[e]?)\s+(.{1,120}?)\s+(?:zu|in|auf)\s+(?:meine[rn]?\s+|der\s+|die\s+|das\s+)?(.{1,80}?)(?:\s+(?:hinzu|liste|board))?$', re.IGNORECASE),
+			re.compile(r'\b(?:erstell[e]?|f[üu]g[e]?\s+hinzu|leg[e]?\s+an|neu[e]?)\s+(?:eine\s+)?(?:karte|aufgabe|task|todo)\s+(?:namens?\s+|mit\s+dem\s+namen\s+)?(.{1,200}?)(?:\s+(?:zu|in|auf|unter)\s+(.{1,200}))?$', re.IGNORECASE),
+			re.compile(r'\b(?:f[üu]g[e]?)\s+(.{1,200}?)\s+(?:zu|in|auf)\s+(?:meine[rn]?\s+|der\s+|die\s+|das\s+)?(.{1,200}?)(?:\s+(?:hinzu|liste|board))?$', re.IGNORECASE),
 		],
 		"create_list": [
-			re.compile(r'\b(?:erstell[e]?|f[üu]g[e]?\s+hinzu|leg[e]?\s+an|neu[e]?)\s+(?:eine\s+)?(?:liste|spalte)\s+(?:namens?\s+|mit\s+dem\s+namen\s+)?(.{1,80}?)(?:\s+(?:zu[mr]?|in|auf|unter)\s+(?:dem\s+|das\s+|der\s+)?(?:board\s+)?(.{1,80}))?$', re.IGNORECASE),
-			re.compile(r'\b(?:f[üu]g[e]?)\s+(?:eine\s+)?(?:liste|spalte)\s+(.{1,80}?)\s+(?:zu[mr]?|in|auf)\s+(?:dem\s+|das\s+|der\s+)?(.{1,80}?)(?:\s+hinzu)?$', re.IGNORECASE),
+			re.compile(r'\b(?:erstell[e]?|f[üu]g[e]?\s+hinzu|leg[e]?\s+an|neu[e]?)\s+(?:eine\s+)?(?:liste|spalte)\s+(?:namens?\s+|mit\s+dem\s+namen\s+)?(.{1,200}?)(?:\s+(?:zu[mr]?|in|auf|unter)\s+(?:dem\s+|das\s+|der\s+)?(?:board\s+)?(.{1,200}))?$', re.IGNORECASE),
+			re.compile(r'\b(?:f[üu]g[e]?)\s+(?:eine\s+)?(?:liste|spalte)\s+(.{1,200}?)\s+(?:zu[mr]?|in|auf)\s+(?:dem\s+|das\s+|der\s+)?(.{1,200}?)(?:\s+hinzu)?$', re.IGNORECASE),
 		],
 		"archive_card": [
-			re.compile(r'\barchivier[e]?\s+(?:die\s+)?(?:karte\s+)?(.{1,120})', re.IGNORECASE),
+			re.compile(r'\barchivier[e]?\s+(?:die\s+)?(?:karte\s+)?(.{1,200})', re.IGNORECASE),
 		],
 		"mark_done": [
-			re.compile(r'\bmarkier[e]?\s+(?:die\s+)?(?:karte\s+)?(.{1,80}?)\s+(?:als\s+)?(?:erledigt|fertig)\b', re.IGNORECASE),
+			re.compile(r'\bmarkier[e]?\s+(?:die\s+)?(?:karte\s+)?(.{1,200}?)\s+(?:als\s+)?(?:erledigt|fertig)\b', re.IGNORECASE),
 		],
 		"set_card_desc": [
-			re.compile(r'\b(?:setze?|[\xc3\xa4a]ndere?|aktualisiere?)\s+(?:die\s+)?Beschreibung\s+(?:von\s+)?(?:der\s+)?(?:Karte\s+)?(.{1,80}?)\s+(?:auf|zu|in)\s+(.{1,200})', re.IGNORECASE),
-			re.compile(r'\bbeschreibe?\s+(?:die\s+)?(?:Karte\s+)?(.{1,80}?)\s+als\s+(.{1,200})', re.IGNORECASE),
+			re.compile(r'\b(?:setze?|[\xc3\xa4a]ndere?|aktualisiere?)\s+(?:die\s+)?Beschreibung\s+(?:von\s+)?(?:der\s+)?(?:Karte\s+)?(.{1,200}?)\s+(?:auf|zu|in)\s+(.{1,200})', re.IGNORECASE),
+			re.compile(r'\bbeschreibe?\s+(?:die\s+)?(?:Karte\s+)?(.{1,200}?)\s+als\s+(.{1,200})', re.IGNORECASE),
 		],
 		"add_card_task": [
-			re.compile(r'\bf[\xfc u]ge?\s+(?:eine[n]?\s+)?(?:Aufgabe|Todo|Eintrag)\s+(.{1,120}?)\s+zur?\s+(?:der\s+)?Karte\s+(.{1,80})\s+hinzu', re.IGNORECASE),
+			re.compile(r'\bf[\xfc u]ge?\s+(?:eine[n]?\s+)?(?:Aufgabe|Todo|Eintrag)\s+(.{1,200}?)\s+zur?\s+(?:der\s+)?Karte\s+(.{1,200})\s+hinzu', re.IGNORECASE),
 		],
 		"rename_card_task": [
-			re.compile(r'\b(?:umbenenn(?:en?|t)?)\s+(?:die\s+)?(?:Aufgabe|Todo)\s+(.{1,80}?)\s+(?:in|bei|von)\s+(?:der\s+)?(?:Karte\s+)?(.{1,80}?)\s+(?:in|zu|nach)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:umbenenn(?:en?|t)?)\s+(?:die\s+)?(?:Aufgabe|Todo)\s+(.{1,200}?)\s+(?:in|bei|von)\s+(?:der\s+)?(?:Karte\s+)?(.{1,200}?)\s+(?:in|zu|nach)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"check_card_task": [
-			re.compile(r'\b(?:abhake?n?|abhak[e]?|erledige?)\s+(?:die\s+)?(?:Aufgabe|Todo)\s+(.{1,80}?)\s+(?:in|bei|auf)\s+(?:der\s+)?(?:Karte\s+)?(.{1,80})', re.IGNORECASE),
-			re.compile(r'\bmarkiere?\s+(?:die\s+)?(?:Aufgabe|Todo)\s+(.{1,80}?)\s+(?:in|bei|auf)\s+(?:der\s+)?(?:Karte\s+)?(.{1,80}?)\s+als\s+(?:erledigt|fertig|abgeschlossen)\b', re.IGNORECASE),
+			re.compile(r'\b(?:abhake?n?|abhak[e]?|erledige?)\s+(?:die\s+)?(?:Aufgabe|Todo)\s+(.{1,200}?)\s+(?:in|bei|auf)\s+(?:der\s+)?(?:Karte\s+)?(.{1,200})', re.IGNORECASE),
+			re.compile(r'\bmarkiere?\s+(?:die\s+)?(?:Aufgabe|Todo)\s+(.{1,200}?)\s+(?:in|bei|auf)\s+(?:der\s+)?(?:Karte\s+)?(.{1,200}?)\s+als\s+(?:erledigt|fertig|abgeschlossen)\b', re.IGNORECASE),
 		],
 		"uncheck_card_task": [
-			re.compile(r'\bmarkiere?\s+(?:die\s+)?(?:Aufgabe|Todo)\s+(.{1,80}?)\s+(?:in|bei|auf)\s+(?:der\s+)?(?:Karte\s+)?(.{1,80}?)\s+als\s+(?:nicht\s+erledigt|offen|unerledigt)\b', re.IGNORECASE),
+			re.compile(r'\bmarkiere?\s+(?:die\s+)?(?:Aufgabe|Todo)\s+(.{1,200}?)\s+(?:in|bei|auf)\s+(?:der\s+)?(?:Karte\s+)?(.{1,200}?)\s+als\s+(?:nicht\s+erledigt|offen|unerledigt)\b', re.IGNORECASE),
 		],
 		"delete_card": [
-			re.compile(r'\b(?:lösch[e]?|entfern[e]?)\s+(?:die\s+)?karte\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:lösch[e]?|entfern[e]?)\s+(?:die\s+)?karte\s+(.{1,200})', re.IGNORECASE),
 		],
 		"delete_list": [
-			re.compile(r'\b(?:lösch[e]?|entfern[e]?)\s+(?:die\s+)?(?:liste|spalte)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:lösch[e]?|entfern[e]?)\s+(?:die\s+)?(?:liste|spalte)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"delete_card_task": [
-			re.compile(r'\b(?:lösch[e]?|entfern[e]?)\s+(?:die\s+)?aufgabe\s+(.{1,80}?)\s+(?:von|aus|in|auf)\s+(?:der\s+)?(?:karte\s+)?(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:lösch[e]?|entfern[e]?)\s+(?:die\s+)?aufgabe\s+(.{1,200}?)\s+(?:von|aus|in|auf)\s+(?:der\s+)?(?:karte\s+)?(.{1,200})', re.IGNORECASE),
 		],
 		"create_board": [
-			re.compile(r'\b(?:erstell[e]?|leg[e]\s+an|f\u00fcge?\s+hinzu|neue[sr]?)\s+(?:ein(?:em?)?\s+)?(?:Board|Tafel|Pinnwand)\s+(?:namens\s+|mit\s+(?:dem\s+)?Namen\s+)?(.{1,80}?)(?:\s+(?:in|bei|unter)\s+(.{1,80}))?$', re.IGNORECASE),
+			re.compile(r'\b(?:erstell[e]?|leg[e]\s+an|f\u00fcge?\s+hinzu|neue[sr]?)\s+(?:ein(?:em?)?\s+)?(?:Board|Tafel|Pinnwand)\s+(?:namens\s+|mit\s+(?:dem\s+)?Namen\s+)?(.{1,200}?)(?:\s+(?:in|bei|unter)\s+(.{1,200}))?$', re.IGNORECASE),
 		],
 		"rename_board": [
-			re.compile(r'\b(?:benennt?\s+um|umbenenn(?:e|en)?)\s+(?:das\s+)?(?:Board|Tafel|Pinnwand)\s+(.{1,80}?)\s+(?:in|zu)\s+(.{1,80})', re.IGNORECASE),
-			re.compile(r'\b\u00e4ndere?\s+(?:den\s+)?Namen\s+(?:des\s+)?(?:Boards?|Tafel)\s+(.{1,80}?)\s+(?:in|zu)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:benennt?\s+um|umbenenn(?:e|en)?)\s+(?:das\s+)?(?:Board|Tafel|Pinnwand)\s+(.{1,200}?)\s+(?:in|zu)\s+(.{1,200})', re.IGNORECASE),
+			re.compile(r'\b\u00e4ndere?\s+(?:den\s+)?Namen\s+(?:des\s+)?(?:Boards?|Tafel)\s+(.{1,200}?)\s+(?:in|zu)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"delete_board": [
-			re.compile(r'\b(?:l\u00f6sch[e]?|entfern[e]?)\s+(?:das\s+)?(?:Board|Tafel|Pinnwand)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:l\u00f6sch[e]?|entfern[e]?)\s+(?:das\s+)?(?:Board|Tafel|Pinnwand)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"create_project": [
-			re.compile(r'\b(?:erstell[e]?|leg[e]\s+an|neue[sr]?)\s+(?:ein(?:em?)?\s+)?(?:Projekt)\s+(?:namens\s+|mit\s+(?:dem\s+)?Namen\s+)?(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:erstell[e]?|leg[e]\s+an|neue[sr]?)\s+(?:ein(?:em?)?\s+)?(?:Projekt)\s+(?:namens\s+|mit\s+(?:dem\s+)?Namen\s+)?(.{1,200})', re.IGNORECASE),
 		],
 		"rename_project": [
-			re.compile(r'\b(?:benennt?\s+um|umbenenn(?:e|en)?)\s+(?:das\s+)?Projekt\s+(.{1,80}?)\s+(?:in|zu)\s+(.{1,80})', re.IGNORECASE),
-			re.compile(r'\b\u00e4ndere?\s+(?:den\s+)?Namen\s+(?:des\s+)?Projekts?\s+(.{1,80}?)\s+(?:in|zu)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:benennt?\s+um|umbenenn(?:e|en)?)\s+(?:das\s+)?Projekt\s+(.{1,200}?)\s+(?:in|zu)\s+(.{1,200})', re.IGNORECASE),
+			re.compile(r'\b\u00e4ndere?\s+(?:den\s+)?Namen\s+(?:des\s+)?Projekts?\s+(.{1,200}?)\s+(?:in|zu)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"delete_project": [
-			re.compile(r'\b(?:l\u00f6sch[e]?|entfern[e]?)\s+(?:das\s+)?Projekt\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:l\u00f6sch[e]?|entfern[e]?)\s+(?:das\s+)?Projekt\s+(.{1,200})', re.IGNORECASE),
 		],
 		"hedges": [
 			re.compile(r'\b(?:vielleicht|eventuell|sollte\s+ich|könnte\s+ich|wie\s+(?:kann|soll)\s+ich|was\s+(?:bedeutet|ist|passiert)|warum)\b', re.IGNORECASE),
@@ -239,74 +239,74 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 	# ── Spanish ───────────────────────────────────────────────────────────
 	"es": {
 		"move_board": [
-			re.compile(r'\b(?:mueve|mover|muevo)\s+(?:el|la)?\s*tablero\s+(.{1,80}?)\s+(?:a|hacia|hasta|en)\s+(.{1,80})', re.IGNORECASE),
-			re.compile(r'\b(?:mueve|mover|muevo)\s+(?:el|la)?\s*(.{1,80}?)\s+tablero\s+(?:a|hacia|hasta|en)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:mueve|mover|muevo)\s+(?:el|la)?\s*tablero\s+(.{1,200}?)\s+(?:a|hacia|hasta|en)\s+(.{1,200})', re.IGNORECASE),
+			re.compile(r'\b(?:mueve|mover|muevo)\s+(?:el|la)?\s*(.{1,200}?)\s+tablero\s+(?:a|hacia|hasta|en)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"move_card": [
-			re.compile(r'\b(?:mueve|mover|muevo)\s+(?:la|el)?\s*tarjeta\s+(.{1,80}?)\s+(?:a|hacia|hasta|en)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:mueve|mover|muevo)\s+(?:la|el)?\s*tarjeta\s+(.{1,200}?)\s+(?:a|hacia|hasta|en)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"rename_card": [
-			re.compile(r'\b(?:renombra[r]?|cambia[r]?\s+(?:el\s+)?nombre)\s+(?:la|el)?\s*(?:tarjeta\s+)?(.{1,80}?)\s+(?:a|por|como)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:renombra[r]?|cambia[r]?\s+(?:el\s+)?nombre)\s+(?:la|el)?\s*(?:tarjeta\s+)?(.{1,200}?)\s+(?:a|por|como)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"rename_list": [
-			re.compile(r'\b(?:renombra[r]?|cambia[r]?\s+(?:el\s+)?nombre)\s+(?:la|el)?\s*(?:lista|columna)\s+(.{1,80}?)\s+(?:a|por|como)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:renombra[r]?|cambia[r]?\s+(?:el\s+)?nombre)\s+(?:la|el)?\s*(?:lista|columna)\s+(.{1,200}?)\s+(?:a|por|como)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"create_card": [
-			re.compile(r'\b(?:agrega[r]?|añade[r]?|crea[r]?|nueva?)\s+(?:una?\s+)?(?:tarjeta|tarea|todo)\s+(?:llamad[ao]?\s+|con\s+nombre\s+)?(.{1,120}?)(?:\s+(?:a|en)\s+(.{1,80}))?$', re.IGNORECASE),
-			re.compile(r'\b(?:agrega[r]?|añade[r]?)\s+(.{1,120}?)\s+(?:a|en)\s+(?:mi\s+|el\s+|la\s+)?(.{1,80}?)(?:\s+(?:lista|tablero))?$', re.IGNORECASE),
+			re.compile(r'\b(?:agrega[r]?|añade[r]?|crea[r]?|nueva?)\s+(?:una?\s+)?(?:tarjeta|tarea|todo)\s+(?:llamad[ao]?\s+|con\s+nombre\s+)?(.{1,200}?)(?:\s+(?:a|en)\s+(.{1,200}))?$', re.IGNORECASE),
+			re.compile(r'\b(?:agrega[r]?|añade[r]?)\s+(.{1,200}?)\s+(?:a|en)\s+(?:mi\s+|el\s+|la\s+)?(.{1,200}?)(?:\s+(?:lista|tablero))?$', re.IGNORECASE),
 		],
 		"create_list": [
-			re.compile(r'\b(?:agrega[r]?|crea[r]?|nueva?)\s+(?:una?\s+)?(?:lista|columna)\s+(?:llamada?\s+|con\s+nombre\s+)?(.{1,80}?)(?:\s+(?:a|en|sobre)\s+(?:el\s+|la\s+)?(?:board\s+|tablero\s+)?(.{1,80}))?$', re.IGNORECASE),
+			re.compile(r'\b(?:agrega[r]?|crea[r]?|nueva?)\s+(?:una?\s+)?(?:lista|columna)\s+(?:llamada?\s+|con\s+nombre\s+)?(.{1,200}?)(?:\s+(?:a|en|sobre)\s+(?:el\s+|la\s+)?(?:board\s+|tablero\s+)?(.{1,200}))?$', re.IGNORECASE),
 		],
 		"archive_card": [
-			re.compile(r'\barchiv(?:a|ar|o)\s+(?:la|el)?\s*(?:tarjeta\s+)?(.{1,120})', re.IGNORECASE),
+			re.compile(r'\barchiv(?:a|ar|o)\s+(?:la|el)?\s*(?:tarjeta\s+)?(.{1,200})', re.IGNORECASE),
 		],
 		"mark_done": [
-			re.compile(r'\bmarc(?:a|ar|o)\s+(?:la|el)?\s*(?:tarjeta\s+)?(.{1,80}?)\s+(?:como\s+)?(?:hech[oa]|complet(?:ad[oa]|o)|terminad[oa]|list[oa])\b', re.IGNORECASE),
+			re.compile(r'\bmarc(?:a|ar|o)\s+(?:la|el)?\s*(?:tarjeta\s+)?(.{1,200}?)\s+(?:como\s+)?(?:hech[oa]|complet(?:ad[oa]|o)|terminad[oa]|list[oa])\b', re.IGNORECASE),
 		],
 		"set_card_desc": [
-			re.compile(r'\b(?:establece[r]?|cambia[r]?|actualiza[r]?)\s+(?:la\s+)?descripci[o\xf3]n\s+(?:de\s+)?(?:la\s+)?(?:tarjeta\s+)?(.{1,80}?)\s+(?:a|como)\s+(.{1,200})', re.IGNORECASE),
+			re.compile(r'\b(?:establece[r]?|cambia[r]?|actualiza[r]?)\s+(?:la\s+)?descripci[o\xf3]n\s+(?:de\s+)?(?:la\s+)?(?:tarjeta\s+)?(.{1,200}?)\s+(?:a|como)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"add_card_task": [
-			re.compile(r'\b(?:agrega[r]?|a[\xf1n]ade[r]?)\s+(?:una?\s+)?(?:tarea|elemento|todo)\s+(.{1,120}?)\s+(?:a|en)\s+(?:la\s+)?tarjeta\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:agrega[r]?|a[\xf1n]ade[r]?)\s+(?:una?\s+)?(?:tarea|elemento|todo)\s+(.{1,200}?)\s+(?:a|en)\s+(?:la\s+)?tarjeta\s+(.{1,200})', re.IGNORECASE),
 		],
 		"rename_card_task": [
-			re.compile(r'\brenombra[r]?\s+(?:la\s+)?(?:tarea|elemento)\s+(.{1,80}?)\s+en\s+(?:la\s+)?(?:tarjeta\s+)?(.{1,80}?)\s+(?:a|como)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\brenombra[r]?\s+(?:la\s+)?(?:tarea|elemento)\s+(.{1,200}?)\s+en\s+(?:la\s+)?(?:tarjeta\s+)?(.{1,200}?)\s+(?:a|como)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"check_card_task": [
-			re.compile(r'\b(?:marca[r]?|completa[r]?)\s+(?:la\s+)?(?:tarea|elemento)\s+(.{1,80}?)\s+(?:en|de)\s+(?:la\s+)?(?:tarjeta\s+)?(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:marca[r]?|completa[r]?)\s+(?:la\s+)?(?:tarea|elemento)\s+(.{1,200}?)\s+(?:en|de)\s+(?:la\s+)?(?:tarjeta\s+)?(.{1,200})', re.IGNORECASE),
 		],
 		"uncheck_card_task": [
-			re.compile(r'\b(?:desmarca[r]?|quita[r]?\s+la\s+marca)\s+(?:la\s+)?(?:tarea|elemento)\s+(.{1,80}?)\s+(?:en|de)\s+(?:la\s+)?(?:tarjeta\s+)?(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:desmarca[r]?|quita[r]?\s+la\s+marca)\s+(?:la\s+)?(?:tarea|elemento)\s+(.{1,200}?)\s+(?:en|de)\s+(?:la\s+)?(?:tarjeta\s+)?(.{1,200})', re.IGNORECASE),
 		],
 		"delete_card": [
-			re.compile(r'\b(?:eliminar?|borra[r]?|quitar?)\s+(?:la\s+)?tarjeta\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:eliminar?|borra[r]?|quitar?)\s+(?:la\s+)?tarjeta\s+(.{1,200})', re.IGNORECASE),
 		],
 		"delete_list": [
-			re.compile(r'\b(?:eliminar?|borra[r]?|quitar?)\s+(?:la\s+)?(?:lista|columna)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:eliminar?|borra[r]?|quitar?)\s+(?:la\s+)?(?:lista|columna)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"delete_card_task": [
-			re.compile(r'\b(?:eliminar?|borra[r]?|quitar?)\s+(?:la\s+)?tarea\s+(.{1,80}?)\s+(?:de|en)\s+(?:la\s+)?(?:tarjeta\s+)?(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:eliminar?|borra[r]?|quitar?)\s+(?:la\s+)?tarea\s+(.{1,200}?)\s+(?:de|en)\s+(?:la\s+)?(?:tarjeta\s+)?(.{1,200})', re.IGNORECASE),
 		],
 		"create_board": [
-			re.compile(r'\b(?:crear?|a\u00f1adir?|agregar?|nuevo|nueva)\s+(?:un\s+)?(?:tablero|board)\s+(?:llamado\s+|con\s+nombre\s+)?(.{1,80}?)(?:\s+(?:en|dentro\s+de)\s+(.{1,80}))?$', re.IGNORECASE),
+			re.compile(r'\b(?:crear?|a\u00f1adir?|agregar?|nuevo|nueva)\s+(?:un\s+)?(?:tablero|board)\s+(?:llamado\s+|con\s+nombre\s+)?(.{1,200}?)(?:\s+(?:en|dentro\s+de)\s+(.{1,200}))?$', re.IGNORECASE),
 		],
 		"rename_board": [
-			re.compile(r'\b(?:renombrar?)\s+(?:el\s+)?(?:tablero|board)\s+(.{1,80}?)\s+(?:a|por)\s+(.{1,80})', re.IGNORECASE),
-			re.compile(r'\bcambiar?\s+(?:el\s+)?nombre\s+(?:del?\s+)?(?:tablero|board)\s+(.{1,80}?)\s+(?:a|por)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:renombrar?)\s+(?:el\s+)?(?:tablero|board)\s+(.{1,200}?)\s+(?:a|por)\s+(.{1,200})', re.IGNORECASE),
+			re.compile(r'\bcambiar?\s+(?:el\s+)?nombre\s+(?:del?\s+)?(?:tablero|board)\s+(.{1,200}?)\s+(?:a|por)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"delete_board": [
-			re.compile(r'\b(?:eliminar?|borrar?|suprimir)\s+(?:el\s+)?(?:tablero|board)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:eliminar?|borrar?|suprimir)\s+(?:el\s+)?(?:tablero|board)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"create_project": [
-			re.compile(r'\b(?:crear?|a\u00f1adir?|agregar?)\s+(?:un\s+)?proyecto\s+(?:llamado\s+|con\s+nombre\s+)?(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:crear?|a\u00f1adir?|agregar?)\s+(?:un\s+)?proyecto\s+(?:llamado\s+|con\s+nombre\s+)?(.{1,200})', re.IGNORECASE),
 		],
 		"rename_project": [
-			re.compile(r'\b(?:renombrar?)\s+(?:el\s+)?proyecto\s+(.{1,80}?)\s+(?:a|por)\s+(.{1,80})', re.IGNORECASE),
-			re.compile(r'\bcambiar?\s+(?:el\s+)?nombre\s+(?:del?\s+)?proyecto\s+(.{1,80}?)\s+(?:a|por)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:renombrar?)\s+(?:el\s+)?proyecto\s+(.{1,200}?)\s+(?:a|por)\s+(.{1,200})', re.IGNORECASE),
+			re.compile(r'\bcambiar?\s+(?:el\s+)?nombre\s+(?:del?\s+)?proyecto\s+(.{1,200}?)\s+(?:a|por)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"delete_project": [
-			re.compile(r'\b(?:eliminar?|borrar?|suprimir)\s+(?:el\s+)?proyecto\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:eliminar?|borrar?|suprimir)\s+(?:el\s+)?proyecto\s+(.{1,200})', re.IGNORECASE),
 		],
 		"hedges": [
 			re.compile(r'\b(?:estaba\s+pensando|tal\s+vez|quizás|quiza|debería|deberia|cómo|como\s+se|qué\s+significa|que\s+significa|por\s+qué|por\s+que)\b', re.IGNORECASE),
@@ -316,75 +316,75 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 	# ── French ────────────────────────────────────────────────────────────
 	"fr": {
 		"move_board": [
-			re.compile(r'\bdéplac(?:e|er|ez)\s+(?:le|la)?\s*tableau\s+(.{1,80}?)\s+(?:vers|à|dans|en)\s+(.{1,80})', re.IGNORECASE),
-			re.compile(r'\bdeplac(?:e|er|ez)\s+(?:le|la)?\s*tableau\s+(.{1,80}?)\s+(?:vers|à|dans|en)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\bdéplac(?:e|er|ez)\s+(?:le|la)?\s*tableau\s+(.{1,200}?)\s+(?:vers|à|dans|en)\s+(.{1,200})', re.IGNORECASE),
+			re.compile(r'\bdeplac(?:e|er|ez)\s+(?:le|la)?\s*tableau\s+(.{1,200}?)\s+(?:vers|à|dans|en)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"move_card": [
-			re.compile(r'\bdéplac(?:e|er|ez)\s+(?:la|le)?\s*carte\s+(.{1,80}?)\s+(?:vers|à|dans)\s+(.{1,80})', re.IGNORECASE),
-			re.compile(r'\bdeplac(?:e|er|ez)\s+(?:la|le)?\s*carte\s+(.{1,80}?)\s+(?:vers|à|dans)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\bdéplac(?:e|er|ez)\s+(?:la|le)?\s*carte\s+(.{1,200}?)\s+(?:vers|à|dans)\s+(.{1,200})', re.IGNORECASE),
+			re.compile(r'\bdeplac(?:e|er|ez)\s+(?:la|le)?\s*carte\s+(.{1,200}?)\s+(?:vers|à|dans)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"rename_card": [
-			re.compile(r'\brenomm(?:e|er|ez)\s+(?:la|le)?\s*(?:carte\s+)?(.{1,80}?)\s+(?:en|par)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\brenomm(?:e|er|ez)\s+(?:la|le)?\s*(?:carte\s+)?(.{1,200}?)\s+(?:en|par)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"rename_list": [
-			re.compile(r'\brenomm(?:e|er|ez)\s+(?:la|le)?\s*(?:liste|colonne)\s+(.{1,80}?)\s+(?:en|par)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\brenomm(?:e|er|ez)\s+(?:la|le)?\s*(?:liste|colonne)\s+(.{1,200}?)\s+(?:en|par)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"create_card": [
-			re.compile(r'\b(?:ajoute[rz]?|créer?|crée|nouvelle?)\s+(?:une?\s+)?(?:carte|tâche|tache|todo)\s+(?:appel[eé]e?\s+|nomm[eé]e?\s+)?(.{1,120}?)(?:\s+(?:vers|à|dans|en|sur)\s+(.{1,80}))?$', re.IGNORECASE),
-			re.compile(r'\b(?:ajoute[rz]?)\s+(.{1,120}?)\s+(?:à|dans|en|sur)\s+(?:ma\s+|mon\s+|la\s+|le\s+|les\s+)?(.{1,80}?)(?:\s+(?:liste|tableau))?$', re.IGNORECASE),
+			re.compile(r'\b(?:ajoute[rz]?|créer?|crée|nouvelle?)\s+(?:une?\s+)?(?:carte|tâche|tache|todo)\s+(?:appel[eé]e?\s+|nomm[eé]e?\s+)?(.{1,200}?)(?:\s+(?:vers|à|dans|en|sur)\s+(.{1,200}))?$', re.IGNORECASE),
+			re.compile(r'\b(?:ajoute[rz]?)\s+(.{1,200}?)\s+(?:à|dans|en|sur)\s+(?:ma\s+|mon\s+|la\s+|le\s+|les\s+)?(.{1,200}?)(?:\s+(?:liste|tableau))?$', re.IGNORECASE),
 		],
 		"create_list": [
-			re.compile(r'\b(?:ajoute[rz]?|créer?|crée|nouvelle?)\s+(?:une?\s+)?(?:liste|colonne)\s+(?:appelée?\s+|nommée?\s+)?(.{1,80}?)(?:\s+(?:vers|à|dans|en|sur)\s+(?:le\s+|la\s+)?(?:tableau\s+)?(.{1,80}))?$', re.IGNORECASE),
+			re.compile(r'\b(?:ajoute[rz]?|créer?|crée|nouvelle?)\s+(?:une?\s+)?(?:liste|colonne)\s+(?:appelée?\s+|nommée?\s+)?(.{1,200}?)(?:\s+(?:vers|à|dans|en|sur)\s+(?:le\s+|la\s+)?(?:tableau\s+)?(.{1,200}))?$', re.IGNORECASE),
 		],
 		"archive_card": [
-			re.compile(r'\barchiv(?:e|er|ez)\s+(?:la|le)?\s*(?:carte\s+)?(.{1,120})', re.IGNORECASE),
+			re.compile(r'\barchiv(?:e|er|ez)\s+(?:la|le)?\s*(?:carte\s+)?(.{1,200})', re.IGNORECASE),
 		],
 		"mark_done": [
-			re.compile(r'\bmarqu(?:e|er|ez)\s+(?:la|le)?\s*(?:carte\s+)?(.{1,80}?)\s+(?:comme\s+)?(?:terminée?|finie?|faite?|achevée?)\b', re.IGNORECASE),
+			re.compile(r'\bmarqu(?:e|er|ez)\s+(?:la|le)?\s*(?:carte\s+)?(.{1,200}?)\s+(?:comme\s+)?(?:terminée?|finie?|faite?|achevée?)\b', re.IGNORECASE),
 		],
 		"set_card_desc": [
-			re.compile(r'\b(?:d[\xe9e]fini[rst]?|change[rz]?|mets?|modif(?:ie[rz]?))\s+(?:la\s+)?description\s+(?:de\s+)?(?:la\s+)?(?:carte\s+)?(.{1,80}?)\s+(?:[\xe0a]|en)\s+(.{1,200})', re.IGNORECASE),
+			re.compile(r'\b(?:d[\xe9e]fini[rst]?|change[rz]?|mets?|modif(?:ie[rz]?))\s+(?:la\s+)?description\s+(?:de\s+)?(?:la\s+)?(?:carte\s+)?(.{1,200}?)\s+(?:[\xe0a]|en)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"add_card_task": [
-			re.compile(r'\b(?:ajoute[rz]?|ajoute)\s+(?:une?\s+)?(?:t[\xe2a]che|[\xe9e]l[\xe9e]ment|todo)\s+(.{1,120}?)\s+(?:[\xe0a]|dans|sur)\s+(?:la\s+)?carte\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:ajoute[rz]?|ajoute)\s+(?:une?\s+)?(?:t[\xe2a]che|[\xe9e]l[\xe9e]ment|todo)\s+(.{1,200}?)\s+(?:[\xe0a]|dans|sur)\s+(?:la\s+)?carte\s+(.{1,200})', re.IGNORECASE),
 		],
 		"rename_card_task": [
-			re.compile(r'\brennomm(?:ez?|er?)\s+(?:la\s+)?(?:t[\xe2a]che|[\xe9e]l[\xe9e]ment)\s+(.{1,80}?)\s+(?:dans|sur|de)\s+(?:la\s+)?(?:carte\s+)?(.{1,80}?)\s+en\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\brennomm(?:ez?|er?)\s+(?:la\s+)?(?:t[\xe2a]che|[\xe9e]l[\xe9e]ment)\s+(.{1,200}?)\s+(?:dans|sur|de)\s+(?:la\s+)?(?:carte\s+)?(.{1,200}?)\s+en\s+(.{1,200})', re.IGNORECASE),
 		],
 		"check_card_task": [
-			re.compile(r'\b(?:coche[rz]?|compl[\xe9e]ter?|marqu[\xe9e]?e?\s+comme\s+termin[\xe9e])\s+(?:la\s+)?(?:t[\xe2a]che|[\xe9e]l[\xe9e]ment)\s+(.{1,80}?)\s+(?:dans|sur|de)\s+(?:la\s+)?(?:carte\s+)?(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:coche[rz]?|compl[\xe9e]ter?|marqu[\xe9e]?e?\s+comme\s+termin[\xe9e])\s+(?:la\s+)?(?:t[\xe2a]che|[\xe9e]l[\xe9e]ment)\s+(.{1,200}?)\s+(?:dans|sur|de)\s+(?:la\s+)?(?:carte\s+)?(.{1,200})', re.IGNORECASE),
 		],
 		"uncheck_card_task": [
-			re.compile(r'\b(?:d[\xe9e]cochez?|d[\xe9e]coche[rz]?)\s+(?:la\s+)?(?:t[\xe2a]che|[\xe9e]l[\xe9e]ment)\s+(.{1,80}?)\s+(?:dans|sur|de)\s+(?:la\s+)?(?:carte\s+)?(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:d[\xe9e]cochez?|d[\xe9e]coche[rz]?)\s+(?:la\s+)?(?:t[\xe2a]che|[\xe9e]l[\xe9e]ment)\s+(.{1,200}?)\s+(?:dans|sur|de)\s+(?:la\s+)?(?:carte\s+)?(.{1,200})', re.IGNORECASE),
 		],
 		"delete_card": [
-			re.compile(r'\b(?:supprimer?|supprime[rz]?|effacer?|enlever?)\s+(?:la\s+)?carte\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:supprimer?|supprime[rz]?|effacer?|enlever?)\s+(?:la\s+)?carte\s+(.{1,200})', re.IGNORECASE),
 		],
 		"delete_list": [
-			re.compile(r'\b(?:supprimer?|supprime[rz]?|effacer?|enlever?)\s+(?:la\s+)?(?:liste|colonne)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:supprimer?|supprime[rz]?|effacer?|enlever?)\s+(?:la\s+)?(?:liste|colonne)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"delete_card_task": [
-			re.compile(r'\b(?:supprimer?|supprime[rz]?|effacer?|enlever?)\s+(?:la\s+)?(?:t[\xe2a]che|[\xe9e]l[\xe9e]ment)\s+(.{1,80}?)\s+(?:de|dans)\s+(?:la\s+)?(?:carte\s+)?(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:supprimer?|supprime[rz]?|effacer?|enlever?)\s+(?:la\s+)?(?:t[\xe2a]che|[\xe9e]l[\xe9e]ment)\s+(.{1,200}?)\s+(?:de|dans)\s+(?:la\s+)?(?:carte\s+)?(.{1,200})', re.IGNORECASE),
 		],
 		"create_board": [
-			re.compile(r'\b(?:cr\u00e9e[r]?|ajouter?|nouveau|nouvelle)\s+(?:un\s+)?(?:tableau|board)\s+(?:appel\u00e9\s+|nomm\u00e9\s+)?(.{1,80}?)(?:\s+(?:dans|en)\s+(.{1,80}))?$', re.IGNORECASE),
+			re.compile(r'\b(?:cr\u00e9e[r]?|ajouter?|nouveau|nouvelle)\s+(?:un\s+)?(?:tableau|board)\s+(?:appel\u00e9\s+|nomm\u00e9\s+)?(.{1,200}?)(?:\s+(?:dans|en)\s+(.{1,200}))?$', re.IGNORECASE),
 		],
 		"rename_board": [
-			re.compile(r'\b(?:renomme[r]?)\s+(?:le\s+)?(?:tableau|board)\s+(.{1,80}?)\s+(?:en|par)\s+(.{1,80})', re.IGNORECASE),
-			re.compile(r'\bchanger?\s+(?:le\s+)?nom\s+(?:du\s+)?(?:tableau|board)\s+(.{1,80}?)\s+(?:en|par)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:renomme[r]?)\s+(?:le\s+)?(?:tableau|board)\s+(.{1,200}?)\s+(?:en|par)\s+(.{1,200})', re.IGNORECASE),
+			re.compile(r'\bchanger?\s+(?:le\s+)?nom\s+(?:du\s+)?(?:tableau|board)\s+(.{1,200}?)\s+(?:en|par)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"delete_board": [
-			re.compile(r'\b(?:supprime[r]?|efface[r]?|enl\u00e8ve[r]?)\s+(?:le\s+)?(?:tableau|board)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:supprime[r]?|efface[r]?|enl\u00e8ve[r]?)\s+(?:le\s+)?(?:tableau|board)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"create_project": [
-			re.compile(r'\b(?:cr\u00e9er?|ajouter?)\s+(?:un\s+)?projet\s+(?:appel\u00e9\s+|nomm\u00e9\s+)?(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:cr\u00e9er?|ajouter?)\s+(?:un\s+)?projet\s+(?:appel\u00e9\s+|nomm\u00e9\s+)?(.{1,200})', re.IGNORECASE),
 		],
 		"rename_project": [
-			re.compile(r'\b(?:renomme[r]?)\s+(?:le\s+)?projet\s+(.{1,80}?)\s+(?:en|par)\s+(.{1,80})', re.IGNORECASE),
-			re.compile(r'\bchanger?\s+(?:le\s+)?nom\s+(?:du\s+)?projet\s+(.{1,80}?)\s+(?:en|par)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:renomme[r]?)\s+(?:le\s+)?projet\s+(.{1,200}?)\s+(?:en|par)\s+(.{1,200})', re.IGNORECASE),
+			re.compile(r'\bchanger?\s+(?:le\s+)?nom\s+(?:du\s+)?projet\s+(.{1,200}?)\s+(?:en|par)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"delete_project": [
-			re.compile(r'\b(?:supprime[r]?|efface[r]?|enl\u00e8ve[r]?)\s+(?:le\s+)?projet\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:supprime[r]?|efface[r]?|enl\u00e8ve[r]?)\s+(?:le\s+)?projet\s+(.{1,200})', re.IGNORECASE),
 		],
 		"hedges": [
 			re.compile(r'\b(?:je\s+pensais|peut[- ]être|devrais[- ]je|pourrais[- ]je|comment\s+(?:est-ce|puis|dois)|qu(?:e|\u2019)est[- ]ce\s+que|pourquoi)\b', re.IGNORECASE),
@@ -394,72 +394,72 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 	# ── Portuguese ────────────────────────────────────────────────────────
 	"pt": {
 		"move_board": [
-			re.compile(r'\b(?:mova|mover|move)\s+(?:o|a)?\s*quadro\s+(.{1,80}?)\s+(?:para|a|em)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:mova|mover|move)\s+(?:o|a)?\s*quadro\s+(.{1,200}?)\s+(?:para|a|em)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"move_card": [
-			re.compile(r'\b(?:mova|mover|move)\s+(?:a|o)?\s*(?:cartão|cartao|carta)\s+(.{1,80}?)\s+(?:para|a|em)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:mova|mover|move)\s+(?:a|o)?\s*(?:cartão|cartao|carta)\s+(.{1,200}?)\s+(?:para|a|em)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"rename_card": [
-			re.compile(r'\b(?:renomear?|renomeie)\s+(?:o|a)?\s*(?:cartão|cartao\s+)?(.{1,80}?)\s+(?:para|como)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:renomear?|renomeie)\s+(?:o|a)?\s*(?:cartão|cartao\s+)?(.{1,200}?)\s+(?:para|como)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"rename_list": [
-			re.compile(r'\b(?:renomear?|renomeie)\s+(?:o|a)?\s*(?:lista|coluna)\s+(.{1,80}?)\s+(?:para|como)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:renomear?|renomeie)\s+(?:o|a)?\s*(?:lista|coluna)\s+(.{1,200}?)\s+(?:para|como)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"create_card": [
-			re.compile(r'\b(?:adicionar?|adicione|criar?|crie|nova?)\s+(?:um[a]?\s+)?(?:cartão|cartao|tarefa|todo)\s+(?:chamad[ao]?\s+|com\s+nome\s+)?(.{1,120}?)(?:\s+(?:para|em|n[ao])\s+(.{1,80}))?$', re.IGNORECASE),
-			re.compile(r'\b(?:adicionar?|adicione)\s+(.{1,120}?)\s+(?:para|em|n[ao])\s+(?:minha?\s+|meu\s+|a\s+|o\s+)?(.{1,80}?)(?:\s+(?:lista|quadro))?$', re.IGNORECASE),
+			re.compile(r'\b(?:adicionar?|adicione|criar?|crie|nova?)\s+(?:um[a]?\s+)?(?:cartão|cartao|tarefa|todo)\s+(?:chamad[ao]?\s+|com\s+nome\s+)?(.{1,200}?)(?:\s+(?:para|em|n[ao])\s+(.{1,200}))?$', re.IGNORECASE),
+			re.compile(r'\b(?:adicionar?|adicione)\s+(.{1,200}?)\s+(?:para|em|n[ao])\s+(?:minha?\s+|meu\s+|a\s+|o\s+)?(.{1,200}?)(?:\s+(?:lista|quadro))?$', re.IGNORECASE),
 		],
 		"create_list": [
-			re.compile(r'\b(?:adicionar?|adicione|criar?|crie|nova?)\s+(?:uma?\s+)?(?:lista|coluna)\s+(?:chamada?\s+|com\s+nome\s+)?(.{1,80}?)(?:\s+(?:para|em|n[ao])\s+(?:o\s+|a\s+)?(?:quadro\s+)?(.{1,80}))?$', re.IGNORECASE),
+			re.compile(r'\b(?:adicionar?|adicione|criar?|crie|nova?)\s+(?:uma?\s+)?(?:lista|coluna)\s+(?:chamada?\s+|com\s+nome\s+)?(.{1,200}?)(?:\s+(?:para|em|n[ao])\s+(?:o\s+|a\s+)?(?:quadro\s+)?(.{1,200}))?$', re.IGNORECASE),
 		],
 		"archive_card": [
-			re.compile(r'\barquiv(?:a|ar|e)\s+(?:a|o)?\s*(?:cartão|cartao|carta\s+)?(.{1,120})', re.IGNORECASE),
+			re.compile(r'\barquiv(?:a|ar|e)\s+(?:a|o)?\s*(?:cartão|cartao|carta\s+)?(.{1,200})', re.IGNORECASE),
 		],
 		"mark_done": [
-			re.compile(r'\bmarc(?:a|ar|e)\s+(?:o|a)?\s*(?:cartão|cartao|carta\s+)?(.{1,80}?)\s+(?:como\s+)?(?:concluíd[oa]|concluido|feit[oa]|finalizad[oa]|pront[oa])\b', re.IGNORECASE),
+			re.compile(r'\bmarc(?:a|ar|e)\s+(?:o|a)?\s*(?:cartão|cartao|carta\s+)?(.{1,200}?)\s+(?:como\s+)?(?:concluíd[oa]|concluido|feit[oa]|finalizad[oa]|pront[oa])\b', re.IGNORECASE),
 		],		"set_card_desc": [
-			re.compile(r'\b(?:definir?|mudar?|atualizar?)\s+(?:a\s+)?descri[c\xe7][a\xe3]o\s+(?:d[oa]\s+)?(?:cart[a\xe3]o\s+)?(.{1,80}?)\s+(?:para|como)\s+(.{1,200})', re.IGNORECASE),
+			re.compile(r'\b(?:definir?|mudar?|atualizar?)\s+(?:a\s+)?descri[c\xe7][a\xe3]o\s+(?:d[oa]\s+)?(?:cart[a\xe3]o\s+)?(.{1,200}?)\s+(?:para|como)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"add_card_task": [
-			re.compile(r'\b(?:adicionar?|adicione?)\s+(?:uma?\s+)?(?:tarefa|item|todo)\s+(.{1,120}?)\s+(?:ao?|no?|em)\s+cart[a\xe3]o\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:adicionar?|adicione?)\s+(?:uma?\s+)?(?:tarefa|item|todo)\s+(.{1,200}?)\s+(?:ao?|no?|em)\s+cart[a\xe3]o\s+(.{1,200})', re.IGNORECASE),
 		],
 		"rename_card_task": [
-			re.compile(r'\brenomear?\s+(?:a\s+)?(?:tarefa|item)\s+(.{1,80}?)\s+(?:no?|em)\s+(?:cart[a\xe3]o\s+)?(.{1,80}?)\s+para\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\brenomear?\s+(?:a\s+)?(?:tarefa|item)\s+(.{1,200}?)\s+(?:no?|em)\s+(?:cart[a\xe3]o\s+)?(.{1,200}?)\s+para\s+(.{1,200})', re.IGNORECASE),
 		],
 		"check_card_task": [
-			re.compile(r'\b(?:marcar?|completar?)\s+(?:a\s+)?(?:tarefa|item)\s+(.{1,80}?)\s+(?:no?|em)\s+(?:cart[a\xe3]o\s+)?(.{1,80}?)\s+(?:como\s+)?(?:conclu[i\xed]d[ao]|feit[ao]|pront[ao])\b', re.IGNORECASE),
+			re.compile(r'\b(?:marcar?|completar?)\s+(?:a\s+)?(?:tarefa|item)\s+(.{1,200}?)\s+(?:no?|em)\s+(?:cart[a\xe3]o\s+)?(.{1,200}?)\s+(?:como\s+)?(?:conclu[i\xed]d[ao]|feit[ao]|pront[ao])\b', re.IGNORECASE),
 		],
 		"uncheck_card_task": [
-			re.compile(r'\b(?:desmarcar?|desmarque)\s+(?:a\s+)?(?:tarefa|item)\s+(.{1,80}?)\s+(?:no?|em)\s+(?:cart[a\xe3]o\s+)?(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:desmarcar?|desmarque)\s+(?:a\s+)?(?:tarefa|item)\s+(.{1,200}?)\s+(?:no?|em)\s+(?:cart[a\xe3]o\s+)?(.{1,200})', re.IGNORECASE),
 		],
 		"delete_card": [
-			re.compile(r'\b(?:excluir?|apaga[r]?|remover?)\s+(?:o\s+|a\s+)?cart[a\xe3]o\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:excluir?|apaga[r]?|remover?)\s+(?:o\s+|a\s+)?cart[a\xe3]o\s+(.{1,200})', re.IGNORECASE),
 		],
 		"delete_list": [
-			re.compile(r'\b(?:excluir?|apaga[r]?|remover?)\s+(?:a\s+)?(?:lista|coluna)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:excluir?|apaga[r]?|remover?)\s+(?:a\s+)?(?:lista|coluna)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"delete_card_task": [
-			re.compile(r'\b(?:excluir?|apaga[r]?|remover?)\s+(?:a\s+)?tarefa\s+(.{1,80}?)\s+(?:de|do|da)\s+(?:cart[a\xe3]o\s+)?(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:excluir?|apaga[r]?|remover?)\s+(?:a\s+)?tarefa\s+(.{1,200}?)\s+(?:de|do|da)\s+(?:cart[a\xe3]o\s+)?(.{1,200})', re.IGNORECASE),
 		],
 		"create_board": [
-			re.compile(r'\b(?:cria[r]?|adiciona[r]?|novo|nova)\s+(?:um\s+)?(?:quadro|board)\s+(?:chamado\s+|com\s+(?:o\s+)?nome\s+)?(.{1,80}?)(?:\s+(?:em|no|na|dentro\s+de)\s+(.{1,80}))?$', re.IGNORECASE),
+			re.compile(r'\b(?:cria[r]?|adiciona[r]?|novo|nova)\s+(?:um\s+)?(?:quadro|board)\s+(?:chamado\s+|com\s+(?:o\s+)?nome\s+)?(.{1,200}?)(?:\s+(?:em|no|na|dentro\s+de)\s+(.{1,200}))?$', re.IGNORECASE),
 		],
 		"rename_board": [
-			re.compile(r'\b(?:renomear?)\s+(?:o\s+)?(?:quadro|board)\s+(.{1,80}?)\s+para\s+(.{1,80})', re.IGNORECASE),
-			re.compile(r'\bmuda[r]?\s+(?:o\s+)?nome\s+(?:do\s+)?(?:quadro|board)\s+(.{1,80}?)\s+para\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:renomear?)\s+(?:o\s+)?(?:quadro|board)\s+(.{1,200}?)\s+para\s+(.{1,200})', re.IGNORECASE),
+			re.compile(r'\bmuda[r]?\s+(?:o\s+)?nome\s+(?:do\s+)?(?:quadro|board)\s+(.{1,200}?)\s+para\s+(.{1,200})', re.IGNORECASE),
 		],
 		"delete_board": [
-			re.compile(r'\b(?:excluir?|apaga[r]?|remove[r]?|deleta[r]?)\s+(?:o\s+)?(?:quadro|board)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:excluir?|apaga[r]?|remove[r]?|deleta[r]?)\s+(?:o\s+)?(?:quadro|board)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"create_project": [
-			re.compile(r'\b(?:criar?|adicionar?|novo)\s+(?:um\s+)?projeto\s+(?:chamado\s+|com\s+nome\s+)?(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:criar?|adicionar?|novo)\s+(?:um\s+)?projeto\s+(?:chamado\s+|com\s+nome\s+)?(.{1,200})', re.IGNORECASE),
 		],
 		"rename_project": [
-			re.compile(r'\b(?:renomear?)\s+(?:o\s+)?projeto\s+(.{1,80}?)\s+para\s+(.{1,80})', re.IGNORECASE),
-			re.compile(r'\bmuda[r]?\s+(?:o\s+)?nome\s+(?:do\s+)?projeto\s+(.{1,80}?)\s+para\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:renomear?)\s+(?:o\s+)?projeto\s+(.{1,200}?)\s+para\s+(.{1,200})', re.IGNORECASE),
+			re.compile(r'\bmuda[r]?\s+(?:o\s+)?nome\s+(?:do\s+)?projeto\s+(.{1,200}?)\s+para\s+(.{1,200})', re.IGNORECASE),
 		],
 		"delete_project": [
-			re.compile(r'\b(?:excluir?|apaga[r]?|remove[r]?|deleta[r]?)\s+(?:o\s+)?projeto\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:excluir?|apaga[r]?|remove[r]?|deleta[r]?)\s+(?:o\s+)?projeto\s+(.{1,200})', re.IGNORECASE),
 		],
 		"hedges": [
 			re.compile(r'\b(?:estava\s+pensando|talvez|deveria|poderia|como\s+(?:eu|posso)|o\s+que\s+significa|por\s+que|por\s+quê)\b', re.IGNORECASE),
@@ -469,73 +469,73 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 	# ── Russian ───────────────────────────────────────────────────────────
 	"ru": {
 		"move_board": [
-			re.compile(r'(?:переместить?|перенест?и|перенеси|перемести)\s+(?:доску|борд)\s+(.{1,80}?)\s+(?:в|на|к)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'(?:переместить?|перенест?и|перенеси|перемести)\s+(?:доску|борд)\s+(.{1,200}?)\s+(?:в|на|к)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"move_card": [
-			re.compile(r'(?:переместить?|перенест?и|перемести)\s+(?:карточку|карту)\s+(.{1,80}?)\s+(?:в|на|к)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'(?:переместить?|перенест?и|перемести)\s+(?:карточку|карту)\s+(.{1,200}?)\s+(?:в|на|к)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"rename_card": [
-			re.compile(r'(?:переименуй|переименовать)\s+(?:карточку\s+)?(.{1,80}?)\s+(?:в|на)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'(?:переименуй|переименовать)\s+(?:карточку\s+)?(.{1,200}?)\s+(?:в|на)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"rename_list": [
-			re.compile(r'(?:переименуй|переименовать)\s+(?:список|колонку|столбец)\s+(.{1,80}?)\s+(?:в|на)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'(?:переименуй|переименовать)\s+(?:список|колонку|столбец)\s+(.{1,200}?)\s+(?:в|на)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"create_card": [
-			re.compile(r'(?:добавь?|создай?|создать|новую?)\s+(?:карточку?|задачу?)?\s+(?:с\s+именем\s+|под\s+названием\s+)?(.{1,120}?)(?:\s+(?:в|на|к)\s+(.{1,80}))?$', re.IGNORECASE),
-			re.compile(r'(?:добавь?)\s+(.{1,120}?)\s+(?:в|на|к)\s+(?:мою?\s+)?(.{1,80}?)(?:\s+(?:список|доску))?$', re.IGNORECASE),
+			re.compile(r'(?:добавь?|создай?|создать|новую?)\s+(?:карточку?|задачу?)?\s+(?:с\s+именем\s+|под\s+названием\s+)?(.{1,200}?)(?:\s+(?:в|на|к)\s+(.{1,200}))?$', re.IGNORECASE),
+			re.compile(r'(?:добавь?)\s+(.{1,200}?)\s+(?:в|на|к)\s+(?:мою?\s+)?(.{1,200}?)(?:\s+(?:список|доску))?$', re.IGNORECASE),
 		],
 		"create_list": [
-			re.compile(r'(?:добавь?|создай?|создать|новый?|новую?)\s+(?:список|колонку|столбец)\s+(?:с\s+названием\s+)?(.{1,80}?)(?:\s+(?:в|на|к)\s+(?:доску?\s+)?(.{1,80}))?$', re.IGNORECASE),
+			re.compile(r'(?:добавь?|создай?|создать|новый?|новую?)\s+(?:список|колонку|столбец)\s+(?:с\s+названием\s+)?(.{1,200}?)(?:\s+(?:в|на|к)\s+(?:доску?\s+)?(.{1,200}))?$', re.IGNORECASE),
 		],
 		"archive_card": [
-			re.compile(r'(?:заархивируй|архивируй|архивировать)\s+(?:карточку\s+)?(.{1,120})', re.IGNORECASE),
+			re.compile(r'(?:заархивируй|архивируй|архивировать)\s+(?:карточку\s+)?(.{1,200})', re.IGNORECASE),
 		],
 		"mark_done": [
-			re.compile(r'(?:отметь?|пометь?|отметить)\s+(?:карточку\s+)?(.{1,80}?)\s+(?:как\s+)?(?:готово|выполнено|завершено|сделано|выполнена)', re.IGNORECASE),
+			re.compile(r'(?:отметь?|пометь?|отметить)\s+(?:карточку\s+)?(.{1,200}?)\s+(?:как\s+)?(?:готово|выполнено|завершено|сделано|выполнена)', re.IGNORECASE),
 		],
 		"set_card_desc": [
-			re.compile(r'(?:установить?|изменить?|обновить?)\s+описание\s+(?:карточки\s+)?(.{1,80}?)\s+(?:на|как)\s+(.{1,200})', re.IGNORECASE),
+			re.compile(r'(?:установить?|изменить?|обновить?)\s+описание\s+(?:карточки\s+)?(.{1,200}?)\s+(?:на|как)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"add_card_task": [
-			re.compile(r'(?:добавить|добавь)\s+(?:задачу|задание|пункт)\s+(.{1,120}?)\s+(?:к|в|на)\s+(?:карточку?\s+)?(.{1,80})', re.IGNORECASE),
+			re.compile(r'(?:добавить|добавь)\s+(?:задачу|задание|пункт)\s+(.{1,200}?)\s+(?:к|в|на)\s+(?:карточку?\s+)?(.{1,200})', re.IGNORECASE),
 		],
 		"rename_card_task": [
-			re.compile(r'(?:переименовать|переименуй)\s+(?:задачу|задание)\s+(.{1,80}?)\s+(?:в|на)\s+(?:карточке?\s+)?(.{1,80}?)\s+(?:в|на)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'(?:переименовать|переименуй)\s+(?:задачу|задание)\s+(.{1,200}?)\s+(?:в|на)\s+(?:карточке?\s+)?(.{1,200}?)\s+(?:в|на)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"check_card_task": [
-			re.compile(r'(?:отметить?|отметь|выполнить?|выполни)\s+(?:задачу|задание)\s+(.{1,80}?)\s+(?:в|на)\s+(?:карточке?\s+)?(.{1,80})', re.IGNORECASE),
+			re.compile(r'(?:отметить?|отметь|выполнить?|выполни)\s+(?:задачу|задание)\s+(.{1,200}?)\s+(?:в|на)\s+(?:карточке?\s+)?(.{1,200})', re.IGNORECASE),
 		],
 		"uncheck_card_task": [
-			re.compile(r'(?:снять?\s+отметку|снять?\s+галочку)\s+(?:с\s+)?(?:задачи|задания)\s+(.{1,80}?)\s+(?:в|на)\s+(?:карточке?\s+)?(.{1,80})', re.IGNORECASE),
+			re.compile(r'(?:снять?\s+отметку|снять?\s+галочку)\s+(?:с\s+)?(?:задачи|задания)\s+(.{1,200}?)\s+(?:в|на)\s+(?:карточке?\s+)?(.{1,200})', re.IGNORECASE),
 		],
 		"delete_card": [
-			re.compile(r'(?:удали[тьет]?|убери|удалить)\s+(?:карточку|карточка)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'(?:удали[тьет]?|убери|удалить)\s+(?:карточку|карточка)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"delete_list": [
-			re.compile(r'(?:удали[тьет]?|убери|удалить)\s+(?:список|колонку)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'(?:удали[тьет]?|убери|удалить)\s+(?:список|колонку)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"delete_card_task": [
-			re.compile(r'(?:удали[тьет]?|убери|удалить)\s+(?:задачу|задание)\s+(.{1,80}?)\s+(?:из|от)\s+(?:карточк[иу]\s+)?(.{1,80})', re.IGNORECASE),
+			re.compile(r'(?:удали[тьет]?|убери|удалить)\s+(?:задачу|задание)\s+(.{1,200}?)\s+(?:из|от)\s+(?:карточк[иу]\s+)?(.{1,200})', re.IGNORECASE),
 		],
 		"create_board": [
-			re.compile(r'\b(?:создай|создать|добавь|добавить|новую?)\s+(?:доску|борд)\s+(?:с\s+(?:именем|названием)\s+|под\s+названием\s+)?(.{1,80}?)(?:\s+(?:в|для)\s+(.{1,80}))?$', re.IGNORECASE),
+			re.compile(r'\b(?:создай|создать|добавь|добавить|новую?)\s+(?:доску|борд)\s+(?:с\s+(?:именем|названием)\s+|под\s+названием\s+)?(.{1,200}?)(?:\s+(?:в|для)\s+(.{1,200}))?$', re.IGNORECASE),
 		],
 		"rename_board": [
-			re.compile(r'\b(?:переименуй?|переименовать)\s+(?:доску|борд)\s+(.{1,80}?)\s+(?:на|в)\s+(.{1,80})', re.IGNORECASE),
-			re.compile(r'\bсмени?\s+название\s+(?:доски|борда)\s+(.{1,80}?)\s+(?:на|в)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:переименуй?|переименовать)\s+(?:доску|борд)\s+(.{1,200}?)\s+(?:на|в)\s+(.{1,200})', re.IGNORECASE),
+			re.compile(r'\bсмени?\s+название\s+(?:доски|борда)\s+(.{1,200}?)\s+(?:на|в)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"delete_board": [
-			re.compile(r'\b(?:удали?|удалить|убери?|убрать)\s+(?:доску|борд)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:удали?|удалить|убери?|убрать)\s+(?:доску|борд)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"create_project": [
-			re.compile(r'\b(?:создай?|создать|добавь|добавить)\s+(?:проект)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:создай?|создать|добавь|добавить)\s+(?:проект)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"rename_project": [
-			re.compile(r'\b(?:переименуй?|переименовать)\s+(?:проект)\s+(.{1,80}?)\s+(?:на|в)\s+(.{1,80})', re.IGNORECASE),
-			re.compile(r'\bсмени?\s+название\s+проекта\s+(.{1,80}?)\s+(?:на|в)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:переименуй?|переименовать)\s+(?:проект)\s+(.{1,200}?)\s+(?:на|в)\s+(.{1,200})', re.IGNORECASE),
+			re.compile(r'\bсмени?\s+название\s+проекта\s+(.{1,200}?)\s+(?:на|в)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"delete_project": [
-			re.compile(r'\b(?:удали?|удалить|убери?|убрать)\s+(?:проект)\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:удали?|удалить|убери?|убрать)\s+(?:проект)\s+(.{1,200})', re.IGNORECASE),
 		],
 		"hedges": [
 			re.compile(r'(?:может\s+быть|возможно|следует\s+ли|стоит\s+ли|как\s+(?:мне|можно)|что\s+значит|зачем|почему)', re.IGNORECASE),
@@ -545,73 +545,73 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 	# ── Japanese ──────────────────────────────────────────────────────────
 	"ja": {
 		"move_board": [
-			re.compile(r'(.{1,80}?)(?:ボード|掲示板)を(.{1,80}?)(?:に|へ)(?:移動|動か)'),
+			re.compile(r'(.{1,200}?)(?:ボード|掲示板)を(.{1,200}?)(?:に|へ)(?:移動|動か)'),
 		],
 		"move_card": [
-			re.compile(r'(.{1,80}?)(?:カード|タスク)を(.{1,80}?)(?:に|へ)(?:移動|動か)'),
+			re.compile(r'(.{1,200}?)(?:カード|タスク)を(.{1,200}?)(?:に|へ)(?:移動|動か)'),
 		],
 		"rename_card": [
-			re.compile(r'(.{1,80}?)(?:カード|タスク)?の名前を(.{1,80}?)(?:に|へ)?(?:変更|変え|名前変更)'),
-			re.compile(r'(.{1,80}?)を(.{1,80}?)に(?:名前変更|リネーム)'),
+			re.compile(r'(.{1,200}?)(?:カード|タスク)?の名前を(.{1,200}?)(?:に|へ)?(?:変更|変え|名前変更)'),
+			re.compile(r'(.{1,200}?)を(.{1,200}?)に(?:名前変更|リネーム)'),
 		],
 		"rename_list": [
-			re.compile(r'(?:リスト|列)(.{1,80}?)の名前を(.{1,80}?)(?:に|へ)?(?:変更|変え)'),
-			re.compile(r'(?:リスト|列)(.{1,80}?)を(.{1,80}?)に(?:名前変更|リネーム)'),
+			re.compile(r'(?:リスト|列)(.{1,200}?)の名前を(.{1,200}?)(?:に|へ)?(?:変更|変え)'),
+			re.compile(r'(?:リスト|列)(.{1,200}?)を(.{1,200}?)に(?:名前変更|リネーム)'),
 		],
 		"create_card": [
-			re.compile(r'(.{1,120}?)(?:カード|タスク|todo)(?:を)?(?:作成|追加)(?:して)?(?:(.{1,80})に)?'),
-			re.compile(r'(.{1,120}?)を(.{1,80}?)(?:に|へ)追加'),
+			re.compile(r'(.{1,200}?)(?:カード|タスク|todo)(?:を)?(?:作成|追加)(?:して)?(?:(.{1,200})に)?'),
+			re.compile(r'(.{1,200}?)を(.{1,200}?)(?:に|へ)追加'),
 		],		"create_list": [
-			re.compile(r'(?:リスト|列)(?:を)?(?:作成|追加)(?:して)?(.{1,80}?)(?:(?:に|へ)(.{1,80}))?'),
-			re.compile(r'(.{1,80}?)(?:リスト|列)を(.{1,80}?)(?:に|へ)?(?:作成|追加)'),
+			re.compile(r'(?:リスト|列)(?:を)?(?:作成|追加)(?:して)?(.{1,200}?)(?:(?:に|へ)(.{1,200}))?'),
+			re.compile(r'(.{1,200}?)(?:リスト|列)を(.{1,200}?)(?:に|へ)?(?:作成|追加)'),
 		],		"archive_card": [
-			re.compile(r'(.{1,120}?)(?:を)(?:アーカイブ|保管)'),
+			re.compile(r'(.{1,200}?)(?:を)(?:アーカイブ|保管)'),
 		],
 		"mark_done": [
-			re.compile(r'(.{1,80}?)(?:を)(?:完了|終了|済み)(?:に|として)?'),
+			re.compile(r'(.{1,200}?)(?:を)(?:完了|終了|済み)(?:に|として)?'),
 		],
 		"set_card_desc": [
-			re.compile(r'(.{1,80}?)(?:カード)?の説明を(.{1,200})(?:に|へ)?(?:設定|変更|更新)'),
+			re.compile(r'(.{1,200}?)(?:カード)?の説明を(.{1,200})(?:に|へ)?(?:設定|変更|更新)'),
 		],
 		"add_card_task": [
-			re.compile(r'(?:タスク|作業|課題)(.{1,80}?)をカード(.{1,80}?)に追加'),
+			re.compile(r'(?:タスク|作業|課題)(.{1,200}?)をカード(.{1,200}?)に追加'),
 		],
 		"rename_card_task": [
-			re.compile(r'(?:タスク|作業)(.{1,80}?)をカード(.{1,80}?)で(.{1,80}?)(?:に|へ)リネーム'),
+			re.compile(r'(?:タスク|作業)(.{1,200}?)をカード(.{1,200}?)で(.{1,200}?)(?:に|へ)リネーム'),
 		],
 		"check_card_task": [
-			re.compile(r'(?:タスク|作業|課題)(.{1,80}?)をカード(.{1,80}?)(?:で|の)?(?:完了|チェック|終了)'),
+			re.compile(r'(?:タスク|作業|課題)(.{1,200}?)をカード(.{1,200}?)(?:で|の)?(?:完了|チェック|終了)'),
 		],
 		"uncheck_card_task": [
-			re.compile(r'(?:タスク|作業|課題)(.{1,80}?)をカード(.{1,80}?)(?:で|の)?(?:未完了|チェック外|開く)'),
+			re.compile(r'(?:タスク|作業|課題)(.{1,200}?)をカード(.{1,200}?)(?:で|の)?(?:未完了|チェック外|開く)'),
 		],
 		"delete_card": [
-			re.compile(r'(?:カード|タスク)[\u300e]?(.{1,80}?)[\u300f]?(?:を)?削除'),
+			re.compile(r'(?:カード|タスク)[\u300e]?(.{1,200}?)[\u300f]?(?:を)?削除'),
 		],
 		"delete_list": [
-			re.compile(r'(?:リスト|列)[\u300e]?(.{1,80}?)[\u300f]?(?:を)?削除'),
+			re.compile(r'(?:リスト|列)[\u300e]?(.{1,200}?)[\u300f]?(?:を)?削除'),
 		],
 		"delete_card_task": [
-			re.compile(r'(?:タスク|作業|課題)(.{1,80}?)をカード(.{1,80}?)(?:から)?削除'),
+			re.compile(r'(?:タスク|作業|課題)(.{1,200}?)をカード(.{1,200}?)(?:から)?削除'),
 		],
 		"create_board": [
-			re.compile(r'(.{1,80}?)という?ボードを(?:作成|追加)'),
-			re.compile(r'(?:ボード|掲示板)(.{1,80}?)を(?:作成|追加)'),
+			re.compile(r'(.{1,200}?)という?ボードを(?:作成|追加)'),
+			re.compile(r'(?:ボード|掲示板)(.{1,200}?)を(?:作成|追加)'),
 		],
 		"rename_board": [
-			re.compile(r'(?:ボード|掲示板)(.{1,80}?)の名前を(.{1,80}?)(?:に|へ)?(?:変更|変え|リネーム)'),
+			re.compile(r'(?:ボード|掲示板)(.{1,200}?)の名前を(.{1,200}?)(?:に|へ)?(?:変更|変え|リネーム)'),
 		],
 		"delete_board": [
-			re.compile(r'(?:ボード|掲示板)(.{1,80}?)(?:を)?削除'),
+			re.compile(r'(?:ボード|掲示板)(.{1,200}?)(?:を)?削除'),
 		],
 		"create_project": [
-			re.compile(r'(?:プロジェクト)(.{1,80}?)(?:を)?(?:作成|追加|新規作成)'),
+			re.compile(r'(?:プロジェクト)(.{1,200}?)(?:を)?(?:作成|追加|新規作成)'),
 		],
 		"rename_project": [
-			re.compile(r'(?:プロジェクト)(.{1,80}?)の名前を(.{1,80}?)(?:に|へ)?(?:変更|変え|リネーム)'),
+			re.compile(r'(?:プロジェクト)(.{1,200}?)の名前を(.{1,200}?)(?:に|へ)?(?:変更|変え|リネーム)'),
 		],
 		"delete_project": [
-			re.compile(r'(?:プロジェクト)(.{1,80}?)(?:を)?削除'),
+			re.compile(r'(?:プロジェクト)(.{1,200}?)(?:を)?削除'),
 		],
 		"hedges": [
 			re.compile(r'(?:考えていた|かもしれない|べきか|どうやって|どうすれば|どういう意味|なぜ)'),
@@ -621,73 +621,73 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 	# ── Chinese (Simplified + common Traditional verbs) ───────────────────
 	"zh": {
 		"move_board": [
-			re.compile(r'(?:把|将|將)(.{1,80}?)(?:看板|面板|板)(?:移动|移動|移)到(.{1,80})'),
+			re.compile(r'(?:把|将|將)(.{1,200}?)(?:看板|面板|板)(?:移动|移動|移)到(.{1,200})'),
 		],
 		"move_card": [
-			re.compile(r'(?:把|将|將)(.{1,80}?)(?:卡片|卡)(?:移动|移動|移)到(.{1,80})'),
+			re.compile(r'(?:把|将|將)(.{1,200}?)(?:卡片|卡)(?:移动|移動|移)到(.{1,200})'),
 		],
 		"rename_card": [
-			re.compile(r'(?:把|将|將)?(.{1,80}?)(?:卡片|卡)?(?:重命名|改名)为(.{1,80})'),
-			re.compile(r'(?:重命名|改名)(.{1,80}?)(?:为|到)(.{1,80})'),
+			re.compile(r'(?:把|将|將)?(.{1,200}?)(?:卡片|卡)?(?:重命名|改名)为(.{1,200})'),
+			re.compile(r'(?:重命名|改名)(.{1,200}?)(?:为|到)(.{1,200})'),
 		],
 		"rename_list": [
-			re.compile(r'(?:把|将|將)?(.{1,80}?)(?:列表|清单|栅)?(?:重命名|改名)为(.{1,80})'),
-			re.compile(r'(?:将|把)?(?:列表|清单|栅)(.{1,80}?)(?:改名为|重命名为)(.{1,80})'),
+			re.compile(r'(?:把|将|將)?(.{1,200}?)(?:列表|清单|栅)?(?:重命名|改名)为(.{1,200})'),
+			re.compile(r'(?:将|把)?(?:列表|清单|栅)(.{1,200}?)(?:改名为|重命名为)(.{1,200})'),
 		],
 		"create_card": [
-			re.compile(r'(?:添加|创建|新建|增加)(.{1,120}?)(?:卡片|任务|task)(?:到|至)?(.{1,80})?'),
-			re.compile(r'(?:把|将)(.{1,120}?)(?:加入|进|添加到)(.{1,80})'),
+			re.compile(r'(?:添加|创建|新建|增加)(.{1,200}?)(?:卡片|任务|task)(?:到|至)?(.{1,200})?'),
+			re.compile(r'(?:把|将)(.{1,200}?)(?:加入|进|添加到)(.{1,200})'),
 		],
 		"create_list": [
-			re.compile(r'(?:添加|创建|新建|增加)(?:一个)?(?:列表|清单|栏)(.{1,80}?)(?:到|至|在)?(.{1,80})?'),
+			re.compile(r'(?:添加|创建|新建|增加)(?:一个)?(?:列表|清单|栏)(.{1,200}?)(?:到|至|在)?(.{1,200})?'),
 		],
 		"archive_card": [
-			re.compile(r'(?:把|将|將)?(.{1,120}?)(?:归档|歸檔|存档|存檔)'),
+			re.compile(r'(?:把|将|將)?(.{1,200}?)(?:归档|歸檔|存档|存檔)'),
 		],
 		"mark_done": [
-			re.compile(r'(?:把|将|將)?(.{1,80}?)(?:标记|標記|标|標)?为(?:完成|已完成|已做|done)'),
+			re.compile(r'(?:把|将|將)?(.{1,200}?)(?:标记|標記|标|標)?为(?:完成|已完成|已做|done)'),
 		],
 		"set_card_desc": [
-			re.compile(r'(?:设置|更改|更新)(?:卡片)?(.{1,80}?)的描述(?:为|到)(.{1,200})'),
+			re.compile(r'(?:设置|更改|更新)(?:卡片)?(.{1,200}?)的描述(?:为|到)(.{1,200})'),
 		],
 		"add_card_task": [
-			re.compile(r'添加(?:任务|事项)(.{1,80}?)(?:到|至)(?:卡片)?(.{1,80})'),
+			re.compile(r'添加(?:任务|事项)(.{1,200}?)(?:到|至)(?:卡片)?(.{1,200})'),
 		],
 		"rename_card_task": [
-			re.compile(r'将(?:任务|事项)(.{1,80}?)(?:在|于)(?:卡片)?(.{1,80}?)重命名为(.{1,80})'),
+			re.compile(r'将(?:任务|事项)(.{1,200}?)(?:在|于)(?:卡片)?(.{1,200}?)重命名为(.{1,200})'),
 		],
 		"check_card_task": [
-			re.compile(r'(?:勾选|完成|标记完成)(?:任务|事项)(.{1,80}?)(?:在|于)(?:卡片)?(.{1,80})'),
+			re.compile(r'(?:勾选|完成|标记完成)(?:任务|事项)(.{1,200}?)(?:在|于)(?:卡片)?(.{1,200})'),
 		],
 		"uncheck_card_task": [
-			re.compile(r'(?:取消勾选|取消完成)(?:任务|事项)(.{1,80}?)(?:在|于)(?:卡片)?(.{1,80})'),
+			re.compile(r'(?:取消勾选|取消完成)(?:任务|事项)(.{1,200}?)(?:在|于)(?:卡片)?(.{1,200})'),
 		],
 		"delete_card": [
-			re.compile(r'删除(?:卡片)(.{1,80})'),
+			re.compile(r'删除(?:卡片)(.{1,200})'),
 		],
 		"delete_list": [
-			re.compile(r'删除(?:列表|清单)(.{1,80})'),
+			re.compile(r'删除(?:列表|清单)(.{1,200})'),
 		],
 		"delete_card_task": [
-			re.compile(r'删除(?:任务|事项)(.{1,80}?)(?:从|自)(?:卡片)?(.{1,80})'),
+			re.compile(r'删除(?:任务|事项)(.{1,200}?)(?:从|自)(?:卡片)?(.{1,200})'),
 		],
 		"create_board": [
-			re.compile(r'(?:添加|创建|新建|增加)(?:一个)?(?:看板|面板|board)(.{1,80}?)(?:到|至|在)?(.{1,80})?'),
+			re.compile(r'(?:添加|创建|新建|增加)(?:一个)?(?:看板|面板|board)(.{1,200}?)(?:到|至|在)?(.{1,200})?'),
 		],
 		"rename_board": [
-			re.compile(r'(?:把|将|將)?(?:看板|面板|board)(.{1,80}?)(?:重命名|改名)为(.{1,80})'),
+			re.compile(r'(?:把|将|將)?(?:看板|面板|board)(.{1,200}?)(?:重命名|改名)为(.{1,200})'),
 		],
 		"delete_board": [
-			re.compile(r'(?:删除|移除|删去)(?:看板|面板|board)(.{1,80})'),
+			re.compile(r'(?:删除|移除|删去)(?:看板|面板|board)(.{1,200})'),
 		],
 		"create_project": [
-			re.compile(r'(?:新建|创建|添加)(?:项目|project)(.{1,80})'),
+			re.compile(r'(?:新建|创建|添加)(?:项目|project)(.{1,200})'),
 		],
 		"rename_project": [
-			re.compile(r'(?:把|将|將)?(?:项目|project)(.{1,80}?)(?:重命名|改名)为(.{1,80})'),
+			re.compile(r'(?:把|将|將)?(?:项目|project)(.{1,200}?)(?:重命名|改名)为(.{1,200})'),
 		],
 		"delete_project": [
-			re.compile(r'(?:删除|移除|删去)(?:项目|project)(.{1,80})'),
+			re.compile(r'(?:删除|移除|删去)(?:项目|project)(.{1,200})'),
 		],
 		"hedges": [
 			re.compile(r'(?:在想|可能|也许|也許|应该|應該|怎么|怎麼|如何|什么意思|什麼意思|为什么|為什麼)'),
@@ -697,72 +697,72 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 	# ── Korean ────────────────────────────────────────────────────────────
 	"ko": {
 		"move_board": [
-			re.compile(r'(.{1,80}?)\s*(?:보드|판)(?:을|를)?\s*(.{1,80}?)(?:로|으로|에)\s*(?:이동|옮)'),
+			re.compile(r'(.{1,200}?)\s*(?:보드|판)(?:을|를)?\s*(.{1,200}?)(?:로|으로|에)\s*(?:이동|옮)'),
 		],
 		"move_card": [
-			re.compile(r'(.{1,80}?)\s*카드(?:을|를)?\s*(.{1,80}?)(?:로|으로|에)\s*(?:이동|옮)'),
+			re.compile(r'(.{1,200}?)\s*카드(?:을|를)?\s*(.{1,200}?)(?:로|으로|에)\s*(?:이동|옮)'),
 		],		"rename_card": [
-			re.compile(r'(.{1,80}?)\s*(?:카드)?\s*이름(?:을|를)?\s*(.{1,80}?)(?:으로|로)\s*(?:변경|바꿰|바교)'),
+			re.compile(r'(.{1,200}?)\s*(?:카드)?\s*이름(?:을|를)?\s*(.{1,200}?)(?:으로|로)\s*(?:변경|바꿰|바교)'),
 		],
 		"rename_list": [
-			re.compile(r'(.{1,80}?)\s*(?:리스트|목록|열)?\s*이름(?:을|를)?\s*(.{1,80}?)(?:으로|로)\s*(?:변경|바꿰|바교)'),
+			re.compile(r'(.{1,200}?)\s*(?:리스트|목록|열)?\s*이름(?:을|를)?\s*(.{1,200}?)(?:으로|로)\s*(?:변경|바꿰|바교)'),
 		],		"create_card": [
-			re.compile(r'(?:카드|태스크|todo)\s*(?:를|을)?\s*(.{1,120}?)(?:\s*(?:에|에게|으로)\s*(.{1,80}))?$'),
-			re.compile(r'(.{1,120}?)(?:카드|태스크)\s*(?:추가|등록)'),
-			re.compile(r'(.{1,120}?)\s*(?:에|으로)\s*(?:.{1,80})?\s*(?:추가하기|등록하기|넣기)'),
+			re.compile(r'(?:카드|태스크|todo)\s*(?:를|을)?\s*(.{1,200}?)(?:\s*(?:에|에게|으로)\s*(.{1,200}))?$'),
+			re.compile(r'(.{1,200}?)(?:카드|태스크)\s*(?:추가|등록)'),
+			re.compile(r'(.{1,200}?)\s*(?:에|으로)\s*(?:.{1,200})?\s*(?:추가하기|등록하기|넣기)'),
 		],
 		"create_list": [
-			re.compile(r'(?:리스트|목록|열)\s*(?:를|을)?\s*(?:추가|만들|생성)(.{1,80}?)(?:\s*(?:에|에게|으로)\s*(.{1,80}))?$'),
-			re.compile(r'(.{1,80}?)(?:리스트|목록|열)\s*(?:추가|생성|만들)'),
+			re.compile(r'(?:리스트|목록|열)\s*(?:를|을)?\s*(?:추가|만들|생성)(.{1,200}?)(?:\s*(?:에|에게|으로)\s*(.{1,200}))?$'),
+			re.compile(r'(.{1,200}?)(?:리스트|목록|열)\s*(?:추가|생성|만들)'),
 		],
 		"archive_card": [
-			re.compile(r'(.{1,120}?)(?:을|를)?\s*(?:보관|아카이브)'),
+			re.compile(r'(.{1,200}?)(?:을|를)?\s*(?:보관|아카이브)'),
 		],
 		"mark_done": [
-			re.compile(r'(.{1,80}?)(?:을|를)?\s*(?:완료|끝)'),
+			re.compile(r'(.{1,200}?)(?:을|를)?\s*(?:완료|끝)'),
 		],
 		"set_card_desc": [
-			re.compile(r'(.{1,80})카드의?\s*설명(?:을|를)?\s*(.{1,200})(?:으로|로)\s*(?:설정|변경)'),
+			re.compile(r'(.{1,200})카드의?\s*설명(?:을|를)?\s*(.{1,200})(?:으로|로)\s*(?:설정|변경)'),
 		],
 		"add_card_task": [
-			re.compile(r'(?:작업|태스크|할일)\s*(.{1,80}?)(?:을|를)?\s*카드\s*(.{1,80}?)에\s*추가'),
+			re.compile(r'(?:작업|태스크|할일)\s*(.{1,200}?)(?:을|를)?\s*카드\s*(.{1,200}?)에\s*추가'),
 		],
 		"rename_card_task": [
-			re.compile(r'(?:작업|태스크)\s*(.{1,80}?)(?:을|를)?\s*카드\s*(.{1,80}?)에서\s*(.{1,80}?)(?:으로|로)\s*이름\s*변경'),
+			re.compile(r'(?:작업|태스크)\s*(.{1,200}?)(?:을|를)?\s*카드\s*(.{1,200}?)에서\s*(.{1,200}?)(?:으로|로)\s*이름\s*변경'),
 		],
 		"check_card_task": [
-			re.compile(r'(?:작업|태스크)\s*(.{1,80}?)(?:을|를)?\s*카드\s*(.{1,80}?)(?:에서|에서의)?\s*(?:완료|체크)'),
+			re.compile(r'(?:작업|태스크)\s*(.{1,200}?)(?:을|를)?\s*카드\s*(.{1,200}?)(?:에서|에서의)?\s*(?:완료|체크)'),
 		],
 		"uncheck_card_task": [
-			re.compile(r'(?:작업|태스크)\s*(.{1,80}?)(?:을|를)?\s*카드\s*(.{1,80}?)(?:에서)?\s*(?:미완료|체크\s*해제)'),
+			re.compile(r'(?:작업|태스크)\s*(.{1,200}?)(?:을|를)?\s*카드\s*(.{1,200}?)(?:에서)?\s*(?:미완료|체크\s*해제)'),
 		],
 		"delete_card": [
-			re.compile(r'카드\s*(.{1,80}?)(?:을|를)?\s*(?:삭제|제거)'),
+			re.compile(r'카드\s*(.{1,200}?)(?:을|를)?\s*(?:삭제|제거)'),
 		],
 		"delete_list": [
-			re.compile(r'(?:리스트|목록|열)\s*(.{1,80}?)(?:을|를)?\s*(?:삭제|제거)'),
+			re.compile(r'(?:리스트|목록|열)\s*(.{1,200}?)(?:을|를)?\s*(?:삭제|제거)'),
 		],
 		"delete_card_task": [
-			re.compile(r'(?:작업|태스크)\s*(.{1,80}?)(?:을|를)?\s*카드\s*(.{1,80}?)(?:에서|에서의)?\s*(?:삭제|제거)'),
+			re.compile(r'(?:작업|태스크)\s*(.{1,200}?)(?:을|를)?\s*카드\s*(.{1,200}?)(?:에서|에서의)?\s*(?:삭제|제거)'),
 		],
 		"create_board": [
-			re.compile(r'(.{1,80}?)에서?의?\s*보드(?:를|을)?\s*(?:만들|추가)(?:어|여|해)'),
-			re.compile(r'(.{1,80}?)\s*(?:명의|이름의)?\s*보드(?:를|을)?\s*(?:만들|추가)'),
+			re.compile(r'(.{1,200}?)에서?의?\s*보드(?:를|을)?\s*(?:만들|추가)(?:어|여|해)'),
+			re.compile(r'(.{1,200}?)\s*(?:명의|이름의)?\s*보드(?:를|을)?\s*(?:만들|추가)'),
 		],
 		"rename_board": [
-			re.compile(r'보드(.{1,80}?)이름(?:을|를)\s*(.{1,80})(?:으로|로)\s*(?:변경|바꾸)'),
+			re.compile(r'보드(.{1,200}?)이름(?:을|를)\s*(.{1,200})(?:으로|로)\s*(?:변경|바꾸)'),
 		],
 		"delete_board": [
-			re.compile(r'보드(.{1,80})(?:를|을)?\s*(?:삭제|제거)'),
+			re.compile(r'보드(.{1,200})(?:를|을)?\s*(?:삭제|제거)'),
 		],
 		"create_project": [
-			re.compile(r'프로젝트(.{1,80}?)(?:을|를)?\s*(?:생성|만들기|추가)'),
+			re.compile(r'프로젝트(.{1,200}?)(?:을|를)?\s*(?:생성|만들기|추가)'),
 		],
 		"rename_project": [
-			re.compile(r'프로젝트(.{1,80}?)이름(?:을|를)\s*(.{1,80})(?:으로|로)\s*(?:변경|바꾸)'),
+			re.compile(r'프로젝트(.{1,200}?)이름(?:을|를)\s*(.{1,200})(?:으로|로)\s*(?:변경|바꾸)'),
 		],
 		"delete_project": [
-			re.compile(r'프로젝트(.{1,80})(?:를|을)?\s*(?:삭제|제거)'),
+			re.compile(r'프로젝트(.{1,200})(?:를|을)?\s*(?:삭제|제거)'),
 		],
 		"hedges": [
 			re.compile(r'(?:생각하고\s+있었|혹시|할까요|어떻게|무슨\s+뜻|왜)'),
@@ -772,73 +772,73 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 	# ── Hindi ─────────────────────────────────────────────────────────────
 	"hi": {
 		"move_board": [
-			re.compile(r'(.{1,80}?)\s*बोर्ड\s*को\s*(.{1,80}?)\s*(?:में|पर|को)\s*(?:ले\s+जाएं|ले\s+जाओ|स्थानांतरित|मूव)'),
+			re.compile(r'(.{1,200}?)\s*बोर्ड\s*को\s*(.{1,200}?)\s*(?:में|पर|को)\s*(?:ले\s+जाएं|ले\s+जाओ|स्थानांतरित|मूव)'),
 		],
 		"move_card": [
-			re.compile(r'(.{1,80}?)\s*कार्ड\s*को\s*(.{1,80}?)\s*(?:में|पर)\s*(?:ले\s+जाएं|ले\s+जाओ|मूव)'),
+			re.compile(r'(.{1,200}?)\s*कार्ड\s*को\s*(.{1,200}?)\s*(?:में|पर)\s*(?:ले\s+जाएं|ले\s+जाओ|मूव)'),
 		],
 		"rename_card": [
-			re.compile(r'(.{1,80}?)\s*(?:कार्ड)?\s*का\s*नाम\s+(.{1,80}?)\s*(?:करें|बदलें|रखें)'),
-			re.compile(r'(?:रीनेम|नाम\s+बदलें)\s+(?:कार्ड\s+)?(.{1,80}?)\s+(?:को|में)\s+(.{1,80})'),
+			re.compile(r'(.{1,200}?)\s*(?:कार्ड)?\s*का\s*नाम\s+(.{1,200}?)\s*(?:करें|बदलें|रखें)'),
+			re.compile(r'(?:रीनेम|नाम\s+बदलें)\s+(?:कार्ड\s+)?(.{1,200}?)\s+(?:को|में)\s+(.{1,200})'),
 		],
 		"rename_list": [
-			re.compile(r'(?:सूची|लिस्ट|कॉलम)\s+(.{1,80}?)\s+का\s+नाम\s+(.{1,80}?)\s*(?:करें|बदलें|रखें)'),
+			re.compile(r'(?:सूची|लिस्ट|कॉलम)\s+(.{1,200}?)\s+का\s+नाम\s+(.{1,200}?)\s*(?:करें|बदलें|रखें)'),
 		],
 		"create_card": [
-			re.compile(r'(?:जोड़ें|जोड़ो|बनाओ|बनाएं|नया)\s+(?:कार्ड|कार्य)?\s+(.{1,120}?)(?:\s+(?:में|पर)\s+(.{1,80}))?$', re.IGNORECASE),
-			re.compile(r'(.{1,120}?)\s+को\s+(?:जोड़ें|जोड़ो)\s+(.{1,80})'),
+			re.compile(r'(?:जोड़ें|जोड़ो|बनाओ|बनाएं|नया)\s+(?:कार्ड|कार्य)?\s+(.{1,200}?)(?:\s+(?:में|पर)\s+(.{1,200}))?$', re.IGNORECASE),
+			re.compile(r'(.{1,200}?)\s+को\s+(?:जोड़ें|जोड़ो)\s+(.{1,200})'),
 		],
 		"create_list": [
-			re.compile(r'(?:जोड़ें|जोड़ो|बनाओ|बनाएं|नई?)\s+(?:सूची|लिस्ट|कॉलम)\s+(.{1,80}?)(?:\s+(?:में|पर)\s+(.{1,80}))?$', re.IGNORECASE),
+			re.compile(r'(?:जोड़ें|जोड़ो|बनाओ|बनाएं|नई?)\s+(?:सूची|लिस्ट|कॉलम)\s+(.{1,200}?)(?:\s+(?:में|पर)\s+(.{1,200}))?$', re.IGNORECASE),
 		],
 		"archive_card": [
-			re.compile(r'(.{1,120}?)\s*को\s*(?:संग्रह|आर्काइव|संग्रहित)'),
+			re.compile(r'(.{1,200}?)\s*को\s*(?:संग्रह|आर्काइव|संग्रहित)'),
 		],
 		"mark_done": [
-			re.compile(r'(.{1,80}?)\s*को\s*(?:पूर्ण|पूरा|पूरा\s+हो\s+गया|समाप्त)'),
+			re.compile(r'(.{1,200}?)\s*को\s*(?:पूर्ण|पूरा|पूरा\s+हो\s+गया|समाप्त)'),
 		],
 		"set_card_desc": [
-			re.compile(r'(?:कार्ड)?\s*(.{1,80}?)\s*का\s+विवरण\s+(.{1,200})\s*(?:करें|बदलें|सेट\s+करें)'),
+			re.compile(r'(?:कार्ड)?\s*(.{1,200}?)\s*का\s+विवरण\s+(.{1,200})\s*(?:करें|बदलें|सेट\s+करें)'),
 		],
 		"add_card_task": [
-			re.compile(r'(?:कार्य|टास्क|काम)\s+(.{1,80}?)\s+(?:को\s+)?(?:कार्ड)?\s*(.{1,80}?)\s+में\s+(?:जोड़ें|जोड़े)'),
+			re.compile(r'(?:कार्य|टास्क|काम)\s+(.{1,200}?)\s+(?:को\s+)?(?:कार्ड)?\s*(.{1,200}?)\s+में\s+(?:जोड़ें|जोड़े)'),
 		],
 		"rename_card_task": [
-			re.compile(r'(?:कार्य|टास्क)\s+(.{1,80}?)\s+(?:कार्ड)?\s*(.{1,80}?)\s+में\s+(.{1,80}?)\s+नाम\s+(?:करें|बदलें)'),
+			re.compile(r'(?:कार्य|टास्क)\s+(.{1,200}?)\s+(?:कार्ड)?\s*(.{1,200}?)\s+में\s+(.{1,200}?)\s+नाम\s+(?:करें|बदलें)'),
 		],
 		"check_card_task": [
-			re.compile(r'(?:कार्य|टास्क)\s+(.{1,80}?)\s+(?:को\s+)?(?:कार्ड)?\s*(.{1,80}?)\s+में\s+(?:पूर्ण|चेक|समाप्त)\s*(?:करें|करो|मार्क)?'),
+			re.compile(r'(?:कार्य|टास्क)\s+(.{1,200}?)\s+(?:को\s+)?(?:कार्ड)?\s*(.{1,200}?)\s+में\s+(?:पूर्ण|चेक|समाप्त)\s*(?:करें|करो|मार्क)?'),
 		],
 		"uncheck_card_task": [
-			re.compile(r'(?:कार्य|टास्क)\s+(.{1,80}?)\s+(?:को\s+)?(?:कार्ड)?\s*(.{1,80}?)\s+में\s+(?:अपूर्ण|अनचेक)\s*(?:करें|करो)?'),
+			re.compile(r'(?:कार्य|टास्क)\s+(.{1,200}?)\s+(?:को\s+)?(?:कार्ड)?\s*(.{1,200}?)\s+में\s+(?:अपूर्ण|अनचेक)\s*(?:करें|करो)?'),
 		],
 		"delete_card": [
-			re.compile(r'(?:कार्ड)?\s*(.{1,80}?)\s*को\s*(?:हटाएं|हटाएँ|डिलीट\s*करें)'),
+			re.compile(r'(?:कार्ड)?\s*(.{1,200}?)\s*को\s*(?:हटाएं|हटाएँ|डिलीट\s*करें)'),
 		],
 		"delete_list": [
-			re.compile(r'(?:सूची|लिस्ट|कॉलम)\s+(.{1,80}?)\s+को\s+(?:हटाएं|हटाएँ|डिलीट\s*करें)'),
+			re.compile(r'(?:सूची|लिस्ट|कॉलम)\s+(.{1,200}?)\s+को\s+(?:हटाएं|हटाएँ|डिलीट\s*करें)'),
 		],
 		"delete_card_task": [
-			re.compile(r'(?:कार्य|टास्क)\s+(.{1,80}?)\s+(?:को\s+)?(?:कार्ड)?\s*(.{1,80}?)\s+से\s+(?:हटाएं|हटाएँ|डिलीट\s*करें)'),
+			re.compile(r'(?:कार्य|टास्क)\s+(.{1,200}?)\s+(?:को\s+)?(?:कार्ड)?\s*(.{1,200}?)\s+से\s+(?:हटाएं|हटाएँ|डिलीट\s*करें)'),
 		],
 		"create_board": [
-			re.compile(r'\b(?:बनाओ|बनाएं|जोड़ो|जोड़ें|नया|नई)\s+बोर्ड\s+(.{1,80}?)(?:\s+(?:में|पर)\s+(.{1,80}))?$', re.IGNORECASE),
+			re.compile(r'\b(?:बनाओ|बनाएं|जोड़ो|जोड़ें|नया|नई)\s+बोर्ड\s+(.{1,200}?)(?:\s+(?:में|पर)\s+(.{1,200}))?$', re.IGNORECASE),
 		],
 		"rename_board": [
-			re.compile(r'\bबोर्ड\s+(.{1,80}?)\s+(?:का\s+नाम\s+बदलकर|को)\s+(.{1,80}?)\s+(?:करें|करो|रखें)', re.IGNORECASE),
+			re.compile(r'\bबोर्ड\s+(.{1,200}?)\s+(?:का\s+नाम\s+बदलकर|को)\s+(.{1,200}?)\s+(?:करें|करो|रखें)', re.IGNORECASE),
 		],
 		"delete_board": [
-			re.compile(r'\b(?:हटाओ|हटाएं|मिटाओ|मिटाएं)\s+बोर्ड\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:हटाओ|हटाएं|मिटाओ|मिटाएं)\s+बोर्ड\s+(.{1,200})', re.IGNORECASE),
 		],
 		"create_project": [
-			re.compile(r'\bनया\s+प्रोजेक्ट\s+(.{1,80})\s+(?:बनाएं|बनाओ)', re.IGNORECASE),
-			re.compile(r'\bप्रोजेक्ट\s+(.{1,80})\s+(?:बनाएं|बनाओ|जोड़ें)', re.IGNORECASE),
+			re.compile(r'\bनया\s+प्रोजेक्ट\s+(.{1,200})\s+(?:बनाएं|बनाओ)', re.IGNORECASE),
+			re.compile(r'\bप्रोजेक्ट\s+(.{1,200})\s+(?:बनाएं|बनाओ|जोड़ें)', re.IGNORECASE),
 		],
 		"rename_project": [
-			re.compile(r'\bप्रोजेक्ट\s+(.{1,80}?)\s+का\s+नाम\s+बदलकर\s+(.{1,80})\s+(?:करें|करो|रखें)', re.IGNORECASE),
+			re.compile(r'\bप्रोजेक्ट\s+(.{1,200}?)\s+का\s+नाम\s+बदलकर\s+(.{1,200})\s+(?:करें|करो|रखें)', re.IGNORECASE),
 		],
 		"delete_project": [
-			re.compile(r'\b(?:हटाओ|हटाएं|मिटाओ|मिटाएं)\s+प्रोजेक्ट\s+(.{1,80})', re.IGNORECASE),
+			re.compile(r'\b(?:हटाओ|हटाएं|मिटाओ|मिटाएं)\s+प्रोजेक्ट\s+(.{1,200})', re.IGNORECASE),
 		],
 		"hedges": [
 			re.compile(r'(?:सोच\s+रहा\s+था|शायद|क्या\s+मुझे|कैसे|मतलब\s+क्या|क्यों)'),
@@ -848,75 +848,75 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 	# ── Arabic ────────────────────────────────────────────────────────────
 	"ar": {
 		"move_board": [
-			re.compile(r'(?:انقل|نقل|حرّك|حرك)\s+(?:اللوحة|لوحة)\s+(.{1,80}?)\s+(?:إلى|الى|في)\s+(.{1,80})'),
+			re.compile(r'(?:انقل|نقل|حرّك|حرك)\s+(?:اللوحة|لوحة)\s+(.{1,200}?)\s+(?:إلى|الى|في)\s+(.{1,200})'),
 		],
 		"move_card": [
-			re.compile(r'(?:انقل|نقل|حرّك|حرك)\s+(?:البطاقة|بطاقة)\s+(.{1,80}?)\s+(?:إلى|الى|في)\s+(.{1,80})'),
+			re.compile(r'(?:انقل|نقل|حرّك|حرك)\s+(?:البطاقة|بطاقة)\s+(.{1,200}?)\s+(?:إلى|الى|في)\s+(.{1,200})'),
 		],
 		"rename_card": [
-			re.compile(r'(?:أعد|اعد)\s+تسمية\s+(?:البطاقة\s+)?(.{1,80}?)\s+(?:إلى|الى)\s+(.{1,80})'),
-			re.compile(r'(?:غيّر|غير)\s+(?:اسم\s+)?(?:البطاقة\s+)?(.{1,80}?)\s+(?:إلى|الى)\s+(.{1,80})'),
+			re.compile(r'(?:أعد|اعد)\s+تسمية\s+(?:البطاقة\s+)?(.{1,200}?)\s+(?:إلى|الى)\s+(.{1,200})'),
+			re.compile(r'(?:غيّر|غير)\s+(?:اسم\s+)?(?:البطاقة\s+)?(.{1,200}?)\s+(?:إلى|الى)\s+(.{1,200})'),
 		],
 		"rename_list": [
-			re.compile(r'(?:أعد|اعد)\s+تسمية\s+(?:القائمة\s+)?(.{1,80}?)\s+(?:إلى|الى)\s+(.{1,80})'),
-			re.compile(r'(?:غيّر|غير)\s+(?:اسم\s+)?(?:القائمة\s+)?(.{1,80}?)\s+(?:إلى|الى)\s+(.{1,80})'),
+			re.compile(r'(?:أعد|اعد)\s+تسمية\s+(?:القائمة\s+)?(.{1,200}?)\s+(?:إلى|الى)\s+(.{1,200})'),
+			re.compile(r'(?:غيّر|غير)\s+(?:اسم\s+)?(?:القائمة\s+)?(.{1,200}?)\s+(?:إلى|الى)\s+(.{1,200})'),
 		],
 		"create_card": [
-			re.compile(r'(?:أضف|اضف|أنشئ|انشئ)\s+(?:بطاقة?|مهمة?)?\s*(.{1,120}?)(?:\s+(?:إلى|الى|في)\s+(.{1,80}))?$'),
-			re.compile(r'(?:أضف|اضف)\s+(.{1,120}?)\s+(?:إلى|الى|في)\s+(.{1,80})'),
+			re.compile(r'(?:أضف|اضف|أنشئ|انشئ)\s+(?:بطاقة?|مهمة?)?\s*(.{1,200}?)(?:\s+(?:إلى|الى|في)\s+(.{1,200}))?$'),
+			re.compile(r'(?:أضف|اضف)\s+(.{1,200}?)\s+(?:إلى|الى|في)\s+(.{1,200})'),
 		],
 		"create_list": [
-			re.compile(r'(?:أضف|اضف|أنشئ|انشئ)\s+(?:قائمة?|عمود?)?\s*(?:اسمها?\s+)?(.{1,80}?)(?:\s+(?:إلى|الى|في)\s+(?:لوحة\s+)?(.{1,80}))?$'),
+			re.compile(r'(?:أضف|اضف|أنشئ|انشئ)\s+(?:قائمة?|عمود?)?\s*(?:اسمها?\s+)?(.{1,200}?)(?:\s+(?:إلى|الى|في)\s+(?:لوحة\s+)?(.{1,200}))?$'),
 		],
 		"archive_card": [
-			re.compile(r'(?:أرشف|ارشف|أرشفة|ارشفة)\s+(?:البطاقة\s+)?(.{1,120})'),
+			re.compile(r'(?:أرشف|ارشف|أرشفة|ارشفة)\s+(?:البطاقة\s+)?(.{1,200})'),
 		],
 		"mark_done": [
-			re.compile(r'(?:علّم|علم|اعتبر|حدد)\s+(?:البطاقة\s+)?(.{1,80}?)\s+(?:كـ?|ك)?(?:منجز|مكتمل|تم|منته[ىي])'),
+			re.compile(r'(?:علّم|علم|اعتبر|حدد)\s+(?:البطاقة\s+)?(.{1,200}?)\s+(?:كـ?|ك)?(?:منجز|مكتمل|تم|منته[ىي])'),
 		],
 		"set_card_desc": [
-			re.compile(r'(?:عيّن|عين|غيّر|غير)\s+وصف\s+(?:البطاقة\s+)?(.{1,80}?)\s+(?:إلى|الى)\s+(.{1,200})'),
+			re.compile(r'(?:عيّن|عين|غيّر|غير)\s+وصف\s+(?:البطاقة\s+)?(.{1,200}?)\s+(?:إلى|الى)\s+(.{1,200})'),
 		],
 		"add_card_task": [
-			re.compile(r'(?:أضف|اضف)\s+(?:مهمة|عنصر)\s+(.{1,80}?)\s+(?:إلى|الى|في)\s+(?:بطاقة\s+)?(.{1,80})'),
+			re.compile(r'(?:أضف|اضف)\s+(?:مهمة|عنصر)\s+(.{1,200}?)\s+(?:إلى|الى|في)\s+(?:بطاقة\s+)?(.{1,200})'),
 		],
 		"rename_card_task": [
-			re.compile(r'(?:أعد|اعد)\s+تسمية\s+(?:مهمة|عنصر)\s+(.{1,80}?)\s+(?:في|على)\s+(?:بطاقة\s+)?(.{1,80}?)\s+(?:إلى|الى)\s+(.{1,80})'),
+			re.compile(r'(?:أعد|اعد)\s+تسمية\s+(?:مهمة|عنصر)\s+(.{1,200}?)\s+(?:في|على)\s+(?:بطاقة\s+)?(.{1,200}?)\s+(?:إلى|الى)\s+(.{1,200})'),
 		],
 		"check_card_task": [
-			re.compile(r'(?:علّم|علم|أكمل|اكمل)\s+(?:مهمة|عنصر)\s+(.{1,80}?)\s+(?:في|على)\s+(?:بطاقة\s+)?(.{1,80})'),
+			re.compile(r'(?:علّم|علم|أكمل|اكمل)\s+(?:مهمة|عنصر)\s+(.{1,200}?)\s+(?:في|على)\s+(?:بطاقة\s+)?(.{1,200})'),
 		],
 		"uncheck_card_task": [
-			re.compile(r'(?:أزل|ازل)\s+علامة\s+(?:مهمة|عنصر)\s+(.{1,80}?)\s+(?:في|على)\s+(?:بطاقة\s+)?(.{1,80})'),
+			re.compile(r'(?:أزل|ازل)\s+علامة\s+(?:مهمة|عنصر)\s+(.{1,200}?)\s+(?:في|على)\s+(?:بطاقة\s+)?(.{1,200})'),
 		],
 		"delete_card": [
-			re.compile(r'(?:احذف|حذف|أحذف)\s+(?:البطاقة\s+)?(.{1,80})'),
+			re.compile(r'(?:احذف|حذف|أحذف)\s+(?:البطاقة\s+)?(.{1,200})'),
 		],
 		"delete_list": [
-			re.compile(r'(?:احذف|حذف|أحذف)\s+(?:القائمة\s+)?(.{1,80})'),
+			re.compile(r'(?:احذف|حذف|أحذف)\s+(?:القائمة\s+)?(.{1,200})'),
 		],
 		"delete_card_task": [
-			re.compile(r'(?:احذف|حذف|أحذف)\s+(?:مهمة|عنصر)\s+(.{1,80}?)\s+(?:من|في)\s+(?:بطاقة\s+)?(.{1,80})'),
+			re.compile(r'(?:احذف|حذف|أحذف)\s+(?:مهمة|عنصر)\s+(.{1,200}?)\s+(?:من|في)\s+(?:بطاقة\s+)?(.{1,200})'),
 		],
 		"create_board": [
-			re.compile(r'(?:أنشئ|انشئ|أضف|اضف)\s+(?:لوحة|بورد|board)\s+(?:باسم\s+|تسمى\s+)?(.{1,80}?)(?:\s+(?:في|إلى|الى)\s+(.{1,80}))?$'),
+			re.compile(r'(?:أنشئ|انشئ|أضف|اضف)\s+(?:لوحة|بورد|board)\s+(?:باسم\s+|تسمى\s+)?(.{1,200}?)(?:\s+(?:في|إلى|الى)\s+(.{1,200}))?$'),
 		],
 		"rename_board": [
-			re.compile(r'(?:أعد|اعد)\s+تسمية\s+(?:اللوحة\s+)?(.{1,80}?)\s+(?:إلى|الى)\s+(.{1,80})'),
-			re.compile(r'(?:غيّر|غير)\s+(?:اسم\s+)?(?:اللوحة\s+)?(.{1,80}?)\s+(?:إلى|الى)\s+(.{1,80})'),
+			re.compile(r'(?:أعد|اعد)\s+تسمية\s+(?:اللوحة\s+)?(.{1,200}?)\s+(?:إلى|الى)\s+(.{1,200})'),
+			re.compile(r'(?:غيّر|غير)\s+(?:اسم\s+)?(?:اللوحة\s+)?(.{1,200}?)\s+(?:إلى|الى)\s+(.{1,200})'),
 		],
 		"delete_board": [
-			re.compile(r'(?:احذف|حذف|أحذف)\s+(?:اللوحة|لوحة)\s+(.{1,80})'),
+			re.compile(r'(?:احذف|حذف|أحذف)\s+(?:اللوحة|لوحة)\s+(.{1,200})'),
 		],
 		"create_project": [
-			re.compile(r'(?:أنشئ|انشئ|أضف|اضف)\s+(?:مشروع)\s+(?:باسم\s+)?(.{1,80})'),
+			re.compile(r'(?:أنشئ|انشئ|أضف|اضف)\s+(?:مشروع)\s+(?:باسم\s+)?(.{1,200})'),
 		],
 		"rename_project": [
-			re.compile(r'(?:أعد|اعد)\s+تسمية\s+(?:المشروع\s+)?(.{1,80}?)\s+(?:إلى|الى)\s+(.{1,80})'),
-			re.compile(r'(?:غيّر|غير)\s+(?:اسم\s+)?(?:المشروع\s+)?(.{1,80}?)\s+(?:إلى|الى)\s+(.{1,80})'),
+			re.compile(r'(?:أعد|اعد)\s+تسمية\s+(?:المشروع\s+)?(.{1,200}?)\s+(?:إلى|الى)\s+(.{1,200})'),
+			re.compile(r'(?:غيّر|غير)\s+(?:اسم\s+)?(?:المشروع\s+)?(.{1,200}?)\s+(?:إلى|الى)\s+(.{1,200})'),
 		],
 		"delete_project": [
-			re.compile(r'(?:احذف|حذف|أحذف)\s+(?:المشروع|(?:مشروع))\s+(.{1,80})'),
+			re.compile(r'(?:احذف|حذف|أحذف)\s+(?:المشروع|(?:مشروع))\s+(.{1,200})'),
 		],
 		"hedges": [
 			re.compile(r'(?:كنت\s+أفكر|ربما|هل\s+يجب|هل\s+ينبغي|كيف\s+(?:يمكن|أستطيع)|ماذا\s+يعني|لماذا)'),
