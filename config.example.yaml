@@ -103,3 +103,42 @@ self_audit:
   # How many hours back to scan Z's stored messages when running an audit (periodic or on-demand).
   # Corresponds to env var AUDIT_LOOKBACK_HOURS. Default 48 covers two full days of activity.
   lookback_hours: 48
+
+# ── Ambient Capture & Contextual Routing ───────────────────────────────────
+# See docs/artifacts/ambient_capture_routing.md for the full architectural plan.
+# Epoch 1 ships dark — the engine code is in place but no message path
+# invokes it until enabled is true (Epoch 2). Single-user / single-tenant only;
+# multi-user flows are explicitly disabled until re-audited (Section 18).
+ambient_capture:
+  # Single-user operator identity. REQUIRED before enabling — engine refuses
+  # to start without it. Set to your Planka user id (string).
+  # Corresponds to env var OPERATOR_USER_ID.
+  operator_user_id: ""
+
+  # Master kill-switch. When false, the deterministic intent router runs
+  # exactly as before and ambient routing never fires. Default false.
+  enabled: false
+
+  # Per-channel opt-in. Each channel is independently controlled.
+  channels:
+    telegram: false
+    whatsapp: false
+    dashboard: false
+
+  # Pending capture TTL (seconds, 10..600). How long Z waits for a
+  # clarification reply before silently forgetting the proposed capture.
+  pending_ttl_seconds: 90
+
+  # Confidence thresholds (0.0..1.0). Defaults match the "Confident butler"
+  # preset from Section 7 of the artifact.
+  thresholds:
+    silent_floor: 0.80
+    ask_floor: 0.45
+    chat_floor: 0.20
+
+  # Comma-separated extra domains the auto-description sanitiser allows in
+  # addition to wikipedia.org / youtube.com.
+  auto_description_allowed_domains: ""
+
+  # Routing-lesson retention in days. 0 = never expire (default).
+  routing_lesson_retention_days: 0
