@@ -97,6 +97,10 @@ ssh $REMOTE_USER@$REMOTE_HOST "cd $REMOTE_DIR \
 # Clean up local release notes file (already synced to remote)
 rm -f agent/latest_changes.txt
 
+# Safety net: always start any stopped containers at the end of the deploy,
+# regardless of whether the rebuild step above succeeded or was interrupted.
+ssh $REMOTE_USER@$REMOTE_HOST "cd $REMOTE_DIR && docker compose up -d" || true
+
 echo "Deployment complete."
 echo "Reminder: Use 'bash scripts/sync-personal.sh' if you also need to update personal context."
 
