@@ -21,7 +21,6 @@ translations: dict[str, str] = {
 	"aria_actions_for": 'のアクション',
 	"aria_add_email_rule": '新しいメールルールを追加',
 	"aria_add_inner": 'インナーサークルに人を追加',
-	"aria_add_close": 'クローズサークルに人を追加',
 	"aria_add_person": 'に新しい人を追加する',
 	"aria_add_project": '新しいプロジェクトボードを追加',
 	"aria_all_memories": '保存されたすべてのメモリ',
@@ -118,8 +117,7 @@ translations: dict[str, str] = {
 	"circles": 'サークル',
 	"circles_empty": 'まだ誰も追跡されていません。サークルメンバーを追加してください。',
 	"click_to_bench": 'ローカル・スループット・テスト (tok/s)',
-	"close_circle": 'クローズサークル',
-	"close_circle_desc": '友人・同僚: 週次要約。',
+
 	"config_saved": '設定が正常に更新されました。',
 	"confirm_delete_memory": 'この事実を削除してもよろしいですか？',
 	"confirm_delete_person": 'ソーシャルメモリから削除しますか？',
