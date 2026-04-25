@@ -284,10 +284,15 @@ async def execute_create_card(title: str, destination: str = "", lang: str = "en
 	If destination is empty or cannot be resolved, defaults to the Operator Board Inbox.
 	"""
 	from app.services.planka import create_task as planka_create_task
-	# Destination may be a list name, board name, or empty. Pass as list_name with
-	# fallback to "Inbox". Board resolution is handled inside create_task.
+	# Parse "X list on/in Y [board]" into separate list_name and board_name.
+	board_name = ""
 	list_name = destination.strip() if destination else "Inbox"
-	result = await planka_create_task(board_name="", list_name=list_name, title=title, description="")
+	if destination:
+		_dest_m = re.match(r'^(.+?)\s+list\s+(?:on|in|at)\s+(.+?)(?:\s+board)?$', destination.strip(), re.IGNORECASE)
+		if _dest_m:
+			list_name = _dest_m.group(1).strip()
+			board_name = _dest_m.group(2).strip()
+	result = await planka_create_task(board_name=board_name, list_name=list_name, title=title, description="")
 	if result:
 		dest_label = destination or "Inbox"
 		return f"Card '{title}' added to '{dest_label}'."
