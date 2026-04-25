@@ -141,6 +141,37 @@ class Settings(BaseSettings):
     # 48 covers two full days of activity and matches the typical "look back at the last two days" user intent.
     AUDIT_LOOKBACK_HOURS: int = 48
 
+    # ── Ambient Capture & Contextual Routing ─────────────────────────────────
+    # See docs/artifacts/ambient_capture_routing.md for the full architectural
+    # plan. Epoch 1 ships dark; the engine code is in place but no message
+    # path invokes it until AMBIENT_CAPTURE_ENABLED is True (Epoch 2).
+    #
+    # Single-user / single-tenant operator identity (Section 18). REQUIRED
+    # before ambient capture can be enabled — engine refuses to start without
+    # it rather than defaulting open. Set to your Planka user id (string).
+    OPERATOR_USER_ID: str = ""
+    # Master kill-switch for the ambient capture engine. Default False.
+    # When False, intent_bus is a verbatim pass-through to the existing
+    # deterministic intent router and ambient routing never fires.
+    AMBIENT_CAPTURE_ENABLED: bool = False
+    # Per-channel opt-in (Epoch 2). All False until the operator flips them.
+    AMBIENT_CAPTURE_TELEGRAM: bool = False
+    AMBIENT_CAPTURE_WHATSAPP: bool = False
+    AMBIENT_CAPTURE_DASHBOARD: bool = False
+    # Pending capture TTL (seconds). Configurable in AgentsWidget once the
+    # Inference panel ships. Range enforced in code: 10s..600s.
+    AMBIENT_PENDING_TTL_SECONDS: int = 90
+    # Confidence thresholds. Defaults align with the "Confident butler" preset
+    # from Section 7. Range enforced in code: 0.0..1.0.
+    AMBIENT_SILENT_FLOOR: float = 0.80
+    AMBIENT_ASK_FLOOR: float = 0.45
+    AMBIENT_CHAT_FLOOR: float = 0.20
+    # Comma-separated extra domains the auto-description sanitiser allows
+    # in addition to wikipedia.org / youtube.com (Section 11 + M4).
+    AMBIENT_AUTO_DESC_ALLOWED_DOMAINS: str = ""
+    # Routing-lesson retention. 0 = never expire (default per Section 7).
+    AMBIENT_ROUTING_LESSON_RETENTION_DAYS: int = 0
+
 
     model_config = SettingsConfigDict(
         env_file=os.path.join(os.path.dirname(__file__), "../../../.env"),
