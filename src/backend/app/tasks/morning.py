@@ -73,7 +73,7 @@ async def morning_briefing():
 			item = f"- {e['summary']}"
 			if time_str: item += f" ({time_str})"
 			calendar_summary_parts.append(item)
-		calendar_summary = "\n".join(calendar_summary_parts) if calendar_summary_parts else "No events scheduled for today."
+		calendar_summary = "\n".join(calendar_summary_parts) if calendar_summary_parts else "[EMPTY — omit Calendar section from output]"
 
 		# Simple travel detection (needs calendar result — done before batch 2)
 		detected_location = None
@@ -104,7 +104,7 @@ async def morning_briefing():
 					return result
 			# Fallback to direct fetch if no cached summaries
 			emails = await fetch_unread_emails(max_results=5)
-			return "\n".join([f"- {e['from']}: {e['subject']}" for e in emails]) if emails else "No new emails."
+			return "\n".join([f"- {e['from']}: {e['subject']}" for e in emails]) if emails else "[EMPTY — omit Email section from output]"
 
 		from app.services.planka import get_activity_report
 		weather_report, tree, email_summary, activity = await asyncio.gather(
@@ -162,23 +162,22 @@ async def morning_briefing():
 			"RIGHT (human): '12C, drizzle all morning, eases around 2pm. Take a jacket.'\n\n"
 			"WRONG (robotic board): '- openZero backend -> In Progress (TURN server fix)'\n"
 			"RIGHT (human board): '- openZero backend in progress (TURN fix done)\\n- Privacy dashboard still in review — needs a test pass'\n\n"
-			"CONTENT — cover ALL of these using the structure above:\n"
-			"- Weather: temperature and conditions. One line.\n"
-			"- Calendar events with times.\n"
-			"- Active projects: boards, cards, status changes.\n"
-			"- People context: mention anyone relevant by name.\n"
-			"- Emails worth noting.\n\n"
-			"PROACTIVE SUGGESTIONS — this is critical:\n"
+			"CONTENT — include only sections where real data was provided in the context blocks below:\n"
+			"- Weather: temperature and conditions from WEATHER FORECAST. Always include — weather data is always provided.\n"
+			"- Calendar: only if CALENDAR TODAY is not marked [EMPTY]. List real events only.\n"
+			"- Board: only if PROJECT TREE has real cards. Never list cards not present in the tree.\n"
+			"- People: only if INNER CIRCLE has someone with today-relevant context explicitly in the data.\n"
+			"- Email: only if LATEST EMAILS has real emails. If marked [EMPTY], omit the section entirely.\n\n"
+			"PROACTIVE SUGGESTIONS — allowed, but grounded:\n"
 			"Based on the user's known personal context (health goals, career aspirations, family situation, "
 			"fitness preferences, nutrition needs, life circumstances), actively suggest concrete things "
-			"they could do today. Do not wait to be asked. Examples of proactive thinking:\n"
+			"they could do today. Label suggestions clearly as suggestions, never as confirmed schedule items.\n"
 			"- If the fitness or health crew has produced a plan, suggest today's workout window based on weather and calendar gaps.\n"
-			"- If career goals exist (e.g., Senior Design Engineer), suggest a concrete skill-building action for today.\n"
-			"- If there are kids, think about what would be good for them today given weather and schedule.\n"
-			"- If nutrition crew is active, mention meal prep or cooking worth tackling.\n"
+			"- If career goals exist, suggest a concrete skill-building action for today.\n"
+			"- If there are kids in INNER CIRCLE, suggest something good for them based on weather — but NEVER infer school days, pickup times, or child logistics unless those appear verbatim in CALENDAR TODAY.\n"
+			"- If nutrition crew is active, mention ONE warm meal suggestion. Do not suggest both lunch and dinner.\n"
 			"- If stagnant projects exist in the tree, nudge on the most impactful one.\n"
 			"- If the weather is good, suggest something outdoors. If bad, suggest something productive indoors.\n"
-			"- Think about the whole person: body, mind, work, relationships, rest.\n"
 			"Add each suggestion as a labeled one-line bullet under the relevant section (Fitness:, Nutrition:, Kids:, etc.).\n\n"
 			"CREW AWARENESS — the user has these active autonomous crews working for them:\n"
 			f"{crew_context if crew_context else 'No active crews detected.'}\n"
