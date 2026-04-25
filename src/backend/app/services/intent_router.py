@@ -1387,19 +1387,28 @@ async def classify_structural_intent(text: str, lang: str) -> Optional[Structura
 	# Checked before CREATE_CARD: explicit "list" noun is more specific than
 	# the broad "add X to Y" create_card pattern 3, which would otherwise
 	# steal "add a new list In Progress to Garden".
-	for pat in _patterns_for("create_list", lang):
-		m = pat.search(snippet)
-		if m:
-			name_q = _strip_filler(m.group(1)) if m.lastindex and m.lastindex >= 1 else ""
-			board_q = _strip_filler(m.group(2)) if m.lastindex and m.lastindex >= 2 and m.group(2) else ""
-			if not name_q:
-				continue
-			return StructuralIntent(
-				verb="CREATE_LIST",
-				entities={"list_name": name_q, "board_name": board_q},
-				raw_text=snippet,
-				confidence=0.85,
-			)
+	# Guard: if "card", "task", or "todo" appears as an explicit keyword
+	# BEFORE "list" in the snippet (e.g. "add Emperor Angel card to review
+	# list on tank board"), this is a CREATE_CARD command — skip ahead.
+	_pre_list_snippet = snippet
+	_list_pos = snippet.lower().find(" list")
+	if _list_pos > 0:
+		_pre_list_snippet = snippet[:_list_pos]
+	_has_card_kw_before_list = bool(re.search(r'\b(?:card|task|todo)\b', _pre_list_snippet, re.IGNORECASE))
+	if not _has_card_kw_before_list:
+		for pat in _patterns_for("create_list", lang):
+			m = pat.search(snippet)
+			if m:
+				name_q = _strip_filler(m.group(1)) if m.lastindex and m.lastindex >= 1 else ""
+				board_q = _strip_filler(m.group(2)) if m.lastindex and m.lastindex >= 2 and m.group(2) else ""
+				if not name_q:
+					continue
+				return StructuralIntent(
+					verb="CREATE_LIST",
+					entities={"list_name": name_q, "board_name": board_q},
+					raw_text=snippet,
+					confidence=0.85,
+				)
 
 	# ── ADD_CARD_TASK ─────────────────────────────────────────────────────
 	# Checked before CREATE_CARD: "add task X to card Y" would otherwise
