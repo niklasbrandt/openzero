@@ -22,7 +22,7 @@ async def weekly_review():
 			"Write like a smart colleague summing up the week in a message. Natural, direct, slightly informal — not a literary reflection, not a bullet dump.\n"
 			"Short sentences. Plain words. Sections with headers are fine — the language inside should sound like a person, not a report generator.\n"
 			"Be specific: name actual boards, cards, and progress mentioned in the data. Don't be vague.\n"
-			"Aim for 200-350 words. Use bullets for lists of items; use short prose for observations and context.\n\n"
+			"Aim for 200-350 words. Over 500 words is a failure regardless of data volume. Use bullets for lists of items; use short prose for observations and context.\n\n"
 			"OPERATIONAL DATA (7-DAY ACTIVITY):\n"
 			f"{activity_block}\n\n"
 			f"PROJECT TREE:\n{tree_block}\n\n"
@@ -42,8 +42,15 @@ async def weekly_review():
 			"- NEVER use emoji or unicode decorative symbols."
 		)
 		
-		content = await chat(prompt, _feature="weekly_review", include_health=False)
-		
+		try:
+			content = await asyncio.wait_for(chat(prompt, _feature="weekly_review", include_health=False), timeout=300.0)
+		except asyncio.TimeoutError:
+			logger.warning("weekly_review — cloud tier timed out, retrying")
+			content = await chat(prompt, _feature="weekly_review", include_health=False)
+
+		from app.services.agent_actions import parse_and_execute_actions
+		content, _, _ = await parse_and_execute_actions(content)
+
 		# Store in Database
 		async with AsyncSessionLocal() as session:
 			briefing = Briefing(type="week", content=content, model=last_model_used.get())
@@ -69,7 +76,10 @@ async def weekly_review():
 		from app.services.notifier import send_notification
 		from app.config import settings
 		await send_notification(f"---\n{content}\n\n[Dashboard]({settings.BASE_URL}/dashboard)")
-		
+
+		from app.models.db import save_global_message
+		await save_global_message("telegram", "z", content, model=last_model_used.get())
+
 		return content
 
 	except Exception as e:
