@@ -1025,12 +1025,8 @@ async def get_life_tree(db: AsyncSession = Depends(get_db)):
 	res_inner = await db.execute(select(Person).where(Person.circle_type == "inner"))
 	inner_circle = res_inner.scalars().all()
 	
-	res_close = await db.execute(select(Person).where(Person.circle_type == "close"))
-	close_circle = res_close.scalars().all()
-	
 	social_data = {
 		"inner": [{"name": p.name, "relationship": p.relationship} for p in inner_circle],
-		"close": [{"name": p.name, "relationship": p.relationship} for p in close_circle]
 	}
 	
 	# 2. Upcoming Calendar & Birthdays
@@ -1548,7 +1544,7 @@ async def update_email_rule(rule_id: int, rule: EmailRuleCreate, db: AsyncSessio
 	await db.refresh(db_rule)
 	return db_rule
 
-# --- People (Inner/Close Circle) ---
+# --- People (Inner Circle) ---
 class PersonCreate(BaseModel):
 	name: str
 	relationship: str

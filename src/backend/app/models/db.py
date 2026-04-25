@@ -73,7 +73,7 @@ class Person(Base):
     name = Column(String, nullable=False)
     relationship = Column(String)
     context = Column(Text)  # Homework, hobbies, special dates
-    circle_type = Column(String, default="inner")  # inner, close, outer, identity
+    circle_type = Column(String, default="inner")  # inner, outer, identity
     birthday = Column(String)  # Optional birthday string (e.g. DD.MM.YYYY)
     gender = Column(String)
     residency = Column(String)

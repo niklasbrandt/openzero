@@ -21,7 +21,7 @@ translations: dict[str, str] = {
 	"aria_actions_for": '的操作',
 	"aria_add_email_rule": '添加新邮件规则',
 	"aria_add_inner": '将人员添加到核心圈',
-	"aria_add_close": '将人员添加到亲密圈',
+
 	"aria_add_person": '添加新人员到',
 	"aria_add_project": '添加新项目看板',
 	"aria_all_memories": '所有存储的记忆',
@@ -118,8 +118,6 @@ translations: dict[str, str] = {
 	"circles": '圈子',
 	"circles_empty": '尚未追踪任何人。添加核心圈子成员。',
 	"click_to_bench": '测试本地吞吐量 (tok/s)',
-	"close_circle": '亲密圈',
-	"close_circle_desc": '朋友与同事：每周摘要。',
 	"config_saved": '配置更新成功。',
 	"confirm_delete_memory": '您确定要遗忘这个事实吗？',
 	"confirm_delete_person": '从社交记忆中移除？',

@@ -21,7 +21,6 @@ translations: dict[str, str] = {
 	"aria_actions_for": 'إجراءات لـ',
 	"aria_add_email_rule": 'إضافة قاعدة بريد إلكتروني جديدة',
 	"aria_add_inner": 'إضافة شخص إلى الدائرة الداخلية',
-	"aria_add_close": 'إضافة شخص إلى الدائرة القريبة',
 	"aria_add_person": 'إضافة شخص جديد إلى',
 	"aria_add_project": 'إضافة لوحة مشروع جديدة',
 	"aria_all_memories": 'كل الذكريات المخزنة',
@@ -118,8 +117,7 @@ translations: dict[str, str] = {
 	"circles": 'الدوائر',
 	"circles_empty": 'لم يتم تتبع أي شخص بعد. أضف أعضاء الدائرة الأساسية.',
 	"click_to_bench": 'اختبار الإنتاجية المحلية (tok/s)',
-	"close_circle": 'الدائرة القريبة',
-	"close_circle_desc": 'الأصدقاء والزملاء: ملخص أسبوعي.',
+
 	"config_saved": 'تم تحديث الإعدادات بنجاح.',
 	"confirm_delete_memory": 'هل أنت متأكد أنك تريد نسيان هذه الحقيقة؟',
 	"confirm_delete_person": 'إزالة من الذاكرة الاجتماعية؟',

@@ -21,7 +21,7 @@ translations: dict[str, str] = {
 	"aria_actions_for": 'Actions pour',
 	"aria_add_email_rule": "Ajouter une nouvelle règle d'e-mail",
 	"aria_add_inner": 'Ajouter une personne au cercle restreint',
-	"aria_add_close": 'Ajouter une personne au cercle proche',
+
 	"aria_add_person": 'Ajouter une nouvelle personne à',
 	"aria_add_project": 'Ajouter un nouveau tableau de projet',
 	"aria_all_memories": 'Toutes les mémoires stockées',
@@ -118,8 +118,6 @@ translations: dict[str, str] = {
 	"circles": 'Cercles',
 	"circles_empty": "Personne n'est encore suivi. Ajoutez des membres au cercle restreint.",
 	"click_to_bench": 'Tester le débit local (tok/s)',
-	"close_circle": 'Cercle proche',
-	"close_circle_desc": 'Amis & Collègues : Résumé hebdomadaire.',
 	"config_saved": 'Configuration mise à jour avec succès.',
 	"confirm_delete_memory": 'Êtes-vous sûr de vouloir oublier ce fait ?',
 	"confirm_delete_person": 'Supprimer de la mémoire sociale ?',
