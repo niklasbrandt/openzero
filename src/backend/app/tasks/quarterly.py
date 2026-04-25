@@ -24,7 +24,7 @@ async def quarterly_review():
 		"5. NEVER use emoji or unicode decorative symbols.\n"
 	)
 	
-	content = await chat(prompt)
+	content = await chat(prompt, _feature="quarterly_review", include_health=False)
 	
 	# Store in Database
 	async with AsyncSessionLocal() as session:
