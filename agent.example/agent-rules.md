@@ -112,9 +112,9 @@ Example of correct auto-population:
 Example where description is correctly left empty:
 > Title: "Order replacement charger for MacBook Pro" / Description: (empty)
 
-- **Aquarium board -- species card:** When a card is created on a board whose name contains "aquarium", "reef", "tank", "nano reef", or any similar fish-keeping context, and the card title is a fish or aquatic creature name, Z MUST include the following two lines in the description. If the user provided a description, append the links after it; otherwise use these lines as the full description:
+- **Named entity (species, product, technology, place, concept):** When the card title is a recognizable named entity — a proper noun, species name, brand, or technical term — Z MUST automatically populate the description with the following two lines. If the user provided a description, append the links after it; otherwise use these lines as the full description:
 
 	Wikipedia: [TITLE](https://en.wikipedia.org/wiki/Special:Search?search=ENCODED_TITLE)
 	YouTube: [TITLE](https://www.youtube.com/results?search_query=ENCODED_TITLE)
 
-	Construct `ENCODED_TITLE` by URL-encoding the card title (spaces → `%20`). No additional text -- just the two labelled links on separate lines.
+	Construct `ENCODED_TITLE` by URL-encoding the card title (spaces → `%20`). No additional text — just the two labelled links on separate lines. If the title is a plain action or task phrase (a verb is present, everyday language), skip enrichment — it is not a named entity.
