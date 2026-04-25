@@ -15,11 +15,11 @@ async def weekly_review():
 		activity = await get_activity_report(days=7)
 		
 		prompt = (
-			"Z, it's the end of the week — write a detailed, natural, flowing message to the user about how the week went.\n"
-			"Think about what progressed, what stalled, and what feels important for next week.\n"
-			"Write it like a thoughtful friend reflecting on the week — no formal headers, no bullet-point structure, just clear honest prose.\n"
-			"Be specific: name actual boards, cards, and progress percentages from the data. Don't be vague.\n"
-			"Aim for at least 250 words — give the user a real reflection, not a skim.\n\n"
+			"Z, it's the end of the week — write the weekly review.\n"
+			"Write like a smart colleague summing up the week in a message. Natural, direct, slightly informal — not a literary reflection, not a bullet dump.\n"
+			"Short sentences. Plain words. Sections with headers are fine — the language inside should sound like a person, not a report generator.\n"
+			"Be specific: name actual boards, cards, and progress. Don't be vague.\n"
+			"Aim for 200-350 words. Use bullets for lists of items; use short prose for observations and context.\n\n"
 			"OPERATIONAL DATA (7-DAY ACTIVITY):\n"
 			f"{activity}\n\n"
 			f"PROJECT TREE:\n{tree}\n\n"
@@ -27,7 +27,9 @@ async def weekly_review():
 			"- Base your message ONLY on the OPERATIONAL DATA and TREE provided above.\n"
 			"- If OPERATIONAL DATA shows an 'OPERATIONAL DATA FAILURE/EMPTY' state, tell the user honestly without guessing at specifics.\n"
 			"- Do not mention placeholder examples from personal files (like Acme Studio).\n"
-			"- Suggest 3 things worth focusing on next week, woven naturally into the prose."
+			"- Suggest 3 concrete things worth focusing on next week.\n"
+			"- NO metaphors, NO literary prose, NO filler ('honestly?', 'that screams', etc.). Write like a human, not an LLM trying to sound thoughtful.\n"
+			"- NEVER use emoji or unicode decorative symbols."
 		)
 		
 		content = await chat(prompt, _feature="weekly_review")

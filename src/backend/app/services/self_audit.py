@@ -234,6 +234,9 @@ def _title_has_verb(name: str) -> bool:
 
 
 def _check_missing_descriptions(cards: list[dict[str, Any]]) -> list[str]:
+	"""Disabled: missing-description audit warnings are suppressed."""
+	return []
+
 	"""Return advisory flags for task-board cards with vague names and no description or tasks.
 
 	Heuristic: only flag a card when ALL of the following are true:

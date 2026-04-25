@@ -57,13 +57,9 @@ export class CircleManager extends HTMLElement {
 	async fetchPeople() {
 		try {
 			if (this.circleType === 'unified') {
-				const [innerRes, closeRes] = await Promise.all([
-					fetch('/api/dashboard/people?circle_type=inner'),
-					fetch('/api/dashboard/people?circle_type=close')
-				]);
+				const innerRes = await fetch('/api/dashboard/people?circle_type=inner');
 				const inner = innerRes.ok ? await innerRes.json() : [];
-				const close = closeRes.ok ? await closeRes.json() : [];
-				this.displayUnified(inner, close);
+				this.displayUnified(inner);
 			} else {
 				const response = await fetch(`/api/dashboard/people?circle_type=${this.circleType}`);
 				if (!response.ok) throw new Error('API error');
@@ -130,8 +126,8 @@ export class CircleManager extends HTMLElement {
 			.replace(/'/g, '&#39;');
 	}
 
-	displayUnified(inner: any[], close: any[]) {
-		this.currentPeople = [...inner, ...close];
+	displayUnified(inner: any[]) {
+		this.currentPeople = [...inner];
 		const list = this.shadowRoot?.querySelector('#people-list');
 		if (list) {
 			list.innerHTML = `
@@ -140,13 +136,6 @@ export class CircleManager extends HTMLElement {
 						<h3 class="unified-h3">${this.tr('inner_circle', 'Inner Circle')}</h3>
 						<div class="people-sublist" data-type="inner">
 							${this.renderPeopleList(inner, 'inner')}
-						</div>
-					</div>
-					<div class="unified-sep"></div>
-					<div class="unified-col">
-						<h3 class="unified-h3">${this.tr('close_circle', 'Close Circle')}</h3>
-						<div class="people-sublist" data-type="close">
-							${this.renderPeopleList(close, 'close')}
 						</div>
 					</div>
 				</div>
@@ -215,13 +204,11 @@ export class CircleManager extends HTMLElement {
 		if (this.shadowRoot) {
 			const titles: Record<string, string> = {
 				inner: this.tr('inner_circle_full', 'Inner Circle'),
-				close: this.tr('close_circle_full', 'Close Circle'),
 				outer: this.tr('outer_circle_full', 'Outer Circle'),
 				unified: this.tr('relationships', 'Relationships'),
 			};
 			const accents: Record<string, string> = {
 				inner: 'var(--circle-inner-color)',
-				close: 'var(--circle-close-color)',
 				outer: 'var(--circle-outer-color)',
 				unified: 'var(--accent-color)',
 			};
@@ -371,7 +358,6 @@ export class CircleManager extends HTMLElement {
 					.people-sublist { display: flex; flex-direction: column; gap: 0.75rem; }
 					
 					[data-circle-type="inner"] .rel { color: var(--circle-inner-color); }
-					[data-circle-type="close"] .rel { color: var(--circle-close-color); }
 
 					@media (max-width: 699px) {
 						.unified-grid { grid-template-columns: 1fr; }
@@ -395,7 +381,7 @@ export class CircleManager extends HTMLElement {
 						<div style="display: flex; gap: 0.5rem;">
 							${this.circleType === 'unified' ? `
 								<button id="addInnerBtn" class="btn-primary" aria-label="${this.tr('aria_add_inner', 'Add person to Inner Circle')}" style="background: var(--surface-card); color: var(--circle-inner-color); border-color: var(--circle-inner-color);">+ Inner</button>
-								<button id="addCloseBtn" class="btn-primary" aria-label="${this.tr('aria_add_close', 'Add person to Close Circle')}" style="background: var(--surface-card); color: var(--circle-close-color); border-color: var(--circle-close-color);">+ Close</button>
+
 							` : `<button id="showAddBtn" class="btn-primary" aria-label="${this.tr('aria_add_person', 'Add a new person to')} ${title}">${this.tr('new_person', '+ New Person')}</button>`}
 						</div>
 						` : ''}
@@ -437,12 +423,6 @@ export class CircleManager extends HTMLElement {
 				});
 				this.shadowRoot.querySelector('#addInnerBtn')?.addEventListener('click', () => {
 					this.circleType = 'inner';
-					this.isAdding = true;
-					this.render();
-					setTimeout(() => this.shadowRoot?.querySelector<HTMLInputElement>('#nameInput')?.focus(), 50);
-				});
-				this.shadowRoot.querySelector('#addCloseBtn')?.addEventListener('click', () => {
-					this.circleType = 'close';
 					this.isAdding = true;
 					this.render();
 					setTimeout(() => this.shadowRoot?.querySelector<HTMLInputElement>('#nameInput')?.focus(), 50);

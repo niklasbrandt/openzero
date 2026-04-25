@@ -9,11 +9,11 @@ async def monthly_review():
 	activity = await get_activity_report(days=30)
 
 	prompt = (
-		"Z, it's been a full month — write a detailed, natural, honest reflection on how things went.\n"
-		"What actually moved forward, what got stuck, and what feels worth pushing on next month?\n"
-		"Write it like a thoughtful friend who's been watching alongside — flowing prose, no formal section headers.\n"
-		"Be specific: name actual boards, cards, and progress percentages. Don't be vague.\n"
-		"Aim for at least 300 words — this is a month of work, give it the depth it deserves.\n\n"
+		"Z, it's been a full month — write the monthly review.\n"
+		"Write like a smart colleague giving a frank summary after a month of work. Natural, direct, slightly informal — not a literary essay, not a raw data dump.\n"
+		"Short sentences. Plain words. Sections are fine — the language inside should sound like a person, not a report generator.\n"
+		"Be specific: name actual boards, cards, and progress. Don't be vague.\n"
+		"Aim for 250-400 words. Use bullets for lists; use short prose for observations and context.\n\n"
 		"STRICT OPERATIONAL DATA (THE ONLY TRUTH):\n"
 		f"{activity}\n\n"
 		f"FULL PROJECT TREE:\n{tree}\n\n"
@@ -21,7 +21,9 @@ async def monthly_review():
 		"1. Respond ONLY based on the OPERATIONAL DATA and PROJECT TREE above.\n"
 		"2. If OPERATIONAL DATA starts with '### OPERATIONAL DATA FAILURE', tell the user about the disconnection honestly — don't list specific card names from memory.\n"
 		"3. CRITICAL: Ignore any placeholder or '[e.g., ...]' values from personal/business context (like Acme Studio, WebGPU, etc.).\n"
-		"4. Suggest 3 meaningful goals for next month, woven naturally into the prose.\n"
+		"4. Suggest 3 meaningful goals for next month.\n"
+		"5. NO metaphors, NO literary prose, NO filler phrases. Write like a human, not an LLM trying to sound reflective.\n"
+		"6. NEVER use emoji or unicode decorative symbols.\n"
 	)
 	
 	content = await chat(prompt, _feature="monthly_review")
