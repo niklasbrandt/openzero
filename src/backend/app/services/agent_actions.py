@@ -6,6 +6,22 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
+# Module-level so tests and the phantom-guard check can import it directly.
+# Extended in Epoch 1 of the ambient capture plan (Section 17, H4 + S1):
+# adds AMBIENT_*, RENAME_*, and explicitly-forbidden SHARE_* / INVITE_* verbs
+# so a single-user instance can never be tricked into multi-user actions.
+_MUTATING_TAG_RE = re.compile(
+	r'\[?ACTION:\s*(?:'
+	r'CREATE_TASK|CREATE_BOARD|CREATE_LIST|CREATE_PROJECT|'
+	r'MOVE_BOARD|MOVE_CARD|MARK_DONE|ARCHIVE_CARD|APPEND_SHOPPING|'
+	r'DELETE_BOARD|DELETE_CARD|DELETE_LIST|DELETE_PROJECT|'
+	r'SET_CARD_DESC|RENAME_CARD|RENAME_LIST|RENAME_PROJECT|'
+	r'AMBIENT_CAPTURE|AMBIENT_TEACH|'
+	r'SHARE_BOARD|SHARE_PROJECT|INVITE_USER|INVITE_MEMBER'
+	r')\b',
+	re.IGNORECASE,
+)
+
 @tool
 async def create_task(title: str, description: str = "", board_name: str = "Operator Board", list_name: str = "Today") -> str:
 	"""Create a task in a specific board and list."""
@@ -469,7 +485,6 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 	# Track raw tag strings; skip any tag we have already processed in this response.
 	seen_raw_tags: set[str] = set()
 	# Detect whether the raw reply contained mutating ACTION tags (language-agnostic phantom guard).
-	_MUTATING_TAG_RE = re.compile(r'\[?ACTION:\s*(?:CREATE_TASK|CREATE_BOARD|CREATE_LIST|CREATE_PROJECT|MOVE_BOARD|MOVE_CARD|MARK_DONE|ARCHIVE_CARD|APPEND_SHOPPING|DELETE_BOARD|DELETE_CARD|DELETE_LIST|DELETE_PROJECT|SET_CARD_DESC)\b', re.IGNORECASE)
 	_reply_had_mutating_tags = bool(_MUTATING_TAG_RE.search(reply))
 
 	# helper to clean tag from reply
