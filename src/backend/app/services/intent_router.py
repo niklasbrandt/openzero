@@ -84,7 +84,7 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 		],
 		"create_card": [
 			# "add/create/new card|task <title> to|on|in <list-or-board>"
-			re.compile(r'\b(?:add|create|new|make)\s+(?:a\s+|the\s+)?(?:card|task|todo|to-do)\s+(.{1,120}?)(?:\s+(?:to|on|in|under)\s+(.{1,80}))?$', re.IGNORECASE),
+			re.compile(r'\b(?:add|create|new|make)\s+(?:a\s+|the\s+)?(?:card|task|todo|to-do)\s+(?:named\s+|called\s+)?(.{1,120}?)(?:\s+(?:to|on|in|under)\s+(.{1,80}))?$', re.IGNORECASE),
 			# "add <title> card|task to|on|in <list-or-board>" (postfix noun)
 			re.compile(r'\b(?:add|create|new)\s+(?:a\s+|the\s+)?(.{1,120}?)\s+(?:card|task|todo|to-do)(?:\s+(?:to|on|in|under)\s+(.{1,80}))?$', re.IGNORECASE),
 			# "add <title> to <list>" (no card noun, but explicit destination)
@@ -172,7 +172,7 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 			re.compile(r'\b(?:benenn[e]?)\s+(?:die\s+)?(?:liste|spalte|kolumne)\s+(.{1,80}?)\s+(?:in|zu|nach)\s+(.{1,80}?)(?:\s+um)?$', re.IGNORECASE),
 		],
 		"create_card": [
-			re.compile(r'\b(?:erstell[e]?|f[üu]g[e]?\s+hinzu|leg[e]?\s+an|neu[e]?)\s+(?:eine\s+)?(?:karte|aufgabe|task|todo)\s+(.{1,120}?)(?:\s+(?:zu|in|auf|unter)\s+(.{1,80}))?$', re.IGNORECASE),
+			re.compile(r'\b(?:erstell[e]?|f[üu]g[e]?\s+hinzu|leg[e]?\s+an|neu[e]?)\s+(?:eine\s+)?(?:karte|aufgabe|task|todo)\s+(?:namens?\s+|mit\s+dem\s+namen\s+)?(.{1,120}?)(?:\s+(?:zu|in|auf|unter)\s+(.{1,80}))?$', re.IGNORECASE),
 			re.compile(r'\b(?:f[üu]g[e]?)\s+(.{1,120}?)\s+(?:zu|in|auf)\s+(?:meine[rn]?\s+|der\s+|die\s+|das\s+)?(.{1,80}?)(?:\s+(?:hinzu|liste|board))?$', re.IGNORECASE),
 		],
 		"create_list": [
@@ -252,7 +252,7 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 			re.compile(r'\b(?:renombra[r]?|cambia[r]?\s+(?:el\s+)?nombre)\s+(?:la|el)?\s*(?:lista|columna)\s+(.{1,80}?)\s+(?:a|por|como)\s+(.{1,80})', re.IGNORECASE),
 		],
 		"create_card": [
-			re.compile(r'\b(?:agrega[r]?|añade[r]?|crea[r]?|nueva?)\s+(?:una?\s+)?(?:tarjeta|tarea|todo)\s+(.{1,120}?)(?:\s+(?:a|en)\s+(.{1,80}))?$', re.IGNORECASE),
+			re.compile(r'\b(?:agrega[r]?|añade[r]?|crea[r]?|nueva?)\s+(?:una?\s+)?(?:tarjeta|tarea|todo)\s+(?:llamad[ao]?\s+|con\s+nombre\s+)?(.{1,120}?)(?:\s+(?:a|en)\s+(.{1,80}))?$', re.IGNORECASE),
 			re.compile(r'\b(?:agrega[r]?|añade[r]?)\s+(.{1,120}?)\s+(?:a|en)\s+(?:mi\s+|el\s+|la\s+)?(.{1,80}?)(?:\s+(?:lista|tablero))?$', re.IGNORECASE),
 		],
 		"create_list": [
@@ -330,7 +330,7 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 			re.compile(r'\brenomm(?:e|er|ez)\s+(?:la|le)?\s*(?:liste|colonne)\s+(.{1,80}?)\s+(?:en|par)\s+(.{1,80})', re.IGNORECASE),
 		],
 		"create_card": [
-			re.compile(r'\b(?:ajoute[rz]?|créer?|crée|nouvelle?)\s+(?:une?\s+)?(?:carte|tâche|tache|todo)\s+(.{1,120}?)(?:\s+(?:vers|à|dans|en|sur)\s+(.{1,80}))?$', re.IGNORECASE),
+			re.compile(r'\b(?:ajoute[rz]?|créer?|crée|nouvelle?)\s+(?:une?\s+)?(?:carte|tâche|tache|todo)\s+(?:appel[eé]e?\s+|nomm[eé]e?\s+)?(.{1,120}?)(?:\s+(?:vers|à|dans|en|sur)\s+(.{1,80}))?$', re.IGNORECASE),
 			re.compile(r'\b(?:ajoute[rz]?)\s+(.{1,120}?)\s+(?:à|dans|en|sur)\s+(?:ma\s+|mon\s+|la\s+|le\s+|les\s+)?(.{1,80}?)(?:\s+(?:liste|tableau))?$', re.IGNORECASE),
 		],
 		"create_list": [
@@ -406,7 +406,7 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 			re.compile(r'\b(?:renomear?|renomeie)\s+(?:o|a)?\s*(?:lista|coluna)\s+(.{1,80}?)\s+(?:para|como)\s+(.{1,80})', re.IGNORECASE),
 		],
 		"create_card": [
-			re.compile(r'\b(?:adicionar?|adicione|criar?|crie|nova?)\s+(?:um[a]?\s+)?(?:cartão|cartao|tarefa|todo)\s+(.{1,120}?)(?:\s+(?:para|em|n[ao])\s+(.{1,80}))?$', re.IGNORECASE),
+			re.compile(r'\b(?:adicionar?|adicione|criar?|crie|nova?)\s+(?:um[a]?\s+)?(?:cartão|cartao|tarefa|todo)\s+(?:chamad[ao]?\s+|com\s+nome\s+)?(.{1,120}?)(?:\s+(?:para|em|n[ao])\s+(.{1,80}))?$', re.IGNORECASE),
 			re.compile(r'\b(?:adicionar?|adicione)\s+(.{1,120}?)\s+(?:para|em|n[ao])\s+(?:minha?\s+|meu\s+|a\s+|o\s+)?(.{1,80}?)(?:\s+(?:lista|quadro))?$', re.IGNORECASE),
 		],
 		"create_list": [
@@ -481,7 +481,7 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 			re.compile(r'(?:переименуй|переименовать)\s+(?:список|колонку|столбец)\s+(.{1,80}?)\s+(?:в|на)\s+(.{1,80})', re.IGNORECASE),
 		],
 		"create_card": [
-			re.compile(r'(?:добавь?|создай?|создать|новую?)\s+(?:карточку?|задачу?)?\s+(.{1,120}?)(?:\s+(?:в|на|к)\s+(.{1,80}))?$', re.IGNORECASE),
+			re.compile(r'(?:добавь?|создай?|создать|новую?)\s+(?:карточку?|задачу?)?\s+(?:с\s+именем\s+|под\s+названием\s+)?(.{1,120}?)(?:\s+(?:в|на|к)\s+(.{1,80}))?$', re.IGNORECASE),
 			re.compile(r'(?:добавь?)\s+(.{1,120}?)\s+(?:в|на|к)\s+(?:мою?\s+)?(.{1,80}?)(?:\s+(?:список|доску))?$', re.IGNORECASE),
 		],
 		"create_list": [
