@@ -189,6 +189,12 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 					# Boards might be in 'included' or 'boards' key depending on version/sideloading
 					boards = p_det.get("included", {}).get("boards", []) or p_det.get("boards", [])
 					match = next((b for b in boards if (b.get("name") or "").lower() == board_name.lower()), None)
+					if not match:
+						# Fuzzy fallback 1: board name contains the search term (e.g. "tank" -> "Reef Tank")
+						match = next((b for b in boards if board_name.lower() in (b.get("name") or "").lower()), None)
+					if not match:
+						# Fuzzy fallback 2: search term contains the board name (e.g. "reef tank board" -> "Reef Tank")
+						match = next((b for b in boards if (b.get("name") or "").lower() in board_name.lower() and (b.get("name") or "").strip()), None)
 					if match:
 						target_board = match
 						break
@@ -205,6 +211,12 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 			b_detail = b_detail_resp.json()
 			lists = b_detail.get("included", {}).get("lists", []) or b_detail.get("lists", [])
 			target_list = next((l for l in lists if (l.get("name") or "").lower() == list_name.lower()), None)
+			if not target_list:
+				# Fuzzy fallback 1: list name contains the search term
+				target_list = next((l for l in lists if list_name.lower() in (l.get("name") or "").lower()), None)
+			if not target_list:
+				# Fuzzy fallback 2: search term contains the list name
+				target_list = next((l for l in lists if (l.get("name") or "").lower() in list_name.lower() and (l.get("name") or "").strip()), None)
 
 			if not target_list:
 				# Fall back to first active named list — never use archive/trash lists (cards would be invisible).
