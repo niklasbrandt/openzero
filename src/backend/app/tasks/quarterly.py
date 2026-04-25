@@ -9,9 +9,10 @@ async def quarterly_review():
 	activity = await get_activity_report(days=90)
 
 	prompt = (
-		"Z, three months have passed — write a genuine, flowing reflection on the quarter.\n"
-		"What actually happened? What shifted, what stalled, and what feels important as you look ahead?\n"
-		"Write it like a thoughtful friend who's been paying attention — no corporate structure, no bullet headers, just honest prose.\n\n"
+		"Z, three months have passed — write the quarterly review.\n"
+		"Write like a smart colleague summing up a quarter: natural, direct, slightly informal — not a literary reflection, not a bullet dump.\n"
+		"Short sentences. Plain words. Sections are fine — the language inside should sound human, not generated.\n"
+		"What actually moved, what stalled, and what matters going forward. Be specific.\n\n"
 		"OPERATIONAL DATA (PAST 90 DAYS ACTIVITY):\n"
 		f"{activity}\n\n"
 		f"FULL PROJECT TREE:\n{tree}\n\n"
@@ -19,6 +20,8 @@ async def quarterly_review():
 		"1. Analyze the past 90 days based ONLY on the data above.\n"
 		"2. Focus on what actually moved and what the longer arc looks like from here.\n"
 		"3. CRITICAL: Ignore any placeholder or '[e.g., ...]' values in your personal context.\n"
+		"4. NO metaphors, NO literary prose, NO filler phrases. Write like a human, not an LLM trying to sound thoughtful.\n"
+		"5. NEVER use emoji or unicode decorative symbols.\n"
 	)
 	
 	content = await chat(prompt)

@@ -21,7 +21,7 @@ translations: dict[str, str] = {
 	"aria_actions_for": '에 대한 작업',
 	"aria_add_email_rule": '새 이메일 규칙 추가',
 	"aria_add_inner": '이너 서클에 사람 추가',
-	"aria_add_close": '클로즈 서클에 사람 추가',
+
 	"aria_add_person": '에 새 사람 추가',
 	"aria_add_project": '새 프로젝트 보드 추가',
 	"aria_all_memories": '저장된 모든 메모리',
@@ -118,8 +118,6 @@ translations: dict[str, str] = {
 	"circles": '서클',
 	"circles_empty": '아직 추적 중인 사람이 없습니다. 핵심 서클 멤버를 추가하세요.',
 	"click_to_bench": '로컬 처리량 테스트 (tok/s)',
-	"close_circle": '클로즈 서클',
-	"close_circle_desc": '친구 및 동료: 주간 요약.',
 	"config_saved": '구성이 성공적으로 업데이트되었습니다.',
 	"confirm_delete_memory": '이 사실을 정말 잊으시겠습니까?',
 	"confirm_delete_person": '소셜 메모리에서 제거할까요?',
