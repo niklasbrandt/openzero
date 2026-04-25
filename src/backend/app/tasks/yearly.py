@@ -19,7 +19,7 @@ async def yearly_review():
 		"3. Be visionary but concise. Propose 3 year-long goals."
 	)
 	
-	content = await chat(prompt, _feature="yearly_review")
+	content = await chat(prompt, _feature="yearly_review", include_health=False)
 	
 	# Store in Database
 	async with AsyncSessionLocal() as session:

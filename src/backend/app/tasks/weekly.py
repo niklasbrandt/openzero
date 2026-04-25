@@ -32,7 +32,7 @@ async def weekly_review():
 			"- NEVER use emoji or unicode decorative symbols."
 		)
 		
-		content = await chat(prompt, _feature="weekly_review")
+		content = await chat(prompt, _feature="weekly_review", include_health=False)
 		
 		# Store in Database
 		async with AsyncSessionLocal() as session:
