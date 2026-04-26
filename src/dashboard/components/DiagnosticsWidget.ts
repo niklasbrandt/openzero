@@ -12,6 +12,7 @@ export class DiagnosticsWidget extends HTMLElement {
 	private llmConfig: Record<string, any> | null = null;
 	private benchResults: any[] = [];
 	private isBenchRunning: boolean = false;
+	private captureEvents: any[] = [];
 	private _activeInference: Record<string, boolean> = { local: false, cloud: false };
 	private t: Record<string, string> = {};
 	private _refreshTimer: ReturnType<typeof setInterval> | null = null;
@@ -176,6 +177,14 @@ export class DiagnosticsWidget extends HTMLElement {
 		if (srv !== null) this.serverData = srv;
 		if (sys !== null) this.systemData = sys;
 		if (cfg !== null) this.llmConfig = cfg;
+		// Reasoning trace — non-blocking, silent on 404 (feature may be off)
+		try {
+			const rt = await fetch('/api/dashboard/ambient/recent-captures');
+			if (rt.ok) {
+				const rtData = await rt.json();
+				this.captureEvents = rtData.events || [];
+			}
+		} catch { /* silent */ }
 		this.updatePanel();
 	}
 
@@ -866,6 +875,16 @@ export class DiagnosticsWidget extends HTMLElement {
 			</div>
 		`;
 
+		// Append reasoning trace below the main grid
+		const existingRT = el.querySelector('.rt-details');
+		const rtWasOpen = (existingRT as HTMLDetailsElement | null)?.open ?? false;
+		const rtSection = this.shadowRoot?.querySelector('#rt-section');
+		if (rtSection) {
+			rtSection.innerHTML = this.renderReasoningTrace();
+			const rtDetails = rtSection.querySelector('.rt-details') as HTMLDetailsElement | null;
+			if (rtDetails && rtWasOpen) rtDetails.open = true;
+		}
+
 		// Restore details open state after innerHTML replacement
 		const alertDetails = el.querySelector('.ram-alert-details') as HTMLDetailsElement | null;
 		if (alertDetails && alertDetailsOpen) alertDetails.open = true;
@@ -913,6 +932,56 @@ export class DiagnosticsWidget extends HTMLElement {
 
 		setupBarTooltips('#ram-seg-bar', '#ram-bar-htip', '.ram-strip:not(.hdd-strip)');
 		setupBarTooltips('#hdd-seg-bar', '#hdd-bar-htip', '.hdd-strip');
+	}
+
+	private renderReasoningTrace(): string {
+		const events = this.captureEvents;
+		const laneLabel = (lane: string) => {
+			const map: Record<string, string> = {
+				EXECUTE: this.tr('reasoning_trace_lane_execute', 'Silent'),
+				ASK:     this.tr('reasoning_trace_lane_ask',     'Asked'),
+				TEACH:   this.tr('reasoning_trace_lane_teach',   'Teach'),
+				CHAT:    this.tr('reasoning_trace_lane_chat',    'Conversation'),
+			};
+			return map[lane] || lane;
+		};
+		const laneClass = (lane: string) => {
+			const map: Record<string, string> = { EXECUTE: 'rt-lane--execute', ASK: 'rt-lane--ask', TEACH: 'rt-lane--teach', CHAT: 'rt-lane--chat' };
+			return map[lane] || 'rt-lane--chat';
+		};
+		const rows = events.length === 0
+			? `<div class="rt-empty" role="status">${this.tr('reasoning_trace_empty', 'No recent captures.')}</div>`
+			: events.map(ev => {
+				const ts = ev.timestamp ? new Date(ev.timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+				const pct = typeof ev.confidence === 'number' ? Math.round(ev.confidence * 100) : '—';
+				return `
+					<div class="rt-row" role="listitem">
+						<span class="rt-lane ${laneClass(ev.lane)}" aria-label="${this.tr('reasoning_trace_lane_execute', 'Lane')}: ${this.esc(laneLabel(ev.lane))}">${this.esc(laneLabel(ev.lane))}</span>
+						<span class="rt-dest" title="${this.tr('reasoning_trace_destination', 'Destination')}">${this.esc(ev.destination_label || ev.plugin_name || '—')}</span>
+						<span class="rt-conf" title="${this.tr('reasoning_trace_confidence', 'Confidence')}">${pct}%</span>
+						<span class="rt-ch">${this.esc(ev.channel || '')}</span>
+						<span class="rt-ts">${this.esc(ts)}</span>
+					</div>`;
+			}).join('');
+
+		return `
+			<details class="rt-details" aria-label="${this.tr('reasoning_trace_title', 'Routing Trace')}">
+				<summary class="rt-summary">
+					<span class="rt-title">${this.tr('reasoning_trace_title', 'Routing Trace')}</span>
+					<span class="rt-count" aria-live="polite">${events.length}</span>
+				</summary>
+				<div class="rt-body" role="list" aria-label="${this.tr('reasoning_trace_title', 'Routing Trace')}">
+					${events.length > 0 ? `
+					<div class="rt-header" aria-hidden="true">
+						<span>${this.tr('reasoning_trace_lane_execute', 'Lane')}</span>
+						<span>${this.tr('reasoning_trace_destination', 'Destination')}</span>
+						<span>${this.tr('reasoning_trace_confidence', 'Confidence')}</span>
+						<span>${this.tr('reasoning_trace_plugin', 'Plugin')}</span>
+						<span></span>
+					</div>` : ''}
+					${rows}
+				</div>
+			</details>`;
 	}
 
 	private esc(str: any): string {
@@ -1144,6 +1213,30 @@ export class DiagnosticsWidget extends HTMLElement {
 				@media (max-width: 1100px) {
 					.diag-layout { grid-template-columns: 1fr; }
 				}
+
+				/* Reasoning trace panel */
+				.rt-details { border: 1px solid hsla(0,0%,100%,0.08); border-radius: 8px; overflow: hidden; margin-top: 0.25rem; }
+				.rt-summary { display: flex; align-items: center; gap: 0.5rem; padding: 0.6rem 0.75rem; cursor: pointer; list-style: none; font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); background: hsla(0,0%,100%,0.03); }
+				.rt-summary::-webkit-details-marker { display: none; }
+				.rt-summary:hover { color: var(--text-secondary); background: hsla(0,0%,100%,0.05); }
+				.rt-title { flex: 1; }
+				.rt-count { background: hsla(0,0%,100%,0.08); border-radius: 10px; padding: 0.1rem 0.45rem; font-size: 0.6rem; }
+				.rt-body { padding: 0.4rem 0; }
+				.rt-header { display: grid; grid-template-columns: 80px 1fr 70px 90px 60px; gap: 0 0.5rem; padding: 0.2rem 0.75rem; font-size: 0.55rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); opacity: 0.6; }
+				.rt-row { display: grid; grid-template-columns: 80px 1fr 70px 90px 60px; gap: 0 0.5rem; padding: 0.3rem 0.75rem; font-size: 0.65rem; align-items: center; border-top: 1px solid hsla(0,0%,100%,0.04); }
+				.rt-row:first-of-type { border-top: none; }
+				.rt-lane { font-size: 0.55rem; font-weight: 700; border-radius: 3px; padding: 0.1rem 0.35rem; text-transform: uppercase; letter-spacing: 0.06em; }
+				.rt-lane--execute { color: hsl(140,55%,55%); background: hsla(140,55%,55%,0.1); border: 1px solid hsla(140,55%,55%,0.25); }
+				.rt-lane--ask { color: hsl(45,80%,60%); background: hsla(45,80%,50%,0.12); border: 1px solid hsla(45,80%,50%,0.3); }
+				.rt-lane--teach { color: hsl(210,80%,65%); background: hsla(210,80%,60%,0.12); border: 1px solid hsla(210,80%,60%,0.25); }
+				.rt-lane--chat { color: var(--text-muted); background: hsla(0,0%,100%,0.04); border: 1px solid hsla(0,0%,100%,0.1); }
+				.rt-dest { color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+				.rt-conf { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+				.rt-ch { color: var(--text-muted); font-size: 0.6rem; }
+				.rt-ts { color: var(--text-muted); font-variant-numeric: tabular-nums; text-align: right; }
+				.rt-empty { padding: 0.75rem; font-size: 0.65rem; color: var(--text-muted); text-align: center; }
+				@media (forced-colors: active) { .rt-lane { border: 1px solid ButtonText; } }
+				@media (prefers-reduced-motion: reduce) { .rt-details { transition: none; } }
 			</style>
 
 			<h2>
@@ -1158,6 +1251,7 @@ export class DiagnosticsWidget extends HTMLElement {
 			<div id="diag-panel" aria-live="polite">
 				<div class="empty-state">Loading diagnostics...</div>
 			</div>
+			<div id="rt-section" style="margin-top: 1.5rem"></div>
 		`;
 	}
 }
