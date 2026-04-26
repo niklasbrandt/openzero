@@ -1732,34 +1732,22 @@ async def classify_structural_intent(text: str, lang: str) -> Optional[Structura
 						if bq in bn or bn in bq:
 							best_board = b
 							break
-				# Semantic fallback: ask fast model to map colloquial name to real board
-				# (e.g. "aquarium" → "reef tank"). Only fires when substring match fails.
-				if not best_board and all_boards:
-					try:
-						from app.services.llm import chat as _sem_chat
-						_names_hint = ", ".join((b.get("name") or "") for b in all_boards)
-						_sem_q = (
-							f"Available boards: {_names_hint}\n"
-							f"Which board does the user mean by '{board_q}'? "
-							"The user may use a synonym or nickname (e.g. 'aquarium' for 'reef tank').\n"
-							"Reply with ONLY the exact board name from the list, or NONE."
-						)
-						_sem_ans = await asyncio.wait_for(_sem_chat(_sem_q, tier="fast"), timeout=20.0)
-						_sem_ans = _sem_ans.strip().strip("'\".").rstrip(".,;!?")
-						if _sem_ans.upper() != "NONE":
-							for b in all_boards:
-								if (b.get("name") or "").lower() == _sem_ans.lower():
-									best_board = b
-									logger.info("classify_structural_intent: semantic name match '%s' → '%s'", board_q, b["name"])
-									break
-					except Exception as _sm_err:
-						logger.debug("classify_structural_intent: semantic fallback failed: %s", _sm_err)
+				# If still unresolved, return intent with empty board_id so dispatch
+				# can use its full 120s budget to resolve it via the LLM.
 				if best_board:
 					return StructuralIntent(
 						verb="SORT_BOARD",
 						entities={"board_fragment": board_q, "board_name": best_board["name"], "board_id": best_board["id"]},
 						raw_text=snippet,
 						confidence=0.95,
+					)
+				else:
+					# Board not found by name — return unresolved intent so dispatch can try LLM
+					return StructuralIntent(
+						verb="SORT_BOARD",
+						entities={"board_fragment": board_q, "board_name": "", "board_id": ""},
+						raw_text=snippet,
+						confidence=0.92,
 					)
 
 	# ── CREATE_CARD ───────────────────────────────────────────────────────
@@ -2113,7 +2101,39 @@ async def dispatch_structural_intent(intent: StructuralIntent, lang: str) -> str
 	if verb == "SORT_BOARD":
 		board_id = ent.get("board_id", "")
 		board_name = ent.get("board_name", ent.get("board_fragment", ""))
+		board_frag = ent.get("board_fragment", board_name)
+		# If classifier could not resolve board_id (colloquial name like "aquarium"),
+		# use the fast model here — dispatch has a 120s budget vs classifier's ~3s.
+		if not board_id and board_frag:
+			try:
+				from app.services.llm import chat as _res_chat
+				_snap = await _get_planka_snapshot()
+				if _snap:
+					_all_b = [b for p in _snap for b in p["boards"]]
+					_names = ", ".join((b.get("name") or "") for b in _all_b)
+					_res_q = (
+						f"Available boards: {_names}\n"
+						f"Which board does the user mean by '{board_frag}'? "
+						"The user may use a synonym or nickname (e.g. 'aquarium' for 'reef tank').\n"
+						"Reply with ONLY the exact board name from the list, or NONE."
+					)
+					_res_ans = await asyncio.wait_for(_res_chat(_res_q, tier="fast"), timeout=30.0)
+					_res_ans = _res_ans.strip().strip("'\".").rstrip(".,;!?")
+					if _res_ans.upper() != "NONE":
+						for _b in _all_b:
+							if (_b.get("name") or "").lower() == _res_ans.lower():
+								board_id = _b["id"]
+								board_name = _b["name"]
+								logger.info("SORT_BOARD dispatch: resolved '%s' → '%s'", board_frag, board_name)
+								break
+			except Exception as _res_err:
+				logger.warning("SORT_BOARD dispatch: board resolution failed: %s", _res_err)
 		if not board_id:
+			_snap2 = await _get_planka_snapshot()
+			if _snap2:
+				_all_b2 = [b for p in _snap2 for b in p["boards"]]
+				_avail = ", ".join((b.get("name") or "") for b in _all_b2)
+				return f"⚠ Could not find a board matching '{board_frag}'. Available boards: {_avail}."
 			return f"⚠ Could not locate board '{board_name}' in Planka."
 		try:
 			from app.services.planka import get_planka_auth_token
