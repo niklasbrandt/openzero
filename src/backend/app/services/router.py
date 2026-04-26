@@ -474,10 +474,16 @@ async def route_message_stream(
 			try:
 				from app.services.llm import chat as _fast_chat
 				from app.services.intent_router import StructuralIntent, dispatch_structural_intent, _get_planka_snapshot, _match_name
+				# Fetch board list first so the fast model can map colloquial names
+				# (e.g. "aquarium board") to the exact Planka board name ("reef tank").
+				_projects = await _get_planka_snapshot()
+				_all_boards = [b for p in (_projects or []) for b in p["boards"]]
+				_board_names_hint = ", ".join((b.get("name") or "") for b in _all_boards) or "none"
 				_sem_prompt = (
-					"Is this message asking to reorganise, sort, tidy, or restructure a Planka board?\n"
+					f"Available Planka boards: {_board_names_hint}\n"
+					"Is this message asking to reorganise, sort, tidy, or restructure one of those boards?\n"
 					f"Message: \"{user_text[:300]}\"\n"
-					"If yes: reply SORT_BOARD:<board name only>\n"
+					"If yes: reply SORT_BOARD:<exact board name from the list above>\n"
 					"If no: reply NO"
 				)
 				_sem = await asyncio.wait_for(_fast_chat(_sem_prompt, tier="fast"), timeout=8.0)
@@ -485,9 +491,7 @@ async def route_message_stream(
 				if _sem.upper().startswith("SORT_BOARD:"):
 					_board_frag = _sem.split(":", 1)[1].strip().rstrip(".,;!?")
 					if _board_frag:
-						_projects = await _get_planka_snapshot()
-						if _projects:
-							_all_boards = [b for p in _projects for b in p["boards"]]
+						if _all_boards:
 							_best, _ = _match_name(_board_frag, _all_boards)
 							if not _best:
 								for b in _all_boards:
