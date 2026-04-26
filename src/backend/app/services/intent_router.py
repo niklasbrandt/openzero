@@ -92,9 +92,18 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 			re.compile(r'\b(?:change|update)\s+(?:the\s+)?(?:list|column)\s+(?:name\s+)?(.{1,200}?)\s+to\s+(.{1,200})', re.IGNORECASE),
 		],
 		# "new life goal home", "new goal buy house", "new dream X", "new wish X"
-		# Anchored at start, high-confidence shorthand for adding an item to a
+		# Also handles bulk: "new life goals: home, eating, garden, physique"
+		# Anchored at start, high-confidence shorthand for adding items to a
 		# board whose name contains the noun keyword (goal→life goals, etc.).
 		"board_item_add": [
+			# Bulk form: "new life goals: home, eating, garden" (colon + comma-list, newlines OK)
+			re.compile(
+				r'^\s*(?:new|add)\s+(?:life\s+)?'
+				r'(?P<noun>goal|goals|dream|dreams|wish|wishes|idea|ideas|resolution|resolutions|item|items|todo|todos|task|tasks|entry|entries)'
+				r'\s*:\s*(?P<titles>[\w\s,;\-äöüÄÖÜß]{2,2000})$',
+				re.IGNORECASE | re.DOTALL,
+			),
+			# Single form: "new life goal home" (no colon)
 			re.compile(
 				r'^\s*(?:new|add)\s+(?:life\s+)?'
 				r'(?P<noun>goal|goals|dream|dreams|wish|wishes|idea|ideas|resolution|resolutions|item|todo|task|entry)\s+'
@@ -192,7 +201,16 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 			re.compile(r'\b(?:benenn[e]?)\s+(?:die\s+)?(?:liste|spalte|kolumne)\s+(.{1,200}?)\s+(?:in|zu|nach)\s+(.{1,200}?)(?:\s+um)?$', re.IGNORECASE),
 		],
 		# "neues ziel X", "new goal X", "neuer dream X" — anchored shorthand
+		# Also handles bulk: "neue ziele: home, essen, garten"
 		"board_item_add": [
+			# Bulk form with colon
+			re.compile(
+				r'^\s*(?:new|neues?|neuer?|neue?|hinzufügen)\s+(?:life\s+|lebens)?'
+				r'(?P<noun>ziel|ziele|traum|träume|wunsch|wünsche|idee|ideen|vorsatz|vorsätze|goal|goals|dream|dreams|wish|wishes|item|items|todo|todos|aufgabe|aufgaben|eintrag|einträge|task|tasks|entry|entries)'
+				r'\s*:\s*(?P<titles>[\w\s,;\-äöüÄÖÜß]{2,2000})$',
+				re.IGNORECASE | re.DOTALL,
+			),
+			# Single form (no colon)
 			re.compile(
 				r'^\s*(?:new|neues?|neuer?|neue?|hinzufügen)\s+(?:life\s+|lebens)?'
 				r'(?P<noun>ziel|ziele|traum|träume|wunsch|wünsche|idee|ideen|vorsatz|vorsätze|goal|goals|dream|dreams|wish|wishes|item|todo|aufgabe|eintrag|task|entry)\s+'
@@ -1537,8 +1555,25 @@ async def classify_structural_intent(text: str, lang: str) -> Optional[Structura
 		m = pat.search(snippet)
 		if m:
 			noun_q = m.group("noun").lower().strip()
-			title_q = m.group("title").strip()
-			if not noun_q or not title_q:
+			# Check if this is a bulk (colon) match or single match
+			try:
+				titles_raw = m.group("titles")
+			except IndexError:
+				titles_raw = None
+			if titles_raw is not None:
+				# Bulk: split on comma, semicolon, or newline — clean each item
+				raw_items = re.split(r'[,;\n]+', titles_raw)
+				titles_list = [t.strip().strip('"\'-') for t in raw_items if t.strip().strip('"\'-')]
+				if not titles_list:
+					continue
+				title_q = ""
+			else:
+				try:
+					title_q = m.group("title").strip()
+				except IndexError:
+					continue
+				titles_list = []
+			if not noun_q or (not title_q and not titles_list):
 				continue
 			# Fuzzy-match noun against live board names (goal → "life goals", etc.)
 			projects = await _get_planka_snapshot()
@@ -1555,12 +1590,17 @@ async def classify_structural_intent(text: str, lang: str) -> Optional[Structura
 				if best_board:
 					matched_board = best_board["name"]
 					logger.info(
-						"intent_router: BOARD_ITEM_ADD noun='%s' → board='%s' title='%s'",
-						noun_q, matched_board, title_q,
+						"intent_router: BOARD_ITEM_ADD noun='%s' → board='%s' titles=%s",
+						noun_q, matched_board, titles_list or [title_q],
 					)
+			entities: dict = {"noun": noun_q, "board_name": matched_board}
+			if titles_list:
+				entities["titles"] = titles_list
+			else:
+				entities["title"] = title_q
 			return StructuralIntent(
 				verb="BOARD_ITEM_ADD",
-				entities={"title": title_q, "noun": noun_q, "board_name": matched_board},
+				entities=entities,
 				raw_text=snippet,
 				confidence=1.0,
 			)
@@ -1665,35 +1705,49 @@ async def dispatch_structural_intent(intent: StructuralIntent, lang: str) -> str
 	if verb == "BOARD_ITEM_ADD":
 		board_dest = ent.get("board_name") or ""
 		noun = ent.get("noun", "").lower()
-		title = ent["title"]
-		if noun in _LIST_NOUNS:
-			# Goal/dream/wish/idea → create a LIST (column) on the board so the
-			# goal itself becomes a container for milestone cards under it.
-			raw = await execute_create_list(title, board_dest, lang)
-			if raw.startswith("\u26a0"):
-				return raw
-			board_label = board_dest or "Operator Board"
-			msg = _localise(
-				"intent_router_create_list_success",
-				"List '{list_name}' created on '{board}'.",
-				list_name=title, board=board_label,
-			)
-			audit = f"[AUDIT:board_item_add_list:{title}|board={board_label}]"
-		else:
-			# Item/todo/task/entry → create a CARD on the Inbox list of the board.
-			# Pass "Inbox list on <board>" so execute_create_card resolves correctly.
-			dest_arg = f"Inbox list on {board_dest}" if board_dest else ""
-			raw = await execute_create_card(title, dest_arg, lang)
-			if raw.startswith("\u26a0"):
-				return raw
-			dest_label = board_dest or "Inbox"
-			msg = _localise(
-				"intent_router_create_card_success",
-				"Card '{title}' added to '{dest}'.",
-				title=title, dest=dest_label,
-			)
-			audit = f"[AUDIT:board_item_add_card:{title}|board={dest_label}]"
-		return f"{msg}\n{audit}"
+		# Support both single ("title") and bulk ("titles") forms
+		titles: list[str] = ent.get("titles") or ([ent["title"]] if ent.get("title") else [])
+		if not titles:
+			return "\u26a0 No title(s) provided for BOARD_ITEM_ADD."
+		results: list[str] = []
+		audit_parts: list[str] = []
+		for t_item in titles:
+			if noun in _LIST_NOUNS:
+				# Goal/dream/wish/idea → create a LIST (column) on the board so the
+				# goal itself becomes a container for milestone cards under it.
+				raw = await execute_create_list(t_item, board_dest, lang)
+				if raw.startswith("\u26a0"):
+					results.append(raw)
+				else:
+					board_label = board_dest or "Operator Board"
+					results.append(
+						_localise(
+							"intent_router_create_list_success",
+							"List '{list_name}' created on '{board}'.",
+							list_name=t_item, board=board_label,
+						)
+					)
+					audit_parts.append(f"[AUDIT:board_item_add_list:{t_item}|board={board_label}]")
+			else:
+				# Item/todo/task/entry → create a CARD on the Inbox list of the board.
+				dest_arg = f"Inbox list on {board_dest}" if board_dest else ""
+				raw = await execute_create_card(t_item, dest_arg, lang)
+				if raw.startswith("\u26a0"):
+					results.append(raw)
+				else:
+					dest_label = board_dest or "Inbox"
+					results.append(
+						_localise(
+							"intent_router_create_card_success",
+							"Card '{title}' added to '{dest}'.",
+							title=t_item, dest=dest_label,
+						)
+					)
+					audit_parts.append(f"[AUDIT:board_item_add_card:{t_item}|board={dest_label}]")
+		out = "\n".join(results)
+		if audit_parts:
+			out += "\n" + "\n".join(audit_parts)
+		return out
 
 	if verb == "CREATE_CARD":
 		raw = await execute_create_card(ent["title"], ent.get("destination", ""), lang)
