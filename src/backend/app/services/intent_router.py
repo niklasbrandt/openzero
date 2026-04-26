@@ -84,6 +84,15 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 				r'(?:in|on|for|the\s+)?(?:board\s+)?(?P<board>[a-z0-9][\w\s]{2,50})',
 				re.IGNORECASE,
 			),
+			# End-anchored fallback: handles middle clauses like "reorganize cards in
+			# potentially new lists in reef tank" by anchoring board name at end of string.
+			# Greedy .{0,300} forces backtracking to the LAST 'in <board>' before $.
+			re.compile(
+				r'\b(?:sort|reorgani[sz]e?|restructur[e]?|clean\s+up|tidy\s+up|reorder|rearrang[e]?)\b'
+				r'.{0,300}'
+				r'\b(?:in|on)\s+(?:the\s+)?(?:board\s+)?(?P<board>[a-z0-9][\w\s]{2,40})\s*$',
+				re.IGNORECASE,
+			),
 		],
 		"move_board": [
 			re.compile(r'\bmove\s+(?:the\s+)?(.{1,200}?)\s+board\s+(?:to|into|under)\s+(.{1,200})', re.IGNORECASE),
@@ -199,6 +208,14 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 				r'\b(?:sortier[e]?|reorganisier[e]?|neu\s+sortier[e]?|aufräum[e]?n?|umstrukturieren|neu\s+anordnen)\b'
 				r'(?:\s+(?:listen?|karten?|und|in|potenziell|neue|\s)+)?'
 				r'(?:in|auf|für|das\s+)?(?:board\s+)?(?P<board>[a-z0-9äöüÄÖÜß][\w\s]{2,50})',
+				re.IGNORECASE,
+			),
+			# End-anchored fallback: handles "[..] im reef-tank-Board" style phrasing.
+			# Greedy .{0,300} forces backtracking to the LAST preposition before $.
+			re.compile(
+				r'\b(?:sortier[e]?|reorganisier[e]?|neu\s+sortier[e]?|aufräum[e]?n?|umstrukturieren|neu\s+anordnen)\b'
+				r'.{0,300}'
+				r'\b(?:in|im|auf|für)\s+(?:dem\s+|das\s+|der\s+)?(?:board\s+)?(?P<board>[a-z0-9äöüÄÖÜß][\w\s]{2,40})\s*$',
 				re.IGNORECASE,
 			),
 		],
@@ -1706,7 +1723,9 @@ async def classify_structural_intent(text: str, lang: str) -> Optional[Structura
 				best_board, _conf = _match_name(board_q, all_boards)
 				if not best_board:
 					for b in all_boards:
-						if board_q.lower() in b["name"].lower():
+						bn = b["name"].lower()
+						bq = board_q.lower()
+						if bq in bn or bn in bq:
 							best_board = b
 							break
 				if best_board:

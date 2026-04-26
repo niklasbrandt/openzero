@@ -1071,7 +1071,7 @@ async def dashboard_chat_stream(req: ChatRequest, request: Request, _rl: None = 
 		try:
 			import asyncio as _asyncio
 			from app.services.router import _REORGANIZE_BOARD_RE as _reorg_re
-			_stream_timeout = 300.0 if _reorg_re.search(msg[:500]) else 120.0
+			_stream_timeout = 300.0 if _reorg_re.search(msg[:500]) else 240.0
 			async with _asyncio.timeout(_stream_timeout):
 				async for token in token_stream:
 					yield f"data: {json.dumps({'token': token})}\n\n"

@@ -1240,7 +1240,7 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 		_is_complex_reorg = bool(_reorg_re.search(user_text[:500]))
 	except Exception:
 		_is_complex_reorg = False
-	_stream_timeout = 300.0 if _is_complex_reorg else 120.0
+	_stream_timeout = 300.0 if _is_complex_reorg else 240.0
 	try:
 		async with asyncio.timeout(_stream_timeout):
 			async for token in token_stream:
