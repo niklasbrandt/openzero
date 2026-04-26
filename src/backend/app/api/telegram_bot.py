@@ -400,12 +400,12 @@ def _md_to_html(text: str) -> str:
 	safe = _html.escape(text)
 
 	# Bold: **text** or *text* -> <b>text</b>
-	html = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', safe)
-	html = re.sub(r'\*(.+?)\*', r'<b>\1</b>', html)
+	html = re.sub(r'\*\*([^\n*]{1,500})\*\*', r'<b>\1</b>', safe)
+	html = re.sub(r'\*([^\n*]{1,300})\*', r'<b>\1</b>', html)
 	# Italic: _text_ -> <i>text</i>
-	html = re.sub(r'(?<!\w)_(.+?)_(?!\w)', r'<i>\1</i>', html)
+	html = re.sub(r'(?<!\w)_([^\n_]{1,300})_(?!\w)', r'<i>\1</i>', html)
 	# Links: [text](url) -> <a href="url">text</a>
-	html = re.sub(r'\[(.+?)\]\((.+?)\)', r'<a href="\2">\1</a>', html)
+	html = re.sub(r'\[([^\]]{1,500})\]\(([^\)]{1,2000})\)', r'<a href="\2">\1</a>', html)
 
 	# Support passthrough for common safe HTML tags that may be generated or
 	# injected by Z (e.g. footers).
@@ -414,7 +414,7 @@ def _md_to_html(text: str) -> str:
 		html = html.replace(f"&lt;/{tag}&gt;", f"</{tag}>")
 	
 	# Special case for <a> (requires attribute passthrough)
-	html = re.sub(r'&lt;a href="(.+?)"&gt;(.+?)&lt;/a&gt;', r'<a href="\1">\2</a>', html)
+	html = re.sub(r'&lt;a href="([^"]{1,2000})"&gt;([^<]{1,500})&lt;/a&gt;', r'<a href="\1">\2</a>', html)
 
 	return html
 
@@ -1290,7 +1290,7 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 
 	# Strip attribution footer from display path — raw_reply in DB already stores it
 	# for crew follow-up routing; stripping here prevents "(Reasoning by crew X)" leaking to chat.
-	display_clean = re.sub(r'\n\n_?\(Reasoning by crew [^)]+\)_?', '', clean_reply).strip()
+	display_clean = re.sub(r'\n\n_?\(Reasoning by crew [^)]{1,200}\)_?', '', clean_reply).strip()
 
 	html_reply = _md_to_html(display_clean)
 	footer = await _get_stats_footer()
@@ -1557,7 +1557,7 @@ async def _process_crew_stream(update: Update, context: ContextTypes.DEFAULT_TYP
 				user_text=user_input,
 			)
 			if p_actions:
-				logger.info("Crew '%s' pending actions: %s", safe_cid, p_actions)
+				logger.info("Crew '%s' pending actions: %s", safe_cid, str(p_actions)[:200].replace('\n', '\\n').replace('\r', '\\r'))
 			combined_clean_parts.append(c_reply)
 			all_executed_cmds.extend(e_cmds)
 
@@ -1583,7 +1583,7 @@ async def _process_crew_stream(update: Update, context: ContextTypes.DEFAULT_TYP
 
 		# Attribution already included in last section via commit — no extra append needed.
 		# Strip attribution footer from display path; DB copy (via commit_reply) retains it.
-		display_clean = re.sub(r'\n\n_?\(Reasoning by crew [^)]+\)_?', '', clean_reply).strip()
+		display_clean = re.sub(r'\n\n_?\(Reasoning by crew [^)]{1,200}\)_?', '', clean_reply).strip()
 		display_final = f"<b>{format_time(dt=receipt_dt)}</b>\n\n{_md_to_html(display_clean)}"
 		await _send_chunked_reply(thinking_msg, display_final, nav_footer=get_nav_footer(t))
 

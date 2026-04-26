@@ -793,7 +793,8 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 		if _user_canonical_title and title.lower() != _user_canonical_title.lower():
 			logger.info(
 				"CREATE_TASK: clamping embellished title '%s' → '%s' (from user_text)",
-				title[:80], _user_canonical_title[:80],
+				title[:80].replace('\n', '\\n').replace('\r', '\\r'),
+				_user_canonical_title[:80].replace('\n', '\\n').replace('\r', '\\r'),
 			)
 			title = _user_canonical_title
 

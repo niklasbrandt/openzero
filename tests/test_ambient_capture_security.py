@@ -273,7 +273,7 @@ class TestC3_ConfirmationHijack:
 	def test_consume_rejects_stale_sequence(self) -> None:
 		"""Second ambient message replaces pending; old sequence must be rejected (C3)."""
 		import asyncio
-		import app.services.ambient_capture.pending as pending_mod
+		from app.services.ambient_capture import pending as pending_mod
 		store_pending = pending_mod.store_pending
 		consume_pending_if_current = pending_mod.consume_pending_if_current
 
