@@ -448,6 +448,7 @@ async def route_message_stream(
 		# Reassigning it inside _generate would mark it as a local (UnboundLocalError
 		# in Python 3.12). Use _ctx_history as a separate local instead.
 		_ctx_history = history
+		_force_cloud = False  # set True when a large-output task needs cloud LLM
 		_rm = _REORGANIZE_BOARD_RE.search(user_text[:_MAX_RE_INPUT])
 		if _rm:
 			_board_frag = _rm.group("board").strip().rstrip(".,;!?")
@@ -469,6 +470,7 @@ async def route_message_stream(
 							"reference names exactly as shown above.]"
 						),
 					}]
+					_force_cloud = True  # board reorganization needs cloud LLM to complete in time
 					logger.info("Router: injected board context (%d chars) for '%s'", len(_board_ctx), _board_frag)
 			except asyncio.TimeoutError:
 				logger.warning("Router: board context fetch timed out for '%s'", _board_frag)
@@ -570,6 +572,7 @@ async def route_message_stream(
 			history=_ctx_history,
 			include_projects=True,
 			include_people=True,
+			tier_override="cloud" if _force_cloud else None,
 		):
 			chunks.append(token)
 			yield token
