@@ -308,6 +308,7 @@ _SYSTEM_ACTION_RE = re.compile(
 	r'\b(?:'
 	r'move\s+(?:board|card|task|list)\b'
 	r'|create\s+(?:a\s+)?(?:board|card|task|list|project)\b'
+	r'|new\s+(?:board|card|task|list|project)\b'
 	r'|delete\s+(?:a\s+)?(?:board|card|task|list|project)\b'
 	r'|rename\s+(?:a\s+)?(?:board|card|task|list|project)\b'
 	r'|archive\s+(?:a\s+)?(?:board|card|task|list|project)\b'
