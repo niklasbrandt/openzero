@@ -1744,7 +1744,7 @@ async def classify_structural_intent(text: str, lang: str) -> Optional[Structura
 							"The user may use a synonym or nickname (e.g. 'aquarium' for 'reef tank').\n"
 							"Reply with ONLY the exact board name from the list, or NONE."
 						)
-						_sem_ans = await asyncio.wait_for(_sem_chat(_sem_q, tier="fast"), timeout=6.0)
+						_sem_ans = await asyncio.wait_for(_sem_chat(_sem_q, tier="fast"), timeout=10.0)
 						_sem_ans = _sem_ans.strip().strip("'\".").rstrip(".,;!?")
 						if _sem_ans.upper() != "NONE":
 							for b in all_boards:
