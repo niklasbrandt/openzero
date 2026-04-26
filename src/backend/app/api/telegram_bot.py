@@ -1068,7 +1068,77 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
 			return
 
 		async with lock:
-			await _process_freetext(update, context, chat_id, llm_user_text, history=_hist)
+			# ── Ambient capture HITL intercept ─────────────────────────────
+			# If there is a pending ambient capture for this channel/user,
+			# check whether the message is answering it (accept/choose/reject),
+			# and handle it before falling through to the normal router.
+			_hitl_handled = False
+			from app.services.ambient_capture.intent_bus import is_enabled as _ambient_enabled
+			if _ambient_enabled():
+				try:
+					from app.services.ambient_capture.pending import peek_pending, consume_pending, invalidate_pending
+					from app.services.ambient_capture.hitl import parse_hitl_reply
+					from app.services.ambient_capture.plugin import registry as _plugin_registry, CaptureDecision
+					from app.services.ambient_capture.operator_scope import get_operator_user_id
+					from app.services.translations import get_translation
+					_op_uid = get_operator_user_id() or "operator"
+					_pending = await peek_pending(_op_uid, "telegram")
+					if _pending is not None:
+						lang_for_hitl = await get_user_lang()
+						_hitl = parse_hitl_reply(
+							reply_text=llm_user_text,
+							original_phrase=_pending.phrase,
+							alternatives=[a.get("destination_label", "") for a in _pending.alternatives],
+							lang=lang_for_hitl,
+						)
+						if _hitl is not None and _hitl.action in ("accept", "choose", "reject", "fresh"):
+							if _hitl.action in ("accept", "choose"):
+								# Determine destination: 'choose' uses chosen_index
+								dest_id = _pending.destination_id
+								dest_label = _pending.destination_label
+								if _hitl.action == "choose" and _hitl.chosen_index is not None:
+									idx = _hitl.chosen_index
+									if 0 < idx <= len(_pending.alternatives):
+										alt = _pending.alternatives[idx - 1]
+										dest_id = alt.get("destination_id", dest_id)
+										dest_label = alt.get("destination_label", dest_label)
+								_plugin = _plugin_registry.get(_pending.plugin_name)
+								if _plugin is not None:
+									_decision = CaptureDecision(
+										plugin_name=_pending.plugin_name,
+										phrase=_pending.phrase,
+										destination_id=dest_id,
+										destination_label=dest_label,
+										confidence=_pending.confidence,
+										lane="EXECUTE",
+										channel="telegram",
+										user_id=_op_uid,
+									)
+									try:
+										_result = await _plugin.execute_capture(_decision)
+										_reply_text = _result.message
+									except Exception as _ex:
+										_tmpl = get_translation("ambient_capture_failed", lang_for_hitl, "Couldn't save '{phrase}' — {reason}. Try again later.")
+										_reply_text = _tmpl.replace("{phrase}", _pending.phrase).replace("{reason}", str(_ex))
+								else:
+									_reply_text = get_translation("ambient_capture_failed", lang_for_hitl, "Couldn't save '{phrase}' — {reason}. Try again later.").replace("{phrase}", _pending.phrase).replace("{reason}", "plugin unavailable")
+								await consume_pending(_op_uid, "telegram")
+							else:
+								# reject or fresh — discard pending, proceed normally
+								await invalidate_pending(_op_uid, "telegram")
+								_reply_text = None
+							if _reply_text:
+								try:
+									await update.message.reply_text(_reply_text)
+								except Exception:
+									await safe_reply(update, _reply_text)
+								_hitl_handled = True
+				except Exception as _hitl_err:
+					logger.warning("Telegram HITL intercept failed: %s", _hitl_err)
+			# ── End HITL intercept ──────────────────────────────────────────
+
+			if not _hitl_handled:
+				await _process_freetext(update, context, chat_id, llm_user_text, history=_hist)
 
 			# After responding, check if messages arrived while we were thinking
 			while _pending_messages.get(chat_id):

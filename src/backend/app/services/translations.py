@@ -97,3 +97,10 @@ async def get_user_lang() -> str:
 			return ident.language if ident and ident.language else "en"
 	except Exception:
 		return "en"  # DB unavailable -- fall back to English
+
+
+def get_translation(key: str, lang_code: str = "en", fallback: str = "") -> str:
+	"""Look up a single translation key, falling back to English then `fallback`."""
+	lang_dict = _TRANSLATIONS.get(lang_code, {})
+	val = lang_dict.get(key) or _EN.get(key)
+	return val if val else fallback

@@ -161,17 +161,188 @@ class BoardProfileBuilder:
 		except Exception as e:
 			logger.debug("ambient_capture: failed to set authorship %s=%s: %s", board_id, who, e)
 
-	# ── Epoch 2 stubs ─────────────────────────────────────────────────────
-	async def build_for_board(self, board_id: str) -> BoardProfile:
-		"""Full build: Planka fetch -> sanitise -> embed -> classify privacy.
+	# ── Epoch 2 implementation ───────────────────────────────────────────────
 
-		Implemented in Epoch 2.
+	async def fetch_all_boards(self) -> list[dict]:
+		"""Return a flat list of all Planka boards across all projects.
+
+		Each entry is a minimal dict: { "id": str, "name": str, "createdBy": str, ... }
+		suitable for operator-scope filtering. Full profiles are built on demand
+		via build_for_board().
 		"""
-		raise NotImplementedError("BoardProfileBuilder.build_for_board lands in Epoch 2")
+		from app.services.planka_common import get_planka_auth_token
+		import httpx
+		from app.config import settings
+
+		try:
+			token = await get_planka_auth_token()
+			headers = {"Authorization": f"Bearer {token}"}
+			boards: list[dict] = []
+			async with httpx.AsyncClient(
+				base_url=settings.PLANKA_BASE_URL,
+				headers=headers,
+				timeout=15.0,
+			) as client:
+				resp = await client.get("/api/projects")
+				resp.raise_for_status()
+				projects = resp.json().get("items", [])
+				# Fetch all project details in parallel
+				import asyncio
+				details = await asyncio.gather(
+					*[client.get(f"/api/projects/{p['id']}") for p in projects],
+					return_exceptions=True,
+				)
+				for det in details:
+					if isinstance(det, Exception):
+						continue
+					try:
+						det.raise_for_status()
+						for b in det.json().get("included", {}).get("boards", []):
+							boards.append(b)
+					except Exception:
+						pass
+			return boards
+		except Exception as e:
+			logger.warning("ambient_capture: fetch_all_boards failed: %s", e)
+			return []
+
+	async def build_for_board(self, board_id: str) -> "Optional[BoardProfile]":
+		"""Full build: Planka fetch -> sanitise -> embed -> cache.
+
+		Steps:
+		  1. Fetch board detail (name, description, updatedAt, lists, cards)
+		  2. Sanitise all text with strip_control_chars + clamp_phrase
+		  3. Embed name, description, each list name, each card title
+		  4. Cache in Redis
+		  5. Return the profile
+		"""
+		from app.services.planka_common import get_planka_auth_token
+		from app.services.memory import encode_async
+		from app.services.ambient_capture.sanitiser import strip_control_chars, clamp_phrase
+		import asyncio
+		import httpx
+		from app.config import settings
+
+		# Max cards to embed per board (newest first per API order, capped)
+		_CARD_EMB_CAP = 50
+
+		try:
+			token = await get_planka_auth_token()
+			headers = {"Authorization": f"Bearer {token}"}
+			async with httpx.AsyncClient(
+				base_url=settings.PLANKA_BASE_URL,
+				headers=headers,
+				timeout=15.0,
+			) as client:
+				resp = await client.get(
+					f"/api/boards/{board_id}",
+					params={"included": "lists,cards"},
+				)
+				resp.raise_for_status()
+				data = resp.json()
+		except Exception as e:
+			logger.warning("ambient_capture: build_for_board fetch failed for %s: %s", board_id, e)
+			return None
+
+		item = data.get("item", {})
+		included = data.get("included", {})
+
+		board_name = strip_control_chars(item.get("name") or "")[:200]
+		board_desc = strip_control_chars(item.get("description") or "")[:500]
+		last_activity_at = item.get("updatedAt") or item.get("lastActivityAt")
+
+		raw_lists = included.get("lists", [])
+		raw_cards = included.get("cards", [])[:_CARD_EMB_CAP]
+
+		# Build texts we need to embed
+		name_text = board_name or board_id
+		desc_text = board_desc or board_name
+
+		list_names = [
+			strip_control_chars(lst.get("name") or "")[:100]
+			for lst in raw_lists
+		]
+		card_titles = [
+			clamp_phrase(strip_control_chars(c.get("name") or ""), max_chars=100)
+			for c in raw_cards
+			if c.get("name")
+		]
+
+		# Embed everything concurrently
+		texts_to_embed = [name_text, desc_text] + list_names + card_titles
+		try:
+			embeddings = await asyncio.gather(
+				*[encode_async(t) for t in texts_to_embed],
+				return_exceptions=True,
+			)
+		except Exception as e:
+			logger.warning("ambient_capture: embedding failed for board %s: %s", board_id, e)
+			return None
+
+		def safe_emb(idx: int) -> list[float]:
+			v = embeddings[idx]
+			return v if isinstance(v, list) else []
+
+		name_emb = safe_emb(0)
+		desc_emb = safe_emb(1)
+		base = 2
+
+		list_structs: list[dict] = []
+		for i, lst in enumerate(raw_lists):
+			emb = safe_emb(base + i)
+			list_structs.append({
+				"id": lst.get("id", ""),
+				"name": list_names[i] if i < len(list_names) else "",
+				"name_embedding": emb,
+			})
+		base += len(raw_lists)
+
+		card_embs: list[list[float]] = []
+		for i in range(len(card_titles)):
+			emb = safe_emb(base + i)
+			card_embs.append(emb)
+
+		profile = BoardProfile(
+			board_id=board_id,
+			board_name=board_name,
+			board_description=board_desc,
+			name_embedding=name_emb,
+			description_embedding=desc_emb,
+			lists=list_structs,
+			card_title_embeddings=card_embs,
+			card_count=len(raw_cards),
+			last_activity_at=last_activity_at,
+			privacy="auto",
+			privacy_reason="",
+			description_author=await self.get_authorship(board_id),
+			built_at=time.time(),
+		)
+
+		await self.cache_profile(profile)
+		return profile
 
 	async def refresh_all(self) -> int:
-		"""Batch-refresh all operator boards (called by Celery every 15 min)."""
-		raise NotImplementedError("BoardProfileBuilder.refresh_all lands in Epoch 2")
+		"""Batch-refresh all operator boards. Called by background task.
+
+		Returns the count of successfully refreshed profiles.
+		"""
+		from app.services.ambient_capture.operator_scope import filter_operator_boards
+		boards = await self.fetch_all_boards()
+		boards = filter_operator_boards(boards)
+		refreshed = 0
+		for b in boards:
+			board_id = b.get("id", "")
+			if not board_id:
+				continue
+			try:
+				await self.invalidate(board_id)
+				p = await self.build_for_board(board_id)
+				if p:
+					refreshed += 1
+			except Exception as e:
+				logger.warning("ambient_capture: refresh_all skipped board %s: %s", board_id, e)
+		logger.info("ambient_capture: refresh_all completed — %d boards refreshed", refreshed)
+		return refreshed
 
 
 _builder: Optional[BoardProfileBuilder] = None
