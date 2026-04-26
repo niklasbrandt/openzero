@@ -428,6 +428,39 @@ async def route_message_stream(
 				return
 
 		# ── 1. Keyword-based crew routing ────────────────────────────────────
+		# ── 0.6 Ambient capture (Epoch 2, gated) ─────────────────────────────
+		# Fires only when AMBIENT_CAPTURE_ENABLED=true AND step 0.5 found no
+		# structural intent. The bus scores registered plugins and either
+		# executes silently or stores a pending HITL. Returns a reply string on
+		# match; None on miss (falls through to crew/LLM). Errors are absorbed.
+		try:
+			from app.services.ambient_capture.intent_bus import (
+				is_enabled as _ambient_enabled,
+				_run_plugin_capture,
+			)
+			if _ambient_enabled():
+				from app.services.ambient_capture.operator_scope import get_operator_user_id
+				_op_uid = get_operator_user_id() or "operator"
+				_ambient_reply = await asyncio.wait_for(
+					_run_plugin_capture(user_text, lang, channel, _op_uid), timeout=8.0,
+				)
+				if _ambient_reply:
+					yield _ambient_reply
+					clean, cmds, pending = await bus.commit_reply(
+						channel=channel, raw_reply=_ambient_reply,
+						model="ambient_capture", user_text=user_text, save=save_history,
+					)
+					result_future.set_result(RouterResult(
+						reply=clean, model="ambient_capture",
+						executed_cmds=cmds, pending_actions=pending,
+					))
+					return
+		except asyncio.TimeoutError:
+			logger.warning("Router: ambient capture timeout (>8s) — falling through to LLM")
+		except Exception as _ae:
+			logger.warning("Router: ambient capture failed: %s — falling through to LLM", _ae)
+
+		# ── 1. Keyword-based crew routing ────────────────────────────────────
 		routed_crews = await resolve_active_crews(history, user_text, lang=lang)
 		if not routed_crews:
 			# ── 1.1 Speculative Fast-Intent (Qwen-0.6B) ──────────────────────
