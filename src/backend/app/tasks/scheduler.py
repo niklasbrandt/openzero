@@ -294,6 +294,14 @@ async def start_scheduler():
 			id="ambient_intelligence",
 			replace_existing=True,
 		)
+		# Pending-trigger retry loop: checks every 5 minutes for quiet moments
+		from app.services.ambient.delivery import process_pending_triggers
+		scheduler.add_job(
+			process_pending_triggers,
+			IntervalTrigger(minutes=5),
+			id="ambient_pending_delivery",
+			replace_existing=True,
+		)
 		logger.info(
 			"Ambient intelligence loop registered (interval=%ds)",
 			settings.AMBIENT_POLL_INTERVAL_S,

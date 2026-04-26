@@ -136,6 +136,22 @@ async def morning_briefing():
 		except Exception as ce:
 			logger.debug("Crew context for briefing skipped: %s", ce)
 
+		# 2.6 Ambient Intelligence briefing queue — drain undelivered insights
+		ambient_insights_section = ""
+		try:
+			if getattr(settings, "AMBIENT_BRIEFING_QUEUE_ENABLED", True):
+				from app.services.ambient.delivery import drain_briefing_queue
+				pending = drain_briefing_queue()
+				if pending:
+					lines = [
+						f"- [{item.get('rule_id', '?')}] {item.get('context', '').splitlines()[0]}"
+						for item in pending
+					]
+					ambient_insights_section = "\n".join(lines)
+					logger.info("morning_briefing: injecting %d ambient insight(s) into briefing", len(pending))
+		except Exception as ae:
+			logger.debug("morning_briefing: ambient queue drain skipped: %s", ae)
+
 		full_prompt = (
 			"Z, it's morning. Write the daily briefing for the user.\n\n"
 			"VOICE & STYLE:\n"
@@ -225,6 +241,14 @@ async def morning_briefing():
 			f"RECENT ACTIVITY (LAST 24H):\n{activity}\n\n"
 			f"PROJECT TREE:\n{tree}\n\n"
 			f"LATEST EMAILS:\n{email_summary}\n"
+			+ (
+				f"\nAMBIENT INSIGHTS (undelivered proactive signals from last 24h):\n"
+				f"{ambient_insights_section}\n"
+				"If any of these are relevant to today, weave them into the briefing naturally. "
+				"Do not list them mechanically — only surface actionable ones. "
+				"Keep them strictly within the word budget.\n"
+				if ambient_insights_section else ""
+			)
 		)
 
 		# 3. Generate Briefing — cloud tier with 600s hard timeout, retry on failure

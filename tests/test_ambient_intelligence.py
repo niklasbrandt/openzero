@@ -1,4 +1,4 @@
-"""Unit tests for the Ambient Intelligence engine (P0).
+"""Unit tests for the Ambient Intelligence engine (P0 + P1 + P2).
 
 Tests:
   - StateStore push/latest (in-memory mock, no real Redis)
@@ -7,6 +7,9 @@ Tests:
   - RuleEngine: cooldown suppression (mock Redis)
   - rule_card_stall: returns Trigger for stall signals; None when no stalls
   - ambient_loop: no-op when AMBIENT_ENABLED=False
+  - P1: calendar / email / hardware signal rules
+  - P2: composite overload, sedentary drift, today-list overload, health/planka signals,
+        drain_briefing_queue
 
 See docs/artifacts/ambient_intelligence.md §12 (P0 unit tests).
 """
@@ -95,6 +98,14 @@ class _FakeRedis:
 
 	def expire(self, key: str, seconds: int):
 		self._ttls[key] = seconds
+
+	def delete(self, *keys):
+		for key in keys:
+			self._data.pop(key, None)
+
+	def keys(self, pattern: str) -> list[str]:
+		import fnmatch
+		return [k for k in self._data if fnmatch.fnmatch(k, pattern)]
 
 
 class _FakePipeline:
@@ -565,3 +576,224 @@ class TestHardwareSignalRules:
 		from app.services.ambient.models import Signal
 		sig = Signal(source="calendar", kind="calendar_overload", severity=0.3, detail={})
 		assert rule_infra_critical([sig]) is None
+
+
+# ---------------------------------------------------------------------------
+# P2 — Health signal rules
+# ---------------------------------------------------------------------------
+
+class TestHealthSignalRules:
+	def test_stress_detected_no_signal_when_clean(self):
+		from app.services.ambient.rules.health import detect_stress_detected
+		snap = {"stress_keywords_detected": False, "fatigue_mention_count": 0}
+		assert detect_stress_detected(snap, None) == []
+
+	def test_stress_detected_emits_on_first_detection(self):
+		from app.services.ambient.rules.health import detect_stress_detected
+		curr = {"stress_keywords_detected": True, "fatigue_mention_count": 0}
+		prev = {"stress_keywords_detected": False, "fatigue_mention_count": 0}
+		signals = detect_stress_detected(curr, prev)
+		assert len(signals) == 1
+		assert signals[0].kind == "stress_detected"
+		assert signals[0].source == "health"
+
+	def test_stress_detected_no_re_fire_when_already_stressed(self):
+		from app.services.ambient.rules.health import detect_stress_detected
+		curr = {"stress_keywords_detected": True, "fatigue_mention_count": 3}
+		prev = {"stress_keywords_detected": True, "fatigue_mention_count": 2}
+		assert detect_stress_detected(curr, prev) == []
+
+	def test_no_exercise_emits_at_threshold(self):
+		from app.services.ambient.rules.health import detect_no_exercise_mention
+		curr = {"no_exercise_days": 6}
+		prev = {"no_exercise_days": 4}
+		signals = detect_no_exercise_mention(curr, prev)
+		assert len(signals) == 1
+		assert signals[0].kind == "no_exercise_mention"
+		assert signals[0].detail["days"] == 6
+
+	def test_no_exercise_no_signal_below_threshold(self):
+		from app.services.ambient.rules.health import detect_no_exercise_mention
+		snap = {"no_exercise_days": 3}
+		assert detect_no_exercise_mention(snap, None) == []
+
+	def test_no_exercise_999_sentinel_suppressed(self):
+		from app.services.ambient.rules.health import detect_no_exercise_mention
+		snap = {"no_exercise_days": 999}
+		assert detect_no_exercise_mention(snap, None) == []
+
+
+# ---------------------------------------------------------------------------
+# P2 — Planka signal rules (today_overload)
+# ---------------------------------------------------------------------------
+
+class TestPlankaSignalRules:
+	def test_today_overload_no_signal_below_threshold(self):
+		from app.services.ambient.rules.planka import detect_today_overload
+		snap = {"today_count": 5}
+		assert detect_today_overload(snap, None) == []
+
+	def test_today_overload_emits_on_first_crossing(self):
+		from app.services.ambient.rules.planka import detect_today_overload
+		curr = {"today_count": 10}
+		prev = {"today_count": 3}
+		signals = detect_today_overload(curr, prev)
+		assert len(signals) == 1
+		assert signals[0].kind == "today_overload"
+		assert signals[0].severity > 0
+
+	def test_today_overload_no_re_fire_if_already_over(self):
+		from app.services.ambient.rules.planka import detect_today_overload
+		curr = {"today_count": 9}
+		prev = {"today_count": 8}
+		assert detect_today_overload(curr, prev) == []
+
+
+# ---------------------------------------------------------------------------
+# P2 — Composite overload rule
+# ---------------------------------------------------------------------------
+
+class TestRuleOverloadComposite:
+	def _make_planka_sig(self, severity=0.4):
+		from app.services.ambient.models import Signal
+		return Signal(
+			source="planka", kind="card_stall_threshold", severity=severity,
+			detail={"stalled_cards": [{"name": "Card A", "board": "Work", "last_activity": "2026-04-20"}]},
+		)
+
+	def _make_cal_sig(self, severity=0.5):
+		from app.services.ambient.models import Signal
+		return Signal(
+			source="calendar", kind="calendar_overload", severity=severity,
+			detail={"tomorrow_meeting_hours": 7.0},
+		)
+
+	def test_fires_when_both_signals_present(self):
+		from app.services.ambient.rules.overload import rule_overload_composite
+		sigs = [self._make_planka_sig(), self._make_cal_sig()]
+		trigger = rule_overload_composite(sigs)
+		assert trigger is not None
+		assert trigger.rule_id == "rule_overload_composite"
+		assert "flow" in trigger.crews
+		assert trigger.priority == 2
+
+	def test_no_trigger_when_only_planka(self):
+		from app.services.ambient.rules.overload import rule_overload_composite
+		assert rule_overload_composite([self._make_planka_sig()]) is None
+
+	def test_no_trigger_when_only_calendar(self):
+		from app.services.ambient.rules.overload import rule_overload_composite
+		assert rule_overload_composite([self._make_cal_sig()]) is None
+
+	def test_no_trigger_below_severity_gate(self):
+		from app.services.ambient.rules.overload import rule_overload_composite
+		# Both signals individually low severity -> combined < 0.6
+		sigs = [self._make_planka_sig(0.1), self._make_cal_sig(0.1)]
+		assert rule_overload_composite(sigs) is None
+
+	def test_health_amplifier_raises_priority(self):
+		from app.services.ambient.rules.overload import rule_overload_composite
+		from app.services.ambient.models import Signal
+		health_sig = Signal(
+			source="health", kind="stress_detected", severity=0.5,
+			detail={"stress_keywords": True, "fatigue_mention_count": 2},
+		)
+		sigs = [self._make_planka_sig(0.4), self._make_cal_sig(0.5), health_sig]
+		trigger = rule_overload_composite(sigs)
+		assert trigger is not None
+		assert trigger.priority == 1  # health raises to critical
+		assert "health" in trigger.crews
+
+	def test_context_contains_ambient_trigger_marker(self):
+		from app.services.ambient.rules.overload import rule_overload_composite
+		sigs = [self._make_planka_sig(), self._make_cal_sig()]
+		trigger = rule_overload_composite(sigs)
+		assert "AMBIENT_TRIGGER" in trigger.context
+
+
+# ---------------------------------------------------------------------------
+# P2 — Sedentary drift and today list overload rules
+# ---------------------------------------------------------------------------
+
+class TestDriftRules:
+	def test_sedentary_drift_fires_at_threshold(self):
+		from app.services.ambient.rules.drift import rule_sedentary_drift
+		from app.services.ambient.models import Signal
+		sig = Signal(
+			source="health", kind="no_exercise_mention", severity=0.3,
+			detail={"days": 6, "no_exercise_days": 6},
+		)
+		trigger = rule_sedentary_drift([sig])
+		assert trigger is not None
+		assert trigger.rule_id == "rule_sedentary_drift"
+		assert trigger.priority == 4
+		assert "health" in trigger.crews
+		assert "coach" in trigger.crews
+
+	def test_sedentary_drift_no_fire_when_days_below_threshold(self):
+		from app.services.ambient.rules.drift import rule_sedentary_drift
+		from app.services.ambient.models import Signal
+		sig = Signal(
+			source="health", kind="no_exercise_mention", severity=0.1,
+			detail={"days": 3, "no_exercise_days": 3},
+		)
+		assert rule_sedentary_drift([sig]) is None
+
+	def test_sedentary_drift_returns_none_for_non_health_signals(self):
+		from app.services.ambient.rules.drift import rule_sedentary_drift
+		from app.services.ambient.models import Signal
+		sig = Signal(source="planka", kind="card_stall_threshold", severity=0.4, detail={})
+		assert rule_sedentary_drift([sig]) is None
+
+	def test_today_list_overload_fires(self):
+		from app.services.ambient.rules.drift import rule_today_list_overload
+		from app.services.ambient.models import Signal
+		sig = Signal(
+			source="planka", kind="today_overload", severity=0.5,
+			detail={"today_count": 10},
+		)
+		trigger = rule_today_list_overload([sig])
+		assert trigger is not None
+		assert trigger.rule_id == "rule_today_list_overload"
+		assert "flow" in trigger.crews
+
+	def test_today_list_overload_returns_none_without_signal(self):
+		from app.services.ambient.rules.drift import rule_today_list_overload
+		assert rule_today_list_overload([]) is None
+
+
+# ---------------------------------------------------------------------------
+# P2 — drain_briefing_queue (in-memory Redis mock)
+# ---------------------------------------------------------------------------
+
+class TestDrainBriefingQueue:
+	def test_drain_returns_empty_when_queue_is_empty(self, fake_redis):
+		from app.services.ambient.delivery import drain_briefing_queue
+		with patch("app.services.ambient.delivery._get_redis", return_value=fake_redis):
+			result = drain_briefing_queue()
+		assert result == []
+
+	def test_drain_returns_items_and_clears_queue(self, fake_redis):
+		import json
+		from app.services.ambient.delivery import drain_briefing_queue, _BRIEFING_QUEUE_KEY
+		# Pre-populate the queue
+		fake_redis._data[_BRIEFING_QUEUE_KEY] = [
+			json.dumps({"rule_id": "a", "priority": 2, "crews": [], "context": "x1", "queued_at": "2026-04-26T10:00:00+00:00"}),
+			json.dumps({"rule_id": "b", "priority": 4, "crews": [], "context": "x2", "queued_at": "2026-04-26T09:00:00+00:00"}),
+		]
+		with patch("app.services.ambient.delivery._get_redis", return_value=fake_redis):
+			result = drain_briefing_queue()
+		assert len(result) == 2
+		# Should be sorted by priority (2 first)
+		assert result[0]["priority"] == 2
+		# Queue should be cleared
+		assert fake_redis._data.get(_BRIEFING_QUEUE_KEY, []) == []
+
+	def test_drain_handles_redis_failure_gracefully(self):
+		from unittest.mock import MagicMock
+		from app.services.ambient.delivery import drain_briefing_queue
+		bad_redis = MagicMock()
+		bad_redis.lrange.side_effect = Exception("Redis down")
+		with patch("app.services.ambient.delivery._get_redis", return_value=bad_redis):
+			result = drain_briefing_queue()
+		assert result == []
