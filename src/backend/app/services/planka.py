@@ -166,6 +166,18 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 	if board_name.lower() in {n.lower() for n in all_board_names}:
 		board_name = "Operator Board"
 
+	# Safety net: LLM sometimes writes BOARD: My Projects | LIST: life goals
+	# instead of BOARD: life goals.  "My Projects" is the parent container, not a board.
+	# If that pattern is detected, swap list_name → board_name so the card lands correctly.
+	_my_projects_lower = settings.AUDIT_MY_PROJECTS_PARENT.lower()
+	if board_name.lower() == _my_projects_lower and list_name and list_name.lower() not in ("inbox", "today", _my_projects_lower):
+		logger.info(
+			"create_task: LLM misrouted '%s' as BOARD — treating list_name '%s' as real board",
+			board_name, list_name,
+		)
+		board_name = list_name
+		list_name = "Inbox"
+
 		logger.info("create_task requested -> Board: %s, List: %s, Title: %s", _sanitize_for_log(board_name), _sanitize_for_log(list_name), _sanitize_for_log(title))
 	try:
 		from app.services.operator_board import operator_service
