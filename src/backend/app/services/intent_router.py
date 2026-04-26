@@ -1714,6 +1714,10 @@ async def classify_structural_intent(text: str, lang: str) -> Optional[Structura
 		m = pat.search(snippet)
 		if m:
 			board_q = _strip_filler(m.group("board")).strip().rstrip(".,;!?")
+			# Strip the generic word "board" if it is a trailing qualifier
+			# (e.g. "aquarium board" → "aquarium") to improve fuzzy matching.
+			import re as _bre
+			board_q = _bre.sub(r'\bboard\b', '', board_q, flags=_bre.IGNORECASE).strip()
 			if not board_q:
 				continue
 			# Verify board exists in Planka snapshot before committing.
