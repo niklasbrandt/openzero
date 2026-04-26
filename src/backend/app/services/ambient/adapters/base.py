@@ -18,4 +18,4 @@ class StateAdapter(Protocol):
 
 	async def snapshot(self) -> dict:
 		"""Return a JSON-serialisable snapshot of the current state."""
-		...
+		pass

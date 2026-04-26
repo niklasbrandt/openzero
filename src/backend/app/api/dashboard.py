@@ -1027,8 +1027,8 @@ async def get_recent_captures():
 		for raw in raw_items:
 			try:
 				events.append(_json.loads(raw))
-			except Exception:
-				pass
+			except Exception as _e:
+				logger.debug("Skipping malformed capture event: %s", _e)
 		return {"events": events}
 	except Exception as exc:
 		logger.warning("get-recent-captures failed", exc_info=exc)
@@ -3307,9 +3307,8 @@ async def get_ambient_status():
 					item = _j.loads(raw)
 					item["_key"] = key.split("oz:ambient:pending:")[-1]
 					pending.append(item)
-				except Exception:
-					pass
-
+			except Exception as _e:
+				logger.debug("Skipping malformed pending item: %s", _e)
 		# Briefing queue depth
 		briefing_depth = r.llen("oz:ambient:briefing_queue")
 

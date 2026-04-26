@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Awaitable, Callable, Literal, Optional, Protocol, runtime_checkable
+from typing import Literal, Optional, Protocol, runtime_checkable
 
 logger = logging.getLogger(__name__)
 
@@ -75,15 +75,15 @@ class CapturePlugin(Protocol):
 		destination type, else None. Called only after the phrase has been
 		clamped and operator-scope-checked.
 		"""
-		...
+		pass
 
 	async def execute_capture(self, decision: CaptureDecision) -> ActionResult:
 		"""Perform the actual capture. Engine has already enforced HITL gates."""
-		...
+		pass
 
 	async def explain_routing(self, decision: CaptureDecision, lang: str) -> str:
 		"""Return a one-sentence i18n explanation for the dashboard reasoning trace."""
-		...
+		pass
 
 
 class PluginRegistry:

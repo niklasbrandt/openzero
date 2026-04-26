@@ -17,7 +17,6 @@ from app.services.ambient.models import Trigger
 
 logger = logging.getLogger(__name__)
 
-_AMBIENT_CHANNEL = "ambient"
 _PREFIX = "[Ambient]"
 
 

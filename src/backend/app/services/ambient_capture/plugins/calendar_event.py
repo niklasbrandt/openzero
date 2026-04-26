@@ -20,7 +20,6 @@ from typing import Optional
 from app.services.ambient_capture.plugin import (
 	ActionResult,
 	CaptureDecision,
-	CapturePlugin,
 	PluginCapabilities,
 	PluginScore,
 )

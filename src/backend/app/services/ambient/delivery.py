@@ -254,8 +254,8 @@ async def _is_quiet_moment(settings) -> bool:  # noqa: ANN001
 					delta_m = (event_local - now).total_seconds() / 60
 					if 0 <= delta_m <= quiet_window_m:
 						return False  # event starting soon
-				except ValueError:
-					pass
+				except ValueError as _e:
+					logger.debug("AmbientDelivery: skipping non-ISO calendar start: %s", _e)
 		except Exception as cal_exc:
 			logger.debug("AmbientDelivery: calendar check failed, assuming quiet: %s", cal_exc)
 

@@ -20,13 +20,11 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from dataclasses import field
 from typing import Optional
 
 from app.services.ambient_capture.plugin import (
 	ActionResult,
 	CaptureDecision,
-	CapturePlugin,
 	PluginCapabilities,
 	PluginScore,
 )
@@ -261,8 +259,6 @@ async def _memory_history_match(phrase_emb: list[float]) -> float:
 	try:
 		from qdrant_client import QdrantClient, models
 		from app.config import settings
-		import asyncio
-
 		client = QdrantClient(
 			host=settings.QDRANT_HOST,
 			port=settings.QDRANT_PORT,

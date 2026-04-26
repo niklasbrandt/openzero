@@ -39,11 +39,6 @@ logger = logging.getLogger(__name__)
 
 # _AUDIT_LOOKBACK_DAYS is intentionally removed -- use settings.AUDIT_LOOKBACK_HOURS instead.
 
-# Board name keywords that indicate a list/shopping/nutrition board where description is optional.
-_LIST_BOARD_KEYWORDS = frozenset([
-	"nutrition", "shopping", "grocery", "einkauf", "lebensmittel", "rezept", "recipe",
-])
-
 # [AUDIT:action_type:subject] or [AUDIT:action_type:subject|key=value|...]
 # Linear pattern — no nested quantifiers — avoids catastrophic backtracking.
 _AUDIT_TAG_RE = re.compile(

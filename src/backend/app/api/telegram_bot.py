@@ -1252,12 +1252,12 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 		logger.warning("_process_freetext: stream timed out after 120 s — aborting")
 		try:
 			await thinking_msg.delete()
-		except Exception:
-			pass
+		except Exception as _e:
+			logger.debug("thinking_msg delete skipped: %s", _e)
 		try:
 			await safe_reply(update, "I ran out of time on that one. Please try again.")
-		except Exception:
-			pass
+		except Exception as _e:
+			logger.debug("safe_reply skipped: %s", _e)
 		return True
 
 	result = await result_fut
@@ -1382,8 +1382,8 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		if routed_crews:
 			try:
 				await status_msg.delete()
-			except Exception:
-				pass
+			except Exception as _e:
+				logger.debug("status_msg delete skipped: %s", _e)
 			await _process_crew_stream(update, context, routed_crews, caption, t, already_ingested=True)
 			return
 
@@ -1401,15 +1401,15 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		if not result.reply.strip():
 			try:
 				await status_msg.delete()
-			except Exception:
-				pass
+			except Exception as _e:
+				logger.debug("status_msg delete skipped: %s", _e)
 			return
 
 		if result.routed_to_crew:
 			try:
 				await status_msg.delete()
-			except Exception:
-				pass
+			except Exception as _e:
+				logger.debug("status_msg delete skipped: %s", _e)
 			await _process_crew_stream(update, context, [result.routed_to_crew], caption, t, already_ingested=True)
 			return
 
