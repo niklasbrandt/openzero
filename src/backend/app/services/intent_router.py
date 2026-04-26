@@ -1732,6 +1732,28 @@ async def classify_structural_intent(text: str, lang: str) -> Optional[Structura
 						if bq in bn or bn in bq:
 							best_board = b
 							break
+				# Semantic fallback: ask fast model to map colloquial name to real board
+				# (e.g. "aquarium" → "reef tank"). Only fires when substring match fails.
+				if not best_board and all_boards:
+					try:
+						from app.services.llm import chat as _sem_chat
+						_names_hint = ", ".join((b.get("name") or "") for b in all_boards)
+						_sem_q = (
+							f"Available boards: {_names_hint}\n"
+							f"Which board does the user mean by '{board_q}'? "
+							"The user may use a synonym or nickname (e.g. 'aquarium' for 'reef tank').\n"
+							"Reply with ONLY the exact board name from the list, or NONE."
+						)
+						_sem_ans = await asyncio.wait_for(_sem_chat(_sem_q, tier="fast"), timeout=6.0)
+						_sem_ans = _sem_ans.strip().strip("'\".").rstrip(".,;!?")
+						if _sem_ans.upper() != "NONE":
+							for b in all_boards:
+								if (b.get("name") or "").lower() == _sem_ans.lower():
+									best_board = b
+									logger.info("classify_structural_intent: semantic name match '%s' → '%s'", board_q, b["name"])
+									break
+					except Exception as _sm_err:
+						logger.debug("classify_structural_intent: semantic fallback failed: %s", _sm_err)
 				if best_board:
 					return StructuralIntent(
 						verb="SORT_BOARD",
