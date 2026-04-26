@@ -474,4 +474,27 @@ translations: dict[str, str] = {
         'inference_saved': "Guardado.",
         'inference_wipe_ok': "Lecciones de enrutamiento eliminadas.",
         'inference_wipe_fail': "Error al borrar \u2014 revisa los registros.",
+        'inference_lesson_never': "Nunca expirar",
+        # Reasoning trace (Epoch 3)
+        'reasoning_trace_title': "Historial de rutas",
+        'reasoning_trace_empty': "Sin capturas recientes.",
+        'reasoning_trace_lane_execute': "Silencioso",
+        'reasoning_trace_lane_ask': "Preguntado",
+        'reasoning_trace_lane_teach': "Enseñar",
+        'reasoning_trace_lane_chat': "Conversación",
+        'reasoning_trace_confidence': "Confianza",
+        'reasoning_trace_plugin': "Plugin",
+        'reasoning_trace_destination': "Destino",
+        # Cross-system routing confirmations (Epoch 3)
+        'captured_to_card': "Guardado '{phrase}' en {board} \u2192 {list}.",
+        'captured_to_calendar': "Añadido '{phrase}' a tu calendario.",
+        'captured_to_shopping_list': "Añadido '{phrase}' a tu lista de compras.",
+        'captured_to_memory': "'{phrase}' guardado como recuerdo.",
+        'captured_to_crew_output': "'{phrase}' archivado vía crew {crew}.",
+        'captured_to_reminder': "Recordatorio establecido para '{phrase}'.",
+        # Privacy posture (Epoch 3)
+        'privacy_public': "Público",
+        'privacy_private': "Privado",
+        'privacy_auto': "Auto",
+        'privacy_first_touch': "He marcado tu tablero '{board}' como privado \u2014 no aparecerá en sugerencias a menos que lo nombres directamente.",
 }

@@ -476,4 +476,27 @@ translations: dict[str, str] = {
         'inference_saved': '保存完了。',
         'inference_wipe_ok': 'ルーティング学習をリセットしました。',
         'inference_wipe_fail': 'リセット失敗 — ログを確認してください。',
+        'inference_lesson_never': '有効期限なし',
+        # Reasoning trace (Epoch 3)
+        'reasoning_trace_title': 'ルーティングトレース',
+        'reasoning_trace_empty': '最近のキャプチャはありません。',
+        'reasoning_trace_lane_execute': 'サイレント',
+        'reasoning_trace_lane_ask': '確認済み',
+        'reasoning_trace_lane_teach': 'ティーチ',
+        'reasoning_trace_lane_chat': '会話',
+        'reasoning_trace_confidence': '確信度',
+        'reasoning_trace_plugin': 'プラグイン',
+        'reasoning_trace_destination': '保存先',
+        # Cross-system routing confirmations (Epoch 3)
+        'captured_to_card': "'{phrase}' を {board} \u2192 {list} に保存しました。",
+        'captured_to_calendar': "'{phrase}' をカレンダーに追加しました。",
+        'captured_to_shopping_list': "'{phrase}' を買い物リストに追加しました。",
+        'captured_to_memory': "'{phrase}' を記憶の事実として保存しました。",
+        'captured_to_crew_output': "'{phrase}' をクルー {crew} 経由で提出しました。",
+        'captured_to_reminder': "'{phrase}' のリマインダーを設定しました。",
+        # Privacy posture (Epoch 3)
+        'privacy_public': '公開',
+        'privacy_private': '非公開',
+        'privacy_auto': '自動',
+        'privacy_first_touch': "'{board}' ボードをプライベートとしてマークしました \u2014 直接名前を指定しない限り、提案には表示されません。",
 }
