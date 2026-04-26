@@ -282,6 +282,23 @@ async def start_scheduler():
 		replace_existing=True,
 	)
 
+	# Ambient Intelligence — State-Diff Engine
+	# Snapshots data sources, diffs state, fires crews proactively.
+	# Gated behind AMBIENT_ENABLED (default False). Ships dark.
+	# See docs/artifacts/ambient_intelligence.md.
+	if getattr(settings, "AMBIENT_ENABLED", False):
+		from app.services.ambient import ambient_loop
+		scheduler.add_job(
+			ambient_loop,
+			IntervalTrigger(seconds=settings.AMBIENT_POLL_INTERVAL_S),
+			id="ambient_intelligence",
+			replace_existing=True,
+		)
+		logger.info(
+			"Ambient intelligence loop registered (interval=%ds)",
+			settings.AMBIENT_POLL_INTERVAL_S,
+		)
+
 	# 2. Load User-Defined Persistent Custom Tasks
 	await load_custom_tasks()
 

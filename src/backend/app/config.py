@@ -172,6 +172,22 @@ class Settings(BaseSettings):
     # Routing-lesson retention. 0 = never expire (default per Section 7).
     AMBIENT_ROUTING_LESSON_RETENTION_DAYS: int = 0
 
+    # ── Ambient Intelligence (State-Diff Engine) ──────────────────────────────
+    # See docs/artifacts/ambient_intelligence.md for the full architectural plan.
+    # Separate from AMBIENT_CAPTURE_* (which routes inbound user messages).
+    # This engine reacts to observed state changes and fires crews proactively.
+    #
+    # Master switch. Default False — ships dark. Enable when P0 is validated.
+    AMBIENT_ENABLED: bool = False
+    # Snapshot interval in seconds (default 5 minutes).
+    AMBIENT_POLL_INTERVAL_S: int = 300
+    # Minutes of silence before a quiet-moment delivery is allowed.
+    AMBIENT_QUIET_MOMENT_WINDOW_M: int = 15
+    # Maximum ambient triggers per hour across all rules (global rate cap).
+    AMBIENT_MAX_TRIGGERS_PER_HOUR: int = 3
+    # Fold undelivered priority 4-5 insights into the morning briefing.
+    AMBIENT_BRIEFING_QUEUE_ENABLED: bool = True
+
 
     model_config = SettingsConfigDict(
         env_file=os.path.join(os.path.dirname(__file__), "../../../.env"),
