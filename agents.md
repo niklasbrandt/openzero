@@ -140,6 +140,17 @@ All code written for the openZero dashboard **MUST** conform to **WCAG 2.1 Level
 - **Run the i18n Gate:** After any translation-related change, run `pytest tests/test_i18n_coverage.py -v` locally before committing. All six tests must pass (or intentional known-gap failures for partially translated languages must be explicitly documented).
 - **Avoid Regex Backtracking:** When writing or modifying regex for i18n checks, NEVER use overlapping patterns like `[^"]*\s[^"]{2,}` that cause catastrophic backtracking on long lines. Always prefer linear, non-overlapping patterns or Python-side string splitting.
 
+## 21. Communication Channel Parity
+
+All fixes to message handling, LLM streaming, timeouts, routing logic, or error recovery MUST be applied to ALL active channels simultaneously. Never fix one channel and skip the others.
+
+Active channels and their relevant files:
+- **Telegram** — `src/backend/app/api/telegram_bot.py` (freetext stream loop + crew stream loop)
+- **WhatsApp** — `src/backend/app/api/whatsapp.py` (text path + image/caption path)
+- **Dashboard** — `src/backend/app/api/dashboard.py` (chat SSE loop + crew SSE loop)
+
+Before closing any fix that touches one of these files, grep the other channel files for the same pattern and patch them in the same commit.
+
 ## 20. Python Script & Test Performance
 
 - **Static vs Dynamic Checks:** When performing codebase-wide analysis (like checking for missing translation keys or hardcoded strings), ALWAYS prefer static analysis (`ast.parse()`, `re.finditer()`) over dynamic imports (`import app...`). Dynamic imports trigger the entire backend configuration and DB engine, which is slow and prone to hangs in restricted environments.
