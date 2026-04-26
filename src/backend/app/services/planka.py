@@ -132,6 +132,60 @@ async def get_project_tree(as_html: bool = True) -> str:
 		logger.error("Planka project tree error: %s", _sanitize_for_log(e))
 		return "Planka connection issue."
 
+
+async def get_board_full_context(board_name_fragment: str) -> str:
+	"""Return all lists and card titles for a named board as plain text for LLM injection.
+
+	Performs a case-insensitive substring match on board name. Returns empty string on failure.
+	"""
+	try:
+		token = await get_planka_auth_token()
+		headers = {"Authorization": f"Bearer {token}"}
+		async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, timeout=15.0, headers=headers) as client:
+			pr = await client.get("/api/projects")
+			pr.raise_for_status()
+			projects = pr.json().get("items", [])
+			# Find board by name fragment across all projects
+			target_board_id: str | None = None
+			target_board_name: str = board_name_fragment
+			for p in projects:
+				det = await client.get(f"/api/projects/{p['id']}")
+				if det.status_code >= 400:
+					continue
+				boards = det.json().get("included", {}).get("boards", [])
+				for b in boards:
+					if board_name_fragment.lower() in b.get("name", "").lower():
+						target_board_id = b["id"]
+						target_board_name = b["name"]
+						break
+				if target_board_id:
+					break
+			if not target_board_id:
+				return ""
+			resp = await client.get(f"/api/boards/{target_board_id}", params={"included": "lists,cards"})
+			resp.raise_for_status()
+			detail = resp.json()
+			lists = detail.get("included", {}).get("lists", [])
+			cards = detail.get("included", {}).get("cards", [])
+			list_map: dict[str, str] = {l["id"]: l.get("name", "?") for l in lists}
+			list_cards: dict[str, list[str]] = {l["id"]: [] for l in lists}
+			for c in cards:
+				lid = c.get("listId", "")
+				if lid in list_cards:
+					list_cards[lid].append(c.get("name", "?"))
+			lines = [f"BOARD: {target_board_name}"]
+			for l in lists:
+				lid = l["id"]
+				cnames = list_cards.get(lid, [])
+				lines.append(f"\nLIST: {l.get('name', '?')} ({len(cnames)} cards)")
+				for cn in cnames:
+					lines.append(f"  - {cn}")
+			return "\n".join(lines)
+	except Exception as _e:
+		logger.error("get_board_full_context failed: %s", _sanitize_for_log(_e))
+		return ""
+
+
 async def create_task(board_name: str, list_name: str, title: str, description: str = "") -> Optional[str]:
 	"""Creates a card on the specified board and list.
 
