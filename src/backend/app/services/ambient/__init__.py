@@ -80,18 +80,50 @@ def _build_engine():
 	from app.services.ambient.diff_engine import DiffEngine
 	from app.services.ambient.rules import RuleEngine
 	from app.services.ambient.adapters.planka import PlankaAdapter
+	from app.services.ambient.adapters.calendar import CalendarAdapter
+	from app.services.ambient.adapters.email import EmailAdapter
+	from app.services.ambient.adapters.hardware import HardwareAdapter
+	from app.services.ambient.adapters.conversation import ConversationAdapter
+	from app.services.ambient.adapters.health import HealthAdapter
 	from app.services.ambient.rules.stall import detect_card_stalls, rule_card_stall
+	from app.services.ambient.rules.calendar import (
+		detect_calendar_overload, detect_back_to_back, rule_calendar_advisory,
+	)
+	from app.services.ambient.rules.email import (
+		detect_priority_spike, detect_inbox_surge, rule_inbox_overwhelm,
+	)
+	from app.services.ambient.rules.hardware import (
+		detect_disk_critical, detect_memory_critical,
+		detect_container_failure, rule_infra_critical,
+	)
 
 	_store = StateStore()
 	_diff_engine = DiffEngine()
 	_rule_engine = RuleEngine()
-	_adapters = [PlankaAdapter()]
+	_adapters = [
+		PlankaAdapter(),
+		CalendarAdapter(),
+		EmailAdapter(),
+		HardwareAdapter(),
+		ConversationAdapter(),
+		HealthAdapter(),
+	]
 
-	# Register diff rules (source_id -> signal rule)
+	# Register diff rules (source_id -> signal rule callable)
 	_diff_engine.register("planka", detect_card_stalls)
+	_diff_engine.register("calendar", detect_calendar_overload)
+	_diff_engine.register("calendar", detect_back_to_back)
+	_diff_engine.register("email", detect_priority_spike)
+	_diff_engine.register("email", detect_inbox_surge)
+	_diff_engine.register("hardware", detect_disk_critical)
+	_diff_engine.register("hardware", detect_memory_critical)
+	_diff_engine.register("hardware", detect_container_failure)
 
 	# Register trigger rules
 	_rule_engine.register(rule_card_stall, cooldown_minutes=360)
+	_rule_engine.register(rule_calendar_advisory, cooldown_minutes=480)
+	_rule_engine.register(rule_inbox_overwhelm, cooldown_minutes=60)
+	_rule_engine.register(rule_infra_critical, cooldown_minutes=120)
 
 	_engine_ready = True
 	logger.info("ambient_intelligence: engine initialised with %d adapter(s)", len(_adapters))
