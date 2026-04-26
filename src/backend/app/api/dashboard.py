@@ -3254,3 +3254,121 @@ async def get_llm_active():
 			"local": now - _tier_last_active.get("local", 0) < 8.0,
 			"cloud": now - _tier_last_active.get("cloud", 0) < 8.0,
 		}
+
+
+# ── Ambient Intelligence (P3) ────────────────────────────────────────────────
+
+@router.get("/ambient/status")
+async def get_ambient_status():
+	"""Return current ambient engine state for AmbientWidget.
+
+	Includes active signals (currently held in Redis pending queue),
+	the briefing queue depth, global rate-limit counter, and per-rule
+	cooldown expirations.
+	"""
+	import redis as _redis_lib
+	import json as _j
+	from app.config import settings as s
+
+	try:
+		r = _redis_lib.Redis(
+			host=s.REDIS_HOST,
+			port=s.REDIS_PORT,
+			password=s.REDIS_PASSWORD or None,
+			decode_responses=True,
+			socket_timeout=2.0,
+		)
+
+		enabled = getattr(s, "AMBIENT_ENABLED", False)
+
+		# Pending triggers (priority 2-3 waiting for quiet moment)
+		pending_keys = r.keys("oz:ambient:pending:*")
+		pending: list[dict] = []
+		for key in pending_keys:
+			raw = r.get(key)
+			if raw:
+				try:
+					item = _j.loads(raw)
+					item["_key"] = key.split("oz:ambient:pending:")[-1]
+					pending.append(item)
+				except Exception:
+					pass
+
+		# Briefing queue depth
+		briefing_depth = r.llen("oz:ambient:briefing_queue")
+
+		# Global rate limit counter
+		rate_count = int(r.get("oz:ambient:hourly_trigger_count") or 0)
+		rate_max = getattr(s, "AMBIENT_MAX_TRIGGERS_PER_HOUR", 3)
+
+		# Per-rule cooldowns
+		cooldown_keys = r.keys("oz:ambient:cooldown:*")
+		cooldowns: list[dict] = []
+		for key in cooldown_keys:
+			ttl = r.ttl(key)
+			rule_id = key.split("oz:ambient:cooldown:")[-1]
+			cooldowns.append({"rule_id": rule_id, "ttl_seconds": ttl})
+
+		return {
+			"enabled": enabled,
+			"pending_count": len(pending),
+			"pending": pending,
+			"briefing_queue_depth": briefing_depth,
+			"rate_count": rate_count,
+			"rate_max": rate_max,
+			"cooldowns": cooldowns,
+		}
+	except Exception as exc:
+		return {
+			"enabled": False,
+			"pending_count": 0,
+			"pending": [],
+			"briefing_queue_depth": 0,
+			"rate_count": 0,
+			"rate_max": 3,
+			"cooldowns": [],
+			"error": str(exc),
+		}
+
+
+class AmbientConfigUpdate(BaseModel):
+	enabled: Optional[bool] = None
+	poll_interval_s: Optional[int] = None
+	max_triggers_per_hour: Optional[int] = None
+	quiet_moment_window_m: Optional[int] = None
+	briefing_queue_enabled: Optional[bool] = None
+
+
+@router.get("/ambient/config")
+async def get_ambient_config():
+	"""Return the current ambient intelligence configuration."""
+	from app.config import settings as s
+	return {
+		"enabled": getattr(s, "AMBIENT_ENABLED", False),
+		"poll_interval_s": getattr(s, "AMBIENT_POLL_INTERVAL_S", 300),
+		"max_triggers_per_hour": getattr(s, "AMBIENT_MAX_TRIGGERS_PER_HOUR", 3),
+		"quiet_moment_window_m": getattr(s, "AMBIENT_QUIET_MOMENT_WINDOW_M", 15),
+		"briefing_queue_enabled": getattr(s, "AMBIENT_BRIEFING_QUEUE_ENABLED", True),
+	}
+
+
+@router.post("/ambient/dismiss-pending")
+async def dismiss_pending_trigger(rule_id: str):
+	"""Dismiss a specific pending trigger from the delivery queue.
+
+	Called when the user dismisses an ambient notification from the widget.
+	"""
+	import redis as _redis_lib
+	from app.config import settings as s
+	try:
+		r = _redis_lib.Redis(
+			host=s.REDIS_HOST,
+			port=s.REDIS_PORT,
+			password=s.REDIS_PASSWORD or None,
+			decode_responses=True,
+			socket_timeout=2.0,
+		)
+		deleted = r.delete(f"oz:ambient:pending:{rule_id}")
+		return {"dismissed": bool(deleted), "rule_id": rule_id}
+	except Exception as exc:
+		return {"dismissed": False, "rule_id": rule_id, "error": str(exc)}
