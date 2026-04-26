@@ -77,20 +77,21 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 	# ── English ───────────────────────────────────────────────────────────
 	"en": {
 		"sort_board": [
-			# "sort lists in reef tank", "sort/reorganize [cards in] [new lists in] <board>"
-			re.compile(
-				r'\b(?:sort|reorgani[sz]e?|restructur[e]?|clean\s+up|tidy\s+up|reorder|rearrang[e]?)\b'
-				r'(?:\s+(?:lists?|cards?|and|in|potentially|new|\s)+)?'
-				r'(?:in|on|for|the\s+)?(?:board\s+)?(?P<board>[a-z0-9][\w\s]{2,50})',
-				re.IGNORECASE,
-			),
-			# End-anchored fallback: handles middle clauses like "reorganize cards in
-			# potentially new lists in reef tank" by anchoring board name at end of string.
-			# Greedy .{0,300} forces backtracking to the LAST 'in <board>' before $.
+			# End-anchored pattern: always tried first. Handles all forms including
+			# "sort lists and reorganize cards in potentially new lists in reef tank"
+			# by anchoring board name at end of string — greedy .{0,300} ensures the
+			# LAST 'in/on <board>' is captured, not a middle preposition.
 			re.compile(
 				r'\b(?:sort|reorgani[sz]e?|restructur[e]?|clean\s+up|tidy\s+up|reorder|rearrang[e]?)\b'
 				r'.{0,300}'
 				r'\b(?:in|on)\s+(?:the\s+)?(?:board\s+)?(?P<board>[a-z0-9][\w\s]{2,40})\s*$',
+				re.IGNORECASE,
+			),
+			# Simple pattern: "sort/reorganize [the] [board] <name>" with no middle clause.
+			# Serves as fallback when the message ends before "in <board>".
+			re.compile(
+				r'\b(?:sort|reorgani[sz]e?|restructur[e]?|clean\s+up|tidy\s+up|reorder|rearrang[e]?)\b'
+				r'\s+(?:the\s+)?(?:board\s+)?(?P<board>[a-z0-9]\w[\w\s]{1,48}?)(?:\s*$|\s+(?:board|lists?|cards?))',
 				re.IGNORECASE,
 			),
 		],
@@ -1719,6 +1720,11 @@ async def classify_structural_intent(text: str, lang: str) -> Optional[Structura
 			import re as _bre
 			board_q = _bre.sub(r'\bboard\b', '', board_q, flags=_bre.IGNORECASE).strip()
 			if not board_q:
+				continue
+			# Sanity check: a real board name should not be more than 4 words.
+			# If it's longer, the pattern captured a phrase (e.g. "reorganize cards in ..."),
+			# not an actual board name — skip to the next pattern.
+			if len(board_q.split()) > 4:
 				continue
 			# Verify board exists in Planka snapshot before committing.
 			projects = await _get_planka_snapshot()
