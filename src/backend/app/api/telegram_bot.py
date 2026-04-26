@@ -1256,7 +1256,7 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 							logger.debug("Progressive edit skip: %s", _ee)
 						last_edit_time = now
 	except asyncio.TimeoutError:
-		logger.warning("_process_freetext: stream timed out after 120 s — aborting")
+		logger.warning("_process_freetext: stream timed out after %.0f s — aborting", _stream_timeout)
 		try:
 			await thinking_msg.delete()
 		except Exception as _e:
