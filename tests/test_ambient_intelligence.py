@@ -376,3 +376,192 @@ def test_ambient_loop_noop_when_disabled():
 		await ambient_loop()
 
 	asyncio.run(_run())
+
+
+# ---------------------------------------------------------------------------
+# P1 — Calendar signal rules
+# ---------------------------------------------------------------------------
+
+class TestCalendarSignalRules:
+	def test_overload_no_signal_below_threshold(self):
+		from app.services.ambient.rules.calendar import detect_calendar_overload
+		snap = {"tomorrow_meeting_hours": 4.0, "back_to_back_count": 0}
+		signals = detect_calendar_overload(snap, None)
+		assert signals == []
+
+	def test_overload_emits_on_first_crossing(self):
+		from app.services.ambient.rules.calendar import detect_calendar_overload
+		curr = {"tomorrow_meeting_hours": 7.5, "back_to_back_count": 0}
+		prev = {"tomorrow_meeting_hours": 3.0}
+		signals = detect_calendar_overload(curr, prev)
+		assert len(signals) == 1
+		assert signals[0].kind == "calendar_overload"
+		assert signals[0].source == "calendar"
+		assert signals[0].severity > 0
+
+	def test_overload_no_second_signal_if_already_critical(self):
+		from app.services.ambient.rules.calendar import detect_calendar_overload
+		curr = {"tomorrow_meeting_hours": 8.0}
+		prev = {"tomorrow_meeting_hours": 7.0}  # also above threshold
+		signals = detect_calendar_overload(curr, prev)
+		assert signals == []
+
+	def test_back_to_back_emits_when_count_high(self):
+		from app.services.ambient.rules.calendar import detect_back_to_back
+		curr = {"back_to_back_count": 5}
+		prev = {"back_to_back_count": 1}
+		signals = detect_back_to_back(curr, prev)
+		assert len(signals) == 1
+		assert signals[0].kind == "back_to_back_day"
+
+	def test_back_to_back_no_signal_at_threshold(self):
+		from app.services.ambient.rules.calendar import detect_back_to_back
+		curr = {"back_to_back_count": 2}
+		signals = detect_back_to_back(curr, None)
+		assert signals == []
+
+	def test_calendar_advisory_trigger_fires_on_overload_signal(self):
+		from app.services.ambient.rules.calendar import rule_calendar_advisory
+		from app.services.ambient.models import Signal
+		sig = Signal(
+			source="calendar", kind="calendar_overload",
+			severity=0.5, detail={"tomorrow_meeting_hours": 7.5},
+		)
+		trigger = rule_calendar_advisory([sig])
+		assert trigger is not None
+		assert trigger.rule_id == "rule_calendar_advisory"
+		assert trigger.priority == 3
+		assert trigger.crews == []
+
+	def test_calendar_advisory_returns_none_for_unrelated_signals(self):
+		from app.services.ambient.rules.calendar import rule_calendar_advisory
+		from app.services.ambient.models import Signal
+		sig = Signal(
+			source="email", kind="priority_spike", severity=0.3, detail={},
+		)
+		assert rule_calendar_advisory([sig]) is None
+
+
+# ---------------------------------------------------------------------------
+# P1 — Email signal rules
+# ---------------------------------------------------------------------------
+
+class TestEmailSignalRules:
+	def test_priority_spike_no_signal_when_zero(self):
+		from app.services.ambient.rules.email import detect_priority_spike
+		snap = {"priority_count": 0, "priority_sender_repeat": 0}
+		assert detect_priority_spike(snap, None) == []
+
+	def test_priority_spike_emits_on_increase(self):
+		from app.services.ambient.rules.email import detect_priority_spike
+		curr = {"priority_count": 3, "priority_sender_repeat": 0, "unread_age_hours_max": 1.0}
+		prev = {"priority_count": 0}
+		signals = detect_priority_spike(curr, prev)
+		assert len(signals) == 1
+		assert signals[0].kind == "priority_spike"
+		assert signals[0].detail["priority_count"] == 3
+
+	def test_priority_spike_no_signal_when_count_unchanged(self):
+		from app.services.ambient.rules.email import detect_priority_spike
+		curr = {"priority_count": 3}
+		prev = {"priority_count": 3}
+		assert detect_priority_spike(curr, prev) == []
+
+	def test_inbox_surge_emits_on_rapid_growth(self):
+		from app.services.ambient.rules.email import detect_inbox_surge
+		curr = {"unread_count": 15}
+		prev = {"unread_count": 10}
+		signals = detect_inbox_surge(curr, prev)
+		assert len(signals) == 1
+		assert signals[0].kind == "inbox_surge"
+		assert signals[0].detail["delta"] == 5
+
+	def test_inbox_surge_no_signal_below_threshold(self):
+		from app.services.ambient.rules.email import detect_inbox_surge
+		curr = {"unread_count": 11}
+		prev = {"unread_count": 10}
+		assert detect_inbox_surge(curr, prev) == []
+
+	def test_inbox_overwhelm_trigger_fires(self):
+		from app.services.ambient.rules.email import rule_inbox_overwhelm
+		from app.services.ambient.models import Signal
+		sig = Signal(
+			source="email", kind="priority_spike", severity=0.4,
+			detail={"priority_count": 2, "priority_sender_repeat": 0, "unread_age_hours_max": 2.0},
+		)
+		trigger = rule_inbox_overwhelm([sig])
+		assert trigger is not None
+		assert "priority" in trigger.context.lower() or "2" in trigger.context
+
+	def test_inbox_overwhelm_returns_none_for_non_email_signals(self):
+		from app.services.ambient.rules.email import rule_inbox_overwhelm
+		from app.services.ambient.models import Signal
+		sig = Signal(source="hardware", kind="disk_critical", severity=0.8, detail={})
+		assert rule_inbox_overwhelm([sig]) is None
+
+
+# ---------------------------------------------------------------------------
+# P1 — Hardware signal rules
+# ---------------------------------------------------------------------------
+
+class TestHardwareSignalRules:
+	def test_disk_critical_no_signal_below_threshold(self):
+		from app.services.ambient.rules.hardware import detect_disk_critical
+		snap = {"disk_percent": 70.0}
+		assert detect_disk_critical(snap, None) == []
+
+	def test_disk_critical_emits_on_first_crossing(self):
+		from app.services.ambient.rules.hardware import detect_disk_critical
+		curr = {"disk_percent": 87.0}
+		prev = {"disk_percent": 80.0}
+		signals = detect_disk_critical(curr, prev)
+		assert len(signals) == 1
+		assert signals[0].kind == "disk_critical"
+		assert signals[0].detail["disk_percent"] == 87.0
+
+	def test_disk_critical_no_re_fire_if_already_above(self):
+		from app.services.ambient.rules.hardware import detect_disk_critical
+		curr = {"disk_percent": 90.0}
+		prev = {"disk_percent": 88.0}
+		assert detect_disk_critical(curr, prev) == []
+
+	def test_memory_critical_emits_on_crossing(self):
+		from app.services.ambient.rules.hardware import detect_memory_critical
+		curr = {"memory_percent": 92.0}
+		prev = {"memory_percent": 85.0}
+		signals = detect_memory_critical(curr, prev)
+		assert len(signals) == 1
+		assert signals[0].kind == "memory_critical"
+
+	def test_container_failure_emits_only_new_failures(self):
+		from app.services.ambient.rules.hardware import detect_container_failure
+		curr = {"container_unhealthy": ["backend", "llm"]}
+		prev = {"container_unhealthy": ["backend"]}  # backend already known
+		signals = detect_container_failure(curr, prev)
+		assert len(signals) == 1
+		assert "llm" in signals[0].detail["new_unhealthy"]
+
+	def test_container_failure_no_signal_when_unchanged(self):
+		from app.services.ambient.rules.hardware import detect_container_failure
+		curr = {"container_unhealthy": ["backend"]}
+		prev = {"container_unhealthy": ["backend"]}
+		assert detect_container_failure(curr, prev) == []
+
+	def test_infra_critical_trigger_immediate_delivery(self):
+		from app.services.ambient.rules.hardware import rule_infra_critical
+		from app.services.ambient.models import Signal
+		sig = Signal(
+			source="hardware", kind="disk_critical", severity=0.8,
+			detail={"disk_percent": 87.0, "threshold": 85.0},
+		)
+		trigger = rule_infra_critical([sig])
+		assert trigger is not None
+		assert trigger.priority == 1
+		assert trigger.delivery == "immediate"
+		assert "[INFRA]" in trigger.context
+
+	def test_infra_critical_returns_none_for_non_hw_signals(self):
+		from app.services.ambient.rules.hardware import rule_infra_critical
+		from app.services.ambient.models import Signal
+		sig = Signal(source="calendar", kind="calendar_overload", severity=0.3, detail={})
+		assert rule_infra_critical([sig]) is None
