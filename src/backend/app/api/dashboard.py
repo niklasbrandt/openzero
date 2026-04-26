@@ -3307,8 +3307,8 @@ async def get_ambient_status():
 					item = _j.loads(raw)
 					item["_key"] = key.split("oz:ambient:pending:")[-1]
 					pending.append(item)
-			except Exception as _e:
-				logger.debug("Skipping malformed pending item: %s", _e)
+				except Exception as _e:
+					logger.debug("Skipping malformed pending item: %s", _e)
 		# Briefing queue depth
 		briefing_depth = r.llen("oz:ambient:briefing_queue")
 
