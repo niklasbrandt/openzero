@@ -532,12 +532,15 @@ class TestM3_AutoDescriptionSanitisation:
 
 class TestM4_URLAllowlist:
 	def test_allows_default_domains(self) -> None:
+		import re
+		from urllib.parse import urlparse
 		from app.services.ambient_capture.sanitiser import sanitise_auto_description
 
 		text = "See https://en.wikipedia.org/wiki/Foo and https://youtu.be/abc"
 		out = sanitise_auto_description(text)
-		assert "wikipedia.org" in out
-		assert "youtu.be" in out
+		hurls = {urlparse(u).hostname for u in re.findall(r'https?://\S+', out)}
+		assert any(h == "en.wikipedia.org" or (h and h.endswith(".wikipedia.org")) for h in hurls)
+		assert "youtu.be" in hurls
 
 	def test_strips_unlisted_domains(self) -> None:
 		import re
