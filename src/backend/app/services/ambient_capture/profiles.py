@@ -72,9 +72,10 @@ class BoardProfileBuilder:
 	so any accidental Epoch 1 caller fails loudly.
 	"""
 
-	def __init__(self) -> None:
+	def __init__(self, redis_client=None) -> None:
 		# Lazy redis import to keep this module side-effect free at import time.
-		self._redis = None
+		# An explicit redis_client may be injected for testing.
+		self._redis = redis_client
 
 	def _get_redis(self):
 		if self._redis is None:
