@@ -1218,19 +1218,33 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 	chunks: list[str] = []
 	last_edit_time = time.time()
 	EDIT_INTERVAL = 1.5
-
-	async for token in token_stream:
-		chunks.append(token)
-		now = time.time()
-		if now - last_edit_time >= EDIT_INTERVAL:
-			partial = "".join(chunks)
-			if len(partial.strip()) > 3:
-				try:
-					display = f"<blockquote><i>{_md_to_html(partial)}...</i></blockquote>"
-					await safe_edit(thinking_msg, display, parse_mode="HTML")
-				except Exception as _ee:
-					logger.debug("Progressive edit skip: %s", _ee)
-				last_edit_time = now
+	# Hard wall-clock cap: prevents a stalled cloud stream from hanging forever.
+	# 120 s is generous — cloud LLM timeout is 30 s × 3 attempts ≈ 90 s at most.
+	try:
+		async with asyncio.timeout(120.0):
+			async for token in token_stream:
+				chunks.append(token)
+				now = time.time()
+				if now - last_edit_time >= EDIT_INTERVAL:
+					partial = "".join(chunks)
+					if len(partial.strip()) > 3:
+						try:
+							display = f"<blockquote><i>{_md_to_html(partial)}...</i></blockquote>"
+							await safe_edit(thinking_msg, display, parse_mode="HTML")
+						except Exception as _ee:
+							logger.debug("Progressive edit skip: %s", _ee)
+						last_edit_time = now
+	except asyncio.TimeoutError:
+		logger.warning("_process_freetext: stream timed out after 120 s — aborting")
+		try:
+			await thinking_msg.delete()
+		except Exception:
+			pass
+		try:
+			await safe_reply(update, "I ran out of time on that one. Please try again.")
+		except Exception:
+			pass
+		return
 
 	result = await result_fut
 
@@ -1462,29 +1476,36 @@ async def _process_crew_stream(update: Update, context: ContextTypes.DEFAULT_TYP
 			else native_crew_engine.run_crew_stream(primary_id, user_input, slash_invoked=slash_invoked)
 		)
 
-		async for chunk in stream:
-			if abort_event.is_set():
-				aborted = True
-				break
-			# Detect section separator emitted by run_crew_panel
-			if chunk.startswith("\n\n---crew:") and chunk.endswith("---\n\n"):
-				all_sections[current_crew_id] = "".join(current_section_chunks)
-				current_crew_id = chunk.strip().removeprefix("---crew:").removesuffix("---")
-				current_section_chunks = []
-				continue
-			current_section_chunks.append(chunk)
-			chunks.append(chunk)
-			now = time.time()
-			if now - last_edit_time >= EDIT_INTERVAL:
-				partial_text = "".join(chunks)
-				if len(partial_text.strip()) > 3:
-					try:
-						display = f"<blockquote><i>...thinking (crew: <b>{crew_display}</b>)</i>\n\n{_md_to_html(partial_text)}...</blockquote>"
-						await safe_edit(thinking_msg, display, parse_mode="HTML",
-							reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Abort", callback_data=f"crew_abort_{thinking_msg.message_id}")]]))
-					except Exception as _e:
-						logger.debug("Telegram crew stream update ignored: %s", _e)
-					last_edit_time = now
+		# Hard wall-clock cap: crew LLM calls must resolve within 3 minutes.
+		try:
+			async with asyncio.timeout(180.0):
+				async for chunk in stream:
+					if abort_event.is_set():
+						aborted = True
+						break
+					# Detect section separator emitted by run_crew_panel
+					if chunk.startswith("\n\n---crew:") and chunk.endswith("---\n\n"):
+						all_sections[current_crew_id] = "".join(current_section_chunks)
+						current_crew_id = chunk.strip().removeprefix("---crew:").removesuffix("---")
+						current_section_chunks = []
+						continue
+					current_section_chunks.append(chunk)
+					chunks.append(chunk)
+					now = time.time()
+					if now - last_edit_time >= EDIT_INTERVAL:
+						partial_text = "".join(chunks)
+						if len(partial_text.strip()) > 3:
+							try:
+								display = f"<blockquote><i>...thinking (crew: <b>{crew_display}</b>)</i>\n\n{_md_to_html(partial_text)}...</blockquote>"
+								await safe_edit(thinking_msg, display, parse_mode="HTML",
+									reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Abort", callback_data=f"crew_abort_{thinking_msg.message_id}")]]))
+							except Exception as _e:
+								logger.debug("Telegram crew stream update ignored: %s", _e)
+							last_edit_time = now
+		except asyncio.TimeoutError:
+			logger.warning("_process_crew_stream: crew '%s' timed out after 180 s — aborting", crew_display)
+			await safe_edit(thinking_msg, f"<blockquote><i>Crew <b>{crew_display}</b> timed out. Please try again.</i></blockquote>", parse_mode="HTML")
+			return
 
 		# Save last (or only) section
 		if current_section_chunks:
