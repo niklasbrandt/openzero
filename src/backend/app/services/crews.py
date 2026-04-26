@@ -309,10 +309,12 @@ _SYSTEM_ACTION_RE = re.compile(
 	r'move\s+(?:board|card|task|list)\b'
 	r'|create\s+(?:a\s+)?(?:board|card|task|list|project)\b'
 	r'|new\s+(?:board|card|task|list|project)\b'
+	r'|new\s+\w+\s+(?:on|in|for)\s+(?:board|list)\b'
 	r'|delete\s+(?:a\s+)?(?:board|card|task|list|project)\b'
 	r'|rename\s+(?:a\s+)?(?:board|card|task|list|project)\b'
 	r'|archive\s+(?:a\s+)?(?:board|card|task|list|project)\b'
 	r'|add\s+(?:a\s+)?(?:card|task)\s+to\s+(?:board|list)\b'
+	r'|(?:add|create|new)\s+(?:a\s+)?(?:list|card|task)\s+(?:on|in|to)\b'
 	r')',
 	re.IGNORECASE,
 )
@@ -535,8 +537,8 @@ async def resolve_active_crew(history: list, user_text: str, lang: str = "en") -
 		session_crew = get_active_crew_session(ch)
 		if session_crew:
 			break
-	if session_crew and crew_registry.get(session_crew):
-		logger.info("Crew session continuity: routing to '%s' (no keyword match, within time window)", session_crew)
+	if session_crew and crew_registry.get(session_crew) and _is_followup_text(lower_text):
+		logger.info("Crew session continuity: routing to '%s' (followup signal + recent session)", session_crew)
 		return session_crew
 
 	# 2. Attribution-based continuation: most recent Z reply attributed to a crew
