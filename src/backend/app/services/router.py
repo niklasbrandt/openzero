@@ -146,6 +146,16 @@ _AUDIT_INTENT_RE = re.compile(
 	re.IGNORECASE,
 )
 
+# Board reorganisation detector — matches "sort/reorganize/tidy [board_name]"
+# Capture group 1: the board name fragment (trimmed by caller).
+_REORGANIZE_BOARD_RE = re.compile(
+	r'\b(?:sort|reorgani[sz]e?|restructur[e]?|clean\s+up|tidy\s+up|reorder|rearrang[e]?)\b'
+	r'(?:\s+(?:lists?\s+and\s+)?(?:(?:re)?organiz[e]?\s+)?(?:cards?\s+(?:in|on)\s+)?(?:(?:new|potentially\s+new)\s+lists?\s+in\s+)?)?'
+	r'(?:(?:the|my|in|on|board)\s+)?'
+	r'(?P<board>[a-z0-9][\w\s]{2,50})',
+	re.IGNORECASE,
+)
+
 # Phantom-confirmation guard — Z claimed success in prose without emitting a tag
 _PHANTOM_RE = re.compile(
 	r'\b(task added|board (added|created)|event (added|created)|card (added|created)'
@@ -427,6 +437,39 @@ async def route_message_stream(
 				return
 
 		# ── 1. Keyword-based crew routing ────────────────────────────────────
+		# ── 0.55 Board-reorganisation context injection ────────────────────────
+		# When the user asks to sort/reorganise a board, fetch the full board
+		# contents (lists + all card titles) and inject them as a system context
+		# message into history BEFORE calling the LLM. This gives the LLM the
+		# ground truth it needs to emit correct MOVE_CARD / CREATE_LIST tags
+		# without guessing, significantly reducing output length and TTFT.
+		_rm = _REORGANIZE_BOARD_RE.search(user_text[:_MAX_RE_INPUT])
+		if _rm:
+			_board_frag = _rm.group("board").strip().rstrip(".,;!?")
+			logger.info("Router: board-reorganise detected — fetching context for '%s'", _board_frag)
+			try:
+				from app.services.planka import get_board_full_context
+				_board_ctx = await asyncio.wait_for(
+					get_board_full_context(_board_frag), timeout=15.0,
+				)
+				if _board_ctx:
+					# Inject as a synthetic system message so the LLM treats it as
+					# authoritative ground truth, not something to speculate about.
+					history = list(history) + [{
+						"role": "assistant",
+						"content": (
+							f"[SYSTEM CONTEXT — CURRENT BOARD STATE]\n{_board_ctx}\n"
+							"[END BOARD STATE — use the above to emit precise action tags. "
+							"Do NOT invent card names. Every MOVE_CARD and CREATE_LIST must "
+							"reference names exactly as shown above.]"
+						),
+					}]
+					logger.info("Router: injected board context (%d chars) for '%s'", len(_board_ctx), _board_frag)
+			except asyncio.TimeoutError:
+				logger.warning("Router: board context fetch timed out for '%s'", _board_frag)
+			except Exception as _bce:
+				logger.warning("Router: board context fetch failed: %s", _bce)
+
 		# ── 0.6 Ambient capture (Epoch 2, gated) ─────────────────────────────
 		# Fires only when AMBIENT_CAPTURE_ENABLED=true AND step 0.5 found no
 		# structural intent. The bus scores registered plugins and either
