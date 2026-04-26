@@ -64,6 +64,15 @@ class StructuralIntent:
 # For CJK / Arabic / Devanagari we avoid \b (which is unreliable for non-ASCII
 # scripts) and rely on script boundaries / punctuation instead.
 
+# Nouns that map to a Planka LIST (column) — the goal itself is the container.
+# Everything else (item, todo, task, entry, aufgabe, eintrag) maps to a CARD.
+_LIST_NOUNS: frozenset[str] = frozenset({
+	"goal", "goals", "dream", "dreams", "wish", "wishes",
+	"idea", "ideas", "resolution", "resolutions",
+	"ziel", "ziele", "traum", "träume", "wunsch", "wünsche",
+	"idee", "ideen", "vorsatz", "vorsätze",
+})
+
 _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 	# ── English ───────────────────────────────────────────────────────────
 	"en": {
@@ -1655,16 +1664,35 @@ async def dispatch_structural_intent(intent: StructuralIntent, lang: str) -> str
 
 	if verb == "BOARD_ITEM_ADD":
 		board_dest = ent.get("board_name") or ""
-		raw = await execute_create_card(ent["title"], board_dest, lang)
-		if raw.startswith("\u26a0"):
-			return raw
-		dest_label = board_dest or "Inbox"
-		msg = _localise(
-			"intent_router_create_card_success",
-			"Card '{title}' added to '{dest}'.",
-			title=ent["title"], dest=dest_label,
-		)
-		audit = f"[AUDIT:board_item_add:{ent['title']}|board={dest_label}]"
+		noun = ent.get("noun", "").lower()
+		title = ent["title"]
+		if noun in _LIST_NOUNS:
+			# Goal/dream/wish/idea → create a LIST (column) on the board so the
+			# goal itself becomes a container for milestone cards under it.
+			raw = await execute_create_list(title, board_dest, lang)
+			if raw.startswith("\u26a0"):
+				return raw
+			board_label = board_dest or "Operator Board"
+			msg = _localise(
+				"intent_router_create_list_success",
+				"List '{list_name}' created on '{board}'.",
+				list_name=title, board=board_label,
+			)
+			audit = f"[AUDIT:board_item_add_list:{title}|board={board_label}]"
+		else:
+			# Item/todo/task/entry → create a CARD on the Inbox list of the board.
+			# Pass "Inbox list on <board>" so execute_create_card resolves correctly.
+			dest_arg = f"Inbox list on {board_dest}" if board_dest else ""
+			raw = await execute_create_card(title, dest_arg, lang)
+			if raw.startswith("\u26a0"):
+				return raw
+			dest_label = board_dest or "Inbox"
+			msg = _localise(
+				"intent_router_create_card_success",
+				"Card '{title}' added to '{dest}'.",
+				title=title, dest=dest_label,
+			)
+			audit = f"[AUDIT:board_item_add_card:{title}|board={dest_label}]"
 		return f"{msg}\n{audit}"
 
 	if verb == "CREATE_CARD":
