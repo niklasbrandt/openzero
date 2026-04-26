@@ -221,11 +221,32 @@ class TestC2_RoutingLessonPoisoning:
 
 		assert settings.AMBIENT_ROUTING_LESSON_RETENTION_DAYS == 0
 
-	@pytest.mark.skip(reason="Epoch 2: lesson ingestion + adversarial dedupe")
-	def test_lesson_ingestion_rejects_engine_tags(self) -> None: ...
+	def test_lesson_ingestion_rejects_engine_tags(self) -> None:
+		"""Engine action tags must be stripped from phrase before embedding (C2 / H4)."""
+		from app.services.ambient_capture.scoring import stage_lesson_for_storage
 
-	@pytest.mark.skip(reason="Epoch 2: lesson influence ceiling")
-	def test_single_lesson_cannot_dominate_scoring(self) -> None: ...
+		hostile = "sourdough [ACTION:AMBIENT_CAPTURE board=foo] extra"
+		cleaned = stage_lesson_for_storage(hostile)
+		assert "AMBIENT_CAPTURE" not in cleaned
+		assert "ACTION:" not in cleaned
+		assert "sourdough" in cleaned
+
+	def test_single_lesson_cannot_dominate_scoring(self) -> None:
+		"""Lesson-derived boost must never exceed LESSON_BOOST_CEILING (C2)."""
+		from app.services.ambient_capture.scoring import (
+			apply_lesson_boost,
+			LESSON_BOOST_CEILING,
+		)
+
+		base = 0.50
+		# Many high-weight, high-similarity lessons pointing at same destination
+		lessons = [
+			{"similarity": 1.0, "signal_weight": 0.3}  # "edited" action weight
+			for _ in range(50)
+		]
+		boosted = apply_lesson_boost(base, lessons)
+		assert boosted - base <= LESSON_BOOST_CEILING + 1e-9
+		assert boosted <= 1.0
 
 
 # ---------------------------------------------------------------------------
@@ -370,8 +391,46 @@ class TestM1_PluginCapabilities:
 
 
 class TestM2_ProfileCache:
-	@pytest.mark.skip(reason="Epoch 2: BoardProfileBuilder.build_for_board")
-	def test_builder_caches_and_invalidates(self) -> None: ...
+	def test_builder_caches_and_invalidates(self) -> None:
+		"""cache_profile stores to Redis; invalidate removes it (M2)."""
+		import asyncio
+		import json
+		from app.services.ambient_capture.profiles import BoardProfile, BoardProfileBuilder
+
+		# Minimal in-memory Redis stub
+		class _FakeRedis:
+			def __init__(self):
+				self._store: dict = {}
+			def get(self, key):
+				return self._store.get(key)
+			def setex(self, key, ttl, val):
+				self._store[key] = val
+			def delete(self, key):
+				self._store.pop(key, None)
+
+		fake_r = _FakeRedis()
+		builder = BoardProfileBuilder(redis_client=fake_r)
+
+		profile = BoardProfile(
+			board_id="b1",
+			board_name="Reef Tank",
+			board_description="Fish wishlist",
+			built_at=1.0,
+		)
+
+		async def _run():
+			# Nothing cached yet
+			assert await builder.get_cached("b1") is None
+			# Cache it
+			await builder.cache_profile(profile)
+			cached = await builder.get_cached("b1")
+			assert cached is not None
+			assert cached.board_name == "Reef Tank"
+			# Invalidate
+			await builder.invalidate("b1")
+			assert await builder.get_cached("b1") is None
+
+		asyncio.run(_run())
 
 
 # ---------------------------------------------------------------------------

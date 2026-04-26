@@ -172,3 +172,49 @@ def apply_recency_safeguard(
 	if score_with >= silent_floor and score_without < silent_floor:
 		return silent_floor - 0.001
 	return score_with
+
+
+# ── Anti-poisoning: lesson-derived score boost (Section 10, C2) ───────────────
+
+#: Per-artifact Section 10: total lesson-derived adjustment is capped so
+#: lessons inform, never override, structural signals.
+LESSON_BOOST_CEILING = 0.20
+
+
+def apply_lesson_boost(base_score: float, lessons: list[dict]) -> float:
+	"""Apply routing-lesson adjustments to a composite score, respecting the ceiling.
+
+	Each lesson dict must have:
+	  - ``similarity``: float in [0, 1], cosine sim of stored embedding to the phrase
+	  - ``signal_weight``: float, already computed from user_action (Section 10)
+
+	The combined adjustment is clamped to ``+/- LESSON_BOOST_CEILING`` before
+	being added to ``base_score``. The final score is bounded to [0, 1].
+
+	Anti-poisoning guarantee (C2): regardless of how many near-identical lessons
+	an adversary writes, the total influence on the score is bounded by this cap.
+	"""
+	if not lessons:
+		return max(0.0, min(1.0, base_score))
+	adjustment = sum(
+		max(0.0, min(1.0, float(l.get("similarity", 0))))
+		* float(l.get("signal_weight", 0))
+		for l in lessons
+	)
+	# Clamp to ceiling in both directions
+	adjustment = max(-LESSON_BOOST_CEILING, min(LESSON_BOOST_CEILING, adjustment))
+	return max(0.0, min(1.0, base_score + adjustment))
+
+
+def stage_lesson_for_storage(phrase: str) -> str:
+	"""Return a sanitised copy of *phrase* suitable for embedding before storage.
+
+	Engine action tags are stripped (C2 / H4) and control chars removed so
+	the stored embedding represents the genuine semantic content of the phrase,
+	not an attacker-controlled injection payload.
+	"""
+	from app.services.ambient_capture.sanitiser import (
+		clamp_phrase,
+		strip_engine_action_tags,
+	)
+	return strip_engine_action_tags(clamp_phrase(phrase))
