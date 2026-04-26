@@ -1,5 +1,11 @@
 """Ambient capture & contextual routing engine.
 
+Epoch 2 -- Intelligence. Ships gated behind AMBIENT_CAPTURE_ENABLED. Adds:
+  - scoring: pure composite Tier A+B+C scorer
+  - hitl: free-text HITL reply parser
+  - plugins: PlankaCardPlugin (Planka card creation target)
+  - intent_bus: Epoch 2 pipeline branch (plugin scoring + lane routing)
+
 Epoch 1 -- Foundation. Ships dark (no behaviour change). Provides:
   - intent_bus: top-level dispatcher skeleton
   - plugin: capability-manifested plugin protocol + registry
@@ -50,6 +56,28 @@ from app.services.ambient_capture.recovery import (
 	CircuitBreaker,
 	get_breaker,
 )
+from app.services.ambient_capture import scoring
+from app.services.ambient_capture import hitl as hitl_module
+from app.services.ambient_capture.hitl import parse_hitl_reply, HitlAction
+from app.services.ambient_capture.plugins import PlankaCardPlugin
+
+
+def _register_default_plugins() -> None:
+	"""Register built-in plugins once at import time when the flag is on."""
+	from app.config import settings
+	if not bool(getattr(settings, "AMBIENT_CAPTURE_ENABLED", False)):
+		return
+	if registry.get("planka_card") is None:
+		try:
+			registry.register(PlankaCardPlugin())
+		except Exception as exc:
+			import logging
+			logging.getLogger(__name__).warning(
+				"ambient_capture: failed to auto-register PlankaCardPlugin: %s", exc
+			)
+
+
+_register_default_plugins()
 
 __all__ = [
 	"get_operator_user_id",
@@ -78,4 +106,9 @@ __all__ = [
 	"Attempt",
 	"CircuitBreaker",
 	"get_breaker",
+	"scoring",
+	"hitl_module",
+	"parse_hitl_reply",
+	"HitlAction",
+	"PlankaCardPlugin",
 ]
