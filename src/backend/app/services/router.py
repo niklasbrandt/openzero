@@ -414,18 +414,23 @@ async def route_message_stream(
 				"Router: structural intent '%s' (conf=%.2f) for '%s...'",
 				intent.verb, intent.confidence, _sanitize_for_log(user_text),
 			)
-			# SORT_BOARD calls the fast model internally (~25s) — needs longer dispatch budget.
-			_dispatch_timeout = 60.0 if intent.verb == "SORT_BOARD" else 10.0
+			# SORT_BOARD calls the fast model internally (~25s) plus multiple Planka
+			# API calls — needs a generous budget. Other verbs are pure API calls.
+			_dispatch_timeout = 120.0 if intent.verb == "SORT_BOARD" else 10.0
 			try:
 				result_text = await asyncio.wait_for(
 					dispatch_structural_intent(intent, lang), timeout=_dispatch_timeout,
 				)
 			except asyncio.TimeoutError:
-				logger.error("Router: intent dispatch timeout (>%.0fs) — falling through to LLM", _dispatch_timeout)
-				result_text = ""
+				logger.error("Router: intent dispatch timeout (>%.0fs)", _dispatch_timeout)
+				result_text = f"⚠ Timed out reorganising board — the board may be very large. Try again."
 			except Exception as _de:
 				logger.error("intent_router: dispatch failed: %s", _de)
-				result_text = ""
+				result_text = f"⚠ Failed to reorganise board: {_de}"
+			# For SORT_BOARD, always short-circuit — never fall through to LLM.
+			# An empty result_text means dispatch returned nothing useful; surface that.
+			if intent.verb == "SORT_BOARD" and not result_text:
+				result_text = "⚠ Board reorganisation returned no output. Please try again."
 			if result_text:
 				yield result_text
 				clean, cmds, pending = await bus.commit_reply(
@@ -480,25 +485,27 @@ async def route_message_stream(
 								logger.info("Router 0.52: semantic board-manage detected → SORT_BOARD '%s'", _best["name"])
 								try:
 									_sem_result = await asyncio.wait_for(
-										dispatch_structural_intent(_sem_intent, lang), timeout=60.0,
+										dispatch_structural_intent(_sem_intent, lang), timeout=120.0,
 									)
 								except asyncio.TimeoutError:
 									logger.error("Router 0.52: SORT_BOARD dispatch timed out")
-									_sem_result = ""
+									_sem_result = "⚠ Timed out reorganising board — the board may be very large. Try again."
 								except Exception as _sde:
 									logger.error("Router 0.52: SORT_BOARD dispatch failed: %s", _sde)
-									_sem_result = ""
-								if _sem_result:
-									yield _sem_result
-									clean, cmds, pending = await bus.commit_reply(
-										channel=channel, raw_reply=_sem_result,
-										model="intent_router", user_text=user_text, save=save_history,
-									)
-									result_future.set_result(RouterResult(
-										reply=clean, model="intent_router",
-										executed_cmds=cmds, pending_actions=pending,
-									))
-									return
+									_sem_result = f"⚠ Failed to reorganise board: {_sde}"
+								# Always short-circuit for SORT_BOARD — never fall through to LLM.
+								if not _sem_result:
+									_sem_result = "⚠ Board reorganisation returned no output. Please try again."
+								yield _sem_result
+								clean, cmds, pending = await bus.commit_reply(
+									channel=channel, raw_reply=_sem_result,
+									model="intent_router", user_text=user_text, save=save_history,
+								)
+								result_future.set_result(RouterResult(
+									reply=clean, model="intent_router",
+									executed_cmds=cmds, pending_actions=pending,
+								))
+								return
 			except asyncio.TimeoutError:
 				logger.warning("Router 0.52: semantic fallback timed out — falling through")
 			except Exception as _sf:
