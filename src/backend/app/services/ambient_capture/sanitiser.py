@@ -116,6 +116,17 @@ _BAD_SCHEME_RE = re.compile(r'\b(?:javascript|data|vbscript):', re.IGNORECASE)
 _HTML_DANGEROUS_RE = re.compile(r'<\s*/?(?:script|iframe|object|embed)\b[^>]{0,2000}>', re.IGNORECASE)
 
 
+# H1 re-export: consistent log-safe truncation for every logger call in the engine.
+def _sanitize_for_log(text: object, max_len: int = 80) -> str:
+	"""Return a safe, length-capped string for logger calls (H1 — log leakage)."""
+	if text is None:
+		return "<none>"
+	s = strip_control_chars(str(text))
+	if len(s) > max_len:
+		return s[:max_len] + "…"
+	return s
+
+
 def sanitise_auto_description(draft: str, max_chars: int = 500) -> str:
 	"""Sanitiser for auto-generated descriptions (M4)."""
 	if not draft:
