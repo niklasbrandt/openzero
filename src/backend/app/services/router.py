@@ -483,6 +483,9 @@ async def route_message_stream(
 					f"Available Planka boards: {_board_names_hint}\n"
 					"Is this message asking to reorganise, sort, tidy, or restructure one of those boards?\n"
 					f"Message: \"{user_text[:300]}\"\n"
+					"IMPORTANT: The user may use a nickname, synonym, or related term instead of the exact board name.\n"
+					"Example: 'aquarium' refers to a board named 'reef tank'. 'shopping' refers to a board named 'groceries'.\n"
+					"Pick the single most semantically related board from the list above.\n"
 					"If yes: reply SORT_BOARD:<exact board name from the list above>\n"
 					"If no: reply NO"
 				)
