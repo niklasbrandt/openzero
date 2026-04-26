@@ -1066,8 +1066,15 @@ async def dashboard_chat_stream(req: ChatRequest, request: Request, _rl: None = 
 			save_history=not req.skip_history,
 		)
 
-		async for token in token_stream:
-			yield f"data: {json.dumps({'token': token})}\n\n"
+		try:
+			import asyncio as _asyncio
+			async with _asyncio.timeout(120.0):
+				async for token in token_stream:
+					yield f"data: {json.dumps({'token': token})}\n\n"
+		except _asyncio.TimeoutError:
+			logger.warning("Dashboard chat stream timed out after 120 s")
+			yield f"data: {json.dumps({'error': 'Response timed out. Please try again.'})}\n\n"
+			return
 
 		result = await result_fut
 
@@ -1097,12 +1104,19 @@ async def dashboard_crew_stream(crew_id: str, req: ChatRequest, request: Request
 	async def event_generator():
 		chunks = []
 		try:
-			async for chunk in native_crew_engine.run_crew_stream(crew_id, req.message):
-				if await request.is_disconnected():
-					logger.info("Dashboard crew '%s' stream aborted by client", str(crew_id).replace('\n', ' ').replace('\r', ' '))
-					return
-				chunks.append(chunk)
-				yield f"data: {json.dumps({'token': chunk})}\n\n"
+			import asyncio as _asyncio
+			try:
+				async with _asyncio.timeout(180.0):
+					async for chunk in native_crew_engine.run_crew_stream(crew_id, req.message):
+						if await request.is_disconnected():
+							logger.info("Dashboard crew '%s' stream aborted by client", str(crew_id).replace('\n', ' ').replace('\r', ' '))
+							return
+						chunks.append(chunk)
+						yield f"data: {json.dumps({'token': chunk})}\n\n"
+			except _asyncio.TimeoutError:
+				logger.warning("Dashboard crew '%s' stream timed out after 180 s", str(crew_id).replace('\n', ' ').replace('\r', ' '))
+				yield f"data: {json.dumps({'error': 'Crew response timed out. Please try again.'})}\n\n"
+				return
 
 			full_res = "".join(chunks)
 			safe_crew_id = str(crew_id).replace('\n', ' ').replace('\r', ' ')
