@@ -1267,7 +1267,19 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 			logger.debug("safe_reply skipped: %s", _e)
 		return True
 
-	result = await result_fut
+	try:
+		result = await asyncio.wait_for(asyncio.shield(result_fut), timeout=30.0)
+	except asyncio.TimeoutError:
+		logger.error("_process_freetext: result_fut never resolved — generator may have crashed silently")
+		try:
+			await thinking_msg.delete()
+		except Exception:
+			pass
+		try:
+			await safe_reply(update, "Something went wrong processing that. Please try again.")
+		except Exception:
+			pass
+		return True
 
 	# Empty response — LLM timed out or returned nothing
 	if not result.reply.strip():
@@ -1403,7 +1415,15 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		)
 		async for _ in token_stream:
 			pass
-		result = await result_fut
+		try:
+			result = await asyncio.wait_for(asyncio.shield(result_fut), timeout=30.0)
+		except asyncio.TimeoutError:
+			logger.error("handle_voice: result_fut never resolved — generator may have crashed silently")
+			try:
+				await status_msg.delete()
+			except Exception:
+				pass
+			return
 
 		if not result.reply.strip():
 			try:
