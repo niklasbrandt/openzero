@@ -432,13 +432,26 @@ async def route_message_stream(
 			if intent.verb == "SORT_BOARD" and not result_text:
 				result_text = "⚠ Board reorganisation returned no output. Please try again."
 			if result_text:
-				yield result_text
+				# SORT_BOARD results are plain text summaries — strip only the internal
+				# [AUDIT:] tag before delivery. Full bus.commit_reply hygiene pipeline
+				# can blank legitimate board-name / list-name content.
+				import re as _re
+				if intent.verb == "SORT_BOARD":
+					delivery_text = _re.sub(r'\[AUDIT:[^\]]{0,300}\]?', '', result_text, flags=_re.IGNORECASE).strip()
+					if not delivery_text:
+						delivery_text = result_text
+				else:
+					delivery_text = result_text
+				yield delivery_text
 				clean, cmds, pending = await bus.commit_reply(
-					channel=channel, raw_reply=result_text,
+					channel=channel, raw_reply=delivery_text,
 					model="intent_router", user_text=user_text, save=save_history,
 				)
+				# For SORT_BOARD use delivery_text directly — commit_reply saves to history
+				# but its aggressive hygiene may blank the summary; prefer our pre-stripped text.
 				result_future.set_result(RouterResult(
-					reply=clean, model="intent_router",
+					reply=delivery_text if intent.verb == "SORT_BOARD" else clean,
+					model="intent_router",
 					executed_cmds=cmds, pending_actions=pending,
 				))
 				return
@@ -493,16 +506,18 @@ async def route_message_stream(
 								except Exception as _sde:
 									logger.error("Router 0.52: SORT_BOARD dispatch failed: %s", _sde)
 									_sem_result = f"⚠ Failed to reorganise board: {_sde}"
-								# Always short-circuit for SORT_BOARD — never fall through to LLM.
 								if not _sem_result:
 									_sem_result = "⚠ Board reorganisation returned no output. Please try again."
-								yield _sem_result
+								import re as _re2
+								_sem_delivery = _re2.sub(r'\[AUDIT:[^\]]{0,300}\]?', '', _sem_result, flags=_re2.IGNORECASE).strip() or _sem_result
+								yield _sem_delivery
 								clean, cmds, pending = await bus.commit_reply(
-									channel=channel, raw_reply=_sem_result,
+									channel=channel, raw_reply=_sem_delivery,
 									model="intent_router", user_text=user_text, save=save_history,
 								)
 								result_future.set_result(RouterResult(
-									reply=clean, model="intent_router",
+									reply=_sem_delivery,
+									model="intent_router",
 									executed_cmds=cmds, pending_actions=pending,
 								))
 								return
