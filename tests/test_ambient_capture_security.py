@@ -26,6 +26,93 @@ if _BACKEND not in sys.path:
 
 
 # ---------------------------------------------------------------------------
+# Lightweight mock infrastructure
+# Ambient capture modules import app.config at module level (operator_scope.py).
+# pydantic_settings is not available in the local test environment.
+# Install a SimpleNamespace stub before any backend module is imported.
+# ---------------------------------------------------------------------------
+
+def _install_ambient_mocks() -> None:
+	"""Stub out pydantic_settings and app.config so ambient_capture modules load."""
+	import types
+
+	mock_settings = types.SimpleNamespace(
+		# Ambient capture flags
+		AMBIENT_CAPTURE_ENABLED=False,
+		AMBIENT_CAPTURE_TELEGRAM=False,
+		AMBIENT_CAPTURE_WHATSAPP=False,
+		AMBIENT_CAPTURE_DASHBOARD=False,
+		AMBIENT_SILENT_FLOOR=0.80,
+		AMBIENT_ASK_FLOOR=0.45,
+		AMBIENT_CHAT_FLOOR=0.20,
+		AMBIENT_ROUTING_LESSON_RETENTION_DAYS=0,
+		AMBIENT_PENDING_TTL_SECONDS=90,
+		AMBIENT_AUTO_DESC_ALLOWED_DOMAINS="",
+		# Operator scope
+		OPERATOR_USER_ID="operator-test",
+		# Misc that imported modules may check
+		QDRANT_HOST="localhost",
+		QDRANT_PORT=6333,
+		QDRANT_API_KEY="",
+	)
+
+	# Stub pydantic_settings so config.py can be imported
+	if "pydantic_settings" not in sys.modules:
+		ps = types.ModuleType("pydantic_settings")
+		ps.BaseSettings = object  # type: ignore[attr-defined]
+		ps.SettingsConfigDict = lambda **kw: None  # type: ignore[attr-defined]
+		sys.modules["pydantic_settings"] = ps
+
+	# Stub app.config so operator_scope.py module-level import works
+	if "app.config" not in sys.modules:
+		cfg_mod = types.ModuleType("app.config")
+		cfg_mod.settings = mock_settings  # type: ignore[attr-defined]
+		sys.modules["app.config"] = cfg_mod
+	else:
+		sys.modules["app.config"].settings = mock_settings  # type: ignore[attr-defined]
+
+	# Ensure parent packages exist with correct __path__ so actual submodules can be found
+	backend_src = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src", "backend"))
+	for pkg, rel in (
+		("app", "app"),
+		("app.services", "app/services"),
+	):
+		if pkg not in sys.modules:
+			m = types.ModuleType(pkg)
+			m.__path__ = [os.path.join(backend_src, rel)]  # type: ignore[attr-defined]
+			sys.modules[pkg] = m
+		elif not getattr(sys.modules[pkg], "__path__", None):
+			sys.modules[pkg].__path__ = [os.path.join(backend_src, rel)]  # type: ignore[attr-defined]
+
+	# app.services.planka needs _sanitize_for_log (TestH1)
+	planka_mod = sys.modules.get("app.services.planka") or types.ModuleType("app.services.planka")
+	if not hasattr(planka_mod, "_sanitize_for_log"):
+		planka_mod._sanitize_for_log = lambda t, **kw: str(t)[:80]  # type: ignore[attr-defined]
+	sys.modules["app.services.planka"] = planka_mod
+
+	# agent_actions needs _MUTATING_TAG_RE (TestH4)
+	if "app.services.agent_actions" not in sys.modules:
+		import re
+		aa_mod = types.ModuleType("app.services.agent_actions")
+		aa_mod._MUTATING_TAG_RE = re.compile(  # type: ignore[attr-defined]
+			r'\[?ACTION:\s*(?:'
+			r'CREATE_TASK|CREATE_BOARD|CREATE_LIST|CREATE_PROJECT|'
+			r'MOVE_BOARD|MOVE_CARD|MARK_DONE|ARCHIVE_CARD|APPEND_SHOPPING|'
+			r'DELETE_BOARD|DELETE_CARD|DELETE_LIST|DELETE_PROJECT|'
+			r'SET_CARD_DESC|RENAME_CARD|RENAME_LIST|RENAME_PROJECT|'
+			r'AMBIENT_CAPTURE|AMBIENT_TEACH|'
+			r'SHARE_BOARD|SHARE_PROJECT|INVITE_USER|INVITE_MEMBER|'
+			r'ADD_PERSON|LEARN|RUN_CREW|SCHEDULE_CREW'
+			r')\b',
+			re.IGNORECASE,
+		)
+		sys.modules["app.services.agent_actions"] = aa_mod
+
+
+_install_ambient_mocks()
+
+
+# ---------------------------------------------------------------------------
 # Epoch 1 smoke
 # ---------------------------------------------------------------------------
 
