@@ -142,3 +142,28 @@ ambient_capture:
 
   # Routing-lesson retention in days. 0 = never expire (default).
   routing_lesson_retention_days: 0
+
+# ── Ambient Intelligence (State-Diff Engine) ────────────────────────────────
+# See docs/artifacts/ambient_intelligence.md for the full architectural plan.
+# Separate from ambient_capture (which routes inbound user messages).
+# This engine reacts to observed state changes and fires crews proactively.
+# All settings are optional; the feature ships dark (enabled: false).
+ambient_intelligence:
+  # Master switch. Enable after validating P0 behaviour in logs.
+  # Corresponds to env var AMBIENT_ENABLED.
+  enabled: false
+
+  # How often (seconds) the engine snapshots all data sources.
+  # Default 300 (5 minutes). Minimum recommended: 60.
+  poll_interval_s: 300
+
+  # Minutes of user silence before a quiet-moment delivery is attempted.
+  quiet_moment_window_m: 15
+
+  # Maximum triggers delivered per hour across all rules.
+  # Prevents alert fatigue even if many rules fire simultaneously.
+  max_triggers_per_hour: 3
+
+  # Fold undelivered priority 4-5 insights into the morning briefing.
+  briefing_queue_enabled: true
+
