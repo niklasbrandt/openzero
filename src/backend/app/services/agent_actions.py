@@ -465,10 +465,22 @@ async def execute_delete_project(project_fragment: str, lang: str = "en") -> str
 		return f"⚠notfound:{project_fragment}"
 	return f"Project '{project_fragment}' deleted."
 
-async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = False):
+# Pattern for deterministic "new <noun> goal/item/todo <value>" commands.
+# Used to clamp LLM-embellished titles back to exactly what the user typed.
+# Bounded quantifiers, no catastrophic backtrack risk (CWE-1333).
+_NEW_BOARD_ITEM_RE = re.compile(
+	r'^\s*(?:new|add|neues|neuer|neue)\s+'
+	r'(?:life\s+)?(?:goal|item|todo|aufgabe|ziel|eintrag|task|entry)\s+'
+	r'(.{1,200})$',
+	re.IGNORECASE,
+)
+
+
+async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = False, user_text: str = ""):
 	"""
 	Parses Semantic Action Tags from the AI reply and executes them.
 	If require_hitl is True, sensitive actions are queued for approval instead of executed.
+	user_text: the original user message — used to clamp embellished titles.
 	Returns: (clean_reply, executed_cmds, pending_actions)
 	"""
 	from app.services.planka import create_task as planka_create_task
@@ -758,6 +770,15 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 	# DESCRIPTION and LIST are optional — captured when present, defaults to empty string.
 	# Pattern allows ] inside description content via a bounded capture group.
 	# Input is capped before iteration to prevent polynomial backtracking (CWE-1333).
+
+	# Pre-compute the canonical title from user_text for the "new X goal/item Y" input pattern.
+	# If the LLM embellished the title, we clamp it back to exactly what the user typed.
+	_user_canonical_title: str | None = None
+	if user_text:
+		_m = _NEW_BOARD_ITEM_RE.match(user_text.strip())
+		if _m:
+			_user_canonical_title = _m.group(1).strip()
+
 	task_pattern = r"\[?ACTION: CREATE_TASK \| BOARD: ([^\|\]]{1,500})(?:\s*\|\s*LIST:\s*([^\|\]]{1,500}))? \| TITLE: ([^\|\]]{1,500})(?:\s*\|\s*DESCRIPTION:\s*([\s\S]{0,20000}?))?\]"
 	for match in re.finditer(task_pattern, reply[:200_000]):
 		raw_tag = match.group(0)
@@ -766,6 +787,15 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 		llist = (llist or "").strip().strip('"\'')
 		title = title.strip().strip('"\'')
 		desc = (desc or "").strip()
+
+		# Title-clamp: if the user gave a short literal command and the LLM expanded it,
+		# enforce the user's exact words as the title.
+		if _user_canonical_title and title.lower() != _user_canonical_title.lower():
+			logger.info(
+				"CREATE_TASK: clamping embellished title '%s' → '%s' (from user_text)",
+				title[:80], _user_canonical_title[:80],
+			)
+			title = _user_canonical_title
 
 		async def _exec_task(board=board, llist=llist, title=title, desc=desc):
 			path = await planka_create_task(board_name=board, list_name=llist, title=title, description=desc)
