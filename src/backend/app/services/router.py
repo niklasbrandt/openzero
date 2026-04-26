@@ -461,11 +461,13 @@ async def route_message_stream(
 			logger.warning("Router: ambient capture failed: %s — falling through to LLM", _ae)
 
 		# ── 1. Keyword-based crew routing ────────────────────────────────────
+		from app.services.crews import _SYSTEM_ACTION_RE as _crew_action_re
 		routed_crews = await resolve_active_crews(history, user_text, lang=lang)
-		if not routed_crews:
+		if not routed_crews and not _crew_action_re.search(user_text[:_MAX_RE_INPUT]):
 			# ── 1.1 Speculative Fast-Intent (Qwen-0.6B) ──────────────────────
-			# If keywords failed, check for crew intent via the local fast model
-			# before falling back to the heavy general LLM.
+			# Only run when keyword routing returned nothing AND the message is
+			# not a deterministic Planka mutation — otherwise the fast model will
+			# mis-classify e.g. "new life goal home" as the Life crew.
 			intent_prompt = (
 				"Classify if the user wants to engage a specialized crew. "
 				"Available: research, fitness, nutrition, life, market-intel, legal.\n"
