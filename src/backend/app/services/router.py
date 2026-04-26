@@ -443,6 +443,11 @@ async def route_message_stream(
 		# message into history BEFORE calling the LLM. This gives the LLM the
 		# ground truth it needs to emit correct MOVE_CARD / CREATE_LIST tags
 		# without guessing, significantly reducing output length and TTFT.
+		#
+		# IMPORTANT: history is a closure variable captured from route_message_stream.
+		# Reassigning it inside _generate would mark it as a local (UnboundLocalError
+		# in Python 3.12). Use _ctx_history as a separate local instead.
+		_ctx_history = history
 		_rm = _REORGANIZE_BOARD_RE.search(user_text[:_MAX_RE_INPUT])
 		if _rm:
 			_board_frag = _rm.group("board").strip().rstrip(".,;!?")
@@ -455,7 +460,7 @@ async def route_message_stream(
 				if _board_ctx:
 					# Inject as a synthetic system message so the LLM treats it as
 					# authoritative ground truth, not something to speculate about.
-					history = list(history) + [{
+					_ctx_history = list(history) + [{
 						"role": "assistant",
 						"content": (
 							f"[SYSTEM CONTEXT — CURRENT BOARD STATE]\n{_board_ctx}\n"
@@ -504,7 +509,7 @@ async def route_message_stream(
 
 		# ── 1. Keyword-based crew routing ────────────────────────────────────
 		from app.services.crews import _SYSTEM_ACTION_RE as _crew_action_re
-		routed_crews = await resolve_active_crews(history, user_text, lang=lang)
+		routed_crews = await resolve_active_crews(_ctx_history, user_text, lang=lang)
 		if not routed_crews and not _crew_action_re.search(user_text[:_MAX_RE_INPUT]):
 			# ── 1.1 Speculative Fast-Intent (Qwen-0.6B) ──────────────────────
 			# Only run when keyword routing returned nothing AND the message is
@@ -527,7 +532,7 @@ async def route_message_stream(
 			crew_id = routed_crews[0]
 			logger.info("Router: keyword-routing '%s...' → crew '%s'", _sanitize_for_log(user_text), crew_id)
 			chunks = []
-			async for token in native_crew_engine.run_crew_stream(crew_id, user_text, history=history):
+			async for token in native_crew_engine.run_crew_stream(crew_id, user_text, history=_ctx_history):
 				chunks.append(token)
 				yield token
 			full = rehydrate_response("".join(chunks), get_active_rep_map())
@@ -562,7 +567,7 @@ async def route_message_stream(
 		chunks = []
 		async for token in chat_stream_with_context(
 			user_text,
-			history=history,
+			history=_ctx_history,
 			include_projects=True,
 			include_people=True,
 		):
@@ -582,7 +587,7 @@ async def route_message_stream(
 			crew_id = m.group(1).strip().lower()
 			logger.info("Router: Z self-routed '%s...' → crew '%s'", _sanitize_for_log(user_text), crew_id)
 			r_chunks: list[str] = []
-			async for token in native_crew_engine.run_crew_stream(crew_id, user_text, history=history):
+			async for token in native_crew_engine.run_crew_stream(crew_id, user_text, history=_ctx_history):
 				r_chunks.append(token)
 				yield token
 			r_full = rehydrate_response("".join(r_chunks), get_active_rep_map())
