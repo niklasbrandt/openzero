@@ -21,7 +21,6 @@ Snapshot schema (see §3.4 of ambient_intelligence.md):
 from __future__ import annotations
 
 import logging
-import re
 from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
