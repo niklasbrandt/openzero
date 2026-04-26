@@ -70,7 +70,7 @@ class MemoryFactPlugin:
 		"""Store fact in Qdrant via the memory service."""
 		try:
 			from app.services.memory import store_memory
-			await store_memory(decision.phrase, source="ambient_capture")
+			await store_memory(decision.phrase, metadata={"source": "ambient_capture"})
 			return ActionResult(success=True, message="Stored in memory.")
 		except Exception as e:
 			logger.warning("memory_fact: execute failed: %s", e)

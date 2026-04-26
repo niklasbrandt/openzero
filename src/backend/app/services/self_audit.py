@@ -234,44 +234,12 @@ def _title_has_verb(name: str) -> bool:
 
 
 def _check_missing_descriptions(cards: list[dict[str, Any]]) -> list[str]:
-	"""Disabled: missing-description audit warnings are suppressed."""
-	return []
+	"""Disabled: missing-description audit warnings are suppressed.
 
-	"""Return advisory flags for task-board cards with vague names and no description or tasks.
-
-	Heuristic: only flag a card when ALL of the following are true:
-	  - The board is a task board (board name does not match _LIST_BOARD_KEYWORDS).
-	  - The card has no description.
-	  - The card has no tasks/checklist items.
-	  - The card name is genuinely ambiguous: 1-2 words AND contains no verb.
-	    Titles with 3+ words, or any verb, are considered self-explanatory.
+	Would return advisory flags for task-board cards with vague names and no
+	description or tasks, but this check is currently suppressed.
 	"""
-	flags: list[str] = []
-	for card in cards:
-		board_name = card.get("board_name", "")
-		board_lc = board_name.lower()
-		# Skip list/shopping/nutrition boards — descriptions are optional there.
-		if any(kw in board_lc for kw in _LIST_BOARD_KEYWORDS):
-			continue
-		# Skip if a description exists.
-		if (card.get("description") or "").strip():
-			continue
-		# Skip if the card has tasks (self-documenting via checklist).
-		if card.get("has_tasks"):
-			continue
-		name = card.get("name", "")
-		words = name.split()
-		# 3+ words: descriptive enough regardless of content.
-		if len(words) >= 3:
-			continue
-		# Contains a verb: action is clear.
-		if _title_has_verb(name):
-			continue
-		# 1-2 word noun-only titles are genuinely ambiguous (e.g. "macbook", "TV", "PC Case").
-		flags.append(
-			f"Card '{name}' on board '{board_name}' has no description (ambiguous title, task board)."
-		)
-	return flags
+	return []
 
 
 async def run_missing_description_check() -> list[str]:
