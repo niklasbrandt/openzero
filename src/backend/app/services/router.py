@@ -540,6 +540,29 @@ async def route_message_stream(
 											executed_cmds=_sem_cmds, pending_actions=_sem_pending,
 										))
 								return
+						else:
+							# Fast model flagged a board-sort intent but the board name it
+							# returned doesn't match any real board. Surface disambiguation
+							# instead of silently falling through to the general LLM.
+							_avail = ", ".join((b.get("name") or "") for b in _all_boards) or "none found"
+							_disambig = f"I couldn't find a board named '{_board_frag}'. Available boards: {_avail}."
+							logger.info("Router 0.52: SORT_BOARD '%s' not found — sending disambiguation", _board_frag)
+							yield _disambig
+							try:
+								await bus.commit_reply(
+									channel=channel, raw_reply=_disambig,
+									model="intent_router", user_text=user_text, save=save_history,
+								)
+							except Exception:
+								pass
+							finally:
+								if not result_future.done():
+									result_future.set_result(RouterResult(
+										reply=_disambig,
+										model="intent_router",
+										executed_cmds=[], pending_actions=[],
+									))
+							return
 			except asyncio.TimeoutError:
 				logger.warning("Router 0.52: semantic fallback timed out — falling through")
 			except Exception as _sf:
