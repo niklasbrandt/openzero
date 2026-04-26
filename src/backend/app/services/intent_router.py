@@ -322,6 +322,14 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 	# ── Spanish ───────────────────────────────────────────────────────────
 	"es": {
 		"sort_board": [
+			# End-anchored: always tried first — prevents greedily capturing mid-sentence phrases.
+			re.compile(
+				r'\b(?:ordena[r]?|sortea[r]?|reorganiza[r]?|reestructura[r]?|limpia[r]?|reordena[r]?|arregla[r]?)\b'
+				r'.{0,300}'
+				r'\b(?:en|del?\s+)?(?:tablero\s+)?(?P<board>[a-z0-9][\w\s]{2,40})\s*$',
+				re.IGNORECASE,
+			),
+			# Simple non-greedy fallback.
 			re.compile(
 				r'\b(?:ordena[r]?|sortea[r]?|reorganiza[r]?|reestructura[r]?|limpia[r]?|reordena[r]?|arregla[r]?)\b'
 				r'(?:\s+(?:listas?|tarjetas?|y|en|nuevas?|\s)+)?'
@@ -407,6 +415,14 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 	# ── French ────────────────────────────────────────────────────────────
 	"fr": {
 		"sort_board": [
+			# End-anchored: always tried first — prevents greedily capturing mid-sentence phrases.
+			re.compile(
+				r'\b(?:trie[r]?|réorganise[r]?|reorganise[r]?|restructure[r]?|range[r]?|classe[r]?|réordonne[r]?|reordonne[r]?)\b'
+				r'.{0,300}'
+				r'\b(?:dans\s+(?:le\s+)?|du\s+)?(?:tableau\s+)?(?P<board>[a-z0-9][\w\s]{2,40})\s*$',
+				re.IGNORECASE,
+			),
+			# Simple non-greedy fallback.
 			re.compile(
 				r'\b(?:trie[r]?|réorganise[r]?|reorganise[r]?|restructure[r]?|range[r]?|classe[r]?|réordonne[r]?|reordonne[r]?)\b'
 				r'(?:\s+(?:listes?|cartes?|et|dans|nouvelles?|\s)+)?'
@@ -493,6 +509,14 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 	# ── Portuguese ────────────────────────────────────────────────────────
 	"pt": {
 		"sort_board": [
+			# End-anchored: always tried first — prevents greedily capturing mid-sentence phrases.
+			re.compile(
+				r'\b(?:ordena[r]?|reorganiza[r]?|reestrutura[r]?|arruma[r]?|classifica[r]?|reordena[r]?)\b'
+				r'.{0,300}'
+				r'\b(?:em\s+(?:o\s+)?|do\s+)?(?:quadro\s+)?(?P<board>[a-z0-9][\w\s]{2,40})\s*$',
+				re.IGNORECASE,
+			),
+			# Simple non-greedy fallback.
 			re.compile(
 				r'\b(?:ordena[r]?|reorganiza[r]?|reestrutura[r]?|arruma[r]?|classifica[r]?|reordena[r]?)\b'
 				r'(?:\s+(?:listas?|cartões?|cartoes?|e|em|novas?|\s)+)?'
@@ -576,6 +600,14 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 	# ── Russian ───────────────────────────────────────────────────────────
 	"ru": {
 		"sort_board": [
+			# End-anchored: always tried first — prevents greedily capturing mid-sentence phrases.
+			re.compile(
+				r'(?:отсортируй|сортируй|реорганизуй|упорядочи|разбери|реструктурируй|разложи)'
+				r'.{0,300}'
+				r'(?:на\s+|в\s+)?(?:доск[еу]\s+)?(?P<board>[а-яёА-ЯЁa-z0-9][\w\s]{2,40})\s*$',
+				re.IGNORECASE,
+			),
+			# Simple non-greedy fallback.
 			re.compile(
 				r'(?:отсортируй|сортируй|реорганизуй|упорядочи|разбери|реструктурируй|разложи)\s+'
 				r'(?:списки\s+|карточки\s+|и\s+|в\s+|новые\s+)*'
