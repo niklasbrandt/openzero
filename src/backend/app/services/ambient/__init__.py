@@ -86,6 +86,7 @@ def _build_engine():
 	from app.services.ambient.adapters.conversation import ConversationAdapter
 	from app.services.ambient.adapters.health import HealthAdapter
 	from app.services.ambient.rules.stall import detect_card_stalls, rule_card_stall
+	from app.services.ambient.rules.planka import detect_today_overload
 	from app.services.ambient.rules.calendar import (
 		detect_calendar_overload, detect_back_to_back, rule_calendar_advisory,
 	)
@@ -96,6 +97,11 @@ def _build_engine():
 		detect_disk_critical, detect_memory_critical,
 		detect_container_failure, rule_infra_critical,
 	)
+	from app.services.ambient.rules.health import (
+		detect_stress_detected, detect_no_exercise_mention,
+	)
+	from app.services.ambient.rules.overload import rule_overload_composite
+	from app.services.ambient.rules.drift import rule_sedentary_drift, rule_today_list_overload
 
 	_store = StateStore()
 	_diff_engine = DiffEngine()
@@ -111,6 +117,7 @@ def _build_engine():
 
 	# Register diff rules (source_id -> signal rule callable)
 	_diff_engine.register("planka", detect_card_stalls)
+	_diff_engine.register("planka", detect_today_overload)
 	_diff_engine.register("calendar", detect_calendar_overload)
 	_diff_engine.register("calendar", detect_back_to_back)
 	_diff_engine.register("email", detect_priority_spike)
@@ -118,12 +125,17 @@ def _build_engine():
 	_diff_engine.register("hardware", detect_disk_critical)
 	_diff_engine.register("hardware", detect_memory_critical)
 	_diff_engine.register("hardware", detect_container_failure)
+	_diff_engine.register("health", detect_stress_detected)
+	_diff_engine.register("health", detect_no_exercise_mention)
 
 	# Register trigger rules
 	_rule_engine.register(rule_card_stall, cooldown_minutes=360)
+	_rule_engine.register(rule_overload_composite, cooldown_minutes=360)
 	_rule_engine.register(rule_calendar_advisory, cooldown_minutes=480)
 	_rule_engine.register(rule_inbox_overwhelm, cooldown_minutes=60)
 	_rule_engine.register(rule_infra_critical, cooldown_minutes=120)
+	_rule_engine.register(rule_sedentary_drift, cooldown_minutes=1440)
+	_rule_engine.register(rule_today_list_overload, cooldown_minutes=480)
 
 	_engine_ready = True
 	logger.info("ambient_intelligence: engine initialised with %d adapter(s)", len(_adapters))

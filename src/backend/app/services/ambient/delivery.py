@@ -63,13 +63,10 @@ async def deliver(trigger: Trigger) -> None:
 		)
 		await dispatch(trigger)
 	else:
-		# Queue for briefing rather than holding in memory (P0 simplification).
-		# P2 will implement a proper in-memory delivery queue with re-check.
-		logger.info(
-			"AmbientDelivery: not a quiet moment — queuing trigger '%s' for briefing",
-			trigger.rule_id,
-		)
-		_enqueue_for_briefing(trigger)
+		# Queue the trigger in Redis for the delivery_checker job to retry.
+		# Priority-2 triggers are held for up to 30 minutes; priority-3 for 2 hours.
+		# After that, they fall into the briefing queue (staleness prevention).
+		_enqueue_pending(trigger)
 
 
 def _enqueue_for_briefing(trigger: Trigger) -> None:
@@ -87,6 +84,124 @@ def _enqueue_for_briefing(trigger: Trigger) -> None:
 		logger.debug("AmbientDelivery: queued trigger '%s' for briefing", trigger.rule_id)
 	except Exception as exc:
 		logger.warning("AmbientDelivery._enqueue_for_briefing failed: %s", exc)
+
+
+# Pending delivery key format: oz:ambient:pending:{rule_id}
+# Value: JSON with priority, context, crews, queued_at
+_PENDING_KEY_PREFIX = "oz:ambient:pending:"
+# Max hold before escalating to briefing queue
+_PRIORITY_2_MAX_HOLD_M = 30
+_PRIORITY_3_MAX_HOLD_M = 120
+
+
+def _enqueue_pending(trigger: Trigger) -> None:
+	"""Store a trigger in Redis for retry by process_pending_triggers()."""
+	try:
+		r = _get_redis()
+		key = f"{_PENDING_KEY_PREFIX}{trigger.rule_id}"
+		# Don't overwrite a pending entry with a newer one (cooldown handles dedup)
+		if r.exists(key):
+			return
+		max_hold_m = _PRIORITY_2_MAX_HOLD_M if trigger.priority <= 2 else _PRIORITY_3_MAX_HOLD_M
+		payload = json.dumps({
+			"rule_id": trigger.rule_id,
+			"priority": trigger.priority,
+			"crews": trigger.crews,
+			"context": trigger.context,
+			"delivery": trigger.delivery,
+			"queued_at": datetime.now(tz=timezone.utc).isoformat(),
+			"max_hold_minutes": max_hold_m,
+		})
+		ttl_s = max_hold_m * 60 + 60  # a bit of slack
+		r.set(key, payload, ex=ttl_s)
+		logger.info(
+			"AmbientDelivery: queued trigger '%s' (priority=%d, max_hold=%dm)",
+			trigger.rule_id, trigger.priority, max_hold_m,
+		)
+	except Exception as exc:
+		logger.warning("AmbientDelivery._enqueue_pending failed: %s", exc)
+
+
+async def process_pending_triggers() -> None:
+	"""Called by the scheduler every 5 minutes.
+
+	For each pending trigger:
+	  - If a quiet moment is now available, deliver immediately.
+	  - If the trigger has been held past its max_hold time, escalate to
+	    the briefing queue (staleness prevention).
+	"""
+	from app.config import settings
+	from app.services.ambient.dispatcher import dispatch
+
+	try:
+		r = _get_redis()
+		keys = r.keys(f"{_PENDING_KEY_PREFIX}*")
+	except Exception as exc:
+		logger.warning("process_pending_triggers: Redis scan failed: %s", exc)
+		return
+
+	if not keys:
+		return
+
+	quiet = await _is_quiet_moment(settings)
+	now = datetime.now(tz=timezone.utc)
+
+	for key in keys:
+		try:
+			raw = r.get(key)
+			if not raw:
+				continue
+			data = json.loads(raw)
+			queued_at = datetime.fromisoformat(data["queued_at"])
+			held_minutes = (now - queued_at).total_seconds() / 60
+			max_hold = data.get("max_hold_minutes", _PRIORITY_3_MAX_HOLD_M)
+
+			# Reconstruct minimal Trigger (only fields delivery needs)
+			trigger = Trigger(
+				rule_id=data["rule_id"],
+				priority=data["priority"],
+				crews=data.get("crews", []),
+				context=data.get("context", ""),
+				cooldown_minutes=0,  # cooldown already set when first queued
+				delivery=data.get("delivery", "quiet_moment"),
+			)
+
+			if quiet:
+				logger.info(
+					"process_pending_triggers: quiet moment — delivering '%s' (held %.1fm)",
+					trigger.rule_id, held_minutes,
+				)
+				r.delete(key)
+				await dispatch(trigger)
+			elif held_minutes >= max_hold:
+				logger.info(
+					"process_pending_triggers: '%s' exceeded max hold (%dm) — moving to briefing queue",
+					trigger.rule_id, max_hold,
+				)
+				r.delete(key)
+				_enqueue_for_briefing(trigger)
+		except Exception as exc:
+			logger.warning("process_pending_triggers: error processing key '%s': %s", key, exc)
+
+
+def drain_briefing_queue() -> list[dict]:
+	"""Read and clear the briefing queue. Called by morning.py at briefing time.
+
+	Returns a list of payload dicts sorted by priority (ascending = highest first).
+	"""
+	try:
+		r = _get_redis()
+		raw_items = r.lrange(_BRIEFING_QUEUE_KEY, 0, -1)
+		if not raw_items:
+			return []
+		r.delete(_BRIEFING_QUEUE_KEY)
+		items = [json.loads(x) for x in raw_items]
+		items.sort(key=lambda i: i.get("priority", 99))
+		logger.info("drain_briefing_queue: drained %d ambient insight(s)", len(items))
+		return items
+	except Exception as exc:
+		logger.warning("drain_briefing_queue failed: %s", exc)
+		return []
 
 
 async def _is_quiet_moment(settings) -> bool:  # noqa: ANN001
