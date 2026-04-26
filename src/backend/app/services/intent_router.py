@@ -205,18 +205,19 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 	# ── German ────────────────────────────────────────────────────────────
 	"de": {
 		"sort_board": [
-			re.compile(
-				r'\b(?:sortier[e]?|reorganisier[e]?|neu\s+sortier[e]?|aufräum[e]?n?|umstrukturieren|neu\s+anordnen)\b'
-				r'(?:\s+(?:listen?|karten?|und|in|potenziell|neue|\s)+)?'
-				r'(?:in|auf|für|das\s+)?(?:board\s+)?(?P<board>[a-z0-9äöüÄÖÜß][\w\s]{2,50})',
-				re.IGNORECASE,
-			),
-			# End-anchored fallback: handles "[..] im reef-tank-Board" style phrasing.
-			# Greedy .{0,300} forces backtracking to the LAST preposition before $.
+			# End-anchored pattern: always tried first. Handles "sortiere Listen und Karten
+			# in potenziell neuen Listen im Aquarium-Board" by anchoring at end of string.
 			re.compile(
 				r'\b(?:sortier[e]?|reorganisier[e]?|neu\s+sortier[e]?|aufräum[e]?n?|umstrukturieren|neu\s+anordnen)\b'
 				r'.{0,300}'
 				r'\b(?:in|im|auf|für)\s+(?:dem\s+|das\s+|der\s+)?(?:board\s+)?(?P<board>[a-z0-9äöüÄÖÜß][\w\s]{2,40})\s*$',
+				re.IGNORECASE,
+			),
+			# Simple non-greedy fallback: "sortiere [das] [Board] <name>".
+			re.compile(
+				r'\b(?:sortier[e]?|reorganisier[e]?|neu\s+sortier[e]?|aufräum[e]?n?|umstrukturieren|neu\s+anordnen)\b'
+				r'(?:\s+(?:listen?|karten?|und|in|potenziell|neue|\s)+)?'
+				r'(?:in|auf|für|das\s+)?(?:board\s+)?(?P<board>[a-z0-9äöüÄÖÜß][\w\s]{2,50})',
 				re.IGNORECASE,
 			),
 		],
