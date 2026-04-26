@@ -35,7 +35,7 @@ openZero is a private, composable AI system built around a single agent named Z.
 
 The system is built with no proprietary lock-in: the LLM is swappable (llama.cpp, any OpenAI-compatible endpoint), the memory backend is open-source (Qdrant), and every service is a standard Docker container. Data never leaves your infrastructure unless you explicitly configure an external inference provider.
 
-openZero is not a chatbot wrapper. It is an operational layer for a personal computing life: reading and writing your calendar, triaging your email, managing your projects, scheduling background intelligence tasks, monitoring its own hardware, and speaking to you in any of ten languages.
+openZero is not a chatbot wrapper. It is an operational layer for a personal computing life: reading and writing your calendar, triaging your email, managing your projects, scheduling background intelligence tasks, monitoring its own hardware, and speaking to you in any of eleven languages.
 
 ---
 
@@ -74,17 +74,31 @@ Both Telegram and WhatsApp route to the same Z agent with full context: memory r
 
 ### Telegram commands
 
-| Command           | Effect                        |
-| ----------------- | ----------------------------- |
-| `/briefing`       | Morning digest                |
-| `/memory <query>` | Semantic memory search        |
-| `/task <text>`    | Create a Planka card          |
-| `/calendar`       | Upcoming events               |
-| `/email`          | Inbox summary                 |
-| `/crew <name>`    | Trigger a crew immediately    |
-| `/crews`          | List crews and status         |
-| `/status`         | Hardware and container health |
-| `/lang <code>`    | Switch language               |
+| Command            | Effect                                                  |
+| ------------------ | ------------------------------------------------------- |
+| `/start`           | Onboarding message and menu                             |
+| `/help`            | List all commands (alias `/commands`)                   |
+| `/day`             | Daily briefing                                          |
+| `/week`            | Weekly briefing                                         |
+| `/month`           | Monthly briefing                                        |
+| `/quarter`         | Quarterly briefing                                      |
+| `/year`            | Annual briefing                                         |
+| `/search <query>`  | Semantic memory search                                  |
+| `/memories`        | Browse stored memory points                             |
+| `/learn <text>`    | Store a fact to long-term memory (alias `/add`)         |
+| `/unlearn <query>` | Remove a memory point (with confirmation)               |
+| `/purge`           | Wipe memory (requires confirmation)                     |
+| `/board`           | Show the active Planka board                            |
+| `/tree`            | Project / board / list tree                             |
+| `/remind <text>`   | Schedule a one-off or repeating reminder                |
+| `/custom <spec>`   | Register a persistent scheduled job                     |
+| `/protocols`       | List active Z protocols                                 |
+| `/personal`        | Show personal context summary                           |
+| `/agent`           | Show agent rules summary (alias `/skills`)              |
+| `/think <query>`   | Force the deep-tier model with HITL approval            |
+| `/crew <id>`       | Trigger a named crew immediately                        |
+| `/crews`           | List crews and their status                             |
+| `/status`          | Deep integration health check                           |
 
 ### WhatsApp
 
@@ -167,7 +181,7 @@ Triggers: briefing-relative · fixed cron · manual via `/crew <id>` on Telegram
 
 17 Shadow DOM Web Components — no React, Vue, or Angular.
 38 HSLA theme presets, live switching.
-WCAG 2.1 AA, 10 languages, keyboard-navigable.
+WCAG 2.1 AA, 11 languages, keyboard-navigable.
 
 ---
 
@@ -205,7 +219,7 @@ WCAG 2.1 AA, 10 languages, keyboard-navigable.
 │                                                  │
 │   ┌───────────┐  ┌─────────┐  ┌──────────────┐  │
 │   │ PostgreSQL│  │  Qdrant │  │  llama.cpp   │  │
-│   │  (data)   │  │ (memory)│  │ (2-tier LLM) │  │
+│   │  (data)   │  │ (memory)│  │  (llm-local) │  │
 │   └───────────┘  └─────────┘  └──────────────┘  │
 │                                                  │
 │   ┌───────────┐  ┌─────────┐  ┌──────────────┐  │
@@ -220,7 +234,7 @@ WCAG 2.1 AA, 10 languages, keyboard-navigable.
 └──────────────────────────────────────────────────┘
 ```
 
-Two Docker networks: `internal` (all services) and `llm` (isolated inference). The LLM container cannot reach the database or memory stores directly.
+All services share the `internal` Docker network. The LLM container exposes only its inference port, and every backing store (PostgreSQL, Qdrant, Redis, Planka) is reached through the FastAPI backend, which holds all credentials.
 
 ### Web search
 
@@ -244,7 +258,7 @@ Security in openZero is defined by an explicit allowlist, not a blocklist. The a
 
 ### Agent action vocabulary
 
-Z speaks to external systems through a small set of structured action tags embedded in its replies. Only these are recognised and executed:
+Z speaks to external systems through a structured set of action tags embedded in its replies. Only tags in this allowlist are parsed and executed; anything outside it is silently ignored. The canonical list lives in `_MUTATING_TAG_RE` in `src/backend/app/services/agent_actions.py`.
 
 | Action | What it does |
 | --- | --- |
@@ -253,11 +267,18 @@ Z speaks to external systems through a small set of structured action tags embed
 | `CREATE_LIST` | Creates a list on a board |
 | `CREATE_TASK` | Creates a card on a list |
 | `MOVE_CARD` | Moves a card to a different list |
+| `MOVE_BOARD` | Moves a board to a different project |
 | `MARK_DONE` | Marks a card as done |
-| `ARCHIVE_CARD` | Archives a card (soft removal only — no hard delete) |
+| `ARCHIVE_CARD` | Archives a card |
+| `APPEND_SHOPPING` | Appends an item to the shopping list |
+| `SET_CARD_DESC` | Sets or updates a card description |
+| `RENAME_CARD` / `RENAME_LIST` / `RENAME_PROJECT` | Renames the matching entity |
+| `DELETE_CARD` / `DELETE_LIST` / `DELETE_BOARD` / `DELETE_PROJECT` | Hard-deletes the matching entity (sensitive — see below) |
+| `SHARE_BOARD` / `SHARE_PROJECT` | Issues a share link |
+| `INVITE_USER` / `INVITE_MEMBER` | Invites a collaborator |
+| `AMBIENT_CAPTURE` / `AMBIENT_TEACH` | Routes ambient input into the capture pipeline |
 | `CREATE_EVENT` | Creates a calendar event |
-| `REMIND` | Sets a repeating reminder at a specified interval and duration |
-| `SET_NUDGE_INTERVAL` | Sets how often Z nudges about a specific task |
+| `REMIND` | Sets a one-off or repeating reminder |
 | `ADD_PERSON` | Adds a person to the social circles graph |
 | `LEARN` | Stores a fact to Qdrant long-term memory |
 | `SCHEDULE_CUSTOM` | Registers a persistent scheduled job |
@@ -265,7 +286,7 @@ Z speaks to external systems through a small set of structured action tags embed
 | `SCHEDULE_CREW` | Schedules a crew at a cron spec |
 | `PROXIMITY_TRACK` | Initiates a task proximity tracking session |
 
-Hard deletion of projects, boards, or data is not in the vocabulary at all. There is no `DELETE_PROJECT`, `DELETE_BOARD`, `WIPE_MEMORY`, or equivalent. Prompt injection attempts that include fabricated delete tags are silently ignored — the parser only matches the known set.
+Destructive actions (`DELETE_*`) are part of the vocabulary, not blocked at the parser layer. They are gated by the human-in-the-loop policy below — the safety guarantee is the HITL queue plus the structured allowlist, not the absence of delete verbs.
 
 ### Human-in-the-loop gate
 
@@ -277,21 +298,27 @@ When `require_hitl=True` is set on a reply (configurable per channel and per end
 
 ### Network and infrastructure isolation
 
-- The LLM containers (`llm-fast`, `llm-deep`) are on an internal Docker network with no direct access to the database, Qdrant, or Planka. All model calls go through the FastAPI backend, which owns all credentials.
+- The local LLM container (`llm-local`, llama.cpp) runs on the internal Docker network with no direct access to the database, Qdrant, or Planka. All model calls go through the FastAPI backend, which owns every credential. The fast and deep tiers are routing decisions inside the backend, not separate containers.
 - Bearer token required on every API endpoint — no unauthenticated routes.
 - The entire stack is reachable only through the Tailscale mesh network. No ports are exposed to the public internet.
 - DNS (port 53) is bound to the Tailscale interface only — Pi-hole is not publicly reachable.
 
 ### CI security gates
 
-Every commit runs an 11-gate pipeline:
+Every push runs the GitHub Actions pipeline:
 
 - `pip-audit` — dependency CVE scan
+- `npm audit` — frontend dependency CVE scan
 - `bandit` — Python static security analysis
 - `trufflehog` — secret leak detection in git history
-- `ruff` + `mypy` — lint and type safety
-- 268 prompt injection tests across 25 attack categories
-- i18n key parity, accessibility compliance, and live regression tests
+- `ruff` + `mypy` — Python lint and type safety
+- ESLint + `tsc --noEmit` — TypeScript lint and strict type-check
+- CodeQL static-analysis pre-flight
+- Lighthouse CI audit
+- Playwright accessibility audit (WCAG 2.1 AA)
+- Docker build smoke-test
+- Prompt-injection test suite (`tests/test_security_prompt_injection.py`)
+- i18n key parity (`tests/test_i18n_coverage.py`) and live regression tests
 
 ---
 
