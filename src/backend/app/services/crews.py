@@ -310,6 +310,7 @@ _SYSTEM_ACTION_RE = re.compile(
 	r'|create\s+(?:a\s+)?(?:board|card|task|list|project)\b'
 	r'|new\s+(?:board|card|task|list|project)\b'
 	r'|new\s+\w+\s+(?:on|in|for)\s+(?:board|list)\b'
+	r'|new\s+(?:\w+\s+){1,3}(?:goal|goals|item|items|todo|reminder|note|notes|entry|entries)\b'
 	r'|delete\s+(?:a\s+)?(?:board|card|task|list|project)\b'
 	r'|rename\s+(?:a\s+)?(?:board|card|task|list|project)\b'
 	r'|archive\s+(?:a\s+)?(?:board|card|task|list|project)\b'
