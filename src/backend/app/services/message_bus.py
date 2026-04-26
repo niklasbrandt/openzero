@@ -198,12 +198,12 @@ class MessageBus:
 
 		if db is not None:
 			clean_reply, executed_cmds, pending_actions = await parse_and_execute_actions(
-				raw_reply, db=db, require_hitl=require_hitl
+				raw_reply, db=db, require_hitl=require_hitl, user_text=user_text
 			)
 		else:
 			async with AsyncSessionLocal() as _db:
 				clean_reply, executed_cmds, pending_actions = await parse_and_execute_actions(
-					raw_reply, db=_db, require_hitl=require_hitl
+					raw_reply, db=_db, require_hitl=require_hitl, user_text=user_text
 				)
 
 		if save:
