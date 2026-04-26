@@ -158,7 +158,12 @@ async def _handle_inbound(sender: str, text: str) -> None:
 			logger.warning("WhatsApp route_message_stream timed out after %s s", _stream_timeout)
 			await send_whatsapp_message("I ran out of time on that one. Please try again.")
 			return
-		result = await result_fut
+		try:
+			result = await _asyncio.wait_for(_asyncio.shield(result_fut), timeout=30.0)
+		except _asyncio.TimeoutError:
+			logger.error("WhatsApp: result_fut never resolved — generator may have crashed silently")
+			await send_whatsapp_message("Something went wrong processing that. Please try again.")
+			return
 	except Exception as exc:
 		logger.error("WhatsApp route_message_stream failed: %s", exc)
 		await send_whatsapp_message("I encountered an error reaching my reasoning core. Try again in a moment.")
@@ -244,7 +249,12 @@ async def _handle_inbound_image(sender: str, media_id: str, user_hint: str) -> N
 		logger.warning("WhatsApp image route_message_stream timed out after %s s", _stream_timeout)
 		await send_whatsapp_message("I ran out of time processing that image. Please try again.")
 		return
-	result = await result_fut
+	try:
+		result = await _asyncio.wait_for(_asyncio.shield(result_fut), timeout=30.0)
+	except _asyncio.TimeoutError:
+		logger.error("WhatsApp image: result_fut never resolved — generator may have crashed silently")
+		await send_whatsapp_message("Something went wrong processing that. Please try again.")
+		return
 
 	if result.reply.strip():
 		await send_whatsapp_message(result.reply)
