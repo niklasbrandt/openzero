@@ -1743,6 +1743,16 @@ def _install_backend_mocks():
 		QDRANT_API_KEY="",
 		GROQ_API_KEY="",
 		GROQ_MODEL="",
+		# Ambient capture defaults (Epoch 2) — must match config.py defaults
+		AMBIENT_CAPTURE_ENABLED=False,
+		AMBIENT_CAPTURE_TELEGRAM=False,
+		AMBIENT_CAPTURE_WHATSAPP=False,
+		AMBIENT_CAPTURE_DASHBOARD=False,
+		AMBIENT_SILENT_FLOOR=0.80,
+		AMBIENT_ASK_FLOOR=0.45,
+		AMBIENT_CHAT_FLOOR=0.20,
+		AMBIENT_ROUTING_LESSON_RETENTION_DAYS=0,
+		AMBIENT_PENDING_TTL_SECONDS=90,
 	)
 
 	# Build a proper module tree with cross-references
@@ -1807,6 +1817,20 @@ def _install_backend_mocks():
 	mods["app.services"].memory = mods["app.services.memory"]
 
 	mods["app.services.agent_actions"].AVAILABLE_TOOLS = []
+	# Provide _MUTATING_TAG_RE so ambient capture security tests can import it
+	# even when this mock is installed before agent_actions is first loaded.
+	import re as _re_mod
+	mods["app.services.agent_actions"]._MUTATING_TAG_RE = _re_mod.compile(
+		r'\[?ACTION:\s*(?:'
+		r'CREATE_TASK|CREATE_BOARD|CREATE_LIST|CREATE_PROJECT|'
+		r'MOVE_BOARD|MOVE_CARD|MARK_DONE|ARCHIVE_CARD|APPEND_SHOPPING|'
+		r'DELETE_BOARD|DELETE_CARD|DELETE_LIST|DELETE_PROJECT|'
+		r'SET_CARD_DESC|RENAME_CARD|RENAME_LIST|RENAME_PROJECT|'
+		r'AMBIENT_CAPTURE|AMBIENT_TEACH|'
+		r'SHARE_BOARD|SHARE_PROJECT|INVITE_USER|INVITE_MEMBER'
+		r')\b',
+		_re_mod.IGNORECASE,
+	)
 
 	mods["app.services.timezone"].format_time = lambda x: "12:00"
 	mods["app.services.timezone"].format_date_full = lambda x: "2026-01-01"
