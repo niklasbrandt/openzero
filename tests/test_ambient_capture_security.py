@@ -540,11 +540,15 @@ class TestM4_URLAllowlist:
 		assert "youtu.be" in out
 
 	def test_strips_unlisted_domains(self) -> None:
+		import re
+		from urllib.parse import urlparse
 		from app.services.ambient_capture.sanitiser import sanitise_auto_description
 
 		text = "Visit https://evil.example.com/exploit for details"
 		out = sanitise_auto_description(text)
-		assert "evil.example.com" not in out
+		# Use hostname-level check rather than substring to avoid incomplete URL sanitization
+		urls_in_out = re.findall(r'https?://\S+', out)
+		assert not any(urlparse(u).hostname == "evil.example.com" for u in urls_in_out)
 
 
 # ---------------------------------------------------------------------------
