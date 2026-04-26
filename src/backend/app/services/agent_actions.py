@@ -33,8 +33,8 @@ async def create_task(title: str, description: str = "", board_name: str = "Oper
 		description=description
 	)
 	if path:
-		return f"Task '{title}' created in {path}."
-	return f"Failed to create task '{title}'. Check Planka connection."
+		return f"Card '{title}' created in {path}."
+	return f"Failed to create card '{title}'. Check Planka connection."
 
 @tool
 async def create_project(name: str, description: str = "") -> str:
