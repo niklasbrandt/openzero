@@ -270,8 +270,60 @@ class TestC3_ConfirmationHijack:
 
 		assert pending_key("alice", "dashboard") != pending_key("bob", "dashboard")
 
-	@pytest.mark.skip(reason="Epoch 2: monotonic sequence hijack-guard end-to-end")
-	def test_consume_rejects_stale_sequence(self) -> None: ...
+	def test_consume_rejects_stale_sequence(self) -> None:
+		"""Second ambient message replaces pending; old sequence must be rejected (C3)."""
+		import asyncio
+		import app.services.ambient_capture.pending as pending_mod
+		from app.services.ambient_capture.pending import (
+			store_pending,
+			consume_pending_if_current,
+		)
+
+		class _FakeRedis:
+			def __init__(self):
+				self._store: dict = {}
+			def get(self, k):
+				return self._store.get(k)
+			def setex(self, k, ttl, v):
+				self._store[k] = v
+			def delete(self, k):
+				self._store.pop(k, None)
+			def incr(self, k):
+				val = int(self._store.get(k, "0")) + 1
+				self._store[k] = str(val)
+				return val
+			def execute_command(self, cmd, *args):
+				if cmd == "GETDEL":
+					return self._store.pop(args[0], None)
+				raise NotImplementedError(cmd)
+
+		_r = _FakeRedis()
+		_orig = pending_mod._get_redis
+		pending_mod._get_redis = lambda: _r
+		try:
+			async def _run():
+				# First ambient message — seq=1
+				p1 = await store_pending(
+					"user1", "telegram", "planka_card", "emperor angel",
+					"board_1/list_1", "Reef Tank > Wishlist", 0.85,
+				)
+				assert p1.sequence == 1
+				# Second ambient message arrives before user confirms — overwrites, seq=2
+				p2 = await store_pending(
+					"user1", "telegram", "planka_card", "blue tang",
+					"board_1/list_1", "Reef Tank > Wishlist", 0.82,
+				)
+				assert p2.sequence == 2
+				# Confirming with stale seq=1 must be rejected
+				stale = await consume_pending_if_current("user1", "telegram", expected_sequence=1)
+				assert stale is None, "Stale sequence must be rejected (C3)"
+				# Confirming with current seq=2 must succeed
+				current = await consume_pending_if_current("user1", "telegram", expected_sequence=2)
+				assert current is not None
+				assert current.phrase == "blue tang"
+			asyncio.run(_run())
+		finally:
+			pending_mod._get_redis = _orig
 
 
 # ---------------------------------------------------------------------------
@@ -292,8 +344,25 @@ class TestH1_LogLeakage:
 
 
 class TestH2_ColdStart:
-	@pytest.mark.skip(reason="Epoch 3: cold-start TEACH lane")
-	def test_cold_start_requires_explicit_teach(self) -> None: ...
+	def test_cold_start_requires_explicit_teach(self) -> None:
+		"""Cold-start mode forces TEACH lane; never silently routes (H2)."""
+		from app.services.ambient_capture.cold_start import (
+			_COLD_START_BOARD_THRESHOLD,
+			_COLD_START_CARD_THRESHOLD,
+			cold_start_lane,
+			is_cold_start,
+		)
+
+		# Both below threshold -> cold-start active
+		assert is_cold_start(1, 5) is True
+		assert is_cold_start(0, 0) is True
+		# AND semantics: either alone above threshold -> not cold-start
+		assert is_cold_start(_COLD_START_BOARD_THRESHOLD, _COLD_START_CARD_THRESHOLD - 1) is False
+		assert is_cold_start(_COLD_START_BOARD_THRESHOLD - 1, _COLD_START_CARD_THRESHOLD) is False
+		# Both at threshold -> not cold-start
+		assert is_cold_start(_COLD_START_BOARD_THRESHOLD, _COLD_START_CARD_THRESHOLD) is False
+		# Cold-start always maps to TEACH lane (H2: no silent execution)
+		assert cold_start_lane() == "TEACH"
 
 
 # ---------------------------------------------------------------------------

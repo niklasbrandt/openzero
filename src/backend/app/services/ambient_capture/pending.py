@@ -167,3 +167,41 @@ async def invalidate_pending(user_id: str, channel: str) -> bool:
 	except Exception as e:
 		logger.warning("ambient_capture: failed to invalidate pending: %s", e)
 		return False
+
+
+async def consume_pending_if_current(
+	user_id: str,
+	channel: str,
+	expected_sequence: int,
+) -> Optional[PendingCapture]:
+	"""Consume the pending entry only if its sequence matches expected_sequence.
+
+	If a newer ambient message arrived (incrementing the stored sequence via
+	store_pending), the stored entry will have a higher sequence and this call
+	returns None — the reply is treated as a fresh message, not a confirmation.
+	This is the C3 confirmation-hijack guard (Section 5 of the artifact).
+	"""
+	try:
+		r = _get_redis()
+		key = pending_key(user_id, channel)
+		raw = r.get(key)
+		if not raw:
+			return None
+		data = json.loads(raw)
+		entry = PendingCapture(**data)
+		if entry.sequence != expected_sequence:
+			logger.debug(
+				"ambient_capture: stale pending rejected (expected_seq=%d stored_seq=%d)",
+				expected_sequence,
+				entry.sequence,
+			)
+			return None
+		# Sequence matches — atomically consume
+		try:
+			r.execute_command("GETDEL", key)
+		except Exception:
+			r.delete(key)
+		return entry
+	except Exception as e:
+		logger.warning("ambient_capture: consume_pending_if_current failed: %s", e)
+		return None
