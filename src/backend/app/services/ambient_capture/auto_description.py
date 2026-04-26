@@ -17,7 +17,6 @@ M4 sanitiser applied to every draft before it is written to Planka.
 
 from __future__ import annotations
 
-import hashlib
 import logging
 from typing import Optional
 

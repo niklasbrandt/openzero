@@ -200,8 +200,8 @@ class BoardProfileBuilder:
 						det.raise_for_status()
 						for b in det.json().get("included", {}).get("boards", []):
 							boards.append(b)
-					except Exception:
-						pass
+					except Exception as _e:
+						logger.debug("ambient_capture: board detail fetch skipped: %s", _e)
 			return boards
 		except Exception as e:
 			logger.warning("ambient_capture: fetch_all_boards failed: %s", e)

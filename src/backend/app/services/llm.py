@@ -358,10 +358,11 @@ async def _ensure_person_names_loaded() -> None:
 				if len(part) >= 3:
 					_known_person_names.add(part.lower())
 		_known_person_names_loaded = True
-		logger.debug("cloud_sanitize: loaded %d person name tokens from people DB", len(_known_person_names))
+		logger.debug("cloud_sanitize: loaded %d person name tokens from people DB (ready=%s)", len(_known_person_names), _known_person_names_loaded)
 	except Exception as exc:
 		logger.warning("cloud_sanitize: could not load person names from DB (%s) — heuristic-only", exc)
 		_known_person_names_loaded = True  # do not retry on every cloud call
+		logger.debug("cloud_sanitize: person names cache flag set (ready=%s)", _known_person_names_loaded)
 
 
 def _should_replace_person_entity(word: str, full_text: str) -> bool:

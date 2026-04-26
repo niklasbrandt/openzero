@@ -24,7 +24,6 @@ from typing import Optional
 
 from app.services.ambient_capture.sanitiser import (
 	clamp_phrase,
-	sanitise_auto_description,
 	strip_engine_action_tags,
 	wrap_untrusted,
 )

@@ -186,7 +186,6 @@ async def route_message_stream(
 			...
 		result = await result_fut
 	"""
-	import asyncio
 	loop = asyncio.get_event_loop()
 	result_future: asyncio.Future[RouterResult] = loop.create_future()
 

@@ -113,8 +113,8 @@ async def _fetch_conversation_snapshot() -> dict:
 	try:
 		from app.services.follow_up import _nudge_state
 		snap["active_tracking_sessions"] = len(_nudge_state)
-	except Exception:
-		pass
+	except Exception as _e:
+		logger.debug("follow_up not available: %s", _e)
 
 	return snap
 

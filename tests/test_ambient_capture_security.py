@@ -274,10 +274,8 @@ class TestC3_ConfirmationHijack:
 		"""Second ambient message replaces pending; old sequence must be rejected (C3)."""
 		import asyncio
 		import app.services.ambient_capture.pending as pending_mod
-		from app.services.ambient_capture.pending import (
-			store_pending,
-			consume_pending_if_current,
-		)
+		store_pending = pending_mod.store_pending
+		consume_pending_if_current = pending_mod.consume_pending_if_current
 
 		class _FakeRedis:
 			def __init__(self):

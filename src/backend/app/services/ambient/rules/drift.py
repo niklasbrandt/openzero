@@ -18,7 +18,6 @@ from __future__ import annotations
 from app.services.ambient.models import Signal, Trigger
 
 _SEDENTARY_DAYS_THRESHOLD = 5
-_TODAY_LIST_MAX = 7
 _SEDENTARY_COOLDOWN = 1440
 _TODAY_OVERLOAD_COOLDOWN = 480
 

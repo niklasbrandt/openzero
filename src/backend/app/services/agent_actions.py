@@ -1270,8 +1270,8 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 			_lang = "en"
 			try:
 				_lang = await get_user_lang()
-			except Exception:
-				pass
+			except Exception as _e:
+				logger.debug("get_user_lang unavailable: %s", _e)
 			_t = get_translations(_lang)
 			_warn = _t.get("action_not_executed", "No action was executed — please try again.")
 		except Exception:

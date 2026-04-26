@@ -774,7 +774,6 @@ class TestDrainBriefingQueue:
 		assert result == []
 
 	def test_drain_returns_items_and_clears_queue(self, fake_redis):
-		import json
 		from app.services.ambient.delivery import drain_briefing_queue, _BRIEFING_QUEUE_KEY
 		# Pre-populate the queue
 		fake_redis._data[_BRIEFING_QUEUE_KEY] = [
