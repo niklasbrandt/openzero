@@ -140,6 +140,7 @@ async def _handle_inbound(sender: str, text: str) -> None:
 
 	# Full router — handles intent classification, ACTION tags, phantom guard, memory
 	try:
+		import asyncio as _asyncio
 		token_stream, result_fut = await route_message_stream(
 			user_text=text,
 			history=history,
@@ -147,8 +148,14 @@ async def _handle_inbound(sender: str, text: str) -> None:
 			lang="en",
 			save_history=True,
 		)
-		async for _ in token_stream:
-			pass
+		try:
+			async with _asyncio.timeout(120.0):
+				async for _ in token_stream:
+					pass
+		except _asyncio.TimeoutError:
+			logger.warning("WhatsApp route_message_stream timed out after 120 s")
+			await send_whatsapp_message("I ran out of time on that one. Please try again.")
+			return
 		result = await result_fut
 	except Exception as exc:
 		logger.error("WhatsApp route_message_stream failed: %s", exc)
@@ -217,6 +224,7 @@ async def _handle_inbound_image(sender: str, media_id: str, user_hint: str) -> N
 		await send_whatsapp_message(reply)
 		return
 
+	import asyncio as _asyncio
 	token_stream, result_fut = await route_message_stream(
 		user_text=caption,
 		history=history,
@@ -224,8 +232,14 @@ async def _handle_inbound_image(sender: str, media_id: str, user_hint: str) -> N
 		lang="en",
 		save_history=True,
 	)
-	async for _ in token_stream:
-		pass
+	try:
+		async with _asyncio.timeout(120.0):
+			async for _ in token_stream:
+				pass
+	except _asyncio.TimeoutError:
+		logger.warning("WhatsApp image route_message_stream timed out after 120 s")
+		await send_whatsapp_message("I ran out of time processing that image. Please try again.")
+		return
 	result = await result_fut
 
 	if result.reply.strip():
