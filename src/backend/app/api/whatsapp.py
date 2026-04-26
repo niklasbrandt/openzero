@@ -149,11 +149,13 @@ async def _handle_inbound(sender: str, text: str) -> None:
 			save_history=True,
 		)
 		try:
-			async with _asyncio.timeout(120.0):
+			from app.services.router import _REORGANIZE_BOARD_RE as _reorg_re
+			_stream_timeout = 300.0 if _reorg_re.search(text[:500]) else 120.0
+			async with _asyncio.timeout(_stream_timeout):
 				async for _ in token_stream:
 					pass
 		except _asyncio.TimeoutError:
-			logger.warning("WhatsApp route_message_stream timed out after 120 s")
+			logger.warning("WhatsApp route_message_stream timed out after %s s", _stream_timeout)
 			await send_whatsapp_message("I ran out of time on that one. Please try again.")
 			return
 		result = await result_fut
@@ -233,11 +235,13 @@ async def _handle_inbound_image(sender: str, media_id: str, user_hint: str) -> N
 		save_history=True,
 	)
 	try:
-		async with _asyncio.timeout(120.0):
+		from app.services.router import _REORGANIZE_BOARD_RE as _reorg_re
+		_stream_timeout = 300.0 if _reorg_re.search(caption[:500]) else 120.0
+		async with _asyncio.timeout(_stream_timeout):
 			async for _ in token_stream:
 				pass
 	except _asyncio.TimeoutError:
-		logger.warning("WhatsApp image route_message_stream timed out after 120 s")
+		logger.warning("WhatsApp image route_message_stream timed out after %s s", _stream_timeout)
 		await send_whatsapp_message("I ran out of time processing that image. Please try again.")
 		return
 	result = await result_fut

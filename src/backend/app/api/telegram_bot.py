@@ -1232,10 +1232,17 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 	chunks: list[str] = []
 	last_edit_time = time.time()
 	EDIT_INTERVAL = 1.5
-	# Hard wall-clock cap: prevents a stalled cloud stream from hanging forever.
-	# 120 s is generous — cloud LLM timeout is 30 s × 3 attempts ≈ 90 s at most.
+	# Board-reorganisation requests require generating many action tags (MOVE_CARD,
+	# CREATE_LIST) which can exceed 120 s on a local 3-8 B model. Detect early and
+	# give those requests up to 300 s. Everything else keeps the 120 s cap.
 	try:
-		async with asyncio.timeout(120.0):
+		from app.services.router import _REORGANIZE_BOARD_RE as _reorg_re
+		_is_complex_reorg = bool(_reorg_re.search(user_text[:500]))
+	except Exception:
+		_is_complex_reorg = False
+	_stream_timeout = 300.0 if _is_complex_reorg else 120.0
+	try:
+		async with asyncio.timeout(_stream_timeout):
 			async for token in token_stream:
 				chunks.append(token)
 				now = time.time()
