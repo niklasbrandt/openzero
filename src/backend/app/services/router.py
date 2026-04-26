@@ -408,7 +408,7 @@ async def route_message_stream(
 				r'\b(?:sort|reorgani[sz]|restructur|clean up|tidy up|reorder|rearrang)',
 				re.IGNORECASE,
 			)
-			_clf_timeout = 12.0 if _SORT_RE_QUICK.search(user_text[:200]) else 3.0
+			_clf_timeout = 25.0 if _SORT_RE_QUICK.search(user_text[:200]) else 3.0
 			intent = await asyncio.wait_for(
 				classify_structural_intent(user_text, lang), timeout=_clf_timeout,
 			)
@@ -498,7 +498,7 @@ async def route_message_stream(
 					"If yes: reply SORT_BOARD:<exact board name from the list above>\n"
 					"If no: reply NO"
 				)
-				_sem = await asyncio.wait_for(_fast_chat(_sem_prompt, tier="fast"), timeout=8.0)
+				_sem = await asyncio.wait_for(_fast_chat(_sem_prompt, tier="fast"), timeout=20.0)
 				_sem = _sem.strip()
 				if _sem.upper().startswith("SORT_BOARD:"):
 					_board_frag = _sem.split(":", 1)[1].strip().rstrip(".,;!?")
