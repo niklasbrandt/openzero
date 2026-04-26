@@ -1138,9 +1138,16 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
 			# ── End HITL intercept ──────────────────────────────────────────
 
 			if not _hitl_handled:
-				await _process_freetext(update, context, chat_id, llm_user_text, history=_hist)
+				_timed_out = await _process_freetext(update, context, chat_id, llm_user_text, history=_hist)
+			else:
+				_timed_out = False
 
-			# After responding, check if messages arrived while we were thinking
+			# After responding, check if messages arrived while we were thinking.
+			# If the primary call timed out, drop the buffer — retrying will just
+			# stack more timeouts on the same failing path.
+			if _timed_out and _pending_messages.get(chat_id):
+				_dropped = len(_pending_messages.pop(chat_id, []))
+				logger.warning("Dropped %d buffered message(s) after primary timeout", _dropped)
 			while _pending_messages.get(chat_id):
 				buffered = _pending_messages.pop(chat_id)
 				combined = "\n".join(buffered)
@@ -1149,7 +1156,12 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
 				_follow_hist = await bus.ingest("telegram", combined)
 				# Add context hint only for the LLM so it knows these arrived mid-thought
 				llm_text = f"[Follow-up messages sent while you were thinking:]\n{combined}"
-				await _process_freetext(update, context, chat_id, llm_text, is_followup=True, history=_follow_hist)
+				_followup_timed_out = await _process_freetext(update, context, chat_id, llm_text, is_followup=True, history=_follow_hist)
+				if _followup_timed_out:
+					_dropped = len(_pending_messages.pop(chat_id, []))
+					if _dropped:
+						logger.warning("Dropped %d buffered message(s) after follow-up timeout", _dropped)
+					break
 
 	except Exception as e:
 		logger.error("handle_freetext failed: %s", e)
@@ -1158,8 +1170,10 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		except Exception as _se:
 			logger.debug("handle_freetext error reporting failed: %s", _se)
 
-async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, user_text: str, is_followup: bool = False, history: list | None = None):
+async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, user_text: str, is_followup: bool = False, history: list | None = None) -> bool:
 	"""Core freetext processing — Telegram transport layer.
+
+	Returns True if the LLM stream timed out (caller should drop buffered followups).
 
 	All routing decisions (crew keyword match, ROUTE tag, phantom guard, etc.)
 	are handled by app.services.router.route_message_stream.  This function
@@ -1185,7 +1199,7 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 		if routed_crews:
 			logger.info("Auto-routing '%s...' to crew panel %s", user_text[:40], routed_crews)
 			await _process_crew_stream(update, context, routed_crews, user_text, t, already_ingested=True)
-			return
+			return False
 
 	# Show thinking placeholder
 	if is_followup:
@@ -1244,7 +1258,7 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 			await safe_reply(update, "I ran out of time on that one. Please try again.")
 		except Exception:
 			pass
-		return
+		return True
 
 	result = await result_fut
 
@@ -1254,7 +1268,7 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 			await thinking_msg.delete()
 		except Exception as _e:
 			logger.debug("Telegram delete ignored: %s", _e)
-		return
+		return False
 
 	# If router redirected to a crew (ROUTE tag), delete thinking msg and hand off
 	if result.routed_to_crew:
@@ -1263,7 +1277,7 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 		except Exception as _e:
 			logger.debug("Telegram delete (route handoff) ignored: %s", _e)
 		await _process_crew_stream(update, context, [result.routed_to_crew], user_text, t, already_ingested=True)
-		return
+		return False
 
 	clean_reply = strip_llm_time_header(result.reply)
 
@@ -1275,6 +1289,7 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 	footer = await _get_stats_footer()
 	display_reply = f"<b>{format_time(dt=receipt_dt)}</b>\n\n{html_reply}{footer}"
 	await _send_chunked_reply(thinking_msg, display_reply, nav_footer=get_nav_footer(t))
+	return False
 
 @owner_only
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
