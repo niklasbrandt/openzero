@@ -149,19 +149,37 @@ _AUDIT_INTENT_RE = re.compile(
 # Board reorganisation detector — matches "sort/reorganize/tidy [board_name]"
 # Capture group 1: the board name fragment (trimmed by caller).
 _REORGANIZE_BOARD_RE = re.compile(
-	r'\b(?:sort|reorgani[sz]e?|restructur[e]?|clean\s+up|tidy\s+up|reorder|rearrang[e]?)\b'
+	# English
+	r'\b(?:sort|reorgani[sz]e?|restructur[e]?|clean\s+up|tidy\s+up|reorder|rearrang[e]?'
+	# German
+	r'|sortier[e]?|reorganisier[e]?|neu\s+sortier[e]?|aufr[\u00e4a]um[e]?n?|umstrukturieren|neu\s+anordnen'
+	# Spanish / Portuguese
+	r'|reorganiza[r]?|reestructura[r]?|reestrutura[r]?|reordena[r]?'
+	# French
+	r'|r[\u00e9e]organise[r]?|restructure[r]?|r[\u00e9e]ordonne[r]?'
+	r')\b'
 	r'(?:\s+(?:lists?\s+and\s+)?(?:(?:re)?organiz[e]?\s+)?(?:cards?\s+(?:in|on)\s+)?(?:(?:new|potentially\s+new)\s+lists?\s+in\s+)?)?'
-	r'(?:(?:the|my|in|on|board)\s+)?'
-	r'(?P<board>[a-z0-9][\w\s]{2,50})',
+	r'(?:(?:the|my|in|on|board|auf|dem|das|der|im)\s+)?'
+	r'(?P<board>[a-z0-9\u00e4\u00f6\u00fc\u00c4\u00d6\u00dc\u00df][\w\s]{2,50})',
 	re.IGNORECASE,
 )
 
-# Phantom-confirmation guard — Z claimed success in prose without emitting a tag
+# Phantom-confirmation guard — Z claimed success in prose without emitting a tag.
+# Covers English and German (and partial Spanish/French) confirmation patterns.
 _PHANTOM_RE = re.compile(
 	r'\b(task added|board (added|created)|event (added|created)|card (added|created)'
 	r'|added to (your )?(todo|list|board|today)'
 	r'|done[\s\u2014\u2013-]+(task|board|card|event|create|add)'
-	r'|done\s*[\u2014\u2013\-]+\s*(create|add|new))\b',
+	r'|done\s*[\u2014\u2013\-]+\s*(create|add|new)'
+	# German phantom patterns
+	r'|erledigt[\s\u2014\u2013\-]+(board|karte|aufgabe|liste)'
+	r'|board[^.]{0,80}(neu\s+strukturiert|reorganisiert|sortiert|umstrukturiert)'
+	r'|karten?[^.]{0,80}(verschoben|sortiert|erstellt)'
+	r'|listen?[^.]{0,80}(erstellt|angelegt|umbenannt)'
+	# Spanish / French
+	r'|tablero[^.]{0,80}(reorganizado|reestructurado)'
+	r'|tableau[^.]{0,80}(réorganisé|restructuré)'
+	r')\b',
 	re.IGNORECASE,
 )
 
@@ -504,7 +522,9 @@ async def route_message_stream(
 					"If yes: reply SORT_BOARD:<exact board name from the list above>\n"
 					"If no: reply NO"
 				)
-				_sem = await asyncio.wait_for(_fast_chat(_sem_prompt, tier="fast"), timeout=20.0)
+				# Use tier="auto" so cloud takes over when the local fast model is busy/slow.
+				# The classify prompt is tiny (~100 tokens). Cloud response < 500 ms.
+				_sem = await asyncio.wait_for(_fast_chat(_sem_prompt, tier="auto"), timeout=20.0)
 				_sem = _sem.strip()
 				if _sem.upper().startswith("SORT_BOARD:"):
 					_board_frag = _sem.split(":", 1)[1].strip().rstrip(".,;!?")
