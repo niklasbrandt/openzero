@@ -999,7 +999,8 @@ async def reset_routing_lessons():
 				wiped.append(col)
 		return {"status": "ok", "wiped": wiped}
 	except Exception as exc:
-		return {"status": "error", "detail": str(exc)}
+		logger.warning("wipe-routing-lessons failed", exc_info=exc)
+		return {"status": "error", "detail": "Internal error"}
 
 
 @router.get("/ambient/recent-captures")
@@ -1030,7 +1031,8 @@ async def get_recent_captures():
 				pass
 		return {"events": events}
 	except Exception as exc:
-		return {"events": [], "error": str(exc)}
+		logger.warning("get-recent-captures failed", exc_info=exc)
+		return {"events": [], "error": "Internal error"}
 
 
 @router.post("/chat/stream")
@@ -3333,6 +3335,7 @@ async def get_ambient_status():
 			"cooldowns": cooldowns,
 		}
 	except Exception as exc:
+		logger.warning("ambient-status failed", exc_info=exc)
 		return {
 			"enabled": False,
 			"pending_count": 0,
@@ -3341,7 +3344,7 @@ async def get_ambient_status():
 			"rate_count": 0,
 			"rate_max": 3,
 			"cooldowns": [],
-			"error": str(exc),
+			"error": "Internal error",
 		}
 
 
@@ -3385,4 +3388,5 @@ async def dismiss_pending_trigger(rule_id: str):
 		deleted = r.delete(f"oz:ambient:pending:{rule_id}")
 		return {"dismissed": bool(deleted), "rule_id": rule_id}
 	except Exception as exc:
-		return {"dismissed": False, "rule_id": rule_id, "error": str(exc)}
+		logger.warning("dismiss-pending-trigger failed", exc_info=exc)
+		return {"dismissed": False, "rule_id": rule_id, "error": "Internal error"}
