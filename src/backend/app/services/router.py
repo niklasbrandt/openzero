@@ -443,17 +443,25 @@ async def route_message_stream(
 				else:
 					delivery_text = result_text
 				yield delivery_text
-				clean, cmds, pending = await bus.commit_reply(
-					channel=channel, raw_reply=delivery_text,
-					model="intent_router", user_text=user_text, save=save_history,
-				)
-				# For SORT_BOARD use delivery_text directly — commit_reply saves to history
-				# but its aggressive hygiene may blank the summary; prefer our pre-stripped text.
-				result_future.set_result(RouterResult(
-					reply=delivery_text if intent.verb == "SORT_BOARD" else clean,
-					model="intent_router",
-					executed_cmds=cmds, pending_actions=pending,
-				))
+				_cmds: list = []
+				_pending: list = []
+				try:
+					clean, _cmds, _pending = await bus.commit_reply(
+						channel=channel, raw_reply=delivery_text,
+						model="intent_router", user_text=user_text, save=save_history,
+					)
+				except Exception as _commit_err:
+					logger.error("Router: commit_reply failed after SORT_BOARD yield: %s", _commit_err)
+					clean = delivery_text
+				finally:
+					if not result_future.done():
+						# For SORT_BOARD use delivery_text directly — commit_reply saves to history
+						# but its aggressive hygiene may blank the summary; prefer our pre-stripped text.
+						result_future.set_result(RouterResult(
+							reply=delivery_text if intent.verb == "SORT_BOARD" else clean,
+							model="intent_router",
+							executed_cmds=_cmds, pending_actions=_pending,
+						))
 				return
 
 		# ── 0.52 Semantic board-management fallback ───────────────────────────
@@ -511,15 +519,22 @@ async def route_message_stream(
 								import re as _re2
 								_sem_delivery = _re2.sub(r'\[AUDIT:[^\]]{0,300}\]?', '', _sem_result, flags=_re2.IGNORECASE).strip() or _sem_result
 								yield _sem_delivery
-								clean, cmds, pending = await bus.commit_reply(
-									channel=channel, raw_reply=_sem_delivery,
-									model="intent_router", user_text=user_text, save=save_history,
-								)
-								result_future.set_result(RouterResult(
-									reply=_sem_delivery,
-									model="intent_router",
-									executed_cmds=cmds, pending_actions=pending,
-								))
+								_sem_cmds: list = []
+								_sem_pending: list = []
+								try:
+									_, _sem_cmds, _sem_pending = await bus.commit_reply(
+										channel=channel, raw_reply=_sem_delivery,
+										model="intent_router", user_text=user_text, save=save_history,
+									)
+								except Exception as _sem_commit_err:
+									logger.error("Router 0.52: commit_reply failed after yield: %s", _sem_commit_err)
+								finally:
+									if not result_future.done():
+										result_future.set_result(RouterResult(
+											reply=_sem_delivery,
+											model="intent_router",
+											executed_cmds=_sem_cmds, pending_actions=_sem_pending,
+										))
 								return
 			except asyncio.TimeoutError:
 				logger.warning("Router 0.52: semantic fallback timed out — falling through")
