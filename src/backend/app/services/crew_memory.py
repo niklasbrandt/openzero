@@ -253,7 +253,7 @@ async def _get_or_create_conversation_list(
 				if lst["id"] == winner["id"]:
 					continue
 				if _card_count(lst["id"]) == 0:
-					r = await client.delete(f"/api/lists/{lst['id']}")
+					await client.delete(f"/api/lists/{lst['id']}")
 					logger.info("crew_memory: deleted empty duplicate conversation list '%s' (id=%s) on board %s",
 								lst.get("name"), lst["id"], board_id)
 				else:

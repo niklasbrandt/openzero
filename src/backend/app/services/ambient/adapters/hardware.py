@@ -123,8 +123,6 @@ async def _fetch_hardware_snapshot() -> dict:
 			if qdrant_resp.status_code == 200:
 				cols = qdrant_resp.json().get("result", {}).get("collections", [])
 				total_points = 0
-				for col in cols:
-					snap["qdrant_points"] = total_points  # approximate; updated below
 				# Quick count: sum vectors_count across all collections
 				cnames = [c["name"] for c in cols]
 				for cname in cnames[:5]:  # cap to avoid flooding
