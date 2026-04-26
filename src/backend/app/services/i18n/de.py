@@ -500,5 +500,26 @@ translations: dict[str, str] = {
         "inference_saving": "Speichert...",
         "inference_saved": "Gespeichert.",
         "inference_wipe_ok": "Routing-Lektionen gel\u00f6scht.",
-        "inference_wipe_fail": "L\u00f6schen fehlgeschlagen \u2014 Logs pr\u00fcfen.",
-}
+        "inference_wipe_fail": "L\u00f6schen fehlgeschlagen \u2014 Logs pr\u00fcfen.",        "inference_lesson_never": "Nie ablaufen",
+        # Reasoning trace (Epoch 3)
+        "reasoning_trace_title": "Routing-Verlauf",
+        "reasoning_trace_empty": "Keine letzten Captures.",
+        "reasoning_trace_lane_execute": "Still",
+        "reasoning_trace_lane_ask": "Nachgefragt",
+        "reasoning_trace_lane_teach": "Lehren",
+        "reasoning_trace_lane_chat": "Gespräch",
+        "reasoning_trace_confidence": "Konfidenz",
+        "reasoning_trace_plugin": "Plugin",
+        "reasoning_trace_destination": "Ziel",
+        # Cross-system routing confirmations (Epoch 3)
+        "captured_to_card": "'{phrase}' in {board} \u2192 {list} gespeichert.",
+        "captured_to_calendar": "'{phrase}' zum Kalender hinzugefügt.",
+        "captured_to_shopping_list": "'{phrase}' zur Einkaufsliste hinzugefügt.",
+        "captured_to_memory": "'{phrase}' als Gedächtnisfakt gespeichert.",
+        "captured_to_crew_output": "'{phrase}' über Crew {crew} abgelegt.",
+        "captured_to_reminder": "Erinnerung für '{phrase}' gesetzt.",
+        # Privacy posture (Epoch 3)
+        "privacy_public": "Öffentlich",
+        "privacy_private": "Privat",
+        "privacy_auto": "Auto",
+        "privacy_first_touch": "Ich habe dein Board '{board}' als privat markiert \u2014 es erscheint nicht in Vorschlägen, außer du nennst es direkt. In den Board-Einstellungen anpassen.",}

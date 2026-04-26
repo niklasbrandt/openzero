@@ -502,4 +502,27 @@ translations: dict[str, str] = {
         "inference_saved": "Saved.",
         "inference_wipe_ok": "Routing lessons wiped.",
         "inference_wipe_fail": "Wipe failed — check logs.",
+        "inference_lesson_never": "Never expire",
+        # Reasoning trace (Epoch 3)
+        "reasoning_trace_title": "Routing Trace",
+        "reasoning_trace_empty": "No recent captures.",
+        "reasoning_trace_lane_execute": "Silent",
+        "reasoning_trace_lane_ask": "Asked",
+        "reasoning_trace_lane_teach": "Teach",
+        "reasoning_trace_lane_chat": "Conversation",
+        "reasoning_trace_confidence": "Confidence",
+        "reasoning_trace_plugin": "Plugin",
+        "reasoning_trace_destination": "Destination",
+        # Cross-system routing confirmations (Epoch 3)
+        "captured_to_card": "Saved '{phrase}' to {board} \u2192 {list}.",
+        "captured_to_calendar": "Added '{phrase}' to your calendar.",
+        "captured_to_shopping_list": "Added '{phrase}' to your shopping list.",
+        "captured_to_memory": "Stored '{phrase}' as a memory fact.",
+        "captured_to_crew_output": "Filed '{phrase}' via crew {crew}.",
+        "captured_to_reminder": "Set a reminder for '{phrase}'.",
+        # Privacy posture (Epoch 3)
+        "privacy_public": "Public",
+        "privacy_private": "Private",
+        "privacy_auto": "Auto",
+        "privacy_first_touch": "I've marked your '{board}' board as private \u2014 it won't surface in suggestions unless you name it directly. Adjust in board settings.",
 }

@@ -475,4 +475,27 @@ translations: dict[str, str] = {
         'inference_saved': "저장되었습니다.",
         'inference_wipe_ok': "라우팅 학습이 삭제되었습니다.",
         'inference_wipe_fail': "삭제 실패 — 로그를 확인하세요.",
+        'inference_lesson_never': '만료 없음',
+        # Reasoning trace (Epoch 3)
+        'reasoning_trace_title': '라우팅 추적',
+        'reasoning_trace_empty': '최근 캡처가 없습니다.',
+        'reasoning_trace_lane_execute': '무음',
+        'reasoning_trace_lane_ask': '질문됨',
+        'reasoning_trace_lane_teach': '가르침',
+        'reasoning_trace_lane_chat': '대화',
+        'reasoning_trace_confidence': '신뢰도',
+        'reasoning_trace_plugin': '플러그인',
+        'reasoning_trace_destination': '대상',
+        # Cross-system routing confirmations (Epoch 3)
+        'captured_to_card': "'{phrase}'을(를) {board} \u2192 {list}에 저장했습니다.",
+        'captured_to_calendar': "'{phrase}'을(를) 캘린더에 추가했습니다.",
+        'captured_to_shopping_list': "'{phrase}'을(를) 쇼핑 목록에 추가했습니다.",
+        'captured_to_memory': "'{phrase}'을(를) 기억 사실로 저장했습니다.",
+        'captured_to_crew_output': "'{phrase}'을(를) 크루 {crew}를 통해 제출했습니다.",
+        'captured_to_reminder': "'{phrase}'에 대한 알림을 설정했습니다.",
+        # Privacy posture (Epoch 3)
+        'privacy_public': '공개',
+        'privacy_private': '비공개',
+        'privacy_auto': '자동',
+        'privacy_first_touch': "'{board}' 보드를 비공개로 표시했습니다 \u2014 직접 이름을 말하지 않으면 제안에 나타나지 않습니다.",
 }

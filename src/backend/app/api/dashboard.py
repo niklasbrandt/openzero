@@ -1001,6 +1001,38 @@ async def reset_routing_lessons():
 	except Exception as exc:
 		return {"status": "error", "detail": str(exc)}
 
+
+@router.get("/ambient/recent-captures")
+async def get_recent_captures():
+	"""Return the last N ambient capture events for the reasoning trace (Epoch 3).
+
+	Reads from the ``capture_events`` Redis list. Returns at most 20 entries.
+	Each entry is a dict with: timestamp, lane, plugin_name, destination_label,
+	confidence, channel, reasoning (diagnostic payload, no phrase text).
+	"""
+	try:
+		import redis
+		from app.config import settings as s
+		r = redis.Redis(
+			host=s.REDIS_HOST,
+			port=s.REDIS_PORT,
+			password=s.REDIS_PASSWORD or None,
+			decode_responses=True,
+			socket_timeout=2.0,
+		)
+		import json as _json
+		raw_items = r.lrange("ambient_capture:events", 0, 19)
+		events = []
+		for raw in raw_items:
+			try:
+				events.append(_json.loads(raw))
+			except Exception:
+				pass
+		return {"events": events}
+	except Exception as exc:
+		return {"events": [], "error": str(exc)}
+
+
 @router.post("/chat/stream")
 async def dashboard_chat_stream(req: ChatRequest, request: Request, _rl: None = Depends(_check_chat_rate_limit)):
 	"""SSE streaming chat endpoint for real-time token delivery to dashboard."""

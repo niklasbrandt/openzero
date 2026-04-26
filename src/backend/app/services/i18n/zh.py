@@ -476,4 +476,27 @@ translations: dict[str, str] = {
         'inference_saved': "已保存。",
         'inference_wipe_ok': "路由学习已清除。",
         'inference_wipe_fail': "清除失败 — 请查看日志。",
+        'inference_lesson_never': '永不过期',
+        # Reasoning trace (Epoch 3)
+        'reasoning_trace_title': '路由追踪',
+        'reasoning_trace_empty': '暂无最近捕获。',
+        'reasoning_trace_lane_execute': '静默',
+        'reasoning_trace_lane_ask': '已询问',
+        'reasoning_trace_lane_teach': '教学',
+        'reasoning_trace_lane_chat': '对话',
+        'reasoning_trace_confidence': '置信度',
+        'reasoning_trace_plugin': '插件',
+        'reasoning_trace_destination': '目标',
+        # Cross-system routing confirmations (Epoch 3)
+        'captured_to_card': "已将'{phrase}'保存至 {board} \u2192 {list}。",
+        'captured_to_calendar': "已将'{phrase}'添加到日历。",
+        'captured_to_shopping_list': "已将'{phrase}'添加到购物清单。",
+        'captured_to_memory': "已将'{phrase}'存为记忆事实。",
+        'captured_to_crew_output': "已通过团队 {crew} 提交'{phrase}'。",
+        'captured_to_reminder': "已为'{phrase}'设置提醒。",
+        # Privacy posture (Epoch 3)
+        'privacy_public': '公开',
+        'privacy_private': '私密',
+        'privacy_auto': '自动',
+        'privacy_first_touch': "已将您的'{board}'板标记为私密 \u2014 除非您直接提及，否则不会出现在建议中。",
 }
