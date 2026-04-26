@@ -150,7 +150,7 @@ async def _handle_inbound(sender: str, text: str) -> None:
 		)
 		try:
 			from app.services.router import _REORGANIZE_BOARD_RE as _reorg_re
-			_stream_timeout = 300.0 if _reorg_re.search(text[:500]) else 120.0
+			_stream_timeout = 300.0 if _reorg_re.search(text[:500]) else 240.0
 			async with _asyncio.timeout(_stream_timeout):
 				async for _ in token_stream:
 					pass
@@ -236,7 +236,7 @@ async def _handle_inbound_image(sender: str, media_id: str, user_hint: str) -> N
 	)
 	try:
 		from app.services.router import _REORGANIZE_BOARD_RE as _reorg_re
-		_stream_timeout = 300.0 if _reorg_re.search(caption[:500]) else 120.0
+		_stream_timeout = 300.0 if _reorg_re.search(caption[:500]) else 240.0
 		async with _asyncio.timeout(_stream_timeout):
 			async for _ in token_stream:
 				pass
