@@ -20,7 +20,6 @@ from typing import Optional
 from app.services.ambient_capture.plugin import (
 	ActionResult,
 	CaptureDecision,
-	CapturePlugin,
 	PluginCapabilities,
 	PluginScore,
 )
@@ -37,9 +36,6 @@ _PREFERENCE_RE = re.compile(
 	r"私は|나는|我)\b",
 	re.I | re.UNICODE,
 )
-
-_MIN_SCORE = 0.30
-
 
 class MemoryFactPlugin:
 	"""Store a first-person fact or preference as a memory point."""

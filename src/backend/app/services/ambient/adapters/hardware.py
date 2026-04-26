@@ -131,8 +131,8 @@ async def _fetch_hardware_snapshot() -> dict:
 						if cr.status_code == 200:
 							vc = cr.json().get("result", {}).get("vectors_count") or 0
 							total_points += vc
-					except Exception:
-						pass
+					except Exception as _e:
+						logger.debug("HardwareAdapter: collection count skipped: %s", _e)
 				snap["qdrant_points"] = total_points
 	except Exception as exc:
 		logger.debug("HardwareAdapter: Qdrant unavailable: %s", exc)

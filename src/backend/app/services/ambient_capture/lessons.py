@@ -20,7 +20,7 @@ from __future__ import annotations
 import logging
 import time
 import uuid
-from typing import Literal, Optional
+from typing import Literal
 
 logger = logging.getLogger(__name__)
 
@@ -40,8 +40,6 @@ _PRIVATE_LESSONS_COLLECTION = "routing_lessons_private"
 # Anti-poisoning constants (C2)
 _MAX_LESSONS_PER_WINDOW = 5
 _WINDOW_SECONDS = 600         # 10 minutes
-_CLUSTER_SIM_THRESHOLD = 0.90 # lessons closer than this are "identical"
-_MAX_CLUSTER_CAP = 3          # max identical-cluster lessons per 24h
 
 
 def signal_weight(action: UserAction) -> float:

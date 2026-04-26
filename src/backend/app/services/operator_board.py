@@ -355,7 +355,7 @@ class OperatorBoardService:
 					# Planka requires all boards to be deleted before a project can be deleted (HTTP 422 otherwise)
 					proj_detail = (await client.get(f"/api/projects/{p['id']}")).json()
 					for board in proj_detail.get("included", {}).get("boards", []):
-						br = await client.delete(f"/api/boards/{board['id']}")
+						await client.delete(f"/api/boards/{board['id']}")
 						logger.info("Deleted board '%s' (id=%s) from duplicate project", board.get("name"), board["id"])
 					r = await client.delete(f"/api/projects/{p['id']}")
 					if r.status_code in (200, 204):
