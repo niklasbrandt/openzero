@@ -475,4 +475,27 @@ translations: dict[str, str] = {
         'inference_saved': "Salvo.",
         'inference_wipe_ok': "Li\u00e7\u00f5es de roteamento apagadas.",
         'inference_wipe_fail': "Falha ao apagar — verifique os logs.",
+        'inference_lesson_never': "Nunca expirar",
+        # Reasoning trace (Epoch 3)
+        'reasoning_trace_title': "Histórico de rotas",
+        'reasoning_trace_empty': "Sem capturas recentes.",
+        'reasoning_trace_lane_execute': "Silencioso",
+        'reasoning_trace_lane_ask': "Perguntado",
+        'reasoning_trace_lane_teach': "Ensinar",
+        'reasoning_trace_lane_chat': "Conversa",
+        'reasoning_trace_confidence': "Confiança",
+        'reasoning_trace_plugin': "Plugin",
+        'reasoning_trace_destination': "Destino",
+        # Cross-system routing confirmations (Epoch 3)
+        'captured_to_card': "'{phrase}' salvo em {board} \u2192 {list}.",
+        'captured_to_calendar': "'{phrase}' adicionado ao calendário.",
+        'captured_to_shopping_list': "'{phrase}' adicionado à lista de compras.",
+        'captured_to_memory': "'{phrase}' guardado como facto de memória.",
+        'captured_to_crew_output': "'{phrase}' arquivado via crew {crew}.",
+        'captured_to_reminder': "Lembrete definido para '{phrase}'.",
+        # Privacy posture (Epoch 3)
+        'privacy_public': "Público",
+        'privacy_private': "Privado",
+        'privacy_auto': "Auto",
+        'privacy_first_touch': "Marquei o seu quadro '{board}' como privado \u2014 não aparecerá em sugestões a não ser que o nomeie diretamente.",
 }

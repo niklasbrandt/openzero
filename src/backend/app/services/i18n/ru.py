@@ -475,4 +475,27 @@ translations: dict[str, str] = {
         'inference_saved': "Сохранено.",
         'inference_wipe_ok': "Уроки стёрты.",
         'inference_wipe_fail': "Ошибка — проверь логи.",
+        'inference_lesson_never': 'Никогда не истекать',
+        # Reasoning trace (Epoch 3)
+        'reasoning_trace_title': 'Трассировка маршрутов',
+        'reasoning_trace_empty': 'Нет недавних захватов.',
+        'reasoning_trace_lane_execute': 'Тихо',
+        'reasoning_trace_lane_ask': 'Спрошено',
+        'reasoning_trace_lane_teach': 'Обучение',
+        'reasoning_trace_lane_chat': 'Разговор',
+        'reasoning_trace_confidence': 'Уверенность',
+        'reasoning_trace_plugin': 'Плагин',
+        'reasoning_trace_destination': 'Назначение',
+        # Cross-system routing confirmations (Epoch 3)
+        'captured_to_card': "'{phrase}' сохранено в {board} \u2192 {list}.",
+        'captured_to_calendar': "'{phrase}' добавлено в календарь.",
+        'captured_to_shopping_list': "'{phrase}' добавлено в список покупок.",
+        'captured_to_memory': "'{phrase}' сохранено как факт памяти.",
+        'captured_to_crew_output': "'{phrase}' подано через группу {crew}.",
+        'captured_to_reminder': "Напоминание установлено для '{phrase}'.",
+        # Privacy posture (Epoch 3)
+        'privacy_public': 'Публичное',
+        'privacy_private': 'Приватное',
+        'privacy_auto': 'Авто',
+        'privacy_first_touch': "Доска '{board}' помечена как приватная \u2014 она не появится в подсказках, пока вы её не назовёте напрямую.",
 }
