@@ -148,9 +148,16 @@ async def _do_check_unanswered() -> None:
 		channel="telegram",
 		save_history=True,
 	)
-	async for _ in token_stream:
-		pass
-	result = await result_fut
+	# Hard wall-clock cap — never let recovery hang the watchdog (or block
+	# a startup tick) on a stalled cloud stream.
+	try:
+		async with asyncio.timeout(120.0):
+			async for _ in token_stream:
+				pass
+			result = await result_fut
+	except asyncio.TimeoutError:
+		logger.warning("Watchdog: recovery stream timed out after 120 s — skipping delivery.")
+		return
 
 	if not result.reply or _is_error_stub(result.reply):
 		logger.warning("Watchdog: recovery router returned empty/error reply.")
