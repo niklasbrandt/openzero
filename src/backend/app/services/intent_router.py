@@ -2116,8 +2116,8 @@ async def dispatch_structural_intent(intent: StructuralIntent, lang: str) -> str
 				# Ask the fast model for a JSON plan: which new lists to create
 				# and which cards to move. Keeps output to ~80 tokens of JSON
 				# so the local model can answer in seconds, not minutes.
-				list_names = [l.get("name", "?") for l in lists]
-				card_entries = [{"name": c.get("name", "?"), "list": next((l.get("name") for l in lists if l["id"] == c.get("listId")), "?")} for c in cards]
+				list_names = [l.get("name") or "?" for l in lists]
+				card_entries = [{"name": c.get("name") or "?", "list": next((l.get("name") for l in lists if l["id"] == c.get("listId")), "?")} for c in cards]
 				plan_prompt = (
 					f"Board: {board_name}\n"
 					f"Lists: {list_names}\n"
@@ -2139,8 +2139,8 @@ async def dispatch_structural_intent(intent: StructuralIntent, lang: str) -> str
 					logger.warning("SORT_BOARD: plan generation failed: %s — skipping card moves", _pe)
 
 				# ── Step 3: Execute plan deterministically ────────────────────
-				all_list_index = {l["name"].lower(): l["id"] for l in lists}
-				card_index = {c["name"].lower(): c for c in cards}
+				all_list_index = {(l["name"] or "").lower(): l["id"] for l in lists}
+				card_index = {(c["name"] or "").lower(): c for c in cards}
 				results: list[str] = []
 
 				# Create new lists from plan
