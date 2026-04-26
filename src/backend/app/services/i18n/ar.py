@@ -476,4 +476,27 @@ translations: dict[str, str] = {
         'inference_saved': "تم الحفظ.",
         'inference_wipe_ok': "تم حذف دروس التوجيه.",
         'inference_wipe_fail': "فشل الحذف — راجع السجلات.",
+        'inference_lesson_never': 'لا تنتهي أبداً',
+        # Reasoning trace (Epoch 3)
+        'reasoning_trace_title': 'تتبع التوجيه',
+        'reasoning_trace_empty': 'لا توجد التقاطات حديثة.',
+        'reasoning_trace_lane_execute': 'صامت',
+        'reasoning_trace_lane_ask': 'تم السؤال',
+        'reasoning_trace_lane_teach': 'تعليم',
+        'reasoning_trace_lane_chat': 'محادثة',
+        'reasoning_trace_confidence': 'الثقة',
+        'reasoning_trace_plugin': 'إضافة',
+        'reasoning_trace_destination': 'الوجهة',
+        # Cross-system routing confirmations (Epoch 3)
+        'captured_to_card': "تم حفظ '{phrase}' في {board} \u2192 {list}.",
+        'captured_to_calendar': "تمت إضافة '{phrase}' إلى التقويم.",
+        'captured_to_shopping_list': "تمت إضافة '{phrase}' إلى قائمة التسوق.",
+        'captured_to_memory': "تم تخزين '{phrase}' كحقيقة في الذاكرة.",
+        'captured_to_crew_output': "تم تقديم '{phrase}' عبر الطاقم {crew}.",
+        'captured_to_reminder': "تم تعيين تذكير لـ '{phrase}'.",
+        # Privacy posture (Epoch 3)
+        'privacy_public': 'عام',
+        'privacy_private': 'خاص',
+        'privacy_auto': 'تلقائي',
+        'privacy_first_touch': "لقد وضعت علامة خاصة على لوحة '{board}' \u2014 لن تظهر في الاقتراحات إلا إذا ذكرتها مباشرة.",
 }

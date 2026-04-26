@@ -475,4 +475,27 @@ translations: dict[str, str] = {
         'inference_saved': "Enregistr\u00e9.",
         'inference_wipe_ok': "Le\u00e7ons de routage supprim\u00e9es.",
         'inference_wipe_fail': "\u00c9chec de la suppression \u2014 v\u00e9rifier les journaux.",
+        'inference_lesson_never': "Ne jamais expirer",
+        # Reasoning trace (Epoch 3)
+        'reasoning_trace_title': "Historique de routage",
+        'reasoning_trace_empty': "Aucune capture récente.",
+        'reasoning_trace_lane_execute': "Silencieux",
+        'reasoning_trace_lane_ask': "Demandé",
+        'reasoning_trace_lane_teach': "Enseignement",
+        'reasoning_trace_lane_chat': "Conversation",
+        'reasoning_trace_confidence': "Confiance",
+        'reasoning_trace_plugin': "Plugin",
+        'reasoning_trace_destination': "Destination",
+        # Cross-system routing confirmations (Epoch 3)
+        'captured_to_card': "'{phrase}' enregistré dans {board} \u2192 {list}.",
+        'captured_to_calendar': "'{phrase}' ajouté à votre calendrier.",
+        'captured_to_shopping_list': "'{phrase}' ajouté à votre liste de courses.",
+        'captured_to_memory': "'{phrase}' enregistré comme souvenir.",
+        'captured_to_crew_output': "'{phrase}' classé via l'équipe {crew}.",
+        'captured_to_reminder': "Rappel défini pour '{phrase}'.",
+        # Privacy posture (Epoch 3)
+        'privacy_public': "Public",
+        'privacy_private': "Privé",
+        'privacy_auto': "Auto",
+        'privacy_first_touch': "J'ai marqué votre tableau '{board}' comme privé \u2014 il n'apparaîtra pas dans les suggestions sauf si vous le nommez explicitement.",
 }

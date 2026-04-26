@@ -474,4 +474,27 @@ translations: dict[str, str] = {
         'inference_saved': "सहेजा गया।",
         'inference_wipe_ok': "रूटिंग पाठ हटाए गए।",
         'inference_wipe_fail': "हटाना विफल — लॉग जांचें।",
+        'inference_lesson_never': 'कभी समाप्त नहीं',
+        # Reasoning trace (Epoch 3)
+        'reasoning_trace_title': 'रूटिंग ट्रेस',
+        'reasoning_trace_empty': 'कोई हाल के कैप्चर नहीं।',
+        'reasoning_trace_lane_execute': 'मौन',
+        'reasoning_trace_lane_ask': 'पूछा गया',
+        'reasoning_trace_lane_teach': 'सिखाएं',
+        'reasoning_trace_lane_chat': 'बातचीत',
+        'reasoning_trace_confidence': 'विश्वास',
+        'reasoning_trace_plugin': 'प्लगइन',
+        'reasoning_trace_destination': 'गंतव्य',
+        # Cross-system routing confirmations (Epoch 3)
+        'captured_to_card': "'{phrase}' को {board} \u2192 {list} में सहेजा गया।",
+        'captured_to_calendar': "'{phrase}' को कैलेंडर में जोड़ा गया।",
+        'captured_to_shopping_list': "'{phrase}' को शॉपिंग लिस्ट में जोड़ा गया।",
+        'captured_to_memory': "'{phrase}' को मेमोरी फैक्ट के रूप में सहेजा गया।",
+        'captured_to_crew_output': "'{phrase}' क्रू {crew} के माध्यम से दर्ज किया गया।",
+        'captured_to_reminder': "'{phrase}' के लिए रिमाइंडर सेट किया।",
+        # Privacy posture (Epoch 3)
+        'privacy_public': 'सार्वजनिक',
+        'privacy_private': 'निजी',
+        'privacy_auto': 'स्वचालित',
+        'privacy_first_touch': "मैंने आपके '{board}' बोर्ड को निजी के रूप में चिह्नित किया है \u2014 यह सुझावों में नहीं दिखेगा जब तक आप इसे सीधे नाम नहीं लेते।",
 }
