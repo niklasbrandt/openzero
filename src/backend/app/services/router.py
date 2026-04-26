@@ -475,16 +475,13 @@ async def route_message_stream(
 
 		# ── 0.52 Semantic board-management fallback ───────────────────────────
 		# Fires when NO structural intent matched via regex. Uses the fast local
-		# model to understand intent from natural language — catches phrases like
-		# "my reef board is a mess", "redo the reef tank", "the livestock list
-		# needs organising" — things no regex would ever cover.
-		# Cost: one fast-model call (~2s) only on regex-miss. Falls through silently.
+		# model to classify intent only (binary YES/NO sort-board question) —
+		# board-name resolution happens inside dispatch which has a 120s budget.
 		if intent is None:
 			try:
 				from app.services.llm import chat as _fast_chat
 				from app.services.intent_router import StructuralIntent, dispatch_structural_intent, _get_planka_snapshot, _match_name
-				# Fetch board list first so the fast model can map colloquial names
-				# (e.g. "aquarium board") to the exact Planka board name ("reef tank").
+				# Fetch board list so the fast model has board names to choose from.
 				_projects = await _get_planka_snapshot()
 				_all_boards = [b for p in (_projects or []) for b in p["boards"]]
 				_board_names_hint = ", ".join((b.get("name") or "") for b in _all_boards) or "none"
@@ -492,8 +489,7 @@ async def route_message_stream(
 					f"Available Planka boards: {_board_names_hint}\n"
 					"Is this message asking to reorganise, sort, tidy, or restructure one of those boards?\n"
 					f"Message: \"{user_text[:300]}\"\n"
-					"IMPORTANT: The user may use a nickname, synonym, or related term instead of the exact board name.\n"
-					"Example: 'aquarium' refers to a board named 'reef tank'. 'shopping' refers to a board named 'groceries'.\n"
+					"IMPORTANT: The user may use a nickname or synonym (e.g. 'aquarium' for 'reef tank').\n"
 					"Pick the single most semantically related board from the list above.\n"
 					"If yes: reply SORT_BOARD:<exact board name from the list above>\n"
 					"If no: reply NO"
@@ -503,78 +499,63 @@ async def route_message_stream(
 				if _sem.upper().startswith("SORT_BOARD:"):
 					_board_frag = _sem.split(":", 1)[1].strip().rstrip(".,;!?")
 					if _board_frag:
-						if _all_boards:
-							_best, _ = _match_name(_board_frag, _all_boards)
-							if not _best:
-								for b in _all_boards:
-									bn = (b["name"] or "").lower()
-									bf = _board_frag.lower()
-									if bf in bn or bn in bf:
-										_best = b
-										break
-							if _best:
-								_sem_intent = StructuralIntent(
-									verb="SORT_BOARD",
-									entities={"board_fragment": _board_frag, "board_name": _best["name"], "board_id": _best["id"]},
-									raw_text=user_text[:_MAX_RE_INPUT],
-									confidence=0.9,
-								)
-								logger.info("Router 0.52: semantic board-manage detected → SORT_BOARD '%s'", _best["name"])
-								try:
-									_sem_result = await asyncio.wait_for(
-										dispatch_structural_intent(_sem_intent, lang), timeout=120.0,
-									)
-								except asyncio.TimeoutError:
-									logger.error("Router 0.52: SORT_BOARD dispatch timed out")
-									_sem_result = "⚠ Timed out reorganising board — the board may be very large. Try again."
-								except Exception as _sde:
-									logger.error("Router 0.52: SORT_BOARD dispatch failed: %s", _sde)
-									_sem_result = f"⚠ Failed to reorganise board: {_sde}"
-								if not _sem_result:
-									_sem_result = "⚠ Board reorganisation returned no output. Please try again."
-								import re as _re2
-								_sem_delivery = _re2.sub(r'\[AUDIT:[^\]]{0,300}\]?', '', _sem_result, flags=_re2.IGNORECASE).strip() or _sem_result
-								yield _sem_delivery
-								_sem_cmds: list = []
-								_sem_pending: list = []
-								try:
-									_, _sem_cmds, _sem_pending = await bus.commit_reply(
-										channel=channel, raw_reply=_sem_delivery,
-										model="intent_router", user_text=user_text, save=save_history,
-									)
-								except Exception as _sem_commit_err:
-									logger.error("Router 0.52: commit_reply failed after yield: %s", _sem_commit_err)
-								finally:
-									if not result_future.done():
-										result_future.set_result(RouterResult(
-											reply=_sem_delivery,
-											model="intent_router",
-											executed_cmds=_sem_cmds, pending_actions=_sem_pending,
-										))
-								return
-						else:
-							# Fast model flagged a board-sort intent but the board name it
-							# returned doesn't match any real board. Surface disambiguation
-							# instead of silently falling through to the general LLM.
-							_avail = ", ".join((b.get("name") or "") for b in _all_boards) or "none found"
-							_disambig = f"I couldn't find a board named '{_board_frag}'. Available boards: {_avail}."
-							logger.info("Router 0.52: SORT_BOARD '%s' not found — sending disambiguation", _board_frag)
-							yield _disambig
-							try:
-								await bus.commit_reply(
-									channel=channel, raw_reply=_disambig,
-									model="intent_router", user_text=user_text, save=save_history,
-								)
-							except Exception:
-								pass
-							finally:
-								if not result_future.done():
-									result_future.set_result(RouterResult(
-										reply=_disambig,
-										model="intent_router",
-										executed_cmds=[], pending_actions=[],
-									))
-							return
+						# Try direct name match first (fast model may return exact name)
+						_best = None
+						for b in _all_boards:
+							if (b.get("name") or "").lower() == _board_frag.lower():
+								_best = b
+								break
+						if not _best:
+							for b in _all_boards:
+								bn = (b["name"] or "").lower()
+								bf = _board_frag.lower()
+								if bf in bn or bn in bf:
+									_best = b
+									break
+						# Build intent — if board_id empty, dispatch will resolve via LLM
+						_sem_intent = StructuralIntent(
+							verb="SORT_BOARD",
+							entities={
+								"board_fragment": _board_frag,
+								"board_name": _best["name"] if _best else "",
+								"board_id": _best["id"] if _best else "",
+							},
+							raw_text=user_text[:_MAX_RE_INPUT],
+							confidence=0.9,
+						)
+						logger.info("Router 0.52: SORT_BOARD '%s' (resolved=%s)", _board_frag, bool(_best))
+						try:
+							_sem_result = await asyncio.wait_for(
+								dispatch_structural_intent(_sem_intent, lang), timeout=120.0,
+							)
+						except asyncio.TimeoutError:
+							logger.error("Router 0.52: SORT_BOARD dispatch timed out")
+							_sem_result = "⚠ Timed out reorganising board — the board may be very large. Try again."
+						except Exception as _sde:
+							logger.error("Router 0.52: SORT_BOARD dispatch failed: %s", _sde)
+							_sem_result = f"⚠ Failed to reorganise board: {_sde}"
+						if not _sem_result:
+							_sem_result = "⚠ Board reorganisation returned no output. Please try again."
+						import re as _re2
+						_sem_delivery = _re2.sub(r'\[AUDIT:[^\]]{0,300}\]?', '', _sem_result, flags=_re2.IGNORECASE).strip() or _sem_result
+						yield _sem_delivery
+						_sem_cmds: list = []
+						_sem_pending: list = []
+						try:
+							_, _sem_cmds, _sem_pending = await bus.commit_reply(
+								channel=channel, raw_reply=_sem_delivery,
+								model="intent_router", user_text=user_text, save=save_history,
+							)
+						except Exception as _sem_commit_err:
+							logger.error("Router 0.52: commit_reply failed after yield: %s", _sem_commit_err)
+						finally:
+							if not result_future.done():
+								result_future.set_result(RouterResult(
+									reply=_sem_delivery,
+									model="intent_router",
+									executed_cmds=_sem_cmds, pending_actions=_sem_pending,
+								))
+						return
 			except asyncio.TimeoutError:
 				logger.warning("Router 0.52: semantic fallback timed out — falling through")
 			except Exception as _sf:
