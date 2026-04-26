@@ -2120,13 +2120,17 @@ async def dispatch_structural_intent(intent: StructuralIntent, lang: str) -> str
 				card_entries = [{"name": c.get("name") or "?", "list": next((l.get("name") for l in lists if l["id"] == c.get("listId")), "?")} for c in cards]
 				plan_prompt = (
 					f"Board: {board_name}\n"
-					f"Lists: {list_names}\n"
+					f"Existing lists (do NOT recreate these): {list_names}\n"
 					f"Cards (name → current list): {[(e['name'], e['list']) for e in card_entries]}\n"
 					f"User request: {intent.raw_text}\n\n"
 					"Output ONLY compact JSON — no commentary:\n"
 					'{"new_lists":["name",...],"moves":{"card name":"target list"}}\n'
-					"Rules: only add new lists if clearly needed; only move cards with obvious mis-grouping; "
-					"empty arrays/objects if nothing to do."
+					"Rules:\n"
+					"- NEVER suggest creating a list that already exists in the 'Existing lists' above.\n"
+					"- Move ALL cards in 'Inbox' that clearly belong in another list.\n"
+					"- Cards sharing the same theme (e.g. all coral/species names) belong in the same list.\n"
+					"- Only create a new list if no existing list is a suitable home.\n"
+					"- Empty arrays/objects only if genuinely nothing to do."
 				)
 				plan: dict = {}
 				try:
