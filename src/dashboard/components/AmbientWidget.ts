@@ -39,7 +39,6 @@ interface AmbientConfig {
 export class AmbientWidget extends HTMLElement {
 	private _status: AmbientStatus | null = null;
 	private _config: AmbientConfig | null = null;
-	private _loading = true;
 	private _error: string | null = null;
 	private t: Record<string, string> = {};
 	private _refreshTimer: ReturnType<typeof setInterval> | null = null;
@@ -120,7 +119,6 @@ export class AmbientWidget extends HTMLElement {
 	}
 
 	private async fetchAll() {
-		this._loading = this._status === null;
 		await Promise.all([this.fetchStatus(), this.fetchConfig()]);
 		this.render();
 	}
