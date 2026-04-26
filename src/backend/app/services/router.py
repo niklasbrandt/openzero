@@ -396,16 +396,25 @@ async def route_message_stream(
 		# mark-done). Bypasses the chat LLM entirely so verbs that the cloud
 		# model occasionally describes in prose without emitting an ACTION tag
 		# still execute. Falls through to crew/LLM when no intent matches.
+		_clf_timeout = 3.0  # default; overridden below for sort/board phrases
 		try:
 			from app.services.intent_router import (
 				classify_structural_intent, dispatch_structural_intent,
 			)
+			# SORT_BOARD classification can include a fast-model call to resolve colloquial
+			# board names (e.g. "aquarium" → "reef tank"). Budget 12s for that path;
+			# keep 3s for all other intents so normal latency is unaffected.
+			_SORT_RE_QUICK = re.compile(
+				r'\b(?:sort|reorgani[sz]|restructur|clean up|tidy up|reorder|rearrang)',
+				re.IGNORECASE,
+			)
+			_clf_timeout = 12.0 if _SORT_RE_QUICK.search(user_text[:200]) else 3.0
 			intent = await asyncio.wait_for(
-				classify_structural_intent(user_text, lang), timeout=3.0,
+				classify_structural_intent(user_text, lang), timeout=_clf_timeout,
 			)
 		except asyncio.TimeoutError:
 			intent = None
-			logger.warning("Router: intent classifier timeout (>3s) — falling through to LLM")
+			logger.warning("Router: intent classifier timeout (>%.0fs) — falling through to LLM", _clf_timeout)
 		except Exception as _ie:
 			intent = None
 			logger.warning("Router: intent classifier failed: %s — falling through to LLM", _ie)
