@@ -1686,7 +1686,7 @@ async def classify_structural_intent(text: str, lang: str) -> Optional[Structura
 				# Broad match: accept if noun appears anywhere in board name
 				if not best_board:
 					for b in all_boards:
-						if noun_q in b["name"].lower():
+						if noun_q in (b["name"] or "").lower():
 							best_board = b
 							break
 				if best_board:
@@ -1723,7 +1723,7 @@ async def classify_structural_intent(text: str, lang: str) -> Optional[Structura
 				best_board, _conf = _match_name(board_q, all_boards)
 				if not best_board:
 					for b in all_boards:
-						bn = b["name"].lower()
+						bn = (b["name"] or "").lower()
 						bq = board_q.lower()
 						if bq in bn or bn in bq:
 							best_board = b

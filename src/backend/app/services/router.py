@@ -465,7 +465,7 @@ async def route_message_stream(
 							_best, _ = _match_name(_board_frag, _all_boards)
 							if not _best:
 								for b in _all_boards:
-									bn = b["name"].lower()
+									bn = (b["name"] or "").lower()
 									bf = _board_frag.lower()
 									if bf in bn or bn in bf:
 										_best = b
