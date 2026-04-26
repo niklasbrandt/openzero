@@ -50,6 +50,14 @@ class RuleEngine:
 			logger.warning("RuleEngine cooldown check failed for %s: %s", rule_id, exc)
 			return False  # fail open — allow the rule to fire rather than suppress forever
 
+	def _is_disabled(self, rule_id: str) -> bool:
+		try:
+			r = _get_redis()
+			return bool(r.exists(f"oz:ambient:rule_disabled:{rule_id}"))
+		except Exception as exc:
+			logger.warning("RuleEngine disable check failed for %s: %s", rule_id, exc)
+			return False  # fail open
+
 	def _set_cooldown(self, rule_id: str, cooldown_minutes: int) -> None:
 		try:
 			r = _get_redis()
@@ -65,6 +73,9 @@ class RuleEngine:
 			try:
 				if self._is_on_cooldown(rule_id):
 					logger.debug("RuleEngine: '%s' is on cooldown — skipping", rule_id)
+					continue
+				if self._is_disabled(rule_id):
+					logger.debug("RuleEngine: '%s' is disabled — skipping", rule_id)
 					continue
 				trigger = rule_fn(signals)
 				if trigger is None:

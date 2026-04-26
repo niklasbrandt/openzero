@@ -797,3 +797,45 @@ class TestDrainBriefingQueue:
 		with patch("app.services.ambient.delivery._get_redis", return_value=bad_redis):
 			result = drain_briefing_queue()
 		assert result == []
+
+# ── P3: Per-rule disable toggle ───────────────────────────────────────────────
+
+class TestRuleEngineDisableToggle:
+        """RuleEngine respects oz:ambient:rule_disabled:{rule_id} Redis keys (P3)."""
+
+        def test_rule_suppressed_when_disabled(self):
+                from app.services.ambient.rules import RuleEngine, Signal
+
+                def dummy_rule(signals):
+                        from app.services.ambient.rules import Trigger
+                        return Trigger(rule_id="dummy_rule", priority=3, crews=[], context="fired", cooldown_minutes=60)
+
+                engine = RuleEngine()
+                engine.register(dummy_rule, cooldown_minutes=60)
+
+                fake_redis = _FakeRedis()
+                fake_redis._data["oz:ambient:rule_disabled:dummy_rule"] = "1"
+
+                with patch("app.services.ambient.rules._get_redis", return_value=fake_redis):
+                        triggers = engine.evaluate([Signal(source="test", kind="test", severity=1.0, detail={})])
+
+                assert triggers == [], "Rule should be suppressed when disabled key is set"
+
+        def test_rule_fires_when_not_disabled(self):
+                from app.services.ambient.rules import RuleEngine, Signal
+
+                def active_rule(signals):
+                        from app.services.ambient.rules import Trigger
+                        return Trigger(rule_id="active_rule", priority=3, crews=[], context="fired", cooldown_minutes=60)
+
+                engine = RuleEngine()
+                engine.register(active_rule, cooldown_minutes=60)
+
+                fake_redis = _FakeRedis()
+                # No disabled key set for active_rule
+
+                with patch("app.services.ambient.rules._get_redis", return_value=fake_redis):
+                        triggers = engine.evaluate([Signal(source="test", kind="test", severity=1.0, detail={})])
+
+                assert len(triggers) == 1, "Rule should fire when not disabled"
+                assert triggers[0].rule_id == "active_rule"
