@@ -770,6 +770,7 @@ CRITICAL — USE EXACT NAMES IN PROSE: When confirming a CREATE_TASK, your prose
 - Create Project: `[ACTION: CREATE_PROJECT | NAME: text | DESCRIPTION: text]`
 - Create Board: `[ACTION: CREATE_BOARD | PROJECT: project_name | NAME: text]`
 - Create List (Column): `[ACTION: CREATE_LIST | BOARD: board_name | NAME: text]`
+  PARSING — "new list on [board] [name]" or "add list [name] to [board]": BOARD = the board name, NAME = the column name. Example: "new list on life goals 'dream home'" → `[ACTION: CREATE_LIST | BOARD: life goals | NAME: dream home]`. Do NOT include the preposition or board name inside NAME.
 - Create Event: `[ACTION: CREATE_EVENT | TITLE: text | START: YYYY-MM-DD HH:MM | END: YYYY-MM-DD HH:MM]`
 - Add Person: `[ACTION: ADD_PERSON | NAME: text | RELATIONSHIP: text | CONTEXT: text | CIRCLE: inner/close]`
 - Learn Information: `[ACTION: LEARN | TEXT: factual statement]`
