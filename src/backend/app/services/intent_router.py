@@ -82,6 +82,17 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 			re.compile(r'\brename\s+(?:the\s+)?(?:list|column)\s+(.{1,200}?)\s+to\s+(.{1,200})', re.IGNORECASE),
 			re.compile(r'\b(?:change|update)\s+(?:the\s+)?(?:list|column)\s+(?:name\s+)?(.{1,200}?)\s+to\s+(.{1,200})', re.IGNORECASE),
 		],
+		# "new life goal home", "new goal buy house", "new dream X", "new wish X"
+		# Anchored at start, high-confidence shorthand for adding an item to a
+		# board whose name contains the noun keyword (goal→life goals, etc.).
+		"board_item_add": [
+			re.compile(
+				r'^\s*(?:new|add)\s+(?:life\s+)?'
+				r'(?P<noun>goal|goals|dream|dreams|wish|wishes|idea|ideas|resolution|resolutions|item|todo|task|entry)\s+'
+				r'(?P<title>.{1,200})$',
+				re.IGNORECASE,
+			),
+		],
 		"create_card": [
 			# "add/create/new card|task <title> to|on|in <list-or-board>"
 			re.compile(r'\b(?:add|create|new|make)\s+(?:a\s+|the\s+)?(?:card|task|todo|to-do)\s+(?:named\s+|called\s+)?(.{1,200}?)(?:\s+(?:to|on|in|under)\s+(.{1,200}))?$', re.IGNORECASE),
@@ -170,6 +181,15 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 		"rename_list": [
 			re.compile(r'\b(?:umbenenn(?:en?|t)?)\s+(?:die\s+)?(?:liste|spalte|kolumne)\s+(.{1,200}?)\s+(?:in|zu|nach)\s+(.{1,200})', re.IGNORECASE),
 			re.compile(r'\b(?:benenn[e]?)\s+(?:die\s+)?(?:liste|spalte|kolumne)\s+(.{1,200}?)\s+(?:in|zu|nach)\s+(.{1,200}?)(?:\s+um)?$', re.IGNORECASE),
+		],
+		# "neues ziel X", "new goal X", "neuer dream X" — anchored shorthand
+		"board_item_add": [
+			re.compile(
+				r'^\s*(?:new|neues?|neuer?|neue?|hinzufügen)\s+(?:life\s+|lebens)?'
+				r'(?P<noun>ziel|ziele|traum|träume|wunsch|wünsche|idee|ideen|vorsatz|vorsätze|goal|goals|dream|dreams|wish|wishes|item|todo|aufgabe|eintrag|task|entry)\s+'
+				r'(?P<title>.{1,200})$',
+				re.IGNORECASE,
+			),
 		],
 		"create_card": [
 			re.compile(r'\b(?:erstell[e]?|f[üu]g[e]?\s+hinzu|leg[e]?\s+an|neu[e]?)\s+(?:eine\s+)?(?:karte|aufgabe|task|todo)\s+(?:namens?\s+|mit\s+dem\s+namen\s+)?(.{1,200}?)(?:\s+(?:zu|in|auf|unter)\s+(.{1,200}))?$', re.IGNORECASE),
@@ -1501,6 +1521,41 @@ async def classify_structural_intent(text: str, lang: str) -> Optional[Structura
 				confidence=0.85,
 			)
 
+	# ── BOARD_ITEM_ADD ────────────────────────────────────────────────────
+	# Must run before CREATE_CARD: "new goal X" would otherwise be captured
+	# by create_card pattern 1 ("new <noun> <title>").
+	for pat in _patterns_for("board_item_add", lang):
+		m = pat.search(snippet)
+		if m:
+			noun_q = m.group("noun").lower().strip()
+			title_q = m.group("title").strip()
+			if not noun_q or not title_q:
+				continue
+			# Fuzzy-match noun against live board names (goal → "life goals", etc.)
+			projects = await _get_planka_snapshot()
+			matched_board = ""
+			if projects:
+				all_boards = [b for p in projects for b in p["boards"]]
+				best_board, best_conf = _match_name(noun_q, all_boards)
+				# Broad match: accept if noun appears anywhere in board name
+				if not best_board:
+					for b in all_boards:
+						if noun_q in b["name"].lower():
+							best_board = b
+							break
+				if best_board:
+					matched_board = best_board["name"]
+					logger.info(
+						"intent_router: BOARD_ITEM_ADD noun='%s' → board='%s' title='%s'",
+						noun_q, matched_board, title_q,
+					)
+			return StructuralIntent(
+				verb="BOARD_ITEM_ADD",
+				entities={"title": title_q, "noun": noun_q, "board_name": matched_board},
+				raw_text=snippet,
+				confidence=1.0,
+			)
+
 	# ── CREATE_CARD ───────────────────────────────────────────────────────
 	for pat in _patterns_for("create_card", lang):
 		m = pat.search(snippet)
@@ -1596,6 +1651,20 @@ async def dispatch_structural_intent(intent: StructuralIntent, lang: str) -> str
 			card=ent["card_fragment"],
 		)
 		audit = f"[AUDIT:archive_card:{ent['card_fragment']}]"
+		return f"{msg}\n{audit}"
+
+	if verb == "BOARD_ITEM_ADD":
+		board_dest = ent.get("board_name") or ""
+		raw = await execute_create_card(ent["title"], board_dest, lang)
+		if raw.startswith("\u26a0"):
+			return raw
+		dest_label = board_dest or "Inbox"
+		msg = _localise(
+			"intent_router_create_card_success",
+			"Card '{title}' added to '{dest}'.",
+			title=ent["title"], dest=dest_label,
+		)
+		audit = f"[AUDIT:board_item_add:{ent['title']}|board={dest_label}]"
 		return f"{msg}\n{audit}"
 
 	if verb == "CREATE_CARD":
