@@ -1123,7 +1123,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 		clean_reply = strip_tag(clean_reply, raw_tag)
 
 	# Set Card Description Tag — updates the description field of an existing card.
-	set_desc_pattern = r"\[?ACTION: SET_CARD_DESC \| CARD: ([^\|\]]+) \| DESCRIPTION: ([^\]]+)\]"
+	set_desc_pattern = r"\[?ACTION: SET_CARD_DESC \| CARD: ([^\|\]]{1,500}) \| DESCRIPTION: ([^\]]{1,2000})\]"
 	for match in re.finditer(set_desc_pattern, reply):
 		raw_tag = match.group(0)
 		card_frag = match.group(1).strip()
