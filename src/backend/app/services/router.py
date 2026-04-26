@@ -405,7 +405,17 @@ async def route_message_stream(
 			# board names (e.g. "aquarium" → "reef tank"). Budget 12s for that path;
 			# keep 3s for all other intents so normal latency is unaffected.
 			_SORT_RE_QUICK = re.compile(
-				r'\b(?:sort|reorgani[sz]|restructur|clean up|tidy up|reorder|rearrang)',
+				# English
+				r'\b(?:sort|reorgani[sz]|restructur|clean\s+up|tidy\s+up|reorder|rearrang'
+				# German
+				r'|sortier|reorganisier|aufr[äa]um|umstrukturieren|neu\s+anordnen'
+				# Spanish / Portuguese
+				r'|reorganiza|reestructura|reestrutura|reordena|arruma'
+				# French
+				r'|r[ée]organise|restructure|r[ée]ordonne'
+				# Russian
+				r'|\u043e\u0442\u0441\u043e\u0440\u0442\u0438\u0440|\u0441\u043e\u0440\u0442\u0438\u0440|\u0440\u0435\u043e\u0440\u0433\u0430\u043d\u0438\u0437|\u0443\u043f\u043e\u0440\u044f\u0434\u043e\u0447|\u0440\u0430\u0437\u043b\u043e\u0436\u0438'
+				r')',
 				re.IGNORECASE,
 			)
 			_clf_timeout = 25.0 if _SORT_RE_QUICK.search(user_text[:200]) else 3.0
