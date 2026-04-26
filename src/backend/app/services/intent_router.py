@@ -76,6 +76,15 @@ _LIST_NOUNS: frozenset[str] = frozenset({
 _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 	# ── English ───────────────────────────────────────────────────────────
 	"en": {
+		"sort_board": [
+			# "sort lists in reef tank", "sort/reorganize [cards in] [new lists in] <board>"
+			re.compile(
+				r'\b(?:sort|reorgani[sz]e?|restructur[e]?|clean\s+up|tidy\s+up|reorder|rearrang[e]?)\b'
+				r'(?:\s+(?:lists?|cards?|and|in|potentially|new|\s)+)?'
+				r'(?:in|on|for|the\s+)?(?:board\s+)?(?P<board>[a-z0-9][\w\s]{2,50})',
+				re.IGNORECASE,
+			),
+		],
 		"move_board": [
 			re.compile(r'\bmove\s+(?:the\s+)?(.{1,200}?)\s+board\s+(?:to|into|under)\s+(.{1,200})', re.IGNORECASE),
 			re.compile(r'\bmove\s+(?:the\s+)?board\s+(.{1,200}?)\s+(?:to|into|under)\s+(.{1,200})', re.IGNORECASE),
@@ -185,6 +194,14 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 	},
 	# ── German ────────────────────────────────────────────────────────────
 	"de": {
+		"sort_board": [
+			re.compile(
+				r'\b(?:sortier[e]?|reorganisier[e]?|neu\s+sortier[e]?|aufräum[e]?n?|umstrukturieren|neu\s+anordnen)\b'
+				r'(?:\s+(?:listen?|karten?|und|in|potenziell|neue|\s)+)?'
+				r'(?:in|auf|für|das\s+)?(?:board\s+)?(?P<board>[a-z0-9äöüÄÖÜß][\w\s]{2,50})',
+				re.IGNORECASE,
+			),
+		],
 		"move_board": [
 			re.compile(r'\bverschieb[e]?\s+(?:das\s+)?(.{1,200}?)[-\s]board\s+(?:zu|in|nach|unter)\s+(.{1,200})', re.IGNORECASE),
 			re.compile(r'\bverschieb[e]?\s+(?:das\s+)?board\s+(.{1,200}?)\s+(?:zu|in|nach|unter)\s+(.{1,200})', re.IGNORECASE),
@@ -285,6 +302,14 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 	},
 	# ── Spanish ───────────────────────────────────────────────────────────
 	"es": {
+		"sort_board": [
+			re.compile(
+				r'\b(?:ordena[r]?|sortea[r]?|reorganiza[r]?|reestructura[r]?|limpia[r]?|reordena[r]?|arregla[r]?)\b'
+				r'(?:\s+(?:listas?|tarjetas?|y|en|nuevas?|\s)+)?'
+				r'(?:en|en\s+el|del?\s+)?(?:tablero\s+)?(?P<board>[a-z0-9][\w\s]{2,50})',
+				re.IGNORECASE,
+			),
+		],
 		"move_board": [
 			re.compile(r'\b(?:mueve|mover|muevo)\s+(?:el|la)?\s*tablero\s+(.{1,200}?)\s+(?:a|hacia|hasta|en)\s+(.{1,200})', re.IGNORECASE),
 			re.compile(r'\b(?:mueve|mover|muevo)\s+(?:el|la)?\s*(.{1,200}?)\s+tablero\s+(?:a|hacia|hasta|en)\s+(.{1,200})', re.IGNORECASE),
@@ -362,6 +387,14 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 	},
 	# ── French ────────────────────────────────────────────────────────────
 	"fr": {
+		"sort_board": [
+			re.compile(
+				r'\b(?:trie[r]?|réorganise[r]?|reorganise[r]?|restructure[r]?|range[r]?|classe[r]?|réordonne[r]?|reordonne[r]?)\b'
+				r'(?:\s+(?:listes?|cartes?|et|dans|nouvelles?|\s)+)?'
+				r'(?:dans\s+(?:le\s+)?|du\s+)?(?:tableau\s+)?(?P<board>[a-z0-9][\w\s]{2,50})',
+				re.IGNORECASE,
+			),
+		],
 		"move_board": [
 			re.compile(r'\bdéplac(?:e|er|ez)\s+(?:le|la)?\s*tableau\s+(.{1,200}?)\s+(?:vers|à|dans|en)\s+(.{1,200})', re.IGNORECASE),
 			re.compile(r'\bdeplac(?:e|er|ez)\s+(?:le|la)?\s*tableau\s+(.{1,200}?)\s+(?:vers|à|dans|en)\s+(.{1,200})', re.IGNORECASE),
@@ -440,6 +473,14 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 	},
 	# ── Portuguese ────────────────────────────────────────────────────────
 	"pt": {
+		"sort_board": [
+			re.compile(
+				r'\b(?:ordena[r]?|reorganiza[r]?|reestrutura[r]?|arruma[r]?|classifica[r]?|reordena[r]?)\b'
+				r'(?:\s+(?:listas?|cartões?|cartoes?|e|em|novas?|\s)+)?'
+				r'(?:em\s+(?:o\s+)?|do\s+)?(?:quadro\s+)?(?P<board>[a-z0-9][\w\s]{2,50})',
+				re.IGNORECASE,
+			),
+		],
 		"move_board": [
 			re.compile(r'\b(?:mova|mover|move)\s+(?:o|a)?\s*quadro\s+(.{1,200}?)\s+(?:para|a|em)\s+(.{1,200})', re.IGNORECASE),
 		],
@@ -515,6 +556,14 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 	},
 	# ── Russian ───────────────────────────────────────────────────────────
 	"ru": {
+		"sort_board": [
+			re.compile(
+				r'(?:отсортируй|сортируй|реорганизуй|упорядочи|разбери|реструктурируй|разложи)\s+'
+				r'(?:списки\s+|карточки\s+|и\s+|в\s+|новые\s+)*'
+				r'(?:на\s+)?(?:доск[еу]\s+)?(?P<board>[а-яёА-ЯЁa-z0-9][\w\s]{2,50})',
+				re.IGNORECASE,
+			),
+		],
 		"move_board": [
 			re.compile(r'(?:переместить?|перенест?и|перенеси|перемести)\s+(?:доску|борд)\s+(.{1,200}?)\s+(?:в|на|к)\s+(.{1,200})', re.IGNORECASE),
 		],
@@ -591,6 +640,13 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 	},
 	# ── Japanese ──────────────────────────────────────────────────────────
 	"ja": {
+		"sort_board": [
+			re.compile(
+				r'(?:並べ替え|整理|再整理|ソート|並び替え)(?:て|し)?'
+				r'(?:リスト|カード|と|に|新しい)*'
+				r'(?P<board>[\w\s・]{2,50})(?:ボード|掲示板|の)?',
+			),
+		],
 		"move_board": [
 			re.compile(r'(.{1,200}?)(?:ボード|掲示板)を(.{1,200}?)(?:に|へ)(?:移動|動か)'),
 		],
@@ -667,6 +723,13 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 	},
 	# ── Chinese (Simplified + common Traditional verbs) ───────────────────
 	"zh": {
+		"sort_board": [
+			re.compile(
+				r'(?:排序|整理|重组|重新排列|整顿|归类)'
+				r'(?:列表|卡片|和|在|新的)*'
+				r'(?:看板|面板|板)?(?P<board>[\w\s]{2,50})',
+			),
+		],
 		"move_board": [
 			re.compile(r'(?:把|将|將)(.{1,200}?)(?:看板|面板|板)(?:移动|移動|移)到(.{1,200})'),
 		],
@@ -743,6 +806,13 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 	},
 	# ── Korean ────────────────────────────────────────────────────────────
 	"ko": {
+		"sort_board": [
+			re.compile(
+				r'(?:정렬|재구성|재정리|정리|재배열)(?:해|하)?'
+				r'(?:목록|카드|그리고|에|새로운)*'
+				r'(?P<board>[\w\s]{2,50})(?:보드|판)?',
+			),
+		],
 		"move_board": [
 			re.compile(r'(.{1,200}?)\s*(?:보드|판)(?:을|를)?\s*(.{1,200}?)(?:로|으로|에)\s*(?:이동|옮)'),
 		],
@@ -818,6 +888,13 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 	},
 	# ── Hindi ─────────────────────────────────────────────────────────────
 	"hi": {
+		"sort_board": [
+			re.compile(
+				r'(?:क्रमबद्ध\s+करें|व्यवस्थित\s+करें|पुनर्गठित\s+करें|साफ\s+करें|सॉर्ट\s+करें)'
+				r'(?:\s+(?:सूचियां|कार्ड|और|में|नए)*)?'
+				r'(?:\s+(?:बोर्ड\s+)?(?P<board>[\w\s]{2,50}))',
+			),
+		],
 		"move_board": [
 			re.compile(r'(.{1,200}?)\s*बोर्ड\s*को\s*(.{1,200}?)\s*(?:में|पर|को)\s*(?:ले\s+जाएं|ले\s+जाओ|स्थानांतरित|मूव)'),
 		],
@@ -894,6 +971,14 @@ _LANG_PATTERNS: dict[str, dict[str, list[re.Pattern]]] = {
 	},
 	# ── Arabic ────────────────────────────────────────────────────────────
 	"ar": {
+		"sort_board": [
+			re.compile(
+				r'(?:رتّب|رتب|أعد\s+ترتيب|نظّم|نظم|إعادة\s+هيكلة)\s+'
+				r'(?:القوائم|البطاقات|و|في|جديدة)*\s*'
+				r'(?:اللوحة\s+|لوحة\s+)?(?P<board>[\w\s]{2,50})',
+				re.IGNORECASE,
+			),
+		],
 		"move_board": [
 			re.compile(r'(?:انقل|نقل|حرّك|حرك)\s+(?:اللوحة|لوحة)\s+(.{1,200}?)\s+(?:إلى|الى|في)\s+(.{1,200})'),
 		],
@@ -1606,6 +1691,33 @@ async def classify_structural_intent(text: str, lang: str) -> Optional[Structura
 			)
 
 	# ── CREATE_CARD ───────────────────────────────────────────────────────
+	# SORT_BOARD check runs first to prevent "sort ... reef tank" being caught
+	# by create_card's broad "add/new" patterns.
+	for pat in _patterns_for("sort_board", lang):
+		m = pat.search(snippet)
+		if m:
+			board_q = _strip_filler(m.group("board")).strip().rstrip(".,;!?")
+			if not board_q:
+				continue
+			# Verify board exists in Planka snapshot before committing.
+			projects = await _get_planka_snapshot()
+			if projects:
+				all_boards = [b for p in projects for b in p["boards"]]
+				best_board, _conf = _match_name(board_q, all_boards)
+				if not best_board:
+					for b in all_boards:
+						if board_q.lower() in b["name"].lower():
+							best_board = b
+							break
+				if best_board:
+					return StructuralIntent(
+						verb="SORT_BOARD",
+						entities={"board_fragment": board_q, "board_name": best_board["name"], "board_id": best_board["id"]},
+						raw_text=snippet,
+						confidence=0.95,
+					)
+
+	# ── CREATE_CARD ───────────────────────────────────────────────────────
 	for pat in _patterns_for("create_card", lang):
 		m = pat.search(snippet)
 		if m:
@@ -1952,6 +2064,103 @@ async def dispatch_structural_intent(intent: StructuralIntent, lang: str) -> str
 		msg = _localise("intent_router_delete_project_success", "Project '{project}' deleted.", project=ent["project_fragment"])
 		audit = f"[AUDIT:delete_project:{ent['project_fragment']}]"
 		return f"{msg}\n{audit}"
+
+	if verb == "SORT_BOARD":
+		board_id = ent.get("board_id", "")
+		board_name = ent.get("board_name", ent.get("board_fragment", ""))
+		if not board_id:
+			return f"⚠ Could not locate board '{board_name}' in Planka."
+		try:
+			from app.services.planka import get_planka_auth_token
+			from app.config import settings
+			from app.services.llm import chat
+			import httpx as _httpx
+			import json as _json
+			token = await get_planka_auth_token()
+			headers = {"Authorization": f"Bearer {token}"}
+			async with _httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, timeout=30.0, headers=headers) as client:
+				resp = await client.get(f"/api/boards/{board_id}", params={"included": "lists,cards"})
+				resp.raise_for_status()
+				detail = resp.json()
+				lists = detail.get("included", {}).get("lists", [])
+				cards = detail.get("included", {}).get("cards", [])
+				if not lists:
+					return f"⚠ Board '{board_name}' has no lists to sort."
+
+				# ── Step 1: Sort lists alphabetically via position patch ──────
+				sorted_lists = sorted(lists, key=lambda l: l.get("name", "").lower())
+				_step = 65535
+				for i, lst in enumerate(sorted_lists):
+					await client.patch(f"/api/lists/{lst['id']}", json={"position": _step * (i + 1)})
+
+				# ── Step 2: Fast-model compact plan for card grouping ─────────
+				# Ask the fast model for a JSON plan: which new lists to create
+				# and which cards to move. Keeps output to ~80 tokens of JSON
+				# so the local model can answer in seconds, not minutes.
+				list_names = [l.get("name", "?") for l in lists]
+				card_entries = [{"name": c.get("name", "?"), "list": next((l.get("name") for l in lists if l["id"] == c.get("listId")), "?")} for c in cards]
+				plan_prompt = (
+					f"Board: {board_name}\n"
+					f"Lists: {list_names}\n"
+					f"Cards (name → current list): {[(e['name'], e['list']) for e in card_entries]}\n"
+					f"User request: {intent.raw_text}\n\n"
+					"Output ONLY compact JSON — no commentary:\n"
+					'{"new_lists":["name",...],"moves":{"card name":"target list"}}\n'
+					"Rules: only add new lists if clearly needed; only move cards with obvious mis-grouping; "
+					"empty arrays/objects if nothing to do."
+				)
+				plan: dict = {}
+				try:
+					plan_text = await asyncio.wait_for(chat(plan_prompt, tier="fast"), timeout=25.0)
+					_js = plan_text.find("{")
+					_je = plan_text.rfind("}") + 1
+					if _js >= 0 and _je > _js:
+						plan = _json.loads(plan_text[_js:_je])
+				except Exception as _pe:
+					logger.warning("SORT_BOARD: plan generation failed: %s — skipping card moves", _pe)
+
+				# ── Step 3: Execute plan deterministically ────────────────────
+				all_list_index = {l["name"].lower(): l["id"] for l in lists}
+				card_index = {c["name"].lower(): c for c in cards}
+				results: list[str] = []
+
+				# Create new lists from plan
+				for new_name in plan.get("new_lists", []):
+					if new_name.lower() in all_list_index:
+						continue
+					pos = _step * (len(sorted_lists) + len(all_list_index) + 1)
+					cr = await client.post(f"/api/boards/{board_id}/lists", json={"name": new_name, "type": "active", "position": pos})
+					if cr.status_code < 400:
+						new_id = (cr.json().get("item") or {}).get("id", "")
+						if new_id:
+							all_list_index[new_name.lower()] = new_id
+							results.append(f"Created list: {new_name}")
+
+				# Move cards according to plan
+				for card_name, target_list in plan.get("moves", {}).items():
+					card = card_index.get(card_name.lower())
+					target_id = all_list_index.get(target_list.lower())
+					if card and target_id and card.get("listId") != target_id:
+						mv = await client.patch(f"/api/cards/{card['id']}", json={"listId": target_id, "position": _step})
+						if mv.status_code < 400:
+							results.append(f"Moved '{card_name}' → {target_list}")
+
+				# ── Step 4: Build summary ─────────────────────────────────────
+				lines = [f"Reorganised '{board_name}':"]
+				lines.append(f"Lists (alphabetical): {', '.join(l.get('name','?') for l in sorted_lists)}")
+				if results:
+					lines.append("")
+					lines.extend(results)
+				if not plan.get("new_lists") and not plan.get("moves"):
+					lines.append("Cards already well-grouped — no moves needed.")
+				lines.append("\nTo move a card: 'move <card> to <list>'.")
+				audit = f"[AUDIT:sort_board:{board_name}|lists={len(sorted_lists)}|moves={len(plan.get('moves', {}))}]"
+				_cache["ts"] = 0.0
+				return "\n".join(lines) + "\n" + audit
+		except Exception as _e:
+			logger.error("intent_router SORT_BOARD failed: %s", _e)
+			return f"⚠ Failed to reorganise board '{board_name}': {_e}"
+
 
         # Unknown verb — defensive fallback, should not be reachable.
 	logger.warning("intent_router: dispatch called with unknown verb %s", verb)

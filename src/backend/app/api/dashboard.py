@@ -199,7 +199,7 @@ def _check_chat_rate_limit(request: Request):
     hits.append(now)
 
 _REPLY_ALLOWLIST_RE = re.compile(
-    r'<(?!/?(?:b|i|code|pre|br|p)(?:\s[^>]*)?>)[^>]+>',
+    r'<(?!/?(?:b|i|code|pre|br|p)(?:\s[^>]{0,1000})?>)[^>]{1,2000}>',
     re.IGNORECASE,
 )
 

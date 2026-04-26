@@ -414,12 +414,14 @@ async def route_message_stream(
 				"Router: structural intent '%s' (conf=%.2f) for '%s...'",
 				intent.verb, intent.confidence, _sanitize_for_log(user_text),
 			)
+			# SORT_BOARD calls the fast model internally (~25s) — needs longer dispatch budget.
+			_dispatch_timeout = 60.0 if intent.verb == "SORT_BOARD" else 10.0
 			try:
 				result_text = await asyncio.wait_for(
-					dispatch_structural_intent(intent, lang), timeout=10.0,
+					dispatch_structural_intent(intent, lang), timeout=_dispatch_timeout,
 				)
 			except asyncio.TimeoutError:
-				logger.error("Router: intent dispatch timeout (>10s) — falling through to LLM")
+				logger.error("Router: intent dispatch timeout (>%.0fs) — falling through to LLM", _dispatch_timeout)
 				result_text = ""
 			except Exception as _de:
 				logger.error("intent_router: dispatch failed: %s", _de)
@@ -435,6 +437,70 @@ async def route_message_stream(
 					executed_cmds=cmds, pending_actions=pending,
 				))
 				return
+
+		# ── 0.52 Semantic board-management fallback ───────────────────────────
+		# Fires when NO structural intent matched via regex. Uses the fast local
+		# model to understand intent from natural language — catches phrases like
+		# "my reef board is a mess", "redo the reef tank", "the livestock list
+		# needs organising" — things no regex would ever cover.
+		# Cost: one fast-model call (~2s) only on regex-miss. Falls through silently.
+		if intent is None:
+			try:
+				from app.services.llm import chat as _fast_chat
+				from app.services.intent_router import StructuralIntent, dispatch_structural_intent, _get_planka_snapshot, _match_name
+				_sem_prompt = (
+					"Is this message asking to reorganise, sort, tidy, or restructure a Planka board?\n"
+					f"Message: \"{user_text[:300]}\"\n"
+					"If yes: reply SORT_BOARD:<board name only>\n"
+					"If no: reply NO"
+				)
+				_sem = await asyncio.wait_for(_fast_chat(_sem_prompt, tier="fast"), timeout=8.0)
+				_sem = _sem.strip()
+				if _sem.upper().startswith("SORT_BOARD:"):
+					_board_frag = _sem.split(":", 1)[1].strip().rstrip(".,;!?")
+					if _board_frag:
+						_projects = await _get_planka_snapshot()
+						if _projects:
+							_all_boards = [b for p in _projects for b in p["boards"]]
+							_best, _ = _match_name(_board_frag, _all_boards)
+							if not _best:
+								for b in _all_boards:
+									if _board_frag.lower() in b["name"].lower():
+										_best = b
+										break
+							if _best:
+								_sem_intent = StructuralIntent(
+									verb="SORT_BOARD",
+									entities={"board_fragment": _board_frag, "board_name": _best["name"], "board_id": _best["id"]},
+									raw_text=user_text[:_MAX_RE_INPUT],
+									confidence=0.9,
+								)
+								logger.info("Router 0.52: semantic board-manage detected → SORT_BOARD '%s'", _best["name"])
+								try:
+									_sem_result = await asyncio.wait_for(
+										dispatch_structural_intent(_sem_intent, lang), timeout=60.0,
+									)
+								except asyncio.TimeoutError:
+									logger.error("Router 0.52: SORT_BOARD dispatch timed out")
+									_sem_result = ""
+								except Exception as _sde:
+									logger.error("Router 0.52: SORT_BOARD dispatch failed: %s", _sde)
+									_sem_result = ""
+								if _sem_result:
+									yield _sem_result
+									clean, cmds, pending = await bus.commit_reply(
+										channel=channel, raw_reply=_sem_result,
+										model="intent_router", user_text=user_text, save=save_history,
+									)
+									result_future.set_result(RouterResult(
+										reply=clean, model="intent_router",
+										executed_cmds=cmds, pending_actions=pending,
+									))
+									return
+			except asyncio.TimeoutError:
+				logger.warning("Router 0.52: semantic fallback timed out — falling through")
+			except Exception as _sf:
+				logger.warning("Router 0.52: semantic fallback failed: %s — falling through", _sf)
 
 		# ── 1. Keyword-based crew routing ────────────────────────────────────
 		# ── 0.55 Board-reorganisation context injection ────────────────────────
@@ -452,7 +518,7 @@ async def route_message_stream(
 		_rm = _REORGANIZE_BOARD_RE.search(user_text[:_MAX_RE_INPUT])
 		if _rm:
 			_board_frag = _rm.group("board").strip().rstrip(".,;!?")
-			logger.info("Router: board-reorganise detected — fetching context for '%s'", _board_frag)
+			logger.info("Router: board-reorganise detected — fetching context for '%s'", _sanitize_for_log(_board_frag))
 			try:
 				from app.services.planka import get_board_full_context
 				_board_ctx = await asyncio.wait_for(
@@ -471,9 +537,9 @@ async def route_message_stream(
 						),
 					}]
 					_force_cloud = True  # board reorganization needs cloud LLM to complete in time
-					logger.info("Router: injected board context (%d chars) for '%s'", len(_board_ctx), _board_frag)
+					logger.info("Router: injected board context (%d chars) for '%s'", len(_board_ctx), _sanitize_for_log(_board_frag))
 			except asyncio.TimeoutError:
-				logger.warning("Router: board context fetch timed out for '%s'", _board_frag)
+				logger.warning("Router: board context fetch timed out for '%s'", _sanitize_for_log(_board_frag))
 			except Exception as _bce:
 				logger.warning("Router: board context fetch failed: %s", _bce)
 
