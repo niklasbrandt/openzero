@@ -527,10 +527,10 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 			if res:
 				if isinstance(res, str):
 					executed_cmds.append(res)
-					# Surface ⚠ errors to the user so Z never falsely confirms a failed action
-					if res.startswith("\u26a0"):
-						nonlocal clean_reply
-						clean_reply = clean_reply.rstrip() + "\n\n" + res
+					# Always surface the real execution result so Z's prose can never mislead.
+					# ⚠ failures and ✓ successes both reach the user.
+					nonlocal clean_reply
+					clean_reply = clean_reply.rstrip() + "\n\n" + res
 				else:
 					executed_cmds.append(f"{action_type} executed.")
 			return True
