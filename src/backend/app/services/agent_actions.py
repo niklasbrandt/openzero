@@ -755,15 +755,15 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 		clean_reply = strip_tag(clean_reply, raw_tag)
 
 	# 4. Create Task Tag — runs AFTER scaffolding so the board/list already exists.
-	# DESCRIPTION is optional — captured when present, defaults to empty string.
+	# DESCRIPTION and LIST are optional — captured when present, defaults to empty string.
 	# Pattern allows ] inside description content via a bounded capture group.
 	# Input is capped before iteration to prevent polynomial backtracking (CWE-1333).
-	task_pattern = r"\[?ACTION: CREATE_TASK \| BOARD: ([^\|\]]{1,500}) \| LIST: ([^\|\]]{1,500}) \| TITLE: ([^\|\]]{1,500})(?:\s*\|\s*DESCRIPTION:\s*([\s\S]{0,20000}?))?\]"
+	task_pattern = r"\[?ACTION: CREATE_TASK \| BOARD: ([^\|\]]{1,500})(?:\s*\|\s*LIST:\s*([^\|\]]{1,500}))? \| TITLE: ([^\|\]]{1,500})(?:\s*\|\s*DESCRIPTION:\s*([\s\S]{0,20000}?))?\]"
 	for match in re.finditer(task_pattern, reply[:200_000]):
 		raw_tag = match.group(0)
-		board, llist, title, desc = match.groups()
+		board, llist, title, desc = match.group(1), match.group(2), match.group(3), match.group(4)
 		board = board.strip().strip('"\'')
-		llist = llist.strip().strip('"\'')
+		llist = (llist or "").strip().strip('"\'')
 		title = title.strip().strip('"\'')
 		desc = (desc or "").strip()
 
