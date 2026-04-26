@@ -42,6 +42,10 @@ export class AgentsWidget extends HTMLElement {
 	private saving = false;
 	private runningCrews = new Set<string>();
 	private t: Record<string, string> = {};
+	private inference: { silent_floor: number; ask_floor: number; chat_floor: number; pending_ttl_seconds: number; lesson_retention_days: number } | null = null;
+	private inferenceSaving = false;
+	private inferenceStatus = '';
+	private resetLessonsStep = 0;
 
 	constructor() {
 		super();
@@ -80,9 +84,10 @@ export class AgentsWidget extends HTMLElement {
 	private async loadData() {
 		this.loading = true;
 		try {
-			const [pRes, cRes] = await Promise.all([
+			const [pRes, cRes, iRes] = await Promise.all([
 				fetch('/api/dashboard/personality'),
-				fetch('/api/dashboard/crews')
+				fetch('/api/dashboard/crews'),
+				fetch('/api/dashboard/inference'),
 			]);
 
 			if (pRes.ok) this.personality = await pRes.json();
@@ -90,6 +95,7 @@ export class AgentsWidget extends HTMLElement {
 				const data = await cRes.json();
 				this.crews = data.crews || [];
 			}
+			if (iRes.ok) this.inference = await iRes.json();
 		} catch (_e) {
 			console.error('Failed to load Agents data:', _e);
 		} finally {
@@ -132,6 +138,58 @@ export class AgentsWidget extends HTMLElement {
 		} catch (_e) {
 			this.runningCrews.delete(crewId);
 			this.render();
+		}
+	}
+
+	private async saveInference() {
+		if (!this.inference) return;
+		this.inferenceSaving = true;
+		this.inferenceStatus = '';
+		this.render();
+		const details = this.shadowRoot?.querySelector('.inference-details') as HTMLDetailsElement | null;
+		const wasOpen = details?.open ?? false;
+		try {
+			const res = await fetch('/api/dashboard/inference', {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(this.inference),
+			});
+			this.inferenceStatus = res.ok
+				? this.tr('inference_saved', 'Saved.')
+				: this.tr('inference_wipe_fail', 'Error — check logs.');
+		} catch (_) {
+			this.inferenceStatus = this.tr('inference_wipe_fail', 'Error — check logs.');
+		} finally {
+			this.inferenceSaving = false;
+			this.render();
+			if (wasOpen) {
+				const d = this.shadowRoot?.querySelector('.inference-details') as HTMLDetailsElement | null;
+				if (d) d.open = true;
+			}
+		}
+	}
+
+	private async resetLessons() {
+		this.inferenceSaving = true;
+		this.inferenceStatus = '';
+		this.render();
+		const details = this.shadowRoot?.querySelector('.inference-details') as HTMLDetailsElement | null;
+		const wasOpen = details?.open ?? false;
+		try {
+			const res = await fetch('/api/dashboard/inference/reset-lessons', { method: 'POST' });
+			this.inferenceStatus = res.ok
+				? this.tr('inference_wipe_ok', 'Routing lessons wiped.')
+				: this.tr('inference_wipe_fail', 'Wipe failed — check logs.');
+		} catch (_) {
+			this.inferenceStatus = this.tr('inference_wipe_fail', 'Wipe failed — check logs.');
+		} finally {
+			this.inferenceSaving = false;
+			this.resetLessonsStep = 0;
+			this.render();
+			if (wasOpen) {
+				const d = this.shadowRoot?.querySelector('.inference-details') as HTMLDetailsElement | null;
+				if (d) d.open = true;
+			}
 		}
 	}
 
@@ -615,6 +673,145 @@ export class AgentsWidget extends HTMLElement {
 					from { transform: rotate(0deg); }
 					to { transform: rotate(360deg); }
 				}
+
+				/* Inference Panel Styles */
+				.inference-section-header {
+					display: flex;
+					align-items: center;
+					gap: 0.75rem;
+					cursor: pointer;
+					list-style: none;
+					padding: 0.5rem 0;
+					color: var(--text-secondary);
+					font-size: 0.82rem;
+					font-weight: 700;
+					text-transform: uppercase;
+					letter-spacing: 0.08em;
+					user-select: none;
+					border: none;
+					background: none;
+				}
+
+				.inference-section-header::-webkit-details-marker { display: none; }
+				.inference-section-header:hover { color: var(--text-primary); }
+
+				.inference-chevron {
+					transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+					opacity: 0.4;
+					color: var(--accent-primary);
+					margin-left: auto;
+					display: flex;
+				}
+
+				.inference-details[open] .inference-chevron {
+					transform: rotate(90deg);
+					opacity: 0.8;
+				}
+
+				.inference-body {
+					padding: 1rem 0 0.5rem 0;
+					display: flex;
+					flex-direction: column;
+					gap: 1.25rem;
+					animation: fadeIn 0.2s ease-out;
+				}
+
+				.inference-row {
+					display: grid;
+					grid-template-columns: 180px 1fr 64px;
+					align-items: center;
+					gap: 1rem;
+				}
+
+				.inference-label {
+					font-size: 0.82rem;
+					color: var(--text-secondary);
+					font-weight: 500;
+					cursor: help;
+				}
+
+				.inference-value {
+					font-size: 0.82rem;
+					color: var(--accent-primary);
+					font-weight: 600;
+					font-family: var(--font-mono, monospace);
+					text-align: right;
+				}
+
+				.inference-preset-row {
+					display: flex;
+					align-items: center;
+					gap: 1rem;
+				}
+
+				select.inference-preset-select,
+				select.inference-retention-select {
+					background: rgba(0,0,0,0.2);
+					border: 1px solid var(--border-color);
+					border-radius: 0.5rem;
+					color: var(--text-primary);
+					font-family: inherit;
+					font-size: 0.82rem;
+					padding: 0.35rem 0.6rem;
+					cursor: pointer;
+				}
+
+				select.inference-preset-select:focus,
+				select.inference-retention-select:focus {
+					outline: none;
+					border-color: var(--accent-primary);
+				}
+
+				input.inference-ttl-input {
+					background: rgba(0,0,0,0.2);
+					border: 1px solid var(--border-color);
+					border-radius: 0.5rem;
+					color: var(--text-primary);
+					font-family: var(--font-mono, monospace);
+					font-size: 0.82rem;
+					padding: 0.35rem 0.5rem;
+					width: 90px;
+				}
+
+				input.inference-ttl-input:focus {
+					outline: none;
+					border-color: var(--accent-primary);
+				}
+
+				.inference-actions {
+					display: flex;
+					align-items: center;
+					justify-content: space-between;
+					margin-top: 0.5rem;
+					gap: 1rem;
+					flex-wrap: wrap;
+				}
+
+				.inference-status {
+					font-size: 0.8rem;
+					color: var(--accent-primary);
+					font-style: italic;
+					min-height: 1.2em;
+				}
+
+				.inference-reset-group {
+					display: flex;
+					gap: 0.75rem;
+					align-items: center;
+				}
+
+				@media (prefers-reduced-motion: reduce) {
+					.inference-body { animation: none; }
+					.inference-chevron { transition: none; }
+				}
+
+				@media (forced-colors: active) {
+					select.inference-preset-select,
+					select.inference-retention-select,
+					input.inference-ttl-input {
+						forced-color-adjust: auto;
+					}
+				}
 			</style>
 
 			<div class="agents-container">
@@ -639,6 +836,12 @@ export class AgentsWidget extends HTMLElement {
 
 				<div class="crews-viewport">
 					${this.renderCrews()}
+				</div>
+
+				<hr class="section-divider">
+
+				<div class="inference-viewport">
+					${this.renderInferencePanel()}
 				</div>
 			</div>
 		`;
@@ -681,6 +884,66 @@ export class AgentsWidget extends HTMLElement {
 			shadow.querySelector('#values-input')?.addEventListener('input', (e: any) => this.personality!.values = e.target.value);
 			shadow.querySelector('#behavior-input')?.addEventListener('input', (e: any) => this.personality!.behavior = e.target.value);
 		}
+
+		// Inference panel
+		shadow.querySelector('#inference-save-btn')?.addEventListener('click', () => this.saveInference());
+
+		shadow.querySelector('#inference-reset-step1')?.addEventListener('click', () => {
+			this.resetLessonsStep = 1;
+			this.render();
+			const d = this.shadowRoot?.querySelector('.inference-details') as HTMLDetailsElement | null;
+			if (d) d.open = true;
+		});
+		shadow.querySelector('#inference-reset-confirm')?.addEventListener('click', () => this.resetLessons());
+		shadow.querySelector('#inference-reset-cancel')?.addEventListener('click', () => {
+			this.resetLessonsStep = 0;
+			this.render();
+			const d = this.shadowRoot?.querySelector('.inference-details') as HTMLDetailsElement | null;
+			if (d) d.open = true;
+		});
+
+		shadow.querySelector('#inference-preset')?.addEventListener('change', (e: any) => {
+			const v = e.target.value;
+			if (!this.inference) return;
+			if (v === 'cautious') Object.assign(this.inference, { silent_floor: 95, ask_floor: 30, chat_floor: 10 });
+			else if (v === 'butler') Object.assign(this.inference, { silent_floor: 80, ask_floor: 45, chat_floor: 20 });
+			else if (v === 'bold') Object.assign(this.inference, { silent_floor: 65, ask_floor: 70, chat_floor: 30 });
+			this.render();
+			const d = this.shadowRoot?.querySelector('.inference-details') as HTMLDetailsElement | null;
+			if (d) d.open = true;
+		});
+
+		shadow.querySelector('#inference-silent-floor')?.addEventListener('input', (e: any) => {
+			if (this.inference) {
+				this.inference.silent_floor = parseInt(e.target.value);
+				const val = shadow.querySelector('#val-silent-floor');
+				if (val) val.textContent = e.target.value + '%';
+			}
+		});
+
+		shadow.querySelector('#inference-ask-floor')?.addEventListener('input', (e: any) => {
+			if (this.inference) {
+				this.inference.ask_floor = parseInt(e.target.value);
+				const val = shadow.querySelector('#val-ask-floor');
+				if (val) val.textContent = e.target.value + '%';
+			}
+		});
+
+		shadow.querySelector('#inference-chat-floor')?.addEventListener('input', (e: any) => {
+			if (this.inference) {
+				this.inference.chat_floor = parseInt(e.target.value);
+				const val = shadow.querySelector('#val-chat-floor');
+				if (val) val.textContent = e.target.value + '%';
+			}
+		});
+
+		shadow.querySelector('#inference-pending-ttl')?.addEventListener('input', (e: any) => {
+			if (this.inference) this.inference.pending_ttl_seconds = parseInt(e.target.value);
+		});
+
+		shadow.querySelector('#inference-lesson-retention')?.addEventListener('change', (e: any) => {
+			if (this.inference) this.inference.lesson_retention_days = parseInt(e.target.value);
+		});
 	}
 
 	private renderPersonalityOverview(): string {
@@ -773,6 +1036,114 @@ export class AgentsWidget extends HTMLElement {
 					</button>
 				</div>
 			</div>
+		`;
+	}
+
+	private renderInferencePanel(): string {
+		if (!this.inference) {
+			return `<p style="font-size:0.8rem; color:var(--text-tertiary); padding:0.5rem 0;">${this.tr('loading_crews', 'Loading...')}</p>`;
+		}
+		const iv = this.inference;
+		const currentPreset =
+			iv.silent_floor === 95 && iv.ask_floor === 30 && iv.chat_floor === 10 ? 'cautious' :
+			iv.silent_floor === 80 && iv.ask_floor === 45 && iv.chat_floor === 20 ? 'butler' :
+			iv.silent_floor === 65 && iv.ask_floor === 70 && iv.chat_floor === 30 ? 'bold' : 'custom';
+		const retOptions = [0, 7, 30, 90, 180, 365];
+
+		return `
+			<details class="inference-details">
+				<summary class="inference-section-header" aria-label="${this.tr('inference_section_title', 'Inference & Autonomy')}">
+					<svg width="0.9rem" height="0.9rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+					${this.tr('inference_section_title', 'Inference & Autonomy')}
+					<span class="inference-chevron" aria-hidden="true">${this.renderIcon('chevron-right', '0.9rem')}</span>
+				</summary>
+
+				<div class="inference-body">
+					<!-- Preset -->
+					<div class="inference-preset-row">
+						<label for="inference-preset" style="font-size:0.82rem; color:var(--text-secondary); font-weight:500;">${this.tr('inference_preset', 'Preset')}</label>
+						<select class="inference-preset-select" id="inference-preset" aria-label="${this.tr('inference_preset', 'Preset')}">
+							<option value="cautious" ${currentPreset === 'cautious' ? 'selected' : ''}>${this.tr('inference_preset_cautious', 'Cautious')}</option>
+							<option value="butler" ${currentPreset === 'butler' ? 'selected' : ''}>${this.tr('inference_preset_butler', 'Confident butler')}</option>
+							<option value="bold" ${currentPreset === 'bold' ? 'selected' : ''}>${this.tr('inference_preset_bold', 'Bold autopilot')}</option>
+							${currentPreset === 'custom' ? '<option value="custom" selected>Custom</option>' : ''}
+						</select>
+					</div>
+
+					<!-- Silent floor -->
+					<div class="inference-row has-tip" tabindex="0">
+						<label class="inference-label has-tip" for="inference-silent-floor">
+							${this.tr('inference_silent_floor', 'Silent floor')} %
+							<span class="glass-tooltip">${this.tr('inference_tip_silent', 'Above this confidence Z saves silently with a brief confirm. Lower = bolder; higher = more cautious.')}</span>
+						</label>
+						<input type="range" id="inference-silent-floor" min="50" max="95" value="${iv.silent_floor}" aria-label="${this.tr('inference_silent_floor', 'Silent floor')} ${iv.silent_floor}%">
+						<span class="inference-value" id="val-silent-floor" aria-live="polite">${iv.silent_floor}%</span>
+					</div>
+
+					<!-- Ask floor -->
+					<div class="inference-row has-tip" tabindex="0">
+						<label class="inference-label has-tip" for="inference-ask-floor">
+							${this.tr('inference_ask_floor', 'Ask floor')} %
+							<span class="glass-tooltip">${this.tr('inference_tip_ask', 'Above this confidence Z asks once before saving. Between ask and silent floor.')}</span>
+						</label>
+						<input type="range" id="inference-ask-floor" min="20" max="70" value="${iv.ask_floor}" aria-label="${this.tr('inference_ask_floor', 'Ask floor')} ${iv.ask_floor}%">
+						<span class="inference-value" id="val-ask-floor" aria-live="polite">${iv.ask_floor}%</span>
+					</div>
+
+					<!-- Chat floor -->
+					<div class="inference-row has-tip" tabindex="0">
+						<label class="inference-label has-tip" for="inference-chat-floor">
+							${this.tr('inference_chat_floor', 'Chat floor')} %
+							<span class="glass-tooltip">${this.tr('inference_tip_chat', 'Below this confidence Z treats input as conversation and never saves.')}</span>
+						</label>
+						<input type="range" id="inference-chat-floor" min="0" max="40" value="${iv.chat_floor}" aria-label="${this.tr('inference_chat_floor', 'Chat floor')} ${iv.chat_floor}%">
+						<span class="inference-value" id="val-chat-floor" aria-live="polite">${iv.chat_floor}%</span>
+					</div>
+
+					<!-- Pending TTL -->
+					<div style="display:flex; align-items:center; gap:1rem;">
+						<label class="inference-label has-tip" for="inference-pending-ttl" style="min-width:180px; cursor:help;">
+							${this.tr('inference_pending_ttl', 'Pending TTL (seconds)')}
+							<span class="glass-tooltip">${this.tr('inference_tip_ttl', 'How long Z waits for your clarification reply before silently forgetting.')}</span>
+						</label>
+						<input type="number" class="inference-ttl-input" id="inference-pending-ttl" min="30" max="600" value="${iv.pending_ttl_seconds}" aria-label="${this.tr('inference_pending_ttl', 'Pending TTL (seconds)')}">
+					</div>
+
+					<!-- Lesson retention -->
+					<div style="display:flex; align-items:center; gap:1rem;">
+						<label class="inference-label has-tip" for="inference-lesson-retention" style="min-width:180px; cursor:help;">
+							${this.tr('inference_lesson_retention', 'Lesson retention (days, 0 = never expire)')}
+							<span class="glass-tooltip">${this.tr('inference_tip_retention', 'How long routing corrections are remembered. 0 keeps them forever.')}</span>
+						</label>
+						<select class="inference-retention-select" id="inference-lesson-retention" aria-label="${this.tr('inference_lesson_retention', 'Lesson retention')}">
+							${retOptions.map(d => `<option value="${d}" ${iv.lesson_retention_days === d ? 'selected' : ''}>${d === 0 ? this.tr('inference_lesson_never', 'Never expire') : d + ' d'}</option>`).join('')}
+						</select>
+					</div>
+
+					<!-- Actions -->
+					<div class="inference-actions">
+						<div class="inference-reset-group">
+							${this.resetLessonsStep === 0 ? `
+								<button class="oz-btn oz-btn-ghost oz-btn-sm" id="inference-reset-step1" aria-label="${this.tr('inference_reset_lessons', 'Reset routing intelligence')}" style="color:var(--text-tertiary); border-color:var(--border-color);">
+									${this.tr('inference_reset_lessons', 'Reset routing intelligence')}
+								</button>
+							` : `
+								<span style="font-size:0.8rem; color:var(--text-secondary);">${this.tr('inference_reset_confirm', 'Confirm wipe \u2014 this cannot be undone')}</span>
+								<button class="oz-btn oz-btn-ghost oz-btn-sm" id="inference-reset-confirm" ${this.inferenceSaving ? 'disabled' : ''} aria-label="${this.tr('inference_reset_lessons', 'Reset routing intelligence')}" style="color:hsla(0,80%,65%,1); border-color:hsla(0,80%,65%,0.3);">
+									${this.tr('inference_reset_lessons', 'Reset routing intelligence')}
+								</button>
+								<button class="oz-btn oz-btn-ghost oz-btn-sm" id="inference-reset-cancel" aria-label="${this.tr('cancel', 'Cancel')}" style="color:var(--text-tertiary);">${this.tr('cancel', 'Cancel')}</button>
+							`}
+						</div>
+						<div style="display:flex; align-items:center; gap:1rem;">
+							<span class="inference-status" role="status" aria-live="polite">${this.esc(this.inferenceStatus)}</span>
+							<button class="oz-btn oz-btn-primary oz-btn-sm" id="inference-save-btn" ${this.inferenceSaving ? 'disabled' : ''} aria-label="${this.tr('inference_save', 'Save inference settings')}">
+								${this.inferenceSaving ? this.tr('inference_saving', 'Saving...') : this.tr('inference_save', 'Save inference settings')}
+							</button>
+						</div>
+					</div>
+				</div>
+			</details>
 		`;
 	}
 
