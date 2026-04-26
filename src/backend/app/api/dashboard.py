@@ -900,19 +900,106 @@ async def save_personality(data: dict, db: AsyncSession = Depends(get_db)):
 	from app.models.db import Preference
 	# Remove metadata before saving
 	data.pop("questions", None)
-	
+
 	res = await db.execute(select(Preference).where(Preference.key == "agent_personality"))
 	pref = res.scalar_one_or_none()
-	
+
 	val_str = json.dumps(data)
 	if pref:
 		pref.value = val_str
 	else:
 		pref = Preference(key="agent_personality", value=val_str)
 		db.add(pref)
-	
+
 	await db.commit()
 	return {"status": "ok", "personality": data}
+
+
+_INFERENCE_DEFAULTS = {
+	"silent_floor": 80,
+	"ask_floor": 45,
+	"chat_floor": 20,
+	"pending_ttl_seconds": 90,
+	"lesson_retention_days": 0,
+}
+
+
+@router.get("/inference")
+async def get_inference(db: AsyncSession = Depends(get_db)):
+	"""Return the operator's ambient capture inference settings."""
+	from app.models.db import Preference
+
+	res = await db.execute(select(Preference).where(Preference.key == "ambient_inference"))
+	pref = res.scalar_one_or_none()
+	if pref:
+		try:
+			saved = json.loads(pref.value)
+			merged = {**_INFERENCE_DEFAULTS, **saved}
+			return merged
+		except Exception:
+			pass
+	return dict(_INFERENCE_DEFAULTS)
+
+
+@router.put("/inference")
+async def save_inference(data: dict, db: AsyncSession = Depends(get_db)):
+	"""Persist ambient capture inference threshold settings."""
+	from app.models.db import Preference
+
+	# Clamp and validate values before storing
+	clean: dict = {}
+	for key, (lo, hi) in {
+		"silent_floor": (50, 95),
+		"ask_floor": (20, 70),
+		"chat_floor": (0, 40),
+		"pending_ttl_seconds": (30, 600),
+		"lesson_retention_days": (0, 365),
+	}.items():
+		if key in data:
+			try:
+				clean[key] = max(lo, min(hi, int(data[key])))
+			except (TypeError, ValueError):
+				clean[key] = _INFERENCE_DEFAULTS[key]
+
+	res = await db.execute(select(Preference).where(Preference.key == "ambient_inference"))
+	pref = res.scalar_one_or_none()
+	val_str = json.dumps(clean)
+	if pref:
+		pref.value = val_str
+	else:
+		pref = Preference(key="ambient_inference", value=val_str)
+		db.add(pref)
+	await db.commit()
+
+	# Apply to live settings immediately (takes effect for in-process requests; restart for full effect)
+	if hasattr(settings, "AMBIENT_SILENT_FLOOR"):
+		settings.AMBIENT_SILENT_FLOOR = clean.get("silent_floor", _INFERENCE_DEFAULTS["silent_floor"]) / 100.0
+	if hasattr(settings, "AMBIENT_ASK_FLOOR"):
+		settings.AMBIENT_ASK_FLOOR = clean.get("ask_floor", _INFERENCE_DEFAULTS["ask_floor"]) / 100.0
+	if hasattr(settings, "AMBIENT_CHAT_FLOOR"):
+		settings.AMBIENT_CHAT_FLOOR = clean.get("chat_floor", _INFERENCE_DEFAULTS["chat_floor"]) / 100.0
+	if hasattr(settings, "AMBIENT_PENDING_TTL_SECONDS"):
+		settings.AMBIENT_PENDING_TTL_SECONDS = clean.get("pending_ttl_seconds", _INFERENCE_DEFAULTS["pending_ttl_seconds"])
+
+	return {"status": "ok", "inference": clean}
+
+
+@router.post("/inference/reset-lessons")
+async def reset_routing_lessons():
+	"""Wipe all routing lessons from Qdrant (two-step — frontend sends confirmation flag)."""
+	try:
+		from qdrant_client import QdrantClient
+		from app.config import settings as s
+		client = QdrantClient(host=s.QDRANT_HOST, port=s.QDRANT_PORT, api_key=s.QDRANT_API_KEY or None)
+		collections = [c.name for c in client.get_collections().collections]
+		wiped = []
+		for col in ("routing_lessons",):
+			if col in collections:
+				client.delete_collection(col)
+				wiped.append(col)
+		return {"status": "ok", "wiped": wiped}
+	except Exception as exc:
+		return {"status": "error", "detail": str(exc)}
 
 @router.post("/chat/stream")
 async def dashboard_chat_stream(req: ChatRequest, request: Request, _rl: None = Depends(_check_chat_rate_limit)):
