@@ -462,53 +462,42 @@ async def route_message_stream(
 			len(_trimmed_save) <= 120
 			and _SAVE_ZOUTPUT_RE.search(_trimmed_save[:_MAX_RE_INPUT])
 		):
-			# Quick in-memory check: if a recent Z message already contains
-			# multi-line content it is already in context — skip DB fetch.
-			_recent_z_in_ctx = any(
-				m.get("role") in ("assistant", "z") and m.get("content", "").count("\n") >= 3
-				for m in (history[-6:] if len(history) > 6 else history)
-			)
-			if not _recent_z_in_ctx:
-				try:
-					from app.models.db import get_day_exchanges as _get_today
-					_today_msgs = await asyncio.wait_for(_get_today(0), timeout=4.0)
-					# Find the most recent Z message that looks like generated content
-					# (3+ newlines = structured list). Exclude receipts and short acks.
-					_z_content_msgs = [
-						m for m in reversed(_today_msgs)
-						if m.get("role") == "z"
-						and m.get("content", "").count("\n") >= 3
-						and not m["content"].startswith("[SYSTEM")
-					]
-					if _z_content_msgs:
-						_zout = _z_content_msgs[0]["content"]
-						# Build a context injection that tells the LLM what it generated
-						_zout_ts = _z_content_msgs[0].get("at", "")[:16]
-						_save_ctx = (
-							f"[Z'S OWN OUTPUT FROM {_zout_ts} — use this as the content to save]\n"
-							f"{_zout[:6000]}\n"
-							"[END Z OUTPUT — save every item above using CREATE_TASK tags as instructed "
-							"by the SAVE FOLLOW-UP RULE. Do NOT ask the user to re-send.]"
-						)
-						# Initialise _sq_extra_ctx if not yet set (step 0.45 sets it below)
-						# We use a module-level sentinel to share with step 0.45.
-						# Since _sq_extra_ctx is defined at step 0.45, we use a temporary
-						# list here and merge it in after the 0.45 block.
-						_save_ctx_inject = {"role": "assistant", "content": _save_ctx}
-						logger.info(
-							"Router 0.4: injected Z's own output (%d chars) for save follow-up",
-							len(_zout),
-						)
-					else:
-						_save_ctx_inject = None
-				except asyncio.TimeoutError:
+			# Always fetch from DB — the in-memory history window may not contain
+			# what was asked to save (e.g. recipes generated earlier today or
+			# yesterday). Search the last 4 days so cross-day save requests work.
+			try:
+				from app.models.db import get_range_exchanges as _get_range
+				_today_msgs = await asyncio.wait_for(_get_range(days=4), timeout=8.0)
+				# Find the most recent Z message that looks like generated content
+				# (3+ newlines = structured list). Exclude receipts and short acks.
+				_z_content_msgs = [
+					m for m in reversed(_today_msgs)
+					if m.get("role") == "z"
+					and m.get("content", "").count("\n") >= 3
+					and not m["content"].startswith("[SYSTEM")
+				]
+				if _z_content_msgs:
+					_zout = _z_content_msgs[0]["content"]
+					_zout_ts = _z_content_msgs[0].get("at", "")[:16]
+					_save_ctx = (
+						f"[Z'S OWN OUTPUT FROM {_zout_ts} — use this as the content to save]\n"
+						f"{_zout[:6000]}\n"
+						"[END Z OUTPUT — save every item above using CREATE_TASK tags as instructed "
+						"by the SAVE FOLLOW-UP RULE. Do NOT ask the user to re-send.]"
+					)
+					_save_ctx_inject = {"role": "assistant", "content": _save_ctx}
+					logger.info(
+						"Router 0.4: injected Z's own output (%d chars) for save follow-up",
+						len(_zout),
+					)
+				else:
 					_save_ctx_inject = None
-					logger.debug("Router 0.4: DB fetch timed out for save follow-up")
-				except Exception as _sfi_err:
-					_save_ctx_inject = None
-					logger.debug("Router 0.4: save follow-up inject failed: %s", _sfi_err)
-			else:
+			except asyncio.TimeoutError:
 				_save_ctx_inject = None
+				logger.debug("Router 0.4: DB fetch timed out for save follow-up")
+			except Exception as _sfi_err:
+				_save_ctx_inject = None
+				logger.debug("Router 0.4: save follow-up inject failed: %s", _sfi_err)
 		else:
 			_save_ctx_inject = None
 
