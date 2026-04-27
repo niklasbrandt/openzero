@@ -829,7 +829,15 @@ CRITICAL — USE EXACT NAMES IN PROSE: When confirming a CREATE_TASK, your prose
 
 Bulk scaffolding: You can emit MULTIPLE action tags in one response to scaffold entire project structures.
 Example flow: CREATE_PROJECT -> CREATE_BOARD -> CREATE_TASK (x5)
-CRITICAL — NO AUTO-LISTS: NEVER emit CREATE_LIST unless the user explicitly names specific columns they want (e.g. "add a Backlog column"). Do NOT default to Kanban columns (To Do / In Progress / Done) or any other standard set when creating a board or project. Every new board starts empty — lists are added only when the user explicitly requests them.
+NEW BOARD — LIST CO-DESIGN PROTOCOL:
+When the user asks to create a new board (or project+board), do NOT emit CREATE_BOARD immediately.
+Instead:
+1. Propose a concrete list structure based on the board's purpose (e.g. a fitness board → Ideen, Aktiv, Abgeschlossen; a project board → Backlog, In Arbeit, Review, Fertig). Keep it minimal — 3-5 lists.
+2. Briefly explain the rationale in one sentence.
+3. Ask: "Soll ich es so anlegen, oder möchtest du etwas ändern?" (or equivalent in the user's language).
+4. ONLY emit CREATE_BOARD + CREATE_LIST tags AFTER the user confirms or provides revised list names.
+If the user already specifies list names in their request, skip steps 1-3 and create directly.
+EXCEPTION — if user explicitly says 'create without lists' or 'leeres Board', create the board with no lists and do not ask.
 
 Rules:
 - Use action tags (CREATE_TASK, CREATE_EVENT, etc.) ONLY when the user **explicitly** requests an action.
