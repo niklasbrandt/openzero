@@ -1,6 +1,24 @@
 # Anti-Hallucination Master Plan
 
-> Status: PROPOSED · Owner: Z runtime · Date: 2026-04-27
+> Status: PHASE 1-3 IMPLEMENTED · Owner: Z runtime · Date: 2026-04-27
+> Last updated: 2026-04-28 — Layers 1, 2, 3, 6, 7 (partial), 8, 10, 12 implemented and deployed.
+
+## Implementation Status
+
+| Layer | Name | Status | Commit |
+|-------|------|--------|--------|
+| L1 | Phantom history filter | DONE | e1b79eba |
+| L2 | SYSTEM RECEIPT injection | DONE | e1b79eba |
+| L3 | State-question interception | DONE | 14f89e57 |
+| L6 | Three-stage phantom detector | DONE | e1b79eba |
+| L7 | Prompt invariants at top + SYSTEM label in history | PARTIAL | 14f89e57 |
+| L8 | Hallucination regression tests | DONE | 14f89e57 |
+| L10 | Response budget + circuit breaker | DONE | e1b79eba |
+| L12 | Fast-path bypass for greetings | DONE | e1b79eba |
+| L4 | Provider-agnostic action extractor | NOT STARTED | — |
+| L5 | Streaming-safe gate | NOT STARTED | — |
+| L9 | Telemetry counters | NOT STARTED | — |
+| L11 | Parallel router cascade | NOT STARTED | — |
 
 ## 1. The Disease
 
