@@ -2,6 +2,14 @@
 # Tuned for the tab-indented, Python 3.11, FastAPI codebase.
 line-length = 200
 
+# Exclude vendored / generated files
+exclude = [
+    "__pycache__",
+    ".venv",
+    "dist",
+    "migrations",
+]
+
 [lint]
 # Target rules: real bugs (F), security (S bandit-equivalent), bugbear (B)
 # Skip style-only rules that conflict with the tab-first project convention.
@@ -51,10 +59,7 @@ ignore = [
     "B007",   # unused-loop-control-variable
 ]
 
-# Exclude vendored / generated files
-exclude = [
-    "__pycache__",
-    ".venv",
-    "dist",
-    "migrations",
-]
+[lint.per-file-ignores]
+# Test files: assert statements are expected in pytest
+"tests/**/*.py" = ["S101"]
+"src/**/*test*.py" = ["S101"]
