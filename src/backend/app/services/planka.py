@@ -111,15 +111,36 @@ async def get_project_tree(as_html: bool = True) -> str:
 				if as_html:
 					progress_str = f" <span style='color: #4ade80; font-size: 0.8rem;'>({progress_pct}%)</span>" if total_cards > 0 else ""
 					line = f"  └── <a href='/api/dashboard/planka-redirect?target_board_id={board_id}' target='_blank' style='color: inherit; text-decoration: none;'>{_html.escape(board_name)}</a>{progress_str}"
+					project_boards[meta["project_idx"]].append(line)
 				else:
 					progress_str = f" ({progress_pct}%)" if total_cards > 0 else ""
 					# Use version without underscores for Telegram Markdown
 					line = f" • [{board_name}]({settings.BASE_URL}/api/dashboard/planka-redirect?targetboardid={board_id}){progress_str}"
-
-				project_boards[meta["project_idx"]].append(line)
-
-			# Assemble final tree
-			final_lines = []
+					project_boards[meta["project_idx"]].append(line)
+					# Add list+card detail so LLM can reason about the actual board structure
+					label_map: dict[str, str] = {}
+					for lbl in b_detail.get("included", {}).get("labels", []):
+						label_map[lbl["id"]] = lbl.get("name") or lbl.get("color", "")
+					card_labels: dict[str, list[str]] = {}
+					for cl in b_detail.get("included", {}).get("cardLabels", []):
+						cid = cl.get("cardId", "")
+						card_labels.setdefault(cid, []).append(label_map.get(cl.get("labelId", ""), ""))
+					list_cards: dict[str, list[str]] = {l["id"]: [] for l in lists}
+					for c in cards:
+						lid = c.get("listId", "")
+						if lid in list_cards:
+							cname = c.get("name", "?")
+							clbls = card_labels.get(c["id"], [])
+							tag = f" [{', '.join(lb for lb in clbls if lb)}]" if clbls else ""
+							list_cards[lid].append(f"{cname}{tag}")
+					for lst in lists:
+						l_cards = list_cards.get(lst["id"], [])
+						if not l_cards:
+							continue
+						visible = l_cards[:5]
+						overflow = len(l_cards) - len(visible)
+						overflow_str = f" (+{overflow} more)" if overflow > 0 else ""
+						project_boards[meta["project_idx"]].append(f"   [{lst['name']}]: {', '.join(visible)}{overflow_str}")
 			for i, p_type, p_name in tree_lines:
 				final_lines.append(p_name)
 				final_lines.extend(project_boards[i])
