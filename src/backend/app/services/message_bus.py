@@ -212,6 +212,12 @@ class MessageBus:
 			if is_phantom(clean_reply, executed_cmds):
 				_save_reply = PHANTOM_HISTORY_PLACEHOLDER
 				logger.warning("MessageBus: phantom reply redacted from history (channel=%s)", channel)
+				# L9 — telemetry counter: track phantom rate per channel for SLO monitoring
+				try:
+					from app.services.metrics import increment_counter
+					increment_counter("phantom_confirmations_total", channel=channel)
+				except Exception:
+					pass
 			await save_global_message(channel, "z", _save_reply, model=model)
 			# L2 — SYSTEM RECEIPT: when actions actually executed, save a receipt
 			# as a system message so the LLM can answer "where did you save X?"

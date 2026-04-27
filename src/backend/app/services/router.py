@@ -519,11 +519,39 @@ async def route_message_stream(
 						"Router 0.45: injected Planka state for fragment '%s' (%d results)",
 						_sanitize_for_log(_sq_frag), len(_sq_results) if _sq_results else 0,
 					)
+					# L9 — count successful Planka state lookups for SLO monitoring
+					try:
+						from app.services.metrics import increment_counter
+						increment_counter("state_query_planka_lookups_total")
+					except Exception:
+						pass
 				except asyncio.TimeoutError:
 					logger.warning("Router 0.45: Planka state query timed out for '%s'", _sanitize_for_log(_sq_frag))
 				except Exception as _sq_err:
 					logger.warning("Router 0.45: Planka state query failed: %s", _sq_err)
 			# Whether or not the lookup succeeded, fall through to normal LLM path below
+
+		# ── L11 Parallel board-context prefetch ──────────────────────────────
+		# Start fetching board contents concurrently with the structural classifier
+		# (step 0.5). If step 0.5 dispatches SORT_BOARD directly, the prefetch task
+		# is cancelled. If we fall through to step 0.55 the context should already
+		# be ready — await costs ~0 ms. Saves 3-15 s on board-reorganise requests.
+		_board_prefetch_task: asyncio.Task | None = None
+		_rm_l11 = _REORGANIZE_BOARD_RE.search(user_text[:_MAX_RE_INPUT])
+		if _rm_l11:
+			_bfrag_l11 = _rm_l11.group("board").strip().rstrip(".,;!?")
+			try:
+				from app.services.planka import get_board_full_context as _gbfc_l11
+				_board_prefetch_task = asyncio.create_task(
+					asyncio.wait_for(_gbfc_l11(_bfrag_l11), timeout=15.0),
+					name="board_ctx_prefetch",
+				)
+				logger.debug(
+					"Router L11: board context prefetch started for '%s'",
+					_sanitize_for_log(_bfrag_l11),
+				)
+			except Exception as _l11_e:
+				logger.debug("Router L11: prefetch task creation failed: %s", _l11_e)
 
 		# ── 0.5 Deterministic structural-intent intercept ────────────────────
 		# Pre-LLM router for high-confidence Planka mutations (move/archive/
@@ -615,6 +643,9 @@ async def route_message_stream(
 							model="intent_router",
 							executed_cmds=_cmds, pending_actions=_pending,
 						))
+				# L11: cancel the board prefetch — SORT_BOARD dispatch fetches context internally
+				if _board_prefetch_task and not _board_prefetch_task.done():
+					_board_prefetch_task.cancel()
 				return
 
 		# ── 0.52 Semantic board-management fallback ───────────────────────────
@@ -701,6 +732,9 @@ async def route_message_stream(
 									model="intent_router",
 									executed_cmds=_sem_cmds, pending_actions=_sem_pending,
 								))
+						# L11: cancel board prefetch — semantic dispatch already handled the request
+						if _board_prefetch_task and not _board_prefetch_task.done():
+							_board_prefetch_task.cancel()
 						return
 			except asyncio.TimeoutError:
 				logger.warning("Router 0.52: semantic fallback timed out — falling through")
@@ -727,9 +761,16 @@ async def route_message_stream(
 			logger.info("Router: board-reorganise detected — fetching context for '%s'", _sanitize_for_log(_board_frag))
 			try:
 				from app.services.planka import get_board_full_context
-				_board_ctx = await asyncio.wait_for(
-					get_board_full_context(_board_frag), timeout=15.0,
-				)
+				if _board_prefetch_task is not None:
+					# L11: reuse the concurrently prefetched result — await ~0 ms if already done
+					try:
+						_board_ctx = await _board_prefetch_task
+					except asyncio.CancelledError:
+						_board_ctx = None
+				else:
+					_board_ctx = await asyncio.wait_for(
+						get_board_full_context(_board_frag), timeout=15.0,
+					)
 				if _board_ctx:
 					# Inject as a synthetic system message so the LLM treats it as
 					# authoritative ground truth, not something to speculate about.
@@ -848,7 +889,14 @@ async def route_message_stream(
 			)
 			result_future.set_result(RouterResult(reply=_apology, model="budget_exceeded", executed_cmds=cmds, pending_actions=pending))
 			return
-		chunks = []
+		# ── L5 Streaming-safe tag gate ────────────────────────────────────────
+		# Holds tokens while an [ACTION:] sequence is still open so the client
+		# never receives a partial tag. Zero added latency for pure-conversation
+		# responses — the `else: yield token` path runs every iteration.
+		# Mode: 0=normal  1=suspect(saw '[')  2=confirmed [ACTION: — hold until ']'
+		chunks: list[str] = []
+		_l5_hold: list[str] = []
+		_l5_mode = 0
 		async for token in chat_stream_with_context(
 			user_text,
 			history=_ctx_history,
@@ -857,7 +905,37 @@ async def route_message_stream(
 			tier_override="cloud" if _force_cloud else None,
 		):
 			chunks.append(token)
-			yield token
+			if _l5_mode == 2:
+				_l5_hold.append(token)
+				if ']' in token:
+					_l5_mode = 0
+					yield "".join(_l5_hold)
+					_l5_hold.clear()
+			elif _l5_mode == 1:
+				_l5_hold.append(token)
+				_l5_held_text = "".join(_l5_hold)
+				if ']' in _l5_held_text:
+					# Closed without ACTION — regular [text](url) or similar
+					_l5_mode = 0
+					yield _l5_held_text
+					_l5_hold.clear()
+				elif re.search(r'\[ACTION:', _l5_held_text, re.IGNORECASE):
+					_l5_mode = 2  # confirmed action tag — hold until ']'
+				elif len(_l5_held_text) > 50:
+					# Too many chars without ACTION confirmation — flush
+					_l5_mode = 0
+					yield _l5_held_text
+					_l5_hold.clear()
+			else:
+				if '[' in token:
+					_l5_mode = 1
+					_l5_hold.append(token)
+				else:
+					yield token
+		# End of stream — flush any held content (e.g. tag missing closing ']')
+		if _l5_hold:
+			yield "".join(_l5_hold)
+			_l5_hold.clear()
 
 		response = sanitise_output("".join(chunks))
 		response = rehydrate_response(response, get_active_rep_map())
