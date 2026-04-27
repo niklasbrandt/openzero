@@ -870,6 +870,15 @@ async def route_message_stream(
 		# Apply any L3 state-query context injections accumulated in step 0.45.
 		_ctx_history = list(history) + _sq_extra_ctx if _sq_extra_ctx else history
 		_force_cloud = False  # set True when a large-output task needs cloud LLM
+		# Bulk save detection: if user mentions a count >= 5 AND a save noun, force cloud.
+		# Generating 20+ CREATE_TASK tags exhausts the local model budget.
+		_bulk_save_re = re.compile(
+			r'\b([5-9]|[1-9]\d+)\s+(?:rezepte?|recipes?|mahlzeiten|gerichte?|workouts?|trainings?|pl[aä]ne?|items?|notizen?)\b',
+			re.IGNORECASE,
+		)
+		if _save_ctx_inject and _bulk_save_re.search(user_text[:_MAX_RE_INPUT]):
+			_force_cloud = True
+			logger.info("Router: bulk save detected — forcing cloud tier")
 		_rm = _REORGANIZE_BOARD_RE.search(user_text[:_MAX_RE_INPUT])
 		if _rm:
 			_board_frag = _rm.group("board").strip().rstrip(".,;!?")
