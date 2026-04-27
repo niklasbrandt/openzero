@@ -1143,11 +1143,19 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
 				_timed_out = False
 
 			# After responding, check if messages arrived while we were thinking.
-			# If the primary call timed out, drop the buffer — retrying will just
-			# stack more timeouts on the same failing path.
 			if _timed_out and _pending_messages.get(chat_id):
-				_dropped = len(_pending_messages.pop(chat_id, []))
-				logger.warning("Dropped %d buffered message(s) after primary timeout", _dropped)
+				_buf = _pending_messages.pop(chat_id, [])
+				if len(_buf) == 1:
+					# Single follow-up — re-queue it so the while loop below gives it a chance
+					logger.info("Re-queuing 1 buffered message after primary timeout")
+					_pending_messages[chat_id] = _buf
+				else:
+					# Multiple buffered messages (likely duplicate retries) — reply and drop
+					logger.warning("Dropped %d buffered message(s) after primary timeout", len(_buf))
+					try:
+						await safe_reply(update, "I ran out of time on that one. Please try again.")
+					except Exception:
+						pass
 			while _pending_messages.get(chat_id):
 				buffered = _pending_messages.pop(chat_id)
 				combined = "\n".join(buffered)
