@@ -167,3 +167,23 @@ ambient_intelligence:
   # Fold undelivered priority 4-5 insights into the morning briefing.
   briefing_queue_enabled: true
 
+# ── Anti-hallucination — response budget and circuit breaker ────────────────
+# Controls Layer 1 (phantom history filter), Layer 10 (budget + circuit breaker).
+# All settings correspond to the same-named env vars in .env.
+anti_hallucination:
+  # Hard ceiling in seconds for any single response cycle. After this the
+  # user receives an apology. Corresponds to LLM_RESPONSE_CEILING_S.
+  response_ceiling_s: 20.0
+
+  # Number of local-LLM timeouts within 5 minutes before the circuit opens
+  # and all requests route to cloud. Corresponds to LLM_CB_FAILURE_THRESHOLD.
+  cb_failure_threshold: 3
+
+  # When true and the local circuit is open, route to cloud instead.
+  # Corresponds to LLM_FALLBACK_TO_CLOUD.
+  fallback_to_cloud: true
+
+  # Reserved: async phantom classifier background pass. Leave false.
+  # Corresponds to PHANTOM_ASYNC_CLASSIFIER.
+  phantom_async_classifier: false
+
