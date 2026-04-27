@@ -179,6 +179,10 @@ _PHANTOM_RE = re.compile(
 	# Spanish / French
 	r'|tablero[^.]{0,80}(reorganizado|reestructurado)'
 	r'|tableau[^.]{0,80}(réorganisé|restructuré)'
+	# German: save/store confirmations — "15 Keto-Rezepte gespeichert", "wurde gespeichert"
+	r'|[a-z0-9\u00e4\u00f6\u00fc\u00df][\w\u00e4\u00f6\u00fc\u00df\-]*\s+gespeichert'
+	r'|wurden?\s+gespeichert'
+	r'|erfolgreich\s+(gespeichert|erstellt|hinzugef\u00fcgt|angelegt)'
 	r')\b',
 	re.IGNORECASE,
 )
