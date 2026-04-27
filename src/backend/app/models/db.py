@@ -224,6 +224,31 @@ async def get_day_exchanges(days_ago: int = 0):
         return [{"role": m.role, "content": m.content, "at": m.created_at.isoformat() + "Z"} for m in messages]
 
 
+async def get_rolling_history(days: int = 4, limit: int = 60):
+    """Return the most recent `limit` messages (all roles) within the last `days` days.
+
+    Designed for LLM context injection: gives Z a 4-day rolling memory window so
+    it can recall what it generated earlier today or in the past few days without
+    needing the user to repeat themselves.
+
+    Returns messages in chronological order (oldest first), each as:
+    {role, content, channel, model, at}
+    """
+    cutoff = datetime.datetime.utcnow() - datetime.timedelta(days=days)
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(GlobalMessage)
+            .where(GlobalMessage.created_at >= cutoff)
+            .order_by(GlobalMessage.created_at.desc())
+            .limit(limit)
+        )
+        messages = result.scalars().all()
+        return [
+            {"role": m.role, "content": m.content, "channel": m.channel, "model": m.model, "at": m.created_at.isoformat() + "Z"}
+            for m in reversed(messages)
+        ]
+
+
 async def get_range_exchanges(days: int = 7):
     """Return all user AND z messages for the past N days (rolling window), ordered chronologically.
 
