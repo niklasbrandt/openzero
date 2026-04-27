@@ -158,10 +158,10 @@ class MessageBus:
 		Returns:
 			Cross-channel history list ready to pass to chat_with_context(history=…).
 		"""
-		from app.models.db import get_global_history, save_global_message
+		from app.models.db import save_global_message, get_rolling_history
 		if save:
 			await save_global_message(channel, "user", user_text)
-		return await get_global_history(limit=20)
+		return await get_rolling_history(days=4, limit=60)
 
 	# ─── Outbound ─────────────────────────────────────────────────────────
 

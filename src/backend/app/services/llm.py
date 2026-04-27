@@ -2223,7 +2223,7 @@ def _build_history_text(history: Optional[list] = None) -> str:
 	if not history:
 		return ""
 	history_lines = []
-	for m in history[-16:]:
+	for m in history[-40:]:
 		role_raw = m.get("role", "")
 		if role_raw == "user":
 			role = "User"
