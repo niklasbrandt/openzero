@@ -23,6 +23,8 @@ import asyncio
 from dataclasses import dataclass, field
 from typing import AsyncIterator
 
+from app.common.phantom import PHANTOM_RE as _PHANTOM_RE  # noqa: E402
+
 logger = logging.getLogger(__name__)
 
 # Maximum input length applied before running complex regexes on user-controlled
@@ -164,29 +166,6 @@ _REORGANIZE_BOARD_RE = re.compile(
 	re.IGNORECASE,
 )
 
-# Phantom-confirmation guard — Z claimed success in prose without emitting a tag.
-# Covers English and German (and partial Spanish/French) confirmation patterns.
-_PHANTOM_RE = re.compile(
-	r'\b(task added|board (added|created)|event (added|created)|card (added|created)'
-	r'|added to (your )?(todo|list|board|today)'
-	r'|done[\s\u2014\u2013-]+(task|board|card|event|create|add)'
-	r'|done\s*[\u2014\u2013\-]+\s*(create|add|new)'
-	# German phantom patterns
-	r'|erledigt[\s\u2014\u2013\-]+(board|karte|aufgabe|liste)'
-	r'|board[^.]{0,80}(neu\s+strukturiert|reorganisiert|sortiert|umstrukturiert)'
-	r'|karten?[^.]{0,80}(verschoben|sortiert|erstellt)'
-	r'|listen?[^.]{0,80}(erstellt|angelegt|umbenannt)'
-	# Spanish / French
-	r'|tablero[^.]{0,80}(reorganizado|reestructurado)'
-	r'|tableau[^.]{0,80}(réorganisé|restructuré)'
-	# German: save/store confirmations — "15 Keto-Rezepte gespeichert", "wurde gespeichert"
-	r'|[a-z0-9\u00e4\u00f6\u00fc\u00df][\w\u00e4\u00f6\u00fc\u00df\-]*\s+gespeichert'
-	r'|wurden?\s+gespeichert'
-	r'|erfolgreich\s+(gespeichert|erstellt|hinzugef\u00fcgt|angelegt)'
-	r')\b',
-	re.IGNORECASE,
-)
-
 
 @dataclass
 class RouterResult:
@@ -222,6 +201,11 @@ async def route_message_stream(
 	result_future: asyncio.Future[RouterResult] = loop.create_future()
 
 	async def _generate() -> AsyncIterator[str]:
+		# ── Budget initialization ─────────────────────────────────────────────
+		from app.common.response_budget import ResponseBudget, budget_ctx, RESPONSE_CEILING_S  # noqa: F401
+		_budget = ResponseBudget()
+		_budget_token = budget_ctx.set(_budget)  # noqa: F841
+
 		from app.services.crews import resolve_active_crews
 		from app.services.crews_native import native_crew_engine
 		from app.services.llm import (
@@ -232,6 +216,48 @@ async def route_message_stream(
 			last_model_used,
 		)
 		from app.services.message_bus import bus
+
+		# ── 0.0 Fast-path bypass for trivial messages ────────────────────────
+		# Short greetings and ack messages skip the full cascade to save 1-3s.
+		# Guard: message must be short AND match a whitelist — never skip if it
+		# contains action verbs (the user could be saying "ok save this").
+		_FAST_PATH_RE = re.compile(
+			r'^(?:hi|hello|hey|hallo|moin|guten\s+(?:morgen|tag|abend)'
+			r'|danke|thanks|thank\s+you|merci|gracias|obrigado'
+			r'|ok|okay|ja|yes|nein|no|sure|great|fine|perfect|super|cool|nice'
+			r'|gut|sehr\s+gut|alles\s+klar|verstanden|got\s+it'
+			r'|[\U0001F44D\U0001F44C\U0001F60A\u2764\U0001F600-\U0001F64F]'
+			r')[!.?\s]*$',
+			re.IGNORECASE,
+		)
+		_HAS_ACTION_VERB_RE = re.compile(
+			r'\b(?:save|create|add|make|set|build|move|delete|send|remind|schedule|book|'
+			r'sort|reorganize|reorganise|show|list|find|search|tell|explain|speichern|erstellen|'
+			r'hinzuf[üu]gen|verschieben|l[öo]schen|sortier|zeig)\b',
+			re.IGNORECASE,
+		)
+		_trimmed = user_text.strip()
+		if (
+			len(_trimmed.split()) <= 4
+			and _FAST_PATH_RE.match(_trimmed[:_MAX_RE_INPUT])
+			and not _HAS_ACTION_VERB_RE.search(_trimmed[:_MAX_RE_INPUT])
+		):
+			logger.debug("Router 0.0: fast-path bypass for '%s'", _sanitize_for_log(user_text))
+			_fp_chunks = []
+			async for _fp_token in chat_stream_with_context(user_text, history=history):
+				_fp_chunks.append(_fp_token)
+				yield _fp_token
+			_fp_response = sanitise_output("".join(_fp_chunks))
+			_fp_response = rehydrate_response(_fp_response, get_active_rep_map())
+			_fp_clean, _fp_cmds, _fp_pending = await bus.commit_reply(
+				channel=channel, raw_reply=_fp_response,
+				model=last_model_used.get(), user_text=user_text, save=save_history,
+			)
+			result_future.set_result(RouterResult(
+				reply=_fp_clean, model=last_model_used.get(),
+				executed_cmds=_fp_cmds, pending_actions=_fp_pending,
+			))
+			return
 
 		# ── -1. Manual audit intercept ───────────────────────────────────────
 		# Explicit self-audit requests ("audit your actions", "look back and audit",
@@ -369,7 +395,7 @@ async def route_message_stream(
 				)
 
 				lines = []
-				for m, status in zip(task_msgs, statuses):
+				for m, status in zip(task_msgs, statuses, strict=False):
 					if isinstance(status, Exception):
 						status_label = " [could not verify - check Planka]"
 					elif status == "found":
@@ -464,7 +490,7 @@ async def route_message_stream(
 				)
 			except asyncio.TimeoutError:
 				logger.error("Router: intent dispatch timeout (>%.0fs)", _dispatch_timeout)
-				result_text = f"⚠ Timed out reorganising board — the board may be very large. Try again."
+				result_text = "⚠ Timed out reorganising board — the board may be very large. Try again."
 			except Exception as _de:
 				logger.error("intent_router: dispatch failed: %s", _de)
 				result_text = f"⚠ Failed to reorganise board: {_de}"
@@ -512,7 +538,7 @@ async def route_message_stream(
 		if intent is None:
 			try:
 				from app.services.llm import chat as _fast_chat
-				from app.services.intent_router import StructuralIntent, dispatch_structural_intent, _get_planka_snapshot, _match_name
+				from app.services.intent_router import StructuralIntent, dispatch_structural_intent, _get_planka_snapshot
 				# Fetch board list so the fast model has board names to choose from.
 				_projects = await _get_planka_snapshot()
 				_all_boards = [b for p in (_projects or []) for b in p["boards"]]
@@ -725,6 +751,16 @@ async def route_message_stream(
 			return
 
 		# ── 2. Z responds ────────────────────────────────────────────────────
+		if _budget.skip_optional():
+			logger.warning("Router: response budget exhausted before LLM call — returning apology")
+			_apology = "Das hat zu lange gedauert — bitte wiederhole kurz deine Anfrage."
+			yield _apology
+			clean, cmds, pending = await bus.commit_reply(
+				channel=channel, raw_reply=_apology,
+				model="budget_exceeded", user_text=user_text, save=save_history,
+			)
+			result_future.set_result(RouterResult(reply=_apology, model="budget_exceeded", executed_cmds=cmds, pending_actions=pending))
+			return
 		chunks = []
 		async for token in chat_stream_with_context(
 			user_text,

@@ -1196,6 +1196,23 @@ async def chat_stream(
 		last_model_used.set(display_name)
 		logger.debug("LLM [%s] -> %s @ %s", tier_name, display_name, base_url)
 
+		# ── Circuit breaker: skip local LLM when it has been timing out ──────
+		if tier_name == "local":
+			from app.common.response_budget import is_local_llm_open
+			if await is_local_llm_open():
+				if settings.cloud_configured and settings.SMART_CLOUD_ROUTING:
+					logger.warning("LLM: circuit breaker open — routing to cloud for this request")
+					async for chunk in chat_stream(
+						user_message,
+						system_override=system_prompt,
+						tier="cloud",
+						sanitize=False,
+						**{k: v for k, v in kwargs.items() if k not in ("thinking",)},
+					):
+						yield chunk
+					return
+				logger.warning("LLM: circuit breaker open but cloud not configured — attempting local anyway")
+
 		messages: list[dict[str, Any]] = [
 			{"role": "system", "content": system_prompt},
 			{"role": "user", "content": user_message},
@@ -1422,11 +1439,17 @@ async def chat_stream(
 										yield rehydrate_response(content, rep_map) if rep_map else content
 								except json.JSONDecodeError:
 									continue
-					return
+				# Successful streaming response — reset circuit breaker for local tier
+				if tier_name == "local":
+					from app.common.response_budget import reset_local_llm_circuit
+					asyncio.create_task(reset_local_llm_circuit())
+				return
 			except httpx.ReadTimeout:
 				if tier_name == "local":
 					# Timed out — yield nothing; caller cleans up the thinking indicator.
 					logger.warning("LLM local timeout after %.0fs — no response sent", read_timeout)
+					from app.common.response_budget import record_local_llm_timeout
+					asyncio.ensure_future(record_local_llm_timeout())
 					return
 				else:
 					# Cloud timeout — retry with backoff
