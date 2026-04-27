@@ -141,6 +141,8 @@ async def get_project_tree(as_html: bool = True) -> str:
 						overflow = len(l_cards) - len(visible)
 						overflow_str = f" (+{overflow} more)" if overflow > 0 else ""
 						project_boards[meta["project_idx"]].append(f"   [{lst['name']}]: {', '.join(visible)}{overflow_str}")
+			# Assemble final tree
+			final_lines = []
 			for i, p_type, p_name in tree_lines:
 				final_lines.append(p_name)
 				final_lines.extend(project_boards[i])
