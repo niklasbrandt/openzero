@@ -1214,9 +1214,11 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 			parse_mode="HTML",
 		)
 
+	# history is always set by bus.ingest() in the normal calling path;
+	# this fallback exists for test callers that pass history=None.
 	if history is None:
-		from app.models.db import get_global_history
-		merged_history = await get_global_history(limit=10)
+		from app.models.db import get_rolling_history
+		merged_history = await get_rolling_history(days=4, limit=60)
 	else:
 		merged_history = history
 
