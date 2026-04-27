@@ -498,4 +498,9 @@ translations: dict[str, str] = {
         'privacy_private': '비공개',
         'privacy_auto': '자동',
         'privacy_first_touch': "'{board}' 보드를 비공개로 표시했습니다 \u2014 직접 이름을 말하지 않으면 제안에 나타나지 않습니다.",
+        # Status / progress strings
+        'status_composing': '응답 작성 중...',
+        'status_fetching_history': '메시지 검색 중...',
+        'status_loading_board': '보드 컨텍스트 로딩 중...',
+        'status_routing_crew': '{crew}(으)로 라우팅 중...',
 }
