@@ -439,6 +439,79 @@ async def route_message_stream(
 			))
 			return
 
+		# ── 0.4 Save-follow-up context injector ──────────────────────────────
+		# Detects "speichere die X rezepte / save the N workouts / ..." where the
+		# content being saved was produced by Z in an earlier message today (not
+		# provided inline by the user). Fetches Z's own recent output from the DB
+		# and injects it so the LLM can emit the CREATE_TASK tags without asking
+		# the user to repeat themselves.
+		#
+		# Trigger conditions (all must hold):
+		#   1. Message matches the save-follow-up regex.
+		#   2. Message is short (<= 120 chars) — if the user included the actual
+		#      content inline we do not need to fetch from DB.
+		#   3. History (in-memory) does not already contain a Z message with 3+
+		#      recipe/item lines — avoids redundant DB queries on the fast path.
+		_SAVE_ZOUTPUT_RE = re.compile(
+			r'\b(?:speichere?|save|ablegen?|sichern?)\b[^.!?\n]{0,80}'
+			r'\b(?:rezepte?|recipes?|workouts?|trainings?|pl[aä]ne?|plans?|gerichte|mahlzeiten|items?|ergebnisse?|notizen?|notes?)\b',
+			re.IGNORECASE,
+		)
+		_trimmed_save = user_text.strip()
+		if (
+			len(_trimmed_save) <= 120
+			and _SAVE_ZOUTPUT_RE.search(_trimmed_save[:_MAX_RE_INPUT])
+		):
+			# Quick in-memory check: if a recent Z message already contains
+			# multi-line content it is already in context — skip DB fetch.
+			_recent_z_in_ctx = any(
+				m.get("role") in ("assistant", "z") and m.get("content", "").count("\n") >= 3
+				for m in (history[-6:] if len(history) > 6 else history)
+			)
+			if not _recent_z_in_ctx:
+				try:
+					from app.models.db import get_day_exchanges as _get_today
+					_today_msgs = await asyncio.wait_for(_get_today(0), timeout=4.0)
+					# Find the most recent Z message that looks like generated content
+					# (3+ newlines = structured list). Exclude receipts and short acks.
+					_z_content_msgs = [
+						m for m in reversed(_today_msgs)
+						if m.get("role") == "z"
+						and m.get("content", "").count("\n") >= 3
+						and not m["content"].startswith("[SYSTEM")
+					]
+					if _z_content_msgs:
+						_zout = _z_content_msgs[0]["content"]
+						# Build a context injection that tells the LLM what it generated
+						_zout_ts = _z_content_msgs[0].get("at", "")[:16]
+						_save_ctx = (
+							f"[Z'S OWN OUTPUT FROM {_zout_ts} — use this as the content to save]\n"
+							f"{_zout[:6000]}\n"
+							"[END Z OUTPUT — save every item above using CREATE_TASK tags as instructed "
+							"by the SAVE FOLLOW-UP RULE. Do NOT ask the user to re-send.]"
+						)
+						# Initialise _sq_extra_ctx if not yet set (step 0.45 sets it below)
+						# We use a module-level sentinel to share with step 0.45.
+						# Since _sq_extra_ctx is defined at step 0.45, we use a temporary
+						# list here and merge it in after the 0.45 block.
+						_save_ctx_inject = {"role": "assistant", "content": _save_ctx}
+						logger.info(
+							"Router 0.4: injected Z's own output (%d chars) for save follow-up",
+							len(_zout),
+						)
+					else:
+						_save_ctx_inject = None
+				except asyncio.TimeoutError:
+					_save_ctx_inject = None
+					logger.debug("Router 0.4: DB fetch timed out for save follow-up")
+				except Exception as _sfi_err:
+					_save_ctx_inject = None
+					logger.debug("Router 0.4: save follow-up inject failed: %s", _sfi_err)
+			else:
+				_save_ctx_inject = None
+		else:
+			_save_ctx_inject = None
+
 		# ── 0.45 State-question ground-truth injection (L3) ──────────────────
 		# Intercepts "where is X?", "did you save X?", "wo sind die?" and similar
 		# state queries. Instead of letting the LLM guess from prose history, we
@@ -449,6 +522,9 @@ async def route_message_stream(
 		# is constructed at step 0.55 — this avoids reassigning the closure variable.
 		# Errors and timeouts are fully absorbed — fall-through is always safe.
 		_sq_extra_ctx: list[dict] = []  # accumulator for state-query context injection
+		# Merge save-follow-up context injection from step 0.4 (if any)
+		if _save_ctx_inject:
+			_sq_extra_ctx.append(_save_ctx_inject)
 		_STATE_QUERY_RE = re.compile(
 			# German
 			r'\bwo\s+(?:sind|ist|sind\s+die|habe\s+ich|hast\s+du)\b'
