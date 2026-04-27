@@ -39,7 +39,16 @@ async def weekly_review():
 			"- Do not mention placeholder examples from personal files (like Acme Studio).\n"
 			"- Suggest 3 concrete things worth focusing on next week — frame them as suggestions, not as scheduled commitments.\n"
 			"- NO metaphors, NO literary prose, NO filler ('honestly?', 'that screams', etc.). Write like a human, not an LLM trying to sound thoughtful.\n"
-			"- NEVER use emoji or unicode decorative symbols."
+			"- NEVER use emoji or unicode decorative symbols.\n\n"
+			"BOARD STRUCTURE AUDIT (include at the end, only if PROJECT TREE is not [EMPTY]):\n"
+			"After the weekly recap, add a short 'Board Setup' section. For each board in the project tree:\n"
+			"- Read its actual list names from the tree.\n"
+			"- As a kanban expert, assess whether the current list structure supports clear flow for that board's purpose.\n"
+			"- If the structure looks healthy, say so briefly in one line.\n"
+			"- If a board has no lists, or has redundant/unclear lists, or is missing a stage that would clearly help (e.g. a review gate, a blocked column), name the specific improvement and ask if the user wants it set up.\n"
+			"- Keep it one bullet per board. Do not over-explain. Concrete, opinionated.\n"
+			"- End with: 'Soll ich bei einem dieser Boards die Listen anpassen?' (or equivalent in the user's language).\n"
+			"This section must be clearly labelled 'Board Setup:' and must be last."
 		)
 		
 		try:
