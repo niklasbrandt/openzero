@@ -217,6 +217,8 @@ async def route_message_stream(
 			last_model_used,
 		)
 		from app.services.message_bus import bus
+		from app.services.translations import get_translations as _get_t
+		_t = _get_t(lang or "en")
 
 		async def _status(msg: str) -> None:
 			if status_callback is not None:
@@ -483,7 +485,7 @@ async def route_message_stream(
 			and _SENT_BY_Z_RE.search(_trimmed_save[:_MAX_RE_INPUT])
 		)
 		if _save_is_explicit or _save_is_recall_hint:
-			await _status("Suche deine letzten Nachrichten...")
+			await _status(_t.get("status_fetching_history", "Searching your messages..."))
 			# Extract the target noun from the save request so we can find the
 			# relevant Z message rather than just the most recent long one.
 			_save_noun_m = re.search(
@@ -872,7 +874,7 @@ async def route_message_stream(
 		if _rm:
 			_board_frag = _rm.group("board").strip().rstrip(".,;!?")
 			logger.info("Router: board-reorganise detected — fetching context for '%s'", _sanitize_for_log(_board_frag))
-			await _status("Lade Board-Kontext...")
+			await _status(_t.get("status_loading_board", "Loading board context..."))
 			try:
 				from app.services.planka import get_board_full_context
 				if _board_prefetch_task is not None:
@@ -960,7 +962,7 @@ async def route_message_stream(
 		if routed_crews:
 			crew_id = routed_crews[0]
 			logger.info("Router: keyword-routing '%s...' → crew '%s'", _sanitize_for_log(user_text), crew_id)
-			await _status(f"Weitergabe an {crew_id}...")
+			await _status(_t.get("status_routing_crew", "Routing to {crew}...").format(crew=crew_id))
 			chunks = []
 			async for token in native_crew_engine.run_crew_stream(crew_id, user_text, history=_ctx_history):
 				chunks.append(token)
@@ -1012,7 +1014,7 @@ async def route_message_stream(
 		chunks: list[str] = []
 		_l5_hold: list[str] = []
 		_l5_mode = 0
-		await _status("Formuliere Antwort...")
+		await _status(_t.get("status_composing", "Composing response..."))
 		async for token in chat_stream_with_context(
 			user_text,
 			history=_ctx_history,
