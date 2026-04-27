@@ -224,29 +224,113 @@ async def get_day_exchanges(days_ago: int = 0):
         return [{"role": m.role, "content": m.content, "at": m.created_at.isoformat() + "Z"} for m in messages]
 
 
-async def get_rolling_history(days: int = 4, limit: int = 60):
-    """Return the most recent `limit` messages (all roles) within the last `days` days.
+import re as _re
 
-    Designed for LLM context injection: gives Z a 4-day rolling memory window so
-    it can recall what it generated earlier today or in the past few days without
-    needing the user to repeat themselves.
+# ── Quality filter for rolling LLM context ───────────────────────────────────
+# Patterns that identify noise in Z's stored replies: timeout errors, recovery
+# messages, and very short interrogative reminders that clutter context without
+# adding signal.
+_Z_NOISE_RE = _re.compile(
+    r'zu lange gedauert|bitte wiederhole|try again(?:\s|$)|something went wrong|'
+    r'ich bin wieder da|ich bin da\b|fehlgeschlagen|request timed? out|'
+    r'bitte schick|schick.{0,20}nochmal|repeat.{0,20}request',
+    _re.IGNORECASE,
+)
+# Pure acknowledgment messages from the user — no real signal for the LLM.
+_USER_ACK_RE = _re.compile(
+    r'^(?:ok|okay|ja|nein|danke|bitte|sure|alles klar|super|gut|genau|'
+    r'perfekt|prima|cool|thanks|thank you|got it|verstanden|klar|'
+    r'[\U0001F44D\U0001F64F\u2705\U0001F44C!.?\u2713]+)\s*$',
+    _re.IGNORECASE,
+)
+
+
+def _is_quality_message(role: str, content: str, model: Optional[str]) -> bool:
+    """Return True if this message adds enough signal to be worth injecting into LLM context.
+
+    Rules by role
+    ─────────────
+    system  — always keep; these are verified action receipts (ground truth).
+    user    — keep if ≥ 3 words and not a bare acknowledgment.
+    z       — keep if:
+                • structured content (≥ 3 newlines: lists, briefings, plans), OR
+                • word count ≥ 8 AND no noise pattern AND not a short interrogative
+                  (catches proactive follow-up reminders like "Wie läuft's mit X?").
+    Utility model labels ("recall", "self_audit") are always dropped — they are
+    internal router artefacts, not conversation history.
+    """
+    if role == "system":
+        return True
+    if model in ("recall", "self_audit"):
+        return False
+    stripped = content.strip()
+    words = stripped.split()
+    if role == "user":
+        if _USER_ACK_RE.match(stripped):
+            return False
+        return len(words) >= 3
+    if role in ("z", "assistant"):
+        # Structured content (list, briefing, plan) is always valuable
+        if stripped.count("\n") >= 3:
+            return True
+        # Known error / recovery noise
+        if _Z_NOISE_RE.search(stripped[:400]):
+            return False
+        # Short proactive reminders / check-in questions
+        # e.g. "Wie läuft's mit den Stufenkanten? Irgendwas hängt noch?"
+        # They end with "?" and are short with no structured body.
+        if len(words) < 25 and stripped.endswith("?") and "\n" not in stripped:
+            return False
+        # Very short non-structured replies (acks, stubs)
+        if len(words) < 8:
+            return False
+        return True
+    return True
+
+
+async def get_rolling_history(days: int = 4, limit: int = 60):
+    """Return the most recent `limit` *quality* messages from the DB.
+
+    Instead of a fixed day window, we fetch a large candidate pool (up to 300
+    of the most recent messages regardless of age), apply the quality filter,
+    and return the freshest `limit` survivors in chronological order.
+
+    This means:
+    - On a chatty day the 60 slots fill with today's substantive exchanges.
+    - On a quiet week the 60 slots span as many days back as needed.
+    - Error messages, short acks, and reminder check-ins are always excluded.
+
+    The `days` parameter is kept as a safety cap to avoid surfacing very stale
+    messages: anything older than `days` days is excluded even if it would
+    otherwise pass the quality filter.
 
     Returns messages in chronological order (oldest first), each as:
     {role, content, channel, model, at}
     """
     cutoff = datetime.datetime.utcnow() - datetime.timedelta(days=days)
     async with AsyncSessionLocal() as session:
+        # Fetch a large candidate pool
         result = await session.execute(
             select(GlobalMessage)
             .where(GlobalMessage.created_at >= cutoff)
             .order_by(GlobalMessage.created_at.desc())
-            .limit(limit)
+            .limit(300)
         )
-        messages = result.scalars().all()
-        return [
-            {"role": m.role, "content": m.content, "channel": m.channel, "model": m.model, "at": m.created_at.isoformat() + "Z"}
-            for m in reversed(messages)
-        ]
+        candidates = result.scalars().all()
+
+    # Apply quality gate (most recent first from DB, so we keep newest survivors)
+    quality: list[GlobalMessage] = []
+    for m in candidates:
+        if _is_quality_message(m.role, m.content, m.model):
+            quality.append(m)
+            if len(quality) >= limit:
+                break
+
+    # Return in chronological order so the LLM sees the conversation correctly
+    return [
+        {"role": m.role, "content": m.content, "channel": m.channel, "model": m.model, "at": m.created_at.isoformat() + "Z"}
+        for m in reversed(quality)
+    ]
 
 
 async def get_range_exchanges(days: int = 7):
