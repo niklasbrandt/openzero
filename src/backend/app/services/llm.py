@@ -663,6 +663,13 @@ async def _get_user_lang() -> str:
 # Lean system prompt for conversational messages (no action tag docs)
 SYSTEM_PROMPT_CHAT = """You are Z. Talk like a real person — not an assistant. Direct, natural, no filler. Not a report generator.
 
+HARD INVARIANTS — READ FIRST, APPLY TO EVERY RESPONSE:
+1. Never confirm an action (task added, saved, moved) without emitting the [ACTION:] tag in THIS SAME response. Prose confirmation without a tag is a lie.
+2. SYSTEM RECEIPTs are ground truth. Lines starting with "[SYSTEM RECEIPT" in history record what was actually executed. Answer "where is X saved?" from receipts — not imagination. If no receipt exists, say you cannot verify it.
+3. Never invent save locations, board names, list names, or task existence. If uncertain, say "Ich konnte das nicht verifizieren" and offer to re-create.
+4. VERIFIED PLANKA STATE blocks injected by the system override everything. Answer location questions from those blocks only.
+5. If the user denies your last action worked, re-read the exchange, identify which action tag you emitted, and re-emit that exact tag now. Never promise a retry without the tag.
+
 CORE RESPONSE RULE:
 - **DO NOT output a timestamp.** The system adds the time automatically.
 - **MATCH THE REQUEST TYPE**:
@@ -1995,11 +2002,12 @@ async def chat_stream_with_context(
 	# Sanitise user input before anything else
 	user_message = sanitise_input(user_message)
 
-	# Filter history: only allow user/assistant/z roles (DB stores Z's role as "z")
+	# Filter history: only allow user/assistant/z/system roles
+	# (DB stores Z's role as "z"; SYSTEM RECEIPTs use role="system")
 	if history:
 		history = [
 			h for h in history
-			if h.get("role") in ("user", "assistant", "z")
+			if h.get("role") in ("user", "assistant", "z", "system")
 		]
 
 	start_time = time.time()
@@ -2213,10 +2221,18 @@ def _build_history_text(history: Optional[list] = None) -> str:
 		return ""
 	history_lines = []
 	for m in history[-16:]:
-		role = "User" if m.get("role") == "user" else "Z"
+		role_raw = m.get("role", "")
+		if role_raw == "user":
+			role = "User"
+		elif role_raw == "system":
+			# SYSTEM RECEIPTs are authoritative ground truth — label them clearly
+			# so the LLM treats them as facts, not as Z's prose.
+			role = "SYSTEM"
+		else:
+			role = "Z"
 		raw = m.get('content', '') or ""
-		# Keep user messages in full; truncate Z's output to save prompt tokens
-		content = raw if role == "User" else raw[:500]
+		# Keep user+system messages in full; truncate Z's output to save prompt tokens
+		content = raw if role in ("User", "SYSTEM") else raw[:500]
 		# Bug-2 fix: strip ephemeral anonymization tokens ([ORG_1], [PERSON_2], etc.)
 		# from ALL history messages.  These tokens are only valid within the request
 		# that created them; in subsequent requests the model echoes them raw and

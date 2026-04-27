@@ -439,6 +439,92 @@ async def route_message_stream(
 			))
 			return
 
+		# ── 0.45 State-question ground-truth injection (L3) ──────────────────
+		# Intercepts "where is X?", "did you save X?", "wo sind die?" and similar
+		# state queries. Instead of letting the LLM guess from prose history, we
+		# do a live Planka card search and inject a [VERIFIED PLANKA STATE] context
+		# message so the LLM MUST answer from facts, not imagination.
+		#
+		# Extra context is accumulated in _sq_extra_ctx and applied when _ctx_history
+		# is constructed at step 0.55 — this avoids reassigning the closure variable.
+		# Errors and timeouts are fully absorbed — fall-through is always safe.
+		_sq_extra_ctx: list[dict] = []  # accumulator for state-query context injection
+		_STATE_QUERY_RE = re.compile(
+			# German
+			r'\bwo\s+(?:sind|ist|sind\s+die|habe\s+ich|hast\s+du)\b'
+			r'|\bhast\s+du\s+(?:das|die|es|sie)?\s*(?:gespeichert|erstellt|hinzugef[üu]gt|abgelegt|gemacht)\b'
+			r'|\bwurde\s+(?:das|es|die)\s+(?:gespeichert|erstellt|angelegt)\b'
+			r'|\bwo\s+(?:wurde|wurden|habe|hat)\b'
+			# English
+			r'|\bwhere\s+(?:is|are|did\s+you|was|were)\s+(?:it|they|the|that|those)\b'
+			r'|\bdid\s+you\s+(?:save|create|add|store|put|make)\b'
+			r'|\bwas\s+(?:it|that|the\s+(?:task|card|board|todo|item))\s+(?:saved|created|added|stored)\b'
+			r'|\bwere\s+(?:they|those|the\s+(?:tasks?|cards?|items?))\s+(?:saved|created|added|stored)\b'
+			# Spanish / French
+			r'|\b(?:d[oó]nde|où)\s+(?:est[aá]|son|est|sont)\b'
+			r'|\b(?:guardaste|enregistr[eé])\b',
+			re.IGNORECASE,
+		)
+		# Minimum word count to bother searching — "wo" alone is too vague
+		_STATE_QUERY_WORDS_MIN = 2
+		_state_text_trimmed = user_text.strip()[:_MAX_RE_INPUT]
+		if (
+			len(_state_text_trimmed.split()) >= _STATE_QUERY_WORDS_MIN
+			and _STATE_QUERY_RE.search(_state_text_trimmed)
+		):
+			# Extract a search fragment: last multi-word phrase or quoted term
+			# from the user message that might be a card/board title
+			_SQ_QUOTE_RE = re.compile(r'["\u201c]([^"\u201d]{2,50})["\u201d]')
+			_SQ_FRAG_RE = re.compile(
+				r'(?:'
+				r'(?:die|den|der|das|mein|the|my|it|sie|es|los?|les?|las?)\s+)?'
+				r'([A-Za-z\u00c0-\u017e\u0400-\u04FF][A-Za-z\u00c0-\u017e\u0400-\u04FF\s]{1,40})'
+				r'(?:\s+(?:gespeichert|erstellt|saved|created|added|store|board|card|task|todo|list))?'
+				r'\??$',
+				re.IGNORECASE,
+			)
+			_sq_frag: str = ""
+			_sq_q = _SQ_QUOTE_RE.search(user_text[:_MAX_RE_INPUT])
+			if _sq_q:
+				_sq_frag = _sq_q.group(1).strip()
+			else:
+				_sq_m = _SQ_FRAG_RE.search(user_text[:_MAX_RE_INPUT])
+				if _sq_m:
+					_sq_frag = _sq_m.group(1).strip()
+			# If we got a reasonable fragment, look it up in Planka live
+			if _sq_frag and len(_sq_frag) >= 2:
+				try:
+					from app.services.planka import search_cards_in_planka
+					_sq_results = await asyncio.wait_for(
+						search_cards_in_planka(_sq_frag, limit=10), timeout=6.0,
+					)
+					if _sq_results:
+						_sq_lines = [
+							f"  - \"{r['card']}\" on board \"{r['board']}\" in list \"{r['list']}\""
+							for r in _sq_results
+						]
+						_sq_context = (
+							f"[VERIFIED PLANKA STATE — cards matching '{_sq_frag}']\n"
+							+ "\n".join(_sq_lines)
+							+ "\n[END VERIFIED STATE — answer ONLY from the above. Do NOT guess.]"
+						)
+					else:
+						_sq_context = (
+							f"[VERIFIED PLANKA STATE — no cards found matching '{_sq_frag}']\n"
+							"[END VERIFIED STATE — if no cards found, say so clearly. Do NOT invent a location.]"
+						)
+					# Accumulate for injection at step 0.55 (avoids reassigning closure var)
+					_sq_extra_ctx.append({"role": "assistant", "content": _sq_context})
+					logger.info(
+						"Router 0.45: injected Planka state for fragment '%s' (%d results)",
+						_sanitize_for_log(_sq_frag), len(_sq_results) if _sq_results else 0,
+					)
+				except asyncio.TimeoutError:
+					logger.warning("Router 0.45: Planka state query timed out for '%s'", _sanitize_for_log(_sq_frag))
+				except Exception as _sq_err:
+					logger.warning("Router 0.45: Planka state query failed: %s", _sq_err)
+			# Whether or not the lookup succeeded, fall through to normal LLM path below
+
 		# ── 0.5 Deterministic structural-intent intercept ────────────────────
 		# Pre-LLM router for high-confidence Planka mutations (move/archive/
 		# mark-done). Bypasses the chat LLM entirely so verbs that the cloud
@@ -632,7 +718,8 @@ async def route_message_stream(
 		# IMPORTANT: history is a closure variable captured from route_message_stream.
 		# Reassigning it inside _generate would mark it as a local (UnboundLocalError
 		# in Python 3.12). Use _ctx_history as a separate local instead.
-		_ctx_history = history
+		# Apply any L3 state-query context injections accumulated in step 0.45.
+		_ctx_history = list(history) + _sq_extra_ctx if _sq_extra_ctx else history
 		_force_cloud = False  # set True when a large-output task needs cloud LLM
 		_rm = _REORGANIZE_BOARD_RE.search(user_text[:_MAX_RE_INPUT])
 		if _rm:

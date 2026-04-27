@@ -1377,6 +1377,81 @@ async def find_item_in_planka(title_fragment: str) -> bool:
 		logger.warning("find_item_in_planka: %s", _sanitize_for_log(e))
 	return False
 
+
+async def search_cards_in_planka(title_fragment: str, limit: int = 10) -> list[dict]:
+	"""Search ALL boards for cards whose name contains title_fragment (case-insensitive).
+
+	Returns up to *limit* dicts: {"board": str, "list": str, "card": str}.
+	Used by the state-question intercept (router step 0.45) to answer
+	"wo sind X?" / "where is X?" from Planka ground truth.
+
+	Strategy (O(boards) round-trips, cached auth, parallel board fetches):
+	  1. GET /api/projects → board list
+	  2. GET /api/boards/{id} for each board in parallel (includes lists + cards)
+	  3. Scan for fragment matches, return location tuples
+	"""
+	if not title_fragment or len(title_fragment.strip()) < 2:
+		return []
+	fragment = title_fragment.lower().strip()
+	results: list[dict] = []
+	try:
+		token = await get_planka_auth_token()
+		headers = {"Authorization": f"Bearer {token}"}
+		async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, timeout=12.0, headers=headers) as client:
+			proj_resp = await client.get("/api/projects")
+			projects = proj_resp.json().get("items", [])
+			if not projects:
+				return []
+
+			proj_details = await asyncio.gather(
+				*[client.get(f"/api/projects/{p['id']}") for p in projects],
+				return_exceptions=True,
+			)
+
+			all_board_ids: list[str] = []
+			all_board_names: dict[str, str] = {}
+			for det in proj_details:
+				if isinstance(det, BaseException):
+					continue
+				boards = det.json().get("included", {}).get("boards", [])
+				for b in boards:
+					bid = b.get("id", "")
+					if bid:
+						all_board_ids.append(bid)
+						all_board_names[bid] = b.get("name", "")
+
+			if not all_board_ids:
+				return []
+
+			board_details = await asyncio.gather(
+				*[client.get(f"/api/boards/{bid}") for bid in all_board_ids],
+				return_exceptions=True,
+			)
+
+			for bd in board_details:
+				if isinstance(bd, BaseException):
+					continue
+				bd_data = bd.json()
+				included = bd_data.get("included", {})
+				board_id = (bd_data.get("item") or {}).get("id", "")
+				board_name = all_board_names.get(board_id, "")
+				lists_by_id: dict[str, str] = {
+					lst["id"]: lst["name"]
+					for lst in included.get("lists", [])
+					if lst.get("id")
+				}
+				for card in included.get("cards", []):
+					card_name = card.get("name", "")
+					if fragment in card_name.lower():
+						list_name = lists_by_id.get(card.get("listId", ""), "")
+						results.append({"board": board_name, "list": list_name, "card": card_name})
+						if len(results) >= limit:
+							return results
+	except Exception as e:
+		logger.warning("search_cards_in_planka: %s", _sanitize_for_log(e))
+	return results
+
+
 async def get_activity_report(days: int = 30) -> str:
 	"""Fetch a detailed record of cards finished vs. cards stalled vs. WIP state.
 	This is the 'truth' used by the Review tasks to prevent hallucinations.

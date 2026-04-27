@@ -193,6 +193,8 @@ class NativeCrewEngine:
 
 		history_messages = []
 		crew_keywords: list[str] = [kw.lower() for kw in (config.keywords or [])]
+		# Filter: only user messages for crew context; skip system receipts (role="system")
+		# to prevent action receipt metadata leaking into crew prompts (§9.1 anti-hallucination).
 		user_msgs = [m for m in history if m["role"] == "user"]
 		
 		# Always include the most recent 3 user messages so the crew knows what
