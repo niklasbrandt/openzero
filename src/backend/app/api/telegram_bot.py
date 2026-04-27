@@ -1275,7 +1275,11 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 		_is_complex_reorg = bool(_reorg_re.search(user_text[:500]))
 	except Exception:
 		_is_complex_reorg = False
-	_stream_timeout = 300.0 if _is_complex_reorg else 240.0
+	_is_bulk_save = bool(re.search(
+		r'\b([5-9]|[1-9]\d+)\s+(?:rezepte?|recipes?|mahlzeiten|gerichte?|workouts?|trainings?|pl[aä]ne?|items?|notizen?)\b',
+		user_text[:500], re.IGNORECASE,
+	))
+	_stream_timeout = 300.0 if (_is_complex_reorg or _is_bulk_save) else 240.0
 	try:
 		async with asyncio.timeout(_stream_timeout):
 			async for token in token_stream:
