@@ -289,27 +289,30 @@ def _is_quality_message(role: str, content: str, model: Optional[str]) -> bool:
 
 
 async def get_rolling_history(days: int = 4, limit: int = 60):
-    """Return the most recent `limit` *quality* messages from the DB.
+    """Return a balanced, quality-filtered conversation history for LLM context.
 
-    Instead of a fixed day window, we fetch a large candidate pool (up to 300
-    of the most recent messages regardless of age), apply the quality filter,
-    and return the freshest `limit` survivors in chronological order.
+    Strategy
+    ────────
+    1. Fetch up to 300 of the most recent messages within the last `days` days.
+    2. Apply the quality gate to filter out noise (errors, acks, short reminders).
+    3. Enforce per-role caps so no single sender can crowd the others out:
+       - user    : up to limit // 2  (default 30) most recent quality messages
+       - z       : up to limit // 2  (default 30) most recent quality messages
+       - system  : up to 10 most recent (SYSTEM RECEIPTs — always high value)
+    4. Merge and return in chronological order.
 
     This means:
-    - On a chatty day the 60 slots fill with today's substantive exchanges.
-    - On a quiet week the 60 slots span as many days back as needed.
-    - Error messages, short acks, and reminder check-ins are always excluded.
-
-    The `days` parameter is kept as a safety cap to avoid surfacing very stale
-    messages: anything older than `days` days is excluded even if it would
-    otherwise pass the quality filter.
+    - On a chatty day with many crew outputs, user messages are not crowded out.
+    - On a quiet week the window spans as many days back as needed.
+    - Error messages, bare acks, and short proactive reminders are excluded.
 
     Returns messages in chronological order (oldest first), each as:
     {role, content, channel, model, at}
     """
+    per_role_cap = limit // 2   # 30 user + 30 z by default
+    system_cap = 10
     cutoff = datetime.datetime.utcnow() - datetime.timedelta(days=days)
     async with AsyncSessionLocal() as session:
-        # Fetch a large candidate pool
         result = await session.execute(
             select(GlobalMessage)
             .where(GlobalMessage.created_at >= cutoff)
@@ -318,18 +321,36 @@ async def get_rolling_history(days: int = 4, limit: int = 60):
         )
         candidates = result.scalars().all()
 
-    # Apply quality gate (most recent first from DB, so we keep newest survivors)
-    quality: list[GlobalMessage] = []
-    for m in candidates:
-        if _is_quality_message(m.role, m.content, m.model):
-            quality.append(m)
-            if len(quality) >= limit:
-                break
+    # Split into per-role buckets (candidates are most-recent-first)
+    user_msgs:   list[GlobalMessage] = []
+    z_msgs:      list[GlobalMessage] = []
+    system_msgs: list[GlobalMessage] = []
 
-    # Return in chronological order so the LLM sees the conversation correctly
+    for m in candidates:
+        if not _is_quality_message(m.role, m.content, m.model):
+            continue
+        if m.role == "user":
+            if len(user_msgs) < per_role_cap:
+                user_msgs.append(m)
+        elif m.role in ("z", "assistant"):
+            if len(z_msgs) < per_role_cap:
+                z_msgs.append(m)
+        elif m.role == "system":
+            if len(system_msgs) < system_cap:
+                system_msgs.append(m)
+        # Stop scanning early once all buckets are full
+        if len(user_msgs) >= per_role_cap and len(z_msgs) >= per_role_cap and len(system_msgs) >= system_cap:
+            break
+
+    # Merge all buckets, sort chronologically, trim to limit
+    combined = sorted(
+        user_msgs + z_msgs + system_msgs,
+        key=lambda m: m.created_at,
+    )[-limit:]
+
     return [
         {"role": m.role, "content": m.content, "channel": m.channel, "model": m.model, "at": m.created_at.isoformat() + "Z"}
-        for m in reversed(quality)
+        for m in combined
     ]
 
 
