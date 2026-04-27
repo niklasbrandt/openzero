@@ -41,6 +41,11 @@ from app.models.db import AsyncSessionLocal, LLMMetric, Person
 
 logger = logging.getLogger(__name__)
 
+
+class _FirstTokenTimeout(Exception):
+	"""Raised when the local LLM doesn't yield a first token within the deadline."""
+
+
 # Known model control tokens that must be stripped from user input.
 # These could trick the tokenizer into treating user text as protocol.
 _CONTROL_TOKEN_PATTERNS: list[str] = [
@@ -1325,8 +1330,11 @@ async def chat_stream(
 						# Tool-call accumulator (streaming tool_calls arrive in deltas)
 						_tool_calls: dict[int, dict] = {}  # index → {id, name, arguments}
 						_got_content = False
+						_first_token_deadline = asyncio.get_event_loop().time() + 5.0  # 5s first-token budget (local only)
 						async for line in response.aiter_lines():
 							if not line.startswith("data: "):
+								if tier_name == "local" and not _got_content and asyncio.get_event_loop().time() > _first_token_deadline:
+									raise _FirstTokenTimeout()
 								continue
 							data_str = line[6:]
 							if data_str.strip() == "[DONE]":
@@ -1355,6 +1363,8 @@ async def chat_stream(
 									continue
 								content = delta.get("content")
 								if not content:
+									if tier_name == "local" and not _got_content and asyncio.get_event_loop().time() > _first_token_deadline:
+										raise _FirstTokenTimeout()
 									continue
 								_got_content = True
 								# Stamp timestamp so /api/dashboard/llm-active drives card animation
@@ -1468,6 +1478,20 @@ async def chat_stream(
 					from app.common.response_budget import reset_local_llm_circuit
 					asyncio.create_task(reset_local_llm_circuit())
 				return
+			except _FirstTokenTimeout:
+				if settings.cloud_configured and settings.SMART_CLOUD_ROUTING:
+					logger.info("LLM: local first-token timeout (>5s) — escalating to cloud")
+					async for chunk in chat_stream(
+						user_message,
+						system_override=system_prompt,
+						tier="cloud",
+						sanitize=False,
+						**{k: v for k, v in kwargs.items() if k not in ("thinking",)},
+					):
+						yield chunk
+					return
+				logger.warning("LLM: local first-token timeout but cloud not configured")
+				break
 			except httpx.ReadTimeout:
 				if tier_name == "local":
 					# Timed out — yield nothing; caller cleans up the thinking indicator.
