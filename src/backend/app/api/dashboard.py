@@ -308,8 +308,8 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 	if not req.skip_history:
 		merged_history = await bus.ingest("dashboard", msg)
 	else:
-		from app.models.db import get_global_history
-		merged_history = await get_global_history(limit=10)
+		from app.models.db import get_rolling_history
+		merged_history = await get_rolling_history(days=4, limit=60)
 
 	# Helper: persist a system/slash-command reply via the bus.
 	async def _reply(text: str, model: str = "system") -> None:
@@ -1050,8 +1050,8 @@ async def dashboard_chat_stream(req: ChatRequest, request: Request, _rl: None = 
 		if not req.skip_history:
 			merged_history = await bus.ingest("dashboard", msg)
 		else:
-			from app.models.db import get_global_history
-			merged_history = await get_global_history(limit=10)
+			from app.models.db import get_rolling_history
+			merged_history = await get_rolling_history(days=4, limit=60)
 
 		# --- Routing + Z response via unified router ----------------------------
 		# All decisions (keyword crew routing, ROUTE tag, phantom guard, etc.)
