@@ -1223,12 +1223,19 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 		merged_history = history
 
 	# Stream via unified router — collect tokens for progressive edits
+	async def _status_update(text: str) -> None:
+		try:
+			await safe_edit(thinking_msg, f"<blockquote><i>{text}</i></blockquote>", parse_mode="HTML")
+		except Exception:
+			pass
+
 	token_stream, result_fut = await route_message_stream(
 		user_text=user_text,
 		history=merged_history,
 		channel="telegram",
 		lang=lang,
 		save_history=True,
+		status_callback=_status_update,
 	)
 
 	chunks: list[str] = []
