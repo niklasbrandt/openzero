@@ -1,4 +1,5 @@
 import re
+import asyncio
 import logging
 from datetime import datetime, timedelta
 from langchain_core.tools import tool
@@ -780,6 +781,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 			_user_canonical_title = _m.group(1).strip()
 
 	task_pattern = r"\[?ACTION: CREATE_TASK \| BOARD: ([^\|\]]{1,500})(?:\s*\|\s*LIST:\s*([^\|\]]{1,500}))? \| TITLE: ([^\|\]]{1,500})(?:\s*\|\s*DESCRIPTION:\s*([\s\S]{0,20000}?))?\]"
+	_task_coros: list = []
 	for match in re.finditer(task_pattern, reply[:200_000]):
 		raw_tag = match.group(0)
 		board, llist, title, desc = match.group(1), match.group(2), match.group(3), match.group(4)
@@ -798,15 +800,36 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 			)
 			title = _user_canonical_title
 
+		_dedup_task = f"CREATE_TASK:{board.strip().lower()}:{llist.strip().lower()}:{title.strip().lower()}"
+		if _dedup_task in seen_raw_tags:
+			clean_reply = strip_tag(clean_reply, raw_tag)
+			continue
+		seen_raw_tags.add(_dedup_task)
+		clean_reply = strip_tag(clean_reply, raw_tag)
+
 		async def _exec_task(board=board, llist=llist, title=title, desc=desc):
 			path = await planka_create_task(board_name=board, list_name=llist, title=title, description=desc)
 			if path:
 				return f"Task '{title}' created in {path}."
 			return f"\u26a0 Failed to create task '{title}'. Check Planka connection."
 
-		_dedup_task = f"CREATE_TASK:{board.strip().lower()}:{llist.strip().lower()}:{title.strip().lower()}"
-		await handle_action("CREATE_TASK", raw_tag, _exec_task, f"Create task '{title}' on {board}", dedup_key=_dedup_task)
-		clean_reply = strip_tag(clean_reply, raw_tag)
+		_task_coros.append(_exec_task)
+
+	if _task_coros:
+		_task_results = await asyncio.gather(
+			*[coro() for coro in _task_coros],
+			return_exceptions=True,
+		)
+		for _task_res in _task_results:
+			if isinstance(_task_res, Exception):
+				_task_msg = f"\u26a0 Task creation failed: {_task_res}"
+			elif isinstance(_task_res, str):
+				_task_msg = _task_res
+			else:
+				_task_msg = ""
+			if _task_msg:
+				executed_cmds.append(_task_msg)
+				clean_reply = clean_reply.rstrip() + "\n\n" + _task_msg
 
 	# 3. Create Event Tag
 	event_pattern = r"\[?ACTION: CREATE_EVENT \| TITLE: ([^\|\]]+) \| START: ([^\|\]]+) \| END: ([^\|\]]+)\]?"

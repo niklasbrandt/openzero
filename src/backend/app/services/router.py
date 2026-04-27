@@ -21,7 +21,7 @@ import logging
 import re
 import asyncio
 from dataclasses import dataclass, field
-from typing import AsyncIterator
+from typing import AsyncIterator, Callable, Awaitable
 
 from app.common.phantom import PHANTOM_RE as _PHANTOM_RE  # noqa: E402
 
@@ -183,6 +183,7 @@ async def route_message_stream(
 	channel: str,
 	lang: str = "en",
 	save_history: bool = True,
+	status_callback: "Callable[[str], Awaitable[None]] | None" = None,
 ) -> tuple[AsyncIterator[str], "asyncio.Future[RouterResult]"]:
 	"""Return (token_stream, result_future).
 
@@ -216,6 +217,13 @@ async def route_message_stream(
 			last_model_used,
 		)
 		from app.services.message_bus import bus
+
+		async def _status(msg: str) -> None:
+			if status_callback is not None:
+				try:
+					await status_callback(msg)
+				except Exception:
+					pass
 
 		# ── 0.0 Fast-path bypass for trivial messages ────────────────────────
 		# Short greetings and ack messages skip the full cascade to save 1-3s.
@@ -475,6 +483,7 @@ async def route_message_stream(
 			and _SENT_BY_Z_RE.search(_trimmed_save[:_MAX_RE_INPUT])
 		)
 		if _save_is_explicit or _save_is_recall_hint:
+			await _status("Suche deine letzten Nachrichten...")
 			# Extract the target noun from the save request so we can find the
 			# relevant Z message rather than just the most recent long one.
 			_save_noun_m = re.search(
@@ -863,6 +872,7 @@ async def route_message_stream(
 		if _rm:
 			_board_frag = _rm.group("board").strip().rstrip(".,;!?")
 			logger.info("Router: board-reorganise detected — fetching context for '%s'", _sanitize_for_log(_board_frag))
+			await _status("Lade Board-Kontext...")
 			try:
 				from app.services.planka import get_board_full_context
 				if _board_prefetch_task is not None:
@@ -950,6 +960,7 @@ async def route_message_stream(
 		if routed_crews:
 			crew_id = routed_crews[0]
 			logger.info("Router: keyword-routing '%s...' → crew '%s'", _sanitize_for_log(user_text), crew_id)
+			await _status(f"Weitergabe an {crew_id}...")
 			chunks = []
 			async for token in native_crew_engine.run_crew_stream(crew_id, user_text, history=_ctx_history):
 				chunks.append(token)
@@ -1001,6 +1012,7 @@ async def route_message_stream(
 		chunks: list[str] = []
 		_l5_hold: list[str] = []
 		_l5_mode = 0
+		await _status("Formuliere Antwort...")
 		async for token in chat_stream_with_context(
 			user_text,
 			history=_ctx_history,
