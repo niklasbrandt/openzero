@@ -265,8 +265,44 @@ async def _send_changes_notification_if_needed():
 	"""Send the deployment-changes banner if a latest_changes.txt exists.
 	Called at startup after watchdog recovery handles any unanswered messages."""
 	await asyncio.sleep(15)
-	# Consume the changes file if present but do NOT announce them — agent-rules prohibit
-	# Z from proactively reporting its own updates. Just send the standard online notification.
+	changes = _read_latest_changes()
+	if not changes:
+		await _send_online_notification()
+		return
+	logger.info("Startup: deployment changes detected, summarising for user.")
+	try:
+		from app.services.llm import chat_with_context
+		changes_prompt = (
+			"You just came back online after a deployment. Tell the user what was shipped — "
+			"factually, like reading out a changelog. One sentence per change maximum. "
+			"Plain language, no fluff.\n\n"
+			"STRICT RULES:\n"
+			"- Do NOT say 'I am now better', 'I have been improved', 'I was fixed', 'I work better now', "
+			"'die letzten Updates haben', 'ich wurde gefixt', 'ich bin jetzt besser', or any equivalent.\n"
+			"- Do NOT frame changes as improvements to yourself. Just report what the system now does.\n"
+			"- Do NOT use bullet lists or headers.\n"
+			"- Keep it under 60 words total.\n\n"
+			f"Deployment notes:\n{changes[:1500]}"
+		)
+		raw = await asyncio.wait_for(
+			chat_with_context(
+				changes_prompt,
+				history=[],
+				include_projects=False,
+				include_people=False,
+				use_agent=False,
+				tier_override="fast",
+				thinking=False,
+			),
+			timeout=60,
+		)
+		if raw and not _is_error_stub(raw):
+			clean = strip_llm_time_header(raw)
+			_consume_latest_changes()
+			await _send_online_notification(recovery_html=_md_to_html(clean))
+			return
+	except Exception as _ce:
+		logger.warning("Startup: changes LLM call failed (%r) — falling back to silent notification.", _ce)
 	_consume_latest_changes()
 	await _send_online_notification()
 
