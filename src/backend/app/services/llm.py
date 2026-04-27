@@ -973,8 +973,14 @@ async def build_system_prompt(user_name: str, user_profile: dict, include_agent_
 	_a_coro = refresh_agent_context() if include_agent_skills and not get_agent_skills_for_prompt() else asyncio.sleep(0)
 	_personality_coro = get_agent_personality()
 
-	await asyncio.gather(_p_coro, _a_coro)
-	personality_directive = await _personality_coro
+	try:
+		await asyncio.gather(_p_coro, _a_coro)
+		personality_directive = await _personality_coro
+	except (asyncio.TimeoutError, asyncio.CancelledError):
+		# Close the unawaited coroutine to suppress RuntimeWarning on cancellation
+		if hasattr(_personality_coro, 'close'):
+			_personality_coro.close()
+		raise
 
 	personal_ctx = get_personal_context_for_prompt() if include_health else get_personal_context_for_prompt_no_health()
 	personal_block = ("\n\n" + personal_ctx) if personal_ctx else ""
