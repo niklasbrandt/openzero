@@ -499,4 +499,9 @@ translations: dict[str, str] = {
         'privacy_private': '非公開',
         'privacy_auto': '自動',
         'privacy_first_touch': "'{board}' ボードをプライベートとしてマークしました \u2014 直接名前を指定しない限り、提案には表示されません。",
+        # Status / progress strings
+        'status_composing': '返答を作成中...',
+        'status_fetching_history': 'メッセージを検索中...',
+        'status_loading_board': 'ボードの情報を読み込み中...',
+        'status_routing_crew': '{crew}に転送中...',
 }

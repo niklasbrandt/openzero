@@ -498,4 +498,9 @@ translations: dict[str, str] = {
         'privacy_private': "Privado",
         'privacy_auto': "Auto",
         'privacy_first_touch': "Marquei o seu quadro '{board}' como privado \u2014 não aparecerá em sugestões a não ser que o nomeie diretamente.",
+        # Status / progress strings
+        'status_composing': "Redigindo resposta...",
+        'status_fetching_history': "Procurando suas mensagens...",
+        'status_loading_board': "Carregando contexto do quadro...",
+        'status_routing_crew': "Encaminhando para {crew}...",
 }

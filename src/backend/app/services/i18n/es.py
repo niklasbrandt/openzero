@@ -497,4 +497,9 @@ translations: dict[str, str] = {
         'privacy_private': "Privado",
         'privacy_auto': "Auto",
         'privacy_first_touch': "He marcado tu tablero '{board}' como privado \u2014 no aparecerá en sugerencias a menos que lo nombres directamente.",
+        # Status / progress strings
+        'status_composing': "Redactando respuesta...",
+        'status_fetching_history': "Buscando tus mensajes...",
+        'status_loading_board': "Cargando contexto del tablero...",
+        'status_routing_crew': "Derivando a {crew}...",
 }
