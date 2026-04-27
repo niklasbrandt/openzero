@@ -498,4 +498,9 @@ translations: dict[str, str] = {
         'privacy_private': 'Приватное',
         'privacy_auto': 'Авто',
         'privacy_first_touch': "Доска '{board}' помечена как приватная \u2014 она не появится в подсказках, пока вы её не назовёте напрямую.",
+        # Status / progress strings
+        'status_composing': 'Составляю ответ...',
+        'status_fetching_history': 'Ищу ваши сообщения...',
+        'status_loading_board': 'Загружаю контекст доски...',
+        'status_routing_crew': 'Передаю команде {crew}...',
 }

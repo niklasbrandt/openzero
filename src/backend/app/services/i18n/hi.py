@@ -497,4 +497,9 @@ translations: dict[str, str] = {
         'privacy_private': 'निजी',
         'privacy_auto': 'स्वचालित',
         'privacy_first_touch': "मैंने आपके '{board}' बोर्ड को निजी के रूप में चिह्नित किया है \u2014 यह सुझावों में नहीं दिखेगा जब तक आप इसे सीधे नाम नहीं लेते।",
+        # Status / progress strings
+        'status_composing': 'उत्तर तैयार हो रहा है...',
+        'status_fetching_history': 'आपके संदेश खोजे जा रहे हैं...',
+        'status_loading_board': 'बोर्ड संदर्भ लोड हो रहा है...',
+        'status_routing_crew': '{crew} को भेजा जा रहा है...',
 }

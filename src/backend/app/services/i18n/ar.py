@@ -499,4 +499,9 @@ translations: dict[str, str] = {
         'privacy_private': 'خاص',
         'privacy_auto': 'تلقائي',
         'privacy_first_touch': "لقد وضعت علامة خاصة على لوحة '{board}' \u2014 لن تظهر في الاقتراحات إلا إذا ذكرتها مباشرة.",
+        # Status / progress strings
+        'status_composing': 'جارٍ صياغة الرد...',
+        'status_fetching_history': 'يتم البحث في رسائلك...',
+        'status_loading_board': 'تحميل سياق اللوحة...',
+        'status_routing_crew': 'جارٍ التوجيه إلى {crew}...',
 }

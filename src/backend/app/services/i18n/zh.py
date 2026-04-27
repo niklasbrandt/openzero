@@ -498,5 +498,8 @@ translations: dict[str, str] = {
         'privacy_public': '公开',
         'privacy_private': '私密',
         'privacy_auto': '自动',
-        'privacy_first_touch': "已将您的'{board}'板标记为私密 \u2014 除非您直接提及，否则不会出现在建议中。",
-}
+        'privacy_first_touch': "已将您的'{board}'板标记为私密 \u2014 除非您直接提及，否则不会出现在建议中。",        # Status / progress strings
+        'status_composing': '正在组织回复...',
+        'status_fetching_history': '正在搜索您的消息...',
+        'status_loading_board': '正在加载看板上下文...',
+        'status_routing_crew': '正在转接到{crew}...',}
