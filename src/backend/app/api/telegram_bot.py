@@ -265,48 +265,10 @@ async def _send_changes_notification_if_needed():
 	"""Send the deployment-changes banner if a latest_changes.txt exists.
 	Called at startup after watchdog recovery handles any unanswered messages."""
 	await asyncio.sleep(15)
-	changes = _read_latest_changes()
-	lang = await get_user_lang()
-	t = get_translations(lang)
-	online_label = t.get('status_online', "I'm back!")
-	if not changes:
-		await _send_online_notification()
-		return
-	logger.info("Startup: deployment changes detected, asking LLM to mention them.")
-	try:
-		from app.services.llm import chat_with_context
-		changes_prompt = (
-			"You came back online after a deployment. Casually let the user know you're back "
-			"and mention what's new in 1–3 short sentences, in plain conversational language. "
-			"Do NOT use bullet lists, formal headers, or 'Recent Logic Updates'. "
-			"Just talk like a friend would. Keep it brief.\n\n"
-			f"Deployment notes:\n{changes[:1500]}"
-		)
-		raw = await asyncio.wait_for(
-			chat_with_context(
-				changes_prompt,
-				history=[],
-				include_projects=False,
-				include_people=False,
-				use_agent=False,
-				tier_override="fast",
-				thinking=False,
-			),
-			timeout=60,
-		)
-		if raw and not _is_error_stub(raw):
-			clean = strip_llm_time_header(raw)
-			_consume_latest_changes()
-			await _send_online_notification(recovery_html=_md_to_html(clean))
-			return
-	except Exception as _ce:
-		logger.warning("Startup: changes LLM call failed (%r) — using raw fallback.", _ce, exc_info=True)
-	fallback_html = _format_raw_changes_html(changes, online_label=online_label)
-	if fallback_html:
-		_consume_latest_changes()
-		await _send_online_notification(recovery_html=fallback_html)
-	else:
-		await _send_online_notification()
+	# Consume the changes file if present but do NOT announce them — agent-rules prohibit
+	# Z from proactively reporting its own updates. Just send the standard online notification.
+	_consume_latest_changes()
+	await _send_online_notification()
 
 
 async def _recover_unanswered_messages():
