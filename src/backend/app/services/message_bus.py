@@ -195,6 +195,7 @@ class MessageBus:
 		"""
 		from app.models.db import AsyncSessionLocal, save_global_message
 		from app.services.agent_actions import parse_and_execute_actions
+		from app.common.phantom import is_phantom, PHANTOM_HISTORY_PLACEHOLDER
 
 		if db is not None:
 			clean_reply, executed_cmds, pending_actions = await parse_and_execute_actions(
@@ -207,7 +208,22 @@ class MessageBus:
 				)
 
 		if save:
-			await save_global_message(channel, "z", clean_reply, model=model)
+			_save_reply = clean_reply
+			if is_phantom(clean_reply, executed_cmds):
+				_save_reply = PHANTOM_HISTORY_PLACEHOLDER
+				logger.warning("MessageBus: phantom reply redacted from history (channel=%s)", channel)
+			await save_global_message(channel, "z", _save_reply, model=model)
+			# L2 — SYSTEM RECEIPT: when actions actually executed, save a receipt
+			# as a system message so the LLM can answer "where did you save X?"
+			# from facts rather than imagination on the next turn.
+			if executed_cmds:
+				_real_cmds = [c for c in executed_cmds if isinstance(c, str) and not c.startswith("⚠") and not c.startswith("__")]
+				if _real_cmds:
+					_ts = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+					_receipt_lines = [f"[SYSTEM RECEIPT {_ts}]"] + _real_cmds
+					_receipt_text = "\n".join(_receipt_lines)
+					await save_global_message(channel, "system", _receipt_text, model="receipt")
+					logger.debug("MessageBus: saved SYSTEM RECEIPT with %d actions", len(_real_cmds))
 			# Reactive audit: if Z claimed a structural action, verify it shortly after
 			if "[AUDIT:" in raw_reply:
 				_schedule_reactive_audit()

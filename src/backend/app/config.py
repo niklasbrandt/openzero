@@ -188,6 +188,18 @@ class Settings(BaseSettings):
     # Fold undelivered priority 4-5 insights into the morning briefing.
     AMBIENT_BRIEFING_QUEUE_ENABLED: bool = True
 
+    # ── Anti-hallucination: response budget and circuit breaker ──────────────
+    # Hard ceiling (seconds) for any single response cycle. After this the
+    # user receives an apology and is asked to repeat their request.
+    LLM_RESPONSE_CEILING_S: float = 20.0
+    # Number of local-LLM timeouts within 5 minutes before the circuit opens.
+    LLM_CB_FAILURE_THRESHOLD: int = 3
+    # When true and the local circuit is open, route to cloud instead of local.
+    LLM_FALLBACK_TO_CLOUD: bool = True
+    # Reserved: async phantom classifier (not yet active — set true to enable
+    # a background pass for borderline phantom detections).
+    PHANTOM_ASYNC_CLASSIFIER: bool = False
+
 
     model_config = SettingsConfigDict(
         env_file=os.path.join(os.path.dirname(__file__), "../../../.env"),
