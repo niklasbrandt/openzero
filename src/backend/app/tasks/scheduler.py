@@ -11,6 +11,14 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
+# L9 — daily metrics summary wrapper (sync function required by APScheduler)
+def _log_metrics_summary() -> None:
+	try:
+		from app.services.metrics import log_daily_summary
+		log_daily_summary()
+	except Exception as _e:
+		logger.warning("_log_metrics_summary: failed: %s", _e)
+
 # ---------------------------------------------------------------------------
 # Subprocess security allowlist
 # ---------------------------------------------------------------------------
@@ -169,6 +177,14 @@ async def start_scheduler():
 		run_backup,
 		CronTrigger(hour=4, minute=0),
 		id="system_backup",
+		replace_existing=True,
+	)
+
+	# L9 — Daily metrics summary — 09:00 every day
+	scheduler.add_job(
+		_log_metrics_summary,
+		CronTrigger(hour=9, minute=0, timezone=tz),
+		id="metrics_daily_summary",
 		replace_existing=True,
 	)
 
