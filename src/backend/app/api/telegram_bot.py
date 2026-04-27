@@ -1207,18 +1207,23 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 			await _process_crew_stream(update, context, routed_crews, user_text, t, already_ingested=True)
 			return False
 
-	# Show thinking placeholder
-	if is_followup:
-		thinking_msg = await context.bot.send_message(
-			chat_id=chat_id,
-			text=f"<blockquote><i>{t.get('thinking_followup', 'Processing your follow-up...')}</i></blockquote>",
-			parse_mode="HTML",
-		)
-	else:
-		thinking_msg = await update.message.reply_text(
-			f"<blockquote><i>{t.get('thinking', 'Thinking...')}</i></blockquote>",
-			parse_mode="HTML",
-		)
+	# Use native Telegram typing indicator. thinking_msg is created lazily
+	# on first status update so we don't send a placeholder that just sits there.
+	thinking_msg = None
+
+	async def _keep_typing():
+		"""Loop send_chat_action(TYPING) every 4 s while processing."""
+		try:
+			while True:
+				try:
+					await context.bot.send_chat_action(chat_id=chat_id, action="typing")
+				except Exception:
+					pass
+				await asyncio.sleep(4)
+		except asyncio.CancelledError:
+			pass
+
+	_typing_task = asyncio.create_task(_keep_typing())
 
 	# history is always set by bus.ingest() in the normal calling path;
 	# this fallback exists for test callers that pass history=None.
@@ -1230,8 +1235,23 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 
 	# Stream via unified router — collect tokens for progressive edits
 	async def _status_update(text: str) -> None:
+		nonlocal thinking_msg
 		try:
-			await safe_edit(thinking_msg, f"<blockquote><i>{text}</i></blockquote>", parse_mode="HTML")
+			if thinking_msg is None:
+				# First status update — send the actual message now
+				if is_followup:
+					thinking_msg = await context.bot.send_message(
+						chat_id=chat_id,
+						text=f"<blockquote><i>{text}</i></blockquote>",
+						parse_mode="HTML",
+					)
+				else:
+					thinking_msg = await update.message.reply_text(
+						f"<blockquote><i>{text}</i></blockquote>",
+						parse_mode="HTML",
+					)
+			else:
+				await safe_edit(thinking_msg, f"<blockquote><i>{text}</i></blockquote>", parse_mode="HTML")
 		except Exception:
 			pass
 
@@ -1266,16 +1286,24 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 					if len(partial.strip()) > 3:
 						try:
 							display = f"<blockquote><i>{_md_to_html(partial)}...</i></blockquote>"
-							await safe_edit(thinking_msg, display, parse_mode="HTML")
+							if thinking_msg is None:
+								if is_followup:
+									thinking_msg = await context.bot.send_message(chat_id=chat_id, text=display, parse_mode="HTML")
+								else:
+									thinking_msg = await update.message.reply_text(display, parse_mode="HTML")
+							else:
+								await safe_edit(thinking_msg, display, parse_mode="HTML")
 						except Exception as _ee:
 							logger.debug("Progressive edit skip: %s", _ee)
 						last_edit_time = now
 	except asyncio.TimeoutError:
+		_typing_task.cancel()
 		logger.warning("_process_freetext: stream timed out after %.0f s — aborting", _stream_timeout)
-		try:
-			await thinking_msg.delete()
-		except Exception as _e:
-			logger.debug("thinking_msg delete skipped: %s", _e)
+		if thinking_msg is not None:
+			try:
+				await thinking_msg.delete()
+			except Exception as _e:
+				logger.debug("thinking_msg delete skipped: %s", _e)
 		try:
 			await safe_reply(update, "I ran out of time on that one. Please try again.")
 		except Exception as _e:
@@ -1285,31 +1313,51 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 	try:
 		result = await asyncio.wait_for(asyncio.shield(result_fut), timeout=30.0)
 	except asyncio.TimeoutError:
+		_typing_task.cancel()
 		logger.error("_process_freetext: result_fut never resolved — generator may have crashed silently")
-		try:
-			await thinking_msg.delete()
-		except Exception:
-			pass
+		if thinking_msg is not None:
+			try:
+				await thinking_msg.delete()
+			except Exception:
+				pass
 		try:
 			await safe_reply(update, "Something went wrong processing that. Please try again.")
 		except Exception:
 			pass
 		return True
 
+	# Ensure thinking_msg exists before delivery (fast responses may skip status updates)
+	if thinking_msg is None:
+		if is_followup:
+			thinking_msg = await context.bot.send_message(
+				chat_id=chat_id,
+				text=f"<blockquote><i>{t.get('thinking_followup', 'Processing your follow-up...')}</i></blockquote>",
+				parse_mode="HTML",
+			)
+		else:
+			thinking_msg = await update.message.reply_text(
+				f"<blockquote><i>{t.get('thinking', 'Thinking...')}</i></blockquote>",
+				parse_mode="HTML",
+			)
+
 	# Empty response — LLM timed out or returned nothing
 	if not result.reply.strip():
-		try:
-			await thinking_msg.delete()
-		except Exception as _e:
-			logger.debug("Telegram delete ignored: %s", _e)
+		_typing_task.cancel()
+		if thinking_msg is not None:
+			try:
+				await thinking_msg.delete()
+			except Exception as _e:
+				logger.debug("Telegram delete ignored: %s", _e)
 		return False
 
 	# If router redirected to a crew (ROUTE tag), delete thinking msg and hand off
 	if result.routed_to_crew:
-		try:
-			await thinking_msg.delete()
-		except Exception as _e:
-			logger.debug("Telegram delete (route handoff) ignored: %s", _e)
+		_typing_task.cancel()
+		if thinking_msg is not None:
+			try:
+				await thinking_msg.delete()
+			except Exception as _e:
+				logger.debug("Telegram delete (route handoff) ignored: %s", _e)
 		await _process_crew_stream(update, context, [result.routed_to_crew], user_text, t, already_ingested=True)
 		return False
 
@@ -1322,6 +1370,7 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 	html_reply = _md_to_html(display_clean)
 	footer = await _get_stats_footer()
 	display_reply = f"<b>{format_time(dt=receipt_dt)}</b>\n\n{html_reply}{footer}"
+	_typing_task.cancel()
 	await _send_chunked_reply(thinking_msg, display_reply, nav_footer=get_nav_footer(t))
 	return False
 
