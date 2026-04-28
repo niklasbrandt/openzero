@@ -155,8 +155,14 @@ async def start_telegram_bot():
 	# (e.g. the previous process crashed or the LLM was still loading).
 	async def send_startup_greeting():
 		try:
-			# Run the watchdog recovery first — it handles the unanswered messages path.
-			# Then run the original recovery for deployment-changes notification.
+			# Wait before running the watchdog so that:
+			#  a) PTB has time to deliver any pending Telegram updates to handle_freetext
+			#     (messages queued while the bot was offline arrive within ~1-3 s of
+			#     start_polling; 20 s gives the handler time to acquire _thinking_locks)
+			#  b) The local LLM has a chance to finish loading before the watchdog
+			#     tries to route a DB-backed unanswered message through it.
+			await asyncio.sleep(20)
+			# Run the watchdog recovery — handles unanswered messages in DB.
 			from app.services.message_watchdog import check_unanswered_messages
 			await check_unanswered_messages()
 			# Deployment changes banner (only if nothing was recovered above)
