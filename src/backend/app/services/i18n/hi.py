@@ -502,4 +502,5 @@ translations: dict[str, str] = {
         'status_fetching_history': 'आपके संदेश खोजे जा रहे हैं...',
         'status_loading_board': 'बोर्ड संदर्भ लोड हो रहा है...',
         'status_routing_crew': '{crew} को भेजा जा रहा है...',
+        'empty_response_retry': 'मेरा उत्तर खाली था — कृपया पुनः प्रयास करें।',
 }

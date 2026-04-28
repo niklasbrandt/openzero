@@ -504,4 +504,5 @@ translations: dict[str, str] = {
         'status_fetching_history': 'メッセージを検索中...',
         'status_loading_board': 'ボードの情報を読み込み中...',
         'status_routing_crew': '{crew}に転送中...',
+        'empty_response_retry': '応答が空でした — もう一度お試しください。',
 }
