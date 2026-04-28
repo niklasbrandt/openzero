@@ -763,11 +763,26 @@ async def route_message_stream(
 					_board_prefetch_task.cancel()
 				return
 
+		# ── 0.52 pre-check: early bulk-save forced-cloud detection ──────────────
+		# Must run before 0.52 so the semantic fallback is skipped when already
+		# forced to cloud (bulk save).
+		_force_cloud = False  # set True when a large-output task needs cloud LLM
+		# Bulk save detection: if user mentions a count >= 5 AND a save noun, force cloud.
+		# Generating 20+ CREATE_TASK tags exhausts the local model budget.
+		_bulk_save_re = re.compile(
+			r'\b([5-9]|[1-9]\d+)\s+(?:rezepte?|recipes?|mahlzeiten|gerichte?|workouts?|trainings?|pl[aä]ne?|items?|notizen?)\b',
+			re.IGNORECASE,
+		)
+		if _save_ctx_inject and _bulk_save_re.search(user_text[:_MAX_RE_INPUT]):
+			_force_cloud = True
+			logger.info("Router: bulk save detected — forcing cloud tier")
+
 		# ── 0.52 Semantic board-management fallback ───────────────────────────
 		# Fires when NO structural intent matched via regex. Uses the fast local
 		# model to classify intent only (binary YES/NO sort-board question) —
 		# board-name resolution happens inside dispatch which has a 120s budget.
-		if intent is None:
+		# Skip entirely when _force_cloud is already set (bulk save, board reorg).
+		if intent is None and not _force_cloud:
 			try:
 				from app.services.llm import chat as _fast_chat
 				from app.services.intent_router import StructuralIntent, dispatch_structural_intent, _get_planka_snapshot
@@ -784,9 +799,9 @@ async def route_message_stream(
 					"If yes: reply SORT_BOARD:<exact board name from the list above>\n"
 					"If no: reply NO"
 				)
-				# Use tier="auto" so cloud takes over when the local fast model is busy/slow.
+				# Use tier="cloud" — "auto" is not a valid tier value and falls to local silently.
 				# The classify prompt is tiny (~100 tokens). Cloud response < 500 ms.
-				_sem = await asyncio.wait_for(_fast_chat(_sem_prompt, tier="auto"), timeout=20.0)
+				_sem = await asyncio.wait_for(_fast_chat(_sem_prompt, tier="cloud"), timeout=20.0)
 				_sem = _sem.strip()
 				if _sem.upper().startswith("SORT_BOARD:"):
 					_board_frag = _sem.split(":", 1)[1].strip().rstrip(".,;!?")
@@ -869,16 +884,6 @@ async def route_message_stream(
 		# in Python 3.12). Use _ctx_history as a separate local instead.
 		# Apply any L3 state-query context injections accumulated in step 0.45.
 		_ctx_history = list(history) + _sq_extra_ctx if _sq_extra_ctx else history
-		_force_cloud = False  # set True when a large-output task needs cloud LLM
-		# Bulk save detection: if user mentions a count >= 5 AND a save noun, force cloud.
-		# Generating 20+ CREATE_TASK tags exhausts the local model budget.
-		_bulk_save_re = re.compile(
-			r'\b([5-9]|[1-9]\d+)\s+(?:rezepte?|recipes?|mahlzeiten|gerichte?|workouts?|trainings?|pl[aä]ne?|items?|notizen?)\b',
-			re.IGNORECASE,
-		)
-		if _save_ctx_inject and _bulk_save_re.search(user_text[:_MAX_RE_INPUT]):
-			_force_cloud = True
-			logger.info("Router: bulk save detected — forcing cloud tier")
 		_rm = _REORGANIZE_BOARD_RE.search(user_text[:_MAX_RE_INPUT])
 		if _rm:
 			_board_frag = _rm.group("board").strip().rstrip(".,;!?")
@@ -962,8 +967,12 @@ async def route_message_stream(
 				"Reply with ONLY the crew ID or 'none'."
 			)
 			from app.services.llm import chat
-			predicted = await chat(intent_prompt, tier="fast")
-			predicted = predicted.lower().strip().strip("'\"")
+			try:
+				predicted = await asyncio.wait_for(chat(intent_prompt, tier="fast"), timeout=5.0)
+			except asyncio.TimeoutError:
+				predicted = ""
+				logger.debug("Router step1.1: fast-intent timed out — skipping")
+			predicted = predicted.lower().strip().strip("'\"") 
 			if predicted in ("research", "fitness", "nutrition", "life", "market-intel", "legal"):
 				logger.info("Router: speculative-routing '%s...' → crew '%s'", _sanitize_for_log(user_text), predicted)
 				routed_crews = [predicted]
@@ -1005,7 +1014,7 @@ async def route_message_stream(
 			return
 
 		# ── 2. Z responds ────────────────────────────────────────────────────
-		if _budget.skip_optional():
+		if _budget.skip_optional() and not _force_cloud:
 			logger.warning("Router: response budget exhausted before LLM call — returning apology")
 			_apology = "Das hat zu lange gedauert — bitte wiederhole kurz deine Anfrage."
 			yield _apology
