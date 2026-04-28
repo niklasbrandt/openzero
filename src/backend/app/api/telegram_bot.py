@@ -472,18 +472,29 @@ async def safe_edit(message, text: str, parse_mode="HTML", reply_markup=None, na
 
 
 async def _send_chunked_reply(thinking_msg, html_body: str, reply_markup=None, nav_footer: str = ""):
-	"""Deliver a response via the thinking message.
+	"""Deliver a response by deleting the thinking placeholder and sending a new message.
 
-	If the content fits within Telegram's 4096-char limit, the thinking
-	message is edited in-place.  Otherwise the thinking message is deleted
-	and the response is sent as a sequence of new messages, split at
-	paragraph boundaries to preserve coherence.
+	Always sends the final reply as a new message bubble (never edits-in-place).
+	If the content exceeds 3800 chars it is split at paragraph boundaries and
+	delivered as a sequence of new messages.
 	"""
 	MAX_CHARS = 3800  # Headroom for <blockquote> wrapper tags
 
+	# Always delete the thinking placeholder and send the final reply as a new
+	# message so the response appears as a fresh bubble, not an edited placeholder.
 	if len(html_body) <= MAX_CHARS:
-		await safe_edit(thinking_msg, f"<blockquote>{html_body}</blockquote>",
-			parse_mode="HTML", reply_markup=reply_markup, nav_footer=nav_footer)
+		try:
+			await thinking_msg.delete()
+		except Exception as _e:
+			logger.debug("thinking_msg delete (short reply) ignored: %s", _e)
+		bot = thinking_msg.get_bot()
+		chat_id = thinking_msg.chat_id
+		await bot.send_message(
+			chat_id=chat_id,
+			text=f"<blockquote>{html_body}</blockquote>{nav_footer}",
+			parse_mode="HTML",
+			reply_markup=reply_markup,
+		)
 		return
 
 	# Content too long for a single message -- delete the thinking placeholder
