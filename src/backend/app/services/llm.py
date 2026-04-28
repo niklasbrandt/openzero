@@ -255,7 +255,10 @@ def sanitise_output(text: str) -> str:
 		r'^[ \t]*(?:tags from conversations\b|Verify all actions\b|\[AUDIT:[^\]]{0,200}\]?|\[ACTION:[^\]]{0,200}\]?)',
 		re.IGNORECASE | re.MULTILINE,
 	)
-	if _INTERNAL_LINE_RE.search(text):
+	# Only strip [ACTION:] leak lines from local model output — cloud models use this prefix legitimately
+	_active_tier = last_model_used.get()
+	_is_local_model = "mistral" not in (_active_tier or "").lower() and "gpt" not in (_active_tier or "").lower() and "claude" not in (_active_tier or "").lower()
+	if _is_local_model and _INTERNAL_LINE_RE.search(text):
 		text = '\n'.join(
 			ln for ln in text.splitlines()
 			if not _INTERNAL_LINE_RE.match(ln)
