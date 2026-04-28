@@ -763,19 +763,12 @@ async def route_message_stream(
 					_board_prefetch_task.cancel()
 				return
 
-		# ── 0.52 pre-check: early bulk-save forced-cloud detection ──────────────
-		# Must run before 0.52 so the semantic fallback is skipped when already
-		# forced to cloud (bulk save).
-		_force_cloud = False  # set True when a large-output task needs cloud LLM
-		# Bulk save detection: if user mentions a count >= 5 AND a save noun, force cloud.
-		# Generating 20+ CREATE_TASK tags exhausts the local model budget.
-		_bulk_save_re = re.compile(
-			r'\b([5-9]|[1-9]\d+)\s+(?:rezepte?|recipes?|mahlzeiten|gerichte?|workouts?|trainings?|pl[aä]ne?|items?|notizen?)\b',
-			re.IGNORECASE,
-		)
-		if _save_ctx_inject and _bulk_save_re.search(user_text[:_MAX_RE_INPUT]):
-			_force_cloud = True
-			logger.info("Router: bulk save detected — forcing cloud tier")
+		# ── 0.52 pre-check: _force_cloud initialisation ─────────────────────────
+		# Default False; set True when crew is matched (step 1) or board context
+		# is injected (step 0.55). Crew requests MUST use cloud — local LLM is
+		# only for simple conversational replies. The old _bulk_save_re regex
+		# approach was fragile and is removed; crew=cloud covers all key cases.
+		_force_cloud = False
 
 		# ── 0.52 Semantic board-management fallback ───────────────────────────
 		# Fires when NO structural intent matched via regex. Uses the fast local
@@ -979,10 +972,11 @@ async def route_message_stream(
 
 		if routed_crews:
 			crew_id = routed_crews[0]
+			_force_cloud = True  # crew requests always need cloud tier
 			logger.info("Router: keyword-routing '%s...' → crew '%s'", _sanitize_for_log(user_text), crew_id)
 			await _status(_t.get("status_routing_crew", "Routing to {crew}...").format(crew=crew_id))
 			chunks = []
-			async for token in native_crew_engine.run_crew_stream(crew_id, user_text, history=_ctx_history):
+			async for token in native_crew_engine.run_crew_stream(crew_id, user_text, history=_ctx_history, force_cloud=True):
 				chunks.append(token)
 				yield token
 			full = rehydrate_response("".join(chunks), get_active_rep_map())
@@ -1087,7 +1081,7 @@ async def route_message_stream(
 			crew_id = m.group(1).strip().lower()
 			logger.info("Router: Z self-routed '%s...' → crew '%s'", _sanitize_for_log(user_text), crew_id)
 			r_chunks: list[str] = []
-			async for token in native_crew_engine.run_crew_stream(crew_id, user_text, history=_ctx_history):
+			async for token in native_crew_engine.run_crew_stream(crew_id, user_text, history=_ctx_history, force_cloud=True):
 				r_chunks.append(token)
 				yield token
 			r_full = rehydrate_response("".join(r_chunks), get_active_rep_map())
