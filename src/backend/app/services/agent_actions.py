@@ -1205,6 +1205,55 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 		await handle_action("MOVE_BOARD", raw_tag, _exec_move_board, f"Move board '{mb_board_name}' to project '{mb_target_project}'", dedup_key=_dedup_mb)
 		clean_reply = strip_tag(clean_reply, raw_tag)
 
+	# AMBIENT_CAPTURE Tag — stores a data point (meal, note, fact) into memory or Planka.
+	# AMBIENT_CAPTURE_ENABLED=False (default): fall back to CREATE_TASK on Nutrition board.
+	# AMBIENT_CAPTURE_ENABLED=True (Epoch 2): store directly to Qdrant via store_memory.
+	# Supports both | CONTENT: ... and | CONTENT=... separators for model variance.
+	ambient_pattern = r"\[?ACTION:\s*AMBIENT_CAPTURE\s*\|\s*CONTENT[=:]\s*([^\|\]]{1,4000})(?:\s*\|\s*CATEGORY[=:]\s*([^\|\]]{1,500}))?\]?"
+	for match in re.finditer(ambient_pattern, reply[:200_000]):
+		raw_tag = match.group(0)
+		am_content = (match.group(1) or "").strip()
+		am_category = (match.group(2) or "nutrition").strip().lower()
+		if not am_content:
+			clean_reply = strip_tag(clean_reply, raw_tag)
+			continue
+
+		async def _exec_ambient_capture(content=am_content, category=am_category):
+			try:
+				from app.config import settings as _acfg
+				if _acfg.AMBIENT_CAPTURE_ENABLED:
+					from app.services.memory import store_memory
+					await store_memory(content)
+					return f"Memory stored: {content[:80]}"
+				# Fallback: persist as a Planka card on the Nutrition board.
+				# Derive a sensible list name from the category string (first word, title-cased).
+				_list_name = category.split()[0].title() if category.split() else "Inbox"
+				path = await planka_create_task(
+					board_name="Nutrition",
+					list_name=_list_name,
+					title=content[:500],
+					description="",
+				)
+				if path:
+					return f"Saved '{content[:60]}' to {path}."
+				# Second fallback: Operator Board Inbox
+				path2 = await planka_create_task(
+					board_name="Operator Board",
+					list_name="Inbox",
+					title=content[:500],
+					description=f"Category: {category}",
+				)
+				if path2:
+					return f"Saved '{content[:60]}' to {path2}."
+				return f"\u26a0 Could not save ambient capture '{content[:60]}'. Check Planka connection."
+			except Exception as _e:
+				logger.error("AMBIENT_CAPTURE failed: %s", _e)
+				return f"\u26a0 Failed to save ambient capture. System error."
+
+		_dedup_ac = f"AMBIENT_CAPTURE:{am_content.strip().lower()[:120]}"
+		await handle_action("AMBIENT_CAPTURE", raw_tag, _exec_ambient_capture, f"Ambient capture: {am_content[:60]}", dedup_key=_dedup_ac)
+		clean_reply = strip_tag(clean_reply, raw_tag)
+
 	# --- FINAL AGGRESSIVE HYGIENE ---
 	# This prevents 'leaking' of internal agent thoughts or malformed tags to the user.
 	
