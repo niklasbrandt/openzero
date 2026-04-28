@@ -164,6 +164,7 @@ translations: dict[str, str] = {
 	"email_rules": 'E-Mail-Filterung',
 	"email_rules_desc": 'Z sortiert relevante Absender und unterdrückt Rauschen. Prioritäts-Absender lösen sofortige Telegram-Alarme aus.',
 	"email_rules_empty": 'Keine benutzerdefinierten Regeln definiert. Z verwendet Standard-Sicherheitsfilter.',
+	"empty_response_retry": 'Meine Antwort war leer — bitte versuche es erneut.',
 	"empty_state": 'Die Stille der Effizienz.',
 	"error_adding_board": 'Fehler beim Erstellen der Board-Konfiguration.',
 	"error_adding_person": 'Netzwerkfehler beim Hinzufügen der Person.',
