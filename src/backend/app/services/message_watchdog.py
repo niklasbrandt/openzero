@@ -156,11 +156,17 @@ async def _do_check_unanswered() -> None:
 				pass
 			result = await result_fut
 	except asyncio.TimeoutError:
-		logger.warning("Watchdog: recovery stream timed out after 120 s — skipping delivery.")
+		logger.warning("Watchdog: recovery stream timed out after 120 s — will retry on next tick.")
+		# Unmark so the next scheduled 5-minute tick can retry.
+		for content in unanswered:
+			_recovered_message_hashes.discard(_msg_hash(content))
 		return
 
 	if not result.reply or _is_error_stub(result.reply):
-		logger.warning("Watchdog: recovery router returned empty/error reply.")
+		logger.warning("Watchdog: recovery router returned empty/error reply — will retry on next tick.")
+		# Unmark so the next scheduled 5-minute tick can retry when the LLM is ready.
+		for content in unanswered:
+			_recovered_message_hashes.discard(_msg_hash(content))
 		return
 
 	lang = await get_user_lang()
