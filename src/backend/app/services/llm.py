@@ -255,9 +255,12 @@ def sanitise_output(text: str) -> str:
 		r'^[ \t]*(?:tags from conversations\b|Verify all actions\b|\[AUDIT:[^\]]{0,200}\]?|\[ACTION:[^\]]{0,200}\]?)',
 		re.IGNORECASE | re.MULTILINE,
 	)
-	# Only strip [ACTION:] leak lines from local model output — cloud models use this prefix legitimately
+	# Only strip [ACTION:] leak lines from local model output — cloud models use this prefix legitimately.
+	# Use tier prefix ("Cloud:", "Groq:", "OpenAI:") rather than model name to handle any cloud
+	# provider (e.g. Groq Llama3, OpenRouter, etc.), not just Mistral/GPT/Claude.
 	_active_tier = last_model_used.get()
-	_is_local_model = "mistral" not in (_active_tier or "").lower() and "gpt" not in (_active_tier or "").lower() and "claude" not in (_active_tier or "").lower()
+	_active_tier_lower = (_active_tier or "").lower()
+	_is_local_model = not any(_active_tier_lower.startswith(p) for p in ("cloud:", "groq:", "openai:"))
 	if _is_local_model and _INTERNAL_LINE_RE.search(text):
 		text = '\n'.join(
 			ln for ln in text.splitlines()

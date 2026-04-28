@@ -71,7 +71,7 @@ class NativeCrewEngine:
 			full_res += chunk
 		return full_res
 
-	async def run_crew_stream(self, crew_id: str, user_input: str, history: Optional[list] = None, slash_invoked: bool = False):
+	async def run_crew_stream(self, crew_id: str, user_input: str, history: Optional[list] = None, slash_invoked: bool = False, force_cloud: bool = False):
 		"""Executes a crew mission and yields tokens in real-time.
 
 		Args:
@@ -83,7 +83,13 @@ class NativeCrewEngine:
 		if not config:
 			raise ValueError(f"Crew '{crew_id}' is not defined in registry.")
 
-		is_local = not settings.cloud_configured
+		# Crew requests always prefer cloud — local LLM is for simple conversational replies only.
+		# force_cloud=True is passed by the router when a crew is explicitly matched.
+		is_local = not settings.cloud_configured and not force_cloud
+		if force_cloud and not settings.cloud_configured:
+			# Cloud not configured; fall back to local but warn so the operator can act.
+			logger.warning("NativeCrewEngine: force_cloud requested but cloud not configured — using local LLM")
+			is_local = True
 
 		# 1. Base Instructions and Protocol
 		now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
@@ -258,7 +264,7 @@ class NativeCrewEngine:
 		max_tokens = 4000 if settings.cloud_configured else 1500
 
 		payload = {
-			"model": settings.LLM_MODEL_CLOUD if settings.cloud_configured else "local",
+			"model": settings.LLM_MODEL_CLOUD if (settings.cloud_configured or force_cloud) else "local",
 			"messages": messages,
 			"temperature": 0.7,
 			"max_tokens": max_tokens,
@@ -270,12 +276,20 @@ class NativeCrewEngine:
 		logger.info("Native Engine: Executing streaming mission for '%s'...", safe_crew_id)
 
 		req_headers = {}
-		if settings.cloud_configured:
+		if settings.cloud_configured or force_cloud:
 			req_headers["Authorization"] = f"Bearer {settings.LLM_CLOUD_API_KEY}"
 
+		# When force_cloud is active and cloud is configured, use the cloud URL explicitly
+		# rather than the constructor-bound self.llm_url (which may point to local if cloud
+		# was not configured at module-import time).
+		_effective_url = (
+			(settings.LLM_CLOUD_BASE_URL.rstrip("/") + "/v1")
+			if (force_cloud and settings.cloud_configured)
+			else self.llm_url
+		)
 		async with httpx.AsyncClient(timeout=3600.0) as client:
 			try:
-				async with client.stream("POST", f"{self.llm_url}/chat/completions", headers=req_headers, json=payload) as response:
+				async with client.stream("POST", f"{_effective_url}/chat/completions", headers=req_headers, json=payload) as response:
 					response.raise_for_status()
 					collected_chunks: list[str] = []
 					async for line in response.aiter_lines():
