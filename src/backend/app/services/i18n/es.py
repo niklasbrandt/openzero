@@ -502,4 +502,5 @@ translations: dict[str, str] = {
         'status_fetching_history': "Buscando tus mensajes...",
         'status_loading_board': "Cargando contexto del tablero...",
         'status_routing_crew': "Derivando a {crew}...",
+        'empty_response_retry': "Mi respuesta estaba vacía — por favor, inténtalo de nuevo.",
 }

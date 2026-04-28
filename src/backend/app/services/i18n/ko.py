@@ -503,4 +503,5 @@ translations: dict[str, str] = {
         'status_fetching_history': '메시지 검색 중...',
         'status_loading_board': '보드 컨텍스트 로딩 중...',
         'status_routing_crew': '{crew}(으)로 라우팅 중...',
+        'empty_response_retry': '응답이 비어 있었습니다 — 다시 시도해 주세요.',
 }

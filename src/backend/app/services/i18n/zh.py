@@ -502,4 +502,6 @@ translations: dict[str, str] = {
         'status_composing': '正在组织回复...',
         'status_fetching_history': '正在搜索您的消息...',
         'status_loading_board': '正在加载看板上下文...',
-        'status_routing_crew': '正在转接到{crew}...',}
+        'status_routing_crew': '正在转接到{crew}...',
+        'empty_response_retry': '我的回复是空的 — 请重试。',
+}

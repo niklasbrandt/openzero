@@ -503,4 +503,5 @@ translations: dict[str, str] = {
         'status_fetching_history': 'Ищу ваши сообщения...',
         'status_loading_board': 'Загружаю контекст доски...',
         'status_routing_crew': 'Передаю команде {crew}...',
+        'empty_response_retry': 'Мой ответ оказался пустым — пожалуйста, попробуйте ещё раз.',
 }

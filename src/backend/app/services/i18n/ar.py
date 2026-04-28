@@ -504,4 +504,5 @@ translations: dict[str, str] = {
         'status_fetching_history': 'يتم البحث في رسائلك...',
         'status_loading_board': 'تحميل سياق اللوحة...',
         'status_routing_crew': 'جارٍ التوجيه إلى {crew}...',
+        'empty_response_retry': 'كان ردي فارغاً — يرجى المحاولة مرة أخرى.',
 }
