@@ -1352,6 +1352,7 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 				await thinking_msg.delete()
 			except Exception as _e:
 				logger.debug("Telegram delete ignored: %s", _e)
+		await safe_reply(update, t.get("empty_response_retry", "Meine Antwort war leer — bitte versuche es erneut."))
 		return False
 
 	# If router redirected to a crew (ROUTE tag), delete thinking msg and hand off

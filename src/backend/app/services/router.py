@@ -1077,6 +1077,7 @@ async def route_message_stream(
 		response = rehydrate_response(response, get_active_rep_map())
 
 		if not response.strip():
+			logger.warning("Router: empty response after sanitisation — probable strip-all by sanitiser (user_text=%.80s)", _sanitize_for_log(user_text))
 			result_future.set_result(RouterResult(reply="", model=last_model_used.get()))
 			return
 

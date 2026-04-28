@@ -192,6 +192,7 @@ translations: dict[str, str] = {
 	"email_rules": "Email Triage",
 	"email_rules_desc": "Z sorts high-signal senders while suppressing noise. Priority senders trigger instant Telegram alerts.",
 	"email_rules_empty": "No custom rules defined. Z handles everything with default safety.",
+	"empty_response_retry": "My response was empty — please try again.",
 	"empty_state": "The silence of efficiency.",
 	"error_adding_board": "Failed to create board configuration.",
 	"error_adding_person": "Network error while adding person.",
