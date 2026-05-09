@@ -542,6 +542,10 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 	newly_created_projects: dict[str, str] = {}
 	# newly_created_boards: board_name.lower() -> board_id
 	newly_created_boards: dict[str, str] = {}
+	# newly_created_lists: list_name.lower() -> board_name (as emitted on the CREATE_LIST tag)
+	# Used so a CREATE_TASK referencing a list just created in this same response is
+	# routed to that list's board even if the LLM emitted a wrong/different BOARD value.
+	newly_created_lists: dict[str, str] = {}
 
 	# 1. Create Project Tag — DESCRIPTION is optional (LLM may omit it).
 	# IMPORTANT: use greedy [^\|\]]+ (NOT lazy +?) — lazy combined with optional \]?
@@ -667,6 +671,11 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 			logger.warning("CREATE_LIST: skipping tag with empty list name (board='%s')", board_name)
 			clean_reply = strip_tag(clean_reply, raw_tag)
 			continue
+
+		# Record list -> board association from the LLM's intent so any sibling
+		# CREATE_TASK in the same response can be routed to the right board even
+		# if the LLM emits a different BOARD value on the task tag.
+		newly_created_lists[list_name.lower()] = board_name
 
 		async def _exec_list(board_name=board_name, list_name=list_name):
 			try:
@@ -799,6 +808,19 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 				_user_canonical_title[:80].replace('\n', '\\n').replace('\r', '\\r'),
 			)
 			title = _user_canonical_title
+
+		# List-scope-wins: if this task targets a list that was just created in
+		# this same response, the BOARD on the CREATE_LIST tag is authoritative.
+		# Override any divergent BOARD on the CREATE_TASK tag (LLM error or fuzzy
+		# Planka match risk).
+		if llist:
+			_scope_board = newly_created_lists.get(llist.lower())
+			if _scope_board and _scope_board.lower() != board.lower():
+				logger.warning(
+					"CREATE_TASK: overriding BOARD '%s' → '%s' for list '%s' (list-scope-wins from CREATE_LIST in same response)",
+					board, _scope_board, llist,
+				)
+				board = _scope_board
 
 		_dedup_task = f"CREATE_TASK:{board.strip().lower()}:{llist.strip().lower()}:{title.strip().lower()}"
 		if _dedup_task in seen_raw_tags:
