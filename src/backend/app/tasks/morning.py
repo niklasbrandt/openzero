@@ -73,7 +73,7 @@ async def morning_briefing():
 			item = f"- {e['summary']}"
 			if time_str: item += f" ({time_str})"
 			calendar_summary_parts.append(item)
-		calendar_summary = "\n".join(calendar_summary_parts) if calendar_summary_parts else "[EMPTY — omit Calendar section from output]"
+		calendar_summary = "\n".join(calendar_summary_parts) if calendar_summary_parts else "[NO DATA — zero events exist. The Calendar section MUST be absent from the briefing. Do NOT invent or infer any events, meetings, or times.]"
 
 		# Simple travel detection (needs calendar result — done before batch 2)
 		detected_location = None
@@ -104,7 +104,7 @@ async def morning_briefing():
 					return result
 			# Fallback to direct fetch if no cached summaries
 			emails = await fetch_unread_emails(max_results=5)
-			return "\n".join([f"- {e['from']}: {e['subject']}" for e in emails]) if emails else "[EMPTY — omit Email section from output]"
+			return "\n".join([f"- {e['from']}: {e['subject']}" for e in emails]) if emails else "[NO DATA — email is not connected or inbox is empty. The Email section MUST be absent from the briefing. Do NOT invent senders, subjects, or message content.]"
 
 		from app.services.planka import get_activity_report
 		weather_report, tree, email_summary, activity = await asyncio.gather(
@@ -152,8 +152,17 @@ async def morning_briefing():
 		except Exception as ae:
 			logger.debug("morning_briefing: ambient queue drain skipped: %s", ae)
 
+		_email_is_absent = email_summary.startswith("[NO DATA")
+		_calendar_is_empty = calendar_summary.startswith("[NO DATA")
+
 		full_prompt = (
 			"Z, it's morning. Write the daily briefing for the user.\n\n"
+			"CRITICAL DATA INTEGRITY RULE — read before anything else:\n"
+			"You are receiving REAL data from live system sources. The data blocks at the bottom of this prompt are the ONLY source of truth.\n"
+			"- If a data block says [NO DATA], that section contains NOTHING. Write nothing about it. No heading, no placeholder, no inference.\n"
+			"- NEVER invent, infer, or hallucinate calendar events, email subjects, task titles, project names, meeting times, or people's names.\n"
+			"- Do NOT reference any project name, meeting title, or email sender unless it appears verbatim in the data blocks below.\n"
+			"- Treat [NO DATA] as if that block does not exist in this prompt at all.\n\n"
 			"VOICE & STYLE:\n"
 			"- Write like a smart colleague sending a quick message about your day. Natural, direct, slightly informal — not robotic, not literary.\n"
 			"- Short sentences. Plain words. OK to drop a subject: 'Clear calendar today.' / 'Rain until noon.'\n"
@@ -256,7 +265,7 @@ async def morning_briefing():
 			f"WEATHER FORECAST:\n{weather_report}\n\n"
 			f"RECENT ACTIVITY (LAST 24H):\n{activity}\n\n"
 			f"PROJECT TREE:\n{tree}\n\n"
-			f"LATEST EMAILS:\n{email_summary}\n"
+			+ (f"LATEST EMAILS:\n{email_summary}\n" if not _email_is_absent else "")
 			+ (
 				f"\nAMBIENT INSIGHTS (undelivered proactive signals from last 24h):\n"
 				f"{ambient_insights_section}\n"

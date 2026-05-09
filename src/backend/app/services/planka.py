@@ -1546,7 +1546,8 @@ async def get_activity_report(days: int = 30) -> str:
 				
 				for card in cards:
 					c_name = card["name"]
-					c_updated = datetime.fromisoformat(card["updatedAt"].replace('Z', ''))
+					_raw_updated = card.get("updatedAt") or ""
+					c_updated = datetime.fromisoformat(_raw_updated.replace('Z', '')) if _raw_updated else datetime.min
 					c_labels = card_to_labels.get(card["id"], [])
 					c_label_names = [l["name"].lower() for l in c_labels]
 					

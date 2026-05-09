@@ -18,6 +18,8 @@ logging.basicConfig(
     level=getattr(logging, log_level, logging.INFO),
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
+# Suppress httpx INFO logs — they include full request URLs which leak the Telegram bot token
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 # Log deployed commit hash so version mismatches are immediately visible in logs
 try:
