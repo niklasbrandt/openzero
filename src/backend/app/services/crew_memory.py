@@ -17,7 +17,9 @@ Public API:
       Returns recent conversation history formatted for injection into system prompt.
 """
 import logging
+import time
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 
 import httpx
 
@@ -27,6 +29,55 @@ logger = logging.getLogger(__name__)
 
 def _sl(v) -> str:
 	return str(v).replace('\n', ' ').replace('\r', ' ')
+
+# Short-lived in-memory cache for Planka project+board ID lookups.
+# Eliminates repeated GET /projects and GET /projects/{id} calls made independently
+# by get_crew_board_work_context and get_crew_memory_context within the same
+# asyncio.gather() call. Both functions need the same (project_id, board_id) pair,
+# but they race concurrently and each would otherwise do the full 2-request lookup.
+# Key: (project_name_lower, board_name_lower)   Value: (project_id, board_id, expiry)
+_board_id_cache: dict[tuple[str, str], tuple[str, str, float]] = {}
+_BOARD_ID_CACHE_TTL = 60.0  # seconds — board/project IDs are stable across crew calls
+
+
+async def _resolve_crew_board_ids(
+	client: httpx.AsyncClient,
+	project_name: str,
+	board_name: str,
+) -> tuple[Optional[str], Optional[str]]:
+	"""Return (project_id, board_id) for a crew board, using a 60s in-memory cache.
+
+	Makes at most 2 HTTP calls on cache miss: GET /api/projects + GET /api/projects/{id}.
+	Returns (None, None) when either lookup fails or the board does not exist.
+	"""
+	cache_key = (project_name.lower(), board_name.lower())
+	entry = _board_id_cache.get(cache_key)
+	if entry and time.monotonic() < entry[2]:
+		return entry[0], entry[1]
+	try:
+		resp = await client.get("/api/projects")
+		resp.raise_for_status()
+		project_id = next(
+			(p["id"] for p in resp.json().get("items", [])
+			 if (p.get("name") or "").lower() == project_name.lower()),
+			None,
+		)
+		if not project_id:
+			return None, None
+		det = await client.get(f"/api/projects/{project_id}")
+		det.raise_for_status()
+		boards = det.json().get("included", {}).get("boards", [])
+		board_id = next(
+			(b["id"] for b in boards if (b.get("name") or "").lower() == board_name.lower()),
+			None,
+		)
+		if not board_id:
+			return None, None
+		_board_id_cache[cache_key] = (project_id, board_id, time.monotonic() + _BOARD_ID_CACHE_TTL)
+		return project_id, board_id
+	except Exception as e:
+		logger.debug("crew_memory: _resolve_crew_board_ids failed: %s", e)
+		return None, None
 
 # Maximum characters kept in the card description before truncation
 MAX_DESC_CHARS = 4000
@@ -415,24 +466,8 @@ async def get_crew_board_work_context(crew_id: str) -> str:
 		board_name = _crew_board_name(crew_id)
 
 		async with await _planka_client() as client:
-			resp = await client.get("/api/projects")
-			resp.raise_for_status()
-			project_id = next(
-				(p["id"] for p in resp.json().get("items", [])
-				 if (p.get("name") or "").lower() == project_name.lower()),
-				None,
-			)
-			if not project_id:
-				return ""
-
-			det = await client.get(f"/api/projects/{project_id}")
-			det.raise_for_status()
-			boards = det.json().get("included", {}).get("boards", [])
-			board_id = next(
-				(b["id"] for b in boards if (b.get("name") or "").lower() == board_name.lower()),
-				None,
-			)
-			if not board_id:
+			project_id, board_id = await _resolve_crew_board_ids(client, project_name, board_name)
+			if not project_id or not board_id:
 				return ""
 
 			bd = await client.get(f"/api/boards/{board_id}", params={"included": "lists,cards"})
@@ -516,26 +551,8 @@ async def get_crew_memory_context(crew_id: str) -> str:
 		all_conv_names = get_all_values("crew_conversation_list") | _CONVERSATION_LIST_LEGACY_NAMES
 
 		async with await _planka_client() as client:
-			# Locate project
-			resp = await client.get("/api/projects")
-			resp.raise_for_status()
-			project_id = next(
-				(p["id"] for p in resp.json().get("items", [])
-				 if (p.get("name") or "").lower() == project_name.lower()),
-				None,
-			)
-			if not project_id:
-				return ""
-
-			# Locate board
-			det = await client.get(f"/api/projects/{project_id}")
-			det.raise_for_status()
-			boards = det.json().get("included", {}).get("boards", [])
-			board_id = next(
-				(b["id"] for b in boards if (b.get("name") or "").lower() == board_name.lower()),
-				None,
-			)
-			if not board_id:
+			project_id, board_id = await _resolve_crew_board_ids(client, project_name, board_name)
+			if not project_id or not board_id:
 				return ""
 
 			# Fetch board lists + cards in one request
