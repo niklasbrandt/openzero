@@ -103,7 +103,18 @@ class NativeCrewEngine:
 			get_crew_board_work_context(crew_id),
 		]
 
-		results = await asyncio.gather(*tasks, return_exceptions=True)
+		try:
+			results = await asyncio.wait_for(
+				asyncio.gather(*tasks, return_exceptions=True),
+				timeout=12.0,
+			)
+		except asyncio.TimeoutError:
+			_safe_id = crew_id.replace("\n", "\\n").replace("\r", "\\r")
+			logger.warning(
+				"NativeCrewEngine: context build timed out (12s) for crew '%s' — proceeding without board/memory context",
+				_safe_id,
+			)
+			results = ["", "", ""]
 
 		# Unpack results with safety checks
 		personality = results[0] if not isinstance(results[0], Exception) else ""
@@ -281,12 +292,12 @@ class NativeCrewEngine:
 
 		# When force_cloud is active and cloud is configured, use the cloud URL explicitly
 		# rather than the constructor-bound self.llm_url (which may point to local if cloud
-		# was not configured at module-import time).
-		_effective_url = (
-			(settings.LLM_CLOUD_BASE_URL.rstrip("/") + "/v1")
-			if (force_cloud and settings.cloud_configured)
-			else self.llm_url
-		)
+		# was not configured at module-import time). LLM_CLOUD_BASE_URL may already include
+		# the /v1 suffix (e.g. https://api.mistral.ai/v1) — only append it if missing to avoid
+		# producing a double /v1/v1 path that 404s.
+		_cloud_base = settings.LLM_CLOUD_BASE_URL.rstrip("/")
+		_cloud_url = _cloud_base if _cloud_base.endswith("/v1") else f"{_cloud_base}/v1"
+		_effective_url = _cloud_url if (force_cloud and settings.cloud_configured) else self.llm_url
 		async with httpx.AsyncClient(timeout=3600.0) as client:
 			try:
 				async with client.stream("POST", f"{_effective_url}/chat/completions", headers=req_headers, json=payload) as response:
