@@ -28,23 +28,11 @@ openZero is a sovereign, self-hosted AI companion that grows a purpose-shaped me
 
 ---
 
-## What openZero is
+## What it does
 
-openZero is a **thinking substrate**. It builds and maintains the context of whatever you point it at — who matters, what's blocked, what was decided three months ago and why, what's drifting, what's about to collide — and lets you walk that context, recompose it, and ask it questions. Boards, tickets, calendar entries, emails, voice notes, and photos become inputs to a memory that thinks; they are no longer the place where thinking has to live.
+openZero is a **thinking substrate**, not a tools dashboard. You point an instance at a domain -- a life, a team, a project, a craft -- and the substrate grows a purpose-shaped memory there: it ingests calendar, mail, chats, photos, voice, and any source you give it; it relates and weighs what it learns; it surfaces contradictions, decisions, and changes; and it lets you walk and recompose that memory through a Memory Atlas. The substrate sits underneath the work. Surfaces like Miro, Jira, and Trello put cards on a wall and ask you to do the thinking. openZero builds and maintains the context itself, and you think alongside it.
 
-## What it solves
-
-The context you accumulate — what you've decided, learned, promised, noticed — gets scattered across tools that forget you. Calendars forget. Notes apps fragment. Boards reset every quarter. Conversations vanish. The work of remembering, connecting, and reconciling falls back on you, and you run out of bandwidth. Off-the-shelf AI assistants can chat, but they own the substrate — your memory lives on someone else's servers, and the moment you push real life through them you become the product. openZero replaces both halves of that with one persistent memory you fully own, growing locally and continuously, that any number of purpose-shaped instances can think inside.
-
-## How it works
-
-You point an instance at a domain and the substrate grows there. Multiple instances per operator is a first-class pattern: you can run a multitude of parallel projects, teams, life-domains, and crafts side by side, each as its own purpose-shaped instance — `life-Z` for the personal canvas, `work-Z` for a team, `chef-Z` for a craft — each with its own ontology, its own topic spines, and its own visual language. They are routed and orchestrated by intent: when you talk to openZero, it knows which instance the message belongs to, so the operator never has to switch contexts manually.
-
-> Every signal you let in — calendar, mail, chats, photos, voice, sensor feed — becomes context the substrate reasons over.
-
-Each signal is parsed, related, weighted, and woven into a navigable memory. A **Memory Atlas** surfaces that memory across multiple lenses, **Topic Spines** keep continuously-summarised paragraphs per theme, and **crews** (YAML-defined multi-character agents) reason over the result on a schedule, in response to messages, or on demand. Conversation is the primary input: the chat prompt is the bottom edge of every screen, not a widget.
-
-The runtime is yours end-to-end: local llama.cpp or any OpenAI-compatible endpoint, Qdrant for semantic memory, PostgreSQL for the navigable graph, all behind a Tailscale perimeter, with optional federation that ships reasoning slices instead of raw data.
+Every byte stays under your control. The runtime is self-hosted, the model weights are yours to choose (local llama.cpp or any OpenAI-compatible endpoint), the memory backend is open-source (Qdrant), the perimeter is Tailscale, and federation between your own instances ships reasoning slices, not raw data. You can run as many purpose-shaped instances as your hardware supports -- `life-Z`, `work-Z`, `partner-Z`, `fishing-Z` -- each with its own ontology and visual language.
 
 ---
 

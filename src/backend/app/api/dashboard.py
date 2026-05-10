@@ -1649,19 +1649,25 @@ async def get_briefings(limit: int = 10, db: AsyncSession = Depends(get_db)):
 	briefings = result.scalars().all()
 	return briefings
 
-# --- Email Rules ---
+# --- Email Rules (opt-in: EMAIL_ENABLED=1 in .env) ---
 class EmailRuleCreate(BaseModel):
 	sender_pattern: str
 	action: str = "urgent"
 	badge: Optional[str] = None
 
+def _require_email_enabled() -> None:
+	if not settings.EMAIL_ENABLED:
+		raise HTTPException(status_code=404, detail="Email not enabled")
+
 @router.get("/email-rules")
 async def get_email_rules(db: AsyncSession = Depends(get_db)):
+	_require_email_enabled()
 	result = await db.execute(select(EmailRule))
 	return result.scalars().all()
 
 @router.post("/email-rules")
 async def create_email_rule(rule: EmailRuleCreate, db: AsyncSession = Depends(get_db)):
+	_require_email_enabled()
 	db_rule = EmailRule(sender_pattern=rule.sender_pattern, action=rule.action, badge=rule.badge)
 	db.add(db_rule)
 	await db.commit()
@@ -1670,12 +1676,14 @@ async def create_email_rule(rule: EmailRuleCreate, db: AsyncSession = Depends(ge
 
 @router.delete("/email-rules/{rule_id}")
 async def delete_email_rule(rule_id: int, db: AsyncSession = Depends(get_db)):
+	_require_email_enabled()
 	await db.execute(delete(EmailRule).where(EmailRule.id == rule_id))
 	await db.commit()
 	return {"status": "deleted"}
 
 @router.put("/email-rules/{rule_id}")
 async def update_email_rule(rule_id: int, rule: EmailRuleCreate, db: AsyncSession = Depends(get_db)):
+	_require_email_enabled()
 	res = await db.execute(select(EmailRule).where(EmailRule.id == rule_id))
 	db_rule = res.scalar_one_or_none()
 	if not db_rule: raise HTTPException(status_code=404, detail="Not found")
