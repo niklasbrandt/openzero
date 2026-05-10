@@ -84,6 +84,7 @@ class Person(Base):
     work_start = Column(String, default="09:00")
     work_end = Column(String, default="17:00")
     briefing_time = Column(String) # e.g. "08:00"
+    weekly_time = Column(String) # e.g. "17:00" — Sunday weekly review time
     quiet_hours_enabled = Column(Boolean, default=True)
     quiet_hours_start = Column(String, default="00:00")
     quiet_hours_end = Column(String, default="06:00")

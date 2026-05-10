@@ -79,6 +79,7 @@ async def start_scheduler():
 		scheduler.configure(timezone=pytz.utc)
 
 	brief_hour, brief_min = 7, 30 # Default
+	weekly_hour, weekly_min = 17, 0  # Default: Sunday 17:00
 	quiet_enabled = False
 	qh_start_hour, qh_end_hour = 22, 6
 	try:
@@ -91,7 +92,12 @@ async def start_scheduler():
 					parts = me.briefing_time.split(":")
 					if len(parts) == 2:
 						brief_hour, brief_min = int(parts[0]), int(parts[1])
-				
+
+				if me.weekly_time:
+					wp = me.weekly_time.split(":")
+					if len(wp) == 2:
+						weekly_hour, weekly_min = int(wp[0]), int(wp[1])
+
 				if me.quiet_hours_enabled:
 					quiet_enabled = True
 					if me.quiet_hours_start:
@@ -120,11 +126,10 @@ async def start_scheduler():
 		replace_existing=True,
 	)
 
-	# Weekly Review — fires Monday at the same offset as the daily briefing (-15m).
-	# Uses the same user-configured briefing time so weekly and morning are aligned.
+	# Weekly Review — Sunday at user-configured weekly_time (default 17:00).
 	scheduler.add_job(
 		weekly_review,
-		CronTrigger(day_of_week="mon", hour=fire_time.hour, minute=fire_time.minute, timezone=tz),
+		CronTrigger(day_of_week="sun", hour=weekly_hour, minute=weekly_min, timezone=tz),
 		id="weekly_review",
 		replace_existing=True,
 	)
