@@ -208,7 +208,7 @@ from app.services.web_search import web_search
 
 AVAILABLE_TOOLS = [create_task, create_project, create_event, learn_memory, schedule_reminder, schedule_persistent_custom, move_card, run_crew, web_search]
 
-SENSITIVE_ACTIONS = {"SCHEDULE_CUSTOM", "LEARN", "CREATE_PROJECT", "ADD_PERSON", "CREATE_BOARD", "CREATE_LIST", "MOVE_BOARD", "PROXIMITY_TRACK", "RUN_CREW", "SCHEDULE_CREW"}
+SENSITIVE_ACTIONS = {"SCHEDULE_CUSTOM", "LEARN", "CREATE_PROJECT", "CREATE_BOARD", "CREATE_LIST", "MOVE_BOARD", "PROXIMITY_TRACK", "RUN_CREW", "SCHEDULE_CREW"}
 
 
 # ─── Module-level executors for Planka mutations ─────────────────────────────
@@ -620,6 +620,14 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 		proj_name, board_name = match.groups()
 		proj_name = proj_name.strip().strip('"\'')
 		board_name = board_name.strip().strip('"\'')
+		# Safety net: if the LLM emitted the full user sentence as the name instead of
+		# extracting just the label, and that sentence contains a quoted substring,
+		# the last quoted value is the intended label. No keyword matching — purely
+		# structural: "if there's a quoted span in a suspiciously long name, use it."
+		if len(board_name) > 30:
+			_quotes = re.findall(r'["\']([^"\']{1,80})["\']', board_name)
+			if _quotes:
+				board_name = _quotes[-1].strip()
 
 		async def _exec_board(proj_name=proj_name, board_name=board_name):
 			try:
@@ -926,32 +934,6 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 				return f"\u26a0 Failed to schedule custom task '{name[:60]}'. Check scheduler."
 
 		await handle_action("SCHEDULE_CUSTOM", raw_tag, _exec_custom, f"Schedule persistent task '{name}' ({spec})")
-		clean_reply = strip_tag(clean_reply, raw_tag)
-
-	# 7. Add Person Tag
-	person_pattern = r"\[?ACTION: ADD_PERSON \| NAME: ([^\|\]]+) \| RELATIONSHIP: ([^\|\]]+) \| CONTEXT: ([^\|\]]+) \| CIRCLE: ([^\|\]]+)\]?"
-	for match in re.finditer(person_pattern, reply):
-		raw_tag = match.group(0)
-		name, rel, ctx, circle = match.groups()
-		name, rel, ctx, circle = name.strip(), rel.strip(), ctx.strip(), circle.strip()
-
-		async def _exec_person(name=name, rel=rel, ctx=ctx, circle=circle):
-			try:
-				from app.models.db import Person, AsyncSessionLocal
-				# --- Input validation (M-A2) ---
-				circle_clean = circle.lower()
-				if circle_clean not in {"inner", "outer", "identity"}:
-					circle_clean = "outer"
-				async with AsyncSessionLocal() as session:
-					p = Person(name=name[:100], relationship=rel[:100], context=ctx[:1000], circle_type=circle_clean)
-					session.add(p)
-					await session.commit()
-				return f"Added {name} to your circle."
-			except Exception as _e:
-				logger.error("ADD_PERSON failed: %s", _e)
-				return f"\u26a0 Failed to add '{name}' to circle. Check database."
-
-		await handle_action("ADD_PERSON", raw_tag, _exec_person, f"Add {name} ({rel}) to circle")
 		clean_reply = strip_tag(clean_reply, raw_tag)
 
 	# 5. Learn Memory Tag
