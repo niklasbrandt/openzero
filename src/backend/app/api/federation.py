@@ -8,10 +8,6 @@ from app.models.db import AsyncSessionLocal
 from app.config import settings
 from app.services.federation import federation_enabled
 from app.services.federation.contracts import create_contract, revoke_contract, list_contracts
-
-federation_router = APIRouter(prefix="/api/federation", tags=["federation"])
-
-
 async def get_db():
 	async with AsyncSessionLocal() as session:
 		yield session

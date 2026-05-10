@@ -1,7 +1,7 @@
 """Tailscale peer identity verification."""
-import ipaddress
-import hmac
 import hashlib
+import hmac
+import ipaddress
 from fastapi import Request, HTTPException
 
 TAILSCALE_CGNAT = ipaddress.ip_network("100.64.0.0/10")
