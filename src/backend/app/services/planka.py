@@ -34,7 +34,7 @@ def _sanitize_for_log(text: Any) -> str:
 _DONE_LIST_NAMES = {"erledigt", "done", "closed", "fertig", "abgeschlossen", "archiviert", "archived", "completed"}
 
 def _is_done_list(list_name: str) -> bool:
-	return list_name.strip().lower() in _DONE_LIST_NAMES
+	return (list_name or "").strip().lower() in _DONE_LIST_NAMES
 
 async def get_project_tree(as_html: bool = True) -> str:
 	"""Recursively build a semantic text tree. Uses parallel requests and caching for speed."""
@@ -693,10 +693,10 @@ async def move_card(card_title_fragment: str, destination_list: str, board_name:
 					lists = b_data.get("included", {}).get("lists", [])
 					cards = b_data.get("included", {}).get("cards", [])
 					for c in cards:
-						if card_title_fragment in c["name"].lower():
+						if card_title_fragment in (c.get("name") or "").lower():
 							found_card = c
 							dest_list = next(
-								(l for l in lists if l["name"].lower() == destination_list.lower()), None
+								(l for l in lists if (l.get("name") or "").lower() == destination_list.lower()), None
 							)
 							if dest_list:
 								dest_list_id = dest_list["id"]
@@ -1506,7 +1506,7 @@ async def get_activity_report(days: int = 30) -> str:
 				boards = d.get("included", {}).get("boards", []) or d.get("boards", [])
 				for b in boards:
 					board_tasks.append(client.get(f"/api/boards/{b['id']}", params={"included": "lists,cards,labels,cardLabels"}))
-					board_names.append(b["name"])
+					board_names.append(b.get("name") or "")
 			
 			board_details = await asyncio.gather(*board_tasks)
 			
@@ -1551,11 +1551,11 @@ async def get_activity_report(days: int = 30) -> str:
 						wip_violations.append(f"{b_name} → {lst['name']} ({len(lst_cards)} cards, limit 3)")
 				
 				for card in cards:
-					c_name = card["name"]
+					c_name = card.get("name") or "?"
 					_raw_updated = card.get("updatedAt") or ""
 					c_updated = datetime.fromisoformat(_raw_updated.replace('Z', '')) if _raw_updated else datetime.min
 					c_labels = card_to_labels.get(card["id"], [])
-					c_label_names = [l["name"].lower() for l in c_labels]
+					c_label_names = [(l.get("name") or "").lower() for l in c_labels]
 					
 					is_done = card["listId"] in done_list_ids
 					is_ip = card["listId"] in ip_list_ids
@@ -1636,9 +1636,7 @@ async def get_recent_activity(hours: int = 48) -> str:
 				boards = d.get("included", {}).get("boards", []) or d.get("boards", [])
 				for b in boards:
 					board_tasks.append(client.get(f"/api/boards/{b['id']}", params={"included": "lists,cards"}))
-					board_names.append(b["name"])
-
-			if not board_tasks:
+					board_names.append(b.get("name") or "")
 				return f"[NO ACTIVITY IN LAST {hours} HOURS]"
 
 			board_details = await asyncio.gather(*board_tasks)
@@ -1649,7 +1647,7 @@ async def get_recent_activity(hours: int = 48) -> str:
 				b_name = board_names[b_idx]
 				lists = b_data.get("included", {}).get("lists", [])
 				cards = b_data.get("included", {}).get("cards", [])
-				list_map = {l["id"]: l["name"] for l in lists}
+				list_map = {l["id"]: (l.get("name") or "?") for l in lists}
 				done_list_ids = {l["id"] for l in lists if _is_done_list(l.get("name", ""))}
 
 				for card in cards:
@@ -1664,14 +1662,14 @@ async def get_recent_activity(hours: int = 48) -> str:
 						continue
 					list_name = list_map.get(card["listId"], "?")
 					change = "created" if c_created >= cutoff else "updated"
-					lines.append(f"- {card['name']} | {b_name} -> {list_name} | {change}")
+					lines.append(f"- {card.get('name') or '?'} | {b_name} -> {list_name} | {change}")
 
 		if not lines:
 			return f"[NO ACTIVITY IN LAST {hours} HOURS]"
 		return "\n".join(lines)
-	except Exception:
+	except Exception as e:
 		logger.exception("get_recent_activity failed")
-		return "### RECENT ACTIVITY FETCH FAILED ###"
+		return f"[ACTIVITY DATA UNAVAILABLE: {e}]"
 
 
 async def get_stale_cards(min_days: int = 5) -> str:
@@ -1696,7 +1694,7 @@ async def get_stale_cards(min_days: int = 5) -> str:
 				boards = d.get("included", {}).get("boards", []) or d.get("boards", [])
 				for b in boards:
 					board_tasks.append(client.get(f"/api/boards/{b['id']}", params={"included": "lists,cards"}))
-					board_names.append(b["name"])
+					board_names.append(b.get("name") or "")
 
 			if not board_tasks:
 				return "[NO STALE ITEMS]"
@@ -1709,7 +1707,7 @@ async def get_stale_cards(min_days: int = 5) -> str:
 				b_name = board_names[b_idx]
 				lists = b_data.get("included", {}).get("lists", [])
 				cards = b_data.get("included", {}).get("cards", [])
-				list_map = {l["id"]: l["name"] for l in lists}
+				list_map = {l["id"]: (l.get("name") or "?") for l in lists}
 				done_list_ids = {l["id"] for l in lists if _is_done_list(l.get("name", ""))}
 
 				for card in cards:
@@ -1723,7 +1721,7 @@ async def get_stale_cards(min_days: int = 5) -> str:
 					list_name = list_map.get(card["listId"], "?")
 					if b_name not in by_board:
 						by_board[b_name] = []
-					by_board[b_name].append(f"  - {card['name']} | {list_name} | {days_stale} days since last update")
+					by_board[b_name].append(f"  - {card.get('name') or '?'} | {list_name} | {days_stale} days since last update")
 
 		if not by_board:
 			return "[NO STALE ITEMS]"
@@ -1732,9 +1730,9 @@ async def get_stale_cards(min_days: int = 5) -> str:
 			result_lines.append(f"{board}:")
 			result_lines.extend(entries)
 		return "\n".join(result_lines)
-	except Exception:
+	except Exception as e:
 		logger.exception("get_stale_cards failed")
-		return "### STALE CARDS FETCH FAILED ###"
+		return f"[STALE CARDS DATA UNAVAILABLE: {e}]"
 
 
 _CREW_BOARD_NAMES = {"fitness", "nutrition", "life", "health", "finance", "work", "learning"}
@@ -1760,9 +1758,9 @@ async def get_crew_board_snapshot() -> str:
 				d = r.json()
 				boards = d.get("included", {}).get("boards", []) or d.get("boards", [])
 				for b in boards:
-					if b["name"].strip().lower() in _CREW_BOARD_NAMES:
+					if (b.get("name") or "").strip().lower() in _CREW_BOARD_NAMES:
 						board_tasks.append(client.get(f"/api/boards/{b['id']}", params={"included": "lists,cards"}))
-						board_names.append(b["name"])
+						board_names.append(b.get("name") or "")
 
 			if not board_tasks:
 				return "(no crew boards found)"
@@ -1775,17 +1773,23 @@ async def get_crew_board_snapshot() -> str:
 				b_name = board_names[b_idx]
 				lists = b_data.get("included", {}).get("lists", [])
 				cards = b_data.get("included", {}).get("cards", [])
-				list_map = {l["id"]: l["name"] for l in lists}
+				list_map = {l["id"]: (l.get("name") or "?") for l in lists}
 				done_list_ids = {l["id"] for l in lists if _is_done_list(l.get("name", ""))}
 				active_cards = [c for c in cards if c["listId"] not in done_list_ids]
 				if not active_cards:
 					lines.append(f"{b_name}: no active items")
 				else:
 					top = active_cards[:2]
-					card_strs = ", ".join(f"{c['name']} ({list_map.get(c['listId'], '?')})" for c in top)
+					card_strs = ", ".join(f"{c.get('name') or '?'} ({list_map.get(c['listId'], '?')})" for c in top)
 					lines.append(f"{b_name}: {card_strs}")
 
 		return "\n".join(lines) if lines else "(no crew boards found)"
-	except Exception:
+	except Exception as e:
 		logger.exception("get_crew_board_snapshot failed")
-		return "### CREW SNAPSHOT FETCH FAILED ###"
+		return f"[CREW SNAPSHOT UNAVAILABLE: {e}]"
+
+
+async def get_project_tree_text() -> str:
+	"""Plain-text alias for get_project_tree(as_html=False) — for LLM injection and diagnostics."""
+	return await get_project_tree(as_html=False)
+
