@@ -119,6 +119,7 @@ async def start_telegram_bot():
 	bot_app.add_handler(CommandHandler("month", cmd_month))
 	bot_app.add_handler(CommandHandler("quarter", cmd_quarter))
 	bot_app.add_handler(CommandHandler("year", cmd_year))
+	bot_app.add_handler(CommandHandler("walk", cmd_walk))
 	bot_app.add_handler(CommandHandler("day", cmd_day))
 	bot_app.add_handler(CommandHandler("learn", cmd_learn))
 	bot_app.add_handler(CommandHandler("add", cmd_learn))
@@ -833,6 +834,32 @@ async def cmd_year(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		await safe_reply(update, report)
 	except Exception as e:
 		await safe_reply(update, f"Yearly review failed: {e}")
+
+@owner_only
+async def cmd_walk(update: Update, context: ContextTypes.DEFAULT_TYPE):
+	"""Build an ad-hoc walk-through for a node name/id passed as argument."""
+	arg = " ".join(context.args).strip() if context.args else ""
+	try:
+		from app.services.walkthroughs import build_walkthrough
+		from app.services.walkthrough_renderer import render_telegram
+		from app.models.db import AsyncSessionLocal
+		from sqlalchemy import text as sql_text
+		node_id: int | None = None
+		if arg:
+			# Try numeric ID first
+			if arg.isdigit():
+				node_id = int(arg)
+			else:
+				# Search by label
+				async with AsyncSessionLocal() as _db:
+					res = await _db.execute(sql_text("SELECT id FROM atlas_nodes WHERE label ILIKE :q LIMIT 1"), {"q": f"%{arg}%"})
+					row = res.fetchone()
+					if row:
+						node_id = row[0]
+		wt = await build_walkthrough(kind="ad_hoc", node_id=node_id)
+		await render_telegram(wt)
+	except Exception as e:
+		await safe_reply(update, f"Walk-through failed: {e}")
 
 @owner_only
 async def cmd_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
