@@ -194,6 +194,38 @@ CREATE TABLE IF NOT EXISTS walkthrough_stops (
 	payload JSONB DEFAULT '{}'::jsonb
 );
 """))
+            # Federation tables (Phase H) — created only when opt-in flag is set
+            if settings.FEDERATION_ENABLED:
+                await conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS share_contracts (
+                        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+                        producer_node text NOT NULL,
+                        consumer_node text NOT NULL,
+                        resource text NOT NULL,
+                        scope_predicate jsonb NOT NULL DEFAULT '{}',
+                        redactions jsonb NOT NULL DEFAULT '[]',
+                        read_only bool NOT NULL DEFAULT true,
+                        expires_at timestamptz,
+                        created_at timestamptz NOT NULL DEFAULT now(),
+                        revoked_at timestamptz,
+                        bearer_token_hash text,
+                        signature text
+                    )
+                """))
+                await conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS federation_audit (
+                        id bigserial PRIMARY KEY,
+                        ts timestamptz NOT NULL DEFAULT now(),
+                        direction text NOT NULL CHECK (direction IN ('inbound', 'outbound')),
+                        contract_id uuid,
+                        peer_node text,
+                        resource text,
+                        query_hash text,
+                        result_count_bucket text,
+                        status text,
+                        latency_ms int
+                    )
+                """))
         logging.info("✓ Postgres tables initialized and migrated.")
     except Exception as e:
         logging.warning("⚠ Warning: Could not connect to Postgres: %s", e)

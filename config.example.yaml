@@ -208,3 +208,18 @@ atlas:
   # Corresponds to env var ATLAS_DIFF_RIBBON.
   diff_ribbon: false
 
+# ── Federation (Phase H) ─────────────────────────────────────────────────────
+# Opt-in, peer-to-peer over Tailscale. Sovereignty by default: nothing shared
+# without explicit ShareContracts. See docs/artifacts/federated_memory.md.
+# All settings correspond to the same-named env vars in .env.
+federation:
+  # Master opt-in gate. Default false — federation ships dark.
+  # Corresponds to env var FEDERATION_ENABLED.
+  enabled: false
+
+  # Per-instance key-encryption-key (base64-encoded 32 bytes).
+  # Generate: python3 -c "import secrets,base64; print(base64.b64encode(secrets.token_bytes(32)).decode())"
+  # Store the result in .env as FEDERATION_KEK=<value>. Never commit a real key here.
+  # Corresponds to env var FEDERATION_KEK.
+  kek: ""
+
