@@ -1727,6 +1727,7 @@ async def _process_crew_stream(update: Update, context: ContextTypes.DEFAULT_TYP
 		all_executed_cmds: list = []
 		attribution = ", ".join(crew_ids)
 		section_items = list(all_sections.items())
+		from app.services.crews_native import crew_board_name_for_id as _crew_board_name
 		for idx, (cid, section_text) in enumerate(section_items):
 			safe_cid = cid.replace("\n", "\\n").replace("\r", "\\r")
 			logger.info("Crew panel '%s' raw output (%d chars): %s", safe_cid, len(section_text), section_text[:300])
@@ -1737,6 +1738,7 @@ async def _process_crew_stream(update: Update, context: ContextTypes.DEFAULT_TYP
 				raw_reply=raw,
 				model=f"crew:{cid}",
 				user_text=user_input,
+				crew_board_hint=_crew_board_name(cid),
 			)
 			if p_actions:
 				logger.info("Crew '%s' pending actions: %s", safe_cid, str(p_actions)[:200].replace('\n', '\\n').replace('\r', '\\r'))

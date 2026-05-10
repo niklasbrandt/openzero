@@ -477,7 +477,7 @@ _NEW_BOARD_ITEM_RE = re.compile(
 )
 
 
-async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = False, user_text: str = ""):
+async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = False, user_text: str = "", crew_board_hint: str | None = None):
 	"""
 	Parses Semantic Action Tags from the AI reply and executes them.
 	If require_hitl is True, sensitive actions are queued for approval instead of executed.
@@ -829,6 +829,15 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 					board, _scope_board, llist,
 				)
 				board = _scope_board
+
+		# Crew-board override: when a crew is active its own board is the canonical
+		# target.  The LLM is not permitted to route tasks to an unrelated board.
+		if crew_board_hint and board.lower() != crew_board_hint.lower():
+			logger.warning(
+				"CREATE_TASK: crew_board_hint override BOARD '%s' → '%s'",
+				board, crew_board_hint,
+			)
+			board = crew_board_hint
 
 		_dedup_task = f"CREATE_TASK:{board.strip().lower()}:{llist.strip().lower()}:{title.strip().lower()}"
 		if _dedup_task in seen_raw_tags:
