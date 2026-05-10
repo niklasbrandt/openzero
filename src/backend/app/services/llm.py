@@ -37,7 +37,7 @@ import uuid
 import asyncio
 import time
 from sqlalchemy import select
-from app.models.db import AsyncSessionLocal, LLMMetric, Person
+from app.models.db import AsyncSessionLocal, LLMMetric
 
 logger = logging.getLogger(__name__)
 
@@ -352,28 +352,9 @@ _known_person_names_loaded: bool = False
 
 
 async def _ensure_person_names_loaded() -> None:
-	"""Populate _known_person_names from the people DB table (once per process).
-
-	Called from main.py run_delayed_init() so the cache is ready before the
-	first cloud LLM call.  Safe to call multiple times; only runs once.
-	"""
-	global _known_person_names, _known_person_names_loaded
-	if _known_person_names_loaded:
-		return
-	try:
-		async with AsyncSessionLocal() as session:
-			result = await session.execute(select(Person.name))
-			names = result.scalars().all()
-		for n in names:
-			for part in (n or "").strip().split():
-				if len(part) >= 3:
-					_known_person_names.add(part.lower())
-		_known_person_names_loaded = True
-		logger.debug("cloud_sanitize: loaded %d person name tokens from people DB (ready=%s)", len(_known_person_names), _known_person_names_loaded)
-	except Exception as exc:
-		logger.warning("cloud_sanitize: could not load person names from DB (%s) — heuristic-only", exc)
-		_known_person_names_loaded = True  # do not retry on every cloud call
-		logger.debug("cloud_sanitize: person names cache flag set (ready=%s)", _known_person_names_loaded)
+	"""No-op: people table removed. Heuristic-only cloud PII sanitisation applies."""
+	global _known_person_names_loaded
+	_known_person_names_loaded = True
 
 
 def _should_replace_person_entity(word: str, full_text: str) -> bool:
@@ -795,20 +776,12 @@ CRITICAL — USE EXACT NAMES IN PROSE: When confirming a CREATE_TASK, your prose
   CRITICAL — "My projects" IS A PARENT CONTAINER, NOT A BOARD: User-created boards like "life goals", "shopping", "books" live inside the "My projects" parent. NEVER use `BOARD: My projects | LIST: life goals` — that puts the card on the wrong board. The correct tag is always `BOARD: life goals` (the board's own name). "My projects" must never appear as the BOARD value for user content.
 - Create Project: `[ACTION: CREATE_PROJECT | NAME: text | DESCRIPTION: text]`
 - Create Board: `[ACTION: CREATE_BOARD | PROJECT: project_name | NAME: text]`
-  NAME RULE: NAME must be the shortest meaningful identifier — NEVER a description, a sentence, or any paraphrase of the user's request. Extract only the label.
-  Rules in order of priority:
-  1. If the user states a codename (e.g. `codename "openSea"` or `codename 'Alpha'`), NAME is ONLY the codename value — nothing before or after it.
-  2. If the user puts a name in quotes (e.g. 'board called "Vesper"'), NAME is ONLY the quoted value.
-  3. If the user says "called X" or "named X" (no quotes), NAME is X.
-  4. Otherwise infer the shortest meaningful label from context (e.g. "clothing line project" → `Clothing Line`).
-  Examples:
-    VIOLATION: user says "neues board für mein business lifestyle clothing line codename \"openSea\"" → NAME: für mein neues business lifestyle clothing line codename "openSea"
-    CORRECT:   same input → NAME: openSea
-    VIOLATION: user says "new board for my clothing project called Velocity" → NAME: new board for my clothing project called Velocity
-    CORRECT:   same input → NAME: Velocity
-    VIOLATION: user says "create a fitness tracking board" → NAME: create a fitness tracking board
-    CORRECT:   same input → NAME: Fitness Tracking
-  The NAME field must contain ONLY the label — never a verb, never a preposition, never a sentence fragment describing the user's intent.
+  NAME RULE: Write ONLY the board's short label — never the user's full sentence.
+  If the user says codename X → NAME is X. If the user puts X in quotes → NAME is X. If the user says "called X" or "named X" → NAME is X. Otherwise → shortest meaningful label (2-3 words max).
+  BAD: NAME: für mein neues business lifestyle clothing line codename "openSea"
+  GOOD: NAME: openSea
+  BAD: NAME: new board for my clothing project called Velocity
+  GOOD: NAME: Velocity
 - Create List (Column): `[ACTION: CREATE_LIST | BOARD: board_name | NAME: text]`
   PARSING — "new list on [board] [name]" or "add list [name] to [board]": BOARD = the board name, NAME = the column name. Example: "new list on life goals 'dream home'" → `[ACTION: CREATE_LIST | BOARD: life goals | NAME: dream home]`. Do NOT include the preposition or board name inside NAME.
 - Create Event: `[ACTION: CREATE_EVENT | TITLE: text | START: YYYY-MM-DD HH:MM | END: YYYY-MM-DD HH:MM]`
