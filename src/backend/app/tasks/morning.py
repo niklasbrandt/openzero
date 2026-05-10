@@ -381,6 +381,15 @@ async def morning_briefing():
 		# Telegram show the briefing at the same time (not 15 min early).
 		await save_global_message("telegram", "z", content, model=last_model_used.get())
 
+		# Phase W: build and deliver as walk-through
+		try:
+			from app.services.walkthroughs import build_walkthrough
+			from app.services.walkthrough_renderer import render_all
+			wt = await build_walkthrough(kind="morning")
+			await render_all(wt)
+		except Exception as _wt_err:
+			logger.warning("morning_briefing: walk-through build failed (non-fatal): %s", _wt_err)
+
 		# 5b. Wait for TTS to finish and send voice (with generous timeout — non-blocking for text above)
 		try:
 			audio_briefing = await asyncio.wait_for(tts_task, timeout=90.0)

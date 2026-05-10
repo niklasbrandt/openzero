@@ -696,6 +696,38 @@ async def create_walkthrough(body: WalkthroughCreate, db: AsyncSession = Depends
 		raise HTTPException(status_code=500, detail="Failed to create walkthrough") from None
 
 
+@router.get("/walkthroughs/{walkthrough_id}")
+async def get_walkthrough_by_id(walkthrough_id: int, db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
+	"""Return a single walkthrough with its stops."""
+	try:
+		wt_result = await db.execute(
+			text("SELECT id, title, briefing_id, payload, created_at FROM walkthroughs WHERE id = :wid"),
+			{"wid": walkthrough_id},
+		)
+		row = wt_result.fetchone()
+		if not row:
+			raise HTTPException(status_code=404, detail="Walkthrough not found")
+		wt = dict(row._mapping)
+		stops_result = await db.execute(
+			text(
+				"SELECT ws.id, ws.walkthrough_id, ws.stop_order, ws.node_id, ws.spine_id, ws.narration, ws.payload, "
+				"n.label AS node_label, s.label AS spine_label "
+				"FROM walkthrough_stops ws "
+				"LEFT JOIN atlas_nodes n ON n.id = ws.node_id "
+				"LEFT JOIN atlas_spines s ON s.id = ws.spine_id "
+				"WHERE ws.walkthrough_id = :walkthrough_id "
+				"ORDER BY ws.stop_order ASC"
+			),
+			{"walkthrough_id": walkthrough_id},
+		)
+		wt["stops"] = [dict(r._mapping) for r in stops_result.fetchall()]
+		return wt
+	except HTTPException:
+		raise
+	except Exception:
+		raise HTTPException(status_code=500, detail="Failed to fetch walkthrough") from None
+
+
 @router.get("/walkthroughs/{walkthrough_id}/stops")
 async def list_walkthrough_stops(walkthrough_id: int, db: AsyncSession = Depends(get_db)) -> list[dict[str, Any]]:
 	"""Return stops for a walkthrough ordered by stop_order ASC, joined with node and spine labels."""
