@@ -155,14 +155,21 @@ async def morning_briefing():
 		_email_is_absent = email_summary.startswith("[NO DATA")
 		_calendar_is_empty = calendar_summary.startswith("[NO DATA")
 
+		logger.info("Morning briefing calendar_events=%d email_absent=%s", len(calendar_events or []), _email_is_absent)
+		if calendar_events:
+			for ev in calendar_events:
+				logger.info("Morning briefing calendar event: %s start=%s", ev.get('summary', '?'), ev.get('start', '?'))
+
 		full_prompt = (
+			"ABSOLUTE RULE — FABRICATION IS FORBIDDEN:\n"
+			"You are only permitted to report information that appears verbatim in the DATA SECTIONS below.\n"
+			"- If the Calendar section is absent from this prompt: there are NO events today. Do not mention any meeting, standup, sync, or appointment.\n"
+			"- If the Email section is absent from this prompt: email is not connected. Do not mention any email, sender, subject, or message.\n"
+			"- If a board card is not listed in PROJECT TREE: do not invent project names, task names, or work items.\n"
+			"- NEVER use any proper noun (person name, project name, task title, company name) that does not appear verbatim in the data sections below.\n"
+			"- Violating this rule means the briefing is WRONG and HARMFUL. Do not invent. Do not infer. Do not complete patterns.\n\n"
 			"Z, it's morning. Write the daily briefing for the user.\n\n"
-			"CRITICAL DATA INTEGRITY RULE — read before anything else:\n"
-			"You are receiving REAL data from live system sources. The data blocks at the bottom of this prompt are the ONLY source of truth.\n"
-			"- If a data block says [NO DATA], that section contains NOTHING. Write nothing about it. No heading, no placeholder, no inference.\n"
-			"- NEVER invent, infer, or hallucinate calendar events, email subjects, task titles, project names, meeting times, or people's names.\n"
-			"- Do NOT reference any project name, meeting title, or email sender unless it appears verbatim in the data blocks below.\n"
-			"- Treat [NO DATA] as if that block does not exist in this prompt at all.\n\n"
+			"You are receiving REAL data from live system sources. The data blocks at the bottom of this prompt are the ONLY source of truth.\n\n"
 			"VOICE & STYLE:\n"
 			"- Write like a smart colleague sending a quick message about your day. Natural, direct, slightly informal — not robotic, not literary.\n"
 			"- Short sentences. Plain words. OK to drop a subject: 'Clear calendar today.' / 'Rain until noon.'\n"
@@ -188,12 +195,12 @@ async def morning_briefing():
 			"Nutrition: [only if a meal plan exists — ONE warm meal suggestion only, never both lunch and dinner]\n"
 			"[Kids / People: only if INNER CIRCLE has someone relevant AND today-specific context from the actual data]\n\n"
 			"ANTI-PATTERNS — these make the output invalid:\n"
-			"WRONG (literary): 'You wake up to the kind of grey Bremen light that doesn\'t promise much but doesn\'t lie either...'\n"
+			"WRONG (literary): 'You wake up to the kind of grey light that doesn\'t promise much but doesn\'t lie either...'\n"
 			"WRONG (robotic dump): 'Weather: 12C. Rain: yes. Wind: damp. Clothing: layers required.'\n"
 			"RIGHT (human): '12C, drizzle all morning, eases around 2pm. Take a jacket.'\n\n"
-			"WRONG (robotic board): '- openZero backend -> [List Name] (TURN server fix)'\n"
-			"WRONG (passive summary): '- Privacy dashboard: [List A]. - openZero backend: [List B].'\n"
-			"RIGHT (kanban expert): '- Privacy dashboard has been in [List A] 2 days — unblock it first, one test run closes it.\n- openZero backend: TURN fix is up next, finish that before pulling anything else.'\n\n"
+			"WRONG (robotic board): '- [Card name] -> [List Name] ([task detail])'\n"
+			"WRONG (passive summary): '- [Board A]: [List A]. - [Board B]: [List B].'\n"
+			"RIGHT (kanban expert): '- [Card name from PROJECT TREE] has been in [its current list] 2 days — one test run closes it.\n- [Next card from PROJECT TREE]: finish that before pulling new work.'\n\n"
 			"CONTENT — include only sections where real data was provided in the context blocks below:\n"
 			"- Weather: temperature and conditions from WEATHER FORECAST. Always include — weather data is always provided.\n"
 			"- Calendar: only if CALENDAR TODAY is not marked [EMPTY]. List real events only.\n"
@@ -261,10 +268,10 @@ async def morning_briefing():
 			"not the mechanical steps. Any sentence describing the action will appear verbatim to the user.\n\n"
 			f"AUTOMATED SYSTEM ACTIONS:\n{automation_summary}\n\n"
 			f"INNER CIRCLE (Family/Care):\n{inner_context}\n\n"
-			f"CALENDAR TODAY:\n{calendar_summary}\n\n"
-			f"WEATHER FORECAST:\n{weather_report}\n\n"
-			f"RECENT ACTIVITY (LAST 24H):\n{activity}\n\n"
-			f"PROJECT TREE:\n{tree}\n\n"
+			+ (f"CALENDAR TODAY:\n{calendar_summary}\n\n" if not _calendar_is_empty else "")
+			+ f"WEATHER FORECAST:\n{weather_report}\n\n"
+			+ f"RECENT ACTIVITY (LAST 24H):\n{activity}\n\n"
+			+ f"PROJECT TREE:\n{tree}\n\n"
 			+ (f"LATEST EMAILS:\n{email_summary}\n" if not _email_is_absent else "")
 			+ (
 				f"\nAMBIENT INSIGHTS (undelivered proactive signals from last 24h):\n"
@@ -275,6 +282,8 @@ async def morning_briefing():
 				if ambient_insights_section else ""
 			)
 		)
+
+		logger.debug("Morning prompt (first 500 chars): %s", full_prompt[:500])
 
 		# 3. Generate Briefing — cloud tier with 600s hard timeout, retry on failure
 		logger.debug("morning_briefing — starting LLM generation")
