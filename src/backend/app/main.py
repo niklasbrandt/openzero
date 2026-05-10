@@ -50,6 +50,7 @@ async def lifespan(app: FastAPI):
                 "job_title": "ALTER TABLE people ADD COLUMN job_title VARCHAR;",
                 "department": "ALTER TABLE people ADD COLUMN department VARCHAR;",
                 "date_format": "ALTER TABLE people ADD COLUMN date_format VARCHAR DEFAULT 'iso';",
+                "weekly_time": "ALTER TABLE people ADD COLUMN weekly_time VARCHAR;",
             }
             for col, alter_sql in _people_work_cols.items():
                 res = await conn.execute(text(
