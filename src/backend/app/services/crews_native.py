@@ -20,6 +20,39 @@ _ANON_TOKEN_RE = re.compile(r'\[[A-Z]+_\d+\]')
 
 logger = logging.getLogger(__name__)
 
+# ─── Crew-board injection helpers ────────────────────────────────────────────
+# Crew boards live in the "Crews" Planka project.  When the LLM omits a BOARD:
+# field from a CREATE_TASK / CREATE_LIST tag while running as a crew, the tag
+# must be patched to target the crew's own board so it never lands on an
+# unrelated user board.  The primary fix is the crew_board_hint passed to
+# parse_and_execute_actions; _inject_crew_board handles the edge case where
+# the LLM emits a tag without any BOARD: field at all.
+
+_CREW_ACTION_TAG_RE = re.compile(
+	r'\[ACTION:\s*(CREATE_TASK|CREATE_LIST)\s*\|([^\]]*)\]',
+	re.IGNORECASE,
+)
+
+
+def crew_board_name_for_id(crew_id: str) -> str:
+	"""Return the Planka board name for a crew. e.g. 'market-intel' -> 'Market Intel'."""
+	return crew_id.replace("-", " ").title()
+
+
+def _inject_crew_board(text: str, board_name: str) -> str:
+	"""Patch CREATE_TASK / CREATE_LIST tags that lack a BOARD: field.
+
+	Tags that already contain 'BOARD:' are left untouched; the crew_board_hint
+	mechanism in parse_and_execute_actions handles wrong-board overrides.
+	"""
+	def _patch(m: re.Match) -> str:
+		tag_type = m.group(1)
+		params = m.group(2)
+		if re.search(r'\bBOARD\s*:', params, re.IGNORECASE):
+			return m.group(0)
+		return f'[ACTION: {tag_type} | BOARD: {board_name} | {params.strip().lstrip("|").strip()}]'
+	return _CREW_ACTION_TAG_RE.sub(_patch, text)
+
 
 async def _write_crew_memory(crew_id: str, user_input: str, crew_response: str) -> None:
 	"""Fire-and-forget: append this exchange to the crew's Planka conversation card."""

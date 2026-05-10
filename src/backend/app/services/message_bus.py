@@ -174,18 +174,21 @@ class MessageBus:
 		db: Any = None,
 		save: bool = True,
 		require_hitl: bool = False,
+		crew_board_hint: str | None = None,
 	) -> tuple[str, list, list]:
 		"""Parse action tags, persist Z's reply, schedule background memory.
 
 		Args:
-			channel:      Destination channel id, e.g. "telegram", "dashboard".
-			raw_reply:    Raw LLM output (may contain [ACTION:…] tags).
-			model:        Model label for provenance tracking (last_model_used.get()).
-			user_text:    Original user message used to trigger memory extraction.
-			              Pass empty string to skip memory extraction.
-			db:           SQLAlchemy async session. A new session is opened if None.
-			save:         Set False to skip persistence (regression tests, dry-runs).
-			require_hitl: If True, destructive actions are held for human confirmation.
+			channel:          Destination channel id, e.g. "telegram", "dashboard".
+			raw_reply:        Raw LLM output (may contain [ACTION:…] tags).
+			model:            Model label for provenance tracking (last_model_used.get()).
+			user_text:        Original user message used to trigger memory extraction.
+			                  Pass empty string to skip memory extraction.
+			db:               SQLAlchemy async session. A new session is opened if None.
+			save:             Set False to skip persistence (regression tests, dry-runs).
+			require_hitl:     If True, destructive actions are held for human confirmation.
+			crew_board_hint:  When set, CREATE_TASK tags are forced onto this board name.
+			                  Pass the crew's Planka board name (e.g. "Life" for crew "life").
 
 		Returns:
 			(clean_reply, executed_commands, pending_actions)
@@ -197,14 +200,21 @@ class MessageBus:
 		from app.services.agent_actions import parse_and_execute_actions
 		from app.common.phantom import is_phantom, PHANTOM_HISTORY_PLACEHOLDER
 
+		# Pre-process: inject crew board into any tags that lack a BOARD: field.
+		if crew_board_hint:
+			from app.services.crews_native import _inject_crew_board
+			raw_reply = _inject_crew_board(raw_reply, crew_board_hint)
+
 		if db is not None:
 			clean_reply, executed_cmds, pending_actions = await parse_and_execute_actions(
-				raw_reply, db=db, require_hitl=require_hitl, user_text=user_text
+				raw_reply, db=db, require_hitl=require_hitl, user_text=user_text,
+				crew_board_hint=crew_board_hint,
 			)
 		else:
 			async with AsyncSessionLocal() as _db:
 				clean_reply, executed_cmds, pending_actions = await parse_and_execute_actions(
-					raw_reply, db=_db, require_hitl=require_hitl, user_text=user_text
+					raw_reply, db=_db, require_hitl=require_hitl, user_text=user_text,
+					crew_board_hint=crew_board_hint,
 				)
 
 		if save:

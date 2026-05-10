@@ -1121,11 +1121,13 @@ async def dashboard_crew_stream(crew_id: str, req: ChatRequest, request: Request
 			safe_crew_id = str(crew_id).replace('\n', ' ').replace('\r', ' ')
 			logger.info("Dashboard crew '%s' raw output (%d chars): %s", safe_crew_id, len(full_res), full_res[:500].replace('\n', ' ').replace('\r', ' '))
 
+			from app.services.crews_native import crew_board_name_for_id
 			clean_reply, executed_cmds, pending_actions = await bus.commit_reply(
 				channel="dashboard",
 				raw_reply=full_res,
 				model=f"crew:{crew_id}",
 				user_text=req.message,
+				crew_board_hint=crew_board_name_for_id(crew_id),
 			)
 			if executed_cmds:
 				logger.info("Dashboard crew '%s' executed actions: %s", safe_crew_id, str(executed_cmds).replace('\n', ' ').replace('\r', ' '))
