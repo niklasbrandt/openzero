@@ -131,6 +131,7 @@ export class UserCard extends HTMLElement {
 				work_start: '09:00',
 				work_end: '17:00',
 				briefing_time: '08:00',
+				weekly_time: '17:00',
 				context: '',
 				color_primary: 'hsla(173, 80%, 40%, 1)',
 				color_secondary: 'hsla(216, 100%, 50%, 1)',
@@ -156,6 +157,7 @@ export class UserCard extends HTMLElement {
 			work_start: (shadow.querySelector('#work-start-input') as HTMLInputElement).value,
 			work_end: (shadow.querySelector('#work-end-input') as HTMLInputElement).value,
 			briefing_time: (shadow.querySelector('#brief-input') as HTMLInputElement).value,
+			weekly_time: (shadow.querySelector('#weekly-time-input') as HTMLInputElement).value,
 			quiet_hours_enabled: (shadow.querySelector('#quiet-hours-toggle') as HTMLInputElement).checked,
 			quiet_hours_start: (shadow.querySelector('#quiet-start-input') as HTMLInputElement).value,
 			quiet_hours_end: (shadow.querySelector('#quiet-end-input') as HTMLInputElement).value,
@@ -430,6 +432,10 @@ export class UserCard extends HTMLElement {
 									<label class="label" for="brief-input">${this.tr('briefing', 'Briefing')}</label>
 									<input id="brief-input" type="time" value="${me.briefing_time || '08:00'}">
 								</div>
+								<div class="field">
+									<label class="label" for="weekly-time-input">${this.tr('weekly_review_time', 'Weekly review time')}</label>
+									<input id="weekly-time-input" type="time" value="${me.weekly_time || '17:00'}">
+								</div>
 
 								<div class="field" style="grid-column: span 2; display: flex; flex-direction: column; gap: 0.5rem;">
 									<div class="checkbox-group">
@@ -552,6 +558,10 @@ export class UserCard extends HTMLElement {
 								<div class="field">
 									<div class="label">${this.tr('briefing', 'Briefing')}</div>
 									<div class="value">${me.briefing_time || '08:00'}</div>
+								</div>
+								<div class="field">
+									<div class="label">${this.tr('weekly_review_time', 'Weekly review time')}</div>
+									<div class="value">${me.weekly_time || '17:00'}</div>
 								</div>
 								<div class="field" style="grid-column: span 2;">
 									<div class="label">${this.tr('quiet_hours', 'Quiet Hours')}</div>
