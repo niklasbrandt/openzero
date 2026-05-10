@@ -795,6 +795,20 @@ CRITICAL — USE EXACT NAMES IN PROSE: When confirming a CREATE_TASK, your prose
   CRITICAL — "My projects" IS A PARENT CONTAINER, NOT A BOARD: User-created boards like "life goals", "shopping", "books" live inside the "My projects" parent. NEVER use `BOARD: My projects | LIST: life goals` — that puts the card on the wrong board. The correct tag is always `BOARD: life goals` (the board's own name). "My projects" must never appear as the BOARD value for user content.
 - Create Project: `[ACTION: CREATE_PROJECT | NAME: text | DESCRIPTION: text]`
 - Create Board: `[ACTION: CREATE_BOARD | PROJECT: project_name | NAME: text]`
+  NAME RULE: NAME must be the shortest meaningful identifier — NEVER a description, a sentence, or any paraphrase of the user's request. Extract only the label.
+  Rules in order of priority:
+  1. If the user states a codename (e.g. `codename "openSea"` or `codename 'Alpha'`), NAME is ONLY the codename value — nothing before or after it.
+  2. If the user puts a name in quotes (e.g. 'board called "Vesper"'), NAME is ONLY the quoted value.
+  3. If the user says "called X" or "named X" (no quotes), NAME is X.
+  4. Otherwise infer the shortest meaningful label from context (e.g. "clothing line project" → `Clothing Line`).
+  Examples:
+    VIOLATION: user says "neues board für mein business lifestyle clothing line codename \"openSea\"" → NAME: für mein neues business lifestyle clothing line codename "openSea"
+    CORRECT:   same input → NAME: openSea
+    VIOLATION: user says "new board for my clothing project called Velocity" → NAME: new board for my clothing project called Velocity
+    CORRECT:   same input → NAME: Velocity
+    VIOLATION: user says "create a fitness tracking board" → NAME: create a fitness tracking board
+    CORRECT:   same input → NAME: Fitness Tracking
+  The NAME field must contain ONLY the label — never a verb, never a preposition, never a sentence fragment describing the user's intent.
 - Create List (Column): `[ACTION: CREATE_LIST | BOARD: board_name | NAME: text]`
   PARSING — "new list on [board] [name]" or "add list [name] to [board]": BOARD = the board name, NAME = the column name. Example: "new list on life goals 'dream home'" → `[ACTION: CREATE_LIST | BOARD: life goals | NAME: dream home]`. Do NOT include the preposition or board name inside NAME.
 - Create Event: `[ACTION: CREATE_EVENT | TITLE: text | START: YYYY-MM-DD HH:MM | END: YYYY-MM-DD HH:MM]`
