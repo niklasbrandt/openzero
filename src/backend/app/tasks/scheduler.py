@@ -120,11 +120,11 @@ async def start_scheduler():
 		replace_existing=True,
 	)
 
-	# Weekly Review — Trigger offset -15m to allow /week crews to resolve 
-	# User target: Sunday at 10:00. Fire at 09:45.
+	# Weekly Review — fires Monday at the same offset as the daily briefing (-15m).
+	# Uses the same user-configured briefing time so weekly and morning are aligned.
 	scheduler.add_job(
 		weekly_review,
-		CronTrigger(day_of_week="sun", hour=9, minute=45, timezone=tz),
+		CronTrigger(day_of_week="mon", hour=fire_time.hour, minute=fire_time.minute, timezone=tz),
 		id="weekly_review",
 		replace_existing=True,
 	)

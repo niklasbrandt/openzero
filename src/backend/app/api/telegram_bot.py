@@ -64,6 +64,12 @@ def get_nav_footer(t: Optional[dict] = None, token: str = "") -> str:
 # --- Context Persistence ---
 chat_histories: dict[int, list[dict[str, str]]] = {} # chat_id -> list of dicts {'role': 'user/z', 'content': str}
 
+# --- Nudge collapsing ---
+# Tracks the last nudge message sent to each chat so consecutive nudges are
+# folded into a single edited message instead of flooding the conversation.
+# chat_id -> (message_id, current_html_body)
+_last_nudge: dict[int, tuple[int, str]] = {}
+
 # --- Message Coalescing ---
 # Tracks in-flight LLM calls per chat. If Z is already thinking and more
 # messages arrive, they are buffered and processed as a follow-up batch.
@@ -179,6 +185,7 @@ async def start_telegram_bot():
 		send_voice=send_voice_message,
 		stats_footer=_get_stats_footer,
 		nav_footer=get_nav_footer,
+		send_nudge=send_nudge_notification,
 	)
 
 	# Register Telegram as a push channel in the message_bus so cross-channel
@@ -331,6 +338,46 @@ async def stop_telegram_bot():
 			await bot_app.shutdown()
 		except Exception as e:
 			logging.warning("Telegram shutdown warning (non-fatal): %s", e)
+
+async def send_nudge_notification(text: str, reply_markup=None, nav_footer: str = ""):
+	"""Send a proactive nudge, collapsing consecutive nudges into a single edited message.
+
+	When called while a prior nudge from this session is still unread (no user reply
+	since the last nudge), the existing message is edited to append the new nudge as
+	a bullet point. This prevents flooding the chat with dozens of separate messages.
+	Falls back to a fresh send if the prior message is too old or was deleted.
+	"""
+	if not settings.TELEGRAM_BOT_TOKEN or not settings.TELEGRAM_ALLOWED_USER_ID:
+		return
+	bot = Bot(token=settings.TELEGRAM_BOT_TOKEN)
+	chat_id = int(settings.TELEGRAM_ALLOWED_USER_ID)
+	html_text = _md_to_html(text)
+
+	prior = _last_nudge.get(chat_id)
+	if prior:
+		prior_msg_id, prior_body = prior
+		combined = f"{prior_body}\n\n• {html_text}"
+		try:
+			await bot.edit_message_text(
+				chat_id=chat_id,
+				message_id=prior_msg_id,
+				text=f"<blockquote>{combined}</blockquote>{nav_footer}",
+				parse_mode="HTML",
+			)
+			_last_nudge[chat_id] = (prior_msg_id, combined)
+			return
+		except Exception as _e:
+			logger.debug("send_nudge_notification: edit failed (%s), sending fresh", _e)
+
+	# Fresh send — store the message_id for potential future edits.
+	sent = await bot.send_message(
+		chat_id=chat_id,
+		text=f"<blockquote>{html_text}</blockquote>{nav_footer}",
+		parse_mode="HTML",
+		reply_markup=reply_markup,
+	)
+	_last_nudge[chat_id] = (sent.message_id, html_text)
+
 
 async def send_notification(text: str, reply_markup=None, nav_footer: str = ""):
 	"""Send a message to the owner wrapped in an HTML blockquote island.
@@ -1055,6 +1102,9 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		if chat_id not in chat_histories:
 			chat_histories[chat_id] = []
 
+		# User is responding — clear any pending nudge collapse state for this chat.
+		_last_nudge.pop(chat_id, None)
+
 		# If the user replied to a previous message, prepend the quoted content for context
 		user_text = update.message.text
 		if update.message.reply_to_message:
@@ -1189,7 +1239,9 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	except Exception as e:
 		logger.error("handle_freetext failed: %s", e)
 		try:
-			await safe_reply(update, "I encountered friction while processing that request. My local core is still active, but that specific thread was dropped.")
+			lang = await get_user_lang()
+			t = get_translations(lang)
+			await safe_reply(update, t.get("error_processing_retry", "Couldn't process that just now. Please try again in a moment."))
 		except Exception as _se:
 			logger.debug("handle_freetext error reporting failed: %s", _se)
 
