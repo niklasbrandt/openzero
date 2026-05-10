@@ -31,6 +31,7 @@ _fn_send_html: Optional[Callable[..., Awaitable[None]]] = None
 _fn_send_voice: Optional[Callable[..., Awaitable[None]]] = None
 _fn_stats_footer: Optional[Callable[[], Awaitable[str]]] = None
 _fn_nav_footer: Optional[Callable[..., Any]] = None
+_fn_send_nudge: Optional[Callable[..., Awaitable[None]]] = None
 
 
 def register(
@@ -39,14 +40,16 @@ def register(
 	send_voice: Callable[..., Awaitable[None]],
 	stats_footer: Callable[[], Awaitable[str]],
 	nav_footer: Callable[..., Any],
+	send_nudge: Optional[Callable[..., Awaitable[None]]] = None,
 ) -> None:
 	"""Register Telegram send functions. Called once by start_telegram_bot()."""
-	global _fn_send, _fn_send_html, _fn_send_voice, _fn_stats_footer, _fn_nav_footer
+	global _fn_send, _fn_send_html, _fn_send_voice, _fn_stats_footer, _fn_nav_footer, _fn_send_nudge
 	_fn_send = send
 	_fn_send_html = send_html
 	_fn_send_voice = send_voice
 	_fn_stats_footer = stats_footer
 	_fn_nav_footer = nav_footer
+	_fn_send_nudge = send_nudge
 	logger.debug("notifier: Telegram send functions registered")
 
 
@@ -90,3 +93,16 @@ def get_nav_footer(*args: Any, **kwargs: Any) -> str:
 	if _fn_nav_footer is None:
 		return ""
 	return _fn_nav_footer(*args, **kwargs)
+
+
+async def send_nudge_notification(text: str, **kwargs: Any) -> None:
+	"""Send a collapsing nudge notification.
+
+	If the nudge handler is registered (telegram_bot), it collapses consecutive
+	nudges into a single edited message. Falls back to plain send_notification
+	when the handler is not available.
+	"""
+	if _fn_send_nudge is None:
+		await send_notification(text, **kwargs)
+		return
+	await _fn_send_nudge(text, **kwargs)
