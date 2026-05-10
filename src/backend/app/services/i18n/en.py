@@ -571,6 +571,7 @@ translations: dict[str, str] = {
 	"atlas_node_type": "Type",
 	"atlas_confidence": "Confidence",
 	"aria_atlas_graph": "Memory graph visualization",
+	"aria_atlas_graph_cluster": "Memory nodes cluster",
 	"aria_node_item": "Memory node",
 	"aria_spine_section": "Topic spine",
 	"aria_chat_input": "Chat input",

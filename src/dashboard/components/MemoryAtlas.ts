@@ -2554,7 +2554,7 @@ export class MemoryAtlas extends HTMLElement {
 			const linksHtml = (d.node_id || d.spine_id)
 				? `<div class="diff-links">${nodeLink}${spineLink}</div>`
 				: '';
-			return `<article role="article" class="diff-entry">
+			return `<article role="article" class="diff-entry" tabindex="0" data-entity-type="diff" data-entity-id="${this.esc(d.id)}">
 				<div class="diff-header">
 					<span class="diff-date-chip">${this.esc(date)}</span>
 					<span class="diff-kind-badge">${this.esc(d.kind)}</span>
@@ -2650,16 +2650,17 @@ export class MemoryAtlas extends HTMLElement {
 
 		panel.querySelectorAll<HTMLButtonElement>('.domain-confirm-btn:not([disabled])').forEach(btn => {
 			btn.addEventListener('click', async () => {
-				const field = btn.dataset.confirmField;
-				if (!field) return;
+				const field = (btn as HTMLButtonElement).dataset.confirmField ?? '';
+				btn.disabled = true;
 				try {
-					await fetch('/api/atlas/domain/confirm', {
+					const resp = await fetch('/api/atlas/domain/confirm', {
 						method: 'PATCH',
 						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify({ field }),
+						body: JSON.stringify({ field })
 					});
-				} catch (_) { /* ignore */ }
-				await this.loadDomainLens();
+					if (resp.ok) { this.loadDomainLens(); }
+					else { btn.disabled = false; }
+				} catch { btn.disabled = false; }
 			});
 		});
 	}

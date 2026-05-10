@@ -287,6 +287,20 @@
 	<calendar-manager></calendar-manager>
 
 	<script type="module" src="/src/main.ts"></script>
-</body>
+        <script>
+          // Atlas-as-home: if ATLAS_HOME config flag is set, navigate to Atlas section on load.
+          (function() {
+            fetch('/api/dashboard/config')
+              .then(function(r) { return r.json(); })
+              .then(function(cfg) {
+                if (cfg && cfg.atlas_home) {
+                  var el = document.getElementById('section-atlas');
+                  if (el) { el.scrollIntoView({ behavior: 'instant' }); }
+                  document.title = 'Atlas \u2014 openZero';
+                }
+              })
+              .catch(function() {});
+          })();
+        </script>
 
 </html>

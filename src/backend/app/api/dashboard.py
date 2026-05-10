@@ -282,6 +282,15 @@ async def cancel_action(action_id: str, auth: None = Depends(require_auth)):
 	# The frontend removes it from the UI.
 	return {"status": "cancelled"}
 
+@router.get("/config")
+async def get_dashboard_config():
+	"""Returns dashboard feature flags for frontend use."""
+	return {
+		"atlas_home": settings.ATLAS_HOME,
+		"atlas_diff_ribbon": settings.ATLAS_DIFF_RIBBON,
+		"federation_enabled": settings.FEDERATION_ENABLED,
+	}
+
 class ChatRequest(BaseModel):
 	message: str
 	history: List[ChatMessage] = []
