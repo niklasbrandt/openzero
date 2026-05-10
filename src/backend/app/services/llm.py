@@ -640,14 +640,15 @@ async def _classify_intent(user_message: str) -> bool:
 _cached_user_lang: str = "en"
 
 async def _get_user_lang() -> str:
-	"""Return the user's language from the identity record, cached in memory."""
+	"""Return the user's language from the preference table, cached in memory."""
 	global _cached_user_lang
 	try:
+		from app.models.db import Preference
 		async with AsyncSessionLocal() as s:
-			res = await s.execute(select(Person).where(Person.circle_type == "identity"))
-			ident = res.scalar_one_or_none()
-			if ident:
-				_cached_user_lang = getattr(ident, "language", "en") or "en"
+			res = await s.execute(select(Preference).where(Preference.key == "language"))
+			pref = res.scalar_one_or_none()
+			if pref and pref.value:
+				_cached_user_lang = pref.value
 	except Exception:
 		logger.debug("_get_user_lang: DB unavailable, using cached lang %r", _cached_user_lang)
 	return _cached_user_lang
@@ -1646,45 +1647,17 @@ async def chat_with_context(
 	start_time = time.time()
 
 	async def fetch_people():
-		# Always fetch identity (needed for user_name/profile), but skip circle context for trivial messages
+		# People surface from memory via Atlas
 		try:
+			from app.models.db import Preference
 			async with AsyncSessionLocal() as session:
-				result = await session.execute(select(Person))
-				people = result.scalars().all()
-				identity_name = "User"
-				user_profile = {}
-				if people:
-					ident = next((p for p in people if p.circle_type == "identity"), None)
-					if ident:
-						identity_name = ident.name
-						user_profile = {
-							"name": ident.name,
-							"birthday": ident.birthday,
-							"gender": ident.gender,
-							"residency": ident.residency,
-							"work_times": ident.work_times,
-							"briefing_time": ident.briefing_time,
-							"context": ident.context,
-							"language": getattr(ident, "language", "en") or "en",
-						}
-
-					# Skip full circle context for trivial/short messages
-					if not include_people or len(user_message.strip()) < 20:
-						return "", identity_name, user_profile
-
-					from app.services.timezone import get_birthday_proximity
-					def _birthday_tag(p):
-						tag = get_birthday_proximity(p.birthday)
-						return f". Note: {p.name}'s birthday is {tag}." if tag else ""
-
-					inner = [f"- {p.name} ({p.relationship}){_birthday_tag(p)}" for p in people if p.circle_type == "inner"]
-					outer = [f"- {p.name} ({p.relationship})" for p in people if p.circle_type == "outer"]
-
-					context = ""
-					if inner: context += "INNER CIRCLE:\n" + "\n".join(inner) + "\n"
-					if outer: context += "OUTER CIRCLE (acquaintances -- mention only when directly relevant):\n" + "\n".join(outer)
-					return context[:2000], identity_name, user_profile
-				return "", identity_name, {}
+				name_res = await session.execute(select(Preference).where(Preference.key == "display_name"))
+				name_pref = name_res.scalar_one_or_none()
+				identity_name = name_pref.value if name_pref and name_pref.value else "User"
+				lang_res = await session.execute(select(Preference).where(Preference.key == "language"))
+				lang_pref = lang_res.scalar_one_or_none()
+				user_profile = {"language": lang_pref.value if lang_pref and lang_pref.value else "en"}
+				return "", identity_name, user_profile
 		except Exception:
 			return "", "User", {}
 
@@ -2049,39 +2022,17 @@ async def chat_stream_with_context(
 
 	# Reuse the same context-fetching logic
 	async def fetch_people():
+		# People surface from memory via Atlas
 		try:
+			from app.models.db import Preference
 			async with AsyncSessionLocal() as session:
-				result = await session.execute(select(Person))
-				people = result.scalars().all()
-				identity_name = "User"
-				user_profile = {}
-				if people:
-					ident = next((p for p in people if p.circle_type == "identity"), None)
-					if ident:
-						identity_name = ident.name
-						user_profile = {
-							"name": ident.name,
-							"birthday": ident.birthday,
-							"gender": ident.gender,
-							"residency": ident.residency,
-							"work_times": ident.work_times,
-							"briefing_time": ident.briefing_time,
-							"context": ident.context,
-							"language": getattr(ident, "language", "en") or "en",
-						}
-					if not include_people or len(user_message.strip()) < 20:
-						return "", identity_name, user_profile
-					from app.services.timezone import get_birthday_proximity
-					def _birthday_tag(p):
-						tag = get_birthday_proximity(p.birthday)
-						return f". Note: {p.name}'s birthday is {tag}." if tag else ""
-					inner = [f"- {p.name} ({p.relationship}){_birthday_tag(p)}" for p in people if p.circle_type == "inner"]
-					outer = [f"- {p.name} ({p.relationship})" for p in people if p.circle_type == "outer"]
-					context = ""
-					if inner: context += "INNER CIRCLE:\n" + "\n".join(inner) + "\n"
-					if outer: context += "OUTER CIRCLE (acquaintances -- mention only when directly relevant):\n" + "\n".join(outer)
-					return context[:2000], identity_name, user_profile
-				return "", identity_name, {}
+				name_res = await session.execute(select(Preference).where(Preference.key == "display_name"))
+				name_pref = name_res.scalar_one_or_none()
+				identity_name = name_pref.value if name_pref and name_pref.value else "User"
+				lang_res = await session.execute(select(Preference).where(Preference.key == "language"))
+				lang_pref = lang_res.scalar_one_or_none()
+				user_profile = {"language": lang_pref.value if lang_pref and lang_pref.value else "en"}
+				return "", identity_name, user_profile
 		except Exception:
 			return "", "User", {}
 

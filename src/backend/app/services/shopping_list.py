@@ -35,12 +35,12 @@ async def _get_user_timezone():
 	"""Return the user's timezone or UTC."""
 	try:
 		import pytz
-		from app.models.db import AsyncSessionLocal, Person
+		from app.models.db import AsyncSessionLocal, Preference
 		from sqlalchemy import select
 		async with AsyncSessionLocal() as session:
-			res = await session.execute(select(Person).where(Person.circle_type == "identity"))
-			ident = res.scalar_one_or_none()
-			tz_str = ident.timezone if ident and ident.timezone else "UTC"
+			res = await session.execute(select(Preference).where(Preference.key == "timezone"))
+			pref = res.scalar_one_or_none()
+			tz_str = pref.value if pref and pref.value else "UTC"
 			return pytz.timezone(tz_str)
 	except Exception:
 		return timezone.utc
