@@ -36,6 +36,8 @@ export class MemoryAtlas extends HTMLElement {
 	private dragNode: SimNode | null = null;
 	private prefersReducedMotion = false;
 	private spineLoaded: Set<string> = new Set();
+	private _mergeMode: boolean = false;
+	private _mergeSelection: Set<number> = new Set();
 
 	constructor() {
 		super();
@@ -130,8 +132,7 @@ export class MemoryAtlas extends HTMLElement {
 
 				.node-item {
 					display: flex;
-					align-items: center;
-					gap: 0.75rem;
+					flex-direction: column;
 					padding: 0.75rem 1rem;
 					border-radius: var(--radius-md, 0.5rem);
 					border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.08));
@@ -140,6 +141,13 @@ export class MemoryAtlas extends HTMLElement {
 					min-height: 44px;
 					background: var(--surface-card, hsla(0, 0%, 100%, 0.04));
 					transition: background var(--duration-fast, 0.15s);
+				}
+
+				.node-row {
+					display: flex;
+					align-items: center;
+					gap: 0.75rem;
+					width: 100%;
 				}
 
 				.node-item:hover {
@@ -197,6 +205,161 @@ export class MemoryAtlas extends HTMLElement {
 					font-size: 0.7rem;
 					color: var(--text-faint, hsla(0, 0%, 100%, 0.4));
 					flex-shrink: 0;
+				}
+
+				/* ── Node actions (steel-man / echo-finder) ── */
+				.node-actions {
+					display: flex;
+					gap: 0.5rem;
+					opacity: 0;
+					transition: opacity 0.15s;
+					flex-shrink: 0;
+					margin-left: auto;
+				}
+
+				.spine-actions {
+					opacity: 1;
+					margin-left: 0;
+				}
+
+				.node-item:hover .node-actions,
+				.node-item:focus-within .node-actions {
+					opacity: 1;
+				}
+
+				.node-action-btn {
+					min-height: 44px;
+					min-width: 44px;
+					padding: 0.25rem 0.75rem;
+					border-radius: var(--radius-md, 0.5rem);
+					font-size: 0.75rem;
+					font-weight: 600;
+					cursor: pointer;
+					background: transparent;
+					border: 1.5px solid var(--border-subtle, hsla(0, 0%, 100%, 0.2));
+					color: var(--text-secondary, hsla(0, 0%, 100%, 0.7));
+					transition: background var(--duration-fast, 0.15s);
+					white-space: nowrap;
+				}
+
+				.node-action-btn:hover {
+					background: var(--surface-card, hsla(0, 0%, 100%, 0.08));
+				}
+
+				.node-action-btn:focus-visible {
+					outline: 2px solid var(--accent-primary, hsla(173, 80%, 40%, 1));
+					outline-offset: 2px;
+				}
+
+				.node-action-btn:disabled {
+					opacity: 0.4;
+					cursor: not-allowed;
+				}
+
+				/* ── Steel-man result aside ── */
+				.steel-man-result {
+					border-left: 3px solid var(--accent-color, hsla(173, 80%, 40%, 1));
+					padding-left: 0.75rem;
+					margin-top: 0.5rem;
+					font-size: 0.875rem;
+					color: var(--text-secondary, hsla(0, 0%, 80%, 1));
+				}
+
+				.steel-man-result > summary {
+					cursor: pointer;
+					font-size: 0.8rem;
+					color: var(--text-faint, hsla(0, 0%, 100%, 0.5));
+					font-weight: 600;
+					padding: 0.2rem 0;
+					min-height: 44px;
+					display: flex;
+					align-items: center;
+					list-style: none;
+					user-select: none;
+				}
+
+				.steel-man-result > summary::-webkit-details-marker { display: none; }
+
+				.steel-man-result > summary:focus-visible {
+					outline: 2px solid var(--accent-primary, hsla(173, 80%, 40%, 1));
+					outline-offset: 2px;
+				}
+
+				.steel-man-content {
+					padding: 0.25rem 0 0.25rem;
+					line-height: 1.6;
+				}
+
+				/* ── Echo-finder candidates ── */
+				.echo-candidates-panel {
+					margin-top: 0.5rem;
+				}
+
+				.echo-candidates-label {
+					font-size: 0.75rem;
+					color: var(--text-faint, hsla(0, 0%, 100%, 0.4));
+					font-weight: 600;
+					margin-bottom: 0.25rem;
+					display: block;
+				}
+
+				ul.echo-candidates {
+					list-style: none;
+					margin: 0;
+					padding: 0;
+					display: flex;
+					flex-direction: column;
+					gap: 0.25rem;
+				}
+
+				ul.echo-candidates li {
+					display: flex;
+					justify-content: space-between;
+					align-items: center;
+					gap: 0.5rem;
+					padding: 0.35rem 0.5rem;
+					border-radius: var(--radius-sm, 0.25rem);
+					background: var(--surface-card, hsla(0, 0%, 100%, 0.04));
+					font-size: 0.8rem;
+					color: var(--text-secondary, hsla(0, 0%, 100%, 0.7));
+				}
+
+				.echo-candidate-label {
+					flex: 1;
+					overflow: hidden;
+					text-overflow: ellipsis;
+					white-space: nowrap;
+				}
+
+				.echo-candidate-conf {
+					font-size: 0.7rem;
+					color: var(--text-faint, hsla(0, 0%, 100%, 0.4));
+					flex-shrink: 0;
+				}
+
+				.echo-merge-btn {
+					min-height: 44px;
+					min-width: 44px;
+					padding: 0.25rem 0.6rem;
+					border-radius: var(--radius-sm, 0.25rem);
+					font-size: 0.7rem;
+					font-weight: 600;
+					cursor: pointer;
+					background: transparent;
+					border: 1px solid var(--accent-primary, hsla(173, 80%, 40%, 1));
+					color: var(--accent-primary, hsla(173, 80%, 40%, 1));
+					transition: background var(--duration-fast, 0.15s);
+					flex-shrink: 0;
+					white-space: nowrap;
+				}
+
+				.echo-merge-btn:hover {
+					background: var(--surface-accent-subtle, hsla(173, 80%, 40%, 0.12));
+				}
+
+				.echo-merge-btn:focus-visible {
+					outline: 2px solid var(--accent-primary, hsla(173, 80%, 40%, 1));
+					outline-offset: 2px;
 				}
 
 				/* ── Graph lens ── */
@@ -441,6 +604,152 @@ export class MemoryAtlas extends HTMLElement {
 						color: ButtonFace;
 					}
 					.confidence-fill { forced-color-adjust: none; background: ButtonText; }
+					dialog { border: 2px solid ButtonText; }
+					.merge-btn { border-color: ButtonText; color: ButtonText; }
+					.node-actions button { border: 1px solid ButtonText; }
+					.echo-merge-btn { border-color: ButtonText; color: ButtonText; }
+				}
+
+				/* ── Merge mode toolbar ── */
+				.merge-toolbar {
+					display: flex;
+					align-items: center;
+					gap: 0.75rem;
+					flex-wrap: wrap;
+					margin-bottom: 0.75rem;
+				}
+
+				.merge-btn {
+					min-height: 44px;
+					min-width: 44px;
+					padding: 0.5rem 1.25rem;
+					border-radius: var(--radius-md, 0.5rem);
+					font-size: 0.85rem;
+					font-weight: 600;
+					cursor: pointer;
+					background: transparent;
+					border: 1.5px solid var(--accent-primary, hsla(173, 80%, 40%, 1));
+					color: var(--accent-primary, hsla(173, 80%, 40%, 1));
+					transition:
+						background var(--duration-fast, 0.15s),
+						color var(--duration-fast, 0.15s);
+				}
+
+				.merge-btn:hover {
+					background: var(--surface-accent-subtle, hsla(173, 80%, 40%, 0.12));
+				}
+
+				.merge-btn:focus-visible {
+					outline: 2px solid var(--accent-primary, hsla(173, 80%, 40%, 1));
+					outline-offset: 2px;
+				}
+
+				.merge-btn:disabled {
+					opacity: 0.4;
+					cursor: not-allowed;
+				}
+
+				.merge-btn.active {
+					background: var(--accent-primary, hsla(173, 80%, 40%, 1));
+					color: hsla(0, 0%, 100%, 1);
+				}
+
+				.node-item input[type="checkbox"] {
+					accent-color: var(--accent-primary, hsla(173, 80%, 40%, 1));
+					width: 1.1rem;
+					height: 1.1rem;
+					flex-shrink: 0;
+					cursor: pointer;
+				}
+
+				/* ── Merge dialog ── */
+				dialog {
+					background: var(--bg-card, hsla(0, 0%, 10%, 0.95));
+					border: 1px solid var(--border, hsla(0, 0%, 100%, 0.1));
+					border-radius: 1rem;
+					padding: 1.5rem;
+					color: var(--text-primary, hsla(0, 0%, 100%, 1));
+					min-width: 20rem;
+					max-width: min(90vw, 32rem);
+				}
+
+				dialog::backdrop {
+					background: rgba(0, 0, 0, 0.5);
+				}
+
+				.dialog-title {
+					font-size: 1rem;
+					font-weight: 700;
+					margin: 0 0 1rem;
+					color: var(--text-primary, hsla(0, 0%, 100%, 1));
+				}
+
+				.dialog-field {
+					margin-bottom: 0.75rem;
+					font-size: 0.875rem;
+				}
+
+				.dialog-field-label {
+					color: var(--text-faint, hsla(0, 0%, 100%, 0.4));
+					font-size: 0.75rem;
+					margin-bottom: 0.2rem;
+					display: block;
+				}
+
+				.dialog-field-value {
+					color: var(--text-primary, hsla(0, 0%, 100%, 1));
+					font-weight: 500;
+				}
+
+				.dialog-actions {
+					display: flex;
+					gap: 0.75rem;
+					flex-wrap: wrap;
+					margin-top: 1.25rem;
+				}
+
+				.dialog-cancel {
+					min-height: 44px;
+					min-width: 44px;
+					padding: 0.5rem 1.25rem;
+					border-radius: var(--radius-md, 0.5rem);
+					font-size: 0.85rem;
+					font-weight: 600;
+					cursor: pointer;
+					background: transparent;
+					border: 1.5px solid var(--border-subtle, hsla(0, 0%, 100%, 0.2));
+					color: var(--text-secondary, hsla(0, 0%, 100%, 0.7));
+					transition: background var(--duration-fast, 0.15s);
+				}
+
+				.dialog-cancel:hover {
+					background: var(--surface-card, hsla(0, 0%, 100%, 0.06));
+				}
+
+				.dialog-cancel:focus-visible {
+					outline: 2px solid var(--accent-primary, hsla(173, 80%, 40%, 1));
+					outline-offset: 2px;
+				}
+
+				/* ── Merge status message ── */
+				.merge-status {
+					font-size: 0.875rem;
+					padding: 0.5rem 0;
+					color: var(--accent-primary, hsla(173, 80%, 40%, 1));
+					min-height: 1.5rem;
+				}
+
+				.merge-status.error {
+					color: var(--color-danger, hsla(0, 80%, 60%, 1));
+				}
+
+				/* ── Reduced motion (merge additions) ── */
+				@media (prefers-reduced-motion: reduce) {
+					.merge-btn { transition: none; }
+					dialog { animation: none; }
+					.node-actions { transition: none; }
+					.node-action-btn { transition: none; }
+					.echo-merge-btn { transition: none; }
 				}
 			</style>
 
@@ -647,6 +956,16 @@ export class MemoryAtlas extends HTMLElement {
 		const items = this.nodes.map(n => {
 			const conf = Math.round((n.confidence || 0) * 100);
 			const meta = n.last_mentioned_at ? this.formatDate(n.last_mentioned_at) : '';
+			const nodeId = Number(n.id);
+			const checkedAttr = this._mergeSelection.has(nodeId) ? ' checked' : '';
+			const checkboxHtml = this._mergeMode
+				? `<input
+						type="checkbox"
+						data-merge-id="${nodeId}"
+						aria-label="${this.tr('aria_select_node_merge', 'Select node for merge')}: ${this.esc(n.label)}"
+						${checkedAttr}
+					/>`
+				: '';
 			return `<li
 				role="listitem"
 				class="node-item"
@@ -654,34 +973,88 @@ export class MemoryAtlas extends HTMLElement {
 				data-id="${this.esc(n.id)}"
 				aria-label="${this.tr('aria_node_item', 'Memory node')}: ${this.esc(n.label)}"
 			>
-				<span class="node-label">${this.esc(n.label)}</span>
-				<span
-					class="type-badge"
-					aria-label="${this.tr('atlas_node_type', 'Type')}: ${this.esc(n.type)}"
-				>${this.esc(n.type)}</span>
-				<div
-					class="confidence-bar-wrap"
-					role="progressbar"
-					aria-label="${this.tr('atlas_confidence', 'Confidence')}: ${conf}%"
-					aria-valuenow="${conf}"
-					aria-valuemin="0"
-					aria-valuemax="100"
-				>
-					<div class="confidence-bar">
-						<div class="confidence-fill" style="width:${conf}%"></div>
+				<div class="node-row">
+					${checkboxHtml}
+					<span class="node-label">${this.esc(n.label)}</span>
+					<span
+						class="type-badge"
+						aria-label="${this.tr('atlas_node_type', 'Type')}: ${this.esc(n.type)}"
+					>${this.esc(n.type)}</span>
+					<div
+						class="confidence-bar-wrap"
+						role="progressbar"
+						aria-label="${this.tr('atlas_confidence', 'Confidence')}: ${conf}%"
+						aria-valuenow="${conf}"
+						aria-valuemin="0"
+						aria-valuemax="100"
+					>
+						<div class="confidence-bar">
+							<div class="confidence-fill" style="width:${conf}%"></div>
+						</div>
+					</div>
+					${meta ? `<span class="node-meta">${this.esc(meta)}</span>` : ''}
+					<div class="node-actions">
+						<button
+							class="node-action-btn steel-man-btn"
+							data-node-id="${nodeId}"
+							aria-label="${this.tr('aria_steel_man_btn', 'Generate strongest counter-argument for this item')}"
+						>${this.tr('steel_man_btn', 'Steel-man')}</button>
+						<button
+							class="node-action-btn echo-finder-btn"
+							data-node-id="${nodeId}"
+							aria-label="${this.tr('aria_echo_finder_btn', 'Find similar memory nodes')}"
+						>${this.tr('echo_finder_btn', 'Echo-finder')}</button>
 					</div>
 				</div>
-				${meta ? `<span class="node-meta">${this.esc(meta)}</span>` : ''}
+				<div class="node-extras"></div>
 			</li>`;
 		}).join('');
 
-		panel.innerHTML = `<ul
-			role="list"
-			class="node-list"
-			aria-label="${this.tr('atlas_title', 'Memory Atlas')}"
-		>${items}</ul>`;
+		const previewDisabled = this._mergeSelection.size < 2 ? ' disabled' : '';
+
+		panel.innerHTML = `
+			<div class="merge-toolbar" role="toolbar" aria-label="${this.tr('select_to_merge', 'Select to merge')}">
+				<button
+					class="merge-btn${this._mergeMode ? ' active' : ''}"
+					id="merge-mode-toggle"
+					aria-pressed="${this._mergeMode}"
+					title="${this.tr('select_to_merge', 'Select to merge')}"
+				>${this.tr('select_to_merge', 'Select to merge')}</button>
+				${this._mergeMode ? `<button
+					class="merge-btn"
+					id="preview-merge-btn"
+					${previewDisabled}
+					aria-disabled="${this._mergeSelection.size < 2}"
+				>${this.tr('preview_merge', 'Preview merge')}</button>` : ''}
+			</div>
+			<div
+				class="merge-status"
+				id="merge-status"
+				aria-live="polite"
+				role="status"
+			></div>
+			<ul
+				role="list"
+				class="node-list"
+				aria-label="${this.tr('atlas_title', 'Memory Atlas')}"
+			>${items}</ul>
+			<dialog
+				id="merge-dialog"
+				aria-label="${this.tr('aria_merge_dialog', 'Merge preview dialog')}"
+				aria-modal="true"
+			>
+				<p class="dialog-title">${this.tr('preview_merge', 'Preview merge')}</p>
+				<div id="merge-dialog-body"></div>
+				<div class="dialog-actions">
+					<button class="merge-btn" id="confirm-merge-btn">${this.tr('confirm_merge', 'Confirm merge')}</button>
+					<button class="dialog-cancel" id="cancel-merge-btn">${this.tr('cancel', 'Cancel')}</button>
+				</div>
+			</dialog>
+		`;
 
 		this.bindListKeys(panel);
+		this.bindMergeEvents(panel);
+		this.bindNodeActionEvents(panel);
 	}
 
 	private bindListKeys(panel: HTMLElement) {
@@ -701,6 +1074,277 @@ export class MemoryAtlas extends HTMLElement {
 				items[Math.max(idx - 1, 0)]?.focus();
 			}
 		});
+	}
+
+	private bindMergeEvents(panel: HTMLElement) {
+		const toggleBtn = panel.querySelector<HTMLButtonElement>('#merge-mode-toggle');
+		toggleBtn?.addEventListener('click', () => {
+			this._mergeMode = !this._mergeMode;
+			if (!this._mergeMode) this._mergeSelection.clear();
+			this.renderListLens(panel);
+		});
+
+		const previewBtn = panel.querySelector<HTMLButtonElement>('#preview-merge-btn');
+		previewBtn?.addEventListener('click', () => {
+			if (this._mergeSelection.size < 2) return;
+			this.openMergePreview(panel);
+		});
+
+		// Checkbox change events
+		panel.querySelectorAll<HTMLInputElement>('input[data-merge-id]').forEach(cb => {
+			cb.addEventListener('change', () => {
+				const id = Number(cb.dataset.mergeId);
+				if (cb.checked) {
+					this._mergeSelection.add(id);
+				} else {
+					this._mergeSelection.delete(id);
+				}
+				// Re-render to update preview button state
+				this.renderListLens(panel);
+			});
+		});
+
+		// Dialog cancel
+		const cancelBtn = panel.querySelector<HTMLButtonElement>('#cancel-merge-btn');
+		const dialog = panel.querySelector<HTMLDialogElement>('#merge-dialog');
+		cancelBtn?.addEventListener('click', () => { dialog?.close(); });
+	}
+
+	private async openMergePreview(panel: HTMLElement, nodeIds?: number[]) {
+		const ids = nodeIds ?? Array.from(this._mergeSelection);
+		const fromSelection = nodeIds === undefined;
+		const statusEl = panel.querySelector<HTMLElement>('#merge-status');
+		const dialog = panel.querySelector<HTMLDialogElement>('#merge-dialog');
+		const dialogBody = panel.querySelector<HTMLElement>('#merge-dialog-body');
+		if (!dialog || !dialogBody) return;
+
+		if (statusEl) {
+			statusEl.className = 'merge-status';
+			statusEl.textContent = this.tr('recompose_loading', 'Processing...');
+		}
+
+		try {
+			const res = await fetch('/api/atlas/recompose/merge/preview', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ node_ids: ids }),
+			});
+			if (!res.ok) throw new Error('preview failed');
+			const data = await res.json() as { proposed_label: string; proposed_type: string };
+
+			if (statusEl) statusEl.textContent = '';
+
+			dialogBody.innerHTML = `
+				<div class="dialog-field">
+					<span class="dialog-field-label">${this.tr('merge_proposed_label', 'Proposed label')}</span>
+					<span class="dialog-field-value">${this.esc(data.proposed_label ?? '')}</span>
+				</div>
+				<div class="dialog-field">
+					<span class="dialog-field-label">${this.tr('merge_proposed_type', 'Proposed type')}</span>
+					<span class="dialog-field-value">${this.esc(data.proposed_type ?? '')}</span>
+				</div>
+			`;
+
+			// Wire confirm button
+			const confirmBtn = panel.querySelector<HTMLButtonElement>('#confirm-merge-btn');
+			// Remove old listener by cloning
+			const newConfirm = confirmBtn?.cloneNode(true) as HTMLButtonElement | undefined;
+			if (confirmBtn && newConfirm) {
+				confirmBtn.replaceWith(newConfirm);
+				newConfirm.addEventListener('click', () => {
+					this.confirmMerge(panel, dialog, data.proposed_label, data.proposed_type, ids, fromSelection);
+				});
+			}
+
+			dialog.showModal();
+		} catch (_) {
+			if (statusEl) {
+				statusEl.className = 'merge-status error';
+				statusEl.textContent = this.tr('recompose_error', 'Operation failed. Please try again.');
+			}
+		}
+	}
+
+	private async confirmMerge(
+		panel: HTMLElement,
+		dialog: HTMLDialogElement,
+		proposedLabel: string,
+		proposedType: string,
+		nodeIds: number[],
+		clearMergeMode: boolean = true,
+	) {
+		const statusEl = panel.querySelector<HTMLElement>('#merge-status');
+		if (statusEl) {
+			statusEl.className = 'merge-status';
+			statusEl.textContent = this.tr('recompose_loading', 'Processing...');
+		}
+		dialog.close();
+
+		try {
+			const res = await fetch('/api/atlas/recompose/merge/confirm', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					node_ids: nodeIds,
+					proposed_label: proposedLabel,
+					proposed_type: proposedType,
+				}),
+			});
+			if (!res.ok) throw new Error('confirm failed');
+
+			if (clearMergeMode) {
+				this._mergeSelection.clear();
+				this._mergeMode = false;
+			}
+
+			if (statusEl) {
+				statusEl.className = 'merge-status';
+				statusEl.textContent = this.tr('merge_success', 'Nodes merged successfully.');
+			}
+
+			// Reload list
+			await this.loadListLens();
+		} catch (_) {
+			if (statusEl) {
+				statusEl.className = 'merge-status error';
+				statusEl.textContent = this.tr('recompose_error', 'Operation failed. Please try again.');
+			}
+		}
+	}
+
+	// ── Node action event binding ────────────────────────────────────────────
+
+	private bindNodeActionEvents(panel: HTMLElement) {
+		panel.querySelectorAll<HTMLButtonElement>('.steel-man-btn[data-node-id]').forEach(btn => {
+			btn.addEventListener('click', (e: MouseEvent) => {
+				e.stopPropagation();
+				const nodeId = Number(btn.dataset.nodeId);
+				const extrasEl = btn.closest<HTMLElement>('.node-item')?.querySelector<HTMLElement>('.node-extras') ?? null;
+				if (extrasEl) this.handleSteelMan({ nodeId }, btn, extrasEl);
+			});
+		});
+
+		panel.querySelectorAll<HTMLButtonElement>('.echo-finder-btn[data-node-id]').forEach(btn => {
+			btn.addEventListener('click', (e: MouseEvent) => {
+				e.stopPropagation();
+				const nodeId = Number(btn.dataset.nodeId);
+				const extrasEl = btn.closest<HTMLElement>('.node-item')?.querySelector<HTMLElement>('.node-extras') ?? null;
+				if (extrasEl) this.handleEchoFinder(nodeId, btn, extrasEl, panel);
+			});
+		});
+	}
+
+	private async handleSteelMan(
+		target: { nodeId?: number; spineId?: string },
+		btn: HTMLButtonElement,
+		extrasEl: HTMLElement,
+	) {
+		const origText = btn.textContent ?? this.tr('steel_man_btn', 'Steel-man');
+		btn.disabled = true;
+		btn.setAttribute('aria-busy', 'true');
+		btn.textContent = this.tr('recompose_loading', 'Processing...');
+
+		try {
+			const body = target.nodeId !== undefined
+				? { node_id: target.nodeId }
+				: { spine_id: target.spineId };
+			const res = await fetch('/api/atlas/recompose/steel-man', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(body),
+			});
+			if (!res.ok) throw new Error('steel-man failed');
+			const data = await res.json() as { steel_man: string };
+
+			extrasEl.querySelector('.steel-man-result')?.remove();
+			const detailsEl = document.createElement('details');
+			detailsEl.className = 'steel-man-result';
+			detailsEl.open = true;
+			detailsEl.innerHTML = `<summary>${this.esc(this.tr('steel_man_result_label', 'Strongest counter-argument:'))}</summary><div class="steel-man-content">${this.esc(data.steel_man ?? '')}</div>`;
+			extrasEl.prepend(detailsEl);
+		} catch (_) {
+			extrasEl.querySelector('.steel-man-result')?.remove();
+			const errEl = document.createElement('div');
+			errEl.className = 'steel-man-result';
+			errEl.style.color = 'var(--color-danger, hsla(0, 80%, 60%, 1))';
+			errEl.style.borderLeftColor = 'var(--color-danger, hsla(0, 80%, 60%, 1))';
+			errEl.textContent = this.tr('recompose_error', 'Operation failed. Please try again.');
+			extrasEl.prepend(errEl);
+		} finally {
+			btn.disabled = false;
+			btn.removeAttribute('aria-busy');
+			btn.textContent = origText;
+		}
+	}
+
+	private async handleEchoFinder(
+		nodeId: number,
+		btn: HTMLButtonElement,
+		extrasEl: HTMLElement,
+		panel: HTMLElement,
+	) {
+		const origText = btn.textContent ?? this.tr('echo_finder_btn', 'Echo-finder');
+		btn.disabled = true;
+		btn.setAttribute('aria-busy', 'true');
+		btn.textContent = this.tr('recompose_loading', 'Processing...');
+
+		try {
+			const res = await fetch(`/api/atlas/recompose/echo-finder/${encodeURIComponent(String(nodeId))}`);
+			if (!res.ok) throw new Error('echo-finder failed');
+			const candidates = await res.json() as Array<{ id: number; label: string; confidence: number }>;
+
+			extrasEl.querySelector('.echo-candidates-panel')?.remove();
+			const wrapEl = document.createElement('div');
+			wrapEl.className = 'echo-candidates-panel';
+
+			const lbl = document.createElement('span');
+			lbl.className = 'echo-candidates-label';
+			lbl.textContent = this.tr('echo_finder_candidates', 'Similar nodes:');
+			wrapEl.appendChild(lbl);
+
+			if (candidates.length === 0) {
+				const emptySpan = document.createElement('span');
+				emptySpan.style.fontSize = '0.8rem';
+				emptySpan.style.color = 'var(--text-faint, hsla(0,0%,100%,0.4))';
+				emptySpan.textContent = ' \u2014';
+				lbl.appendChild(emptySpan);
+			} else {
+				const ul = document.createElement('ul');
+				ul.className = 'echo-candidates';
+				ul.setAttribute('role', 'list');
+
+				candidates.forEach(c => {
+					const conf = Math.round((c.confidence || 0) * 100);
+					const li = document.createElement('li');
+					li.innerHTML = `<span class="echo-candidate-label">${this.esc(c.label)}</span><span class="echo-candidate-conf">${conf}%</span>`;
+
+					const mergeBtn = document.createElement('button');
+					mergeBtn.className = 'echo-merge-btn';
+					mergeBtn.setAttribute('aria-label', `${this.tr('merge_with_original', 'Merge with original')}: ${this.esc(c.label)}`);
+					mergeBtn.textContent = this.tr('merge_with_original', 'Merge with original');
+					mergeBtn.addEventListener('click', () => {
+						this.openMergePreview(panel, [nodeId, c.id]);
+					});
+					li.appendChild(mergeBtn);
+					ul.appendChild(li);
+				});
+
+				wrapEl.appendChild(ul);
+			}
+
+			extrasEl.appendChild(wrapEl);
+		} catch (_) {
+			extrasEl.querySelector('.echo-candidates-panel')?.remove();
+			const errEl = document.createElement('div');
+			errEl.className = 'echo-candidates-panel';
+			errEl.style.color = 'var(--color-danger, hsla(0, 80%, 60%, 1))';
+			errEl.textContent = this.tr('recompose_error', 'Operation failed. Please try again.');
+			extrasEl.appendChild(errEl);
+		} finally {
+			btn.disabled = false;
+			btn.removeAttribute('aria-busy');
+			btn.textContent = origText;
+		}
 	}
 
 	// ── Graph lens ──────────────────────────────────────────────────────────
@@ -984,6 +1628,14 @@ export class MemoryAtlas extends HTMLElement {
 				</summary>
 				<div class="spine-body">
 					<p class="spine-loading" id="spine-body-${this.esc(s.id)}">${this.tr('spine_no_summary', 'Summary being generated...')}</p>
+					<div class="node-actions spine-actions" style="margin-top:0.75rem;">
+						<button
+							class="node-action-btn steel-man-btn"
+							data-spine-id="${this.esc(s.id)}"
+							aria-label="${this.tr('aria_steel_man_btn', 'Generate strongest counter-argument for this item')}"
+						>${this.tr('steel_man_btn', 'Steel-man')}</button>
+					</div>
+					<div class="spine-extras"></div>
 				</div>
 			</details>`;
 		}).join('');
@@ -999,6 +1651,15 @@ export class MemoryAtlas extends HTMLElement {
 						this.loadSpineSummary(id);
 					}
 				}
+			});
+		});
+
+		// Wire spine steel-man buttons
+		panel.querySelectorAll<HTMLButtonElement>('.steel-man-btn[data-spine-id]').forEach(btn => {
+			btn.addEventListener('click', (e: MouseEvent) => {
+				e.stopPropagation();
+				const extrasEl = btn.closest<HTMLElement>('details')?.querySelector<HTMLElement>('.spine-extras') ?? null;
+				if (extrasEl) this.handleSteelMan({ spineId: btn.dataset.spineId ?? '' }, btn, extrasEl);
 			});
 		});
 	}
