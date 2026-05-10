@@ -459,7 +459,12 @@ _DECISION_VALID_STATUSES = frozenset({"open", "revisit_due", "resolved"})
 
 class DecisionCreate(BaseModel):
 	node_id: int | None = None
-	rationale: str
+	title: str | None = None
+	rationale: str | None = None
+	context: str | None = None
+	options_considered: list[str] = []
+	outcome: str | None = None
+	confidence: float = 0.8
 	revisit_when: str | None = None
 	status: str = "open"
 	payload: dict = {}
@@ -468,19 +473,25 @@ class DecisionCreate(BaseModel):
 @router.get("/decisions")
 async def list_decisions(
 	status: str | None = None,
+	due: bool = Query(default=False),
 	db: AsyncSession = Depends(get_db),
 ) -> list[dict[str, Any]]:
-	"""List atlas decisions ordered by made_at DESC. Optional status filter."""
+	"""List atlas decisions ordered by made_at DESC. Filter by ?status= and/or ?due=true (revisit_when <= today)."""
+	from datetime import date as _date
 	try:
+		clauses = []
+		params: dict[str, Any] = {}
 		if status:
-			result = await db.execute(
-				text("SELECT id, node_id, made_at, rationale, revisit_when, status, payload FROM atlas_decisions WHERE status = :status ORDER BY made_at DESC"),
-				{"status": status},
-			)
-		else:
-			result = await db.execute(
-				text("SELECT id, node_id, made_at, rationale, revisit_when, status, payload FROM atlas_decisions ORDER BY made_at DESC"),
-			)
+			clauses.append("status = :status")
+			params["status"] = status
+		if due:
+			clauses.append("revisit_when IS NOT NULL AND revisit_when <= :today")
+			params["today"] = _date.today().isoformat()
+		where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
+		result = await db.execute(
+			text(f"SELECT id, node_id, made_at, title, rationale, context, options_considered, outcome, confidence, revisit_when, status, payload FROM atlas_decisions {where} ORDER BY made_at DESC"),  # noqa: S608
+			params,
+		)
 		return [dict(r._mapping) for r in result.fetchall()]
 	except Exception:
 		return []
@@ -495,13 +506,18 @@ async def create_decision(body: DecisionCreate, db: AsyncSession = Depends(get_d
 		import json
 		result = await db.execute(
 			text(
-				"INSERT INTO atlas_decisions (node_id, rationale, revisit_when, status, payload) "
-				"VALUES (:node_id, :rationale, :revisit_when, :status, :payload::jsonb) "
-				"RETURNING id, node_id, made_at, rationale, revisit_when, status, payload"
+				"INSERT INTO atlas_decisions (node_id, title, rationale, context, options_considered, outcome, confidence, revisit_when, status, payload) "
+				"VALUES (:node_id, :title, :rationale, :context, :options_considered::jsonb, :outcome, :confidence, :revisit_when, :status, :payload::jsonb) "
+				"RETURNING id, node_id, made_at, title, rationale, context, options_considered, outcome, confidence, revisit_when, status, payload"
 			),
 			{
 				"node_id": body.node_id,
+				"title": body.title,
 				"rationale": body.rationale,
+				"context": body.context,
+				"options_considered": json.dumps(body.options_considered),
+				"outcome": body.outcome,
+				"confidence": body.confidence,
 				"revisit_when": body.revisit_when,
 				"status": body.status,
 				"payload": json.dumps(body.payload),
