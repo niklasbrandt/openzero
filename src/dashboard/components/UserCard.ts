@@ -108,7 +108,7 @@ export class UserCard extends HTMLElement {
 
 	async fetchIdentity() {
 		try {
-			const response = await fetch('/api/dashboard/people?circle_type=identity');
+			const response = await fetch('/api/dashboard/identity');
 			if (!response.ok) throw new Error('API error');
 			const data = await response.json();
 			this.me = data[0] || {
@@ -158,12 +158,11 @@ export class UserCard extends HTMLElement {
 			color_primary: (shadow.querySelector('#color-primary-input') as HTMLInputElement).value,
 			color_secondary: (shadow.querySelector('#color-secondary-input') as HTMLInputElement).value,
 			color_tertiary: (shadow.querySelector('#color-tertiary-input') as HTMLInputElement).value,
-			circle_type: 'identity',
 			relationship: 'Self'
 		};
 
 		try {
-			const res = await fetch('/api/dashboard/people/identity', {
+			const res = await fetch('/api/dashboard/identity', {
 				method: 'PUT',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(identityPayload)

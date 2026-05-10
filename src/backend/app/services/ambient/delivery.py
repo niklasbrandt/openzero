@@ -6,7 +6,7 @@ delivery for priority 2-3.  Priority 4-5 inserts into the briefing queue
 
 Quiet moment conditions (P0 — simple checks):
   - No calendar event starting within AMBIENT_QUIET_MOMENT_WINDOW_M minutes.
-  - Current time is within active hours (respects Person.quiet_hours_* if
+  - Current time is within active hours (respects quiet_hours preferences if
     available; falls back to 07:00-22:00).
 
 See docs/artifacts/ambient_intelligence.md §8.
@@ -211,20 +211,22 @@ async def _is_quiet_moment(settings) -> bool:  # noqa: ANN001
 		now = datetime.now()
 		quiet_window_m = getattr(settings, "AMBIENT_QUIET_MOMENT_WINDOW_M", 15)
 
-		# Active hours check — fall back to 07:00-22:00 if Person row unavailable
+		# Active hours check — fall back to 07:00-22:00 if quiet hours preference unavailable
 		active_start = dt_time(7, 0)
 		active_end = dt_time(22, 0)
 		try:
 			from sqlalchemy import select
-			from app.models.db import AsyncSessionLocal, Person
+			from app.models.db import AsyncSessionLocal, Preference
 			async with AsyncSessionLocal() as session:
-				res = await session.execute(
-					select(Person).where(Person.circle_type == "identity")
-				)
-				me = res.scalar_one_or_none()
-				if me and me.quiet_hours_enabled and me.quiet_hours_start and me.quiet_hours_end:
-					qh_start = dt_time(*[int(x) for x in me.quiet_hours_start.split(":")])
-					qh_end = dt_time(*[int(x) for x in me.quiet_hours_end.split(":")])
+				qh_enabled_res = await session.execute(select(Preference).where(Preference.key == "quiet_hours_enabled"))
+				qh_start_res = await session.execute(select(Preference).where(Preference.key == "quiet_hours_start"))
+				qh_end_res = await session.execute(select(Preference).where(Preference.key == "quiet_hours_end"))
+				qh_enabled_pref = qh_enabled_res.scalar_one_or_none()
+				qh_start_pref = qh_start_res.scalar_one_or_none()
+				qh_end_pref = qh_end_res.scalar_one_or_none()
+				if qh_enabled_pref and qh_enabled_pref.value == "true" and qh_start_pref and qh_end_pref:
+					qh_start = dt_time(*[int(x) for x in qh_start_pref.value.split(":")])
+					qh_end = dt_time(*[int(x) for x in qh_end_pref.value.split(":")])
 					# Active hours are outside the quiet window
 					if qh_end < qh_start:
 						# spans midnight: active between qh_end and qh_start

@@ -20,7 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Header, Backgrou
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, func
-from app.models.db import AsyncSessionLocal, Project, EmailRule, Briefing, Person, LLMMetric
+from app.models.db import AsyncSessionLocal, Project, EmailRule, Briefing, LLMMetric
 from app.services.memory import semantic_search, semantic_search_raw, list_memories as list_memories_svc, delete_memory
 from app.services.planka import get_project_tree
 from app.services.operator_board import operator_service
@@ -391,22 +391,17 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		await _reply(report)
 		return {"reply": report}
 	elif msg == "/tree":
-		# Life Tree Overview - combines projects, inner circle, and status
+		# Life Tree Overview - combines projects and upcoming timeline
 		tree = await get_project_tree(as_html=False)
-		
-		# 1. Inner Circle
-		result = await db.execute(select(Person).where(Person.circle_type == "inner"))
-		inner_circle = result.scalars().all()
-		circle_text = "\n".join([f"• {p.name} ({p.relationship})" for p in inner_circle]) if inner_circle else "No direct connections added yet."
-		
-		# 2. Upcoming Timeline (Calendar + Birthdays + Local Events)
+
+		# Upcoming Timeline (Calendar + Local Events)
 		from app.models.db import LocalEvent
-		
+
 		timeline_events = []
 		now = datetime.datetime.now()
 		today = now.replace(hour=0, minute=0, second=0, microsecond=0)
 		end_limit = today + datetime.timedelta(days=3)
-		
+
 		# A. Google Events
 		try:
 			g_events = await fetch_calendar_events(max_results=5, days_ahead=3)
@@ -422,7 +417,7 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 					logger.debug("Google event date parse failed: %s", _e) # malformed event date -- non-fatal
 		except Exception as _e:
 			logger.debug("Google calendar fetch failed: %s", _e) # calendar fetch failed -- non-fatal
-		
+
 		# B. Local Events
 		res_local = await db.execute(select(LocalEvent).where(LocalEvent.start_time >= today, LocalEvent.start_time <= end_limit))
 		for e in res_local.scalars().all():
@@ -431,26 +426,6 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 				"time": e.start_time.strftime('%a %H:%M'),
 				"sort_key": e.start_time
 			})
-			
-		# C. Birthdays
-		res_people = await db.execute(select(Person).where(Person.birthday.isnot(None)))
-		for p in res_people.scalars().all():
-			parsed = parse_birthday(p.birthday)
-			if parsed:
-				month, day = parsed
-				try:
-					bday_this_year = datetime.datetime(now.year, month, day)
-					if bday_this_year < today:
-						bday_this_year = datetime.datetime(now.year + 1, month, day)
-					
-					if today <= bday_this_year <= end_limit:
-						timeline_events.append({
-							"summary": f"🎂 {p.name}'s Birthday",
-							"time": bday_this_year.strftime('%a, %d %b'),
-							"sort_key": bday_this_year
-						})
-				except Exception as _e:
-					logger.debug("Birthday date calculation failed: %s", _e) # malformed birthday -- skip silently
 
 		timeline_events.sort(key=lambda x: x["sort_key"])
 		event_list = "\n".join([f"• {e['summary']} ({e['time']})" for e in timeline_events[:5]])
@@ -460,8 +435,6 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		life_tree = (
 			"🌳 **Boards**\n\n"
 			f"{tree}\n\n"
-			"**Inner Circle (People):**\n"
-			f"{circle_text}\n\n"
 			"**Timeline (Next 3 Days):**\n"
 			f"{event_list}\n\n"
 			"*\"Z: Stay focused. I've got the mental tabs from here.\"*"
@@ -737,20 +710,8 @@ async def regression_cleanup(request: Request, db: AsyncSession = Depends(get_db
 	except Exception as e:
 		logger.warning("Planka regression cleanup failed: %s", e)
 		results.append("⚠️ Planka cleanup failed")
-	
-	# 2. Clean regression test people
-	try:
-		res = await db.execute(select(Person).where(Person.name.like("TEST_%")))
-		test_people = res.scalars().all()
-		for p in test_people:
-			await db.delete(p)
-			results.append(f"🧹 Deleted test person: {p.name}")
-		await db.commit()
-	except Exception as e:
-		logger.warning("People regression cleanup failed: %s", e)
-		results.append("⚠️ People cleanup failed")
-	
-	# 3. Clean regression test events
+
+	# 2. Clean regression test events
 	try:
 		from app.models.db import LocalEvent
 		res = await db.execute(select(LocalEvent).where(LocalEvent.summary.like("REGRESSION_%")))
@@ -835,6 +796,38 @@ async def get_protocols():
 	return {"tools": tools, "commands": commands}
 
 
+@router.get("/identity")
+async def get_operator_identity(db: AsyncSession = Depends(get_db)):
+	"""Return operator identity from the Preference table (Preference key: operator_identity)."""
+	from app.models.db import Preference
+	result = await db.execute(select(Preference).where(Preference.key == "operator_identity"))
+	pref = result.scalar_one_or_none()
+	if pref:
+		try:
+			return [json.loads(pref.value)]
+		except Exception:
+			pass
+	name_res = await db.execute(select(Preference).where(Preference.key == "display_name"))
+	name_pref = name_res.scalar_one_or_none()
+	return [{"name": name_pref.value if name_pref else "Operator"}]
+
+
+@router.put("/identity")
+async def save_operator_identity(data: dict, db: AsyncSession = Depends(get_db)):
+	"""Persist operator identity as a JSON blob in Preference table."""
+	from app.models.db import Preference
+	result = await db.execute(select(Preference).where(Preference.key == "operator_identity"))
+	pref = result.scalar_one_or_none()
+	val = json.dumps(data)
+	if pref:
+		pref.value = val
+	else:
+		pref = Preference(key="operator_identity", value=val)
+		db.add(pref)
+	await db.commit()
+	return data
+
+
 @router.get("/personality")
 async def get_personality(db: AsyncSession = Depends(get_db)):
 	"""Fetch the agent's personality traits/configuration."""
@@ -879,18 +872,6 @@ async def get_personality(db: AsyncSession = Depends(get_db)):
 		saved["questions"] = default_personality["questions"]
 	else:
 		saved = default_personality
-
-	# Identity Person colors override personality preference so themes
-	# chosen in UserCard (which writes to the Person model) always win.
-	res2 = await db.execute(select(Person).where(Person.circle_type == "identity"))
-	identity = res2.scalar_one_or_none()
-	if identity:
-		if identity.color_primary:
-			saved["color_primary"] = identity.color_primary
-		if identity.color_secondary:
-			saved["color_secondary"] = identity.color_secondary
-		if identity.color_tertiary:
-			saved["color_tertiary"] = identity.color_tertiary
 
 	return saved
 
@@ -1162,50 +1143,17 @@ async def dashboard_crew_stream(crew_id: str, req: ChatRequest, request: Request
 async def get_life_tree(db: AsyncSession = Depends(get_db)):
 	"""Fetch the rich Life Tree overview for the dashboard widget."""
 	tree = await get_project_tree(as_html=True)
-	
-	# 1. Social Circles
-	res_inner = await db.execute(select(Person).where(Person.circle_type == "inner"))
-	inner_circle = res_inner.scalars().all()
-	
-	social_data = {
-		"inner": [{"name": p.name, "relationship": p.relationship} for p in inner_circle],
-	}
-	
-	# 2. Upcoming Calendar & Birthdays
+
+	# Upcoming Calendar & Local Events
 	try:
 		events = await fetch_calendar_events(max_results=5, days_ahead=7)
 	except Exception as ce:
 		logger.warning("Calendar fetch failed: %s", ce)
 		events = []
 	formatted_events = []
-
-	# Inject Birthdays from People table
-	res_people = await db.execute(select(Person).where(Person.birthday.isnot(None)))
-	all_people = res_people.scalars().all()
 	now = datetime.datetime.now()
-	
-	for p in all_people:
-		parsed = parse_birthday(p.birthday)
-		if parsed:
-			month, day = parsed
-			try:
-				bday_this_year = datetime.datetime(now.year, month, day)
-				# If it already passed this year, look at next year
-				if bday_this_year < now.replace(hour=0, minute=0, second=0):
-					bday_this_year = datetime.datetime(now.year + 1, month, day)
-				
-				days_until = (bday_this_year - now.replace(hour=0, minute=0, second=0)).days
-				if 0 <= days_until <= 3:
-					formatted_events.append({
-						"summary": f"🎂 {p.name}'s Birthday",
-						"time": bday_this_year.strftime('%a, %d %b'),
-						"is_local": True,
-						"sort_key": bday_this_year
-					})
-			except Exception as be:
-				logger.debug("Error creating birthday event for %s: %s", p.name, be)
-	
-	# 3. Add Google Events
+
+	# Add Google Events
 	for ev in events:
 		# Handle date-only (2024-01-01) and date-time (2024-01-01T12:00:00Z)
 		start_str = ev['start']
@@ -1217,7 +1165,7 @@ async def get_life_tree(db: AsyncSession = Depends(get_db)):
 			# Fallback for unexpected formats
 			time_fmt = start_str
 			sort_key = now + datetime.timedelta(days=10) # Push to end
-		
+
 		formatted_events.append({
 			"summary": ev['summary'],
 			"time": time_fmt,
@@ -1225,8 +1173,7 @@ async def get_life_tree(db: AsyncSession = Depends(get_db)):
 			"sort_key": sort_key
 		})
 
-
-	# 4. Add Local Events
+	# Add Local Events
 	from app.models.db import LocalEvent
 	today = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
 	end_limit = today + datetime.timedelta(days=3)
@@ -1240,12 +1187,11 @@ async def get_life_tree(db: AsyncSession = Depends(get_db)):
 			"sort_key": lev.start_time
 		})
 
-	# Sort all events (Birthdays, Google, Local) by the original datetime object
+	# Sort all events by the original datetime object
 	formatted_events.sort(key=lambda x: x.get('sort_key', now))  # type: ignore[arg-type, return-value]
 
 	return {
 		"projects_tree": tree,
-		"social_circles": social_data,
 		"timeline": formatted_events[:5]
 	}
 
@@ -1264,7 +1210,6 @@ async def onboarding_status(db: AsyncSession = Depends(get_db)):
 		"needs_onboarding": True,
 		"steps": [
 			{"key": "profile", "label": "Set up your profile", "done": False},
-			{"key": "circles", "label": "Add people to your circles", "done": False},
 			{"key": "calendar", "label": "Connect your calendar", "done": False},
 		]
 	}
@@ -1600,19 +1545,8 @@ async def search_memory(query: str, db: AsyncSession = Depends(get_db)):
 			})
 	except Exception as e:
 			logger.warning("Semantic search failed: %s", e)
-	# 2. People DB Search (no Qdrant ID — not deletable from here)
-	res_people = await db.execute(select(Person).where(Person.name.ilike(f"%{query}%")))
-	people = res_people.scalars().all()
-	for p in people:
-		final_hits.append({
-			"id": None,
-			"text": f"\U0001f464 PERSONAL PROFILE: {p.name} ({p.relationship}) — {p.context[:150]}",
-			"type": "profile",
-			"score": None,
-			"stored_at": None,
-		})
 
-	# 3. Project Search
+	# 2. Project Search
 	res_proj = await db.execute(select(Project).where(Project.name.ilike(f"%{query}%")))
 	projs = res_proj.scalars().all()
 	for prj in projs:
@@ -1694,179 +1628,14 @@ async def update_email_rule(rule_id: int, rule: EmailRuleCreate, db: AsyncSessio
 	await db.refresh(db_rule)
 	return db_rule
 
-# --- People (Inner Circle) ---
-class PersonCreate(BaseModel):
-	name: str
-	relationship: str
-	context: str = ""
-	circle_type: str = "inner"
-	birthday: Optional[str] = None
-	gender: Optional[str] = None
-	residency: Optional[str] = None
-	timezone: Optional[str] = None
-	town: Optional[str] = None
-	country: Optional[str] = None
-	work_times: Optional[str] = None
-	work_start: Optional[str] = "09:00"
-	work_end: Optional[str] = "17:00"
-	briefing_time: Optional[str] = "08:00"
-	weekly_time: Optional[str] = None
-	quiet_hours_enabled: Optional[bool] = True
-	quiet_hours_start: Optional[str] = "00:00"
-	quiet_hours_end: Optional[str] = "06:00"
-	language: Optional[str] = "en"
-	date_format: Optional[str] = "iso"
-	color_primary: Optional[str] = None
-	color_secondary: Optional[str] = None
-	color_tertiary: Optional[str] = None
-
-@router.put("/people/identity")
-async def update_identity(person: PersonCreate, db: AsyncSession = Depends(get_db)):
-	"""Update the 'Self' identity record."""
-	res = await db.execute(select(Person).where(Person.circle_type == "identity"))
-	me = res.scalar_one_or_none()
-
-	# Track language change BEFORE updating
-	old_lang = (me.language if me and me.language else "en") if me else "en"
-	new_lang = person.language or "en"
-
-	if not me:
-		me = Person(circle_type="identity", relationship="Self")
-		db.add(me)
-	
-	me.name = person.name
-	me.birthday = person.birthday
-	me.context = person.context
-	me.gender = person.gender
-	me.residency = person.residency
-	me.timezone = person.timezone
-	me.town = person.town
-	me.country = person.country
-	me.work_times = person.work_times
-	me.work_start = person.work_start
-	me.work_end = person.work_end
-	me.briefing_time = person.briefing_time
-	me.weekly_time = person.weekly_time
-	me.quiet_hours_enabled = person.quiet_hours_enabled
-	me.quiet_hours_start = person.quiet_hours_start
-	me.quiet_hours_end = person.quiet_hours_end
-	me.language = person.language
-	me.date_format = person.date_format
-	me.color_primary = person.color_primary
-	me.color_secondary = person.color_secondary
-	me.color_tertiary = person.color_tertiary
-	me.relationship = "Self"
-	
-	await db.commit()
-	await db.refresh(me)
-
-	# Refresh cached timezone/location so services pick up the new values immediately
-	from app.services.timezone import refresh_user_settings
-	await refresh_user_settings()
-
-	# If language changed, rename Planka entities in background
-	if old_lang != new_lang:
-		asyncio.create_task(operator_service.rename_planka_entities(old_lang, new_lang))
-
-	return me
-
-@router.get("/people")
-async def get_people(circle_type: Optional[str] = None, db: AsyncSession = Depends(get_db)):
-	query = select(Person)
-	if circle_type:
-		query = query.where(Person.circle_type == circle_type)
-	result = await db.execute(query)
-	return result.scalars().all()
-
-@router.post("/people")
-async def create_person(person: PersonCreate, db: AsyncSession = Depends(get_db)):
-	# Guardrail: Prevent adding the identity user as a duplicate in other circles
-	ident_res = await db.execute(select(Person).where(Person.circle_type == "identity"))
-	identity = ident_res.scalar_one_or_none()
-	if identity and person.name.lower().strip() == identity.name.lower().strip():
-		raise HTTPException(
-			status_code=400, 
-			detail="This person matches your 'identity' profile. You are already in your own circle of trust."
-		)
-
-	db_person = Person(
-		name=person.name, 
-		relationship=person.relationship, 
-		context=person.context,
-		circle_type=person.circle_type,
-		birthday=person.birthday,
-		gender=person.gender,
-		residency=person.residency,
-		timezone=person.timezone,
-		town=person.town,
-		country=person.country,
-		work_times=person.work_times,
-		work_start=person.work_start,
-		work_end=person.work_end,
-		briefing_time=person.briefing_time,
-		weekly_time=person.weekly_time,
-		quiet_hours_enabled=person.quiet_hours_enabled,
-		quiet_hours_start=person.quiet_hours_start,
-		quiet_hours_end=person.quiet_hours_end
-	)
-	db.add(db_person)
-	await db.commit()
-	await db.refresh(db_person)
-	return db_person
-
-@router.put("/people/{person_id}")
-async def update_person(person_id: int, person: PersonCreate, db: AsyncSession = Depends(get_db)):
-	res = await db.execute(select(Person).where(Person.id == person_id))
-	db_p = res.scalar_one_or_none()
-	if not db_p: raise HTTPException(status_code=404, detail="Not found")
-	
-	# Guardrail: Prevent updating a person to match the identity user's name
-	if db_p.circle_type != "identity":
-		ident_res = await db.execute(select(Person).where(Person.circle_type == "identity"))
-		identity = ident_res.scalar_one_or_none()
-		if identity and person.name.lower().strip() == identity.name.lower().strip():
-			raise HTTPException(
-				status_code=400, 
-				detail="This name matches your 'identity' profile. Avoid duplicates in your circle of trust."
-			)
-
-	db_p.name = person.name
-	db_p.relationship = person.relationship
-	db_p.context = person.context
-	db_p.circle_type = person.circle_type
-	db_p.birthday = person.birthday
-	db_p.gender = person.gender
-	db_p.residency = person.residency
-	db_p.timezone = person.timezone
-	db_p.town = person.town
-	db_p.country = person.country
-	db_p.work_times = person.work_times
-	db_p.work_start = person.work_start
-	db_p.work_end = person.work_end
-	db_p.briefing_time = person.briefing_time
-	db_p.weekly_time = person.weekly_time
-	db_p.quiet_hours_enabled = person.quiet_hours_enabled
-	db_p.quiet_hours_start = person.quiet_hours_start
-	db_p.quiet_hours_end = person.quiet_hours_end
-	
-	await db.commit()
-	await db.refresh(db_p)
-	return db_p
-
-@router.delete("/people/{person_id}")
-async def delete_person(person_id: int, db: AsyncSession = Depends(get_db)):
-	await db.execute(delete(Person).where(Person.id == person_id))
-	await db.commit()
-	return {"status": "deleted"}
-
 # --- Calendar ---
 from app.services.calendar import fetch_calendar_events
 
 @router.get("/calendar")
 async def get_calendar(year: Optional[int] = None, month: Optional[int] = None, db: AsyncSession = Depends(get_db)):
-	"""Fetch user's primary calendar events (Google + Local) + Virtual Birthdays."""
+	"""Fetch user's primary calendar events (Google + Local)."""
 	now = datetime.datetime.utcnow()
-	
+
 	# Calculate range: One month view based on year/month params, or 30 days ahead from now
 	if year and month:
 		start_date = datetime.datetime(year, month, 1)
@@ -1883,60 +1652,17 @@ async def get_calendar(year: Optional[int] = None, month: Optional[int] = None, 
 	from app.services.calendar import fetch_unified_events
 	try:
 		all_events = await fetch_unified_events(
-			days_ahead=35, 
+			days_ahead=35,
 			start_date=start_date
 		)
 	except Exception as ce:
 		logger.warning("Unified Calendar fetch failed: %s", ce)
 		all_events = []
-	
-	# 2. Add Virtual Birthdays (Not yet in unified fetcher as they are generated)
-	result = await db.execute(select(Person))
-	people = result.scalars().all()
-	birthday_events = []
-	
-	for p in people:
-		if p.birthday:
-			parsed = parse_birthday(p.birthday)
-			if parsed:
-				month, day = parsed
-				for y in range(start_date.year, end_date.year + 1):
-					try:
-						bday = datetime.datetime(y, month, day)
-						if start_date <= bday <= end_date:
-							birthday_events.append({
-								"summary": f"🎂 {p.name}'s Birthday",
-								"start": bday.isoformat(),
-								"end": (bday + datetime.timedelta(days=1)).isoformat(),
-								"is_local": True,
-								"is_birthday": True,
-								"person": p.name
-							})
-					except ValueError: continue
 
-	all_events = all_events + birthday_events
-	
-	# 5. Enrich events with person info (for Google events)
-	enriched_events = []
-	for event in all_events:
-		summary = event.get("summary", "")
-		person_name = event.get("person") # Might be set by birthdays
-		
-		if not person_name:
-			for p in people:
-				if summary.startswith(f"{p.name}:"):
-					person_name = p.name
-					break
-		
-		enriched_events.append({
-			**event,
-			"person": person_name
-		})
-	
 	# Sort by start time
-	enriched_events.sort(key=lambda x: x["start"])
-	
-	return enriched_events
+	all_events.sort(key=lambda x: x["start"])
+
+	return all_events
 
 class LocalEventCreate(BaseModel):
 	summary: str
@@ -3052,12 +2778,10 @@ async def benchmark_llm(tier: str = "local"):
 
 # --- Translations ---
 @router.get("/translations")
-async def get_translations_endpoint(db: AsyncSession = Depends(get_db)):
+async def get_translations_endpoint():
 	"""Return the full i18n translation dict for the user's configured language."""
-	from app.services.translations import get_translations
-	res = await db.execute(select(Person).where(Person.circle_type == "identity"))
-	me = res.scalar_one_or_none()
-	lang = (me.language if me and me.language else "en")
+	from app.services.translations import get_translations, get_user_lang
+	lang = await get_user_lang()
 	return {
 		"lang": lang,
 		"keys": get_translations(lang)
@@ -3114,8 +2838,7 @@ async def get_system_status(db: AsyncSession = Depends(get_db)):
     ram_used_pct = ram.percent
 
     # Identity Health
-    res_people = await db.execute(select(Person).where(Person.circle_type == "identity"))
-    identity_set = res_people.scalar_one_or_none() is not None
+    identity_set = True
 
     dns_ok = False
     try:
