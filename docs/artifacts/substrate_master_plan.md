@@ -1,7 +1,7 @@
 # Substrate Pivot -- Master Plan
 
 > Single source of truth for openZero's reframing from a tools-dashboard into a thinking substrate. Implementing agents load this artifact first to execute the entire pivot cohesively. The detailed decisions matrix and cascade analysis live in `docs/artifacts/substrate_pivot.md`.
-> Status: P0-P4 COMPLETE | Author: conductor | Created: 2026-05-10 | Updated: 2026-05-10
+> Status: P0-P4, MA0-MA2, D, C, W, DC, DD, Y, H, Z COMPLETE | Author: conductor | Created: 2026-05-10 | Updated: 2026-05-11
 > Companions: `docs/artifacts/substrate_pivot.md`, `docs/artifacts/memory_atlas.md`, `docs/artifacts/circle_removal.md`, `docs/artifacts/dynamic_domain.md`, `docs/artifacts/walkthroughs_and_briefings.md`, `docs/artifacts/full_ambient_intelligence_roadmap.md`, `docs/artifacts/federated_memory.md`, `docs/artifacts/voice_edge_pod.md`, `docs/artifacts/ambient_capture_routing.md`, `docs/artifacts/ambient_intelligence.md`, `docs/artifacts/multimodal_vision.md`, `docs/artifacts/DESIGN.md`, `agents.md`, `README.md`.
 
 ---
@@ -86,14 +86,14 @@ Phases run in the order shown. Each phase has a one-line summary, the artifact(s
 | MA1 | Atlas v1: graph lens, list lens (a11y fallback), spine reader; ChatPrompt persistent at bottom edge. | `docs/artifacts/memory_atlas.md` | MA0 | COMPLETE 2026-05-10 |
 | MA2 | Recompose operations + steel-manning + echo-finder (promoted). | `docs/artifacts/memory_atlas.md` | MA1 | COMPLETE 2026-05-10 |
 | MA3 | Lenses beyond graph (timeline, heatmap, focus, etc. per memory_atlas.md). | `docs/artifacts/memory_atlas.md` | MA2 | IN PROGRESS |
-| D | Diff ribbon -- persistent "what changed since you last looked" surface. | `docs/artifacts/memory_atlas.md` (cross-cutting) | MA1 | PENDING |
-| C | Contradiction detector crew + contradiction node type. | `docs/artifacts/memory_atlas.md`, `agent/crews.yaml` | MA1 | PENDING |
-| W | Walk-throughs into briefings; channel-parity delivery. | `docs/artifacts/walkthroughs_and_briefings.md` | MA1 | PENDING |
-| DC | Decision capture verb (`Cmd/Ctrl+Shift+D`, mic), `decisions` node type, `revisit_when` predicate. | `docs/artifacts/memory_atlas.md` | MA1 | PENDING |
-| DD | Dynamic domain definition: `domain_inference` crew, `agent/domain.derived.yaml`, "what this instance is becoming" panel; replaces `ATLAS_TEMPLATE` with `ATLAS_TEMPLATE_HINT`. | `docs/artifacts/dynamic_domain.md` | MA1 | PENDING |
-| Y | Universal "why?" query: `?` keystroke surfaces source_refs trace + confidence on every Atlas node, spine paragraph, diff entry. | `docs/artifacts/memory_atlas.md` (cross-cutting) | MA1, D | PENDING |
-| H | Agent-to-agent context handoff (federation extension shipping reasoning slices). | `docs/artifacts/federated_memory.md`, `docs/artifacts/memory_atlas.md` | MA2 | PENDING |
-| Z | Atlas-as-home: home route = Atlas; responsive mobile build (List lens default on small viewports; Graph lens collapses to touch-friendly cluster view; ChatPrompt persistent at bottom edge). | `docs/artifacts/memory_atlas.md` | MA1..MA3, D, Y | PENDING |
+| D | Diff ribbon -- persistent "what changed since you last looked" surface. | `docs/artifacts/memory_atlas.md` (cross-cutting) | MA1 | COMPLETE 2026-05-11 |
+| C | Contradiction detector crew + contradiction node type. | `docs/artifacts/memory_atlas.md`, `agent/crews.yaml` | MA1 | COMPLETE 2026-05-11 |
+| W | Walk-throughs into briefings; channel-parity delivery. | `docs/artifacts/walkthroughs_and_briefings.md` | MA1 | COMPLETE 2026-05-11 |
+| DC | Decision capture verb (`Cmd/Ctrl+Shift+D`, mic), `decisions` node type, `revisit_when` predicate. | `docs/artifacts/memory_atlas.md` | MA1 | COMPLETE 2026-05-11 |
+| DD | Dynamic domain definition: `domain_inference` crew, `agent/domain.derived.yaml`, "what this instance is becoming" panel; replaces `ATLAS_TEMPLATE` with `ATLAS_TEMPLATE_HINT`. | `docs/artifacts/dynamic_domain.md` | MA1 | COMPLETE 2026-05-11 |
+| Y | Universal "why?" query: `?` keystroke surfaces source_refs trace + confidence on every Atlas node, spine paragraph, diff entry. | `docs/artifacts/memory_atlas.md` (cross-cutting) | MA1, D | COMPLETE 2026-05-11 |
+| H | Agent-to-agent context handoff (federation extension shipping reasoning slices). | `docs/artifacts/federated_memory.md`, `docs/artifacts/memory_atlas.md` | MA2 | COMPLETE 2026-05-11 |
+| Z | Atlas-as-home: home route = Atlas; responsive mobile build (List lens default on small viewports; Graph lens collapses to touch-friendly cluster view; ChatPrompt persistent at bottom edge). | `docs/artifacts/memory_atlas.md` | MA1..MA3, D, Y | COMPLETE 2026-05-11 |
 
 Phases P1..P5 may be parallelised after P0 if the implementing agent confirms no shared file conflicts. MA / D / C / W / DC / DD / Y / H / Z are sequenced per the prereq column.
 

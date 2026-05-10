@@ -393,6 +393,9 @@ app.include_router(dashboard_router)
 app.include_router(health_router)
 app.include_router(whatsapp_router)
 app.include_router(atlas_router)
+if settings.FEDERATION_ENABLED:
+    from app.api.federation import federation_router
+    app.include_router(federation_router)
 
 @app.get("/calendar", include_in_schema=False)
 async def calendar_redirect():
