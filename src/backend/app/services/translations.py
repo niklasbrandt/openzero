@@ -68,15 +68,15 @@ def get_done_keywords() -> set[str]:
 
 
 async def get_user_lang() -> str:
-	"""Fetch the configured language from the identity profile.
+	"""Fetch the configured language from the language preference.
 	Uses a fresh DB session -- safe to call from any api or service module."""
 	try:
-		from app.models.db import AsyncSessionLocal, Person
+		from app.models.db import AsyncSessionLocal, Preference
 		from sqlalchemy import select
 		async with AsyncSessionLocal() as session:
-			res = await session.execute(select(Person).where(Person.circle_type == "identity"))
-			ident = res.scalar_one_or_none()
-			return ident.language if ident and ident.language else "en"
+			res = await session.execute(select(Preference).where(Preference.key == "language"))
+			pref = res.scalar_one_or_none()
+			return pref.value if pref and pref.value else "en"
 	except Exception:
 		return "en"  # DB unavailable -- fall back to English
 
