@@ -22,6 +22,7 @@ function loadLazyComponents(): void {
 	import('../components/ZProtocols')
 	import('../components/AgentsWidget')
 	import('../components/WalkthroughViewer')
+	import('../components/DecisionCapture')
 }
 
 if ('requestIdleCallback' in window) {
@@ -31,6 +32,14 @@ if ('requestIdleCallback' in window) {
 }
 
 console.log('openZero Dashboard Initialized');
+
+// ── Decision Capture — global Cmd/Ctrl+Shift+D hotkey (Phase DC) ──
+document.addEventListener('keydown', (e: KeyboardEvent) => {
+	if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'D') {
+		e.preventDefault();
+		document.dispatchEvent(new CustomEvent('oz-capture-decision', { bubbles: true }));
+	}
+});
 
 // ── Dashboard Auth Token Injection (C3) ──
 // All /api/ requests automatically carry the bearer token stored in localStorage.
