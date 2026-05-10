@@ -12,7 +12,6 @@
 [![Semantic Memory](https://img.shields.io/badge/Memory-Qdrant_Vector-8e44ad.svg)](#memory--learning)
 [![Multi-Channel](https://img.shields.io/badge/Messaging-Telegram_%C2%B7_WhatsApp-25D366.svg)](#channels)
 [![Voice I/O](https://img.shields.io/badge/Voice-Whisper_%2B_TTS-e74c3c.svg)](#stack)
-[![Email Intelligence](https://img.shields.io/badge/Email-Rule_Engine-informational.svg)](#integrations)
 [![DNS Filtering](https://img.shields.io/badge/DNS-Pi--hole_Builtin-c0392b.svg)](#stack)
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
@@ -31,7 +30,7 @@ openZero is a sovereign, self-hosted AI companion that grows a purpose-shaped me
 
 ## What openZero is
 
-openZero is a **thinking substrate**, not a tools dashboard. Surfaces like Miro, Jira, and Trello put cards on a wall and ask you to do the thinking — they are places where you arrange work, while the intelligence stays in the humans. openZero sits one layer underneath that: it builds and maintains the context itself (who matters, what's blocked, what was decided three months ago and why, what's drifting, what's about to collide), and lets you walk that context, recompose it, and ask it questions. Boards, tickets, calendar entries, emails, voice notes, and photos become inputs to a memory that thinks; they are no longer the place where thinking has to live.
+openZero is a **thinking substrate**. It builds and maintains the context of whatever you point it at — who matters, what's blocked, what was decided three months ago and why, what's drifting, what's about to collide — and lets you walk that context, recompose it, and ask it questions. Boards, tickets, calendar entries, emails, voice notes, and photos become inputs to a memory that thinks; they are no longer the place where thinking has to live.
 
 ## What it solves
 
@@ -39,11 +38,13 @@ The context you accumulate — what you've decided, learned, promised, noticed �
 
 ## How it works
 
-You point an instance at a domain and the substrate grows there. You can run as many purpose-shaped instances as your hardware supports — `life-Z` for the personal canvas, `work-Z` for a team, `partner-Z` for a relationship, `fishing-Z` for a craft — each with its own ontology, its own topic spines, and its own visual language. Every signal you let in (calendar, mail, chats, photos, voice, sensor feed) is parsed, related, weighted, and woven into a navigable memory. A **Memory Atlas** surfaces that memory across multiple lenses, **Topic Spines** keep continuously-summarised paragraphs per theme, and **crews** (YAML-defined multi-character agents) reason over the result on a schedule, in response to messages, or on demand. Conversation is the primary input: the chat prompt is the bottom edge of every screen, not a widget.
+You point an instance at a domain and the substrate grows there. Multiple instances per operator is a first-class pattern: you can run a multitude of parallel projects, teams, life-domains, and crafts side by side, each as its own purpose-shaped instance — `life-Z` for the personal canvas, `work-Z` for a team, `chef-Z` for a craft — each with its own ontology, its own topic spines, and its own visual language. They are routed and orchestrated by intent: when you talk to openZero, it knows which instance the message belongs to, so the operator never has to switch contexts manually.
+
+> Every signal you let in — calendar, mail, chats, photos, voice, sensor feed — becomes context the substrate reasons over.
+
+Each signal is parsed, related, weighted, and woven into a navigable memory. A **Memory Atlas** surfaces that memory across multiple lenses, **Topic Spines** keep continuously-summarised paragraphs per theme, and **crews** (YAML-defined multi-character agents) reason over the result on a schedule, in response to messages, or on demand. Conversation is the primary input: the chat prompt is the bottom edge of every screen, not a widget.
 
 The runtime is yours end-to-end: local llama.cpp or any OpenAI-compatible endpoint, Qdrant for semantic memory, PostgreSQL for the navigable graph, all behind a Tailscale perimeter, with optional federation that ships reasoning slices instead of raw data.
-
-> **In-flight pivot.** openZero is mid-transition from a tools-and-widgets dashboard into the substrate described above. The Atlas, Topic Spines, the diff ribbon, the contradiction crew, the universal "why?" hook, decision capture, dynamic domain inference, and walk-through briefings are designed and being built. The locked plan, phase order, and cuts (Person/Circle, automation rule engine, multi-step wizard, standalone shopping list, email-when-off, etc.) live in [docs/artifacts/substrate_master_plan.md](docs/artifacts/substrate_master_plan.md), with the full decisions matrix and cascade in [docs/artifacts/substrate_pivot.md](docs/artifacts/substrate_pivot.md). Sections below describe the system **as currently shipped**; expect divergence as phases land.
 
 ---
 
