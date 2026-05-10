@@ -24,7 +24,38 @@ interface SimNode extends AtlasNode {
 	vy: number;
 }
 
-type Lens = 'list' | 'graph' | 'spines';
+interface TimelineNode {
+	id: string;
+	type: string;
+	label: string;
+	created_at: string;
+}
+
+interface Decision {
+	id: string;
+	rationale: string;
+	status: string;
+	revisit_when?: string | null;
+}
+
+interface Contradiction {
+	id: string;
+	primary_node_id: string;
+	opposing_node_id: string;
+	detected_at: string;
+	status: string;
+}
+
+interface DiffEntry {
+	id: string;
+	kind: string;
+	summary: string;
+	created_at: string;
+	node_id?: string | null;
+	spine_id?: string | null;
+}
+
+type Lens = 'list' | 'graph' | 'spines' | 'timeline' | 'decisions' | 'contradictions' | 'diffs';
 
 export class MemoryAtlas extends HTMLElement {
 	private t: Record<string, string> = {};
@@ -38,6 +69,7 @@ export class MemoryAtlas extends HTMLElement {
 	private spineLoaded: Set<string> = new Set();
 	private _mergeMode: boolean = false;
 	private _mergeSelection: Set<number> = new Set();
+	private _contradictionsShowAll: boolean = false;
 
 	constructor() {
 		super();
@@ -751,6 +783,297 @@ export class MemoryAtlas extends HTMLElement {
 					.node-action-btn { transition: none; }
 					.echo-merge-btn { transition: none; }
 				}
+
+				/* ── Timeline lens ── */
+				.timeline-list {
+					position: relative;
+					padding-left: 1.5rem;
+					list-style: none;
+					margin: 0;
+					max-height: 60vh;
+					overflow-y: auto;
+				}
+
+				.timeline-list::before {
+					content: '';
+					position: absolute;
+					left: 0.5rem;
+					top: 0;
+					bottom: 0;
+					width: 1px;
+					background: var(--border, hsla(0, 0%, 100%, 0.1));
+				}
+
+				.timeline-entry {
+					position: relative;
+					padding: 0.5rem 0 0.75rem 0.5rem;
+				}
+
+				.timeline-entry::before {
+					content: '';
+					position: absolute;
+					left: -0.75rem;
+					top: 0.65rem;
+					width: 0.6rem;
+					height: 0.6rem;
+					border-radius: 50%;
+					background: var(--accent-color, hsla(173, 80%, 40%, 1));
+				}
+
+				.timeline-date {
+					display: block;
+					font-size: 0.7rem;
+					color: var(--text-faint, hsla(0, 0%, 100%, 0.4));
+					margin-bottom: 0.2rem;
+				}
+
+				.timeline-label {
+					font-size: 0.875rem;
+					font-weight: 500;
+					color: var(--text-primary, hsla(0, 0%, 100%, 1));
+					margin-right: 0.5rem;
+				}
+
+				/* ── Decisions lens ── */
+				.decisions-columns {
+					display: grid;
+					grid-template-columns: repeat(3, 1fr);
+					gap: 1rem;
+				}
+
+				@media (max-width: 768px) {
+					.decisions-columns {
+						grid-template-columns: 1fr;
+					}
+				}
+
+				.decisions-column-header {
+					font-size: 0.75rem;
+					font-weight: 700;
+					text-transform: uppercase;
+					letter-spacing: 0.08em;
+					color: var(--text-faint, hsla(0, 0%, 100%, 0.4));
+					margin-bottom: 0.5rem;
+				}
+
+				.decision-card {
+					display: flex;
+					flex-direction: column;
+					gap: 0.5rem;
+					padding: 0.75rem 1rem;
+					border-radius: var(--radius-md, 0.5rem);
+					border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.08));
+					background: var(--surface-card, hsla(0, 0%, 100%, 0.04));
+					margin-bottom: 0.5rem;
+				}
+
+				.decision-rationale {
+					font-size: 0.875rem;
+					color: var(--text-secondary, hsla(0, 0%, 100%, 0.75));
+					line-height: 1.5;
+				}
+
+				.decision-revisit {
+					font-size: 0.75rem;
+					color: var(--text-faint, hsla(0, 0%, 100%, 0.4));
+				}
+
+				.decision-revisit-label {
+					font-weight: 600;
+				}
+
+				/* ── Status badges (decisions / contradictions) ── */
+				.status-badge {
+					font-size: 0.7rem;
+					font-weight: 600;
+					padding: 0.2rem 0.5rem;
+					border-radius: 999px;
+					display: inline-block;
+					align-self: flex-start;
+				}
+
+				.status-badge.open {
+					background: hsla(216, 80%, 60%, 0.12);
+					color: hsla(216, 80%, 60%, 1);
+				}
+
+				.status-badge.revisit_due {
+					background: hsla(45, 80%, 50%, 0.12);
+					color: hsla(45, 80%, 50%, 1);
+				}
+
+				.status-badge.resolved {
+					background: hsla(120, 60%, 40%, 0.12);
+					color: hsla(120, 60%, 40%, 1);
+				}
+
+				.status-badge.dismissed {
+					background: var(--surface-card, hsla(0, 0%, 100%, 0.06));
+					color: var(--text-faint, hsla(0, 0%, 100%, 0.4));
+				}
+
+				/* ── Contradictions lens ── */
+				.contradiction-filter {
+					display: flex;
+					gap: 0.5rem;
+					margin-bottom: 0.75rem;
+				}
+
+				.contradiction-filter-btn {
+					min-height: 44px;
+					min-width: 44px;
+					padding: 0.4rem 1rem;
+					border-radius: var(--radius-md, 0.5rem);
+					font-size: 0.8rem;
+					font-weight: 600;
+					cursor: pointer;
+					background: transparent;
+					border: 1.5px solid var(--border-subtle, hsla(0, 0%, 100%, 0.2));
+					color: var(--text-secondary, hsla(0, 0%, 100%, 0.7));
+					transition:
+						background var(--duration-fast, 0.15s),
+						border-color var(--duration-fast, 0.15s);
+				}
+
+				.contradiction-filter-btn.active {
+					background: var(--accent-primary, hsla(173, 80%, 40%, 1));
+					color: hsla(0, 0%, 100%, 1);
+					border-color: var(--accent-primary, hsla(173, 80%, 40%, 1));
+				}
+
+				.contradiction-filter-btn:focus-visible {
+					outline: 2px solid var(--accent-primary, hsla(173, 80%, 40%, 1));
+					outline-offset: 2px;
+				}
+
+				.contradiction-card {
+					display: flex;
+					flex-direction: column;
+					gap: 0.5rem;
+					padding: 0.75rem 1rem;
+					border-radius: var(--radius-md, 0.5rem);
+					border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.08));
+					background: var(--surface-card, hsla(0, 0%, 100%, 0.04));
+					margin-bottom: 0.5rem;
+				}
+
+				.contradiction-nodes {
+					font-size: 0.8rem;
+					color: var(--text-faint, hsla(0, 0%, 100%, 0.4));
+					font-family: monospace;
+					overflow-wrap: break-word;
+				}
+
+				.contradiction-date {
+					font-size: 0.7rem;
+					color: var(--text-faint, hsla(0, 0%, 100%, 0.35));
+				}
+
+				.contradiction-actions {
+					display: flex;
+					gap: 0.5rem;
+					flex-wrap: wrap;
+				}
+
+				/* ── Diffs lens ── */
+				.diffs-feed {
+					display: flex;
+					flex-direction: column;
+					gap: 0.5rem;
+					max-height: 60vh;
+					overflow-y: auto;
+				}
+
+				.diff-entry {
+					display: flex;
+					flex-direction: column;
+					gap: 0.4rem;
+					padding: 0.75rem 1rem;
+					border-radius: var(--radius-md, 0.5rem);
+					border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.08));
+					background: var(--surface-card, hsla(0, 0%, 100%, 0.04));
+				}
+
+				.diff-header {
+					display: flex;
+					align-items: center;
+					gap: 0.5rem;
+					flex-wrap: wrap;
+				}
+
+				.diff-date-chip {
+					font-size: 0.7rem;
+					color: var(--text-faint, hsla(0, 0%, 100%, 0.4));
+				}
+
+				.diff-kind-badge {
+					font-size: 0.7rem;
+					font-weight: 600;
+					padding: 0.2rem 0.5rem;
+					border-radius: 999px;
+					background: var(--surface-accent-subtle, hsla(173, 80%, 40%, 0.12));
+					color: var(--accent-primary, hsla(173, 80%, 40%, 1));
+					text-transform: uppercase;
+					letter-spacing: 0.05em;
+				}
+
+				.diff-summary {
+					font-size: 0.875rem;
+					color: var(--text-secondary, hsla(0, 0%, 100%, 0.75));
+					line-height: 1.5;
+				}
+
+				.diff-links {
+					display: flex;
+					gap: 0.5rem;
+					flex-wrap: wrap;
+				}
+
+				.diff-link-btn {
+					font-size: 0.75rem;
+					font-weight: 600;
+					color: var(--accent-primary, hsla(173, 80%, 40%, 1));
+					background: transparent;
+					border: none;
+					padding: 0.25rem 0;
+					cursor: pointer;
+					min-height: 44px;
+					text-decoration: underline;
+				}
+
+				.diff-link-btn:focus-visible {
+					outline: 2px solid var(--accent-primary, hsla(173, 80%, 40%, 1));
+					outline-offset: 2px;
+				}
+
+				/* ── Forced colors (MA3 additions) ── */
+				@media (forced-colors: active) {
+					.timeline-entry::before {
+						forced-color-adjust: none;
+						background: ButtonText;
+					}
+					.status-badge {
+						forced-color-adjust: none;
+						background: ButtonFace;
+						color: ButtonText;
+						border: 1px solid ButtonText;
+					}
+					.contradiction-filter-btn { border-color: ButtonText; color: ButtonText; }
+					.contradiction-filter-btn.active {
+						forced-color-adjust: none;
+						background: ButtonText;
+						color: ButtonFace;
+					}
+					.diff-kind-badge {
+						forced-color-adjust: none;
+						border: 1px solid ButtonText;
+					}
+				}
+
+				/* ── Reduced motion (MA3 additions) ── */
+				@media (prefers-reduced-motion: reduce) {
+					.contradiction-filter-btn { transition: none; }
+				}
 			</style>
 
 			<div id="atlas-root">
@@ -787,6 +1110,34 @@ export class MemoryAtlas extends HTMLElement {
 						aria-controls="lens-spines"
 						aria-label="${this.tr('aria_lens_spines', 'Switch to Spines lens')}"
 					>${this.tr('lens_spines', 'Spines')}</button>
+					<button
+						role="tab"
+						data-lens="timeline"
+						aria-selected="false"
+						aria-controls="lens-timeline"
+						aria-label="${this.tr('aria_lens_timeline', 'Switch to Timeline lens')}"
+					>${this.tr('lens_timeline', 'Timeline')}</button>
+					<button
+						role="tab"
+						data-lens="decisions"
+						aria-selected="false"
+						aria-controls="lens-decisions"
+						aria-label="${this.tr('aria_lens_decisions', 'Switch to Decisions lens')}"
+					>${this.tr('lens_decisions', 'Decisions')}</button>
+					<button
+						role="tab"
+						data-lens="contradictions"
+						aria-selected="false"
+						aria-controls="lens-contradictions"
+						aria-label="${this.tr('aria_lens_contradictions', 'Switch to Contradictions lens')}"
+					>${this.tr('lens_contradictions', 'Contradictions')}</button>
+					<button
+						role="tab"
+						data-lens="diffs"
+						aria-selected="false"
+						aria-controls="lens-diffs"
+						aria-label="${this.tr('aria_lens_diffs', 'Switch to Changes lens')}"
+					>${this.tr('lens_diffs', 'Changes')}</button>
 				</div>
 
 				<div
@@ -831,6 +1182,50 @@ export class MemoryAtlas extends HTMLElement {
 				>
 					<div class="loading-line"></div>
 					<div class="loading-line" style="width:73%;"></div>
+				</div>
+
+				<div
+					id="lens-timeline"
+					role="tabpanel"
+					aria-label="${this.tr('aria_timeline_lens', 'Memory timeline')}"
+					class="lens-panel"
+					hidden
+				>
+					<div class="loading-line"></div>
+					<div class="loading-line" style="width:78%;"></div>
+				</div>
+
+				<div
+					id="lens-decisions"
+					role="tabpanel"
+					aria-label="${this.tr('aria_decisions_lens', 'Decisions lens')}"
+					class="lens-panel"
+					hidden
+				>
+					<div class="loading-line"></div>
+					<div class="loading-line" style="width:78%;"></div>
+				</div>
+
+				<div
+					id="lens-contradictions"
+					role="tabpanel"
+					aria-label="${this.tr('aria_contradictions_lens', 'Contradictions lens')}"
+					class="lens-panel"
+					hidden
+				>
+					<div class="loading-line"></div>
+					<div class="loading-line" style="width:78%;"></div>
+				</div>
+
+				<div
+					id="lens-diffs"
+					role="tabpanel"
+					aria-label="${this.tr('aria_diffs_lens', 'Changes feed')}"
+					class="lens-panel"
+					hidden
+				>
+					<div class="loading-line"></div>
+					<div class="loading-line" style="width:78%;"></div>
 				</div>
 
 				<div id="chat-prompt-bar">
@@ -910,6 +1305,10 @@ export class MemoryAtlas extends HTMLElement {
 			list: 'lens-list',
 			graph: 'lens-graph',
 			spines: 'lens-spines',
+			timeline: 'lens-timeline',
+			decisions: 'lens-decisions',
+			contradictions: 'lens-contradictions',
+			diffs: 'lens-diffs',
 		};
 		(Object.entries(panelIds) as [Lens, string][]).forEach(([l, id]) => {
 			const panel = root.getElementById(id);
@@ -928,6 +1327,10 @@ export class MemoryAtlas extends HTMLElement {
 		if (lens === 'list') await this.loadListLens();
 		if (lens === 'graph') await this.loadGraphLens();
 		if (lens === 'spines') await this.loadSpinesLens();
+		if (lens === 'timeline') await this.loadTimelineLens();
+		if (lens === 'decisions') await this.loadDecisionsLens();
+		if (lens === 'contradictions') await this.loadContradictionsLens();
+		if (lens === 'diffs') await this.loadDiffsLens();
 	}
 
 	// ── List lens ──────────────────────────────────────────────────────────
@@ -1682,6 +2085,270 @@ export class MemoryAtlas extends HTMLElement {
 		} catch (_) {
 			el.textContent = this.tr('spine_no_summary', 'Summary being generated...');
 		}
+	}
+
+	// ── Timeline lens ──────────────────────────────────────────────────────
+
+	private async loadTimelineLens() {
+		const panel = this.shadowRoot?.getElementById('lens-timeline');
+		if (!panel) return;
+		try {
+			const res = await fetch('/api/atlas/timeline?limit=100');
+			if (!res.ok) throw new Error('fetch failed');
+			const nodes: TimelineNode[] = await res.json();
+			this.renderTimelineLens(panel, nodes);
+		} catch (_) {
+			this.renderTimelineLens(panel, []);
+		}
+	}
+
+	private renderTimelineLens(panel: HTMLElement, nodes: TimelineNode[]) {
+		if (nodes.length === 0) {
+			panel.innerHTML = `<div class="empty-state" role="status">${this.tr('atlas_timeline_empty', 'No timeline events yet.')}</div>`;
+			return;
+		}
+		const items = nodes.map(n => {
+			const date = new Date(n.created_at).toLocaleDateString();
+			return `<li role="listitem" class="timeline-entry">
+				<span class="timeline-date">${this.esc(date)}</span>
+				<span class="timeline-label">${this.esc(n.label)}</span>
+				<span class="type-badge" aria-label="${this.tr('atlas_node_type', 'Type')}: ${this.esc(n.type)}">${this.esc(n.type)}</span>
+			</li>`;
+		}).join('');
+		panel.innerHTML = `<ul
+			role="list"
+			class="timeline-list"
+			aria-label="${this.tr('aria_timeline_lens', 'Memory timeline')}"
+		>${items}</ul>`;
+	}
+
+	// ── Decisions lens ─────────────────────────────────────────────────────
+
+	private async loadDecisionsLens() {
+		const panel = this.shadowRoot?.getElementById('lens-decisions');
+		if (!panel) return;
+		try {
+			const res = await fetch('/api/atlas/decisions');
+			if (!res.ok) throw new Error('fetch failed');
+			const decisions: Decision[] = await res.json();
+			this.renderDecisionsLens(panel, decisions);
+		} catch (_) {
+			this.renderDecisionsLens(panel, []);
+		}
+	}
+
+	private renderDecisionsLens(panel: HTMLElement, decisions: Decision[]) {
+		if (decisions.length === 0) {
+			panel.innerHTML = `<div class="empty-state" role="status">${this.tr('atlas_decisions_empty', 'No decisions captured yet. Use Cmd/Ctrl+Shift+D to capture a decision.')}</div>`;
+			return;
+		}
+		const open = decisions.filter(d => d.status === 'open');
+		const revisit = decisions.filter(d => d.status === 'revisit_due');
+		const resolved = decisions.filter(d => d.status === 'resolved');
+
+		const renderCard = (d: Decision): string => {
+			const isResolved = d.status === 'resolved';
+			const toggleLabel = isResolved
+				? this.tr('reopen_decision', 'Reopen')
+				: this.tr('mark_resolved', 'Resolve');
+			const nextStatus = isResolved ? 'open' : 'resolved';
+			const revisitHtml = d.revisit_when
+				? `<span class="decision-revisit"><span class="decision-revisit-label">${this.tr('revisit_when_label', 'Revisit when:')}</span> ${this.esc(d.revisit_when)}</span>`
+				: '';
+			return `<div class="decision-card" data-decision-id="${this.esc(d.id)}">
+				<span class="decision-rationale">${this.esc(d.rationale)}</span>
+				${revisitHtml}
+				<span class="status-badge ${this.esc(d.status)}">${this.esc(d.status.replace('_', ' '))}</span>
+				<button
+					class="node-action-btn decision-toggle-btn"
+					data-decision-id="${this.esc(d.id)}"
+					data-next-status="${nextStatus}"
+					aria-label="${this.esc(toggleLabel)}"
+				>${toggleLabel}</button>
+			</div>`;
+		};
+
+		const renderColumn = (label: string, ariaLabel: string, items: Decision[]): string => `<div
+			class="decisions-column"
+			role="region"
+			aria-label="${this.esc(ariaLabel)}"
+		>
+			<div class="decisions-column-header">${this.esc(label)}</div>
+			${items.length === 0 ? '<div class="empty-state" style="padding:0.75rem 0;">\u2014</div>' : items.map(renderCard).join('')}
+		</div>`;
+
+		panel.innerHTML = `<div class="decisions-columns">
+			${renderColumn('Open', 'Open decisions', open)}
+			${renderColumn('Revisit Due', 'Revisit due decisions', revisit)}
+			${renderColumn('Resolved', 'Resolved decisions', resolved)}
+		</div>`;
+
+		panel.querySelectorAll<HTMLButtonElement>('.decision-toggle-btn').forEach(btn => {
+			btn.addEventListener('click', async () => {
+				const id = btn.dataset.decisionId;
+				const nextStatus = btn.dataset.nextStatus;
+				if (!id || !nextStatus) return;
+				try {
+					await fetch(`/api/atlas/decisions/${encodeURIComponent(id)}/status`, {
+						method: 'PUT',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ status: nextStatus }),
+					});
+				} catch (_) { /* ignore */ }
+				await this.loadDecisionsLens();
+			});
+		});
+	}
+
+	// ── Contradictions lens ─────────────────────────────────────────────────
+
+	private async loadContradictionsLens() {
+		const panel = this.shadowRoot?.getElementById('lens-contradictions');
+		if (!panel) return;
+		try {
+			const res = await fetch('/api/atlas/contradictions');
+			if (!res.ok) throw new Error('fetch failed');
+			const contradictions: Contradiction[] = await res.json();
+			this.renderContradictionsLens(panel, contradictions);
+		} catch (_) {
+			this.renderContradictionsLens(panel, []);
+		}
+	}
+
+	private renderContradictionsLens(panel: HTMLElement, contradictions: Contradiction[]) {
+		if (contradictions.length === 0) {
+			panel.innerHTML = `<div class="empty-state" role="status">${this.tr('atlas_contradictions_empty', 'No contradictions detected yet.')}</div>`;
+			return;
+		}
+		const filtered = this._contradictionsShowAll
+			? contradictions
+			: contradictions.filter(c => c.status === 'open');
+
+		const cards = filtered.map(c => {
+			const date = new Date(c.detected_at).toLocaleDateString();
+			return `<div class="contradiction-card" data-contradiction-id="${this.esc(c.id)}">
+				<div class="contradiction-nodes">${this.esc(c.primary_node_id)} &#8596; ${this.esc(c.opposing_node_id)}</div>
+				<div class="contradiction-date">${this.esc(date)}</div>
+				<span class="status-badge ${this.esc(c.status)}">${this.esc(c.status)}</span>
+				<div class="contradiction-actions">
+					<button
+						class="node-action-btn contradiction-action-btn"
+						data-contradiction-id="${this.esc(c.id)}"
+						data-next-status="dismissed"
+						aria-label="${this.tr('dismiss_contradiction', 'Dismiss')}"
+					>${this.tr('dismiss_contradiction', 'Dismiss')}</button>
+					<button
+						class="node-action-btn contradiction-action-btn"
+						data-contradiction-id="${this.esc(c.id)}"
+						data-next-status="resolved"
+						aria-label="${this.tr('resolve_contradiction', 'Resolve')}"
+					>${this.tr('resolve_contradiction', 'Resolve')}</button>
+				</div>
+			</div>`;
+		}).join('');
+
+		const openBtnClass = !this._contradictionsShowAll ? ' active' : '';
+		const allBtnClass = this._contradictionsShowAll ? ' active' : '';
+
+		panel.innerHTML = `
+			<div class="contradiction-filter" role="group" aria-label="${this.tr('aria_contradictions_lens', 'Contradictions lens')}">
+				<button
+					class="contradiction-filter-btn${openBtnClass}"
+					id="contradiction-filter-open"
+					aria-pressed="${!this._contradictionsShowAll}"
+				>Open</button>
+				<button
+					class="contradiction-filter-btn${allBtnClass}"
+					id="contradiction-filter-all"
+					aria-pressed="${this._contradictionsShowAll}"
+				>All</button>
+			</div>
+			<div aria-live="polite">
+				${filtered.length === 0
+					? `<div class="empty-state">${this.tr('atlas_contradictions_empty', 'No contradictions detected yet.')}</div>`
+					: cards}
+			</div>
+		`;
+
+		panel.querySelector<HTMLButtonElement>('#contradiction-filter-open')?.addEventListener('click', () => {
+			this._contradictionsShowAll = false;
+			this.renderContradictionsLens(panel, contradictions);
+		});
+		panel.querySelector<HTMLButtonElement>('#contradiction-filter-all')?.addEventListener('click', () => {
+			this._contradictionsShowAll = true;
+			this.renderContradictionsLens(panel, contradictions);
+		});
+
+		panel.querySelectorAll<HTMLButtonElement>('.contradiction-action-btn').forEach(btn => {
+			btn.addEventListener('click', async () => {
+				const id = btn.dataset.contradictionId;
+				const nextStatus = btn.dataset.nextStatus;
+				if (!id || !nextStatus) return;
+				try {
+					await fetch(`/api/atlas/contradictions/${encodeURIComponent(id)}/status`, {
+						method: 'PUT',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ status: nextStatus }),
+					});
+				} catch (_) { /* ignore */ }
+				await this.loadContradictionsLens();
+			});
+		});
+	}
+
+	// ── Diffs lens ──────────────────────────────────────────────────────────
+
+	private async loadDiffsLens() {
+		const panel = this.shadowRoot?.getElementById('lens-diffs');
+		if (!panel) return;
+		try {
+			const res = await fetch('/api/atlas/diffs?limit=30');
+			if (!res.ok) throw new Error('fetch failed');
+			const diffs: DiffEntry[] = await res.json();
+			this.renderDiffsLens(panel, diffs);
+		} catch (_) {
+			this.renderDiffsLens(panel, []);
+		}
+	}
+
+	private renderDiffsLens(panel: HTMLElement, diffs: DiffEntry[]) {
+		if (diffs.length === 0) {
+			panel.innerHTML = `<div class="empty-state" role="status">${this.tr('atlas_diffs_empty', 'No changes recorded yet.')}</div>`;
+			return;
+		}
+		const entries = diffs.map(d => {
+			const date = new Date(d.created_at).toLocaleDateString();
+			const nodeLink = d.node_id
+				? `<button class="diff-link-btn" data-diff-node-id="${this.esc(d.node_id)}" aria-label="${this.tr('lens_list', 'List')}">${this.tr('lens_list', 'List')}</button>`
+				: '';
+			const spineLink = d.spine_id
+				? `<button class="diff-link-btn" data-diff-spine-id="${this.esc(d.spine_id)}" aria-label="${this.tr('lens_spines', 'Spines')}">${this.tr('lens_spines', 'Spines')}</button>`
+				: '';
+			const linksHtml = (d.node_id || d.spine_id)
+				? `<div class="diff-links">${nodeLink}${spineLink}</div>`
+				: '';
+			return `<article role="article" class="diff-entry">
+				<div class="diff-header">
+					<span class="diff-date-chip">${this.esc(date)}</span>
+					<span class="diff-kind-badge">${this.esc(d.kind)}</span>
+				</div>
+				<span class="diff-summary">${this.esc(d.summary)}</span>
+				${linksHtml}
+			</article>`;
+		}).join('');
+
+		panel.innerHTML = `<div
+			role="feed"
+			class="diffs-feed"
+			aria-label="${this.tr('aria_diffs_lens', 'Changes feed')}"
+		>${entries}</div>`;
+
+		panel.querySelectorAll<HTMLButtonElement>('.diff-link-btn[data-diff-node-id]').forEach(btn => {
+			btn.addEventListener('click', () => this.switchLens('list'));
+		});
+		panel.querySelectorAll<HTMLButtonElement>('.diff-link-btn[data-diff-spine-id]').forEach(btn => {
+			btn.addEventListener('click', () => this.switchLens('spines'));
+		});
 	}
 
 	// ── Chat bar ───────────────────────────────────────────────────────────
