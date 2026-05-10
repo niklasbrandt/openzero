@@ -1,5 +1,5 @@
 from app.services.llm import chat, last_model_used
-from app.services.planka import get_project_tree, get_activity_report
+from app.services.planka import get_project_tree, get_recent_activity, get_stale_cards
 from app.models.db import AsyncSessionLocal, Briefing
 import asyncio
 import datetime
@@ -11,36 +11,48 @@ async def weekly_review():
 	logger.info("Weekly Review started...")
 	
 	try:
-		tree = await get_project_tree(as_html=False)
-		activity = await get_activity_report(days=7)
+		tree, recent_activity, stale_cards = await asyncio.gather(
+			get_project_tree(as_html=False),
+			get_recent_activity(hours=168),
+			get_stale_cards(min_days=7),
+		)
 
-		activity_block = activity if activity and not str(activity).strip().startswith("### OPERATIONAL DATA FAILURE") else "[EMPTY — omit the activity/accomplishments section entirely]"
+		activity_block = recent_activity if recent_activity and not recent_activity.startswith("### RECENT ACTIVITY FETCH FAILED") else "[EMPTY — omit the activity/accomplishments section entirely]"
+		stale_block = stale_cards if stale_cards and stale_cards != "[NO STALE ITEMS]" and not stale_cards.startswith("### STALE") else "[NO STALE ITEMS — all active cards have been touched this week]"
 		tree_block = tree if tree and str(tree).strip() else "[EMPTY — omit the project tree section entirely]"
 
 		prompt = (
+			"ABSOLUTE RULE — FABRICATION IS FORBIDDEN:\n"
+			"Every statement in this review must reference data from one of the sections below.\n"
+			"If a section is marked [EMPTY] or [NO STALE ITEMS], do not mention that topic.\n"
+			"Do not generate project guesses, suggestions, or next-week plans from your own knowledge.\n\n"
 			"Z, it's the end of the week — write the weekly review.\n"
 			"Write like a smart colleague summing up the week in a message. Natural, direct, slightly informal — not a literary reflection, not a bullet dump.\n"
 			"Short sentences. Plain words. Sections with headers are fine — the language inside should sound like a person, not a report generator.\n"
 			"Be specific: name actual boards, cards, and progress mentioned in the data. Don't be vague.\n"
 			"Aim for 200-350 words. Over 500 words is a failure regardless of data volume. Use bullets for lists of items; use short prose for observations and context.\n\n"
-			"OPERATIONAL DATA (7-DAY ACTIVITY):\n"
-			f"{activity_block}\n\n"
+			f"RECENT ACTIVITY (LAST 7 DAYS):\n{activity_block}\n\n"
+			f"STALE / NO MOVEMENT (7+ DAYS):\n{stale_block}\n\n"
 			f"PROJECT TREE:\n{tree_block}\n\n"
 			"HALLUCINATION RULES (never break these):\n"
 			"- Only include a section if real data for it was provided in the context above.\n"
 			"- If a data block is marked [EMPTY] or contains no items — omit that section entirely. No heading, no placeholder text.\n"
 			"- Never invent board cards, calendar events, emails, metrics, or completed tasks.\n"
 			"- Never assume what happened during the week if no data confirms it.\n"
-			"- The 'What was accomplished' section must only contain items explicitly present in OPERATIONAL DATA or PROJECT TREE above. If no cards moved, state that plainly — do not invent progress.\n"
-			"- Proactive suggestions for next week are allowed but must be clearly framed as suggestions, not as confirmed facts.\n\n"
+			"- The 'What was accomplished' section must only contain items explicitly present in RECENT ACTIVITY or PROJECT TREE above. If no cards moved, state that plainly — do not invent progress.\n"
+			"- Every bullet must trace back to a card name, board name, or list name that appears verbatim in the data above.\n\n"
 			"RULES:\n"
-			"- Base your message ONLY on the OPERATIONAL DATA and PROJECT TREE provided above.\n"
-			"- If OPERATIONAL DATA is marked [EMPTY], do not list any specific card names or board progress — acknowledge honestly that no activity data is available for this period.\n"
+			"- Base your message ONLY on the data sections provided above.\n"
+			"- If RECENT ACTIVITY is marked [EMPTY], do not list any specific card names or board progress — acknowledge honestly that no activity data is available for this period.\n"
 			"- Do not mention placeholder examples or template values from personal files.\n"
 			"- NO metaphors, NO literary prose, NO filler ('honestly?', 'that screams', etc.). Write like a human, not an LLM trying to sound thoughtful.\n"
 			"- NEVER use emoji or unicode decorative symbols.\n\n"
+			"STALE ITEMS SECTION (only if STALE / NO MOVEMENT has real entries):\n"
+			"- Name each stale card and its board verbatim from the STALE section.\n"
+			"- State how many days it has been inactive.\n"
+			"- Suggest the one concrete action that would unblock or close it — only if that action is inferable from the card name and board context.\n\n"
 			"PRIORITIZATION & NEXT STEPS (section 'Next Week:', before board audit, only if PROJECT TREE not [EMPTY]):\n"
-			"- Pick 3-5 cards ranked by impact/urgency. One line per card: name + board + single next physical action.\n"
+			"- Pick 3-5 cards ranked by impact/urgency from PROJECT TREE or RECENT ACTIVITY. One line per card: name + board + single next physical action.\n"
 			"- Blocking cards go first. Boards with no active work: name one card to pull.\n"
 			"- No vague actions ('continue work on X'). Every step must be executable.\n"
 			"- Frame as: 'Vorschlag für nächste Woche:' (or equivalent in user's language).\n\n"
