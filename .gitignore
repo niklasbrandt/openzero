@@ -78,3 +78,4 @@ Thumbs.db
 *.wmv
 .vite/
 .mypy_cache/
+agent/domain.derived.yaml

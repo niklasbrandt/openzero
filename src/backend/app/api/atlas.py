@@ -3,7 +3,9 @@
 MA1: full implementations for all node/spine/diff/search/stats routes.
 MA2: recompose operations, steel-manning, echo-finder.
 MA3: decisions, contradictions, timeline, walkthroughs lens routes.
+Phase DD: domain inference endpoints.
 """
+import os
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import text
@@ -33,6 +35,29 @@ class SpineCreate(BaseModel):
 	label: str
 	confidence: float = 0.5
 	derived: bool = True
+
+
+class NodeUpdate(BaseModel):
+	label: str | None = None
+	confidence: float | None = None
+
+
+class SpineUpdate(BaseModel):
+	label: str | None = None
+	confidence: float | None = None
+
+
+# --- Diff helper ---
+
+async def _record_diff(conn: AsyncSession, kind: str, summary: str, node_id: int | None = None, spine_id: int | None = None) -> None:
+	"""Insert a diff ribbon entry; errors are silently ignored to avoid blocking callers."""
+	try:
+		await conn.execute(
+			text("INSERT INTO atlas_diffs (node_id, spine_id, kind, summary, since, until) VALUES (:node_id, :spine_id, :kind, :summary, NOW(), NOW())"),
+			{"node_id": node_id, "spine_id": spine_id, "kind": kind, "summary": summary},
+		)
+	except Exception:
+		pass
 
 
 # --- Node operations ---
@@ -100,6 +125,56 @@ async def get_node(node_id: int, db: AsyncSession = Depends(get_db)) -> dict[str
 		raise HTTPException(status_code=500, detail="Atlas unavailable") from None
 
 
+@router.put("/nodes/{node_id}")
+async def update_node(node_id: int, body: NodeUpdate, db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
+	"""Update node label and/or confidence; auto-records a diff entry."""
+	try:
+		result = await db.execute(
+			text("SELECT id, label, confidence FROM atlas_nodes WHERE id = :id"),
+			{"id": node_id},
+		)
+		row = result.fetchone()
+		if not row:
+			raise HTTPException(status_code=404, detail="Node not found")
+		old = dict(row._mapping)
+
+		sets = []
+		params: dict[str, Any] = {"id": node_id}
+		if body.label is not None:
+			sets.append("label = :label")
+			params["label"] = body.label
+		if body.confidence is not None:
+			sets.append("confidence = :confidence")
+			params["confidence"] = body.confidence
+		if not sets:
+			raise HTTPException(status_code=422, detail="No fields to update")
+		sets.append("updated_at = NOW()")
+
+		updated = await db.execute(
+			text(f"UPDATE atlas_nodes SET {', '.join(sets)} WHERE id = :id RETURNING id, type, label, payload, confidence, created_at, updated_at, last_mentioned_at"),  # noqa: S608
+			params,
+		)
+		new_row = updated.fetchone()
+		if not new_row:
+			raise HTTPException(status_code=404, detail="Node not found")
+
+		summary_parts = []
+		if body.label is not None and body.label != old["label"]:
+			summary_parts.append(f"label '{old['label']}' -> '{body.label}'")
+		if body.confidence is not None and body.confidence != old["confidence"]:
+			summary_parts.append(f"confidence {round(float(old['confidence'] or 0), 2)} -> {round(body.confidence, 2)}")
+		if summary_parts:
+			await _record_diff(db, "update", f"Node #{node_id}: {'; '.join(summary_parts)}", node_id=node_id)
+
+		await db.commit()
+		return dict(new_row._mapping)
+	except HTTPException:
+		raise
+	except Exception:
+		await db.rollback()
+		raise HTTPException(status_code=500, detail="Failed to update node") from None
+
+
 @router.get("/nodes/{node_id}/edges")
 async def get_node_edges(node_id: int, db: AsyncSession = Depends(get_db)) -> list[dict[str, Any]]:
 	"""Return edges for a node, enriched with the other endpoint's label and type."""
@@ -153,6 +228,56 @@ async def create_spine(body: SpineCreate, db: AsyncSession = Depends(get_db)) ->
 	except Exception:
 		await db.rollback()
 		raise HTTPException(status_code=500, detail="Failed to create spine") from None
+
+
+@router.put("/spines/{spine_id}")
+async def update_spine(spine_id: int, body: SpineUpdate, db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
+	"""Update spine label and/or confidence; auto-records a diff entry."""
+	try:
+		result = await db.execute(
+			text("SELECT id, label, confidence FROM atlas_spines WHERE id = :id"),
+			{"id": spine_id},
+		)
+		row = result.fetchone()
+		if not row:
+			raise HTTPException(status_code=404, detail="Spine not found")
+		old = dict(row._mapping)
+
+		sets = []
+		params: dict[str, Any] = {"id": spine_id}
+		if body.label is not None:
+			sets.append("label = :label")
+			params["label"] = body.label
+		if body.confidence is not None:
+			sets.append("confidence = :confidence")
+			params["confidence"] = body.confidence
+		if not sets:
+			raise HTTPException(status_code=422, detail="No fields to update")
+		sets.append("updated_at = NOW()")
+
+		updated = await db.execute(
+			text(f"UPDATE atlas_spines SET {', '.join(sets)} WHERE id = :id RETURNING id, label, confidence, derived, locked, updated_at"),  # noqa: S608
+			params,
+		)
+		new_row = updated.fetchone()
+		if not new_row:
+			raise HTTPException(status_code=404, detail="Spine not found")
+
+		summary_parts = []
+		if body.label is not None and body.label != old["label"]:
+			summary_parts.append(f"label '{old['label']}' -> '{body.label}'")
+		if body.confidence is not None and body.confidence != old["confidence"]:
+			summary_parts.append(f"confidence {round(float(old['confidence'] or 0), 2)} -> {round(body.confidence, 2)}")
+		if summary_parts:
+			await _record_diff(db, "update", f"Spine #{spine_id}: {'; '.join(summary_parts)}", spine_id=spine_id)
+
+		await db.commit()
+		return dict(new_row._mapping)
+	except HTTPException:
+		raise
+	except Exception:
+		await db.rollback()
+		raise HTTPException(status_code=500, detail="Failed to update spine") from None
 
 
 @router.get("/spines/{spine_id}/summary")
@@ -763,6 +888,169 @@ async def list_walkthrough_stops(walkthrough_id: int, db: AsyncSession = Depends
 		return [dict(r._mapping) for r in result.fetchall()]
 	except Exception:
 		return []
+
+
+# --- Domain inference (Phase DD) ---
+
+_DOMAIN_YAML_PATH = os.path.join(os.path.dirname(__file__), "../../../../agent/domain.derived.yaml")
+
+
+@router.get("/domain")
+async def get_domain() -> dict:
+	"""Returns current agent/domain.derived.yaml content, or None if not yet generated."""
+	import yaml
+	if not os.path.exists(_DOMAIN_YAML_PATH):
+		return {"domain": None, "message": "Domain not yet inferred. Run domain_inference crew."}
+	with open(_DOMAIN_YAML_PATH) as f:
+		domain = yaml.safe_load(f)
+	return {"domain": domain}
+
+
+@router.patch("/domain/confirm")
+async def confirm_domain_field(body: dict) -> dict:
+	"""Mark a field in agent/domain.derived.yaml as operator_confirmed: true."""
+	import yaml
+	if not os.path.exists(_DOMAIN_YAML_PATH):
+		raise HTTPException(status_code=404, detail="Domain file not found")
+	with open(_DOMAIN_YAML_PATH) as f:
+		domain = yaml.safe_load(f)
+	field = body.get("field", "")
+	value = body.get("value")
+	if field.startswith("identity."):
+		key = field.split(".", 1)[1]
+		if key in domain.get("identity", {}):
+			domain["identity"][key] = value
+			domain["identity"]["operator_confirmed"] = True
+	elif field.startswith("spine."):
+		spine_id = field.split(".", 1)[1]
+		for spine in domain.get("spines", []):
+			if spine["id"] == spine_id:
+				spine["operator_confirmed"] = True
+				if value:
+					spine["label"] = value
+	with open(_DOMAIN_YAML_PATH, "w") as f:
+		yaml.dump(domain, f, allow_unicode=True, default_flow_style=False)
+	return {"ok": True}
+
+
+# --- Phase Y: Why? endpoint ---
+
+_WHY_VALID_TYPES = frozenset({"node", "spine", "diff", "decision", "contradiction"})
+
+
+@router.get("/why/{entity_type}/{entity_id}")
+async def why_entity(entity_type: str, entity_id: str, db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
+	"""Return justification for any Atlas entity.
+	entity_type: node | spine | diff | decision | contradiction
+	Returns: {entity_type, entity_id, source_refs, confidence, rationale}
+	"""
+	if entity_type not in _WHY_VALID_TYPES:
+		raise HTTPException(status_code=422, detail=f"Invalid entity_type '{entity_type}'. Valid: {sorted(_WHY_VALID_TYPES)}")
+	try:
+		eid = int(entity_id)
+	except ValueError:
+		raise HTTPException(status_code=422, detail="entity_id must be a positive integer") from None
+
+	source_refs: list[Any] = []
+	confidence: float = 0.5
+	rationale: str = ""
+
+	try:
+		if entity_type == "node":
+			result = await db.execute(
+				text("SELECT id, label, payload, confidence FROM atlas_nodes WHERE id = :id"),
+				{"id": eid},
+			)
+			row = result.fetchone()
+			if not row:
+				raise HTTPException(status_code=404, detail="Node not found")
+			m = row._mapping
+			payload = m["payload"] or {}
+			source_refs = payload.get("source_refs", []) if isinstance(payload, dict) else []
+			confidence = float(m["confidence"] or 0.5)
+			rationale = str(m["label"])
+
+		elif entity_type == "spine":
+			result = await db.execute(
+				text("SELECT id, label, confidence FROM atlas_spines WHERE id = :id"),
+				{"id": eid},
+			)
+			row = result.fetchone()
+			if not row:
+				raise HTTPException(status_code=404, detail="Spine not found")
+			m = row._mapping
+			confidence = float(m["confidence"] or 0.5)
+			rationale = str(m["label"])
+			members_result = await db.execute(
+				text("SELECT node_id FROM atlas_spine_members WHERE spine_id = :id ORDER BY weight DESC"),
+				{"id": eid},
+			)
+			source_refs = [r._mapping["node_id"] for r in members_result.fetchall()]
+
+		elif entity_type == "diff":
+			result = await db.execute(
+				text("SELECT id, kind, summary, node_id, spine_id FROM atlas_diffs WHERE id = :id"),
+				{"id": eid},
+			)
+			row = result.fetchone()
+			if not row:
+				raise HTTPException(status_code=404, detail="Diff not found")
+			m = row._mapping
+			rationale = f"[{m['kind']}] {m['summary'] or ''}"
+			source_refs = [ref for ref in [m["node_id"], m["spine_id"]] if ref is not None]
+			confidence = 0.7
+
+		elif entity_type == "decision":
+			result = await db.execute(
+				text("SELECT id, context, confidence FROM atlas_decisions WHERE id = :id"),
+				{"id": eid},
+			)
+			row = result.fetchone()
+			if not row:
+				raise HTTPException(status_code=404, detail="Decision not found")
+			m = row._mapping
+			rationale = str(m["context"] or "")
+			confidence = float(m["confidence"] or 0.8)
+			source_refs = []
+
+		elif entity_type == "contradiction":
+			result = await db.execute(
+				text("SELECT id, primary_node_id, opposing_node_id, status FROM atlas_contradictions WHERE id = :id"),
+				{"id": eid},
+			)
+			row = result.fetchone()
+			if not row:
+				raise HTTPException(status_code=404, detail="Contradiction not found")
+			m = row._mapping
+			rationale = f"Contradiction detected (status: {m['status']})"
+			source_refs = [ref for ref in [m["primary_node_id"], m["opposing_node_id"]] if ref is not None]
+			confidence = 0.7
+
+		# Log trace (fire-and-forget; ignore errors)
+		try:
+			import json
+			await db.execute(
+				text("INSERT INTO atlas_why_traces (subject_kind, subject_id, source_refs, confidence) VALUES (:kind, :eid, :refs::jsonb, :conf)"),
+				{"kind": entity_type, "eid": eid, "refs": json.dumps(source_refs), "conf": confidence},
+			)
+			await db.commit()
+		except Exception:
+			try:
+				await db.rollback()
+			except Exception:
+				pass
+
+		return {
+			"entity_type": entity_type,
+			"entity_id": entity_id,
+			"source_refs": source_refs,
+			"confidence": confidence,
+			"rationale": rationale,
+		}
+	except HTTPException:
+		raise
+	except Exception:
+		raise HTTPException(status_code=500, detail="Why trace unavailable") from None
 
 
 # --- Health ---
