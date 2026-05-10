@@ -25,17 +25,25 @@
 [![WCAG 2.1 AA](https://img.shields.io/badge/Accessibility-WCAG%202.1%20AA-teal.svg)](https://www.w3.org/TR/WCAG21/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-Meet Z — a self-hosted personal AI operating system. Deploy on a VPS or homelab, connect to any inference provider. Your data stays with you.
+openZero is a sovereign, self-hosted AI companion that grows a purpose-shaped memory around whatever you point it at — a life, a team, a project, a craft — and thinks alongside you there, with every byte staying under your control.
 
 ---
 
-## What it does
+## What openZero is
 
-openZero is a private, composable AI system built around a single agent named Z. It bundles local LLM inference, autonomous web search, semantic long-term memory, a real-time web dashboard, calendar and email intelligence, multi-channel messaging (Telegram, WhatsApp, ...), autonomous background crews, and a Kanban task engine — all running on your own hardware and reachable through a Tailscale private network.
+openZero is a **thinking substrate**, not a tools dashboard. Surfaces like Miro, Jira, and Trello put cards on a wall and ask you to do the thinking — they are places where you arrange work, while the intelligence stays in the humans. openZero sits one layer underneath that: it builds and maintains the context itself (who matters, what's blocked, what was decided three months ago and why, what's drifting, what's about to collide), and lets you walk that context, recompose it, and ask it questions. Boards, tickets, calendar entries, emails, voice notes, and photos become inputs to a memory that thinks; they are no longer the place where thinking has to live.
 
-The system is built with no proprietary lock-in: the LLM is swappable (llama.cpp, any OpenAI-compatible endpoint), the memory backend is open-source (Qdrant), and every service is a standard Docker container. Data never leaves your infrastructure unless you explicitly configure an external inference provider.
+## What it solves
 
-openZero is not a chatbot wrapper. It is an operational layer for a personal computing life: reading and writing your calendar, triaging your email, managing your projects, scheduling background intelligence tasks, monitoring its own hardware, and speaking to you in any of eleven languages.
+The context you accumulate — what you've decided, learned, promised, noticed — gets scattered across tools that forget you. Calendars forget. Notes apps fragment. Boards reset every quarter. Conversations vanish. The work of remembering, connecting, and reconciling falls back on you, and you run out of bandwidth. Off-the-shelf AI assistants can chat, but they own the substrate — your memory lives on someone else's servers, and the moment you push real life through them you become the product. openZero replaces both halves of that with one persistent memory you fully own, growing locally and continuously, that any number of purpose-shaped instances can think inside.
+
+## How it works
+
+You point an instance at a domain and the substrate grows there. You can run as many purpose-shaped instances as your hardware supports — `life-Z` for the personal canvas, `work-Z` for a team, `partner-Z` for a relationship, `fishing-Z` for a craft — each with its own ontology, its own topic spines, and its own visual language. Every signal you let in (calendar, mail, chats, photos, voice, sensor feed) is parsed, related, weighted, and woven into a navigable memory. A **Memory Atlas** surfaces that memory across multiple lenses, **Topic Spines** keep continuously-summarised paragraphs per theme, and **crews** (YAML-defined multi-character agents) reason over the result on a schedule, in response to messages, or on demand. Conversation is the primary input: the chat prompt is the bottom edge of every screen, not a widget.
+
+The runtime is yours end-to-end: local llama.cpp or any OpenAI-compatible endpoint, Qdrant for semantic memory, PostgreSQL for the navigable graph, all behind a Tailscale perimeter, with optional federation that ships reasoning slices instead of raw data.
+
+> **In-flight pivot.** openZero is mid-transition from a tools-and-widgets dashboard into the substrate described above. The Atlas, Topic Spines, the diff ribbon, the contradiction crew, the universal "why?" hook, decision capture, dynamic domain inference, and walk-through briefings are designed and being built. The locked plan, phase order, and cuts (Person/Circle, automation rule engine, multi-step wizard, standalone shopping list, email-when-off, etc.) live in [docs/artifacts/substrate_master_plan.md](docs/artifacts/substrate_master_plan.md), with the full decisions matrix and cascade in [docs/artifacts/substrate_pivot.md](docs/artifacts/substrate_pivot.md). Sections below describe the system **as currently shipped**; expect divergence as phases land.
 
 ---
 
@@ -353,7 +361,6 @@ Z speaks to external systems through a structured set of action tags embedded in
 | `AMBIENT_CAPTURE` / `AMBIENT_TEACH` | Routes ambient input into the capture pipeline |
 | `CREATE_EVENT` | Creates a calendar event |
 | `REMIND` | Sets a one-off or repeating reminder |
-| `ADD_PERSON` | Adds a person to the social circles graph |
 | `LEARN` | Stores a fact to Qdrant long-term memory |
 | `SCHEDULE_CUSTOM` | Registers a persistent scheduled job |
 | `RUN_CREW` | Triggers a named crew immediately |
@@ -366,7 +373,7 @@ Destructive actions (`DELETE_*`) are part of the vocabulary, not blocked at the 
 
 A subset of actions that create persistent state or modify the agent's own behaviour are designated `SENSITIVE_ACTIONS`:
 
-`CREATE_PROJECT` · `CREATE_BOARD` · `CREATE_LIST` · `ADD_PERSON` · `LEARN` · `SCHEDULE_CUSTOM` · `RUN_CREW` · `SCHEDULE_CREW` · `PROXIMITY_TRACK`
+`CREATE_PROJECT` · `CREATE_BOARD` · `CREATE_LIST` · `LEARN` · `SCHEDULE_CUSTOM` · `RUN_CREW` · `SCHEDULE_CREW` · `PROXIMITY_TRACK`
 
 When `require_hitl=True` is set on a reply (configurable per channel and per endpoint), sensitive actions are queued and require user confirmation before execution. Routine actions like `CREATE_TASK`, `MOVE_CARD`, and `CREATE_EVENT` execute immediately.
 
