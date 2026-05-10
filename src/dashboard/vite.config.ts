@@ -39,11 +39,11 @@ function fontPreloadPlugin(): Plugin {
 }
 
 const LAZY_COMPONENTS = [
-	'ProjectTree', 'MemorySearch', 'BriefingHistory',
+	'DiffRibbon', 'ProjectTree', 'MemorySearch', 'BriefingHistory',
 	'CreateProject', 'CalendarAgenda', 'CalendarManager',
 	'InstanceEntry', 'HardwareMonitor', 'SoftwareStatus',
 	'SystemBenchmark', 'ZPersonality', 'AmbientWidget',
-	'MemoryAtlas',
+	'MemoryAtlas', 'WalkthroughViewer',
 ]
 
 export default defineConfig({
