@@ -103,12 +103,26 @@ CREATE TABLE IF NOT EXISTS atlas_decisions (
 	id SERIAL PRIMARY KEY,
 	node_id INTEGER REFERENCES atlas_nodes(id) ON DELETE SET NULL,
 	made_at TIMESTAMP DEFAULT NOW(),
+	title TEXT,
 	rationale TEXT,
+	context TEXT,
+	options_considered JSONB DEFAULT '[]'::jsonb,
+	outcome TEXT,
+	confidence FLOAT DEFAULT 0.8,
 	revisit_when TEXT,
 	status VARCHAR(16) DEFAULT 'open',
 	payload JSONB DEFAULT '{}'::jsonb
 );
 """))
+            # Migration: add new columns for existing installations
+            for _col, _def in [
+                ("title", "TEXT"),
+                ("context", "TEXT"),
+                ("options_considered", "JSONB DEFAULT '[]'::jsonb"),
+                ("outcome", "TEXT"),
+                ("confidence", "FLOAT DEFAULT 0.8"),
+            ]:
+                await conn.execute(text(f"ALTER TABLE atlas_decisions ADD COLUMN IF NOT EXISTS {_col} {_def};"))
             await conn.execute(text("""
 CREATE TABLE IF NOT EXISTS atlas_contradictions (
 	id SERIAL PRIMARY KEY,
