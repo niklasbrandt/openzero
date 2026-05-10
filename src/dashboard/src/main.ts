@@ -10,6 +10,7 @@ import '../components/UserCard'
 // ── Lazy components: deferred until the browser is idle so the main thread
 //    is free for first paint (reduces TBT / long-tasks significantly).
 function loadLazyComponents(): void {
+	import('../components/MemoryAtlas')
 	import('../components/MemorySearch')
 	import('../components/BriefingHistory')
 	import('../components/CreateProject')
