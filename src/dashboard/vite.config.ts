@@ -43,6 +43,7 @@ const LAZY_COMPONENTS = [
 	'CreateProject', 'CalendarAgenda', 'CalendarManager',
 	'InstanceEntry', 'HardwareMonitor', 'SoftwareStatus',
 	'SystemBenchmark', 'ZPersonality', 'AmbientWidget',
+	'MemoryAtlas',
 ]
 
 export default defineConfig({
