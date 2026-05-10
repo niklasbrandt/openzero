@@ -214,6 +214,12 @@ class Settings(BaseSettings):
     # Phase D toggle: enable the diff ribbon. Default off until Phase D lands.
     ATLAS_DIFF_RIBBON: bool = False
 
+    # Federation (Phase H) — opt-in, peer-to-peer over Tailscale. Sovereignty by default.
+    FEDERATION_ENABLED: bool = False
+    # Per-instance key-encryption-key (base64-encoded 32 bytes). Generate with:
+    # python3 -c "import secrets,base64; print(base64.b64encode(secrets.token_bytes(32)).decode())"
+    FEDERATION_KEK: str = ""
+
     model_config = SettingsConfigDict(
         env_file=os.path.join(os.path.dirname(__file__), "../../../.env"),
         extra="ignore"
