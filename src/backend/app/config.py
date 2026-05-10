@@ -204,6 +204,15 @@ class Settings(BaseSettings):
     # a background pass for borderline phantom detections).
     PHANTOM_ASYNC_CLASSIFIER: bool = False
 
+    # Atlas / Memory Atlas
+    # Bootstrap hint for the domain_inference crew. After the first inference run
+    # the substrate self-defines; this hint is used only once.
+    # Examples: "my personal life", "our engineering team", "my recipes"
+    ATLAS_TEMPLATE_HINT: str = ""
+    # Phase Z toggle: enable Atlas as the home screen. Default off until Phase Z lands.
+    ATLAS_HOME: bool = False
+    # Phase D toggle: enable the diff ribbon. Default off until Phase D lands.
+    ATLAS_DIFF_RIBBON: bool = False
 
     model_config = SettingsConfigDict(
         env_file=os.path.join(os.path.dirname(__file__), "../../../.env"),

@@ -190,3 +190,21 @@ anti_hallucination:
   # Corresponds to PHANTOM_ASYNC_CLASSIFIER.
   phantom_async_classifier: false
 
+# ── Memory Atlas ────────────────────────────────────────────────────────────
+# See docs/artifacts/memory_atlas.md for the full architectural plan.
+# MA0 ships the backend schema and API stubs. The home screen (Phase Z) and
+# diff ribbon (Phase D) are gated behind their own toggles.
+atlas:
+  # One-time bootstrap hint for the domain_inference crew. After the first
+  # inference run the substrate self-defines; this value is ignored thereafter.
+  # Corresponds to env var ATLAS_TEMPLATE_HINT.
+  template_hint: ""
+
+  # Phase Z toggle: show Atlas as the home screen. Default false.
+  # Corresponds to env var ATLAS_HOME.
+  home: false
+
+  # Phase D toggle: show the diff ribbon on the home screen. Default false.
+  # Corresponds to env var ATLAS_DIFF_RIBBON.
+  diff_ribbon: false
+

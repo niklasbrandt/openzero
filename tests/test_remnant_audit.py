@@ -122,6 +122,13 @@ PHASE_FORBIDDEN: dict[str, dict[str, list[str]]] = {
 		],
 		"api_routes": ["/api/dashboard/people", "/api/circle"],
 	},
+	"MA0_atlas_template_legacy": {
+		"filenames": [],
+		"imports": [],
+		"identifiers": ["ATLAS_TEMPLATE[^_]", "atlas_template[^_]"],  # forbid old ATLAS_TEMPLATE (not ATLAS_TEMPLATE_HINT)
+		"i18n_keys": [],
+		"api_routes": [],
+	},
 }
 
 
@@ -274,3 +281,9 @@ def test_phase_p4_circle_remnants() -> None:
 	"""No Person / Circle / inner_circle remnants survive after Phase P4."""
 	hits = _scan_phase("P4_circle_rip")
 	assert not hits, f"P4_circle_rip remnants found:\n{_format_hits(hits)}"
+
+
+def test_phase_ma0_atlas_template_legacy() -> None:
+	"""ATLAS_TEMPLATE (bare, without _HINT suffix) must not appear after MA0."""
+	hits = _scan_phase("MA0_atlas_template_legacy")
+	assert not hits, f"MA0_atlas_template_legacy remnants found:\n{_format_hits(hits)}"
