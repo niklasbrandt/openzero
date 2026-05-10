@@ -1,7 +1,7 @@
 # Memory Atlas
 
 > The substrate's navigable surface over its own memory. The Atlas is the home screen (Phase Z, desktop and responsive mobile in the same codebase). Operators walk and recompose memory through nine lenses (with List as the accessibility fallback). MemorySource plugins ingest signals; spines summarise continuously; the diff ribbon and the universal "why?" hook are cross-cutting Atlas surfaces. This artifact is the substrate's blueprint.
-> Status: PLAN | Author: conductor | Created: 2026-05-10
+> Status: MA0 IN PROGRESS | Author: conductor | Created: 2026-05-10 | Updated: 2026-05-10
 > Companions: `docs/artifacts/substrate_master_plan.md`, `docs/artifacts/dynamic_domain.md`, `docs/artifacts/walkthroughs_and_briefings.md`, `docs/artifacts/circle_removal.md`, `docs/artifacts/federated_memory.md`, `docs/artifacts/voice_edge_pod.md`, `docs/artifacts/full_ambient_intelligence_roadmap.md`, `docs/artifacts/DESIGN.md`.
 
 ---
