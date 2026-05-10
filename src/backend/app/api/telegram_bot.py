@@ -340,12 +340,13 @@ async def stop_telegram_bot():
 			logging.warning("Telegram shutdown warning (non-fatal): %s", e)
 
 async def send_nudge_notification(text: str, reply_markup=None, nav_footer: str = ""):
-	"""Send a proactive nudge, collapsing consecutive nudges into a single edited message.
+	"""Send a proactive nudge, stacking consecutive nudges via delete-and-resend.
 
 	When called while a prior nudge from this session is still unread (no user reply
-	since the last nudge), the existing message is edited to append the new nudge as
-	a bullet point. This prevents flooding the chat with dozens of separate messages.
-	Falls back to a fresh send if the prior message is too old or was deleted.
+	since the last nudge), the existing message is deleted and a fresh message containing
+	all accumulated bullets is sent. This triggers a push notification and audible alert
+	on the user's device for every stacked reminder. Silently ignores delete failures
+	(message may have already been deleted or is too old).
 	"""
 	if not settings.TELEGRAM_BOT_TOKEN or not settings.TELEGRAM_ALLOWED_USER_ID:
 		return
@@ -356,27 +357,23 @@ async def send_nudge_notification(text: str, reply_markup=None, nav_footer: str 
 	prior = _last_nudge.get(chat_id)
 	if prior:
 		prior_msg_id, prior_body = prior
-		combined = f"{prior_body}\n\n• {html_text}"
+		# Delete old message so the fresh send triggers a push notification.
 		try:
-			await bot.edit_message_text(
-				chat_id=chat_id,
-				message_id=prior_msg_id,
-				text=f"<blockquote>{combined}</blockquote>{nav_footer}",
-				parse_mode="HTML",
-			)
-			_last_nudge[chat_id] = (prior_msg_id, combined)
-			return
+			await bot.delete_message(chat_id=chat_id, message_id=prior_msg_id)
 		except Exception as _e:
-			logger.debug("send_nudge_notification: edit failed (%s), sending fresh", _e)
+			logger.debug("send_nudge_notification: delete failed (%s), continuing", _e)
+		combined = f"{prior_body}\n\n• {html_text}"
+	else:
+		combined = html_text
 
-	# Fresh send — store the message_id for potential future edits.
+	# Fresh send — always triggers audible notification on the user's device.
 	sent = await bot.send_message(
 		chat_id=chat_id,
-		text=f"<blockquote>{html_text}</blockquote>{nav_footer}",
+		text=f"<blockquote>{combined}</blockquote>{nav_footer}",
 		parse_mode="HTML",
 		reply_markup=reply_markup,
 	)
-	_last_nudge[chat_id] = (sent.message_id, html_text)
+	_last_nudge[chat_id] = (sent.message_id, combined)
 
 
 async def send_notification(text: str, reply_markup=None, nav_footer: str = ""):
