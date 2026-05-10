@@ -1,7 +1,8 @@
 """Atlas API — navigable surface over the substrate's memory.
 
 MA1: full implementations for all node/spine/diff/search/stats routes.
-MA2+ will add semantic search, why-traces, and federation.
+MA2: recompose operations, steel-manning, echo-finder.
+MA3: decisions, contradictions, timeline, walkthroughs lens routes.
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
@@ -449,6 +450,271 @@ async def echo_finder(node_id: int, db: AsyncSession = Depends(get_db)) -> dict[
 		raise
 	except Exception:
 		raise HTTPException(status_code=500, detail="Echo-finder failed") from None
+
+
+# --- MA3: Decisions lens ---
+
+_DECISION_VALID_STATUSES = frozenset({"open", "revisit_due", "resolved"})
+
+
+class DecisionCreate(BaseModel):
+	node_id: int | None = None
+	rationale: str
+	revisit_when: str | None = None
+	status: str = "open"
+	payload: dict = {}
+
+
+@router.get("/decisions")
+async def list_decisions(
+	status: str | None = None,
+	db: AsyncSession = Depends(get_db),
+) -> list[dict[str, Any]]:
+	"""List atlas decisions ordered by made_at DESC. Optional status filter."""
+	try:
+		if status:
+			result = await db.execute(
+				text("SELECT id, node_id, made_at, rationale, revisit_when, status, payload FROM atlas_decisions WHERE status = :status ORDER BY made_at DESC"),
+				{"status": status},
+			)
+		else:
+			result = await db.execute(
+				text("SELECT id, node_id, made_at, rationale, revisit_when, status, payload FROM atlas_decisions ORDER BY made_at DESC"),
+			)
+		return [dict(r._mapping) for r in result.fetchall()]
+	except Exception:
+		return []
+
+
+@router.post("/decisions", status_code=201)
+async def create_decision(body: DecisionCreate, db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
+	"""Create a new decision record and return the created row."""
+	if body.status not in _DECISION_VALID_STATUSES:
+		raise HTTPException(status_code=422, detail=f"Invalid status '{body.status}'. Valid: {sorted(_DECISION_VALID_STATUSES)}")
+	try:
+		import json
+		result = await db.execute(
+			text(
+				"INSERT INTO atlas_decisions (node_id, rationale, revisit_when, status, payload) "
+				"VALUES (:node_id, :rationale, :revisit_when, :status, :payload::jsonb) "
+				"RETURNING id, node_id, made_at, rationale, revisit_when, status, payload"
+			),
+			{
+				"node_id": body.node_id,
+				"rationale": body.rationale,
+				"revisit_when": body.revisit_when,
+				"status": body.status,
+				"payload": json.dumps(body.payload),
+			},
+		)
+		await db.commit()
+		row = result.fetchone()
+		return dict(row._mapping)
+	except HTTPException:
+		raise
+	except Exception:
+		await db.rollback()
+		raise HTTPException(status_code=500, detail="Failed to create decision") from None
+
+
+@router.put("/decisions/{decision_id}/status")
+async def update_decision_status(decision_id: int, body: dict, db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
+	"""Update the status field of a decision. Valid: open, revisit_due, resolved."""
+	new_status = body.get("status", "")
+	if new_status not in _DECISION_VALID_STATUSES:
+		raise HTTPException(status_code=422, detail=f"Invalid status '{new_status}'. Valid: {sorted(_DECISION_VALID_STATUSES)}")
+	try:
+		result = await db.execute(
+			text("UPDATE atlas_decisions SET status = :status WHERE id = :id RETURNING id, node_id, made_at, rationale, revisit_when, status, payload"),
+			{"status": new_status, "id": decision_id},
+		)
+		row = result.fetchone()
+		if not row:
+			raise HTTPException(status_code=404, detail="Decision not found")
+		await db.commit()
+		return dict(row._mapping)
+	except HTTPException:
+		raise
+	except Exception:
+		await db.rollback()
+		raise HTTPException(status_code=500, detail="Failed to update decision status") from None
+
+
+# --- MA3: Contradictions lens ---
+
+_CONTRADICTION_VALID_STATUSES = frozenset({"open", "dismissed", "resolved"})
+
+
+class ContradictionCreate(BaseModel):
+	primary_node_id: int | None = None
+	opposing_node_id: int | None = None
+	status: str = "open"
+	payload: dict = {}
+
+
+@router.get("/contradictions")
+async def list_contradictions(
+	status: str | None = None,
+	db: AsyncSession = Depends(get_db),
+) -> list[dict[str, Any]]:
+	"""List atlas contradictions ordered by detected_at DESC. Optional status filter."""
+	try:
+		if status:
+			result = await db.execute(
+				text("SELECT id, primary_node_id, opposing_node_id, detected_at, status, payload FROM atlas_contradictions WHERE status = :status ORDER BY detected_at DESC"),
+				{"status": status},
+			)
+		else:
+			result = await db.execute(
+				text("SELECT id, primary_node_id, opposing_node_id, detected_at, status, payload FROM atlas_contradictions ORDER BY detected_at DESC"),
+			)
+		return [dict(r._mapping) for r in result.fetchall()]
+	except Exception:
+		return []
+
+
+@router.post("/contradictions", status_code=201)
+async def create_contradiction(body: ContradictionCreate, db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
+	"""Create a new contradiction record and return the created row."""
+	if body.status not in _CONTRADICTION_VALID_STATUSES:
+		raise HTTPException(status_code=422, detail=f"Invalid status '{body.status}'. Valid: {sorted(_CONTRADICTION_VALID_STATUSES)}")
+	try:
+		import json
+		result = await db.execute(
+			text(
+				"INSERT INTO atlas_contradictions (primary_node_id, opposing_node_id, status, payload) "
+				"VALUES (:primary_node_id, :opposing_node_id, :status, :payload::jsonb) "
+				"RETURNING id, primary_node_id, opposing_node_id, detected_at, status, payload"
+			),
+			{
+				"primary_node_id": body.primary_node_id,
+				"opposing_node_id": body.opposing_node_id,
+				"status": body.status,
+				"payload": json.dumps(body.payload),
+			},
+		)
+		await db.commit()
+		row = result.fetchone()
+		return dict(row._mapping)
+	except HTTPException:
+		raise
+	except Exception:
+		await db.rollback()
+		raise HTTPException(status_code=500, detail="Failed to create contradiction") from None
+
+
+@router.put("/contradictions/{contradiction_id}/status")
+async def update_contradiction_status(contradiction_id: int, body: dict, db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
+	"""Update the status field of a contradiction. Valid: open, dismissed, resolved."""
+	new_status = body.get("status", "")
+	if new_status not in _CONTRADICTION_VALID_STATUSES:
+		raise HTTPException(status_code=422, detail=f"Invalid status '{new_status}'. Valid: {sorted(_CONTRADICTION_VALID_STATUSES)}")
+	try:
+		result = await db.execute(
+			text("UPDATE atlas_contradictions SET status = :status WHERE id = :id RETURNING id, primary_node_id, opposing_node_id, detected_at, status, payload"),
+			{"status": new_status, "id": contradiction_id},
+		)
+		row = result.fetchone()
+		if not row:
+			raise HTTPException(status_code=404, detail="Contradiction not found")
+		await db.commit()
+		return dict(row._mapping)
+	except HTTPException:
+		raise
+	except Exception:
+		await db.rollback()
+		raise HTTPException(status_code=500, detail="Failed to update contradiction status") from None
+
+
+# --- MA3: Timeline lens ---
+
+@router.get("/timeline")
+async def list_timeline(
+	limit: int = 100,
+	since: str | None = None,
+	until: str | None = None,
+	db: AsyncSession = Depends(get_db),
+) -> list[dict[str, Any]]:
+	"""Return nodes ordered by created_at ASC for the timeline lens. Optional since/until ISO datetime bounds."""
+	try:
+		conditions = []
+		params: dict[str, Any] = {"limit": limit}
+		if since:
+			conditions.append("created_at >= :since")
+			params["since"] = since
+		if until:
+			conditions.append("created_at <= :until")
+			params["until"] = until
+		where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+		result = await db.execute(
+			text(f"SELECT id, type, label, confidence, created_at, last_mentioned_at FROM atlas_nodes {where_clause} ORDER BY created_at ASC LIMIT :limit"),  # noqa: S608
+			params,
+		)
+		return [dict(r._mapping) for r in result.fetchall()]
+	except Exception:
+		return []
+
+
+# --- MA3: Walkthroughs (Phase W foundation) ---
+
+class WalkthroughCreate(BaseModel):
+	title: str
+	briefing_id: int | None = None
+	payload: dict = {}
+
+
+@router.get("/walkthroughs")
+async def list_walkthroughs(db: AsyncSession = Depends(get_db)) -> list[dict[str, Any]]:
+	"""List all walkthroughs ordered by created_at DESC."""
+	try:
+		result = await db.execute(
+			text("SELECT id, title, briefing_id, payload, created_at FROM walkthroughs ORDER BY created_at DESC"),
+		)
+		return [dict(r._mapping) for r in result.fetchall()]
+	except Exception:
+		return []
+
+
+@router.post("/walkthroughs", status_code=201)
+async def create_walkthrough(body: WalkthroughCreate, db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
+	"""Create a new walkthrough record and return the created row."""
+	try:
+		import json
+		result = await db.execute(
+			text(
+				"INSERT INTO walkthroughs (title, briefing_id, payload) "
+				"VALUES (:title, :briefing_id, :payload::jsonb) "
+				"RETURNING id, title, briefing_id, payload, created_at"
+			),
+			{"title": body.title, "briefing_id": body.briefing_id, "payload": json.dumps(body.payload)},
+		)
+		await db.commit()
+		row = result.fetchone()
+		return dict(row._mapping)
+	except Exception:
+		await db.rollback()
+		raise HTTPException(status_code=500, detail="Failed to create walkthrough") from None
+
+
+@router.get("/walkthroughs/{walkthrough_id}/stops")
+async def list_walkthrough_stops(walkthrough_id: int, db: AsyncSession = Depends(get_db)) -> list[dict[str, Any]]:
+	"""Return stops for a walkthrough ordered by stop_order ASC, joined with node and spine labels."""
+	try:
+		result = await db.execute(
+			text(
+				"SELECT ws.id, ws.walkthrough_id, ws.stop_order, ws.node_id, ws.spine_id, ws.payload, "
+				"n.label AS node_label, s.label AS spine_label "
+				"FROM walkthrough_stops ws "
+				"LEFT JOIN atlas_nodes n ON n.id = ws.node_id "
+				"LEFT JOIN atlas_spines s ON s.id = ws.spine_id "
+				"WHERE ws.walkthrough_id = :walkthrough_id "
+				"ORDER BY ws.stop_order ASC"
+			),
+			{"walkthrough_id": walkthrough_id},
+		)
+		return [dict(r._mapping) for r in result.fetchall()]
+	except Exception:
+		return []
 
 
 # --- Health ---
