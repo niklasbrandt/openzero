@@ -31,6 +31,11 @@ def _sanitize_for_log(text: Any) -> str:
 	# re.escape is a built-in sanitizer that escapes all special characters
 	return re.escape(val)
 
+_DONE_LIST_NAMES = {"erledigt", "done", "closed", "fertig", "abgeschlossen", "archiviert", "archived", "completed"}
+
+def _is_done_list(list_name: str) -> bool:
+	return list_name.strip().lower() in _DONE_LIST_NAMES
+
 async def get_project_tree(as_html: bool = True) -> str:
 	"""Recursively build a semantic text tree. Uses parallel requests and caching for speed."""
 	cache_key = f"tree_{as_html}"
@@ -134,13 +139,13 @@ async def get_project_tree(as_html: bool = True) -> str:
 							tag = f" [{', '.join(lb for lb in clbls if lb)}]" if clbls else ""
 							list_cards[lid].append(f"{cname}{tag}")
 					for lst in lists:
+						if _is_done_list(lst.get("name", "")):
+							continue
 						l_cards = list_cards.get(lst["id"], [])
 						if not l_cards:
 							continue
-						visible = l_cards[:5]
-						overflow = len(l_cards) - len(visible)
-						overflow_str = f" (+{overflow} more)" if overflow > 0 else ""
-						project_boards[meta["project_idx"]].append(f"   [{lst['name']}]: {', '.join(visible)}{overflow_str}")
+						visible = l_cards[:10]
+						project_boards[meta["project_idx"]].append(f"   [{lst['name']}]: {', '.join(visible)}")
 			# Assemble final tree
 			final_lines = []
 			for i, p_type, p_name in tree_lines:
@@ -1507,12 +1512,13 @@ async def get_activity_report(days: int = 30) -> str:
 			
 			from app.services.translations import get_done_keywords
 			_done_kw = get_done_keywords()
+			stall_threshold = timedelta(days=max(1, days // 2))
 			
 			# Categories
 			completed_cards = []
 			in_progress_cards = []
 			blocked_cards = []
-			stalled_cards = [] # Incomplete and not updated for 7+ days
+			stalled_cards = []
 			
 			wip_violations = [] # List of (board, list, count)
 			
@@ -1571,12 +1577,12 @@ async def get_activity_report(days: int = 30) -> str:
 						elif is_ip:
 							age = (datetime.now() - c_updated).days
 							in_progress_cards.append(f"- {c_name}{cos_tag} ({b_name}, {age} days active)")
-						elif c_updated < (datetime.now() - timedelta(days=7)):
+						elif c_updated < (datetime.now() - stall_threshold):
 							stalled_cards.append(f"- {c_name}{cos_tag} ({b_name}, last activity {c_updated.strftime('%Y-%m-%d')})")
 
-			report = "### 30-DAY OPERATIONAL ACTIVITY REPORT ###\n\n"
+			report = f"### {days}-DAY OPERATIONAL ACTIVITY REPORT ###\n\n"
 			
-			report += "COMPLETED IN LAST 30 DAYS:\n"
+			report += f"COMPLETED IN LAST {days} DAYS:\n"
 			if completed_cards:
 				report += "\n".join(completed_cards[:30]) # Cap at 30
 				if len(completed_cards) > 30: report += f"\n...and {len(completed_cards)-30} more."
@@ -1594,7 +1600,7 @@ async def get_activity_report(days: int = 30) -> str:
 				if blocked_cards:
 					report += "BLOCKED:\n" + "\n".join(blocked_cards) + "\n"
 				if stalled_cards:
-					report += "STALLED (>7 days inactive):\n" + "\n".join(stalled_cards[:15])
+					report += f"STALLED (>{stall_threshold.days} days inactive):\n" + "\n".join(stalled_cards[:15])
 			else:
 				report += "(None detected)"
 				
