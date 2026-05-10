@@ -156,3 +156,27 @@ Before closing any fix that touches one of these files, grep the other channel f
 - **Static vs Dynamic Checks:** When performing codebase-wide analysis (like checking for missing translation keys or hardcoded strings), ALWAYS prefer static analysis (`ast.parse()`, `re.finditer()`) over dynamic imports (`import app...`). Dynamic imports trigger the entire backend configuration and DB engine, which is slow and prone to hangs in restricted environments.
 - **Terminal & Command Timeout:** If a terminal command (like `python3 /tmp/script.py` or `pytest`) takes more than 60 seconds without output, it is likely "stuck" due to quadratic regex backtracking or I/O blocking. Terminate the process immediately rather than waiting.
 - **Clean up /tmp/:** Do not leave scratch scripts in `/tmp/` that contain buggy or experimental logic that might be accidentally executed by other agents.
+
+## 22. Substrate vs Surface Discipline
+
+openZero is a thinking **substrate**, not a tools dashboard. The operating heuristic for every change to this repository is:
+
+> For every proposed change, ask: does this make the substrate think better, or does it give the operator another surface to manage? Cut surfaces. Build substrate.
+
+A "surface" is a UI element, settings panel, wizard, or rule engine that asks the human to arrange, classify, drag, tag, schedule, or otherwise do the cognitive work the substrate should be doing. A "substrate" change is a new MemorySource plugin, a crew that reasons over existing memory, a spine summariser pass, a contradiction or decision detector, a "why?" hook, or any derivation that shrinks the operator's hand-authored config. When in doubt, prefer the substrate option.
+
+The canonical guide for the substrate pivot is `docs/artifacts/substrate_master_plan.md`. Read it before starting any feature touching memory, briefings, the dashboard home route, the Atlas, federation, or any new widget. The detailed decisions matrix and cascade analysis is `docs/artifacts/substrate_pivot.md`.
+
+**Historical surface-creep removed under this rule** (do NOT re-introduce without explicit operator approval recorded in `docs/artifacts/substrate_master_plan.md`):
+
+- Person / Circle / `inner_circle` subsystem and `CircleManager.ts` -- replaced by substrate-derived people nodes in the Atlas.
+- `ShoppingList` standalone widget -- absorbed into the nutrition crew briefing slot.
+- `EmailRules.ts` and any discoverable email affordance when `EMAIL_ENABLED` is unset -- email is opt-in and invisible when off.
+- Multi-step `WelcomeOnboarding.ts` wizard -- collapsed to one screen (template hint + one line + connect-one-source CTA).
+- `services/automation.py` rule engine with hardcoded `<Name>:` keyword matching -- replaced by the `signal_interpreter` crew (HITL).
+- Calendar Manager CRUD ambitions beyond a read-only viewer with HITL "create event" -- calendar is a `MemorySource` plugin.
+- Static `ATLAS_TEMPLATE` config-driven ontology -- replaced by `ATLAS_TEMPLATE_HINT` (bootstrap-only) plus the `domain_inference` crew that writes `agent/domain.derived.yaml`.
+- Translations beyond `en` and `de` while their dicts were stubs -- removed from `_TRANSLATIONS` and the `UserCard` selector. Stubs return only when populated to parity.
+
+If a future task seems to require re-introducing any of these patterns, stop and surface the conflict in your summary rather than proceeding silently. Operator approval recorded in the master plan is the only path to overturning a locked cut.
+
