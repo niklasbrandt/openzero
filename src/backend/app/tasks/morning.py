@@ -1,4 +1,4 @@
-from app.models.db import AsyncSessionLocal, Briefing, Person
+from app.models.db import AsyncSessionLocal, Briefing
 from app.config import settings
 from sqlalchemy import select
 import asyncio
@@ -17,7 +17,6 @@ async def morning_briefing():
 		# While true 'active' tracking for native is lightweight, we sync with the registry loader.
 		await crew_registry.load()
 
-		from app.services.automation import run_contextual_automation
 		from app.services.llm import chat, last_model_used
 		from app.services.planka import get_project_tree
 		from app.services.gmail import fetch_unread_emails
@@ -26,29 +25,8 @@ async def morning_briefing():
 		from app.services.tts import generate_speech
 		from app.services.translations import get_translations
 
-		# 2. Gather context
-		async with AsyncSessionLocal() as session:
-			people_result = await session.execute(select(Person))
-			people = people_result.scalars().all()
-
-		# --- Contextual Automation ---
-		async def get_person_briefing_data(p: Person):
-			data = f"- {p.name} ({p.relationship}): {p.context}"
-			if p.birthday:
-				from app.services.timezone import get_birthday_proximity
-				tag = get_birthday_proximity(p.birthday)
-				if tag:
-					data += f" | BIRTHDAY {tag} ({p.birthday})"
-			return data
-
-		inner_circle_tasks = [get_person_briefing_data(p) for p in people if p.circle_type == "inner"]
-
-		inner_context_list = await asyncio.gather(*inner_circle_tasks)
-
-		inner_context = "\n".join(inner_context_list) if inner_context_list else "No primary family focus today."
-
-		# 2.2 Batch 1 — calendar + automation in parallel (both independent)
-		logger.debug("morning_briefing — starting batch-1 gather (calendar + automation)")
+		# 2.2 Batch 1 — calendar fetch
+		logger.debug("morning_briefing — starting batch-1 (calendar)")
 		_t1 = asyncio.get_event_loop().time()
 
 		async def _fetch_calendar_safe():
@@ -58,13 +36,8 @@ async def morning_briefing():
 				logger.debug("Calendar fetch during briefing skipped: %s", ce)
 				return []
 
-		calendar_events, automation_actions = await asyncio.gather(
-			_fetch_calendar_safe(),
-			run_contextual_automation(people),
-		)
+		calendar_events = await _fetch_calendar_safe()
 		logger.debug("morning_briefing — batch-1 done in %.1fs", asyncio.get_event_loop().time() - _t1)
-
-		automation_summary = "\n".join([f"- {a}" for a in automation_actions]) if automation_actions else "No automated tasks created today."
 
 		calendar_summary_parts = []
 		for e in calendar_events:
@@ -195,8 +168,7 @@ async def morning_briefing():
 			"Board (Today): [only if PROJECT TREE has real cards — act as a kanban expert: read the actual list names and card titles from the tree; identify the 1-2 highest-value cards to progress today; flag anything stuck or blocking something downstream; recommend the single next physical action for the top card]\n\n"
 			"[Include a labeled crew block only if the crew has concrete data for today:]\n"
 			"Fitness: [only if a fitness crew produced a concrete plan for today]\n"
-			"Nutrition: [only if a meal plan exists — ONE warm meal suggestion only, never both lunch and dinner]\n"
-			"[Kids / People: only if INNER CIRCLE has someone relevant AND today-specific context from the actual data]\n\n"
+			"Nutrition: [only if a meal plan exists — ONE warm meal suggestion only, never both lunch and dinner]\n\n"
 			"ANTI-PATTERNS — these make the output invalid:\n"
 			"WRONG (literary): 'You wake up to the kind of grey Bremen light that doesn\'t promise much but doesn\'t lie either...'\n"
 			"WRONG (robotic dump): 'Weather: 12C. Rain: yes. Wind: damp. Clothing: layers required.'\n"
@@ -208,7 +180,6 @@ async def morning_briefing():
 			"- Weather: temperature and conditions from WEATHER FORECAST. Always include — weather data is always provided.\n"
 			"- Calendar: only if CALENDAR TODAY is not marked [EMPTY]. List real events only.\n"
 			"- Board: only if PROJECT TREE has real cards. Never list cards not present in the tree.\n"
-			"- People: only if INNER CIRCLE has someone with today-relevant context explicitly in the data.\n"
 			"- Email: only if LATEST EMAILS has real emails. If marked [EMPTY], omit the section entirely.\n\n"
 			"PROACTIVE SUGGESTIONS — allowed, but grounded:\n"
 			"Based on the user's known personal context (health goals, career aspirations, family situation, "
@@ -216,7 +187,6 @@ async def morning_briefing():
 			"they could do today. Label suggestions clearly as suggestions, never as confirmed schedule items.\n"
 			"- If the fitness or health crew has produced a plan, suggest today's workout window based on weather and calendar gaps.\n"
 			"- If career goals exist, suggest a concrete skill-building action for today.\n"
-			"- If there are kids in INNER CIRCLE, suggest something good for them based on weather — but NEVER infer school days, pickup times, or child logistics unless those appear verbatim in CALENDAR TODAY.\n"
 			"- If nutrition crew is active, mention ONE warm meal suggestion. Do not suggest both lunch and dinner.\n"
 			"- If stagnant projects exist in the tree, nudge on the most impactful one.\n"
 			"- As a kanban expert, apply these principles to the board section (adapt to whatever list names the board actually uses — do NOT assume columns called 'Backlog', 'In Progress', or 'Done'):   \n"
@@ -265,12 +235,10 @@ async def morning_briefing():
 			"- CARD fragment must be a recognizable substring of an existing card title.\n"
 			"- Only emit actions for things explicitly mentioned in CONTEXT — never invent cards or boards.\n"
 			"- If the RECENT ACTIVITY section shows tasks that should move (e.g., started yesterday, stalled), move them.\n"
-			"- You may create new tasks if the context clearly warrants it (e.g., upcoming deadlines, automation suggestions).\n"
+			"- You may create new tasks if the context clearly warrants it (e.g., upcoming deadlines).\n"
 			"- NEVER write prose narrating your own action tags. Do not say 'I am creating a task', 'I will add this to Planka', "
 			"'Create new openZero Todo', or anything similar. Embed the tag silently. The user only reads the briefing prose, "
 			"not the mechanical steps. Any sentence describing the action will appear verbatim to the user.\n\n"
-			f"AUTOMATED SYSTEM ACTIONS:\n{automation_summary}\n\n"
-			f"INNER CIRCLE (Family/Care):\n{inner_context}\n\n"
 			f"CALENDAR TODAY:\n{calendar_summary}\n\n"
 			f"WEATHER FORECAST:\n{weather_report}\n\n"
 			+ _planka_unavailable_warning
@@ -383,12 +351,12 @@ async def morning_briefing():
 			tz_str = await get_current_timezone()
 			tz = pytz.timezone(tz_str)
 			now = datetime.datetime.now(tz)
-			
+			from app.models.db import Preference
 			async with AsyncSessionLocal() as session:
-				res = await session.execute(select(Person).where(Person.circle_type == "identity"))
-				me = res.scalar_one_or_none()
-				if me and me.briefing_time:
-					parts = me.briefing_time.split(":")
+				res = await session.execute(select(Preference).where(Preference.key == "briefing_time"))
+				bt_pref = res.scalar_one_or_none()
+				if bt_pref and bt_pref.value:
+					parts = bt_pref.value.split(":")
 					if len(parts) == 2:
 						target = now.replace(hour=int(parts[0]), minute=int(parts[1]), second=0, microsecond=0)
 						delta = (target - now).total_seconds()
@@ -400,14 +368,9 @@ async def morning_briefing():
 
 		# 6. Send text notification to Telegram immediately (does not wait for TTS)
 		from app.services.notifier import send_notification, send_voice_message, get_nav_footer
-		lang = "en"
-		async with AsyncSessionLocal() as session:
-			res = await session.execute(select(Person).where(Person.circle_type == "identity"))
-			ident = res.scalar_one_or_none()
-			if ident and ident.language:
-				lang = ident.language
+		from app.services.translations import get_user_lang
+		lang = await get_user_lang()
 		t = get_translations(lang)
-		greeting_text = t.get("morning_greeting", "Good Morning!")
 
 		await send_notification(
 			f"---\n{content}",

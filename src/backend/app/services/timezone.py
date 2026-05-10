@@ -2,29 +2,29 @@ from typing import Optional
 import datetime
 import pytz
 import logging
-from app.models.db import AsyncSessionLocal, Preference, Person
+from app.models.db import AsyncSessionLocal, Preference
 from sqlalchemy import select
 
 logger = logging.getLogger(__name__)
 
-# Module-level cache for user settings from DB (refreshed at startup + on identity update)
+# Module-level cache for user settings from DB (refreshed at startup + on preference update)
 _cached_timezone: str | None = None
 _cached_location: str | None = None
 
 async def refresh_user_settings():
-	"""Load timezone and location from the identity record in the DB into cache.
-	Falls back to .env values if no identity record exists."""
+	"""Load timezone and location from Preference rows into cache.
+	Falls back to .env values if no preference record exists."""
 	global _cached_timezone, _cached_location
 	try:
 		async with AsyncSessionLocal() as session:
-			res = await session.execute(select(Person).where(Person.circle_type == "identity"))
-			identity = res.scalar_one_or_none()
-			if identity:
-				if identity.timezone and identity.timezone.strip():
-					_cached_timezone = identity.timezone.strip()
-				if identity.town and identity.town.strip():
-					cc = (identity.country or "").strip()
-					_cached_location = f"{identity.town.strip()}, {cc}" if cc else identity.town.strip()
+			tz_res = await session.execute(select(Preference).where(Preference.key == "user_timezone"))
+			tz_pref = tz_res.scalar_one_or_none()
+			if tz_pref and tz_pref.value.strip():
+				_cached_timezone = tz_pref.value.strip()
+			loc_res = await session.execute(select(Preference).where(Preference.key == "user_location"))
+			loc_pref = loc_res.scalar_one_or_none()
+			if loc_pref and loc_pref.value.strip():
+				_cached_location = loc_pref.value.strip()
 			logger.info("User settings refreshed: tz=%s, loc=(loaded)", _cached_timezone or 'Europe/Berlin')
 	except Exception as e:
 		logger.error("Failed to refresh user settings from DB: %s", e)

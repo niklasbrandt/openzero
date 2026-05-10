@@ -12,11 +12,10 @@ import '../components/UserCard'
 function loadLazyComponents(): void {
 	import('../components/MemorySearch')
 	import('../components/BriefingHistory')
-	import('../components/CircleManager')
 	import('../components/CreateProject')
 	import('../components/CalendarAgenda')
 	import('../components/CalendarManager')
-	import('../components/WelcomeOnboarding')
+	import('../components/InstanceEntry')
 	import('../components/DiagnosticsWidget')
 	import('../components/ZProtocols')
 	import('../components/AgentsWidget')

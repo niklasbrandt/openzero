@@ -98,12 +98,12 @@ _DEFAULT_DATE_FORMAT_KEY = "iso"
 async def _get_user_date_format() -> str:
 	"""Return the strftime format string for the user's preferred date format."""
 	try:
-		from app.models.db import AsyncSessionLocal, Person
+		from app.models.db import AsyncSessionLocal, Preference
 		from sqlalchemy import select
 		async with AsyncSessionLocal() as session:
-			res = await session.execute(select(Person).where(Person.circle_type == "identity"))
-			ident = res.scalar_one_or_none()
-			fmt_key = (ident.date_format if ident and ident.date_format else _DEFAULT_DATE_FORMAT_KEY)
+			res = await session.execute(select(Preference).where(Preference.key == "date_format"))
+			pref = res.scalar_one_or_none()
+			fmt_key = (pref.value.strip() if pref and pref.value else _DEFAULT_DATE_FORMAT_KEY)
 			return _DATE_FORMAT_MAP.get(fmt_key, _DATE_FORMAT_MAP[_DEFAULT_DATE_FORMAT_KEY])
 	except Exception:
 		return _DATE_FORMAT_MAP[_DEFAULT_DATE_FORMAT_KEY]
@@ -113,13 +113,9 @@ async def _get_user_timezone():
 	"""Return the user's timezone or UTC."""
 	try:
 		import pytz
-		from app.models.db import AsyncSessionLocal, Person
-		from sqlalchemy import select
-		async with AsyncSessionLocal() as session:
-			res = await session.execute(select(Person).where(Person.circle_type == "identity"))
-			ident = res.scalar_one_or_none()
-			tz_str = ident.timezone if ident and ident.timezone else "UTC"
-			return pytz.timezone(tz_str)
+		from app.services.timezone import get_user_timezone
+		tz_str = get_user_timezone()
+		return pytz.timezone(tz_str)
 	except Exception:
 		return timezone.utc
 
