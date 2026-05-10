@@ -111,7 +111,7 @@ async def morning_briefing():
 			get_weather_forecast(detected_location),
 			get_project_tree(as_html=False),
 			_get_email_summary(),
-			get_activity_report(days=1),
+			get_activity_report(days=2),
 		)
 		logger.debug("morning_briefing — batch-2 done in %.1fs", asyncio.get_event_loop().time() - _t2)
 
@@ -166,6 +166,8 @@ async def morning_briefing():
 			"- If the Calendar section is absent from this prompt: there are NO events today. Do not mention any meeting, standup, sync, or appointment.\n"
 			"- If the Email section is absent from this prompt: email is not connected. Do not mention any email, sender, subject, or message.\n"
 			"- If a board card is not listed in PROJECT TREE: do not invent project names, task names, or work items.\n"
+			"- If the PROJECT TREE shows \"(+N more)\", those N cards are UNKNOWN. Do NOT guess, invent, or infer their titles.\n"
+			"- NEVER construct card titles by combining words from board names, list names, or other cards. Only quote card titles verbatim as they appear in PROJECT TREE.\n"
 			"- NEVER use any proper noun (person name, project name, task title, company name) that does not appear verbatim in the data sections below.\n"
 			"- Violating this rule means the briefing is WRONG and HARMFUL. Do not invent. Do not infer. Do not complete patterns.\n\n"
 			"Z, it's morning. Write the daily briefing for the user.\n\n"
@@ -181,7 +183,8 @@ async def morning_briefing():
 			"- Never invent events, emails, tasks, pickup times, or meal plans.\n"
 			"- Never assume what day of the week it is or what the user's schedule looks like.\n"
 			"- Never generate school pickup times, standup meetings, or any recurring schedule items unless they appear verbatim in CALENDAR TODAY.\n"
-			"- Proactive suggestions (fitness, meal ideas) are allowed BUT must be clearly framed as suggestions, not as confirmed schedule items.\n\n"
+			"- Proactive suggestions (fitness, meal ideas) are allowed BUT must be clearly framed as suggestions, not as confirmed schedule items.\n"
+			"- Proactive suggestions (fitness, nutrition) MUST NOT include specific times unless a fitness plan with a scheduled time exists in the board data. Never invent a workout time.\n\n"
 			"OUTPUT FORMAT — include a section only when you have real data for it:\n"
 			"[One-line opener: temperature and conditions from WEATHER FORECAST. Facts only.]\n\n"
 			"Calendar: [only if CALENDAR TODAY has real events — list each with time, one line each]\n"
@@ -267,7 +270,7 @@ async def morning_briefing():
 			f"INNER CIRCLE (Family/Care):\n{inner_context}\n\n"
 			+ (f"CALENDAR TODAY:\n{calendar_summary}\n\n" if not _calendar_is_empty else "")
 			+ f"WEATHER FORECAST:\n{weather_report}\n\n"
-			+ f"RECENT ACTIVITY (LAST 24H):\n{activity}\n\n"
+			+ f"RECENT ACTIVITY (LAST 48H):\n{activity}\n\n"
 			+ f"PROJECT TREE:\n{tree}\n\n"
 			+ (f"LATEST EMAILS:\n{email_summary}\n" if not _email_is_absent else "")
 			+ (
