@@ -82,10 +82,10 @@ Phases run in the order shown. Each phase has a one-line summary, the artifact(s
 | P3 | Delete `services/automation.py`; introduce `signal_interpreter` crew (HITL) in `agent/crews.yaml`. | this artifact (C2), `docs/artifacts/full_ambient_intelligence_roadmap.md` | P0 | COMPLETE 2026-05-10 |
 | P4 | RIP Person / Circle / inner_circle / CircleManager. No flag. No export. | `docs/artifacts/circle_removal.md` | P0 | COMPLETE 2026-05-10 |
 | P5 | Calendar Manager downgrade to read-only viewer; keep HITL "create event"; turn calendar into a `MemorySource`. | this artifact (C7), `docs/artifacts/memory_atlas.md` | MA0 | PENDING -- prereq MA0 |
-| MA0 | Atlas foundations: data model, MemorySource plugin contract scaffolding, no UI yet. | `docs/artifacts/memory_atlas.md` | P0..P4 | PENDING -- prereq P0..P4 (now met) |
-| MA1 | Atlas v1: graph lens, list lens (a11y fallback), spine reader; ChatPrompt persistent at bottom edge. | `docs/artifacts/memory_atlas.md` | MA0 | PENDING |
-| MA2 | Recompose operations + steel-manning + echo-finder (promoted). | `docs/artifacts/memory_atlas.md` | MA1 | PENDING |
-| MA3 | Lenses beyond graph (timeline, heatmap, focus, etc. per memory_atlas.md). | `docs/artifacts/memory_atlas.md` | MA2 | PENDING |
+| MA0 | Atlas foundations: data model, MemorySource plugin contract scaffolding, no UI yet. | `docs/artifacts/memory_atlas.md` | P0..P4 | COMPLETE 2026-05-10 |
+| MA1 | Atlas v1: graph lens, list lens (a11y fallback), spine reader; ChatPrompt persistent at bottom edge. | `docs/artifacts/memory_atlas.md` | MA0 | COMPLETE 2026-05-10 |
+| MA2 | Recompose operations + steel-manning + echo-finder (promoted). | `docs/artifacts/memory_atlas.md` | MA1 | COMPLETE 2026-05-10 |
+| MA3 | Lenses beyond graph (timeline, heatmap, focus, etc. per memory_atlas.md). | `docs/artifacts/memory_atlas.md` | MA2 | IN PROGRESS |
 | D | Diff ribbon -- persistent "what changed since you last looked" surface. | `docs/artifacts/memory_atlas.md` (cross-cutting) | MA1 | PENDING |
 | C | Contradiction detector crew + contradiction node type. | `docs/artifacts/memory_atlas.md`, `agent/crews.yaml` | MA1 | PENDING |
 | W | Walk-throughs into briefings; channel-parity delivery. | `docs/artifacts/walkthroughs_and_briefings.md` | MA1 | PENDING |
