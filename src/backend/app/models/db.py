@@ -33,7 +33,7 @@ class Preference(Base):
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
 class EmailRule(Base):
-    __tablename__ = "email_rules"
+    __tablename__ = "email_triage_rules"
     id = Column(Integer, primary_key=True)
     sender_pattern = Column(String, nullable=False)
     subject_pattern = Column(String)

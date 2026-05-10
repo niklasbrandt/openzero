@@ -7,28 +7,10 @@ Missing keys fall back to English at runtime via get_translations().
 """
 from app.services.i18n.en import translations as _EN
 from app.services.i18n.de import translations as _DE
-from app.services.i18n.es import translations as _ES
-from app.services.i18n.fr import translations as _FR
-from app.services.i18n.ja import translations as _JA
-from app.services.i18n.zh import translations as _ZH
-from app.services.i18n.hi import translations as _HI
-from app.services.i18n.ru import translations as _RU
-from app.services.i18n.ko import translations as _KO
-from app.services.i18n.pt import translations as _PT
-from app.services.i18n.ar import translations as _AR
 
 _TRANSLATIONS: dict[str, dict[str, str]] = {
 	"en": _EN,
 	"de": _DE,
-	"es": _ES,
-	"fr": _FR,
-	"ja": _JA,
-	"zh": _ZH,
-	"hi": _HI,
-	"ar": _AR,
-	"pt": _PT,
-	"ru": _RU,
-	"ko": _KO,
 }
 
 

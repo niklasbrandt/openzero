@@ -12,7 +12,6 @@ import '../components/UserCard'
 function loadLazyComponents(): void {
 	import('../components/MemorySearch')
 	import('../components/BriefingHistory')
-	import('../components/EmailRules')
 	import('../components/CircleManager')
 	import('../components/CreateProject')
 	import('../components/CalendarAgenda')
