@@ -55,7 +55,7 @@ interface DiffEntry {
 	spine_id?: string | null;
 }
 
-type Lens = 'list' | 'graph' | 'spines' | 'timeline' | 'decisions' | 'contradictions' | 'diffs';
+type Lens = 'list' | 'graph' | 'spines' | 'timeline' | 'decisions' | 'contradictions' | 'diffs' | 'domain';
 
 export class MemoryAtlas extends HTMLElement {
 	private t: Record<string, string> = {};
@@ -70,6 +70,8 @@ export class MemoryAtlas extends HTMLElement {
 	private _mergeMode: boolean = false;
 	private _mergeSelection: Set<number> = new Set();
 	private _contradictionsShowAll: boolean = false;
+	private _whyHandler: ((e: KeyboardEvent) => void) | null = null;
+	private _whyPopover: HTMLElement | null = null;
 
 	constructor() {
 		super();
@@ -92,6 +94,19 @@ export class MemoryAtlas extends HTMLElement {
 
 	connectedCallback() {
 		this.prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+		this._whyHandler = (e: KeyboardEvent) => {
+			if (e.key === '?' && !e.ctrlKey && !e.metaKey) {
+				const target = e.target as Element;
+				if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+				const focused = this.shadowRoot?.querySelector<HTMLElement>('[data-entity-type][data-entity-id]:focus');
+				if (focused) {
+					const type = focused.getAttribute('data-entity-type') as string;
+					const id = focused.getAttribute('data-entity-id') as string;
+					this.showWhyPopover(type, id, focused);
+				}
+			}
+		};
+		this.addEventListener('keydown', this._whyHandler);
 		this.loadTranslations().then(() => this.render());
 	}
 
@@ -99,6 +114,10 @@ export class MemoryAtlas extends HTMLElement {
 		if (this.animFrameId !== null) {
 			cancelAnimationFrame(this.animFrameId);
 			this.animFrameId = null;
+		}
+		if (this._whyHandler) {
+			this.removeEventListener('keydown', this._whyHandler);
+			this._whyHandler = null;
 		}
 	}
 
@@ -1074,6 +1093,184 @@ export class MemoryAtlas extends HTMLElement {
 				@media (prefers-reduced-motion: reduce) {
 					.contradiction-filter-btn { transition: none; }
 				}
+
+				/* ── Domain lens (Phase DD) ── */
+				.domain-section-label {
+					font-size: 0.75rem;
+					font-weight: 700;
+					text-transform: uppercase;
+					letter-spacing: 0.08em;
+					color: var(--text-faint, hsla(0, 0%, 100%, 0.4));
+					margin-bottom: 0.5rem;
+					margin-top: 1rem;
+				}
+
+				.domain-section-label:first-child {
+					margin-top: 0;
+				}
+
+				.domain-identity-card {
+					display: flex;
+					flex-direction: column;
+					gap: 0.4rem;
+					padding: 0.75rem 1rem;
+					border-radius: var(--radius-md, 0.5rem);
+					border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.08));
+					background: var(--surface-card, hsla(0, 0%, 100%, 0.04));
+					margin-bottom: 0.75rem;
+				}
+
+				.domain-identity-name {
+					font-size: 1rem;
+					font-weight: 700;
+					color: var(--text-primary, hsla(0, 0%, 100%, 1));
+				}
+
+				.domain-identity-purpose {
+					font-size: 0.875rem;
+					color: var(--text-secondary, hsla(0, 0%, 100%, 0.75));
+					line-height: 1.5;
+				}
+
+				.domain-spine-list {
+					display: flex;
+					flex-direction: column;
+					gap: 0.4rem;
+					margin-bottom: 0.75rem;
+				}
+
+				.domain-spine-item {
+					display: flex;
+					align-items: center;
+					gap: 0.75rem;
+					padding: 0.6rem 1rem;
+					border-radius: var(--radius-md, 0.5rem);
+					border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.08));
+					background: var(--surface-card, hsla(0, 0%, 100%, 0.04));
+					min-height: 44px;
+				}
+
+				.domain-spine-label {
+					flex: 1;
+					font-size: 0.875rem;
+					font-weight: 500;
+					color: var(--text-primary, hsla(0, 0%, 100%, 1));
+				}
+
+				.domain-spine-meta {
+					font-size: 0.7rem;
+					color: var(--text-faint, hsla(0, 0%, 100%, 0.4));
+					flex-shrink: 0;
+				}
+
+				.domain-confirm-btn {
+					min-height: 44px;
+					min-width: 44px;
+					padding: 0.3rem 0.85rem;
+					border-radius: var(--radius-md, 0.5rem);
+					font-size: 0.75rem;
+					font-weight: 600;
+					cursor: pointer;
+					background: transparent;
+					border: 1.5px solid var(--accent-primary, hsla(173, 80%, 40%, 1));
+					color: var(--accent-primary, hsla(173, 80%, 40%, 1));
+					transition: background var(--duration-fast, 0.15s);
+					flex-shrink: 0;
+				}
+
+				.domain-confirm-btn:hover {
+					background: var(--surface-accent-subtle, hsla(173, 80%, 40%, 0.12));
+				}
+
+				.domain-confirm-btn:focus-visible {
+					outline: 2px solid var(--accent-primary, hsla(173, 80%, 40%, 1));
+					outline-offset: 2px;
+				}
+
+				.domain-confirm-btn.confirmed {
+					background: var(--accent-primary, hsla(173, 80%, 40%, 1));
+					color: hsla(0, 0%, 100%, 1);
+					cursor: default;
+				}
+
+				.domain-inferred-note {
+					font-size: 0.75rem;
+					color: var(--text-faint, hsla(0, 0%, 100%, 0.35));
+					padding-top: 0.5rem;
+					border-top: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.06));
+					margin-top: 0.5rem;
+				}
+
+				/* ── Reduced/forced-colors (Domain additions) ── */
+				@media (prefers-reduced-motion: reduce) {
+					.domain-confirm-btn { transition: none; }
+				}
+
+				@media (forced-colors: active) {
+					.domain-confirm-btn { border-color: ButtonText; color: ButtonText; }
+					.domain-confirm-btn.confirmed {
+						forced-color-adjust: none;
+						background: ButtonText;
+						color: ButtonFace;
+					}
+					.domain-identity-card { border-color: ButtonText; }
+					.domain-spine-item { border-color: ButtonText; }
+				}
+
+				/* ── Why? popover ── */
+				#why-popover {
+					position: absolute;
+					z-index: 200;
+					background: var(--panel-bg, hsla(222, 15%, 12%, 0.97));
+					border: 1px solid var(--accent-color, hsla(173, 80%, 40%, 0.4));
+					border-radius: 0.5rem;
+					padding: 0.75rem 1rem;
+					max-width: 20rem;
+					font-size: 0.85rem;
+					color: var(--text, hsla(0, 0%, 95%, 1));
+					box-shadow: 0 4px 24px hsla(0, 0%, 0%, 0.4);
+				}
+
+				#why-popover .why-refs {
+					list-style: disc;
+					padding-left: 1.25rem;
+					margin: 0.25rem 0;
+				}
+
+				#why-popover .why-confidence {
+					color: var(--accent-color, hsla(173, 80%, 40%, 1));
+					font-weight: 600;
+				}
+
+				/* ── Why hint ── */
+				.why-hint {
+					display: flex;
+					align-items: center;
+					gap: 0.35rem;
+					font-size: 0.75rem;
+					color: var(--text-faint, hsla(0, 0%, 100%, 0.35));
+					margin-top: 0.25rem;
+				}
+
+				kbd {
+					display: inline-block;
+					padding: 0.1rem 0.4rem;
+					border-radius: 0.25rem;
+					border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.2));
+					font-family: monospace;
+					font-size: 0.75rem;
+					background: var(--surface-card, hsla(0, 0%, 100%, 0.04));
+					color: var(--text-secondary, hsla(0, 0%, 100%, 0.7));
+				}
+
+				@media (forced-colors: active) {
+					#why-popover { border-color: ButtonText; }
+					kbd { border-color: ButtonText; }
+				}
+
+				@media (prefers-reduced-motion: reduce) {
+					#why-popover { box-shadow: none; }
+				}
 			</style>
 
 			<div id="atlas-root">
@@ -1138,6 +1335,19 @@ export class MemoryAtlas extends HTMLElement {
 						aria-controls="lens-diffs"
 						aria-label="${this.tr('aria_lens_diffs', 'Switch to Changes lens')}"
 					>${this.tr('lens_diffs', 'Changes')}</button>
+					<button
+						role="tab"
+						data-lens="domain"
+						aria-selected="false"
+						aria-controls="lens-domain"
+						aria-label="${this.tr('aria_lens_domain', 'Switch to Domain lens')}"
+					>${this.tr('lens_domain', 'Domain')}</button>
+				</div>
+
+				<div class="why-hint" role="note">
+					<kbd aria-hidden="true">?</kbd>
+					<span>${this.tr('why_hint', 'Press ? on any item to see why')}</span>
+					<span class="sr-only">${this.tr('aria_why_popover', 'Justification popover')}</span>
 				</div>
 
 				<div
@@ -1228,6 +1438,17 @@ export class MemoryAtlas extends HTMLElement {
 					<div class="loading-line" style="width:78%;"></div>
 				</div>
 
+				<div
+					id="lens-domain"
+					role="tabpanel"
+					aria-label="${this.tr('aria_domain_lens', 'Domain lens')}"
+					class="lens-panel"
+					hidden
+				>
+					<div class="loading-line"></div>
+					<div class="loading-line" style="width:78%;"></div>
+				</div>
+
 				<div id="chat-prompt-bar">
 					<input
 						type="text"
@@ -1309,6 +1530,7 @@ export class MemoryAtlas extends HTMLElement {
 			decisions: 'lens-decisions',
 			contradictions: 'lens-contradictions',
 			diffs: 'lens-diffs',
+			domain: 'lens-domain',
 		};
 		(Object.entries(panelIds) as [Lens, string][]).forEach(([l, id]) => {
 			const panel = root.getElementById(id);
@@ -1331,6 +1553,7 @@ export class MemoryAtlas extends HTMLElement {
 		if (lens === 'decisions') await this.loadDecisionsLens();
 		if (lens === 'contradictions') await this.loadContradictionsLens();
 		if (lens === 'diffs') await this.loadDiffsLens();
+		if (lens === 'domain') await this.loadDomainLens();
 	}
 
 	// ── List lens ──────────────────────────────────────────────────────────
@@ -1374,6 +1597,8 @@ export class MemoryAtlas extends HTMLElement {
 				class="node-item"
 				tabindex="0"
 				data-id="${this.esc(n.id)}"
+				data-entity-type="node"
+				data-entity-id="${this.esc(n.id)}"
 				aria-label="${this.tr('aria_node_item', 'Memory node')}: ${this.esc(n.label)}"
 			>
 				<div class="node-row">
@@ -2022,6 +2247,8 @@ export class MemoryAtlas extends HTMLElement {
 			return `<details
 				class="spine-item"
 				data-id="${this.esc(s.id)}"
+				data-entity-type="spine"
+				data-entity-id="${this.esc(s.id)}"
 				aria-label="${this.tr('aria_spine_section', 'Topic spine')}: ${this.esc(s.label)}"
 			>
 				<summary>
@@ -2351,6 +2578,92 @@ export class MemoryAtlas extends HTMLElement {
 		});
 	}
 
+	// ── Domain lens (Phase DD) ────────────────────────────────────────────
+
+	private async loadDomainLens() {
+		const panel = this.shadowRoot?.getElementById('lens-domain');
+		if (!panel) return;
+		try {
+			const res = await fetch('/api/atlas/domain');
+			if (!res.ok) throw new Error('fetch failed');
+			const data = await res.json();
+			this.renderDomainLens(panel, data);
+		} catch (_) {
+			this.renderDomainLens(panel, { domain: null });
+		}
+	}
+
+	private renderDomainLens(panel: HTMLElement, data: { domain: Record<string, unknown> | null }) {
+		if (!data.domain) {
+			panel.innerHTML = `<div class="empty-state" role="status">${this.esc(this.tr('domain_not_yet_inferred', 'Domain not yet inferred. Run the domain_inference crew.'))}</div>`;
+			return;
+		}
+
+		const domain = data.domain as {
+			identity?: { name?: string; purpose?: string; operator_confirmed?: boolean };
+			spines?: Array<{ id: string; label: string; confidence?: number; evidence_count?: number; operator_confirmed?: boolean }>;
+			confidence?: number;
+			generated_at?: string;
+		};
+
+		const identity = domain.identity || {};
+		const spines = domain.spines || [];
+
+		const identityConfirmedClass = identity.operator_confirmed ? ' confirmed' : '';
+
+		const spineItems = spines.map(s => {
+			const conf = typeof s.confidence === 'number' ? `${Math.round(s.confidence * 100)}%` : '—';
+			const evidence = typeof s.evidence_count === 'number' ? String(s.evidence_count) : '—';
+			const confirmedClass = s.operator_confirmed ? ' confirmed' : '';
+			return `<div class="domain-spine-item">
+				<span class="domain-spine-label">${this.esc(s.label || s.id)}</span>
+				<span class="domain-spine-meta">${this.esc(this.tr('domain_confidence', 'Confidence'))}: ${this.esc(conf)} &middot; ${this.esc(this.tr('domain_evidence', 'Evidence signals'))}: ${this.esc(evidence)}</span>
+				<button
+					class="domain-confirm-btn${confirmedClass}"
+					data-confirm-field="spine.${this.esc(s.id)}"
+					aria-label="${this.esc(this.tr('domain_confirm', 'Confirm'))} ${this.esc(s.label || s.id)}"
+					${s.operator_confirmed ? 'disabled' : ''}
+				>${this.esc(this.tr('domain_confirm', 'Confirm'))}</button>
+			</div>`;
+		}).join('');
+
+		panel.innerHTML = `
+			<div class="domain-section-label">${this.esc(this.tr('domain_identity', 'Instance identity'))}</div>
+			<div class="domain-identity-card">
+				<span class="domain-identity-name">${this.esc(identity.name || '—')}</span>
+				<span class="domain-identity-purpose">${this.esc(identity.purpose || '')}</span>
+				<button
+					class="domain-confirm-btn${identityConfirmedClass}"
+					data-confirm-field="identity.name"
+					aria-label="${this.esc(this.tr('domain_confirm', 'Confirm'))} ${this.esc(this.tr('domain_identity', 'Instance identity'))}"
+					${identity.operator_confirmed ? 'disabled' : ''}
+				>${this.esc(this.tr('domain_confirm', 'Confirm'))}</button>
+			</div>
+
+			<div class="domain-section-label">${this.esc(this.tr('domain_spines', 'Inferred topic spines'))}</div>
+			<div class="domain-spine-list" aria-label="${this.esc(this.tr('domain_spines', 'Inferred topic spines'))}">
+				${spines.length === 0 ? `<div class="empty-state">&mdash;</div>` : spineItems}
+			</div>
+
+			<p class="domain-inferred-note" role="note">${this.esc(this.tr('domain_inferred_note', 'This is substrate-inferred, not hand-authored.'))}</p>
+		`;
+
+		panel.querySelectorAll<HTMLButtonElement>('.domain-confirm-btn:not([disabled])').forEach(btn => {
+			btn.addEventListener('click', async () => {
+				const field = btn.dataset.confirmField;
+				if (!field) return;
+				try {
+					await fetch('/api/atlas/domain/confirm', {
+						method: 'PATCH',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ field }),
+					});
+				} catch (_) { /* ignore */ }
+				await this.loadDomainLens();
+			});
+		});
+	}
+
 	// ── Chat bar ───────────────────────────────────────────────────────────
 
 	private sendChat() {
@@ -2364,6 +2677,62 @@ export class MemoryAtlas extends HTMLElement {
 			composed: true,
 			detail: { message: value },
 		}));
+	}
+
+	// ── Why? popover (Phase Y) ─────────────────────────────────────────────
+
+	private async showWhyPopover(entityType: string, entityId: string, anchor: HTMLElement) {
+		this.closeWhyPopover();
+
+		const pop = document.createElement('div');
+		pop.id = 'why-popover';
+		pop.setAttribute('role', 'dialog');
+		pop.setAttribute('aria-label', this.tr('aria_why_popover', 'Justification popover'));
+		pop.setAttribute('aria-live', 'polite');
+		pop.innerHTML = `<span class="why-loading">${this.tr('why_loading', 'Loading…')}</span>`;
+
+		const root = this.shadowRoot!;
+		const atlasRoot = root.getElementById('atlas-root');
+		if (atlasRoot) atlasRoot.appendChild(pop);
+		this._whyPopover = pop;
+
+		const rect = anchor.getBoundingClientRect();
+		const hostRect = (root.host as HTMLElement).getBoundingClientRect();
+		pop.style.top = `${rect.bottom - hostRect.top + 6}px`;
+		pop.style.left = `${Math.min(rect.left - hostRect.left, hostRect.width - 340)}px`;
+
+		const dismiss = (e: Event) => {
+			if (e.type === 'keydown' && (e as KeyboardEvent).key !== 'Escape') return;
+			this.closeWhyPopover();
+			root.host.removeEventListener('keydown', dismiss);
+			root.host.removeEventListener('click', dismiss);
+		};
+		root.host.addEventListener('keydown', dismiss);
+		setTimeout(() => root.host.addEventListener('click', dismiss), 0);
+
+		try {
+			const res = await fetch(`/api/atlas/why?entity_type=${encodeURIComponent(entityType)}&entity_id=${encodeURIComponent(entityId)}`);
+			if (!res.ok) throw new Error('fetch failed');
+			const data = await res.json() as { summary?: string; refs?: string[]; confidence?: number };
+			const conf = data.confidence !== undefined ? Math.round(data.confidence * 100) : null;
+			const refsHtml = (data.refs && data.refs.length)
+				? `<ul class="why-refs">${data.refs.map(r => `<li>${this.esc(r)}</li>`).join('')}</ul>`
+				: '';
+			pop.innerHTML = `
+				${data.summary ? `<div>${this.esc(data.summary)}</div>` : ''}
+				${refsHtml}
+				${conf !== null ? `<div class="why-confidence">${this.tr('atlas_confidence', 'Confidence')}: ${conf}%</div>` : ''}
+			`;
+		} catch (_) {
+			pop.innerHTML = `<span>${this.tr('why_error', 'Could not load justification.')}</span>`;
+		}
+	}
+
+	private closeWhyPopover() {
+		if (this._whyPopover) {
+			this._whyPopover.remove();
+			this._whyPopover = null;
+		}
 	}
 
 	// ── Utilities ──────────────────────────────────────────────────────────
