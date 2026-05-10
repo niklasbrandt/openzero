@@ -778,8 +778,8 @@ CRITICAL — USE EXACT NAMES IN PROSE: When confirming a CREATE_TASK, your prose
 - Create Board: `[ACTION: CREATE_BOARD | PROJECT: project_name | NAME: text]`
   NAME RULE: Write ONLY the board's short label — never the user's full sentence.
   If the user says codename X → NAME is X. If the user puts X in quotes → NAME is X. If the user says "called X" or "named X" → NAME is X. Otherwise → shortest meaningful label (2-3 words max).
-  BAD: NAME: für mein neues business lifestyle clothing line codename "openSea"
-  GOOD: NAME: openSea
+  BAD: NAME: new board for my fitness tracking project codename "IronLog"
+  GOOD: NAME: IronLog
   BAD: NAME: new board for my clothing project called Velocity
   GOOD: NAME: Velocity
 - Create List (Column): `[ACTION: CREATE_LIST | BOARD: board_name | NAME: text]`
