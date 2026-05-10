@@ -1612,3 +1612,180 @@ async def get_activity_report(days: int = 30) -> str:
 	except Exception:
 		logger.exception("get_activity_report failed")
 		return "### OPERATIONAL DATA FAILURE ###\n⚠️ Connection to Planka disrupted. Mission status is UNVERIFIED. DO NOT SIMULATE LIVE STATE."
+
+
+async def get_recent_activity(hours: int = 48) -> str:
+	"""Returns a formatted text block of non-done cards created or updated within the last `hours` hours."""
+	cutoff = datetime.now() - timedelta(hours=hours)
+	try:
+		token = await get_planka_auth_token()
+		headers = {"Authorization": f"Bearer {token}"}
+		async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, timeout=20.0, headers=headers) as client:
+			resp = await client.get("/api/projects")
+			projects = resp.json().get("items", [])
+			if not projects:
+				return f"[NO ACTIVITY IN LAST {hours} HOURS]"
+
+			all_details_tasks = [client.get(f"/api/projects/{p['id']}") for p in projects]
+			all_details_resps = await asyncio.gather(*all_details_tasks)
+
+			board_tasks = []
+			board_names = []
+			for r in all_details_resps:
+				d = r.json()
+				boards = d.get("included", {}).get("boards", []) or d.get("boards", [])
+				for b in boards:
+					board_tasks.append(client.get(f"/api/boards/{b['id']}", params={"included": "lists,cards"}))
+					board_names.append(b["name"])
+
+			if not board_tasks:
+				return f"[NO ACTIVITY IN LAST {hours} HOURS]"
+
+			board_details = await asyncio.gather(*board_tasks)
+
+			lines = []
+			for b_idx, b_resp in enumerate(board_details):
+				b_data = b_resp.json()
+				b_name = board_names[b_idx]
+				lists = b_data.get("included", {}).get("lists", [])
+				cards = b_data.get("included", {}).get("cards", [])
+				list_map = {l["id"]: l["name"] for l in lists}
+				done_list_ids = {l["id"] for l in lists if _is_done_list(l.get("name", ""))}
+
+				for card in cards:
+					if card["listId"] in done_list_ids:
+						continue
+					_raw_created = card.get("createdAt") or ""
+					_raw_updated = card.get("updatedAt") or ""
+					c_created = datetime.fromisoformat(_raw_created.replace("Z", "")) if _raw_created else datetime.min
+					c_updated = datetime.fromisoformat(_raw_updated.replace("Z", "")) if _raw_updated else datetime.min
+					most_recent = max(c_created, c_updated)
+					if most_recent < cutoff:
+						continue
+					list_name = list_map.get(card["listId"], "?")
+					change = "created" if c_created >= cutoff else "updated"
+					lines.append(f"- {card['name']} | {b_name} -> {list_name} | {change}")
+
+		if not lines:
+			return f"[NO ACTIVITY IN LAST {hours} HOURS]"
+		return "\n".join(lines)
+	except Exception:
+		logger.exception("get_recent_activity failed")
+		return "### RECENT ACTIVITY FETCH FAILED ###"
+
+
+async def get_stale_cards(min_days: int = 5) -> str:
+	"""Returns a formatted text block of non-done cards with no update for `min_days` or more, grouped by board."""
+	threshold = datetime.now() - timedelta(days=min_days)
+	try:
+		token = await get_planka_auth_token()
+		headers = {"Authorization": f"Bearer {token}"}
+		async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, timeout=20.0, headers=headers) as client:
+			resp = await client.get("/api/projects")
+			projects = resp.json().get("items", [])
+			if not projects:
+				return "[NO STALE ITEMS]"
+
+			all_details_tasks = [client.get(f"/api/projects/{p['id']}") for p in projects]
+			all_details_resps = await asyncio.gather(*all_details_tasks)
+
+			board_tasks = []
+			board_names = []
+			for r in all_details_resps:
+				d = r.json()
+				boards = d.get("included", {}).get("boards", []) or d.get("boards", [])
+				for b in boards:
+					board_tasks.append(client.get(f"/api/boards/{b['id']}", params={"included": "lists,cards"}))
+					board_names.append(b["name"])
+
+			if not board_tasks:
+				return "[NO STALE ITEMS]"
+
+			board_details = await asyncio.gather(*board_tasks)
+
+			by_board: dict[str, list[str]] = {}
+			for b_idx, b_resp in enumerate(board_details):
+				b_data = b_resp.json()
+				b_name = board_names[b_idx]
+				lists = b_data.get("included", {}).get("lists", [])
+				cards = b_data.get("included", {}).get("cards", [])
+				list_map = {l["id"]: l["name"] for l in lists}
+				done_list_ids = {l["id"] for l in lists if _is_done_list(l.get("name", ""))}
+
+				for card in cards:
+					if card["listId"] in done_list_ids:
+						continue
+					_raw_updated = card.get("updatedAt") or ""
+					c_updated = datetime.fromisoformat(_raw_updated.replace("Z", "")) if _raw_updated else datetime.min
+					if c_updated >= threshold:
+						continue
+					days_stale = (datetime.now() - c_updated).days
+					list_name = list_map.get(card["listId"], "?")
+					if b_name not in by_board:
+						by_board[b_name] = []
+					by_board[b_name].append(f"  - {card['name']} | {list_name} | {days_stale} days since last update")
+
+		if not by_board:
+			return "[NO STALE ITEMS]"
+		result_lines = []
+		for board, entries in sorted(by_board.items()):
+			result_lines.append(f"{board}:")
+			result_lines.extend(entries)
+		return "\n".join(result_lines)
+	except Exception:
+		logger.exception("get_stale_cards failed")
+		return "### STALE CARDS FETCH FAILED ###"
+
+
+_CREW_BOARD_NAMES = {"fitness", "nutrition", "life", "health", "finance", "work", "learning"}
+
+
+async def get_crew_board_snapshot() -> str:
+	"""Returns a formatted block showing top 2 active (non-done) cards per crew-named board."""
+	try:
+		token = await get_planka_auth_token()
+		headers = {"Authorization": f"Bearer {token}"}
+		async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, timeout=20.0, headers=headers) as client:
+			resp = await client.get("/api/projects")
+			projects = resp.json().get("items", [])
+			if not projects:
+				return "(no crew boards found)"
+
+			all_details_tasks = [client.get(f"/api/projects/{p['id']}") for p in projects]
+			all_details_resps = await asyncio.gather(*all_details_tasks)
+
+			board_tasks = []
+			board_names = []
+			for r in all_details_resps:
+				d = r.json()
+				boards = d.get("included", {}).get("boards", []) or d.get("boards", [])
+				for b in boards:
+					if b["name"].strip().lower() in _CREW_BOARD_NAMES:
+						board_tasks.append(client.get(f"/api/boards/{b['id']}", params={"included": "lists,cards"}))
+						board_names.append(b["name"])
+
+			if not board_tasks:
+				return "(no crew boards found)"
+
+			board_details = await asyncio.gather(*board_tasks)
+
+			lines = []
+			for b_idx, b_resp in enumerate(board_details):
+				b_data = b_resp.json()
+				b_name = board_names[b_idx]
+				lists = b_data.get("included", {}).get("lists", [])
+				cards = b_data.get("included", {}).get("cards", [])
+				list_map = {l["id"]: l["name"] for l in lists}
+				done_list_ids = {l["id"] for l in lists if _is_done_list(l.get("name", ""))}
+				active_cards = [c for c in cards if c["listId"] not in done_list_ids]
+				if not active_cards:
+					lines.append(f"{b_name}: no active items")
+				else:
+					top = active_cards[:2]
+					card_strs = ", ".join(f"{c['name']} ({list_map.get(c['listId'], '?')})" for c in top)
+					lines.append(f"{b_name}: {card_strs}")
+
+		return "\n".join(lines) if lines else "(no crew boards found)"
+	except Exception:
+		logger.exception("get_crew_board_snapshot failed")
+		return "### CREW SNAPSHOT FETCH FAILED ###"

@@ -106,12 +106,14 @@ async def morning_briefing():
 			emails = await fetch_unread_emails(max_results=5)
 			return "\n".join([f"- {e['from']}: {e['subject']}" for e in emails]) if emails else "[NO DATA — email is not connected or inbox is empty. The Email section MUST be absent from the briefing. Do NOT invent senders, subjects, or message content.]"
 
-		from app.services.planka import get_activity_report
-		weather_report, tree, email_summary, activity = await asyncio.gather(
+		from app.services.planka import get_recent_activity, get_stale_cards, get_crew_board_snapshot
+		weather_report, tree, email_summary, recent_activity, stale_cards, crew_snapshot = await asyncio.gather(
 			get_weather_forecast(detected_location),
 			get_project_tree(as_html=False),
 			_get_email_summary(),
-			get_activity_report(days=2),
+			get_recent_activity(hours=48),
+			get_stale_cards(min_days=5),
+			get_crew_board_snapshot(),
 		)
 		logger.debug("morning_briefing — batch-2 done in %.1fs", asyncio.get_event_loop().time() - _t2)
 
@@ -160,6 +162,9 @@ async def morning_briefing():
 			for ev in calendar_events:
 				logger.info("Morning briefing calendar event: %s start=%s", ev.get('summary', '?'), ev.get('start', '?'))
 
+		logger.debug("Morning data context: recent_activity=%s stale_cards=%s crew_snapshot=%s",
+			recent_activity[:200], stale_cards[:200], crew_snapshot[:200])
+
 		full_prompt = (
 			"ABSOLUTE RULE — FABRICATION IS FORBIDDEN:\n"
 			"You are only permitted to report information that appears verbatim in the DATA SECTIONS below.\n"
@@ -169,6 +174,9 @@ async def morning_briefing():
 			"- If the PROJECT TREE shows \"(+N more)\", those N cards are UNKNOWN. Do NOT guess, invent, or infer their titles.\n"
 			"- NEVER construct card titles by combining words from board names, list names, or other cards. Only quote card titles verbatim as they appear in PROJECT TREE.\n"
 			"- NEVER use any proper noun (person name, project name, task title, company name) that does not appear verbatim in the data sections below.\n"
+			"- Every statement in your briefing must reference data from one of the sections below.\n"
+			"- If a section shows [NO DATA], [NO ACTIVITY IN LAST 48 HOURS], or [NO STALE ITEMS], do not mention that topic.\n"
+			"- Do not generate fitness plans, meal suggestions, or project guesses from your own knowledge.\n"
 			"- Violating this rule means the briefing is WRONG and HARMFUL. Do not invent. Do not infer. Do not complete patterns.\n\n"
 			"Z, it's morning. Write the daily briefing for the user.\n\n"
 			"You are receiving REAL data from live system sources. The data blocks at the bottom of this prompt are the ONLY source of truth.\n\n"
@@ -183,16 +191,15 @@ async def morning_briefing():
 			"- Never invent events, emails, tasks, pickup times, or meal plans.\n"
 			"- Never assume what day of the week it is or what the user's schedule looks like.\n"
 			"- Never generate school pickup times, standup meetings, or any recurring schedule items unless they appear verbatim in CALENDAR TODAY.\n"
-			"- Proactive suggestions (fitness, meal ideas) are allowed BUT must be clearly framed as suggestions, not as confirmed schedule items.\n"
-			"- Proactive suggestions (fitness, nutrition) MUST NOT include specific times unless a fitness plan with a scheduled time exists in the board data. Never invent a workout time.\n\n"
+			"- Every bullet in the output must trace back to one of the data sections below.\n\n"
 			"OUTPUT FORMAT — include a section only when you have real data for it:\n"
 			"[One-line opener: temperature and conditions from WEATHER FORECAST. Facts only.]\n\n"
 			"Calendar: [only if CALENDAR TODAY has real events — list each with time, one line each]\n"
 			"Email: [only if LATEST EMAILS has real emails — list notable items, one line each]\n\n"
 			"Board (Today): [only if PROJECT TREE has real cards — act as a kanban expert: read the actual list names and card titles from the tree; identify the 1-2 highest-value cards to progress today; flag anything stuck or blocking something downstream; recommend the single next physical action for the top card]\n\n"
-			"[Include a labeled crew block only if the crew has concrete data for today:]\n"
-			"Fitness: [only if a fitness crew produced a concrete plan for today]\n"
-			"Nutrition: [only if a meal plan exists — ONE warm meal suggestion only, never both lunch and dinner]\n"
+			"Activity: [only if RECENT ACTIVITY (LAST 48H) has real entries — summarise what moved, one line per card]\n\n"
+			"Stale: [only if STALE / NO MOVEMENT (5+ DAYS) has real entries — name the boards and cards that have gone silent, one line each]\n\n"
+			"Crew: [only if CREW BOARD SNAPSHOT has real card entries — list the crew boards and their active cards verbatim]\n\n"
 			"[Kids / People: only if INNER CIRCLE has someone relevant AND today-specific context from the actual data]\n\n"
 			"ANTI-PATTERNS — these make the output invalid:\n"
 			"WRONG (literary): 'You wake up to the kind of grey light that doesn\'t promise much but doesn\'t lie either...'\n"
@@ -205,31 +212,18 @@ async def morning_briefing():
 			"- Weather: temperature and conditions from WEATHER FORECAST. Always include — weather data is always provided.\n"
 			"- Calendar: only if CALENDAR TODAY is not marked [EMPTY]. List real events only.\n"
 			"- Board: only if PROJECT TREE has real cards. Never list cards not present in the tree.\n"
+			"- Activity: only if RECENT ACTIVITY (LAST 48H) contains real card entries.\n"
+			"- Stale: only if STALE / NO MOVEMENT (5+ DAYS) contains real card entries.\n"
+			"- Crew: only if CREW BOARD SNAPSHOT contains real card data (not 'no active items' for every board).\n"
 			"- People: only if INNER CIRCLE has someone with today-relevant context explicitly in the data.\n"
 			"- Email: only if LATEST EMAILS has real emails. If marked [EMPTY], omit the section entirely.\n\n"
-			"PROACTIVE SUGGESTIONS — allowed, but grounded:\n"
-			"Based on the user's known personal context (health goals, career aspirations, family situation, "
-			"fitness preferences, nutrition needs, life circumstances), actively suggest concrete things "
-			"they could do today. Label suggestions clearly as suggestions, never as confirmed schedule items.\n"
-			"- If the fitness or health crew has produced a plan, suggest today's workout window based on weather and calendar gaps.\n"
-			"- If career goals exist, suggest a concrete skill-building action for today.\n"
-			"- If there are kids in INNER CIRCLE, suggest something good for them based on weather — but NEVER infer school days, pickup times, or child logistics unless those appear verbatim in CALENDAR TODAY.\n"
-			"- If nutrition crew is active, mention ONE warm meal suggestion. Do not suggest both lunch and dinner.\n"
-			"- If stagnant projects exist in the tree, nudge on the most impactful one.\n"
-			"- As a kanban expert, apply these principles to the board section (adapt to whatever list names the board actually uses — do NOT assume columns called 'Backlog', 'In Progress', or 'Done'):   \n"
-			"  * Read the board's actual list names from PROJECT TREE and treat them as the flow stages, left to right.\n"
-			"  * WIP discipline: if any active/work stage has multiple cards, flag that and recommend finishing one before pulling new work.\n"
-			"  * Pull signal: identify the single highest-value card in an early-stage list that should be advanced today.\n"
-			"  * Blocker detection: if a card has been in the same list for 2+ days (infer from RECENT ACTIVITY), name it and suggest the one action that would move it forward.\n"
-			"  * Done sweep: if a completion-stage list has cards that should be closed out or followed up, surface that.\n"
-			"  * The goal is a clear, opinionated recommendation — not a status report.\n"
-			"- If the weather is good, suggest something outdoors. If bad, suggest something productive indoors.\n"
-			"Add each suggestion as a labeled one-line bullet under the relevant section (Fitness:, Nutrition:, Kids:, etc.).\n\n"
-			"CREW AWARENESS — the user has these active autonomous crews working for them:\n"
-			f"{crew_context if crew_context else 'No active crews detected.'}\n"
-			"Surface relevant crew output as labeled single-line facts in the structure above. "
-			"If the fitness crew has a plan, one line under 'Fitness:'. If the nutrition crew has a meal, one line under 'Nutrition:'. "
-			"Only include crews that have something concrete for TODAY. No prose linking them together.\n\n"
+			"KANBAN EXPERT RULES (apply to Board and Activity sections):\n"
+			"- Read the board's actual list names from PROJECT TREE and treat them as flow stages, left to right.\n"
+			"- WIP discipline: if any active/work stage has multiple cards, flag that and recommend finishing one before pulling new work.\n"
+			"- Pull signal: identify the single highest-value card in an early-stage list that should be advanced today.\n"
+			"- Blocker detection: if a card appears in STALE section, name it and suggest the one action that would move it forward.\n"
+			"- Done sweep: if a completion-stage list has cards that should be closed out or followed up, surface that.\n"
+			"- The goal is a clear, opinionated recommendation — not a status report.\n\n"
 			"STRICT RULES:\n"
 			"- NEVER invent names, tasks, projects, or events not present in CONTEXT.\n"
 			"- IGNORE any placeholder or '[e.g., ...]' values in personal files.\n"
@@ -270,8 +264,10 @@ async def morning_briefing():
 			f"INNER CIRCLE (Family/Care):\n{inner_context}\n\n"
 			+ (f"CALENDAR TODAY:\n{calendar_summary}\n\n" if not _calendar_is_empty else "")
 			+ f"WEATHER FORECAST:\n{weather_report}\n\n"
-			+ f"RECENT ACTIVITY (LAST 48H):\n{activity}\n\n"
-			+ f"PROJECT TREE:\n{tree}\n\n"
+			+ f"PROJECT TREE (active boards only, no done-lists):\n{tree}\n\n"
+			+ f"RECENT ACTIVITY (LAST 48H):\n{recent_activity}\n\n"
+			+ f"STALE / NO MOVEMENT (5+ DAYS):\n{stale_cards}\n\n"
+			+ f"CREW BOARD SNAPSHOT:\n{crew_snapshot}\n\n"
 			+ (f"LATEST EMAILS:\n{email_summary}\n" if not _email_is_absent else "")
 			+ (
 				f"\nAMBIENT INSIGHTS (undelivered proactive signals from last 24h):\n"
@@ -282,8 +278,6 @@ async def morning_briefing():
 				if ambient_insights_section else ""
 			)
 		)
-
-		logger.debug("Morning prompt (first 500 chars): %s", full_prompt[:500])
 
 		# 3. Generate Briefing — cloud tier with 600s hard timeout, retry on failure
 		logger.debug("morning_briefing — starting LLM generation")
