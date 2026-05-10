@@ -46,6 +46,140 @@ async def lifespan(app: FastAPI):
             await conn.run_sync(Base.metadata.create_all)
             # Clean up legacy persons table if it still exists on older installs
             await conn.execute(text("DROP TABLE IF EXISTS people CASCADE;"))
+            # Atlas tables (Memory Atlas -- Phase MA0)
+            await conn.execute(text("""
+CREATE TABLE IF NOT EXISTS atlas_nodes (
+	id SERIAL PRIMARY KEY,
+	type VARCHAR(64) NOT NULL,
+	label TEXT NOT NULL,
+	payload JSONB DEFAULT '{}'::jsonb,
+	confidence FLOAT DEFAULT 0.5,
+	created_at TIMESTAMP DEFAULT NOW(),
+	updated_at TIMESTAMP DEFAULT NOW(),
+	last_mentioned_at TIMESTAMP
+);
+"""))
+            await conn.execute(text("""
+CREATE TABLE IF NOT EXISTS atlas_edges (
+	id SERIAL PRIMARY KEY,
+	source_node_id INTEGER NOT NULL REFERENCES atlas_nodes(id) ON DELETE CASCADE,
+	target_node_id INTEGER NOT NULL REFERENCES atlas_nodes(id) ON DELETE CASCADE,
+	kind VARCHAR(64) NOT NULL,
+	weight FLOAT DEFAULT 1.0,
+	payload JSONB DEFAULT '{}'::jsonb,
+	created_at TIMESTAMP DEFAULT NOW()
+);
+"""))
+            await conn.execute(text("""
+CREATE TABLE IF NOT EXISTS atlas_spines (
+	id SERIAL PRIMARY KEY,
+	label TEXT NOT NULL,
+	confidence FLOAT DEFAULT 0.5,
+	payload JSONB DEFAULT '{}'::jsonb,
+	derived BOOLEAN DEFAULT TRUE,
+	locked BOOLEAN DEFAULT FALSE,
+	updated_at TIMESTAMP DEFAULT NOW()
+);
+"""))
+            await conn.execute(text("""
+CREATE TABLE IF NOT EXISTS atlas_spine_members (
+	spine_id INTEGER NOT NULL REFERENCES atlas_spines(id) ON DELETE CASCADE,
+	node_id INTEGER NOT NULL REFERENCES atlas_nodes(id) ON DELETE CASCADE,
+	weight FLOAT DEFAULT 1.0,
+	PRIMARY KEY (spine_id, node_id)
+);
+"""))
+            await conn.execute(text("""
+CREATE TABLE IF NOT EXISTS atlas_spine_summaries (
+	id SERIAL PRIMARY KEY,
+	spine_id INTEGER NOT NULL REFERENCES atlas_spines(id) ON DELETE CASCADE,
+	generated_at TIMESTAMP DEFAULT NOW(),
+	summary_text TEXT,
+	source_refs JSONB DEFAULT '[]'::jsonb
+);
+"""))
+            await conn.execute(text("""
+CREATE TABLE IF NOT EXISTS atlas_decisions (
+	id SERIAL PRIMARY KEY,
+	node_id INTEGER REFERENCES atlas_nodes(id) ON DELETE SET NULL,
+	made_at TIMESTAMP DEFAULT NOW(),
+	rationale TEXT,
+	revisit_when TEXT,
+	status VARCHAR(16) DEFAULT 'open',
+	payload JSONB DEFAULT '{}'::jsonb
+);
+"""))
+            await conn.execute(text("""
+CREATE TABLE IF NOT EXISTS atlas_contradictions (
+	id SERIAL PRIMARY KEY,
+	primary_node_id INTEGER REFERENCES atlas_nodes(id) ON DELETE SET NULL,
+	opposing_node_id INTEGER REFERENCES atlas_nodes(id) ON DELETE SET NULL,
+	detected_at TIMESTAMP DEFAULT NOW(),
+	status VARCHAR(16) DEFAULT 'open',
+	payload JSONB DEFAULT '{}'::jsonb
+);
+"""))
+            await conn.execute(text("""
+CREATE TABLE IF NOT EXISTS atlas_diffs (
+	id SERIAL PRIMARY KEY,
+	node_id INTEGER REFERENCES atlas_nodes(id) ON DELETE SET NULL,
+	spine_id INTEGER REFERENCES atlas_spines(id) ON DELETE SET NULL,
+	kind VARCHAR(64) NOT NULL,
+	since TIMESTAMP,
+	until TIMESTAMP DEFAULT NOW(),
+	summary TEXT,
+	payload JSONB DEFAULT '{}'::jsonb
+);
+"""))
+            await conn.execute(text("""
+CREATE TABLE IF NOT EXISTS atlas_why_traces (
+	id SERIAL PRIMARY KEY,
+	subject_kind VARCHAR(64) NOT NULL,
+	subject_id INTEGER NOT NULL,
+	generated_at TIMESTAMP DEFAULT NOW(),
+	source_refs JSONB DEFAULT '[]'::jsonb,
+	confidence FLOAT DEFAULT 0.5
+);
+"""))
+            await conn.execute(text("""
+CREATE TABLE IF NOT EXISTS domain_inference_runs (
+	id SERIAL PRIMARY KEY,
+	run_at TIMESTAMP DEFAULT NOW(),
+	hint TEXT,
+	result JSONB DEFAULT '{}'::jsonb,
+	confidence FLOAT DEFAULT 0.5
+);
+"""))
+            await conn.execute(text("""
+CREATE TABLE IF NOT EXISTS domain_signals (
+	id SERIAL PRIMARY KEY,
+	run_id INTEGER REFERENCES domain_inference_runs(id) ON DELETE CASCADE,
+	signal_kind VARCHAR(64) NOT NULL,
+	payload JSONB DEFAULT '{}'::jsonb,
+	weight FLOAT DEFAULT 1.0,
+	captured_at TIMESTAMP DEFAULT NOW()
+);
+"""))
+            await conn.execute(text("""
+CREATE TABLE IF NOT EXISTS walkthroughs (
+	id SERIAL PRIMARY KEY,
+	title TEXT NOT NULL,
+	created_at TIMESTAMP DEFAULT NOW(),
+	briefing_id INTEGER,
+	payload JSONB DEFAULT '{}'::jsonb
+);
+"""))
+            await conn.execute(text("""
+CREATE TABLE IF NOT EXISTS walkthrough_stops (
+	id SERIAL PRIMARY KEY,
+	walkthrough_id INTEGER NOT NULL REFERENCES walkthroughs(id) ON DELETE CASCADE,
+	stop_order INTEGER NOT NULL,
+	node_id INTEGER REFERENCES atlas_nodes(id) ON DELETE SET NULL,
+	spine_id INTEGER REFERENCES atlas_spines(id) ON DELETE SET NULL,
+	narration TEXT,
+	payload JSONB DEFAULT '{}'::jsonb
+);
+"""))
         logging.info("✓ Postgres tables initialized and migrated.")
     except Exception as e:
         logging.warning("⚠ Warning: Could not connect to Postgres: %s", e)
@@ -178,6 +312,7 @@ from starlette.requests import Request
 from app.api.dashboard import router as dashboard_router, auth_router
 from app.api.health import router as health_router
 from app.api.whatsapp import router as whatsapp_router, send_whatsapp_message
+from app.api.atlas import router as atlas_router
 
 class SecurityHeaderMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
@@ -211,6 +346,7 @@ app.include_router(auth_router)
 app.include_router(dashboard_router)
 app.include_router(health_router)
 app.include_router(whatsapp_router)
+app.include_router(atlas_router)
 
 @app.get("/calendar", include_in_schema=False)
 async def calendar_redirect():
