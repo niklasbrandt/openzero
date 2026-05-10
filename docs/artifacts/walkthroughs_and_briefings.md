@@ -1,7 +1,7 @@
 # Walk-throughs and Briefings
 
 > Briefings (morning / weekly / monthly / quarterly / yearly) become walk-throughs through the Memory Atlas. Every briefing is an ordered tour of substrate-selected nodes, each rendered with one-paragraph context and an optional suggested action. Walk-throughs can also be invoked ad-hoc from any Atlas node. Delivered with full channel parity (Telegram, WhatsApp, dashboard, voice-edge).
-> Status: PLAN | Author: conductor | Created: 2026-05-10
+> Status: COMPLETE | Author: conductor | Created: 2026-05-10 | Shipped: 2026-05-10 (commit 228f398)
 > Companions: `docs/artifacts/substrate_master_plan.md`, `docs/artifacts/memory_atlas.md`, `docs/artifacts/circle_removal.md`, `docs/artifacts/voice_edge_pod.md`, `agents.md` (rule 21).
 
 ---
