@@ -40,8 +40,8 @@ function fontPreloadPlugin(): Plugin {
 
 const LAZY_COMPONENTS = [
 	'ProjectTree', 'MemorySearch', 'BriefingHistory',
-	'CircleManager', 'CreateProject', 'CalendarAgenda', 'CalendarManager',
-	'WelcomeOnboarding', 'HardwareMonitor', 'SoftwareStatus',
+	'CreateProject', 'CalendarAgenda', 'CalendarManager',
+	'InstanceEntry', 'HardwareMonitor', 'SoftwareStatus',
 	'SystemBenchmark', 'ZPersonality', 'AmbientWidget',
 ]
 

@@ -1669,7 +1669,8 @@ async def get_recent_activity(hours: int = 48) -> str:
 		return "\n".join(lines)
 	except Exception as e:
 		logger.exception("get_recent_activity failed")
-		return f"[ACTIVITY DATA UNAVAILABLE: {e}]"
+		_exc_type = type(e).__name__
+		return f"[ACTIVITY DATA UNAVAILABLE: {_exc_type}]"
 
 
 async def get_stale_cards(min_days: int = 5) -> str:
@@ -1732,7 +1733,8 @@ async def get_stale_cards(min_days: int = 5) -> str:
 		return "\n".join(result_lines)
 	except Exception as e:
 		logger.exception("get_stale_cards failed")
-		return f"[STALE CARDS DATA UNAVAILABLE: {e}]"
+		_exc_type = type(e).__name__
+		return f"[STALE CARDS DATA UNAVAILABLE: {_exc_type}]"
 
 
 _CREW_BOARD_NAMES = {"fitness", "nutrition", "life", "health", "finance", "work", "learning"}
@@ -1786,7 +1788,8 @@ async def get_crew_board_snapshot() -> str:
 		return "\n".join(lines) if lines else "(no crew boards found)"
 	except Exception as e:
 		logger.exception("get_crew_board_snapshot failed")
-		return f"[CREW SNAPSHOT UNAVAILABLE: {e}]"
+		_exc_type = type(e).__name__
+		return f"[CREW SNAPSHOT UNAVAILABLE: {_exc_type}]"
 
 
 async def get_project_tree_text() -> str:

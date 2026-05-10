@@ -110,7 +110,7 @@
 
 .life-overview-card,
 .full-width-card,
-welcome-onboarding {
+instance-entry {
 	/* Span the full row */
 	flex: 0 0 100%;
 }
@@ -215,7 +215,7 @@ welcome-onboarding {
 	}
 
 	.full-width-card,
-	welcome-onboarding {
+	instance-entry {
 		flex: 0 0 100% !important;
 	}
 }

@@ -44,21 +44,8 @@ async def lifespan(app: FastAPI):
     try:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
-            # Schema migrations for People table
-            _people_work_cols = {
-                "employer": "ALTER TABLE people ADD COLUMN employer VARCHAR;",
-                "job_title": "ALTER TABLE people ADD COLUMN job_title VARCHAR;",
-                "department": "ALTER TABLE people ADD COLUMN department VARCHAR;",
-                "date_format": "ALTER TABLE people ADD COLUMN date_format VARCHAR DEFAULT 'iso';",
-                "weekly_time": "ALTER TABLE people ADD COLUMN weekly_time VARCHAR;",
-            }
-            for col, alter_sql in _people_work_cols.items():
-                res = await conn.execute(text(
-                    "SELECT column_name FROM information_schema.columns "
-                    "WHERE table_name='people' AND column_name=:col"
-                ), {"col": col})
-                if not res.fetchone():
-                    await conn.execute(text(alter_sql))
+            # Clean up legacy persons table if it still exists on older installs
+            await conn.execute(text("DROP TABLE IF EXISTS people CASCADE;"))
         logging.info("✓ Postgres tables initialized and migrated.")
     except Exception as e:
         logging.warning("⚠ Warning: Could not connect to Postgres: %s", e)

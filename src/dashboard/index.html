@@ -109,10 +109,6 @@
 			<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
 			<span data-tr="nav_protocols">Protocols</span>
 		</a>
-		<a href="#section-circles" data-section="section-circles" aria-label="Relationships">
-			<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
-			<span data-tr="nav_circles">Circles</span>
-		</a>
 		<a href="#section-identity" data-section="section-identity" aria-label="User Profile">
 			<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
 			<span data-tr="nav_profile">Identity</span>
@@ -165,10 +161,6 @@
 				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
 				<span data-tr="nav_protocols">Protocols</span>
 			</a>
-			<a href="#section-circles" data-section="section-circles" aria-label="Relationships">
-				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
-				<span data-tr="nav_circles">Circles</span>
-			</a>
 			<a href="#section-identity" data-section="section-identity" aria-label="User Profile">
 				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
 				<span data-tr="nav_profile">Identity</span>
@@ -202,7 +194,7 @@
 				</div>
 			</header>
 
-			<welcome-onboarding></welcome-onboarding>
+			<instance-entry></instance-entry>
 
 			<section class="dashboard-card full-width-card" id="section-overview" aria-label="Home"
 				data-tr-aria="nav_overview" style="order: 10;">
@@ -241,11 +233,6 @@
 
 			<section class="dashboard-card" id="section-protocols" aria-label="Protocols" data-tr-aria="nav_protocols" style="order: 45;">
 				<z-protocols></z-protocols>
-			</section>
-
-			<section class="dashboard-card full-width-card" id="section-circles" aria-label="Relationships"
-				data-tr-aria="nav_circles" style="order: 50;">
-				<circle-manager type="unified"></circle-manager>
 			</section>
 
 			<section class="dashboard-card full-width-card" id="section-identity" aria-label="Profile"

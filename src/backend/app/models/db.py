@@ -67,35 +67,6 @@ class Briefing(Base):
     model = Column(String, nullable=True)  # LLM tier/model that generated this briefing
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
-class Person(Base):
-    __tablename__ = "people"
-    id = Column(Integer, primary_key=True)
-    name = Column(String, nullable=False)
-    relationship = Column(String)
-    context = Column(Text)  # Homework, hobbies, special dates
-    circle_type = Column(String, default="inner")  # inner, outer, identity
-    birthday = Column(String)  # Optional birthday string (e.g. DD.MM.YYYY)
-    gender = Column(String)
-    residency = Column(String)
-    timezone = Column(String) # e.g. "Europe/Berlin"
-    town = Column(String) # e.g. "Berlin"
-    country = Column(String) # e.g. "Germany"
-    work_times = Column(String)
-    work_start = Column(String, default="09:00")
-    work_end = Column(String, default="17:00")
-    briefing_time = Column(String) # e.g. "08:00"
-    weekly_time = Column(String) # e.g. "17:00" — Sunday weekly review time
-    quiet_hours_enabled = Column(Boolean, default=True)
-    quiet_hours_start = Column(String, default="00:00")
-    quiet_hours_end = Column(String, default="06:00")
-    language = Column(String, default="en") # ISO 639-1 code: en, zh, hi, es, fr, ar, pt, ru, ja, de
-    date_format = Column(String, default="iso") # Card date format key: iso | us | eu | cn
-    color_primary = Column(String)  # Favorite primary color
-    color_secondary = Column(String) # Favorite secondary color
-    color_tertiary = Column(String)  # Favorite tertiary color
-    last_interaction = Column(DateTime)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
-
 class TrackingSession(Base):
     __tablename__ = "tracking_sessions"
     id = Column(Integer, primary_key=True)
@@ -133,7 +104,6 @@ class LocalEvent(Base):
     description = Column(Text)
     start_time = Column(DateTime, nullable=False)
     end_time = Column(DateTime, nullable=True)   # nullable: defaults to start+1h if not provided
-    person_id = Column(Integer, ForeignKey("people.id"), nullable=True)
     is_completed = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 

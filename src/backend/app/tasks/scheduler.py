@@ -60,7 +60,7 @@ async def run_backup():
 
 async def start_scheduler():
 	# 1. Identify user's actual timezone and preferred briefing time
-	from app.models.db import AsyncSessionLocal, Person
+	from app.models.db import AsyncSessionLocal, Preference
 	from app.tasks.morning import morning_briefing
 	from app.tasks.weekly import weekly_review
 	from app.tasks.email_poll import poll_gmail
@@ -84,26 +84,32 @@ async def start_scheduler():
 	qh_start_hour, qh_end_hour = 22, 6
 	try:
 		async with AsyncSessionLocal() as session:
-			res = await session.execute(select(Person).where(Person.circle_type == "identity"))
-			me = res.scalar_one_or_none()
-			if me:
-				if me.briefing_time:
-					# Format: "HH:MM"
-					parts = me.briefing_time.split(":")
-					if len(parts) == 2:
-						brief_hour, brief_min = int(parts[0]), int(parts[1])
+			bt_res = await session.execute(select(Preference).where(Preference.key == "briefing_time"))
+			bt_pref = bt_res.scalar_one_or_none()
+			if bt_pref and bt_pref.value:
+				parts = bt_pref.value.split(":")
+				if len(parts) == 2:
+					brief_hour, brief_min = int(parts[0]), int(parts[1])
 
-				if me.weekly_time:
-					wp = me.weekly_time.split(":")
-					if len(wp) == 2:
-						weekly_hour, weekly_min = int(wp[0]), int(wp[1])
+			wt_res = await session.execute(select(Preference).where(Preference.key == "weekly_time"))
+			wt_pref = wt_res.scalar_one_or_none()
+			if wt_pref and wt_pref.value:
+				wp = wt_pref.value.split(":")
+				if len(wp) == 2:
+					weekly_hour, weekly_min = int(wp[0]), int(wp[1])
 
-				if me.quiet_hours_enabled:
-					quiet_enabled = True
-					if me.quiet_hours_start:
-						qh_start_hour = int(me.quiet_hours_start.split(":")[0])
-					if me.quiet_hours_end:
-						qh_end_hour = int(me.quiet_hours_end.split(":")[0])
+			qh_res = await session.execute(select(Preference).where(Preference.key == "quiet_hours_enabled"))
+			qh_pref = qh_res.scalar_one_or_none()
+			if qh_pref and qh_pref.value == "true":
+				quiet_enabled = True
+				qs_res = await session.execute(select(Preference).where(Preference.key == "quiet_hours_start"))
+				qs_pref = qs_res.scalar_one_or_none()
+				if qs_pref and qs_pref.value:
+					qh_start_hour = int(qs_pref.value.split(":")[0])
+				qe_res = await session.execute(select(Preference).where(Preference.key == "quiet_hours_end"))
+				qe_pref = qe_res.scalar_one_or_none()
+				if qe_pref and qe_pref.value:
+					qh_end_hour = int(qe_pref.value.split(":")[0])
 	except Exception as e:
 		logger.warning("Failed to fetch dynamic schedule configurations: %s", e)
 

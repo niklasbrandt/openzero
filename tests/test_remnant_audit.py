@@ -25,6 +25,7 @@ _EXCLUDE_DIR_NAMES: frozenset[str] = frozenset({
 	"playwright-report",
 	"__pycache__",
 	".venv",
+	".venv312",
 	"artifacts",  # docs/artifacts/ holds removal-plan prose, not live code
 })
 

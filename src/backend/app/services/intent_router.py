@@ -2267,7 +2267,8 @@ async def dispatch_structural_intent(intent: StructuralIntent, lang: str) -> str
 				return "\n".join(lines) + "\n" + audit
 		except Exception as _e:
 			logger.error("intent_router SORT_BOARD failed: %s", _e)
-			return f"⚠ Failed to reorganise board '{board_name}': {_e}"
+			_exc_type = type(_e).__name__
+			return f"⚠ Failed to reorganise board '{board_name}': {_exc_type}"
 
 
         # Unknown verb — defensive fallback, should not be reachable.
