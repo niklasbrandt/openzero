@@ -189,7 +189,6 @@ translations: dict[str, str] = {
 	"email_rule_domain": "Triage Domain",
 	"email_rule_pattern": "Triage Pattern",
 	"email_rule_type": "Triage Level",
-	"email_rules": "Email Triage",
 	"email_rules_desc": "Z sorts high-signal senders while suppressing noise. Priority senders trigger instant Telegram alerts.",
 	"email_rules_empty": "No custom rules defined. Z handles everything with default safety.",
 	"empty_response_retry": "My response was empty — please try again.",

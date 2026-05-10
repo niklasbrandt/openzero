@@ -11,15 +11,6 @@ export class UserCard extends HTMLElement {
 	private languages: Record<string, { native: string, eng: string }> = {
 		en: { native: 'English', eng: 'English' },
 		de: { native: 'Deutsch', eng: 'German' },
-		zh: { native: '中文', eng: 'Mandarin Chinese' },
-		ja: { native: '日本語', eng: 'Japanese' },
-		ko: { native: '한국어', eng: 'Korean' },
-		fr: { native: 'Français', eng: 'French' },
-		es: { native: 'Español', eng: 'Spanish' },
-		ru: { native: 'Русский', eng: 'Russian' },
-		pt: { native: 'Português', eng: 'Portuguese' },
-		ar: { native: 'العربية', eng: 'Arabic' },
-		hi: { native: 'हिन्दी', eng: 'Hindi' },
 	};
 
 	private themeOptions: Record<string, { label: string, colors: string[] }> = {

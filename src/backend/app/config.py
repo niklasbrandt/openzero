@@ -101,6 +101,10 @@ class Settings(BaseSettings):
     # Meta App Secret for X-Hub-Signature-256 verification (recommended, not mandatory)
     WHATSAPP_APP_SECRET: str = ""
 
+    # Email (opt-in). Set EMAIL_ENABLED=1 to enable Gmail polling, email rules UI, and email API routes.
+    # When unset (the default) the substrate forgets email exists: no UI, no nav, no API surface.
+    EMAIL_ENABLED: bool = False
+
     # CalDAV (Private Calendar)
     CALDAV_URL: Optional[str] = None
     CALDAV_USERNAME: Optional[str] = None

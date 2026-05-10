@@ -48,7 +48,10 @@ async def caption_image(image_bytes: bytes, user_hint: str = "") -> str:
 		"Authorization": f"Bearer {settings.LLM_CLOUD_API_KEY}",
 		"Content-Type": "application/json",
 	}
-	url = f"{settings.LLM_CLOUD_BASE_URL.rstrip('/')}/v1/chat/completions"
+	# LLM_CLOUD_BASE_URL may already end in /v1 (e.g. https://api.mistral.ai/v1) —
+	# only append /v1 if missing to avoid producing /v1/v1/chat/completions.
+	_base = settings.LLM_CLOUD_BASE_URL.rstrip('/')
+	url = f"{_base}/chat/completions" if _base.endswith('/v1') else f"{_base}/v1/chat/completions"
 
 	try:
 		async with httpx.AsyncClient(timeout=60.0) as client:

@@ -12,6 +12,9 @@ features:
   task_board_integration: false # Enable Planka Kanban board syncing and task creation
 
   # External Integrations
+  # Email is opt-in. Set EMAIL_ENABLED=1 in .env to enable Gmail polling,
+  # email rules API, and any future email UI. When unset the substrate has no
+  # email surface at all -- no UI, no nav link, no API routes.
   email_monitoring: false # Enable reading and summarizing unread emails
   calendar_monitoring: false # Enable checking your calendar for upcoming events
 
