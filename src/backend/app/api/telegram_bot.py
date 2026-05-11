@@ -842,7 +842,6 @@ async def cmd_walk(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	try:
 		from app.services.walkthroughs import build_walkthrough
 		from app.services.walkthrough_renderer import render_telegram
-		from app.models.db import AsyncSessionLocal
 		from sqlalchemy import text as sql_text
 		node_id: int | None = None
 		if arg:

@@ -34,39 +34,39 @@ These decisions are **non-negotiable**. Implementing agents MUST NOT re-open the
 
 ### 3.1 Cuts
 
-| ID | Subject | Action | Phase |
-|----|---------|--------|-------|
-| C1 | `CircleManager.ts`, `Person` model, all `inner_circle_*` tables, `/api/circle/*`, all circle-scoped logic across calendar / gmail / briefings / personal_context / crews / tasks | Delete entirely. No feature flag. No sunset window. No export-before-delete. | P4 |
-| C2 | `src/backend/app/services/automation.py` (rule engine) | Delete entirely. Replaced by `signal_interpreter` crew (HITL). | P3 |
-| C3 | `ShoppingList.ts` standalone widget | Absorb into nutrition crew output as a structured `items` field. Widget removed. | P1 |
-| C4 | `WelcomeOnboarding.ts` multi-step wizard | Collapse to a one-screen entry: template hint + "what is this instance for?" + connect-one-source CTA. | P2 |
-| C5 | Translation matrix beyond `en` + `de` | Trim `_TRANSLATIONS` and the `UserCard` selector to `en` + `de` only. Remove all stub language dicts. | P1 |
-| C6 | `EmailRules.ts` and discoverable email affordance | Email becomes opt-in via `EMAIL_ENABLED`. When off: no UI, no settings panel, no nav link, no API surface. The substrate forgets email exists. | P1 |
-| C7 | Calendar **Manager** CRUD ambitions | Downgrade to read-only viewer in the UI. KEEP the operator-initiated HITL "create event" path. Calendar primarily becomes a `MemorySource` plugin. | P5 |
-| C8 | "Family" board hardcode | Remove any code-level references that hardcode a "Family" board, list, or category. Operator-shaped, not product-shaped. | P4 |
+| ID  | Subject                                                                                                                                                                          | Action                                                                                                                                             | Phase |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
+| C1  | `CircleManager.ts`, `Person` model, all `inner_circle_*` tables, `/api/circle/*`, all circle-scoped logic across calendar / gmail / briefings / personal_context / crews / tasks | Delete entirely. No feature flag. No sunset window. No export-before-delete.                                                                       | P4    |
+| C2  | `src/backend/app/services/automation.py` (rule engine)                                                                                                                           | Delete entirely. Replaced by `signal_interpreter` crew (HITL).                                                                                     | P3    |
+| C3  | `ShoppingList.ts` standalone widget                                                                                                                                              | Absorb into nutrition crew output as a structured `items` field. Widget removed.                                                                   | P1    |
+| C4  | `WelcomeOnboarding.ts` multi-step wizard                                                                                                                                         | Collapse to a one-screen entry: template hint + "what is this instance for?" + connect-one-source CTA.                                             | P2    |
+| C5  | Translation matrix beyond `en` + `de`                                                                                                                                            | Trim `_TRANSLATIONS` and the `UserCard` selector to `en` + `de` only. Remove all stub language dicts.                                              | P1    |
+| C6  | `EmailRules.ts` and discoverable email affordance                                                                                                                                | Email becomes opt-in via `EMAIL_ENABLED`. When off: no UI, no settings panel, no nav link, no API surface. The substrate forgets email exists.     | P1    |
+| C7  | Calendar **Manager** CRUD ambitions                                                                                                                                              | Downgrade to read-only viewer in the UI. KEEP the operator-initiated HITL "create event" path. Calendar primarily becomes a `MemorySource` plugin. | P5    |
+| C8  | "Family" board hardcode                                                                                                                                                          | Remove any code-level references that hardcode a "Family" board, list, or category. Operator-shaped, not product-shaped.                           | P4    |
 
 ### 3.2 Keeps
 
-| ID | Subject | Rationale |
-|----|---------|-----------|
-| K1 | Briefings (morning / weekly / monthly / quarterly / yearly) | Entice operators to keep up with projects instead of forgetting them while living life. Content reshaped per Phase W: every briefing is backed by an Atlas walk-through with deep-links to specific nodes/spines. Ships to ALL channels per `agents.md` rule 21. |
-| K2 | `ZProtocols.ts` | Surfaces "here's what I'm capable of" / possible use cases. Acts as a discovery surface for substrate capabilities, not an operator-managed list. |
-| K3 | `HardwareMonitor.ts`, `DiagnosticsWidget.ts`, `SystemBenchmark.ts` | Operator MUST be able to see substrate health on their own hardware. Kept in current location. |
+| ID  | Subject                                                            | Rationale                                                                                                                                                                                                                                                        |
+| --- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| K1  | Briefings (morning / weekly / monthly / quarterly / yearly)        | Entice operators to keep up with projects instead of forgetting them while living life. Content reshaped per Phase W: every briefing is backed by an Atlas walk-through with deep-links to specific nodes/spines. Ships to ALL channels per `agents.md` rule 21. |
+| K2  | `ZProtocols.ts`                                                    | Surfaces "here's what I'm capable of" / possible use cases. Acts as a discovery surface for substrate capabilities, not an operator-managed list.                                                                                                                |
+| K3  | `HardwareMonitor.ts`, `DiagnosticsWidget.ts`, `SystemBenchmark.ts` | Operator MUST be able to see substrate health on their own hardware. Kept in current location.                                                                                                                                                                   |
 
 ### 3.3 Adds
 
-| ID | Subject | Phase |
-|----|---------|-------|
-| A1 | MemoryAtlas as home screen, desktop + mobile-optimised, same codebase responsive build, no separate mobile app. | MA1 -> Z |
-| A2 | Diff ribbon -- "what changed since you last looked" persistent across every dashboard route. | D |
-| A3 | Contradiction detector crew -- raises a contradiction node when new high-weight memory contradicts a high-weight prior. | C |
-| A4 | Conversation as primary input -- ChatPrompt is the bottom edge of every screen, not a widget. | MA1 |
-| A5 | Walk-throughs -- ADDITIONAL to briefings AND tied into them. Briefings render as walk-throughs. Ad-hoc walk-throughs launchable from any Atlas node. | W |
-| A6 | Decision capture as universal verb -- `Cmd/Ctrl+Shift+D` global, mic affordance, new `decisions` node type with `revisit_when` predicate; substrate later surfaces "decision X was made because Y; Y appears no longer to hold." | DC |
-| A7 | Steel-manning + echo-finder -- promoted from MA6 to MA2. | MA2 |
-| A8 | Agent-to-agent context handoff for company use -- federation extension shipping reasoning slices, not raw data. | H |
-| A9 | Universal "why?" query -- `?` keystroke on every Atlas node, spine paragraph, and diff entry returns substrate's justification (source_refs trace + confidence). | Y |
-| A10 | Dynamic domain definition -- `domain_inference` crew writes `agent/domain.derived.yaml` (gitignored, substrate-authored, never hand-authored). Replaces `ATLAS_TEMPLATE` config with `ATLAS_TEMPLATE_HINT` (bootstrap-only). Atlas surfaces a "what this instance is becoming" panel for operator confirmation. | DD |
+| ID  | Subject                                                                                                                                                                                                                                                                                                         | Phase    |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| A1  | MemoryAtlas as home screen, desktop + mobile-optimised, same codebase responsive build, no separate mobile app.                                                                                                                                                                                                 | MA1 -> Z |
+| A2  | Diff ribbon -- "what changed since you last looked" persistent across every dashboard route.                                                                                                                                                                                                                    | D        |
+| A3  | Contradiction detector crew -- raises a contradiction node when new high-weight memory contradicts a high-weight prior.                                                                                                                                                                                         | C        |
+| A4  | Conversation as primary input -- ChatPrompt is the bottom edge of every screen, not a widget.                                                                                                                                                                                                                   | MA1      |
+| A5  | Walk-throughs -- ADDITIONAL to briefings AND tied into them. Briefings render as walk-throughs. Ad-hoc walk-throughs launchable from any Atlas node.                                                                                                                                                            | W        |
+| A6  | Decision capture as universal verb -- `Cmd/Ctrl+Shift+D` global, mic affordance, new `decisions` node type with `revisit_when` predicate; substrate later surfaces "decision X was made because Y; Y appears no longer to hold."                                                                                | DC       |
+| A7  | Steel-manning + echo-finder -- promoted from MA6 to MA2.                                                                                                                                                                                                                                                        | MA2      |
+| A8  | Agent-to-agent context handoff for company use -- federation extension shipping reasoning slices, not raw data.                                                                                                                                                                                                 | H        |
+| A9  | Universal "why?" query -- `?` keystroke on every Atlas node, spine paragraph, and diff entry returns substrate's justification (source_refs trace + confidence).                                                                                                                                                | Y        |
+| A10 | Dynamic domain definition -- `domain_inference` crew writes `agent/domain.derived.yaml` (gitignored, substrate-authored, never hand-authored). Replaces `ATLAS_TEMPLATE` config with `ATLAS_TEMPLATE_HINT` (bootstrap-only). Atlas surfaces a "what this instance is becoming" panel for operator confirmation. | DD       |
 
 ---
 
@@ -74,26 +74,26 @@ These decisions are **non-negotiable**. Implementing agents MUST NOT re-open the
 
 Phases run in the order shown. Each phase has a one-line summary, the artifact(s) that govern it, and prerequisite phases. A phase closes only when every governance gate in section 8 is green.
 
-| Phase | Summary | Artifact(s) | Prereq | Status |
-|-------|---------|-------------|--------|--------|
-| P0 | This artifact set lands; remnant audit harness `tests/test_remnant_audit.py` lands with empty forbidden-symbol lists per phase; README essence paragraph applied. | this artifact, all five new artifacts | -- | COMPLETE 2026-05-10 |
-| P1 | Email opt-in (`EMAIL_ENABLED`); `ShoppingList.ts` absorbed; i18n trim to `en` + `de`. | this artifact (C3, C5, C6) | P0 | COMPLETE 2026-05-10 |
-| P2 | Kill multi-step wizard; collapse to one-screen entry. | this artifact (C4) | P0 | COMPLETE 2026-05-10 |
-| P3 | Delete `services/automation.py`; introduce `signal_interpreter` crew (HITL) in `agent/crews.yaml`. | this artifact (C2), `docs/artifacts/full_ambient_intelligence_roadmap.md` | P0 | COMPLETE 2026-05-10 |
-| P4 | RIP Person / Circle / inner_circle / CircleManager. No flag. No export. | `docs/artifacts/circle_removal.md` | P0 | COMPLETE 2026-05-10 |
-| P5 | Calendar Manager downgrade to read-only viewer; keep HITL "create event"; turn calendar into a `MemorySource`. | this artifact (C7), `docs/artifacts/memory_atlas.md` | MA0 | PENDING -- prereq MA0 |
-| MA0 | Atlas foundations: data model, MemorySource plugin contract scaffolding, no UI yet. | `docs/artifacts/memory_atlas.md` | P0..P4 | COMPLETE 2026-05-10 |
-| MA1 | Atlas v1: graph lens, list lens (a11y fallback), spine reader; ChatPrompt persistent at bottom edge. | `docs/artifacts/memory_atlas.md` | MA0 | COMPLETE 2026-05-10 |
-| MA2 | Recompose operations + steel-manning + echo-finder (promoted). | `docs/artifacts/memory_atlas.md` | MA1 | COMPLETE 2026-05-10 |
-| MA3 | Lenses beyond graph (timeline, heatmap, focus, etc. per memory_atlas.md). | `docs/artifacts/memory_atlas.md` | MA2 | IN PROGRESS |
-| D | Diff ribbon -- persistent "what changed since you last looked" surface. | `docs/artifacts/memory_atlas.md` (cross-cutting) | MA1 | COMPLETE 2026-05-11 |
-| C | Contradiction detector crew + contradiction node type. | `docs/artifacts/memory_atlas.md`, `agent/crews.yaml` | MA1 | COMPLETE 2026-05-11 |
-| W | Walk-throughs into briefings; channel-parity delivery. | `docs/artifacts/walkthroughs_and_briefings.md` | MA1 | COMPLETE 2026-05-11 |
-| DC | Decision capture verb (`Cmd/Ctrl+Shift+D`, mic), `decisions` node type, `revisit_when` predicate. | `docs/artifacts/memory_atlas.md` | MA1 | COMPLETE 2026-05-11 |
-| DD | Dynamic domain definition: `domain_inference` crew, `agent/domain.derived.yaml`, "what this instance is becoming" panel; replaces `ATLAS_TEMPLATE` with `ATLAS_TEMPLATE_HINT`. | `docs/artifacts/dynamic_domain.md` | MA1 | COMPLETE 2026-05-11 |
-| Y | Universal "why?" query: `?` keystroke surfaces source_refs trace + confidence on every Atlas node, spine paragraph, diff entry. | `docs/artifacts/memory_atlas.md` (cross-cutting) | MA1, D | COMPLETE 2026-05-11 |
-| H | Agent-to-agent context handoff (federation extension shipping reasoning slices). | `docs/artifacts/federated_memory.md`, `docs/artifacts/memory_atlas.md` | MA2 | COMPLETE 2026-05-11 |
-| Z | Atlas-as-home: home route = Atlas; responsive mobile build (List lens default on small viewports; Graph lens collapses to touch-friendly cluster view; ChatPrompt persistent at bottom edge). | `docs/artifacts/memory_atlas.md` | MA1..MA3, D, Y | COMPLETE 2026-05-11 |
+| Phase | Summary                                                                                                                                                                                       | Artifact(s)                                                               | Prereq         | Status                |
+| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- | -------------- | --------------------- |
+| P0    | This artifact set lands; remnant audit harness `tests/test_remnant_audit.py` lands with empty forbidden-symbol lists per phase; README essence paragraph applied.                             | this artifact, all five new artifacts                                     | --             | COMPLETE 2026-05-10   |
+| P1    | Email opt-in (`EMAIL_ENABLED`); `ShoppingList.ts` absorbed; i18n trim to `en` + `de`.                                                                                                         | this artifact (C3, C5, C6)                                                | P0             | COMPLETE 2026-05-10   |
+| P2    | Kill multi-step wizard; collapse to one-screen entry.                                                                                                                                         | this artifact (C4)                                                        | P0             | COMPLETE 2026-05-10   |
+| P3    | Delete `services/automation.py`; introduce `signal_interpreter` crew (HITL) in `agent/crews.yaml`.                                                                                            | this artifact (C2), `docs/artifacts/full_ambient_intelligence_roadmap.md` | P0             | COMPLETE 2026-05-10   |
+| P4    | RIP Person / Circle / inner_circle / CircleManager. No flag. No export.                                                                                                                       | `docs/artifacts/circle_removal.md`                                        | P0             | COMPLETE 2026-05-10   |
+| P5    | Calendar Manager downgrade to read-only viewer; keep HITL "create event"; turn calendar into a `MemorySource`.                                                                                | this artifact (C7), `docs/artifacts/memory_atlas.md`                      | MA0            | PENDING -- prereq MA0 |
+| MA0   | Atlas foundations: data model, MemorySource plugin contract scaffolding, no UI yet.                                                                                                           | `docs/artifacts/memory_atlas.md`                                          | P0..P4         | COMPLETE 2026-05-10   |
+| MA1   | Atlas v1: graph lens, list lens (a11y fallback), spine reader; ChatPrompt persistent at bottom edge.                                                                                          | `docs/artifacts/memory_atlas.md`                                          | MA0            | COMPLETE 2026-05-10   |
+| MA2   | Recompose operations + steel-manning + echo-finder (promoted).                                                                                                                                | `docs/artifacts/memory_atlas.md`                                          | MA1            | COMPLETE 2026-05-10   |
+| MA3   | Lenses beyond graph (timeline, heatmap, focus, etc. per memory_atlas.md).                                                                                                                     | `docs/artifacts/memory_atlas.md`                                          | MA2            | IN PROGRESS           |
+| D     | Diff ribbon -- persistent "what changed since you last looked" surface.                                                                                                                       | `docs/artifacts/memory_atlas.md` (cross-cutting)                          | MA1            | COMPLETE 2026-05-11   |
+| C     | Contradiction detector crew + contradiction node type.                                                                                                                                        | `docs/artifacts/memory_atlas.md`, `agent/crews.yaml`                      | MA1            | COMPLETE 2026-05-11   |
+| W     | Walk-throughs into briefings; channel-parity delivery.                                                                                                                                        | `docs/artifacts/walkthroughs_and_briefings.md`                            | MA1            | COMPLETE 2026-05-11   |
+| DC    | Decision capture verb (`Cmd/Ctrl+Shift+D`, mic), `decisions` node type, `revisit_when` predicate.                                                                                             | `docs/artifacts/memory_atlas.md`                                          | MA1            | COMPLETE 2026-05-11   |
+| DD    | Dynamic domain definition: `domain_inference` crew, `agent/domain.derived.yaml`, "what this instance is becoming" panel; replaces `ATLAS_TEMPLATE` with `ATLAS_TEMPLATE_HINT`.                | `docs/artifacts/dynamic_domain.md`                                        | MA1            | COMPLETE 2026-05-11   |
+| Y     | Universal "why?" query: `?` keystroke surfaces source_refs trace + confidence on every Atlas node, spine paragraph, diff entry.                                                               | `docs/artifacts/memory_atlas.md` (cross-cutting)                          | MA1, D         | COMPLETE 2026-05-11   |
+| H     | Agent-to-agent context handoff (federation extension shipping reasoning slices).                                                                                                              | `docs/artifacts/federated_memory.md`, `docs/artifacts/memory_atlas.md`    | MA2            | COMPLETE 2026-05-11   |
+| Z     | Atlas-as-home: home route = Atlas; responsive mobile build (List lens default on small viewports; Graph lens collapses to touch-friendly cluster view; ChatPrompt persistent at bottom edge). | `docs/artifacts/memory_atlas.md`                                          | MA1..MA3, D, Y | COMPLETE 2026-05-11   |
 
 Phases P1..P5 may be parallelised after P0 if the implementing agent confirms no shared file conflicts. MA / D / C / W / DC / DD / Y / H / Z are sequenced per the prereq column.
 
@@ -234,6 +234,7 @@ All governance gates were green at close of P4:
 - Commit: `a7dd84f feat: substrate pivot P0-P4 -- circle/automation removal, i18n trim, email opt-in, instance entry`.
 
 Deviations from plan:
+
 - `WelcomeOnboarding.ts` was renamed to `InstanceEntry.ts` (new custom element `<instance-entry>`) rather than rewritten in-place, because `WelcomeOnboarding.ts` was itself in the P2 forbidden-filename list. This is consistent with the master plan intent.
 - `UserCard.ts` identity endpoint migrated to `/api/dashboard/identity` (not `/api/dashboard/people/identity`) so the P4 remnant guard for `/api/dashboard/people` would not fire on the identity route.
 - `shopping_list.py` service retained (still has callers in nutrition crew); `circle_type` identity lookup replaced with `Preference` table read.
