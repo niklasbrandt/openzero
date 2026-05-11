@@ -23,6 +23,7 @@
 [![Tailscale](https://img.shields.io/badge/Zero_Trust-Tailscale-black?logo=tailscale&logoColor=white)](https://tailscale.com/)
 [![WCAG 2.1 AA](https://img.shields.io/badge/Accessibility-WCAG%202.1%20AA-teal.svg)](https://www.w3.org/TR/WCAG21/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Views](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2Fniklasbrandt%2Fopenzero&count_bg=%230F172A&title_bg=%230F172A&icon=github.svg&icon_color=%2314B8A6&title=views&edge_flat=false)](https://hits.seeyoufarm.com)
 
 openZero is a sovereign, self-hosted AI that builds a living memory of whatever domain you point it at — a life, a business, a research area, a team — and thinks alongside you there. Every byte stays on your hardware.
 
