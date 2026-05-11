@@ -281,6 +281,27 @@ The dashboard is protected by a bearer token. You must set one before the backen
 > [!IMPORTANT]
 > If the backend returns HTTP 500 on every dashboard request, the `DASHBOARD_TOKEN` env var is missing or empty. Set it and restart the backend container: `docker compose up -d --no-deps backend`.
 
+### 5b-i. Set a Backup Encryption Passphrase (Recommended)
+
+The backup export endpoint encrypts the archive with a passphrase before streaming it to the browser. Set `BACKUP_PASSPHRASE` in your `.env` if you want to call the export non-interactively (e.g. from a script or CI job). The dashboard UI always prompts for a passphrase interactively.
+
+1. Generate a strong passphrase:
+
+    ```bash
+    openssl rand -base64 24
+    ```
+
+2. Add it to your `.env`:
+
+    ```env
+    BACKUP_PASSPHRASE=your_secure_backup_passphrase
+    ```
+
+    Minimum length: **12 characters**. Shorter passphrases are rejected by the API with HTTP 400.
+
+> [!NOTE]
+> This passphrase is **not** stored on the server. If you lose it, existing backup archives cannot be decrypted. Store it in a password manager alongside the backup file.
+
 ### 5c. Cloud LLM PII Sanitization (Optional)
 
 When routing requests to cloud providers (Groq, OpenAI), openZero can automatically strip named entities (people, emails, phone numbers, locations, organisations) from outbound prompts using a fully offline spaCy NER model. Responses are re-hydrated with the real values before being returned.

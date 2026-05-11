@@ -32,6 +32,10 @@ spacy>=3.7.0
 huggingface_hub>=1.6.0
 transformers>=5.3.0
 
+# Backup encryption + passphrase strength
+pynacl>=1.5.0
+zxcvbn>=4.4.28
+
 # Testing
 pytest>=9.0.3
 pytest-cov>=5.0.0
