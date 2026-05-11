@@ -37,7 +37,7 @@ import uuid
 import asyncio
 import time
 from sqlalchemy import select
-from app.models.db import AsyncSessionLocal, LLMMetric
+from app.models.db import AsyncSessionLocal, LLMMetric, Person
 
 logger = logging.getLogger(__name__)
 
@@ -352,9 +352,28 @@ _known_person_names_loaded: bool = False
 
 
 async def _ensure_person_names_loaded() -> None:
-	"""No-op: people table removed. Heuristic-only cloud PII sanitisation applies."""
-	global _known_person_names_loaded
-	_known_person_names_loaded = True
+	"""Populate _known_person_names from the people DB table (once per process).
+
+	Called from main.py run_delayed_init() so the cache is ready before the
+	first cloud LLM call.  Safe to call multiple times; only runs once.
+	"""
+	global _known_person_names, _known_person_names_loaded
+	if _known_person_names_loaded:
+		return
+	try:
+		async with AsyncSessionLocal() as session:
+			result = await session.execute(select(Person.name))
+			names = result.scalars().all()
+		for n in names:
+			for part in (n or "").strip().split():
+				if len(part) >= 3:
+					_known_person_names.add(part.lower())
+		_known_person_names_loaded = True
+		logger.debug("cloud_sanitize: loaded %d person name tokens from people DB (ready=%s)", len(_known_person_names), _known_person_names_loaded)
+	except Exception as exc:
+		logger.warning("cloud_sanitize: could not load person names from DB (%s) — heuristic-only", exc)
+		_known_person_names_loaded = True  # do not retry on every cloud call
+		logger.debug("cloud_sanitize: person names cache flag set (ready=%s)", _known_person_names_loaded)
 
 
 def _should_replace_person_entity(word: str, full_text: str) -> bool:
@@ -640,15 +659,14 @@ async def _classify_intent(user_message: str) -> bool:
 _cached_user_lang: str = "en"
 
 async def _get_user_lang() -> str:
-	"""Return the user's language from the preference table, cached in memory."""
+	"""Return the user's language from the identity record, cached in memory."""
 	global _cached_user_lang
 	try:
-		from app.models.db import Preference
 		async with AsyncSessionLocal() as s:
-			res = await s.execute(select(Preference).where(Preference.key == "language"))
-			pref = res.scalar_one_or_none()
-			if pref and pref.value:
-				_cached_user_lang = pref.value
+			res = await s.execute(select(Person).where(Person.circle_type == "identity"))
+			ident = res.scalar_one_or_none()
+			if ident:
+				_cached_user_lang = getattr(ident, "language", "en") or "en"
 	except Exception:
 		logger.debug("_get_user_lang: DB unavailable, using cached lang %r", _cached_user_lang)
 	return _cached_user_lang
@@ -733,7 +751,7 @@ If the message is general conversation, task management, memory, or does not fit
 
 NATURAL MEMORY:
 - When the user shares something meaningful about their life, goals, preferences, experiences, or relationships, silently store it using: `[ACTION: LEARN | TEXT: distilled fact]`
-- Examples that SHOULD trigger LEARN: "I started a new job at X", "my favorite food is Y", "I've been feeling stressed about Z", "today I finished my project", "I want to travel to Japan next year"
+- Examples that SHOULD trigger LEARN: "I joined [organisation] as [role]", "my preferred approach to X is Y", "I've been focused on [topic] lately", "I completed [project] today", "I need to finish [goal] by [date]"
 - Examples that should NOT trigger LEARN: "ok", "thanks", "hello", "what time is it", questions, commands, greetings
 - Distill the user's words into a clean, permanent fact. Do NOT store raw chat — distill to essence.
 - Tags are INVISIBLE. Never mention storing or learning.
@@ -760,7 +778,7 @@ CRITICAL: Every tag MUST start with `[ACTION:` — never use `[CREATE_TASK` or s
 CRITICAL: Tags go on NEW LINES at the very END of your response, after all prose.
 CRITICAL: Never embed tags mid-response or inside prose sections.
 CRITICAL — NO PHANTOM CONFIRMATIONS: NEVER write "task added", "done", "board created", "added to your list", or ANY action-confirmation phrase UNLESS you have emitted the corresponding action tag IN THIS SAME RESPONSE. The prose phrase does not perform the action — the tag does. If you write the confirmation without the tag, the user sees "done" but nothing happened. Violating this rule is the worst possible failure mode.
-CRITICAL — NEVER CONFIRM IN PAST TENSE: For EVERY action type (CREATE_TASK, CREATE_LIST, CREATE_BOARD, MOVE_CARD, MOVE_BOARD, MARK_DONE, ARCHIVE_CARD, CREATE_EVENT, APPEND_SHOPPING, and all others), NEVER write a past-tense confirmation in your prose. Words and phrases like "hinzugefügt", "erstellt", "verschoben", "added", "created", "done", "moved", "saved", "saved to", "set up", "scheduled", "booked" are FORBIDDEN in your text when describing an action you are about to emit. The system executes the tag and provides the authoritative result — your prose is not the confirmation. If you must mention the action at all, write a brief PRESENT-TENSE intent: "Adding home to life goals." — then emit the tag. NEVER write "Karte X wurde zu Y hinzugefügt" or "X added to Y" or any equivalent. You do not know if it succeeded; the tag does.
+CRITICAL — NEVER CONFIRM IN PAST TENSE: For EVERY action type (CREATE_TASK, CREATE_LIST, CREATE_BOARD, MOVE_CARD, MOVE_BOARD, MARK_DONE, ARCHIVE_CARD, CREATE_EVENT, APPEND_SHOPPING, and all others), NEVER write a past-tense confirmation in your prose. Words and phrases like "hinzugefügt", "erstellt", "verschoben", "added", "created", "done", "moved", "saved", "saved to", "set up", "scheduled", "booked" are FORBIDDEN in your text when describing an action you are about to emit. The system executes the tag and provides the authoritative result — your prose is not the confirmation. If you must mention the action at all, write a brief PRESENT-TENSE intent: "Adding [item] to [board]." — then emit the tag. NEVER write "Karte X wurde zu Y hinzugefügt" or "X added to Y" or any equivalent. You do not know if it succeeded; the tag does.
 CRITICAL — RETRY PROMISE: If you write "let me try again", "trying now", "I'll retry", or any equivalent, you MUST emit the action tag in THIS SAME response — not in a future one. A retry promise without a tag is a phantom confirmation and will fail silently. If you cannot determine which action to retry (e.g. because the history is unclear), ask the user what exactly to re-create rather than promising and not delivering.
 CRITICAL — TAG REQUIRED FOR ALL MUTATIONS: EVERY response that includes a task creation, board creation, board move, card move, or ANY Planka mutation MUST include the corresponding [ACTION: ...] tag. Prose alone ("hinzugefügt", "verschoben", "Done —", "erfolgreich erstellt") is forbidden without the tag — it is a description of what the tag will do, not proof it happened. If you cannot emit the tag for any reason, say "I was unable to do that" — never pretend the action succeeded.
 CRITICAL — NO STALE STATE: NEVER refuse a creation request by claiming the item "is already there" or "was already added" based on a previous conversation turn. The user may have deleted it manually. If the user repeats a creation request, ALWAYS re-emit the action tag. The system handles genuine in-flight duplicates automatically.
@@ -771,20 +789,14 @@ CRITICAL — USE EXACT NAMES IN PROSE: When confirming a CREATE_TASK, your prose
   Always emit this tag when the user says "remind me today", "remind me later", "add this to my list", or mentions any item they need to do/buy/handle.
   DESCRIPTION RULE: Use DESCRIPTION whenever a card has body content worth keeping — recipes, step-by-step instructions, research notes, workout plans, travel itineraries, meeting action items, legal summaries, any substantive text. Multi-line content is fully supported inside the tag; the description ends at the closing ]. Only omit DESCRIPTION for bare reminders with no body (e.g. "buy milk"). NEVER write substantive content as prose outside the tag and leave DESCRIPTION empty — if you wrote it, it belongs inside the card.
   CRITICAL BOARD ROUTING: Generic personal tasks, errands, reminders, and shopping items (even food-adjacent ones like "buy glasses", "pick up milk") go to BOARD: Operator Board, LIST: Today. The Nutrition board is ONLY for recipe cards generated by the nutrition crew. The fitness board is ONLY for workout plans from the fitness crew. NEVER route a direct user todo to a crew board.
-  PARSING — "new <noun> goal/item/todo <title>" → CREATE_TASK on the matching user board. Example: "new life goal home" → `[ACTION: CREATE_TASK | BOARD: life goals | TITLE: home]`. Example: "new shopping item milk" → `[ACTION: CREATE_TASK | BOARD: shopping | TITLE: milk]`. Pluralise the noun for the board name when natural (goal → goals). Do NOT route these to a crew, and do NOT route them to Operator Board if a matching named board exists.
-  TITLE RULE: Use the user's exact words as the TITLE — do NOT rephrase, translate, embellish, or expand the title. "home" → TITLE: home. Never substitute with a creative reworded version. The user owns the title. VIOLATION EXAMPLE: user says "new life goal home" → WRONG: TITLE: Lebensziel: Zuhause zum Hauptquartier ausbauen → CORRECT: TITLE: home.
-  BOARD vs LIST: BOARD is the Planka board name (e.g. "life goals"). LIST is a column inside that board (e.g. "Goals", "To Do"). When adding a card to a board, use the board's name in BOARD: and the list/column name in LIST:. Never write the board name in both BOARD: and LIST:. If you do not know which list/column exists on the board, omit LIST: — the system will use the first available list.
-  CRITICAL — "My projects" IS A PARENT CONTAINER, NOT A BOARD: User-created boards like "life goals", "shopping", "books" live inside the "My projects" parent. NEVER use `BOARD: My projects | LIST: life goals` — that puts the card on the wrong board. The correct tag is always `BOARD: life goals` (the board's own name). "My projects" must never appear as the BOARD value for user content.
+  PARSING — "new <noun> goal/item/todo <title>" → CREATE_TASK on the matching user board. Example: "new project task report" → `[ACTION: CREATE_TASK | BOARD: projects | TITLE: report]`. Example: "new task review proposal" → `[ACTION: CREATE_TASK | BOARD: tasks | TITLE: review proposal]`. Pluralise the noun for the board name when natural (goal → goals). Do NOT route these to a crew, and do NOT route them to Operator Board if a matching named board exists.
+  TITLE RULE: Use the user's exact words as the TITLE — do NOT rephrase, translate, embellish, or expand the title. "home" → TITLE: home. Never substitute with a creative reworded version. The user owns the title. VIOLATION EXAMPLE: user says "home" → WRONG: TITLE: [verbose elaboration on what home might mean to the user] → CORRECT: TITLE: home.
+  BOARD vs LIST: BOARD is the Planka board name (e.g. "projects"). LIST is a column inside that board (e.g. "Backlog", "To Do"). When adding a card to a board, use the board's name in BOARD: and the list/column name in LIST:. Never write the board name in both BOARD: and LIST:. If you do not know which list/column exists on the board, omit LIST: — the system will use the first available list.
+  CRITICAL — "My projects" IS A PARENT CONTAINER, NOT A BOARD: User-created boards like "projects", "tasks", "research" live inside the "My projects" parent. NEVER use `BOARD: My projects | LIST: projects` — that puts the card on the wrong board. The correct tag is always `BOARD: projects` (the board's own name). "My projects" must never appear as the BOARD value for user content.
 - Create Project: `[ACTION: CREATE_PROJECT | NAME: text | DESCRIPTION: text]`
 - Create Board: `[ACTION: CREATE_BOARD | PROJECT: project_name | NAME: text]`
-  NAME RULE: Write ONLY the board's short label — never the user's full sentence.
-  If the user says codename X → NAME is X. If the user puts X in quotes → NAME is X. If the user says "called X" or "named X" → NAME is X. Otherwise → shortest meaningful label (2-3 words max).
-  BAD: NAME: new board for my fitness tracking project codename "IronLog"
-  GOOD: NAME: IronLog
-  BAD: NAME: new board for my clothing project called Velocity
-  GOOD: NAME: Velocity
 - Create List (Column): `[ACTION: CREATE_LIST | BOARD: board_name | NAME: text]`
-  PARSING — "new list on [board] [name]" or "add list [name] to [board]": BOARD = the board name, NAME = the column name. Example: "new list on life goals 'dream home'" → `[ACTION: CREATE_LIST | BOARD: life goals | NAME: dream home]`. Do NOT include the preposition or board name inside NAME.
+  PARSING — "new list on [board] [name]" or "add list [name] to [board]": BOARD = the board name, NAME = the column name. Example: "new list on projects 'phase two'" → `[ACTION: CREATE_LIST | BOARD: projects | NAME: phase two]`. Do NOT include the preposition or board name inside NAME.
 - Create Event: `[ACTION: CREATE_EVENT | TITLE: text | START: YYYY-MM-DD HH:MM | END: YYYY-MM-DD HH:MM]`
 - Add Person: `[ACTION: ADD_PERSON | NAME: text | RELATIONSHIP: text | CONTEXT: text | CIRCLE: inner/close]`
 - Learn Information: `[ACTION: LEARN | TEXT: factual statement]`
@@ -803,7 +815,7 @@ CRITICAL — USE EXACT NAMES IN PROSE: When confirming a CREATE_TASK, your prose
   (Moves an existing board from one project to another. Use when the user asks to reorganise boards between projects. Planka has no native UI for this — this is the only way to do it.)
   IMPORTANT: "My Projects" is the user's personal board folder. "Operations" is Z's own internal task board. These are different. Never confuse them.
   Example: user says "move the Shopping board to My Projects" → `[ACTION: MOVE_BOARD | BOARD: Shopping | TO_PROJECT: My Projects]`
-  Example: [ACTION: MOVE_BOARD | BOARD: 30L nano reef tank | TO_PROJECT: My projects]
+  Example: [ACTION: MOVE_BOARD | BOARD: [board name] | TO_PROJECT: [project name]]
   CRITICAL: When the user asks to move a board, you MUST emit the MOVE_BOARD action tag. Do not only describe the action in text — the tag is required for execution.
   CRITICAL: NEVER write "Done", "moved", "transferred", or any past-tense success phrase for MOVE_BOARD in your prose. Write a single neutral present-tense sentence such as "Moving board '[name]' to '[project]'." before the tag, then stop. The system will append the authoritative result after verifying with Planka. If you pre-confirm success and the move fails, the user sees a direct contradiction.
 - Append Shopping List: `[ACTION: APPEND_SHOPPING | ITEMS: item1\nitem2\nitem3]`
@@ -815,8 +827,8 @@ CRITICAL — USE EXACT NAMES IN PROSE: When confirming a CREATE_TASK, your prose
   4. NEVER write "gespeichert", "saved", "Done" or any confirmation phrase without emitting all required tags in the same response.
   LOCATION PHRASING — CRITICAL: "Nutrition" is a BOARD, not a Liste. "Keto Diät" is a LIST inside that board. NEVER combine them into a portmanteau like "Nutrition-Liste". Always say "das Nutrition Board" (and optionally "Liste Keto Diät"). This applies to all crew boards: "Fitness Board" not "Fitness-Liste", "Research Board" not "Research-Liste".
   WHEN CONTENT IS NOT IN CONTEXT: If the items to save are not in your current context window, say exactly: "Ich habe die [items] nicht mehr im Kontext — schick sie mir nochmal, dann speichere ich sie direkt aufs [Board]-Board." Do NOT say "[Board]-Liste". Do NOT claim you were never given them — you may have sent them in an earlier message.
-  EXAMPLE: user said "Speichern" after 15 keto recipes → `[ACTION: CREATE_LIST | BOARD: Nutrition | NAME: Keto Rezepte]` then 15x `[ACTION: CREATE_TASK | BOARD: Nutrition | LIST: Keto Rezepte | TITLE: Avocado-Ei-Pfanne | DESCRIPTION: 2 Eier, ½ Avocado...]`
-  EXAMPLE: user says "speichere die in die Keto Diät Liste" → no CREATE_LIST, directly 15x `[ACTION: CREATE_TASK | BOARD: Nutrition | LIST: Keto Diät | TITLE: ... | DESCRIPTION: ...]`
+  EXAMPLE: user said "Speichern" after 15 keto recipes → `[ACTION: CREATE_LIST | BOARD: Nutrition | NAME: [list name]]` then 15x `[ACTION: CREATE_TASK | BOARD: Nutrition | LIST: [list name] | TITLE: [recipe name] | DESCRIPTION: [ingredients]...]`
+  EXAMPLE: user says "speichere die in [list name]" → no CREATE_LIST, directly use: `[ACTION: CREATE_TASK | BOARD: Nutrition | LIST: [list name the user named] | TITLE: ... | DESCRIPTION: ...]`
 - Route to Specialist Crew: `[ACTION: ROUTE | CREW: crew_id]`
   FIRST-PRINCIPLE ROUTING: You MUST evaluate this before responding to any non-trivial message. If a specialist crew covers the domain, route immediately — do not answer it yourself.
   Write ONE short handoff sentence before the tag so the user understands why. Then stop — the crew will take over.
@@ -1647,17 +1659,45 @@ async def chat_with_context(
 	start_time = time.time()
 
 	async def fetch_people():
-		# People surface from memory via Atlas
+		# Always fetch identity (needed for user_name/profile), but skip circle context for trivial messages
 		try:
-			from app.models.db import Preference
 			async with AsyncSessionLocal() as session:
-				name_res = await session.execute(select(Preference).where(Preference.key == "display_name"))
-				name_pref = name_res.scalar_one_or_none()
-				identity_name = name_pref.value if name_pref and name_pref.value else "User"
-				lang_res = await session.execute(select(Preference).where(Preference.key == "language"))
-				lang_pref = lang_res.scalar_one_or_none()
-				user_profile = {"language": lang_pref.value if lang_pref and lang_pref.value else "en"}
-				return "", identity_name, user_profile
+				result = await session.execute(select(Person))
+				people = result.scalars().all()
+				identity_name = "User"
+				user_profile = {}
+				if people:
+					ident = next((p for p in people if p.circle_type == "identity"), None)
+					if ident:
+						identity_name = ident.name
+						user_profile = {
+							"name": ident.name,
+							"birthday": ident.birthday,
+							"gender": ident.gender,
+							"residency": ident.residency,
+							"work_times": ident.work_times,
+							"briefing_time": ident.briefing_time,
+							"context": ident.context,
+							"language": getattr(ident, "language", "en") or "en",
+						}
+
+					# Skip full circle context for trivial/short messages
+					if not include_people or len(user_message.strip()) < 20:
+						return "", identity_name, user_profile
+
+					from app.services.timezone import get_birthday_proximity
+					def _birthday_tag(p):
+						tag = get_birthday_proximity(p.birthday)
+						return f". Note: {p.name}'s birthday is {tag}." if tag else ""
+
+					inner = [f"- {p.name} ({p.relationship}){_birthday_tag(p)}" for p in people if p.circle_type == "inner"]
+					outer = [f"- {p.name} ({p.relationship})" for p in people if p.circle_type == "outer"]
+
+					context = ""
+					if inner: context += "INNER CIRCLE:\n" + "\n".join(inner) + "\n"
+					if outer: context += "OUTER CIRCLE (acquaintances -- mention only when directly relevant):\n" + "\n".join(outer)
+					return context[:2000], identity_name, user_profile
+				return "", identity_name, {}
 		except Exception:
 			return "", "User", {}
 
@@ -2022,17 +2062,39 @@ async def chat_stream_with_context(
 
 	# Reuse the same context-fetching logic
 	async def fetch_people():
-		# People surface from memory via Atlas
 		try:
-			from app.models.db import Preference
 			async with AsyncSessionLocal() as session:
-				name_res = await session.execute(select(Preference).where(Preference.key == "display_name"))
-				name_pref = name_res.scalar_one_or_none()
-				identity_name = name_pref.value if name_pref and name_pref.value else "User"
-				lang_res = await session.execute(select(Preference).where(Preference.key == "language"))
-				lang_pref = lang_res.scalar_one_or_none()
-				user_profile = {"language": lang_pref.value if lang_pref and lang_pref.value else "en"}
-				return "", identity_name, user_profile
+				result = await session.execute(select(Person))
+				people = result.scalars().all()
+				identity_name = "User"
+				user_profile = {}
+				if people:
+					ident = next((p for p in people if p.circle_type == "identity"), None)
+					if ident:
+						identity_name = ident.name
+						user_profile = {
+							"name": ident.name,
+							"birthday": ident.birthday,
+							"gender": ident.gender,
+							"residency": ident.residency,
+							"work_times": ident.work_times,
+							"briefing_time": ident.briefing_time,
+							"context": ident.context,
+							"language": getattr(ident, "language", "en") or "en",
+						}
+					if not include_people or len(user_message.strip()) < 20:
+						return "", identity_name, user_profile
+					from app.services.timezone import get_birthday_proximity
+					def _birthday_tag(p):
+						tag = get_birthday_proximity(p.birthday)
+						return f". Note: {p.name}'s birthday is {tag}." if tag else ""
+					inner = [f"- {p.name} ({p.relationship}){_birthday_tag(p)}" for p in people if p.circle_type == "inner"]
+					outer = [f"- {p.name} ({p.relationship})" for p in people if p.circle_type == "outer"]
+					context = ""
+					if inner: context += "INNER CIRCLE:\n" + "\n".join(inner) + "\n"
+					if outer: context += "OUTER CIRCLE (acquaintances -- mention only when directly relevant):\n" + "\n".join(outer)
+					return context[:2000], identity_name, user_profile
+				return "", identity_name, {}
 		except Exception:
 			return "", "User", {}
 
