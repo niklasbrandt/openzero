@@ -24,15 +24,97 @@
 [![WCAG 2.1 AA](https://img.shields.io/badge/Accessibility-WCAG%202.1%20AA-teal.svg)](https://www.w3.org/TR/WCAG21/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-openZero is a sovereign, self-hosted AI companion that grows a purpose-shaped memory around whatever you point it at — a life, a team, a project, a craft — and thinks alongside you there, with every byte staying under your control.
+openZero is a sovereign, self-hosted AI that builds a living memory of whatever domain you point it at — a life, a business, a research area, a team — and thinks alongside you there. Every byte stays on your hardware.
 
 ---
 
-## What it does
+## In plain terms
 
-openZero is a **thinking substrate**, not a tools dashboard. You point an instance at a domain -- a life, a team, a project, a craft -- and the substrate grows a purpose-shaped memory there: it ingests calendar, mail, chats, photos, voice, and any source you give it; it relates and weighs what it learns; it surfaces contradictions, decisions, and changes; and it lets you walk and recompose that memory through a Memory Atlas. The substrate sits underneath the work. Where conventional tools ask you to organise the information yourself, openZero builds and maintains the context — you think alongside it.
+You deploy openZero and connect it to your sources: calendar, email, documents, notes, voice, or any data feed you configure. It reads everything, builds a structured memory from it, and from that point forward operates as a context engine for that domain.
 
-Every byte stays under your control. The runtime is self-hosted, the model weights are yours to choose (local llama.cpp or any OpenAI-compatible endpoint), the memory backend is open-source (Qdrant), the perimeter is Tailscale, and federation between your own instances ships reasoning slices, not raw data. You can run as many purpose-shaped instances as your hardware supports -- `life-Z`, `work-Z`, `research-Z`, `team-Z` -- each with its own ontology and visual language.
+Ask it a question over Telegram or WhatsApp and it answers with full historical context — not just what you told it five minutes ago, but what it has observed across weeks or months of input. It knows which decisions were made and when, what has changed recently, and where two pieces of information conflict with each other.
+
+On a schedule it runs autonomous reasoning tasks — called **crews** — that synthesise memory into structured output: briefings, analyses, plans. These arrive as step-by-step walk-throughs you move through at your own pace, or as cards in a self-hosted Kanban board (Planka).
+
+The dashboard opens directly to the **Memory Atlas** — a navigable map of everything the system has learned, with relationships, timelines, decisions, and contradictions all queryable and traceable back to source evidence.
+
+### What it is used for
+
+openZero is domain-agnostic. You define the domain at setup time. One deployment is called an **instance** and is scoped to one domain. Common uses:
+
+| Domain | What the substrate tracks |
+| --- | --- |
+| Personal life | Goals, habits, health history, journal entries, recurring decisions |
+| Solo business or freelance | Client context, project decisions, proposal history, competitive research |
+| Research | Sources and contradictions between them, hypothesis evolution, synthesis over time |
+| Team operations | Meeting decisions, project state, onboarding context, shared institutional memory |
+| Any long-running project | Anything where you spend time re-reading old notes to reconstruct what you already knew |
+
+You can run multiple instances on the same hardware — `life-Z`, `work-Z`, `research-Z`, `team-Z` — each with its own memory, crew schedule, and visual theme. Federation (opt-in) lets instances share curated reasoning slices without exposing raw data.
+
+---
+
+## The problem it solves
+
+**Context collapse.** The information exists — spread across emails, documents, meetings, messages, notes — but reconstructing the right slice at the right moment requires manual search and re-reading. Conventional tools manage tasks or store notes, but leave you as the context engine: you remember that a client changed direction in February, that last quarter's decision was superseded, that two project briefs contradict each other.
+
+openZero inverts this. The substrate is the context engine. You interact with it conversationally, and it surfaces what is relevant, flags what conflicts, and alerts you when a past decision is due for review. You stop managing information and start thinking with it.
+
+---
+
+## How it works
+
+### The substrate
+
+openZero is not a chatbot layered over a file store. It is a **thinking substrate** — a structured memory layer that continuously ingests, relates, and re-examines everything it knows.
+
+When a source is connected, the substrate works in four continuous passes:
+
+1. **Ingest** — raw content is chunked, embedded, and stored in Qdrant, an open-source vector database that enables semantic retrieval rather than keyword search
+2. **Relate** — entities are extracted and linked as nodes in a typed knowledge graph: people, projects, decisions, topics, events, facts
+3. **Weight** — each node and relationship carries a confidence score, updated as confirming or contradicting evidence accumulates
+4. **Surface** — changes, contradictions, and due decisions are tracked in structured tables and surfaced on demand or on a schedule
+
+Nothing is summarised away at ingest. The substrate retains evidence and re-derives its structure as new information arrives.
+
+### Crews — the reasoning layer
+
+The substrate holds memory. **Crews** reason over it.
+
+A crew is a YAML-defined team of specialist agent characters that executes a multi-step analysis and delivers structured output. Each character has a defined role and sees the output of the previous step. No code changes are required to add a crew — drop a new entry into `agent/crews.yaml`, restart the backend, and it is live.
+
+Crews run on a schedule (daily, weekly, monthly, quarterly, or annually) or are triggered by message keywords. Output is written to two layers simultaneously:
+
+- **Planka** — a self-hosted Kanban board used as the operational output layer (cards, lists, projects)
+- **Qdrant** — key findings are stored back into the substrate as tagged memory points, so future crews and conversations build on accumulated reasoning rather than re-ingesting raw data
+
+Briefing crews deliver output as **walk-throughs**: step-by-step summaries you move through one stop at a time, in the dashboard or via Telegram and WhatsApp.
+
+### The Memory Atlas
+
+The **Memory Atlas** is the primary view in the dashboard and the main interface for reading and interacting with the substrate's memory. Think of it as a live, navigable knowledge map of everything the system has learned — not a file browser or task list, but a structured, evidence-linked view with full traceability back to source.
+
+Through the Atlas you can:
+
+- **Browse nodes** — every entity the substrate has identified: people, projects, topics, events, facts
+- **Read spines** — the substrate's inferred standing beliefs about your domain (e.g. "primary constraint is X", "recurring focus is Y"), each with a confidence score and the evidence behind it
+- **Navigate timelines** — a chronological view of what the substrate has learned and when
+- **Inspect decisions** — past decisions with their context, outcome, and revisit date; flagged automatically when a revisit is due
+- **Trace contradictions** — conflicting signals held open until resolved; raised by the `contradiction_detector` crew from periodic memory scans
+- **Walk through briefings** — scheduled or ad-hoc briefings delivered as sequenced stops, navigable with arrow keys or swipe
+- **Ask why** — press `?` on any node, spine, or decision to see its source evidence, confidence derivation, and the reasoning path behind it
+- **Explore the inferred domain** — a substrate-generated description of what this instance appears to be about, which you can confirm or refine
+
+A persistent **diff ribbon** at the top of every page shows what the substrate has learned or changed since you last opened it — so you always know what is new without having to search.
+
+### Two-tier inference
+
+Every request is routed through two LLM tiers to minimise latency and cloud dependency:
+
+- **Fast tier** — a small local model (llama.cpp or any OpenAI-compatible local endpoint) handles routing decisions, binary classifications, keyword extraction, and short-form answers. Runs in milliseconds with no cloud involvement.
+- **Deep tier** — a larger model (local or cloud API) handles reasoning-heavy tasks: strategic analysis, contradiction resolution, synthesis, briefing generation. Requires explicit human-in-the-loop approval when called from the dashboard.
+
+No cloud model is called by default. Cloud inference is opt-in via `CLOUD_LLM_URL` in `.env`.
 
 ---
 
@@ -54,7 +136,7 @@ See [BUILD.md](BUILD.md) for a complete variable reference.
 
 ## Personal context
 
-Z is grounded in your life through two local directories that are never committed:
+Z is grounded in your domain through two local directories that are never committed:
 
 ```bash
 cp -r personal.example/ personal/   # about-me, business, health, requirements
@@ -71,31 +153,31 @@ Both Telegram and WhatsApp route to the same Z agent with full context: memory r
 
 ### Telegram commands
 
-| Command            | Effect                                                  |
-| ------------------ | ------------------------------------------------------- |
-| `/start`           | Onboarding message and menu                             |
-| `/help`            | List all commands (alias `/commands`)                   |
-| `/day`             | Daily briefing                                          |
-| `/week`            | Weekly briefing                                         |
-| `/month`           | Monthly briefing                                        |
-| `/quarter`         | Quarterly briefing                                      |
-| `/year`            | Annual briefing                                         |
-| `/search <query>`  | Semantic memory search                                  |
-| `/memories`        | Browse stored memory points                             |
-| `/learn <text>`    | Store a fact to long-term memory (alias `/add`)         |
-| `/unlearn <query>` | Remove a memory point (with confirmation)               |
-| `/purge`           | Wipe memory (requires confirmation)                     |
-| `/board`           | Show the active Planka board                            |
-| `/tree`            | Project / board / list tree                             |
-| `/remind <text>`   | Schedule a one-off or repeating reminder                |
-| `/custom <spec>`   | Register a persistent scheduled job                     |
-| `/protocols`       | List active Z protocols                                 |
-| `/personal`        | Show personal context summary                           |
-| `/agent`           | Show agent rules summary (alias `/skills`)              |
-| `/think <query>`   | Force the deep-tier model with HITL approval            |
-| `/crew <id>`       | Trigger a named crew immediately                        |
-| `/crews`           | List crews and their status                             |
-| `/status`          | Deep integration health check                           |
+| Command            | Effect                                          |
+| ------------------ | ----------------------------------------------- |
+| `/start`           | Onboarding message and menu                     |
+| `/help`            | List all commands (alias `/commands`)           |
+| `/day`             | Daily briefing                                  |
+| `/week`            | Weekly briefing                                 |
+| `/month`           | Monthly briefing                                |
+| `/quarter`         | Quarterly briefing                              |
+| `/year`            | Annual briefing                                 |
+| `/search <query>`  | Semantic memory search                          |
+| `/memories`        | Browse stored memory points                     |
+| `/learn <text>`    | Store a fact to long-term memory (alias `/add`) |
+| `/unlearn <query>` | Remove a memory point (with confirmation)       |
+| `/purge`           | Wipe memory (requires confirmation)             |
+| `/board`           | Show the active Planka board                    |
+| `/tree`            | Project / board / list tree                     |
+| `/remind <text>`   | Schedule a one-off or repeating reminder        |
+| `/custom <spec>`   | Register a persistent scheduled job             |
+| `/protocols`       | List active Z protocols                         |
+| `/personal`        | Show personal context summary                   |
+| `/agent`           | Show agent rules summary (alias `/skills`)      |
+| `/think <query>`   | Force the deep-tier model with HITL approval    |
+| `/crew <id>`       | Trigger a named crew immediately                |
+| `/crews`           | List crews and their status                     |
+| `/status`          | Deep integration health check                   |
 
 ### WhatsApp
 
@@ -145,27 +227,27 @@ You can ask Z "what did the coach crew say last week?" and it will retrieve the 
 Drop a new entry into `agent/crews.yaml` and restart the backend — no code changes required:
 
 ```yaml
-- id: "my-crew"               # unique slug, used in /crew commands and routing
+- id: "my-crew" # unique slug, used in /crew commands and routing
   name: "My Crew Display Name"
   description: "One sentence describing what this crew does."
-  group: "private"            # groups: basic | business | education | private
+  group: "private" # groups: basic | business | education | private
   type: "agent"
-  feeds_briefing: "/week"     # or /day | /month | /quarter — omit for cron-only
-  briefing_day: "MON"         # MON–SUN, required when feeds_briefing is /week
+  feeds_briefing: "/week" # or /day | /month | /quarter — omit for cron-only
+  briefing_day: "MON" # MON–SUN, required when feeds_briefing is /week
   # schedule: "0 14 * * 2"   # alternative: fixed cron, 5-field syntax
-  keywords:                   # optional — word-boundary matches route here directly
-    - trigger word
+  keywords: # optional — word-boundary matches route here directly
+      - trigger word
   # panel_exclude:            # optional — crew IDs blocked from co-running here
   #   - other-crew-id
   instructions: |
-    Describe what the crew should do. Reference personal/health.md, personal/about-me.md,
-    or personal/requirements.md for grounding. End instructions with explicit Planka
-    persistence steps (CREATE_PROJECT / CREATE_BOARD / CREATE_LIST / CREATE_TASK).
+      Describe what the crew should do. Reference personal/health.md, personal/about-me.md,
+      or personal/requirements.md for grounding. End instructions with explicit Planka
+      persistence steps (CREATE_PROJECT / CREATE_BOARD / CREATE_LIST / CREATE_TASK).
   characters:
-    - name: "The Role Name"
-      role: "One sentence describing this character's specific function."
-    - name: "The Second Role"
-      role: "What this character contributes that the first does not."
+      - name: "The Role Name"
+        role: "One sentence describing this character's specific function."
+      - name: "The Second Role"
+        role: "What this character contributes that the first does not."
 ```
 
 Scheduling: `feeds_briefing: /day|/week|/month|/quarter` (briefing-relative, recommended) · `schedule: "0 7 * * *"` (fixed cron)
@@ -182,16 +264,16 @@ Z processes every incoming message through a layered interception pipeline befor
 
 Steps are evaluated in order. Each step may short-circuit and return a response without reaching the next. Step numbers are fractional so that new intercept points can be inserted between existing ones without renumbering the chain.
 
-| Step | Name | What it does |
-| --- | --- | --- |
-| −1 | Audit | Strips prompt-injection attempts from user input |
-| 0 | Recall | Injects relevant Qdrant memory points into context |
-| 0.5 | Structural intent | Fast-path regex match across all known verb families in all 11 languages |
+| Step | Name                    | What it does                                                                                                                                                                                                                                                                                          |
+| ---- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| −1   | Audit                   | Strips prompt-injection attempts from user input                                                                                                                                                                                                                                                      |
+| 0    | Recall                  | Injects relevant Qdrant memory points into context                                                                                                                                                                                                                                                    |
+| 0.5  | Structural intent       | Fast-path regex match across all known verb families in all 11 languages                                                                                                                                                                                                                              |
 | 0.52 | Semantic board fallback | When step 0.5 finds no match, the fast-tier model is asked a single constrained binary question with a forced output format (`SORT_BOARD:<name>` or `NO`). Binary classification on a fixed schema is well within a small model's capability and avoids a cloud round-trip on every unmatched message |
-| 0.55 | Board context injection | Fetches the full live state of the relevant Planka board (lists + card titles) and injects it as grounding context |
-| 0.6 | Ambient capture | Routes ambient notes, facts, and reminders to the capture pipeline |
-| 1 | Crew routing | Keyword match → LLM crew classification → specialist crew |
-| 2 | LLM reply | Full generation pass if no earlier step matched |
+| 0.55 | Board context injection | Fetches the full live state of the relevant Planka board (lists + card titles) and injects it as grounding context                                                                                                                                                                                    |
+| 0.6  | Ambient capture         | Routes ambient notes, facts, and reminders to the capture pipeline                                                                                                                                                                                                                                    |
+| 1    | Crew routing            | Keyword match → LLM crew classification → specialist crew                                                                                                                                                                                                                                             |
+| 2    | LLM reply               | Full generation pass if no earlier step matched                                                                                                                                                                                                                                                       |
 
 ### Pre-existing deterministic intents
 
@@ -250,9 +332,9 @@ The LLM system prompt includes an explicit rule: Z must never confirm an action 
 
 ## Dashboard
 
-17 Shadow DOM Web Components — no React, Vue, or Angular.
+21 Shadow DOM Web Components — no React, Vue, or Angular.
 38 HSLA theme presets, live switching.
-WCAG 2.1 AA, 11 languages, keyboard-navigable.
+WCAG 2.1 AA, 2 UI languages (EN, DE), keyboard-navigable.
 
 ---
 
@@ -283,8 +365,8 @@ WCAG 2.1 AA, 11 languages, keyboard-navigable.
 │   │     ├── Telegram (long-polling)          │   │
 │   │     ├── WhatsApp Cloud API (webhooks)    │   │
 │   │     ├── Semantic Action Tag Engine       │   │
-│   │     ├── Email Polling + Rule Engine      │   │
-│   │     ├── Morning Briefing Generator       │   │
+│   │     ├── Email Ingestion (opt-in)         │   │
+│   │     ├── Briefing + Walkthrough Engine    │   │
 │   │     └── Dashboard API (REST)             │   │
 │   └──────────────────────────────────────────┘   │
 │                                                  │
@@ -331,30 +413,30 @@ Security in openZero is defined by an explicit allowlist, not a blocklist. The a
 
 Z speaks to external systems through a structured set of action tags embedded in its replies. Only tags in this allowlist are parsed and executed; anything outside it is silently ignored. The canonical list lives in `_MUTATING_TAG_RE` in `src/backend/app/services/agent_actions.py`.
 
-| Action | What it does |
-| --- | --- |
-| `CREATE_PROJECT` | Creates a Planka project |
-| `CREATE_BOARD` | Creates a Planka board inside a project |
-| `CREATE_LIST` | Creates a list on a board |
-| `CREATE_TASK` | Creates a card on a list |
-| `MOVE_CARD` | Moves a card to a different list |
-| `MOVE_BOARD` | Moves a board to a different project |
-| `MARK_DONE` | Marks a card as done |
-| `ARCHIVE_CARD` | Archives a card |
-| `APPEND_SHOPPING` | Appends an item to the shopping list |
-| `SET_CARD_DESC` | Sets or updates a card description |
-| `RENAME_CARD` / `RENAME_LIST` / `RENAME_PROJECT` | Renames the matching entity |
+| Action                                                            | What it does                                             |
+| ----------------------------------------------------------------- | -------------------------------------------------------- |
+| `CREATE_PROJECT`                                                  | Creates a Planka project                                 |
+| `CREATE_BOARD`                                                    | Creates a Planka board inside a project                  |
+| `CREATE_LIST`                                                     | Creates a list on a board                                |
+| `CREATE_TASK`                                                     | Creates a card on a list                                 |
+| `MOVE_CARD`                                                       | Moves a card to a different list                         |
+| `MOVE_BOARD`                                                      | Moves a board to a different project                     |
+| `MARK_DONE`                                                       | Marks a card as done                                     |
+| `ARCHIVE_CARD`                                                    | Archives a card                                          |
+| `APPEND_SHOPPING`                                                 | Appends an item to the shopping list                     |
+| `SET_CARD_DESC`                                                   | Sets or updates a card description                       |
+| `RENAME_CARD` / `RENAME_LIST` / `RENAME_PROJECT`                  | Renames the matching entity                              |
 | `DELETE_CARD` / `DELETE_LIST` / `DELETE_BOARD` / `DELETE_PROJECT` | Hard-deletes the matching entity (sensitive — see below) |
-| `SHARE_BOARD` / `SHARE_PROJECT` | Issues a share link |
-| `INVITE_USER` / `INVITE_MEMBER` | Invites a collaborator |
-| `AMBIENT_CAPTURE` / `AMBIENT_TEACH` | Routes ambient input into the capture pipeline |
-| `CREATE_EVENT` | Creates a calendar event |
-| `REMIND` | Sets a one-off or repeating reminder |
-| `LEARN` | Stores a fact to Qdrant long-term memory |
-| `SCHEDULE_CUSTOM` | Registers a persistent scheduled job |
-| `RUN_CREW` | Triggers a named crew immediately |
-| `SCHEDULE_CREW` | Schedules a crew at a cron spec |
-| `PROXIMITY_TRACK` | Initiates a task proximity tracking session |
+| `SHARE_BOARD` / `SHARE_PROJECT`                                   | Issues a share link                                      |
+| `INVITE_USER` / `INVITE_MEMBER`                                   | Invites a collaborator                                   |
+| `AMBIENT_CAPTURE` / `AMBIENT_TEACH`                               | Routes ambient input into the capture pipeline           |
+| `CREATE_EVENT`                                                    | Creates a calendar event                                 |
+| `REMIND`                                                          | Sets a one-off or repeating reminder                     |
+| `LEARN`                                                           | Stores a fact to Qdrant long-term memory                 |
+| `SCHEDULE_CUSTOM`                                                 | Registers a persistent scheduled job                     |
+| `RUN_CREW`                                                        | Triggers a named crew immediately                        |
+| `SCHEDULE_CREW`                                                   | Schedules a crew at a cron spec                          |
+| `PROXIMITY_TRACK`                                                 | Initiates a task proximity tracking session              |
 
 Destructive actions (`DELETE_*`) are part of the vocabulary, not blocked at the parser layer. They are gated by the human-in-the-loop policy below — the safety guarantee is the HITL queue plus the structured allowlist, not the absence of delete verbs.
 
