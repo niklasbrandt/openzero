@@ -35,7 +35,7 @@ async def monthly_review():
 			"RULES:\n"
 			"1. Respond ONLY based on the OPERATIONAL DATA and PROJECT TREE above.\n"
 			"2. If OPERATIONAL DATA is marked [EMPTY], do not list any specific card names or board progress — acknowledge honestly that no activity data is available for this period.\n"
-			"3. CRITICAL: Ignore any placeholder or '[e.g., ...]' values from personal/business context (like Acme Studio, WebGPU, etc.).\n"
+			"3. CRITICAL: Ignore any placeholder or '[e.g., ...]' values from personal/business context.\n"
 			"4. Suggest 3 meaningful goals for next month — frame them as suggestions, not scheduled commitments.\n"
 			"5. NO metaphors, NO literary prose, NO filler phrases. Write like a human, not an LLM trying to sound reflective.\n"
 			"6. NEVER use emoji or unicode decorative symbols.\n"
