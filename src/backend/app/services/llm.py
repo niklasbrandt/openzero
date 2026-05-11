@@ -37,7 +37,7 @@ import uuid
 import asyncio
 import time
 from sqlalchemy import select
-from app.models.db import AsyncSessionLocal, LLMMetric, Person
+from app.models.db import AsyncSessionLocal, LLMMetric
 
 logger = logging.getLogger(__name__)
 
@@ -360,20 +360,9 @@ async def _ensure_person_names_loaded() -> None:
 	global _known_person_names, _known_person_names_loaded
 	if _known_person_names_loaded:
 		return
-	try:
-		async with AsyncSessionLocal() as session:
-			result = await session.execute(select(Person.name))
-			names = result.scalars().all()
-		for n in names:
-			for part in (n or "").strip().split():
-				if len(part) >= 3:
-					_known_person_names.add(part.lower())
-		_known_person_names_loaded = True
-		logger.debug("cloud_sanitize: loaded %d person name tokens from people DB (ready=%s)", len(_known_person_names), _known_person_names_loaded)
-	except Exception as exc:
-		logger.warning("cloud_sanitize: could not load person names from DB (%s) — heuristic-only", exc)
-		_known_person_names_loaded = True  # do not retry on every cloud call
-		logger.debug("cloud_sanitize: person names cache flag set (ready=%s)", _known_person_names_loaded)
+	# Person table was removed in the substrate pivot.
+	# Name-based PII sanitisation operates in heuristic-only mode.
+	_known_person_names_loaded = True
 
 
 def _should_replace_person_entity(word: str, full_text: str) -> bool:
@@ -662,13 +651,10 @@ async def _get_user_lang() -> str:
 	"""Return the user's language from the identity record, cached in memory."""
 	global _cached_user_lang
 	try:
-		async with AsyncSessionLocal() as s:
-			res = await s.execute(select(Person).where(Person.circle_type == "identity"))
-			ident = res.scalar_one_or_none()
-			if ident:
-				_cached_user_lang = getattr(ident, "language", "en") or "en"
+		from app.services.translations import get_user_lang as _get_lang_pref
+		_cached_user_lang = await _get_lang_pref()
 	except Exception:
-		logger.debug("_get_user_lang: DB unavailable, using cached lang %r", _cached_user_lang)
+		logger.debug("_get_user_lang: preference unavailable, using cached lang %r", _cached_user_lang)
 	return _cached_user_lang
 
 # Lean system prompt for conversational messages (no action tag docs)
@@ -1662,8 +1648,7 @@ async def chat_with_context(
 		# Always fetch identity (needed for user_name/profile), but skip circle context for trivial messages
 		try:
 			async with AsyncSessionLocal() as session:
-				result = await session.execute(select(Person))
-				people = result.scalars().all()
+				people = []  # Person table removed (substrate pivot)
 				identity_name = "User"
 				user_profile = {}
 				if people:
@@ -2064,8 +2049,7 @@ async def chat_stream_with_context(
 	async def fetch_people():
 		try:
 			async with AsyncSessionLocal() as session:
-				result = await session.execute(select(Person))
-				people = result.scalars().all()
+				people = []  # Person table removed (substrate pivot)
 				identity_name = "User"
 				user_profile = {}
 				if people:
