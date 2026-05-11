@@ -22,6 +22,8 @@ def _require_dashboard_auth(request: Request):
 	if not settings.DASHBOARD_TOKEN or auth != f"Bearer {settings.DASHBOARD_TOKEN}":
 		raise HTTPException(status_code=401, detail="Dashboard auth required")
 
+federation_router = APIRouter(prefix="/api/federation", tags=["federation"])
+
 @federation_router.get("/contracts")
 async def list_federation_contracts(request: Request, db: AsyncSession = Depends(get_db)):  # noqa: B008
 	_require_federation()

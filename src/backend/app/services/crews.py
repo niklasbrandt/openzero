@@ -123,36 +123,44 @@ class CrewRegistry:
 		if not self.crews_yaml_path.exists():
 			logger.warning("Registry: %s NOT FOUND", self.crews_yaml_path)
 			return
-		with open(self.crews_yaml_path, "r", encoding="utf-8") as f:
-			raw_data = yaml.safe_load(f)
+		try:
+			with open(self.crews_yaml_path, "r", encoding="utf-8") as f:
+				raw_data = yaml.safe_load(f)
+		except Exception as _yaml_err:
+			logger.error("Registry: YAML parse failed for %s: %s", self.crews_yaml_path, _yaml_err)
+			return
 		
 		# Native Registry Manifest
 		crews_list = raw_data.get("crews", [])
 		logger.info("Registry: Found %d potential crews in YAML", len(crews_list))
 		for c in crews_list:
 			if not isinstance(c, dict) or not c.get("enabled", True): continue
-			# Create config, ignoring any leftover Dify fields
-			config = CrewConfig(
-				id=c.get("id"),
-				name=c.get("name"),
-				type=c.get("type"),
-				group=c.get("group"),
-				description=c.get("description"),
-				enabled=c.get("enabled", True),
-				instructions=c.get("instructions"),
-				characters=c.get("characters"),
-				keywords=c.get("keywords"),
-				keywords_i18n=c.get("keywords_i18n"),
-				panel_exclude=c.get("panel_exclude"),
-				feeds_briefing=c.get("feeds_briefing"),
-				schedule=c.get("schedule"),
-				briefing_day=c.get("briefing_day"),
-				briefing_dom=c.get("briefing_dom"),
-				briefing_months=c.get("briefing_months"),
-				lead_time=c.get("lead_time"),
-				health_context=c.get("health_context", False),
-			)
-			self._crews[config.id] = config
+			_cid = c.get("id", "<unknown>")
+			try:
+				# Create config, ignoring any leftover Dify fields
+				config = CrewConfig(
+					id=c.get("id"),
+					name=c.get("name"),
+					type=c.get("type"),
+					group=c.get("group"),
+					description=c.get("description"),
+					enabled=c.get("enabled", True),
+					instructions=c.get("instructions"),
+					characters=c.get("characters"),
+					keywords=c.get("keywords"),
+					keywords_i18n=c.get("keywords_i18n"),
+					panel_exclude=c.get("panel_exclude"),
+					feeds_briefing=c.get("feeds_briefing"),
+					schedule=c.get("schedule"),
+					briefing_day=c.get("briefing_day"),
+					briefing_dom=c.get("briefing_dom"),
+					briefing_months=c.get("briefing_months"),
+					lead_time=c.get("lead_time"),
+					health_context=c.get("health_context", False),
+				)
+				self._crews[config.id] = config
+			except Exception as _crew_err:
+				logger.error("Registry: Skipping crew '%s' — failed to load: %s", _cid, _crew_err)
 		logger.info("Registry: Successfully loaded %d active crews.", len(self._crews))
 		self._compute_panel_candidates()
 		await self._precache_keywords()
