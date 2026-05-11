@@ -23,6 +23,7 @@ function loadLazyComponents(): void {
 	import('../components/AgentsWidget')
 	import('../components/WalkthroughViewer')
 	import('../components/DecisionCapture')
+	import('../components/BackupCard')
 }
 
 if ('requestIdleCallback' in window) {
@@ -293,12 +294,11 @@ const themeReady = initTheme();
 // "popcorn" re-render effect where widgets pop in one by one.
 declare global {
 	interface Window {
-		__z_translations: Record<string, string> | null;
-		__z_translations_ready: Promise<void>;
+		__z_translations?: Record<string, string>;
+		__z_translations_ready?: Promise<void>;
 		__z_lang: string;
 	}
 }
-window.__z_translations = null;
 window.__z_lang = 'en';
 
 const translationsReady = (async () => {
