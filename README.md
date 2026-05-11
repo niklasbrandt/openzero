@@ -30,9 +30,9 @@ openZero is a sovereign, self-hosted AI companion that grows a purpose-shaped me
 
 ## What it does
 
-openZero is a **thinking substrate**, not a tools dashboard. You point an instance at a domain -- a life, a team, a project, a craft -- and the substrate grows a purpose-shaped memory there: it ingests calendar, mail, chats, photos, voice, and any source you give it; it relates and weighs what it learns; it surfaces contradictions, decisions, and changes; and it lets you walk and recompose that memory through a Memory Atlas. The substrate sits underneath the work. Surfaces like Miro, Jira, and Trello put cards on a wall and ask you to do the thinking. openZero builds and maintains the context itself, and you think alongside it.
+openZero is a **thinking substrate**, not a tools dashboard. You point an instance at a domain -- a life, a team, a project, a craft -- and the substrate grows a purpose-shaped memory there: it ingests calendar, mail, chats, photos, voice, and any source you give it; it relates and weighs what it learns; it surfaces contradictions, decisions, and changes; and it lets you walk and recompose that memory through a Memory Atlas. The substrate sits underneath the work. Where conventional tools ask you to organise the information yourself, openZero builds and maintains the context — you think alongside it.
 
-Every byte stays under your control. The runtime is self-hosted, the model weights are yours to choose (local llama.cpp or any OpenAI-compatible endpoint), the memory backend is open-source (Qdrant), the perimeter is Tailscale, and federation between your own instances ships reasoning slices, not raw data. You can run as many purpose-shaped instances as your hardware supports -- `life-Z`, `work-Z`, `partner-Z`, `fishing-Z` -- each with its own ontology and visual language.
+Every byte stays under your control. The runtime is self-hosted, the model weights are yours to choose (local llama.cpp or any OpenAI-compatible endpoint), the memory backend is open-source (Qdrant), the perimeter is Tailscale, and federation between your own instances ships reasoning slices, not raw data. You can run as many purpose-shaped instances as your hardware supports -- `life-Z`, `work-Z`, `research-Z`, `team-Z` -- each with its own ontology and visual language.
 
 ---
 
