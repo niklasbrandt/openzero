@@ -73,7 +73,7 @@ Cross-instance reasoning (e.g. "I want my work-Z to know that life-Z said I'm ta
 - **MemorySource plugins** ingest signals into the unified ingestion bus (extends today's bus from `services/ambient_capture/`). Calendar (per Phase P5), mail (when `EMAIL_ENABLED=1`), chat (existing channels), voice (via voice-edge), vision (existing `services/vision.py` per `docs/artifacts/multimodal_vision.md`), files (`/personal`), and any future source plug into the same contract.
 - **Memory store** is dual: Qdrant for semantic retrieval (existing), Postgres for the navigable graph, spines, decisions, contradictions, walk-throughs, domain inference cache. New tables created via startup DDL in `src/backend/app/main.py` (no Alembic).
 - **Atlas services** are the substrate's thinkers -- spine summariser (continuous), contradiction crew (Phase C), decision capture (Phase DC), domain inference (Phase DD), diff engine (Phase D), "why?" service (Phase Y).
-- **/api/atlas/* routes** expose the navigable surface to the MemoryAtlas dashboard component and to the channel renderers.
+- **/api/atlas/\* routes** expose the navigable surface to the MemoryAtlas dashboard component and to the channel renderers.
 
 ---
 
@@ -138,17 +138,17 @@ Single Web Component `src/dashboard/components/MemoryAtlas.ts`. Shadow DOM, `${A
 
 Nine lenses plus the List accessibility fallback:
 
-| ID | Lens | Best for | Notes |
-|----|------|----------|-------|
-| 1 | **Graph** | Topology, relationships | Default on desktop. Implementing agent picks layout library at MA1 (master artifact section 9). |
-| 2 | **List** | Linear scan, accessibility | a11y fallback for every other lens. Default on small viewports per Phase Z. |
-| 3 | **Timeline** | Temporal sequencing | Per-spine and global. |
-| 4 | **Heatmap** | Density, recency | Calendar-grid style; intensity = confidence x recency. |
-| 5 | **Focus** | Single-node deep dive | Node + first-degree neighbours + source_refs panel. |
-| 6 | **Spines** | Topic-paragraph reader | Spine summariser output, paragraph-by-paragraph; each paragraph has its own "why?". |
-| 7 | **Decisions** | Open/revisit-due/resolved kanban-style view | Phase DC. |
-| 8 | **Contradictions** | Unresolved/dismissed list | Phase C. |
-| 9 | **Diffs** | Change feed | Powers the persistent diff ribbon (Phase D). |
+| ID  | Lens               | Best for                                    | Notes                                                                                           |
+| --- | ------------------ | ------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| 1   | **Graph**          | Topology, relationships                     | Default on desktop. Implementing agent picks layout library at MA1 (master artifact section 9). |
+| 2   | **List**           | Linear scan, accessibility                  | a11y fallback for every other lens. Default on small viewports per Phase Z.                     |
+| 3   | **Timeline**       | Temporal sequencing                         | Per-spine and global.                                                                           |
+| 4   | **Heatmap**        | Density, recency                            | Calendar-grid style; intensity = confidence x recency.                                          |
+| 5   | **Focus**          | Single-node deep dive                       | Node + first-degree neighbours + source_refs panel.                                             |
+| 6   | **Spines**         | Topic-paragraph reader                      | Spine summariser output, paragraph-by-paragraph; each paragraph has its own "why?".             |
+| 7   | **Decisions**      | Open/revisit-due/resolved kanban-style view | Phase DC.                                                                                       |
+| 8   | **Contradictions** | Unresolved/dismissed list                   | Phase C.                                                                                        |
+| 9   | **Diffs**          | Change feed                                 | Powers the persistent diff ribbon (Phase D).                                                    |
 
 Lens switching preserves selection and filter state. Each lens is a sub-Web-Component lazy-loaded via the existing Vite chunk split pattern (`src/dashboard/vite.config.ts`).
 

@@ -44,6 +44,7 @@ const LAZY_COMPONENTS = [
 	'InstanceEntry', 'HardwareMonitor', 'SoftwareStatus',
 	'SystemBenchmark', 'ZPersonality', 'AmbientWidget',
 	'MemoryAtlas', 'WalkthroughViewer', 'DecisionCapture',
+	'BackupCard',
 ]
 
 export default defineConfig({

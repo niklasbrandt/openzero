@@ -222,4 +222,3 @@ federation:
   # Store the result in .env as FEDERATION_KEK=<value>. Never commit a real key here.
   # Corresponds to env var FEDERATION_KEK.
   kek: ""
-

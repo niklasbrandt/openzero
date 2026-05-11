@@ -44,7 +44,7 @@ async def weekly_review():
 			"RULES:\n"
 			"- Base your message ONLY on the data sections provided above.\n"
 			"- If RECENT ACTIVITY is marked [EMPTY], do not list any specific card names or board progress — acknowledge honestly that no activity data is available for this period.\n"
-			"- Do not mention placeholder examples or template values from personal files.\n"
+			"- Ignore any placeholder or '[e.g., ...]' values in personal context files — treat them as absent.\n"
 			"- NO metaphors, NO literary prose, NO filler ('honestly?', 'that screams', etc.). Write like a human, not an LLM trying to sound thoughtful.\n"
 			"- NEVER use emoji or unicode decorative symbols.\n\n"
 			"STALE ITEMS SECTION (only if STALE / NO MOVEMENT has real entries):\n"

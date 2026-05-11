@@ -135,10 +135,10 @@ The implementing agent in Phase W:
 ## 7. Test plan
 
 - `tests/test_walkthroughs.py`:
-	- Unit: `services/walkthroughs.py` builder produces a valid `Walkthrough` for a synthetic memory corpus across all five briefing kinds plus `ad_hoc`.
-	- Unit: stop selection respects spine confidence ordering and includes any `revisit_when`-triggered decisions and unresolved contradictions.
-	- Unit: per-channel renderer outputs are deterministic for a fixed `Walkthrough` input.
-	- Unit: deep-link rewriting handles both `oz://atlas/...` URIs.
+    - Unit: `services/walkthroughs.py` builder produces a valid `Walkthrough` for a synthetic memory corpus across all five briefing kinds plus `ad_hoc`.
+    - Unit: stop selection respects spine confidence ordering and includes any `revisit_when`-triggered decisions and unresolved contradictions.
+    - Unit: per-channel renderer outputs are deterministic for a fixed `Walkthrough` input.
+    - Unit: deep-link rewriting handles both `oz://atlas/...` URIs.
 - Integration: end-to-end morning briefing dispatch hits all four channel push paths (mocked transport) with consistent stop content.
 - a11y: `WalkthroughViewer.ts` passes axe-core in the dashboard test harness (`docs/artifacts/accessibility_ci_tests.md`); arrow-key navigation works; min 44x44 px controls; visible focus ring.
 - i18n: every new string lives in `_EN` and `_DE`. `pytest tests/test_i18n_coverage.py -v` green.
