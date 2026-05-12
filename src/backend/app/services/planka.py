@@ -1649,6 +1649,13 @@ async def get_recent_activity(hours: int = 48) -> str:
 				list_map = {l["id"]: (l.get("name") or "?") for l in lists}
 				done_list_ids = {l["id"] for l in lists if _is_done_list(l.get("name", ""))}
 
+				# Capture newly created lists (new column/stage added to board)
+				for lst in lists:
+					_raw_l_created = lst.get("createdAt") or ""
+					l_created = datetime.fromisoformat(_raw_l_created.replace("Z", "")) if _raw_l_created else datetime.min
+					if l_created >= cutoff:
+						lines.append(f"- [new list] {lst.get('name') or '?'} added to {b_name} | created")
+
 				for card in cards:
 					if card["listId"] in done_list_ids:
 						continue

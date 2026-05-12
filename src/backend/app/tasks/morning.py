@@ -1,4 +1,4 @@
-from app.models.db import AsyncSessionLocal, Briefing
+from app.models.db import AsyncSessionLocal, Briefing, Preference
 from app.config import settings
 from sqlalchemy import select
 import asyncio
@@ -37,17 +37,17 @@ def build_briefing_skeleton(
 		lines.append("")
 
 	if project_tree and "Planka connection issue" not in project_tree and "[NO DATA]" not in project_tree:
-		lines.append("Boards (active):")
+		lines.append("All active boards (current state):")
 		lines.append(project_tree)
 		lines.append("")
 
 	if recent_activity and "NO ACTIVITY" not in recent_activity and "UNAVAILABLE" not in recent_activity:
-		lines.append("Recent movement (last 48h):")
+		lines.append("Recently created or changed (last 48h):")
 		lines.append(recent_activity)
 		lines.append("")
 
 	if stale_cards and "NO STALE" not in stale_cards and "UNAVAILABLE" not in stale_cards:
-		lines.append("No movement in 5+ days:")
+		lines.append("No movement in 5+ days (may need attention):")
 		lines.append(stale_cards)
 		lines.append("")
 
@@ -202,6 +202,17 @@ async def morning_briefing():
 		except Exception as ae:
 			logger.debug("morning_briefing: ambient queue drain skipped: %s", ae)
 
+		# Read configurable observation count from preferences (default 3)
+		max_obs = 3
+		try:
+			async with AsyncSessionLocal() as _obs_session:
+				_obs_res = await _obs_session.execute(select(Preference).where(Preference.key == "briefing_max_observations"))
+				_obs_pref = _obs_res.scalar_one_or_none()
+				if _obs_pref and _obs_pref.value:
+					max_obs = int(_obs_pref.value)
+		except Exception as _obs_err:
+			logger.debug("morning_briefing: could not read briefing_max_observations, defaulting to 3: %s", _obs_err)
+
 		skeleton = build_briefing_skeleton(
 			weather=weather_report,
 			calendar_events=calendar_events,
@@ -216,7 +227,7 @@ async def morning_briefing():
 		full_prompt = (
 			"ABSOLUTE RULE: You are a formatter. The BRIEFING DRAFT below contains ALL the facts for today's briefing. Your job is ONLY to:\n"
 			"1. Make it sound natural and human in Z's voice (warm, direct, no corporate language, no emoji)\n"
-			"2. Add one short kanban expert observation if any board cards are stale or blocked\n"
+			f"2. Add up to {max_obs} kanban expert observations — focus on: stale cards (no movement 5+ days), cards stuck in the same list too long, and anything that moved or was created in the last 48 hours that deserves attention.\n"
 			"3. End with 'Irgendwas Neues fuer heute?' (or equivalent in the user's language)\n\n"
 			"DO NOT add any information not present in the BRIEFING DRAFT.\n"
 			"DO NOT invent events, cards, emails, people, or project names.\n"
@@ -225,6 +236,7 @@ async def morning_briefing():
 			"You may emit action tags silently (they are stripped before delivery): "
 			"[ACTION: MOVE_CARD | CARD: <fragment> | LIST: <list>], [ACTION: MARK_DONE | CARD: <fragment>], [ACTION: LEARN | TEXT: <fact>]. "
 			"Only for cards/boards named verbatim in the draft.\n\n"
+			"RECENCY NOTE: Items in 'Recently created or changed' are the highest priority for observations. Stale items are second priority.\n\n"
 			f"BRIEFING DRAFT:\n{skeleton}\n\n"
 			f"Write the final briefing now, in {user_language}. Keep it under 200 words."
 		)
