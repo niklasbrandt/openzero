@@ -1637,7 +1637,6 @@ async def get_recent_activity(hours: int = 48) -> str:
 				for b in boards:
 					board_tasks.append(client.get(f"/api/boards/{b['id']}", params={"included": "lists,cards"}))
 					board_names.append(b.get("name") or "")
-				return f"[NO ACTIVITY IN LAST {hours} HOURS]"
 
 			board_details = await asyncio.gather(*board_tasks)
 
@@ -1781,7 +1780,7 @@ async def get_crew_board_snapshot() -> str:
 				if not active_cards:
 					lines.append(f"{b_name}: no active items")
 				else:
-					top = active_cards[:2]
+					top = sorted(active_cards, key=lambda c: c.get("updatedAt") or "", reverse=True)[:2]
 					card_strs = ", ".join(f"{c.get('name') or '?'} ({list_map.get(c['listId'], '?')})" for c in top)
 					lines.append(f"{b_name}: {card_strs}")
 

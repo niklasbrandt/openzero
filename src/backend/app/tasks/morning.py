@@ -7,6 +7,68 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
+def build_briefing_skeleton(
+	weather: str,
+	calendar_events: list,
+	project_tree: str,
+	recent_activity: str,
+	stale_cards: str,
+	crew_snapshot: str,
+	email_summary: str = "",
+	ambient_insights: str = "",
+) -> str:
+	"""Build a pre-formatted briefing draft from real data. The LLM only adds voice/tone."""
+	lines: list[str] = []
+
+	lines.append(f"Weather: {weather}")
+	lines.append("")
+
+	if calendar_events:
+		lines.append("Calendar today:")
+		for ev in calendar_events:
+			time_str = ""
+			start = ev.get("start", "")
+			if "T" in start:
+				t = start.split("T")[1][:5]
+				if t != "00:00":
+					time_str = f"{t} "
+			lines.append(f"  - {time_str}{ev.get('summary', '?')}")
+		lines.append("")
+
+	if project_tree and "Planka connection issue" not in project_tree and "[NO DATA]" not in project_tree:
+		lines.append("Boards (active):")
+		lines.append(project_tree)
+		lines.append("")
+
+	if recent_activity and "NO ACTIVITY" not in recent_activity and "UNAVAILABLE" not in recent_activity:
+		lines.append("Recent movement (last 48h):")
+		lines.append(recent_activity)
+		lines.append("")
+
+	if stale_cards and "NO STALE" not in stale_cards and "UNAVAILABLE" not in stale_cards:
+		lines.append("No movement in 5+ days:")
+		lines.append(stale_cards)
+		lines.append("")
+
+	if crew_snapshot and "UNAVAILABLE" not in crew_snapshot and "no crew boards found" not in crew_snapshot:
+		lines.append("Crew boards:")
+		lines.append(crew_snapshot)
+		lines.append("")
+
+	if email_summary and not email_summary.startswith("[NO DATA"):
+		lines.append("Email (unread):")
+		lines.append(email_summary)
+		lines.append("")
+
+	if ambient_insights:
+		lines.append("Ambient signals:")
+		lines.append(ambient_insights)
+		lines.append("")
+
+	return "\n".join(lines)
+
+
 async def morning_briefing():
 	"""Generate and store the daily morning briefing."""
 	logger.info("Morning Briefing initialization started (T-15m offset applied).")
@@ -79,12 +141,17 @@ async def morning_briefing():
 			emails = await fetch_unread_emails(max_results=5)
 			return "\n".join([f"- {e['from']}: {e['subject']}" for e in emails]) if emails else "[NO DATA — email is not connected or inbox is empty. The Email section MUST be absent from the briefing. Do NOT invent senders, subjects, or message content.]"
 
-		from app.services.planka import get_activity_report
-		weather_report, tree, email_summary, activity = await asyncio.gather(
+		from app.services.planka import get_activity_report, get_recent_activity, get_stale_cards, get_crew_board_snapshot
+		from app.services.translations import get_user_lang
+		weather_report, tree, email_summary, activity, recent_activity, stale_cards, crew_snapshot, user_language = await asyncio.gather(
 			get_weather_forecast(detected_location),
 			get_project_tree(as_html=False),
 			_get_email_summary(),
 			get_activity_report(days=1),
+			get_recent_activity(hours=48),
+			get_stale_cards(min_days=5),
+			get_crew_board_snapshot(),
+			get_user_lang(),
 		)
 		logger.debug("morning_briefing — batch-2 done in %.1fs", asyncio.get_event_loop().time() - _t2)
 
@@ -135,120 +202,31 @@ async def morning_briefing():
 		except Exception as ae:
 			logger.debug("morning_briefing: ambient queue drain skipped: %s", ae)
 
-		_email_is_absent = email_summary.startswith("[NO DATA")
-		_calendar_is_empty = calendar_summary.startswith("[NO DATA")
+		skeleton = build_briefing_skeleton(
+			weather=weather_report,
+			calendar_events=calendar_events,
+			project_tree=tree,
+			recent_activity=recent_activity,
+			stale_cards=stale_cards,
+			crew_snapshot=crew_snapshot,
+			email_summary=email_summary,
+			ambient_insights=ambient_insights_section,
+		)
 
 		full_prompt = (
-			"Z, it's morning. Write the daily briefing for the user.\n\n"
-			"CRITICAL DATA INTEGRITY RULE — read before anything else:\n"
-			"You are receiving REAL data from live system sources. The data blocks at the bottom of this prompt are the ONLY source of truth.\n"
-			"- If a data block says [NO DATA], that section contains NOTHING. Write nothing about it. No heading, no placeholder, no inference.\n"
-			"- NEVER invent, infer, or hallucinate calendar events, email subjects, task titles, project names, meeting times, or people's names.\n"
-			"- Do NOT reference any project name, meeting title, or email sender unless it appears verbatim in the data blocks below.\n"
-			"- Treat [NO DATA] as if that block does not exist in this prompt at all.\n\n"
-			"VOICE & STYLE:\n"
-			"- Write like a smart colleague sending a quick message about your day. Natural, direct, slightly informal — not robotic, not literary.\n"
-			"- Short sentences. Plain words. OK to drop a subject: 'Clear calendar today.' / 'Rain until noon.'\n"
-			"- Sections and labels are expected. The language inside them should sound like a person wrote it, not a machine printing a table.\n"
-			"- Use bullets for lists of items (board cards, emails, tasks). Use short prose for single-line observations like weather or agenda notes.\n"
-			"- NEVER use emoji or unicode decorative symbols. Plain text only.\n"
-			"- NO metaphors, NO atmospheric prose, NO literary devices. NO filler: 'honestly?', 'that screams', 'it's not about the result'.\n"
-			"- Target 150-250 words total. Over 400 is a failure.\n\n"
-			"HALLUCINATION RULES (never break these):\n"
-			"- Only include a section if real data for it was provided in the context blocks below.\n"
-			"- If a context block is marked [EMPTY] or contains no items — omit that section from output entirely. Do not write the section heading.\n"
-			"- Never invent events, emails, tasks, pickup times, or meal plans.\n"
-			"- Never assume what day of the week it is or what the user's schedule looks like.\n"
-			"- Never generate school pickup times, standup meetings, or any recurring schedule items unless they appear verbatim in CALENDAR TODAY.\n"
-			"- Proactive suggestions (fitness, meal ideas) are allowed BUT must be clearly framed as suggestions, not as confirmed schedule items.\n\n"
-			"OUTPUT FORMAT — include a section only when you have real data for it:\n"
-			"[One-line opener: temperature and conditions from WEATHER FORECAST. Facts only.]\n\n"
-			"Calendar: [only if CALENDAR TODAY has real events — list each with time, one line each]\n"
-			"Email: [only if LATEST EMAILS has real emails — list notable items, one line each]\n\n"
-			"Board (Today): [only if PROJECT TREE has real cards — act as a kanban expert: read the actual list names and card titles from the tree; identify the 1-2 highest-value cards to progress today; flag anything stuck or blocking something downstream; recommend the single next physical action for the top card]\n\n"
-			"[Include a labeled crew block only if the crew has concrete data for today:]\n"
-			"Fitness: [only if a fitness crew produced a concrete plan for today]\n"
-			"Nutrition: [only if a meal plan exists — ONE warm meal suggestion only, never both lunch and dinner]\n\n"
-			"FORMATTING RULES:\n"
-			"- Weather: one sentence — temperature, conditions, one practical note. No metaphors. No label-colon-value pairs.\n"
-			"- Board: for each card you surface, state the situation and recommend a next action. One card per line. No arrow notation. No passive status pairs.\n\n"
-			"CONTENT — include only sections where real data was provided in the context blocks below:\n"
-			"- Weather: temperature and conditions from WEATHER FORECAST. Always include — weather data is always provided.\n"
-			"- Calendar: only if CALENDAR TODAY is not marked [EMPTY]. List real events only.\n"
-			"- Board: only if PROJECT TREE has real cards. Never list cards not present in the tree.\n"
-			"- Email: only if LATEST EMAILS has real emails. If marked [EMPTY], omit the section entirely.\n\n"
-			"PROACTIVE SUGGESTIONS — allowed, but grounded:\n"
-			"Based on the user's known personal context (health goals, career aspirations, family situation, "
-			"fitness preferences, nutrition needs, life circumstances), actively suggest concrete things "
-			"they could do today. Label suggestions clearly as suggestions, never as confirmed schedule items.\n"
-			"- If the fitness or health crew has produced a plan, suggest today's workout window based on weather and calendar gaps.\n"
-			"- If career goals exist, suggest a concrete skill-building action for today.\n"
-			"- If nutrition crew is active, mention ONE warm meal suggestion. Do not suggest both lunch and dinner.\n"
-			"- If stagnant projects exist in the tree, nudge on the most impactful one.\n"
-			"- As a kanban expert, apply these principles to the board section (adapt to whatever list names the board actually uses — do NOT assume columns called 'Backlog', 'In Progress', or 'Done'):   \n"
-			"  * Read the board's actual list names from PROJECT TREE and treat them as the flow stages, left to right.\n"
-			"  * WIP discipline: if any active/work stage has multiple cards, flag that and recommend finishing one before pulling new work.\n"
-			"  * Pull signal: identify the single highest-value card in an early-stage list that should be advanced today.\n"
-			"  * Blocker detection: if a card has been in the same list for 2+ days (infer from RECENT ACTIVITY), name it and suggest the one action that would move it forward.\n"
-			"  * Done sweep: if a completion-stage list has cards that should be closed out or followed up, surface that.\n"
-			"  * The goal is a clear, opinionated recommendation — not a status report.\n"
-			"- If the weather is good, suggest something outdoors. If bad, suggest something productive indoors.\n"
-			"Add each suggestion as a labeled one-line bullet under the relevant section (Fitness:, Nutrition:, Kids:, etc.).\n\n"
-			"CREW AWARENESS — the user has these active autonomous crews working for them:\n"
-			f"{crew_context if crew_context else 'No active crews detected.'}\n"
-			"Surface relevant crew output as labeled single-line facts in the structure above. "
-			"If the fitness crew has a plan, one line under 'Fitness:'. If the nutrition crew has a meal, one line under 'Nutrition:'. "
-			"Only include crews that have something concrete for TODAY. No prose linking them together.\n\n"
-			"STRICT RULES:\n"
-			"- NEVER invent names, tasks, projects, or events not present in CONTEXT.\n"
-			"- IGNORE any placeholder or '[e.g., ...]' values in personal files.\n"
-			"- ONLY mention a birthday if CONTEXT explicitly contains 'BIRTHDAY IN EXACTLY'.\n"
-			"- If a section has nothing relevant, skip it entirely — don't note 'nothing to report'.\n"
-			"- Do NOT summarize the NEW MEMORIES section — it will be appended separately.\n"
-			"- In the WEATHER section, use the EXACT city and country names as they appear "
-			"in the data. NEVER replace them with bracket placeholders like [CITY_1] or [LOCATION_2]. "
-			"Write city and country names verbatim — do not anonymise or paraphrase them.\n\n"
-			"CLOSING SECTION (always include, at the very end of the briefing):\n"
-			"After all content sections, add a short closing section — no heading — with two lines:\n"
-			"1. Ask directly: 'Irgendwas Neues für heute?' (or the equivalent in the user's language). "
-			"   One sentence. No filler.\n"
-			"2. Immediately after: recommend that the user review and reorder the top of today's task list "
-			"   to reflect actual priority — because Z will nudge frequently on the first items, "
-			"   so they should be what matters most right now. Keep it one sentence, direct.\n"
-			"Do NOT wrap these in a label or header. They are conversational, not administrative.\n\n"
-			"EXECUTABLE ACTIONS:\n"
-			"You can trigger real system actions by embedding these tags ANYWHERE in your response.\n"
-			"They will be parsed and executed automatically, then stripped from the final message.\n"
-			"Use them whenever the context suggests a card should move, a task should be created, etc.\n"
-			"Available tags:\n"
-			"  [ACTION: MOVE_CARD | CARD: <title fragment> | LIST: <destination list>]\n"
-			"  [ACTION: MOVE_CARD | CARD: <title fragment> | LIST: <destination list> | BOARD: <board name>]\n"
-			"  [ACTION: MARK_DONE | CARD: <title fragment>]\n"
-			"  [ACTION: CREATE_TASK | BOARD: <board name> | LIST: <list name> | TITLE: <task title>]\n"
-			"  [ACTION: CREATE_LIST | BOARD: <board name> | NAME: <list name>]\n"
-			"  [ACTION: LEARN | TEXT: <fact to remember>]\n"
-			"Rules for actions:\n"
-			"- CARD fragment must be a recognizable substring of an existing card title.\n"
-			"- Only emit actions for things explicitly mentioned in CONTEXT — never invent cards or boards.\n"
-			"- If the RECENT ACTIVITY section shows tasks that should move (e.g., started yesterday, stalled), move them.\n"
-			"- You may create new tasks if the context clearly warrants it (e.g., upcoming deadlines).\n"
-			"- NEVER write prose narrating your own action tags. Do not say 'I am creating a task', 'I will add this to Planka', "
-			"'Create new openZero Todo', or anything similar. Embed the tag silently. The user only reads the briefing prose, "
-			"not the mechanical steps. Any sentence describing the action will appear verbatim to the user.\n\n"
-			f"CALENDAR TODAY:\n{calendar_summary}\n\n"
-			f"WEATHER FORECAST:\n{weather_report}\n\n"
-			+ _planka_unavailable_warning
-			+ f"RECENT ACTIVITY (LAST 24H):\n{activity}\n\n"
-			+ f"PROJECT TREE:\n{tree}\n\n"
-			+ (f"LATEST EMAILS:\n{email_summary}\n" if not _email_is_absent else "")
-			+ (
-				f"\nAMBIENT INSIGHTS (undelivered proactive signals from last 24h):\n"
-				f"{ambient_insights_section}\n"
-				"If any of these are relevant to today, weave them into the briefing naturally. "
-				"Do not list them mechanically — only surface actionable ones. "
-				"Keep them strictly within the word budget.\n"
-				if ambient_insights_section else ""
-			)
+			"ABSOLUTE RULE: You are a formatter. The BRIEFING DRAFT below contains ALL the facts for today's briefing. Your job is ONLY to:\n"
+			"1. Make it sound natural and human in Z's voice (warm, direct, no corporate language, no emoji)\n"
+			"2. Add one short kanban expert observation if any board cards are stale or blocked\n"
+			"3. End with 'Irgendwas Neues fuer heute?' (or equivalent in the user's language)\n\n"
+			"DO NOT add any information not present in the BRIEFING DRAFT.\n"
+			"DO NOT invent events, cards, emails, people, or project names.\n"
+			"DO NOT add suggestions, meal ideas, or fitness plans unless they appear in the Crew boards section.\n"
+			"If a section is absent from the draft, it does not exist today — do not mention it.\n"
+			"You may emit action tags silently (they are stripped before delivery): "
+			"[ACTION: MOVE_CARD | CARD: <fragment> | LIST: <list>], [ACTION: MARK_DONE | CARD: <fragment>], [ACTION: LEARN | TEXT: <fact>]. "
+			"Only for cards/boards named verbatim in the draft.\n\n"
+			f"BRIEFING DRAFT:\n{skeleton}\n\n"
+			f"Write the final briefing now, in {user_language}. Keep it under 200 words."
 		)
 
 		# 3. Generate Briefing — cloud tier with 600s hard timeout, retry on failure
