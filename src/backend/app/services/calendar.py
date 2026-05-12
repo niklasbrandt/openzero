@@ -206,7 +206,9 @@ async def fetch_unified_events(days_ahead: int = 30, start_date: Optional[dateti
 	
 	if not start_date:
 		start_date = datetime.datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-	end_date = start_date + datetime.timedelta(days=days_ahead)
+	elif isinstance(start_date, datetime.date) and not isinstance(start_date, datetime.datetime):
+		start_date = datetime.datetime(start_date.year, start_date.month, start_date.day)
+	end_date = start_date + datetime.timedelta(days=int(days_ahead))
 
 	# 1. Start fetching in parallel
 	tasks = [
