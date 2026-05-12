@@ -1919,15 +1919,9 @@ async def dispatch_structural_intent(intent: StructuralIntent, lang: str) -> str
 				if raw.startswith("\u26a0"):
 					results.append(raw)
 				else:
-					dest_label = board_dest or "Inbox"
-					results.append(
-						_localise(
-							"intent_router_create_card_success",
-							"Card '{title}' added to '{dest}'.",
-							title=t_item, dest=dest_label,
-						)
-					)
-					audit_parts.append(f"[AUDIT:board_item_add_card:{t_item}|board={dest_label}]")
+					# raw contains the actual placement path from Planka — use it directly.
+					results.append(raw)
+					audit_parts.append(f"[AUDIT:board_item_add_card:{t_item}|board={board_dest or 'Operator Board'}]")
 		out = "\n".join(results)
 		if audit_parts:
 			out += "\n" + "\n".join(audit_parts)
@@ -1937,14 +1931,9 @@ async def dispatch_structural_intent(intent: StructuralIntent, lang: str) -> str
 		raw = await execute_create_card(ent["title"], ent.get("destination", ""), lang)
 		if raw.startswith("\u26a0"):
 			return raw
-		dest_label = ent.get("destination") or "Inbox"
-		msg = _localise(
-			"intent_router_create_card_success",
-			"Card '{title}' added to '{dest}'.",
-			title=ent["title"], dest=dest_label,
-		)
-		audit = f"[AUDIT:create_card:{ent['title']}|dest={dest_label}]"
-		return f"{msg}\n{audit}"
+		# raw already contains the actual placement path from Planka — use it directly.
+		audit = f"[AUDIT:create_card:{ent['title']}|dest={ent.get('destination', 'Operator Board')}]"
+		return f"{raw}\n{audit}"
 
 	if verb == "CREATE_LIST":
 		raw = await execute_create_list(ent["list_name"], ent.get("board_name", ""), lang)
