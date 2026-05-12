@@ -73,6 +73,10 @@ def build_briefing_skeleton(
 		lines.append(ambient_insights)
 		lines.append("")
 
+	lines.append("=== DAY STRUCTURE ===")
+	lines.append("[PLANNER: structure today based on the cards and activity above — suggest AM/PM blocks, flag any urgent cards or stale items that need attention today. Keep it concise. Do NOT invent tasks. Only reference what is in the skeleton above.]")
+	lines.append("")
+
 	return "\n".join(lines)
 
 
@@ -130,7 +134,7 @@ async def morning_briefing():
 
 		# Read configurable preferences before batch-2 (activity_hours is needed in the gather)
 		max_obs = 3
-		activity_days = 7
+		activity_days = 4
 		try:
 			async with AsyncSessionLocal() as _obs_session:
 				_obs_res = await _obs_session.execute(select(Preference).where(Preference.key == "briefing_max_observations"))
@@ -246,7 +250,8 @@ async def morning_briefing():
 
 		full_prompt = (
 			"ABSOLUTE RULE: You are a formatter. The BRIEFING DRAFT below contains ALL the facts for today's briefing. Your role is THREE THINGS:\n"
-			"1. FORMATTER: Present the data clearly and concisely in Z's voice (warm, direct, no corporate language, no emoji).\n"
+			"Begin the response with a compact table of contents — one line listing only the sections that have real content (skip empty or [NO DATA] sections). Format example: '1. Boards  2. Activity  3. Stale  4. Day Structure  5. Observations'\n"
+			"1. FORMATTER: Present the data clearly and concisely in Z's voice (warm, direct, no corporate language, no emoji). Prefer bullet points and short lines over full sentences. Headers should be 1-2 words. Avoid connective tissue prose ('As you can see...', 'It is worth noting that...'). Get to the point.\n"
 			f"2. KANBAN ANALYST: Add up to {max_obs} observations about board health — stale cards, stuck items, WIP violations, boards with nothing active, pull signals.\n"
 			"3. PROACTIVE THINKER: For 1-2 boards or projects, add a brief 'meta' question or path that sparks strategic thinking. Examples of the right tone:\n"
 			"   - 'The [BoardName] board has been in-progress for 3 weeks — is this an MVP or an exploration? Naming it would help.'\n"
@@ -265,7 +270,7 @@ async def morning_briefing():
 			"Only for cards/boards named verbatim in the draft.\n\n"
 			"RECENCY NOTE: Items in 'Recent changes' are the highest priority for observations. Stale items are second priority. Board walkthrough gives the full picture.\n\n"
 			f"BRIEFING DRAFT:\n{skeleton}\n\n"
-			f"Write the final briefing now, in {user_language}. Keep it under 250 words."
+			f"Write the final briefing now, in {user_language}. Write only as much as the data warrants. If activity is light, a short focused briefing is better than a padded one. If there is a lot happening, up to ~500 words is fine. Never pad. Never repeat information already in the skeleton headers."
 		)
 
 		# 3. Generate Briefing — cloud tier with 600s hard timeout, retry on failure
