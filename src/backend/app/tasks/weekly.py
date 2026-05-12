@@ -13,12 +13,12 @@ async def weekly_review():
 	try:
 		tree, recent_activity, stale_cards = await asyncio.gather(
 			get_project_tree(as_html=False),
-			get_recent_activity(hours=168),
-			get_stale_cards(min_days=7),
+			get_recent_activity(hours=336),
+			get_stale_cards(min_days=14),
 		)
 
 		activity_block = recent_activity if recent_activity and not recent_activity.startswith("### RECENT ACTIVITY FETCH FAILED") else "[EMPTY — omit the activity/accomplishments section entirely]"
-		stale_block = stale_cards if stale_cards and stale_cards != "[NO STALE ITEMS]" and not stale_cards.startswith("### STALE") else "[NO STALE ITEMS — all active cards have been touched this week]"
+		stale_block = stale_cards if stale_cards and stale_cards != "[NO STALE ITEMS]" and not stale_cards.startswith("### STALE") else "[NO STALE ITEMS — all active cards have been touched recently]"
 		tree_block = tree if tree and str(tree).strip() else "[EMPTY — omit the project tree section entirely]"
 
 		prompt = (
@@ -30,9 +30,10 @@ async def weekly_review():
 			"Write like a smart colleague summing up the week in a message. Natural, direct, slightly informal — not a literary reflection, not a bullet dump.\n"
 			"Short sentences. Plain words. Sections with headers are fine — the language inside should sound like a person, not a report generator.\n"
 			"Be specific: name actual boards, cards, and progress mentioned in the data. Don't be vague.\n"
-			"Aim for 200-350 words. Over 500 words is a failure regardless of data volume. Use bullets for lists of items; use short prose for observations and context.\n\n"
-			f"RECENT ACTIVITY (LAST 7 DAYS):\n{activity_block}\n\n"
-			f"STALE / NO MOVEMENT (7+ DAYS):\n{stale_block}\n\n"
+			"Write only as much as the data warrants. If activity is light, a short focused review is better than a padded one. If there is a lot happening, up to ~600 words is fine. Never pad. Use bullets for lists of items; use short prose for observations and context.\n\n"
+			f"RECENCY NOTE: Activity covers the last 14 days. Focus your analysis on the most recent 7 days; treat the prior 7 days as comparison context only.\n\n"
+			f"RECENT ACTIVITY (LAST 14 DAYS):\n{activity_block}\n\n"
+			f"STALE / NO MOVEMENT (14+ DAYS):\n{stale_block}\n\n"
 			f"PROJECT TREE:\n{tree_block}\n\n"
 			"HALLUCINATION RULES (never break these):\n"
 			"- Only include a section if real data for it was provided in the context above.\n"
