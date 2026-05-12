@@ -709,6 +709,7 @@ translations: dict[str, str] = {
         "aria_backup_conflict_select": "Konfliktlösungsmodus",
         "aria_backup_dry_run": "Testlauf-Umschalter",
         "aria_backup_progress": "Fortschritt des Backup-Vorgangs",
+        "nav_backup": "Sicherung",
         # Neue Schlüssel (Accordion-Redesign)
         "backup_card_title": "Sicherung",
         "backup_card_description": "Persönliche Daten exportieren und importieren",
