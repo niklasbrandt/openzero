@@ -104,6 +104,7 @@ translations: dict[str, str] = {
 	"boards": "Boards",
 	"boards_empty": "No active projects. Z is standing by.",
 	"briefing_history": "Briefing History",
+	"briefing_observations": "Briefing observations",
 	"briefing_time": "Briefing Time",
 	"briefing_time_updated": "Briefing time preference updated.",
 	"briefings": "Briefings",
