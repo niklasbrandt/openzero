@@ -1010,13 +1010,13 @@ async def route_message_stream(
 		# ── 2. Z responds ────────────────────────────────────────────────────
 		if _budget.skip_optional() and not _force_cloud:
 			logger.warning("Router: response budget exhausted before LLM call — returning apology")
-			_apology = "Das hat zu lange gedauert — bitte wiederhole kurz deine Anfrage."
+			_apology = _t.get("budget_exceeded_msg", "Request was too complex — please break it into smaller steps.")
 			yield _apology
 			clean, cmds, pending = await bus.commit_reply(
 				channel=channel, raw_reply=_apology,
-				model="budget_exceeded", user_text=user_text, save=save_history,
+				model="timeout", user_text=user_text, save=save_history,
 			)
-			result_future.set_result(RouterResult(reply=_apology, model="budget_exceeded", executed_cmds=cmds, pending_actions=pending))
+			result_future.set_result(RouterResult(reply=_apology, model="timeout", executed_cmds=cmds, pending_actions=pending))
 			return
 		# ── L5 Streaming-safe tag gate ────────────────────────────────────────
 		# Holds tokens while an [ACTION:] sequence is still open so the client
