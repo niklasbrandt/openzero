@@ -1802,3 +1802,77 @@ async def get_project_tree_text() -> str:
 	"""Plain-text alias for get_project_tree(as_html=False) — for LLM injection and diagnostics."""
 	return await get_project_tree(as_html=False)
 
+
+async def get_board_walkthrough(min_stale_days: int = 5) -> str:
+	"""
+	Returns a per-board walkthrough for every non-empty board:
+	active cards, stale cards with age, and total counts.
+	Used by the morning briefing to give the LLM a complete board picture.
+	"""
+	stale_threshold = datetime.now() - timedelta(days=min_stale_days)
+	try:
+		token = await get_planka_auth_token()
+		headers = {"Authorization": f"Bearer {token}"}
+		async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, timeout=20.0, headers=headers) as client:
+			resp = await client.get("/api/projects")
+			projects = resp.json().get("items", [])
+			if not projects:
+				return "[BOARD WALKTHROUGH: no projects found]"
+
+			all_details_tasks = [client.get(f"/api/projects/{p['id']}") for p in projects]
+			all_details_resps = await asyncio.gather(*all_details_tasks)
+
+			board_tasks = []
+			board_names = []
+			for r in all_details_resps:
+				d = r.json()
+				boards = d.get("included", {}).get("boards", []) or d.get("boards", [])
+				for b in boards:
+					board_tasks.append(client.get(f"/api/boards/{b['id']}", params={"included": "lists,cards"}))
+					board_names.append(b.get("name") or "")
+
+			if not board_tasks:
+				return "[BOARD WALKTHROUGH: no boards found]"
+
+			board_details = await asyncio.gather(*board_tasks)
+
+			sections = []
+			for b_idx, b_resp in enumerate(board_details):
+				b_data = b_resp.json()
+				b_name = board_names[b_idx]
+				lists = b_data.get("included", {}).get("lists", [])
+				cards = b_data.get("included", {}).get("cards", [])
+				done_list_ids = {l["id"] for l in lists if _is_done_list(l.get("name", ""))}
+				non_done_list_ids = {l["id"] for l in lists if not _is_done_list(l.get("name", ""))}
+				active_cards = [c for c in cards if c["listId"] in non_done_list_ids]
+
+				if not active_cards:
+					sections.append(f"[{b_name}]: empty — no active items")
+					continue
+
+				stale_entries: list[str] = []
+				alive_entries: list[str] = []
+				for c in active_cards:
+					_raw_updated = c.get("updatedAt") or ""
+					c_updated = datetime.fromisoformat(_raw_updated.replace("Z", "")) if _raw_updated else datetime.min
+					days_stale = (datetime.now() - c_updated).days
+					cname = c.get("name") or "?"
+					if c_updated < stale_threshold:
+						stale_entries.append(f"{cname} ({days_stale}d)")
+					else:
+						alive_entries.append(cname)
+
+				lines: list[str] = [f"[{b_name}]:"]
+				if alive_entries:
+					lines.append(f"  Active: {', '.join(alive_entries[:8])}")
+				if stale_entries:
+					lines.append(f"  Stale: {', '.join(stale_entries[:8])}")
+				lines.append(f"  Total: {len(active_cards)} cards across {len(non_done_list_ids)} lists")
+				sections.append("\n".join(lines))
+
+		return "\n".join(sections) if sections else "[BOARD WALKTHROUGH: no boards with active items]"
+	except Exception as e:
+		logger.exception("get_board_walkthrough failed")
+		_exc_type = type(e).__name__
+		return f"[BOARD WALKTHROUGH UNAVAILABLE: {_exc_type}]"
+
