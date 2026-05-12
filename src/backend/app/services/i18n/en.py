@@ -108,6 +108,7 @@ translations: dict[str, str] = {
 	"briefing_time": "Briefing Time",
 	"briefing_time_updated": "Briefing time preference updated.",
 	"briefings": "Briefings",
+	"budget_exceeded_msg": "Request was too complex — please break it into smaller steps.",
 	"calendar": "Calendar",
 	"calendar_empty": "Your schedule is clear.",
 	"cancel": "Cancel",
