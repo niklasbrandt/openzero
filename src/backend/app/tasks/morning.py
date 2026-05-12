@@ -17,6 +17,8 @@ def build_briefing_skeleton(
 	crew_snapshot: str,
 	email_summary: str = "",
 	ambient_insights: str = "",
+	board_walkthrough: str = "",
+	activity_days: int = 7,
 ) -> str:
 	"""Build a pre-formatted briefing draft from real data. The LLM only adds voice/tone."""
 	lines: list[str] = []
@@ -41,8 +43,13 @@ def build_briefing_skeleton(
 		lines.append(project_tree)
 		lines.append("")
 
+	if board_walkthrough and "UNAVAILABLE" not in board_walkthrough and "no projects" not in board_walkthrough:
+		lines.append("Board walkthrough (active + stale per board):")
+		lines.append(board_walkthrough)
+		lines.append("")
+
 	if recent_activity and "NO ACTIVITY" not in recent_activity and "UNAVAILABLE" not in recent_activity:
-		lines.append("Recently created or changed (last 48h):")
+		lines.append(f"Recent changes (last {activity_days}d):")
 		lines.append(recent_activity)
 		lines.append("")
 
@@ -121,6 +128,27 @@ async def morning_briefing():
 						break
 			if detected_location: break
 
+		# Read configurable preferences before batch-2 (activity_hours is needed in the gather)
+		max_obs = 3
+		activity_days = 7
+		try:
+			async with AsyncSessionLocal() as _obs_session:
+				_obs_res = await _obs_session.execute(select(Preference).where(Preference.key == "briefing_max_observations"))
+				_obs_pref = _obs_res.scalar_one_or_none()
+				if _obs_pref and _obs_pref.value:
+					max_obs = int(_obs_pref.value)
+		except Exception as _obs_err:
+			logger.debug("morning_briefing: could not read briefing_max_observations, defaulting to 3: %s", _obs_err)
+		try:
+			async with AsyncSessionLocal() as _days_session:
+				_days_res = await _days_session.execute(select(Preference).where(Preference.key == "briefing_activity_days"))
+				_days_pref = _days_res.scalar_one_or_none()
+				if _days_pref and _days_pref.value:
+					activity_days = int(_days_pref.value)
+		except Exception as _days_err:
+			logger.debug("morning_briefing: could not read briefing_activity_days, defaulting to 7: %s", _days_err)
+		activity_hours = activity_days * 24
+
 		# 2.3 Batch 2 — weather + project tree + email context + memories (all independent)
 		logger.debug("morning_briefing — starting batch-2 gather (weather + tree + emails + memories)")
 		_t2 = asyncio.get_event_loop().time()
@@ -141,16 +169,17 @@ async def morning_briefing():
 			emails = await fetch_unread_emails(max_results=5)
 			return "\n".join([f"- {e['from']}: {e['subject']}" for e in emails]) if emails else "[NO DATA — email is not connected or inbox is empty. The Email section MUST be absent from the briefing. Do NOT invent senders, subjects, or message content.]"
 
-		from app.services.planka import get_activity_report, get_recent_activity, get_stale_cards, get_crew_board_snapshot
+		from app.services.planka import get_activity_report, get_recent_activity, get_stale_cards, get_crew_board_snapshot, get_board_walkthrough
 		from app.services.translations import get_user_lang
-		weather_report, tree, email_summary, activity, recent_activity, stale_cards, crew_snapshot, user_language = await asyncio.gather(
+		weather_report, tree, email_summary, activity, recent_activity, stale_cards, crew_snapshot, board_walkthrough, user_language = await asyncio.gather(
 			get_weather_forecast(detected_location),
 			get_project_tree(as_html=False),
 			_get_email_summary(),
 			get_activity_report(days=1),
-			get_recent_activity(hours=48),
+			get_recent_activity(hours=activity_hours),
 			get_stale_cards(min_days=5),
 			get_crew_board_snapshot(),
+			get_board_walkthrough(),
 			get_user_lang(),
 		)
 		logger.debug("morning_briefing — batch-2 done in %.1fs", asyncio.get_event_loop().time() - _t2)
@@ -202,17 +231,6 @@ async def morning_briefing():
 		except Exception as ae:
 			logger.debug("morning_briefing: ambient queue drain skipped: %s", ae)
 
-		# Read configurable observation count from preferences (default 3)
-		max_obs = 3
-		try:
-			async with AsyncSessionLocal() as _obs_session:
-				_obs_res = await _obs_session.execute(select(Preference).where(Preference.key == "briefing_max_observations"))
-				_obs_pref = _obs_res.scalar_one_or_none()
-				if _obs_pref and _obs_pref.value:
-					max_obs = int(_obs_pref.value)
-		except Exception as _obs_err:
-			logger.debug("morning_briefing: could not read briefing_max_observations, defaulting to 3: %s", _obs_err)
-
 		skeleton = build_briefing_skeleton(
 			weather=weather_report,
 			calendar_events=calendar_events,
@@ -222,13 +240,22 @@ async def morning_briefing():
 			crew_snapshot=crew_snapshot,
 			email_summary=email_summary,
 			ambient_insights=ambient_insights_section,
+			board_walkthrough=board_walkthrough,
+			activity_days=activity_days,
 		)
 
 		full_prompt = (
-			"ABSOLUTE RULE: You are a formatter. The BRIEFING DRAFT below contains ALL the facts for today's briefing. Your job is ONLY to:\n"
-			"1. Make it sound natural and human in Z's voice (warm, direct, no corporate language, no emoji)\n"
-			f"2. Add up to {max_obs} kanban expert observations — focus on: stale cards (no movement 5+ days), cards stuck in the same list too long, and anything that moved or was created in the last 48 hours that deserves attention.\n"
-			"3. End with 'Irgendwas Neues fuer heute?' (or equivalent in the user's language)\n\n"
+			"ABSOLUTE RULE: You are a formatter. The BRIEFING DRAFT below contains ALL the facts for today's briefing. Your role is THREE THINGS:\n"
+			"1. FORMATTER: Present the data clearly and concisely in Z's voice (warm, direct, no corporate language, no emoji).\n"
+			f"2. KANBAN ANALYST: Add up to {max_obs} observations about board health — stale cards, stuck items, WIP violations, boards with nothing active, pull signals.\n"
+			"3. PROACTIVE THINKER: For 1-2 boards or projects, add a brief 'meta' question or path that sparks strategic thinking. Examples of the right tone:\n"
+			"   - 'The [BoardName] board has been in-progress for 3 weeks — is this an MVP or an exploration? Naming it would help.'\n"
+			"   - 'You have 3 separate [ProjectName] cards across different boards — should those become one focused sprint?'\n"
+			"   - 'The [BoardName] board has nothing in progress — is that intentional recovery time, or has momentum stalled?'\n"
+			"   These questions must be specific to the actual board data — provocative but not anxious — and brief (1 sentence each).\n"
+			"4. End with 'Irgendwas Neues fuer heute?' (or equivalent in the user's language)\n\n"
+			"DO NOT invent board names, card titles, or project names. Only reference what appears in the skeleton data.\n"
+			"DO NOT make meta questions generic — they must reference specific card names or board states from the data.\n"
 			"DO NOT add any information not present in the BRIEFING DRAFT.\n"
 			"DO NOT invent events, cards, emails, people, or project names.\n"
 			"DO NOT add suggestions, meal ideas, or fitness plans unless they appear in the Crew boards section.\n"
@@ -236,9 +263,9 @@ async def morning_briefing():
 			"You may emit action tags silently (they are stripped before delivery): "
 			"[ACTION: MOVE_CARD | CARD: <fragment> | LIST: <list>], [ACTION: MARK_DONE | CARD: <fragment>], [ACTION: LEARN | TEXT: <fact>]. "
 			"Only for cards/boards named verbatim in the draft.\n\n"
-			"RECENCY NOTE: Items in 'Recently created or changed' are the highest priority for observations. Stale items are second priority.\n\n"
+			"RECENCY NOTE: Items in 'Recent changes' are the highest priority for observations. Stale items are second priority. Board walkthrough gives the full picture.\n\n"
 			f"BRIEFING DRAFT:\n{skeleton}\n\n"
-			f"Write the final briefing now, in {user_language}. Keep it under 200 words."
+			f"Write the final briefing now, in {user_language}. Keep it under 250 words."
 		)
 
 		# 3. Generate Briefing — cloud tier with 600s hard timeout, retry on failure
