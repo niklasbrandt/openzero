@@ -139,12 +139,12 @@ class NativeCrewEngine:
 		try:
 			results = await asyncio.wait_for(
 				asyncio.gather(*tasks, return_exceptions=True),
-				timeout=12.0,
+				timeout=20.0,
 			)
 		except asyncio.TimeoutError:
 			_safe_id = crew_id.replace("\n", "\\n").replace("\r", "\\r")
 			logger.warning(
-				"NativeCrewEngine: context build timed out (12s) for crew '%s' — proceeding without board/memory context",
+				"NativeCrewEngine: context build timed out (20s) for crew '%s' — proceeding without board/memory context",
 				_safe_id,
 			)
 			results = ["", "", ""]
