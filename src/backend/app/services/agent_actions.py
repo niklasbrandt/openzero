@@ -311,8 +311,9 @@ async def execute_create_card(title: str, destination: str = "", lang: str = "en
 			board_name = _dest_m.group(2).strip()
 	result = await planka_create_task(board_name=board_name, list_name=list_name, title=title, description="")
 	if result:
-		dest_label = destination or "Inbox"
-		return f"Card '{title}' added to '{dest_label}'."
+		# Use the actual path returned by Planka (e.g. 'Operations → Operator Board → Heute')
+		# rather than the input destination string, which may differ from where the card landed.
+		return f"Card '{title}' added to '{result}'."
 	return f"\u26a0 Could not create card '{title}'. Destination '{destination}' not found."
 
 
@@ -1249,15 +1250,31 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 				)
 				if path:
 					return f"Saved '{content[:60]}' to {path}."
-				# Second fallback: Operator Board Inbox
+				# Second fallback: Operator Board with the configured default list (e.g. 'Heute').
+				# Use the operator board's translated 'today' list name so the card lands
+				# in the correct column, not a non-existent 'Inbox' list.
+				try:
+					from app.services.operator_board import operator_service as _op_svc
+					_fallback_list = _op_svc.mandatory_lists[0] if _op_svc.mandatory_lists else "Inbox"
+				except Exception:
+					_fallback_list = "Inbox"
+				logger.warning(
+					"AMBIENT_CAPTURE: Nutrition board not found; falling back to Operator Board '"
+					"%s' list for '%s' (category=%s)",
+					_fallback_list, content[:60], category,
+				)
 				path2 = await planka_create_task(
 					board_name="Operator Board",
-					list_name="Inbox",
+					list_name=_fallback_list,
 					title=content[:500],
 					description=f"Category: {category}",
 				)
 				if path2:
 					return f"Saved '{content[:60]}' to {path2}."
+				logger.warning(
+					"AMBIENT_CAPTURE: Operator Board fallback also failed for '%s'. Check Planka connection.",
+					content[:60],
+				)
 				return f"\u26a0 Could not save ambient capture '{content[:60]}'. Check Planka connection."
 			except Exception as _e:
 				logger.error("AMBIENT_CAPTURE failed: %s", _e)
