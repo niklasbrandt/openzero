@@ -1,0 +1,22 @@
+-- v0.next migration: DROP atlas_* tables
+-- Phase 1 removed all DDL writers and readers. Tables are kept live for one
+-- release so operators can inspect or export data before the drop.
+-- Run this migration only after confirming no data is needed.
+--
+-- ORDER MATTERS: drop dependent tables before parents.
+
+-- DROP TABLE IF EXISTS atlas_why_traces CASCADE;
+-- DROP TABLE IF EXISTS atlas_diffs CASCADE;
+-- DROP TABLE IF EXISTS atlas_contradictions CASCADE;
+-- DROP TABLE IF EXISTS atlas_decisions CASCADE;
+-- DROP TABLE IF EXISTS atlas_spine_summaries CASCADE;
+-- DROP TABLE IF EXISTS atlas_spine_members CASCADE;
+-- DROP TABLE IF EXISTS atlas_spines CASCADE;
+-- DROP TABLE IF EXISTS atlas_edges CASCADE;
+-- DROP TABLE IF EXISTS atlas_nodes CASCADE;
+-- DROP TABLE IF EXISTS walkthrough_stops CASCADE;
+-- DROP TABLE IF EXISTS walkthroughs CASCADE;
+-- DROP TABLE IF EXISTS domain_signals CASCADE;
+-- DROP TABLE IF EXISTS domain_inference_runs CASCADE;
+-- DROP TABLE IF EXISTS federation_audit CASCADE;
+-- DROP TABLE IF EXISTS share_contracts CASCADE;
