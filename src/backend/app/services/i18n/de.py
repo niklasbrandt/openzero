@@ -577,6 +577,10 @@ translations: dict[str, str] = {
 	"aria_lens_list": "Zur Listenansicht wechseln",
 	"aria_lens_graph": "Zur Graphansicht wechseln",
 	"aria_lens_spines": "Zur Themenansicht wechseln",
+	"atlas_load_more_nodes": "Weitere Knoten laden",
+	"atlas_sorted_by_recent": "Sortiert nach zuletzt erwähnt",
+	"atlas_showing_of": "{0} von {1} Knoten angezeigt",
+	"atlas_load_more_graph": "Weitere Knoten in den Graphen laden",
 	# Memory Atlas MA2 — recompose
 	"select_to_merge": "Zur Zusammenführung auswählen",
 	"preview_merge": "Zusammenführung vorschau",

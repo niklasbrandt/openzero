@@ -581,6 +581,10 @@ translations: dict[str, str] = {
 	"aria_lens_list": "Switch to List lens",
 	"aria_lens_graph": "Switch to Graph lens",
 	"aria_lens_spines": "Switch to Spines lens",
+	"atlas_load_more_nodes": "Load more nodes",
+	"atlas_sorted_by_recent": "Sorted by most recently mentioned",
+	"atlas_showing_of": "Showing {0} of {1} nodes",
+	"atlas_load_more_graph": "Load more nodes into graph",
 	# Memory Atlas MA2 — recompose
 	"select_to_merge": "Select to merge",
 	"preview_merge": "Preview merge",
