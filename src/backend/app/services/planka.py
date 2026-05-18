@@ -1745,6 +1745,11 @@ async def get_stale_cards(min_days: int = 5) -> str:
 
 _CREW_BOARD_NAMES = {"fitness", "nutrition", "life", "health", "finance", "work", "learning"}
 
+# Transition alias: Planka board "Nutrition" → recipe crew (remove after v0.next when board is renamed)
+BOARD_NAME_ALIASES: dict[str, str] = {
+	"Nutrition": "recipe",
+}
+
 
 async def get_crew_board_snapshot() -> str:
 	"""Returns a formatted block showing top 2 active (non-done) cards per crew-named board."""
