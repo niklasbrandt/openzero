@@ -36,6 +36,12 @@ _CREW_ACTION_TAG_RE = re.compile(
 
 def crew_board_name_for_id(crew_id: str) -> str:
 	"""Return the Planka board name for a crew. e.g. 'market-intel' -> 'Market Intel'."""
+	# Transition alias: recipe crew maps to Planka board "Nutrition" (remove after v0.next when board is renamed)
+	_BOARD_NAME_OVERRIDES: dict[str, str] = {
+		"recipe": "Nutrition",
+	}
+	if crew_id in _BOARD_NAME_OVERRIDES:
+		return _BOARD_NAME_OVERRIDES[crew_id]
 	return crew_id.replace("-", " ").title()
 
 
