@@ -72,6 +72,14 @@ export class MemoryAtlas extends HTMLElement {
 	private _contradictionsShowAll: boolean = false;
 	private _whyHandler: ((e: KeyboardEvent) => void) | null = null;
 	private _whyPopover: HTMLElement | null = null;
+	private _listOffset = 0;
+	private _listTotal = 0;
+	private _listNodes: AtlasNode[] = [];
+	private _listLoading = false;
+	private _graphOffset = 0;
+	private _graphTotal = 0;
+	private _graphLoading = false;
+	private _cachedStats: { nodes: number } | null = null;
 
 	constructor() {
 		super();
@@ -622,7 +630,62 @@ export class MemoryAtlas extends HTMLElement {
 					outline-offset: 2px;
 				}
 
-				/* ── Responsive ── */
+/* ── Load more / pagination ── */
+			.list-meta-bar {
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+				gap: 0.5rem;
+				margin-bottom: 0.5rem;
+				flex-wrap: wrap;
+			}
+
+			.list-sorted-label,
+			.list-count-label {
+				font-size: 0.75rem;
+				opacity: 0.6;
+				color: var(--text-secondary, hsla(0, 0%, 100%, 0.7));
+			}
+
+			.load-more-btn {
+				display: block;
+				width: 100%;
+				min-height: 44px;
+				margin-top: 0.75rem;
+				padding: 0.5rem 1.25rem;
+				border-radius: var(--radius-md, 0.5rem);
+				font-size: 0.85rem;
+				font-weight: 600;
+				cursor: pointer;
+				background: transparent;
+				border: 1.5px solid var(--accent-primary, hsla(173, 80%, 40%, 1));
+				color: var(--accent-primary, hsla(173, 80%, 40%, 1));
+				transition: background var(--duration-fast, 0.15s);
+			}
+
+			.load-more-btn:hover {
+				background: var(--surface-accent-subtle, hsla(173, 80%, 40%, 0.12));
+			}
+
+			.load-more-btn:focus-visible {
+				outline: 2px solid var(--accent-primary, hsla(173, 80%, 40%, 1));
+				outline-offset: 2px;
+			}
+
+			.load-more-btn:disabled {
+				opacity: 0.4;
+				cursor: not-allowed;
+			}
+
+			@media (prefers-reduced-motion: reduce) {
+				.load-more-btn { transition: none; }
+			}
+
+			@media (forced-colors: active) {
+				.load-more-btn { border-color: ButtonText; color: ButtonText; }
+			}
+
+			/* ── Responsive ── */
 				@media (max-width: 768px) {
 					.graph-svg { height: 280px; }
 				}
@@ -1558,28 +1621,49 @@ export class MemoryAtlas extends HTMLElement {
 
 	// ── List lens ──────────────────────────────────────────────────────────
 
+	private async fetchStats(): Promise<{ nodes: number }> {
+		if (this._cachedStats) return this._cachedStats;
+		try {
+			const res = await fetch('/api/atlas/stats');
+			if (!res.ok) throw new Error('fetch failed');
+			const data = await res.json() as { nodes: number };
+			this._cachedStats = { nodes: data.nodes ?? 0 };
+			return this._cachedStats;
+		} catch (_) {
+			return { nodes: 0 };
+		}
+	}
+
 	private async loadListLens() {
 		const panel = this.shadowRoot?.getElementById('lens-list');
 		if (!panel) return;
 
+		this._listOffset = 0;
+		this._listNodes = [];
+
+		const stats = await this.fetchStats();
+		this._listTotal = stats.nodes;
+
 		try {
-			const res = await fetch('/api/atlas/nodes?limit=50');
+			const res = await fetch('/api/atlas/nodes?limit=100&offset=0');
 			if (!res.ok) throw new Error('fetch failed');
-			this.nodes = await res.json();
+			const data: AtlasNode[] = await res.json();
+			this._listNodes = data;
+			this._listOffset = data.length;
 		} catch (_) {
-			this.nodes = [];
+			this._listNodes = [];
 		}
 
 		this.renderListLens(panel);
 	}
 
 	private renderListLens(panel: HTMLElement) {
-		if (this.nodes.length === 0) {
+		if (this._listNodes.length === 0) {
 			panel.innerHTML = `<div class="empty-state" role="status">${this.tr('atlas_no_nodes', 'No memory nodes yet. Start a conversation to grow your Atlas.')}</div>`;
 			return;
 		}
 
-		const items = this.nodes.map(n => {
+		const items = this._listNodes.map(n => {
 			const conf = Math.round((n.confidence || 0) * 100);
 			const meta = n.last_mentioned_at ? this.formatDate(n.last_mentioned_at) : '';
 			const nodeId = Number(n.id);
@@ -1661,11 +1745,24 @@ export class MemoryAtlas extends HTMLElement {
 				aria-live="polite"
 				role="status"
 			></div>
+			<div
+				class="list-meta-bar"
+				id="list-count-status"
+				aria-live="polite"
+			>
+				<span class="list-sorted-label">${this.tr('atlas_sorted_by_recent', 'Sorted by most recently mentioned')}</span>
+				<span class="list-count-label">${this.tr('atlas_showing_of', 'Showing {0} of {1} nodes').replace('{0}', String(this._listNodes.length)).replace('{1}', String(this._listTotal || this._listNodes.length))}</span>
+			</div>
 			<ul
 				role="list"
 				class="node-list"
 				aria-label="${this.tr('atlas_title', 'Memory Atlas')}"
 			>${items}</ul>
+			${this._listNodes.length < this._listTotal ? `<button
+				id="list-load-more-btn"
+				class="load-more-btn"
+				aria-label="${this.tr('atlas_load_more_nodes', 'Load more nodes')}"
+			>${this.tr('atlas_load_more_nodes', 'Load more nodes')}</button>` : ''}
 			<dialog
 				id="merge-dialog"
 				aria-label="${this.tr('aria_merge_dialog', 'Merge preview dialog')}"
@@ -1683,6 +1780,34 @@ export class MemoryAtlas extends HTMLElement {
 		this.bindListKeys(panel);
 		this.bindMergeEvents(panel);
 		this.bindNodeActionEvents(panel);
+		this.bindLoadMoreListEvent(panel);
+	}
+
+	private async loadMoreListNodes(panel: HTMLElement) {
+		if (this._listLoading) return;
+		this._listLoading = true;
+		const btn = panel.querySelector<HTMLButtonElement>('#list-load-more-btn');
+		if (btn) {
+			btn.disabled = true;
+			btn.textContent = this.tr('recompose_loading', 'Processing...');
+		}
+		try {
+			const res = await fetch(`/api/atlas/nodes?limit=100&offset=${this._listOffset}`);
+			if (!res.ok) throw new Error('fetch failed');
+			const data: AtlasNode[] = await res.json();
+			this._listNodes = this._listNodes.concat(data);
+			this._listOffset = this._listNodes.length;
+		} catch (_) {
+			// keep existing nodes
+		} finally {
+			this._listLoading = false;
+		}
+		this.renderListLens(panel);
+	}
+
+	private bindLoadMoreListEvent(panel: HTMLElement) {
+		const btn = panel.querySelector<HTMLButtonElement>('#list-load-more-btn');
+		btn?.addEventListener('click', () => this.loadMoreListNodes(panel));
 	}
 
 	private bindListKeys(panel: HTMLElement) {
@@ -1981,13 +2106,19 @@ export class MemoryAtlas extends HTMLElement {
 		const panel = this.shadowRoot?.getElementById('lens-graph');
 		if (!panel) return;
 
+		this._graphOffset = 0;
+
+		const stats = await this.fetchStats();
+		this._graphTotal = stats.nodes;
+
 		try {
-			const res = await fetch('/api/atlas/nodes?limit=100');
+			const res = await fetch('/api/atlas/nodes?limit=200&offset=0');
 			if (!res.ok) throw new Error('fetch failed');
 			this.nodes = await res.json();
 		} catch (_) {
 			this.nodes = [];
 		}
+		this._graphOffset = this.nodes.length;
 
 		const svgEl = panel.querySelector<SVGSVGElement>('.graph-svg');
 		if (!svgEl) return;
@@ -2024,6 +2155,66 @@ export class MemoryAtlas extends HTMLElement {
 
 		if (!this.prefersReducedMotion) {
 			this.startSimulation(svgEl, w, h);
+		}
+
+		this.updateGraphLoadMoreBtn(panel, svgEl, w, h);
+	}
+
+	private updateGraphLoadMoreBtn(panel: HTMLElement, svgEl: SVGSVGElement, w: number, h: number) {
+		let btn = panel.querySelector<HTMLButtonElement>('#graph-load-more-btn');
+		if (!btn) {
+			btn = document.createElement('button');
+			btn.id = 'graph-load-more-btn';
+			btn.className = 'load-more-btn';
+			panel.appendChild(btn);
+		}
+		if (this._graphOffset < this._graphTotal) {
+			btn.hidden = false;
+			btn.disabled = false;
+			btn.textContent = this.tr('atlas_load_more_graph', 'Load more nodes into graph');
+			btn.setAttribute('aria-label', this.tr('atlas_load_more_graph', 'Load more nodes into graph'));
+			btn.onclick = () => this.loadMoreGraphNodes(panel, svgEl, w, h);
+		} else {
+			btn.hidden = true;
+		}
+	}
+
+	private async loadMoreGraphNodes(panel: HTMLElement, svgEl: SVGSVGElement, w: number, h: number) {
+		if (this._graphLoading) return;
+		this._graphLoading = true;
+		const btn = panel.querySelector<HTMLButtonElement>('#graph-load-more-btn');
+		if (btn) {
+			btn.disabled = true;
+			btn.textContent = this.tr('recompose_loading', 'Processing...');
+		}
+		try {
+			const res = await fetch(`/api/atlas/nodes?limit=200&offset=${this._graphOffset}`);
+			if (!res.ok) throw new Error('fetch failed');
+			const newNodes: AtlasNode[] = await res.json();
+			const newSimNodes: SimNode[] = newNodes.map(n => ({
+				...n,
+				x: w / 2 + (Math.random() - 0.5) * Math.min(w * 0.6, 300),
+				y: h / 2 + (Math.random() - 0.5) * Math.min(h * 0.6, 200),
+				vx: 0,
+				vy: 0,
+			}));
+			this.simNodes = this.simNodes.concat(newSimNodes);
+			this._graphOffset = this.simNodes.length;
+			if (this.animFrameId !== null) {
+				cancelAnimationFrame(this.animFrameId);
+				this.animFrameId = null;
+			}
+			this.renderGraphFrame(svgEl, w, h);
+			this.bindGraphDrag(svgEl, w, h);
+			this.bindGraphKeyboard(svgEl);
+			if (!this.prefersReducedMotion) {
+				this.startSimulation(svgEl, w, h);
+			}
+		} catch (_) {
+			// keep existing graph
+		} finally {
+			this._graphLoading = false;
+			this.updateGraphLoadMoreBtn(panel, svgEl, w, h);
 		}
 	}
 
