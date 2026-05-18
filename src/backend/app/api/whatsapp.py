@@ -114,31 +114,11 @@ async def _handle_inbound(sender: str, text: str) -> None:
 	from app.services.router import route_message_stream
 	from app.services.crews import resolve_active_crews
 
-	# /walk command — ad-hoc Atlas walk-through
+	# /walk command — retired stub
 	import re as _re
 	_walk_match = _re.match(r'^/walk\s*(.*)', text.strip(), _re.IGNORECASE)
 	if _walk_match:
-		arg = _walk_match.group(1).strip()
-		try:
-			from app.services.walkthroughs import build_walkthrough
-			from app.services.walkthrough_renderer import render_whatsapp
-			from app.models.db import AsyncSessionLocal
-			from sqlalchemy import text as sql_text
-			node_id: int | None = None
-			if arg:
-				if arg.isdigit():
-					node_id = int(arg)
-				else:
-					async with AsyncSessionLocal() as _db:
-						res = await _db.execute(sql_text("SELECT id FROM atlas_nodes WHERE label ILIKE :q LIMIT 1"), {"q": f"%{arg}%"})
-						row = res.fetchone()
-						if row:
-							node_id = row[0]
-			wt = await build_walkthrough(kind="ad_hoc", node_id=node_id)
-			await render_whatsapp(wt)
-		except Exception as _we:
-			logger.error("WhatsApp /walk command failed: %s", _we)
-			await send_whatsapp_message("Walk-through failed. Try again in a moment.")
+		await send_whatsapp_message("Walk-throughs have been retired. Try /day or /week for briefings.")
 		return
 
 	history = await bus.ingest("whatsapp", text)
