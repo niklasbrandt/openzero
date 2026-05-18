@@ -10,19 +10,15 @@ import '../components/UserCard'
 // ── Lazy components: deferred until the browser is idle so the main thread
 //    is free for first paint (reduces TBT / long-tasks significantly).
 function loadLazyComponents(): void {
-	import('../components/DiffRibbon')
-	import('../components/MemoryAtlas')
 	import('../components/MemorySearch')
 	import('../components/BriefingHistory')
 	import('../components/CreateProject')
 	import('../components/CalendarAgenda')
 	import('../components/CalendarManager')
 	import('../components/InstanceEntry')
-	import('../components/DiagnosticsWidget')
+	import('../components/SystemHealth')
 	import('../components/ZProtocols')
 	import('../components/AgentsWidget')
-	import('../components/WalkthroughViewer')
-	import('../components/DecisionCapture')
 	import('../components/BackupCard')
 }
 
@@ -33,14 +29,6 @@ if ('requestIdleCallback' in window) {
 }
 
 console.log('openZero Dashboard Initialized');
-
-// ── Decision Capture — global Cmd/Ctrl+Shift+D hotkey (Phase DC) ──
-document.addEventListener('keydown', (e: KeyboardEvent) => {
-	if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'D') {
-		e.preventDefault();
-		document.dispatchEvent(new CustomEvent('oz-capture-decision', { bubbles: true }));
-	}
-});
 
 // ── Dashboard Auth Token Injection (C3) ──
 // All /api/ requests automatically carry the bearer token stored in localStorage.
