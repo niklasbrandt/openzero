@@ -358,7 +358,6 @@ from starlette.requests import Request
 from app.api.dashboard import router as dashboard_router, auth_router
 from app.api.health import router as health_router
 from app.api.whatsapp import router as whatsapp_router, send_whatsapp_message
-from app.api.atlas import router as atlas_router
 from app.api.backup import router as backup_router
 
 class SecurityHeaderMiddleware(BaseHTTPMiddleware):
@@ -393,11 +392,7 @@ app.include_router(auth_router)
 app.include_router(dashboard_router)
 app.include_router(health_router)
 app.include_router(whatsapp_router)
-app.include_router(atlas_router)
 app.include_router(backup_router)
-if settings.FEDERATION_ENABLED:
-    from app.api.federation import federation_router
-    app.include_router(federation_router)
 
 @app.get("/calendar", include_in_schema=False)
 async def calendar_redirect():
