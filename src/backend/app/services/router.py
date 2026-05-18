@@ -923,7 +923,7 @@ async def route_message_stream(
 			# mis-classify e.g. "new life goal home" as the Life crew.
 			intent_prompt = (
 				"Classify if the user wants to engage a specialized crew. "
-				"Available: research, fitness, nutrition, life, market-intel, legal.\n"
+				"Available: research, fitness, recipe, life, market-intel, legal.\n"
 				f"User: \"{user_text}\"\n"
 				"Reply with ONLY the crew ID or 'none'."
 			)
@@ -934,7 +934,7 @@ async def route_message_stream(
 				predicted = ""
 				logger.debug("Router step1.1: fast-intent timed out — skipping")
 			predicted = predicted.lower().strip().strip("'\"") 
-			if predicted in ("research", "fitness", "nutrition", "life", "market-intel", "legal"):
+			if predicted in ("research", "fitness", "recipe", "life", "market-intel", "legal"):
 				logger.info("Router: speculative-routing '%s...' → crew '%s'", _sanitize_for_log(user_text), predicted)
 				routed_crews = [predicted]
 
