@@ -1,5 +1,32 @@
 # Planka Operational Guide
 
+## Project vs Board Decision (read this first)
+
+Planka has two structural levels: **projects** (top-level, visible in the sidebar) and **boards** (live inside a project).
+
+### "My Projects" — the default destination
+
+"My Projects" is a special Planka project that acts as a **folder for single-topic boards**. Use it for anything that does not justify its own dedicated top-level project: shopping lists, hobby planning, reading lists, one-off tasks, or any single-board topic.
+
+**Default rule: always create a board inside "My Projects" unless the work clearly spans multiple boards.**
+
+### When to create a root-level project instead
+
+Only create a new top-level Planka project when:
+
+- The task explicitly requires **multiple boards** (e.g. a software product with separate Design, Development, and QA boards), OR
+- The user explicitly says "create a project" and the scope clearly warrants it.
+
+If you are uncertain, default to "My Projects". Creating a redundant root project for a single-board topic pollutes the sidebar and breaks the intended structure.
+
+### Decision checklist
+
+1. Does this work need more than one board? No -> board inside "My Projects".
+2. Did the user explicitly ask for a new project? No -> board inside "My Projects".
+3. Both yes -> create a root-level project with the appropriate boards inside it.
+
+---
+
 ## Board Structure
 
 Planka is the project management tool integrated into this system. Z has access to the Planka API to read and manage boards, lists, cards, and labels.
