@@ -347,6 +347,10 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		report = await yearly_review()
 		await _reply(report)
 		return {"reply": report}
+	elif msg.startswith("/walk"):
+		_walk_reply = "Walk-throughs have been retired. Try /day or /week for briefings."
+		await _reply(_walk_reply)
+		return {"reply": _walk_reply}
 	elif msg == "/crews":
 		from app.services.crews import crew_registry
 		from app.services.translations import get_user_lang, get_translations

@@ -16,7 +16,6 @@ def build_briefing_skeleton(
 	stale_cards: str,
 	crew_snapshot: str,
 	email_summary: str = "",
-	ambient_insights: str = "",
 	board_walkthrough: str = "",
 	activity_days: int = 7,
 ) -> str:
@@ -66,11 +65,6 @@ def build_briefing_skeleton(
 	if email_summary and not email_summary.startswith("[NO DATA"):
 		lines.append("Email (unread):")
 		lines.append(email_summary)
-		lines.append("")
-
-	if ambient_insights:
-		lines.append("Ambient signals:")
-		lines.append(ambient_insights)
 		lines.append("")
 
 	lines.append("=== DAY STRUCTURE ===")
@@ -219,22 +213,6 @@ async def morning_briefing():
 		except Exception as ce:
 			logger.debug("Crew context for briefing skipped: %s", ce)
 
-		# 2.6 Ambient Intelligence briefing queue — drain undelivered insights
-		ambient_insights_section = ""
-		try:
-			if getattr(settings, "AMBIENT_BRIEFING_QUEUE_ENABLED", True):
-				from app.services.ambient.delivery import drain_briefing_queue
-				pending = drain_briefing_queue()
-				if pending:
-					lines = [
-						f"- [{item.get('rule_id', '?')}] {item.get('context', '').splitlines()[0]}"
-						for item in pending
-					]
-					ambient_insights_section = "\n".join(lines)
-					logger.info("morning_briefing: injecting %d ambient insight(s) into briefing", len(pending))
-		except Exception as ae:
-			logger.debug("morning_briefing: ambient queue drain skipped: %s", ae)
-
 		skeleton = build_briefing_skeleton(
 			weather=weather_report,
 			calendar_events=calendar_events,
@@ -243,7 +221,6 @@ async def morning_briefing():
 			stale_cards=stale_cards,
 			crew_snapshot=crew_snapshot,
 			email_summary=email_summary,
-			ambient_insights=ambient_insights_section,
 			board_walkthrough=board_walkthrough,
 			activity_days=activity_days,
 		)
@@ -398,15 +375,6 @@ async def morning_briefing():
 		# 6b. Persist to global_messages NOW — after delivery so dashboard and
 		# Telegram show the briefing at the same time (not 15 min early).
 		await save_global_message("telegram", "z", content, model=last_model_used.get())
-
-		# Phase W: build and deliver as walk-through
-		try:
-			from app.services.walkthroughs import build_walkthrough
-			from app.services.walkthrough_renderer import render_all
-			wt = await build_walkthrough(kind="morning")
-			await render_all(wt)
-		except Exception as _wt_err:
-			logger.warning("morning_briefing: walk-through build failed (non-fatal): %s", _wt_err)
 
 		# 5b. Wait for TTS to finish and send voice (with generous timeout — non-blocking for text above)
 		try:
