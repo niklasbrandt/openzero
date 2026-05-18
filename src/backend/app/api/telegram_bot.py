@@ -837,28 +837,9 @@ async def cmd_year(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 @owner_only
 async def cmd_walk(update: Update, context: ContextTypes.DEFAULT_TYPE):
-	"""Build an ad-hoc walk-through for a node name/id passed as argument."""
-	arg = " ".join(context.args).strip() if context.args else ""
-	try:
-		from app.services.walkthroughs import build_walkthrough
-		from app.services.walkthrough_renderer import render_telegram
-		from sqlalchemy import text as sql_text
-		node_id: int | None = None
-		if arg:
-			# Try numeric ID first
-			if arg.isdigit():
-				node_id = int(arg)
-			else:
-				# Search by label
-				async with AsyncSessionLocal() as _db:
-					res = await _db.execute(sql_text("SELECT id FROM atlas_nodes WHERE label ILIKE :q LIMIT 1"), {"q": f"%{arg}%"})
-					row = res.fetchone()
-					if row:
-						node_id = row[0]
-		wt = await build_walkthrough(kind="ad_hoc", node_id=node_id)
-		await render_telegram(wt)
-	except Exception as e:
-		await safe_reply(update, f"Walk-through failed: {e}")
+	"""Walk-throughs have been retired."""
+	await safe_reply(update, "Walk-throughs have been retired. Try /day or /week for briefings.")
+	return
 
 @owner_only
 async def cmd_search(update: Update, context: ContextTypes.DEFAULT_TYPE):

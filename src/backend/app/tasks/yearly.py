@@ -65,15 +65,6 @@ async def yearly_review():
 		from app.models.db import save_global_message
 		await save_global_message("telegram", "z", content, model=last_model_used.get())
 
-		# Phase W: build and deliver as walk-through
-		try:
-			from app.services.walkthroughs import build_walkthrough
-			from app.services.walkthrough_renderer import render_all
-			wt = await build_walkthrough(kind="yearly")
-			await render_all(wt)
-		except Exception as _wt_err:
-			logger.warning("yearly_review: walk-through build failed (non-fatal): %s", _wt_err)
-
 		return content
 
 	except Exception as e:
