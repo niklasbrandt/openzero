@@ -5,7 +5,7 @@ import { STATUS_STYLES } from '../services/statusStyles';
 import { EMPTY_STATE_STYLES } from '../services/emptyStateStyles';
 
 
-export class DiagnosticsWidget extends HTMLElement {
+export class SystemHealth extends HTMLElement {
 	private cpuData: Record<string, any> | null = null;
 	private serverData: Record<string, any> | null = null;
 	private systemData: Record<string, any> | null = null;
@@ -27,9 +27,7 @@ export class DiagnosticsWidget extends HTMLElement {
 	};
 
 	private static readonly HDD_SEG_TIPS: Record<string, string> = {
-		// Legacy aggregated key (kept for backward compat with older API responses)
 		'docker images': 'Base filesystem layers for all container images pulled from Docker Hub.',
-		// Named volume segments
 		'models': 'GGUF model files served by the LLM inference servers.',
 		'database': 'PostgreSQL data — conversations, email rules, and calendar events.',
 		'memory': 'Qdrant vector embeddings for long-term semantic memory retrieval.',
@@ -39,7 +37,6 @@ export class DiagnosticsWidget extends HTMLElement {
 		'container layers': 'Files written by running containers (logs, temp files, runtime state) on top of their base images.',
 		'tts models': 'Text-to-speech synthesis model files used by the voice service.',
 		'redis cache': 'Redis in-memory store snapshot persisted to disk.',
-		// Per-image segments (group: docker_image)
 		'backend': 'openZero backend image — FastAPI application server and all Python dependencies.',
 		'postgres': 'PostgreSQL database server image (data is in the separate Database segment).',
 		'qdrant': 'Qdrant vector search engine image (vectors are in the separate Memory segment).',
@@ -55,7 +52,6 @@ export class DiagnosticsWidget extends HTMLElement {
 		'llama.cpp': 'llama.cpp inference server image — used by the local LLM tier.',
 		'other images': 'Smaller Docker images not shown individually (each under 70 MB).',
 		'untagged': 'Untagged or dangling image layers with no associated tag.',
-		// Catch-all
 		'other': 'Host OS packages, system logs, user files, and all data outside Docker\'s managed storage. Requires direct host filesystem access to sub-divide further.',
 	};
 
@@ -165,7 +161,7 @@ export class DiagnosticsWidget extends HTMLElement {
 		const safeFetch = (url: string) =>
 			fetch(url)
 				.then(r => { if (!r.ok) throw new Error(`${r.status}`); return r.json(); })
-				.catch((e: Error) => { console.warn(`DiagnosticsWidget: ${url} failed (${e.message})`); return null; });
+				.catch((e: Error) => { console.warn(`SystemHealth: ${url} failed (${e.message})`); return null; });
 
 		const [cpu, srv, sys, cfg] = await Promise.all([
 			safeFetch('/api/dashboard/benchmark/cpu'),
@@ -177,7 +173,6 @@ export class DiagnosticsWidget extends HTMLElement {
 		if (srv !== null) this.serverData = srv;
 		if (sys !== null) this.systemData = sys;
 		if (cfg !== null) this.llmConfig = cfg;
-		// Reasoning trace — non-blocking, silent on 404 (feature may be off)
 		try {
 			const rt = await fetch('/api/dashboard/ambient/recent-captures');
 			if (rt.ok) {
@@ -239,7 +234,7 @@ export class DiagnosticsWidget extends HTMLElement {
 	}
 
 	private getRating(tps: number, tier: string): { cls: string; icon: string; label: string; hint: string } {
-		const exp = DiagnosticsWidget.EXPECTATIONS[tier] || DiagnosticsWidget.EXPECTATIONS['local'];
+		const exp = SystemHealth.EXPECTATIONS[tier] || SystemHealth.EXPECTATIONS['local'];
 		if (tps >= exp.fast) return { cls: 'excellent', icon: '++', label: this.tr('excellent', 'Excellent'), hint: `${tps.toFixed(1)} tok/s — well above target for ${exp.model}. Responses feel instant.` };
 		if (tps >= exp.good) return { cls: 'good', icon: 'ok', label: this.tr('good', 'Good'), hint: `${tps.toFixed(1)} tok/s — comfortable for interactive use with ${exp.model}.` };
 		if (tps >= exp.ok) return { cls: 'moderate', icon: '!', label: this.tr('moderate', 'Moderate'), hint: `${tps.toFixed(1)} tok/s — noticeable latency. Check thread count and CPU load.` };
@@ -264,7 +259,7 @@ export class DiagnosticsWidget extends HTMLElement {
 	private _sysProcColor(name: string): string {
 		let h = 0;
 		for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xffff;
-		const hue = 195 + (h % 55); // 195-250: indigo-blue family, distinct from service colors
+		const hue = 195 + (h % 55);
 		return `hsl(${hue},22%,${42 + (h % 10)}%)`;
 	}
 
@@ -273,7 +268,6 @@ export class DiagnosticsWidget extends HTMLElement {
 		const appsGb: number = srv.ram_apps_gb || 0;
 		const containerRam: { name: string; gb: number; orphan?: boolean }[] = srv.container_ram || [];
 
-		// Build named segments from live container data
 		const segs: { name: string; label: string; gb: number; pct: number; color: string; orphan?: boolean }[] = [];
 		let accounted = 0;
 		for (const c of containerRam) {
@@ -289,7 +283,6 @@ export class DiagnosticsWidget extends HTMLElement {
 			accounted += c.gb;
 		}
 
-		// Split "other" = apps not in containers into: kernel overhead + system procs
 		const otherGb = Math.max(appsGb - accounted, 0);
 		const kernelGb: number = parseFloat((srv.ram_kernel_gb || 0).toFixed(2));
 		const sysProcGb = Math.max(otherGb - kernelGb, 0);
@@ -326,20 +319,12 @@ export class DiagnosticsWidget extends HTMLElement {
 			});
 		}
 
-		// Reclaimable cache (page cache, slab cache, buffers) is intentionally NOT shown as
-		// separate segments. The per-container cgroup v2 measurement already includes
-		// active_file (mmap'd model weights) which is the same physical pages the kernel
-		// counts in its Cached/SReclaimable figures. Adding cache segments on top would
-		// double-count ~7-9 GB and make the bar overflow.
-		// Instead, the residual "available" segment absorbs all reclaimable pages, so its
-		// value equals MemAvailable and aligns with the header's "used = total − MemAvailable".
 		const usedBySegs = segs.reduce((sum, s) => sum + s.gb, 0);
 		const availGb = parseFloat(Math.max(total - usedBySegs, 0).toFixed(1));
 		if (availGb > 0.05) {
 			segs.push({ name: 'free', label: this.tr('ram_available', 'available'), gb: availGb, pct: (availGb / total) * 100, color: 'hsla(0,0%,100%,0.04)' });
 		}
 
-		// Sort non-available segments by size descending; available always last
 		const ramFree = segs.filter(s => s.name === 'free');
 		const ramNonFree = segs.filter(s => s.name !== 'free').sort((a, b) => b.gb - a.gb);
 		return [...ramNonFree, ...ramFree];
@@ -349,7 +334,6 @@ export class DiagnosticsWidget extends HTMLElement {
 		const total = srv.disk_total_gb || 1;
 		const used = srv.disk_used_gb || 0;
 		const free = srv.disk_free_gb || 0;
-		// Sort breakdown by gb descending so largest segments appear first
 		const breakdown = [...(srv.disk_breakdown || [])].sort((a: any, b: any) => (b.gb || 0) - (a.gb || 0));
 
 		const segs: { name: string; label: string; gb: number; pct: number; color: string; desc?: string }[] = [];
@@ -357,7 +341,7 @@ export class DiagnosticsWidget extends HTMLElement {
 
 		for (const item of breakdown) {
 			const itemName = item.name.toLowerCase();
-			const specificTip = DiagnosticsWidget.HDD_SEG_TIPS[itemName];
+			const specificTip = SystemHealth.HDD_SEG_TIPS[itemName];
 			const desc = specificTip
 				|| (item.group === 'docker_image' ? `Docker container image for ${item.name}.` : '');
 			segs.push({
@@ -379,7 +363,7 @@ export class DiagnosticsWidget extends HTMLElement {
 				gb: parseFloat(otherGb.toFixed(1)),
 				pct: (otherGb / total) * 100,
 				color: 'hsl(210,40%,62%)',
-				desc: DiagnosticsWidget.HDD_SEG_TIPS['other'] || '',
+				desc: SystemHealth.HDD_SEG_TIPS['other'] || '',
 			});
 		}
 
@@ -393,7 +377,6 @@ export class DiagnosticsWidget extends HTMLElement {
 			});
 		}
 
-		// Sort non-free segments by size descending; free always last
 		const hddFree = segs.filter(s => s.name === 'free');
 		const hddNonFree = segs.filter(s => s.name !== 'free').sort((a, b) => b.gb - a.gb);
 		return [...hddNonFree, ...hddFree];
@@ -405,7 +388,6 @@ export class DiagnosticsWidget extends HTMLElement {
 		const isCritical = appsPct > 85 || usedPct > 92;
 		const isWarning = !isCritical && (appsPct > 70 || usedPct > 85);
 
-		// Orphan container warning (separate from pressure alerts)
 		const orphans: { name: string; gb: number }[] = (srv.container_ram || []).filter((c: any) => c.orphan);
 		const orphanHtml = orphans.length > 0 ? `
 			<div class="ram-alert warning" role="alert" aria-live="polite">
@@ -509,10 +491,9 @@ export class DiagnosticsWidget extends HTMLElement {
 	}
 
 	updatePanel() {
-		const el = this.shadowRoot?.querySelector('#diag-panel');
+		const el = this.shadowRoot?.querySelector('#sh-panel');
 		if (!el) return;
 
-		// Preserve open state of the mitigation details panel across re-renders
 		const alertDetailsOpen = (el.querySelector('.ram-alert-details') as HTMLDetailsElement | null)?.open ?? false;
 
 		const cpu = this.cpuData || { cpu_model: '...', cores_physical: '?', cores_logical: '?', architecture: '?' };
@@ -598,8 +579,8 @@ export class DiagnosticsWidget extends HTMLElement {
 			}).join('');
 
 		el.innerHTML = `
-			<div class="diag-layout">
-				<button id="btn-force-reload" class="reload-btn has-tip" 
+			<div class="sh-layout">
+				<button id="btn-force-reload" class="reload-btn has-tip"
 					aria-label="${this.tr('aria_refresh_diagnostics', 'Force refresh of all diagnostic metrics')}">
 					<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
 						<path d="M21 2v6h-6"></path><path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path><path d="M3 22v-6h6"></path><path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
@@ -615,7 +596,6 @@ export class DiagnosticsWidget extends HTMLElement {
 						const td = tiers[name] || {};
 						const color = tierColorMap[name] || 'var(--accent-primary)';
 						const ramGb = ramEstFor(name);
-						// Detect whether an external peer is currently handling requests for this tier
 						const peers = (srv as any).llm_peers;
 						const activePeer = peers?.active;
 						const externalActive = activePeer && !activePeer.is_vps_local && name === 'local';
@@ -636,7 +616,6 @@ export class DiagnosticsWidget extends HTMLElement {
 
 						if (name === 'local' && cfgTiers.length === 0) return '';
 
-						// Model identification: Prefer live reporter from /props, then env config, then hardcoded fallback
 						let model = td.model_file || '';
 						if (!model) {
 							const t = cfgTiers.find((x: any) => x.tier === name);
@@ -658,11 +637,9 @@ export class DiagnosticsWidget extends HTMLElement {
 						const threads = threadsFor(name);
 						const liveRamGb = ((srv.container_ram || []).find((c: any) => c.name === 'llm-' + name) || {}).gb || 0;
 
-						// Enhanced metadata from tier data (td)
 						const fileSizeGb = td.model_size_gb || 0;
 						const cacheRamMb = td.cache_ram_mb || 0;
 						const kvUsage = td.kv_usage_pct || 0;
-						// Cloud-specific metadata (from /v1/models probe — universal across providers)
 						const cloudOwnedBy: string = name === 'cloud' ? (td.owned_by || '') : '';
 						const cloudFnCalling: boolean | null = name === 'cloud' ? (td.function_calling ?? null) : null;
 						const cloudVision: boolean | null = name === 'cloud' ? (td.vision ?? null) : null;
@@ -673,16 +650,9 @@ export class DiagnosticsWidget extends HTMLElement {
 						const cloudParamsB: number = name === 'cloud' ? (td.params_b || 0) : 0;
 						const cloudModelName: string = name === 'cloud' ? (td.model_name || '') : '';
 
-						// Mitigation: Detect hidden large models
-						// Accounting for the configured prompt cache AND KV-cache growth at large context
-						// windows to avoid false positives. llama.cpp allocates KV cache for the full
-						// ctx_size upfront; at 32K+ that can be 3-4 GB for a small model.
-						// kvCacheEstGb: 0 at ≤4K ctx, ~0.4 GB per additional 4K block above baseline.
 						const cacheGb = cacheRamMb / 1024;
 						const ctxSize = td.ctx_size || ctx || 4096;
 						const kvCacheEstGb = Math.max(0, ctxSize / 4096 - 1) * 0.4;
-						// Suppress MISMATCH when an external peer is active — container_ram
-						// reflects the VPS llama.cpp which is idle with its full context allocated.
 						const isMismatch = !externalActive && (liveRamGb > 0 && ramGb > 0 && (liveRamGb / (ramGb + cacheGb + kvCacheEstGb + 1.0)) > 1.3);
 
 						const mismatchDesc = this.tr('diag_llm_mismatch_desc', 'CRITICAL: Live RAM usage ({live} GB) is significantly higher than expected ({est} GB + {cache} GB cache). This suggests a larger model is hiding under a smaller filename.').replace('{live}', liveRamGb.toFixed(1)).replace('{est}', ramGb.toFixed(1)).replace('{cache}', cacheGb.toFixed(1));
@@ -698,7 +668,6 @@ export class DiagnosticsWidget extends HTMLElement {
 								</span>` : ''}
 							</div>
 							${(() => {
-								// Inference Provider section — only shown for local tier when external peers are configured
 								if (name !== 'local') return '';
 								const peerInfo = (srv as any).llm_peers;
 								if (!peerInfo) return '';
@@ -733,7 +702,7 @@ export class DiagnosticsWidget extends HTMLElement {
 								</div>`;
 							})()}
 							<div class="ltc-model ${isMismatch ? 'mismatch has-tip' : ''}">
-								${isMismatch ? '<span class="ltc-mismatch-icon" aria-hidden="true">⚠️</span>' : ''}
+								${isMismatch ? '<span class="ltc-mismatch-icon" aria-hidden="true">&#9888;</span>' : ''}
 								${this.esc(model)}
 								${isMismatch ? `<span class="glass-tooltip">${mismatchDesc}</span>` : ''}
 							</div>
@@ -758,7 +727,6 @@ export class DiagnosticsWidget extends HTMLElement {
 					}).join('')}
 				</div>` : ''}
 
-				<!-- Top Row: Prominent RAM -->
 				<div class="ram-strip">
 					<div class="ram-strip-header">
 						<span class="ram-title">${this.tr('diag_ram_title', 'System Memory (RAM)')}</span>
@@ -774,24 +742,19 @@ export class DiagnosticsWidget extends HTMLElement {
 							<div class="ram-seg-svc" style="width:${Math.max(s.pct, 0).toFixed(2)}%;background:${s.color}" data-seg-tip="${this.esc(s.label)}: ${s.gb} GB (${s.pct.toFixed(1)}%)"></div>
 						`).join('')}
 					</div>
-					${(() => {
-						return `
-							<div class="ram-bar-hover-tip" id="ram-bar-htip" aria-hidden="true" role="tooltip"></div>
-							<div class="ram-strip-legend">
-								${this._ramBarSegments(srv).filter(s => s.name !== 'free').map(s => `
-								<div class="leg-item${s.orphan ? ' leg-item--orphan' : ''}${s.gb >= 0.15 ? ' leg-item--large' : ''}">
-										<span class="leg-dot" style="background:${s.color};border-color:${s.color}"></span>
-										<span class="leg-name">${this.esc(s.label)}</span>
-										<span class="leg-gb">${s.gb}G</span>
-										${s.orphan ? `<span class="leg-orphan-chip" title="${this.tr('tip_orphan_container', 'Not in docker-compose.yml — orphaned container')}">orphan</span>` : ''}
-									</div>
-								`).join('')}
+					<div class="ram-bar-hover-tip" id="ram-bar-htip" aria-hidden="true" role="tooltip"></div>
+					<div class="ram-strip-legend">
+						${this._ramBarSegments(srv).filter(s => s.name !== 'free').map(s => `
+							<div class="leg-item${s.orphan ? ' leg-item--orphan' : ''}${s.gb >= 0.15 ? ' leg-item--large' : ''}">
+								<span class="leg-dot" style="background:${s.color};border-color:${s.color}"></span>
+								<span class="leg-name">${this.esc(s.label)}</span>
+								<span class="leg-gb">${s.gb}G</span>
+								${s.orphan ? `<span class="leg-orphan-chip" title="${this.tr('tip_orphan_container', 'Not in docker-compose.yml — orphaned container')}">orphan</span>` : ''}
 							</div>
-						`;
-					})()}
+						`).join('')}
+					</div>
 				</div>
 
-				<!-- HDD Row: System Storage -->
 				<div class="ram-strip hdd-strip">
 					<div class="ram-strip-header">
 						<span class="ram-title">${this.tr('diag_hdd_title', 'System Storage (HDD)')}</span>
@@ -810,13 +773,12 @@ export class DiagnosticsWidget extends HTMLElement {
 								${this._hddBarSegments(srv).filter(s => s.name !== 'free').map(s => {
 									const isModels = s.name === 'models';
 									const bloated = isModels && activeGb > 0 && s.gb > activeGb * 1.5;
-								const bloatTip = bloated
-									? `Models volume is ${s.gb} GB but current tiers only need ~${activeGb.toFixed(1)} GB. Stale files from previous downloads are taking up space.`
-									: '';
-								const tip = bloatTip || s.desc || '';
-								
-								return `
-								<div class="leg-item${tip ? ' has-tip' : ''}${bloated ? ' leg-item--bloat' : ''}${s.gb >= 0.15 ? ' leg-item--large' : ''}">
+									const bloatTip = bloated
+										? `Models volume is ${s.gb} GB but current tiers only need ~${activeGb.toFixed(1)} GB. Stale files from previous downloads are taking up space.`
+										: '';
+									const tip = bloatTip || s.desc || '';
+									return `
+										<div class="leg-item${tip ? ' has-tip' : ''}${bloated ? ' leg-item--bloat' : ''}${s.gb >= 0.15 ? ' leg-item--large' : ''}">
 											<span class="leg-dot" style="background:${s.color};border-color:${s.color}"></span>
 											<span class="leg-name">${this.esc(s.label)}</span>
 											<span class="leg-gb">${s.gb}G</span>
@@ -832,28 +794,25 @@ export class DiagnosticsWidget extends HTMLElement {
 
 				${this._volumeInventoryHtml(srv)}
 
-				<!-- Left Column: Hardware -->
-				<div class="diag-col hardware">
-					<div class="diag-section-label">${this.tr('diag_processor_info', 'Processor Info')}</div>
+				<div class="sh-col hardware">
+					<div class="sh-section-label">${this.tr('diag_processor_info', 'Processor Info')}</div>
 					<div class="cpu-info">${cpu.cpu_model}</div>
 					<div class="hw-specs">
 						<div class="hw-spec has-tip"><span>${this.tr('cores', 'Cores')}</span><strong>${cpu.cores_physical}P/${cpu.cores_logical}L</strong><span class="glass-tooltip">${cpu.cores_physical} ${this.tr('tip_cores_physical', 'physical cores')} / ${cpu.cores_logical} ${this.tr('tip_cores_logical', 'logical threads')}.</span></div>
 						<div class="hw-spec has-tip"><span>${this.tr('arch', 'Arch')}</span><strong>${cpu.architecture}</strong><span class="glass-tooltip">${this.tr('tip_arch', 'System instruction set architecture.')}</span></div>
 						<div class="hw-spec has-tip"><span>${this.tr('uptime', 'Uptime')}</span><strong>${srv.uptime_human || '?'}</strong><span class="glass-tooltip">${this.tr('tip_uptime', 'Time since the last system boot.')}</span></div>
 					</div>
-					<div class="diag-section-label" style="margin-top: 0.5rem">${this.tr('diag_cpu_features', 'CPU Features')}</div>
+					<div class="sh-section-label" style="margin-top: 0.5rem">${this.tr('diag_cpu_features', 'CPU Features')}</div>
 					<div class="hw-feat-grid">${featGrid}</div>
 				</div>
 
-				<!-- Middle Column: Integration -->
-				<div class="diag-col software">
-					<div class="diag-section-label">${this.tr('diag_integration', 'Integration')}</div>
+				<div class="sh-col software">
+					<div class="sh-section-label">${this.tr('diag_integration', 'Integration')}</div>
 					<div class="svc-grid">${swGrid}</div>
 				</div>
 
-				<!-- Right Column: Benchmark -->
-				<div class="diag-col benchmarks">
-					<div class="diag-section-label">${this.tr('llm_benchmark', 'Benchmark')}</div>
+				<div class="sh-col benchmarks">
+					<div class="sh-section-label">${this.tr('llm_benchmark', 'Benchmark')}</div>
 					<div class="bench-actions" style="margin-top: 0">
 						<button class="b-btn main has-tip ${this.isBenchRunning ? 'running' : ''}" ${this.isBenchRunning ? 'disabled' : ''} data-tier="all">
 							${this.isBenchRunning ? this.tr('diag_benchmarking', 'Benchmarking...') : this.tr('diag_bench_all', 'Benchmark all LLMs')}
@@ -875,7 +834,6 @@ export class DiagnosticsWidget extends HTMLElement {
 			</div>
 		`;
 
-		// Append reasoning trace below the main grid
 		const existingRT = el.querySelector('.rt-details');
 		const rtWasOpen = (existingRT as HTMLDetailsElement | null)?.open ?? false;
 		const rtSection = this.shadowRoot?.querySelector('#rt-section');
@@ -885,7 +843,6 @@ export class DiagnosticsWidget extends HTMLElement {
 			if (rtDetails && rtWasOpen) rtDetails.open = true;
 		}
 
-		// Restore details open state after innerHTML replacement
 		const alertDetails = el.querySelector('.ram-alert-details') as HTMLDetailsElement | null;
 		if (alertDetails && alertDetailsOpen) alertDetails.open = true;
 
@@ -901,7 +858,6 @@ export class DiagnosticsWidget extends HTMLElement {
 			b.addEventListener('click', () => this.runBenchmark(b.getAttribute('data-tier')!));
 		});
 
-		// Tooltip positioning helper
 		const setupBarTooltips = (barId: string, tipId: string, stripSelector: string) => {
 			const _bar = el.querySelector(barId) as HTMLElement | null;
 			const _htip = el.querySelector(tipId) as HTMLElement | null;
@@ -994,7 +950,6 @@ export class DiagnosticsWidget extends HTMLElement {
 			.replace(/'/g, '&#x27;');
 	}
 
-
 	render() {
 		if (!this.shadowRoot) return;
 		this.shadowRoot.innerHTML = `
@@ -1008,7 +963,7 @@ export class DiagnosticsWidget extends HTMLElement {
 
 				.h-icon { background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-secondary) 100%); }
 
-				.diag-layout {
+				.sh-layout {
 					display: grid;
 					grid-template-columns: 1.2fr 1fr 1fr;
 					gap: 1.5rem;
@@ -1019,16 +974,17 @@ export class DiagnosticsWidget extends HTMLElement {
 				.reload-btn { position: absolute; top: -38px; right: 0; background: hsla(0,0%,100%,0.05); border: 1px solid hsla(0,0%,100%,0.1); color: var(--text-muted); width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 10; padding: 0; }
 				.reload-btn:hover { background: hsla(0,0%,100%,0.1); border-color: var(--accent-primary); color: var(--accent-primary); transform: scale(1.1) rotate(15deg); box-shadow: 0 0 15px hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.2); }
 				.reload-btn:active { transform: scale(0.9); }
-				.reload-btn.spinning svg { animation: diag-rotate 0.8s infinite linear; }
-				@keyframes diag-rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+				.reload-btn:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
+				.reload-btn.spinning svg { animation: sh-rotate 0.8s infinite linear; }
+				@keyframes sh-rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-				.diag-col {
+				.sh-col {
 					display: flex;
 					flex-direction: column;
 					gap: 1rem;
 				}
 
-				.diag-section-label { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: -0.25rem; }
+				.sh-section-label { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: -0.25rem; }
 
 				.cpu-info { font-size: 0.9rem; font-weight: 800; color: var(--text-primary); line-height: 1.2; letter-spacing: -0.01em; }
 				.hw-specs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-top: 0.2rem; }
@@ -1067,9 +1023,6 @@ export class DiagnosticsWidget extends HTMLElement {
 				.ram-alert.warning { background: hsla(40, 90%, 50%, 0.07); border-color: hsla(40, 90%, 55%, 0.7); }
 				.ram-alert.critical { background: hsla(0, 85%, 55%, 0.09); border-color: hsla(0, 85%, 55%, 0.8); }
 				.ram-alert-header { display: flex; align-items: center; gap: 0.5rem; }
-				.ram-alert-icon { font-size: 0.85rem; }
-				.ram-alert.warning .ram-alert-icon { color: hsl(40, 90%, 60%); }
-				.ram-alert.critical .ram-alert-icon { color: hsl(0, 85%, 65%); }
 				.ram-alert-headline { font-size: 0.75rem; font-weight: 700; }
 				.ram-alert.warning .ram-alert-headline { color: hsl(40, 90%, 70%); }
 				.ram-alert.critical .ram-alert-headline { color: hsl(0, 85%, 72%); }
@@ -1096,46 +1049,39 @@ export class DiagnosticsWidget extends HTMLElement {
 				.svc-name { font-size: 0.7rem; font-weight: 600; color: var(--text-secondary); }
 				.svc-detail { font-size: 0.65rem; font-family: var(--font-mono); color: var(--text-muted); text-align: right; }
 
-				.svc-dot.processing { background: var(--accent-primary); box-shadow: 0 0 10px var(--accent-primary); animation: diag-pulse 1s infinite; }
+				.svc-dot.processing { background: var(--accent-primary); box-shadow: 0 0 10px var(--accent-primary); animation: sh-pulse 1s infinite; }
+				@keyframes sh-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 
 				.llm-ram-breakdown { margin-bottom: 0.75rem; display: flex; flex-wrap: wrap; gap: 0.6rem; }
-				.llm-ram-bd-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); font-weight: 700; margin-bottom: 0.1rem; }
 				.llm-tier-card { flex: 1; min-width: 200px; background: hsla(0,0%,100%,0.025); border: 1px solid hsla(0,0%,100%,0.05); border-left: 2px solid var(--tier-color, var(--accent-primary)); border-radius: 0.4rem; padding: 0.45rem 0.6rem; display: flex; flex-direction: column; gap: 0.25rem; }
 				.llm-tier-card.disabled { border-left: 2px dashed hsla(0,0%,100%,0.18); border-color: hsla(0,0%,100%,0.06); background: hsla(0,0%,100%,0.015); }
 				.llm-tier-card.disabled .ltc-name { color: var(--text-muted) !important; }
 				.llm-tier-card.disabled .ltc-model { color: var(--text-muted); font-style: italic; }
-				.ltc-spec-hint { font-size: 0.5rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); font-style: italic; }
 				.ltc-cloud-why { font-size: 0.6rem; color: var(--text-muted); line-height: 1.55; margin: 0.25rem 0 0.35rem; padding: 0; }
 				.ltc-cloud-or-line { display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.35rem; }
 				.ltc-or-opt { font-size: 0.6rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
 				.ltc-or-sep { font-size: 0.55rem; color: var(--text-muted); font-style: italic; }
 				.ltc-cloud-code { font-family: var(--font-mono); font-size: 0.55rem; color: var(--text-muted); background: hsla(0,0%,100%,0.06); padding: 0.15rem 0.4rem; border-radius: 3px; font-style: normal; }
 
-				@property --llm-spin-angle { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
-				@keyframes llm-border-spin { to { --llm-spin-angle: 360deg; } }
+				@property --ltc-spin-angle { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+				@keyframes ltc-border-spin { to { --ltc-spin-angle: 360deg; } }
 				.llm-tier-card.inferring {
 					border: 1.5px solid transparent !important;
 					background:
 						linear-gradient(hsla(0,0%,100%,0.025), hsla(0,0%,100%,0.025)) padding-box,
-						conic-gradient(from var(--llm-spin-angle), transparent 78%, var(--tier-color, var(--accent-primary)) 90%, transparent 100%) border-box;
-					animation: llm-border-spin 2s linear infinite;
+						conic-gradient(from var(--ltc-spin-angle), transparent 78%, var(--tier-color, var(--accent-primary)) 90%, transparent 100%) border-box;
+					animation: ltc-border-spin 2s linear infinite;
 				}
 				@media (prefers-reduced-motion: reduce) { .llm-tier-card.inferring { animation: none; border-color: var(--tier-color, var(--accent-primary)) !important; } }
 				.ltc-header { display: flex; align-items: center; gap: 0.4rem; }
 				.ltc-name { font-size: 0.6rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.07em; }
-				.ltc-status { font-size: 0.5rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; margin-left: auto; }
-				.ltc-status.online { color: var(--accent-primary); }
-				.ltc-status.processing { color: var(--accent-primary); animation: diag-pulse 1s infinite; }
-				.ltc-status.offline { color: var(--color-danger); }
 				.ltc-badge { font-size: 0.5rem; font-weight: 900; letter-spacing: 0.05em; text-transform: uppercase; border-radius: 3px; padding: 0.1rem 0.35rem; margin-left: auto; position: relative; }
-				.ltc-badge.mismatch { color: #fff; background: var(--color-danger); box-shadow: 0 0 10px hsla(0, 85%, 55%, 0.4); animation: diag-pulse 2s infinite; cursor: help; }
+				.ltc-badge.mismatch { color: var(--color-surface, #fff); background: var(--color-danger); box-shadow: 0 0 10px hsla(0, 85%, 55%, 0.4); animation: sh-pulse 2s infinite; cursor: help; }
 				.ltc-badge.idle { background: hsla(220,30%,50%,0.12); color: var(--text-muted); border-color: hsla(220,30%,50%,0.2); letter-spacing: 0.05em; }
 				.llm-tier-card.peer-routed { opacity: 0.6; }
 				.llm-tier-card.peer-routed:hover { opacity: 1; transition: opacity 0.2s; }
 				.ltc-badge .glass-tooltip { right: 0; left: auto; transform: translateY(2px); margin-bottom: 2px; }
-				.has-tip:hover > .ltc-badge .glass-tooltip { transform: translateY(-4px); }
 
-				/* Inference Provider section inside LOCAL card */
 				.ltc-provider { margin: 0.35rem 0 0.1rem; }
 				.ltc-prov-label { display: block; font-size: 0.52rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); font-weight: 700; margin-bottom: 0.3rem; }
 				.ltc-prov-chips { display: flex; flex-wrap: wrap; gap: 0.3rem; }
@@ -1144,18 +1090,17 @@ export class DiagnosticsWidget extends HTMLElement {
 				.ltc-prov-chip.active-vps { border-color: hsla(0,0%,100%,0.18); background: hsla(0,0%,100%,0.06); color: var(--text-secondary); }
 				.ltc-prov-chip.standby { border-color: hsla(0,0%,100%,0.08); background: transparent; color: var(--text-muted); opacity: 0.7; }
 				.ltc-prov-chip.offline { border-color: hsla(0,0%,100%,0.05); background: transparent; color: var(--text-muted); opacity: 0.4; }
-				.ltc-prov-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent-primary); box-shadow: 0 0 5px var(--accent-primary); flex-shrink: 0; animation: diag-pulse 2s infinite; }
+				.ltc-prov-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent-primary); box-shadow: 0 0 5px var(--accent-primary); flex-shrink: 0; animation: sh-pulse 2s infinite; }
 				.ltc-prov-name { font-size: 0.62rem; }
 				.ltc-prov-tps { font-size: 0.56rem; opacity: 0.75; font-weight: 400; }
-				
+
 				.ltc-model { font-size: 0.78rem; font-family: var(--font-mono); color: var(--text-secondary); font-weight: 600; display: flex; align-items: center; gap: 0.4rem; padding: 0.1rem 0; position: relative; width: fit-content; }
 				.ltc-model.mismatch { color: var(--color-danger); cursor: help; }
-				.ltc-mismatch-icon { color: var(--color-danger); font-size: 0.8rem; animation: diag-pulse 1s infinite; }
+				.ltc-mismatch-icon { color: var(--color-danger); font-size: 0.8rem; animation: sh-pulse 1s infinite; }
 				.ltc-specs { display: flex; flex-wrap: wrap; gap: 0.3rem 0.7rem; margin-top: 0.1rem; }
 				.ltc-spec { display: flex; align-items: baseline; gap: 0.25rem; }
 				.ltc-spec span { font-size: 0.52rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
 				.ltc-spec strong { font-size: 0.65rem; font-family: var(--font-mono); font-weight: 800; color: var(--text-secondary); }
-				.llm-models-disk { display: flex; justify-content: space-between; align-items: center; font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding-top: 0.3rem; border-top: 1px solid hsla(0,0%,100%,0.04); margin-top: 0.1rem; }
 
 				.bench-results-list { display: flex; flex-direction: column; gap: 0.5rem; }
 				.bench-res-item { display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0.75rem; background: hsla(0, 0%, 100%, 0.02); border-radius: 0.4rem; border: 1px solid hsla(0, 0%, 100%, 0.04); }
@@ -1174,8 +1119,9 @@ export class DiagnosticsWidget extends HTMLElement {
 				.bench-actions { display: flex; flex-direction: column; gap: 0.5rem; margin-top: auto; }
 				.b-btn { background: var(--surface-card, hsla(0, 0%, 100%, 0.04)); color: var(--text-primary); border: 1px solid var(--border-medium, hsla(0, 0%, 100%, 0.08)); padding: 0.5rem; border-radius: 0.5rem; font-size: 0.65rem; font-weight: 700; cursor: pointer; transition: all 0.2s; text-transform: uppercase; letter-spacing: 0.05em; }
 				.b-btn:hover:not(:disabled) { background: var(--surface-card-hover, hsla(0, 0%, 100%, 0.08)); border-color: var(--accent-color); color: var(--accent-text, var(--accent-color)); }
+				.b-btn:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
 				.b-btn.main { background: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.15); border-color: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.3); color: var(--text-primary); }
-				.b-btn.running { opacity: 0.6; animation: diag-pulse 1.5s infinite; pointer-events: none; }
+				.b-btn.running { opacity: 0.6; animation: sh-pulse 1.5s infinite; pointer-events: none; }
 				.b-btn:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(100%); }
 				.b-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; }
 				.b-btn.sm { font-size: 0.55rem; padding: 0.4rem 0.2rem; flex: 1; }
@@ -1183,14 +1129,12 @@ export class DiagnosticsWidget extends HTMLElement {
 				.b-btn.tier-local:hover:not(:disabled) { background: hsla(var(--accent-primary-h), var(--accent-primary-s), var(--accent-primary-l), 0.12); border-color: var(--accent-primary); color: var(--accent-primary); }
 				.b-btn.tier-cloud { border-color: hsla(260,70%,65%,0.4); color: hsl(260,70%,70%); }
 				.b-btn.tier-cloud:hover:not(:disabled) { background: hsla(260,70%,65%,0.12); border-color: hsl(260,70%,65%); color: hsl(260,70%,75%); }
-			/* Light-theme contrast override: hsl(260,65%,35%) gives ≥8:1 on --surface-bg-light */
-			:host-context([data-theme="light"]) .b-btn.tier-cloud { color: hsl(260,65%,35%); border-color: hsla(260,65%,35%,0.5); }
-			:host-context([data-theme="light"]) .b-btn.tier-cloud:hover:not(:disabled) { background: hsla(260,65%,35%,0.1); border-color: hsl(260,65%,35%); color: hsl(260,65%,28%); }
+				:host-context([data-theme="light"]) .b-btn.tier-cloud { color: hsl(260,65%,35%); border-color: hsla(260,65%,35%,0.5); }
+				:host-context([data-theme="light"]) .b-btn.tier-cloud:hover:not(:disabled) { background: hsla(260,65%,35%,0.1); border-color: hsl(260,65%,35%); color: hsl(260,65%,28%); }
 
 				.vol-inventory { grid-column: 1 / -1; background: hsla(0,0%,100%,0.02); border: 1px solid hsla(0,0%,100%,0.06); border-radius: 0.6rem; overflow: hidden; }
 				.vol-inv-summary { display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem 1rem; cursor: pointer; user-select: none; list-style: none; }
 				.vol-inv-summary::-webkit-details-marker { display: none; }
-				.vol-inv-summary::marker { display: none; }
 				.vol-inv-summary:hover { background: hsla(0,0%,100%,0.03); }
 				.vol-inv-title { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-secondary); }
 				.vol-inv-meta { font-size: 0.6rem; color: var(--text-muted); margin-left: auto; display: flex; align-items: center; gap: 0.4rem; }
@@ -1211,10 +1155,9 @@ export class DiagnosticsWidget extends HTMLElement {
 				.vi-cmd code { display: block; font-size: 0.58rem; font-family: var(--font-mono); background: hsla(0,0%,100%,0.06); padding: 0.3rem 0.5rem; border-radius: 4px; margin-top: 0.2rem; color: var(--text-secondary); word-break: break-all; }
 
 				@media (max-width: 1100px) {
-					.diag-layout { grid-template-columns: 1fr; }
+					.sh-layout { grid-template-columns: 1fr; }
 				}
 
-				/* Reasoning trace panel */
 				.rt-details { border: 1px solid hsla(0,0%,100%,0.08); border-radius: 8px; overflow: hidden; margin-top: 0.25rem; }
 				.rt-summary { display: flex; align-items: center; gap: 0.5rem; padding: 0.6rem 0.75rem; cursor: pointer; list-style: none; font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); background: hsla(0,0%,100%,0.03); }
 				.rt-summary::-webkit-details-marker { display: none; }
@@ -1235,8 +1178,23 @@ export class DiagnosticsWidget extends HTMLElement {
 				.rt-ch { color: var(--text-muted); font-size: 0.6rem; }
 				.rt-ts { color: var(--text-muted); font-variant-numeric: tabular-nums; text-align: right; }
 				.rt-empty { padding: 0.75rem; font-size: 0.65rem; color: var(--text-muted); text-align: center; }
-				@media (forced-colors: active) { .rt-lane { border: 1px solid ButtonText; } }
-				@media (prefers-reduced-motion: reduce) { .rt-details { transition: none; } }
+
+				@media (prefers-reduced-motion: reduce) {
+					.rt-details { transition: none; }
+					.ram-seg-svc { transition: none; }
+					.llm-tier-card.inferring { animation: none; border-color: var(--tier-color, var(--accent-primary)) !important; }
+					.reload-btn { transition: none; }
+					.svc-item { transition: none; }
+				}
+
+				@media (forced-colors: active) {
+					.rt-lane { border: 1px solid ButtonText; }
+					.vi-chip { border: 1px solid ButtonText; }
+					.ltc-badge { border: 1px solid ButtonText; }
+					.b-btn { border: 1px solid ButtonText; }
+					.reload-btn { border: 1px solid ButtonText; }
+					:focus-visible { outline: 3px solid ButtonText; }
+				}
 			</style>
 
 			<h2>
@@ -1245,15 +1203,15 @@ export class DiagnosticsWidget extends HTMLElement {
 						<path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
 					</svg>
 				</span>
-				Diagnostics
+				${this.tr('system_health', 'System Health')}
 			</h2>
 
-			<div id="diag-panel" aria-live="polite">
-				<div class="empty-state">Loading diagnostics...</div>
+			<div id="sh-panel" aria-live="polite">
+				<div class="empty-state">${this.tr('detecting_hw', 'Loading system data...')}</div>
 			</div>
 			<div id="rt-section" style="margin-top: 1.5rem"></div>
 		`;
 	}
 }
 
-customElements.define('diagnostics-widget', DiagnosticsWidget);
+customElements.define('system-health', SystemHealth);
