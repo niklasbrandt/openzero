@@ -20,6 +20,7 @@ from __future__ import annotations
 import logging
 import re
 import asyncio
+import time as _time
 from dataclasses import dataclass, field
 from typing import AsyncIterator, Callable, Awaitable
 
@@ -27,6 +28,11 @@ from app.common.phantom import PHANTOM_RE as _PHANTOM_RE  # noqa: E402
 from app.services.z_core import build_z_core_context
 
 logger = logging.getLogger(__name__)
+
+# ── Section 9e: empty-board auto-setup pending store ──────────────────────────
+# key = channel id, value = {board_name, list_names, original_text, ts}
+_EMPTY_BOARD_PENDING: dict[str, dict] = {}
+_EMPTY_BOARD_TTL_S = 300  # 5 minutes — auto-expire if user does not confirm
 
 # Maximum input length applied before running complex regexes on user-controlled
 # text to prevent polynomial (ReDoS) backtracking (CWE-1333).
@@ -229,6 +235,38 @@ async def route_message_stream(
 					await status_callback(msg)
 				except Exception:
 					pass
+
+		# ── 9e: Empty-board setup confirmation intercept ───────────────────────
+		# Must run before step 0.0 so "yes" / "ja" / "ok" replies are caught here
+		# first when a pending empty-board setup is awaiting one-shot HITL confirmation.
+		_YES_CONFIRM_RE = re.compile(
+			r'^(?:yes|ja|yeah|yep|ok|okay|sure|confirm|go\s+ahead|do\s+it|mach\s+es)\s*[!.]?$',
+			re.IGNORECASE,
+		)
+		_trimmed_9e = user_text.strip()
+		if _YES_CONFIRM_RE.match(_trimmed_9e[:_MAX_RE_INPUT]):
+			_pending_9e = _EMPTY_BOARD_PENDING.pop(channel, None)
+			if _pending_9e and (_time.time() - _pending_9e.get("ts", 0)) < _EMPTY_BOARD_TTL_S:
+				_setup_board = _pending_9e["board_name"]
+				_setup_lists = _pending_9e["list_names"]
+				_list_preview = ", ".join(_setup_lists)
+				await _status(_t.get("status_creating_lists", "Creating lists..."))
+				_tag_lines: list[str] = []
+				for _ln in _setup_lists:
+					_tag_lines.append(f"[ACTION: CREATE_LIST | BOARD: {_setup_board} | NAME: {_ln}]")
+				_tags_block = "\n".join(_tag_lines)
+				_confirm_reply = f"Creating {len(_setup_lists)} lists on '{_setup_board}': {_list_preview}."
+				yield _confirm_reply
+				_9e_clean, _9e_cmds, _9e_pending = await bus.commit_reply(
+					channel=channel, raw_reply=_tags_block,
+					model="empty_board_setup", user_text=user_text, save=save_history,
+				)
+				if not result_future.done():
+					result_future.set_result(RouterResult(
+						reply=_9e_clean or _confirm_reply, model="empty_board_setup",
+						executed_cmds=_9e_cmds, pending_actions=_9e_pending,
+					))
+				return
 
 		# ── 0.0 Fast-path bypass for trivial messages ────────────────────────
 		# Short greetings and ack messages skip the full cascade to save 1-3s.
@@ -898,6 +936,50 @@ async def route_message_stream(
 						get_board_full_context(_board_frag), timeout=15.0,
 					)
 				if _board_ctx:
+					# ── 9e: Empty-board auto-setup intercept ──────────────────────────
+					# get_board_full_context emits "\nLIST:" only when at least one list
+					# exists.  If it's absent the board exists but is empty — propose
+					# lists via a fast LLM call and gate on one HITL "yes" reply.
+					if "\nLIST:" not in _board_ctx:
+						await _status(_t.get("status_inferring_lists", "Inferring list names..."))
+						try:
+							from app.services.llm import chat as _fast_chat_9e
+							_list_prompt = (
+								f"Board name: '{_board_frag}'. What are 3-5 appropriate list column names "
+								"for this Kanban board? Reply with ONLY a comma-separated list, no explanation."
+							)
+							_raw_lists = await asyncio.wait_for(_fast_chat_9e(_list_prompt, tier="cloud"), timeout=15.0)
+							_proposed = [n.strip().strip("'\"") for n in _raw_lists.split(",") if n.strip()][:5]
+							if not _proposed:
+								_proposed = ["To Do", "In Progress", "Done"]
+						except Exception as _9e_inf_err:
+							logger.warning("Router 9e: list inference failed for '%s': %s", _sanitize_for_log(_board_frag), _9e_inf_err)
+							_proposed = ["To Do", "In Progress", "Done"]
+						_EMPTY_BOARD_PENDING[channel] = {
+							"board_name": _board_frag,
+							"list_names": _proposed,
+							"original_text": user_text,
+							"ts": _time.time(),
+						}
+						_hitl_reply = (
+							f"Board '{_board_frag}' has no lists. "
+							f"I'll create: {', '.join(_proposed)}. "
+							f"Reply 'yes' to confirm."
+						)
+						logger.info("Router 9e: empty-board HITL proposed for '%s' with lists %s", _sanitize_for_log(_board_frag), _proposed)
+						yield _hitl_reply
+						_9e_hl_clean, _9e_hl_cmds, _9e_hl_pending = await bus.commit_reply(
+							channel=channel, raw_reply=_hitl_reply,
+							model="empty_board_setup", user_text=user_text, save=save_history,
+						)
+						if not result_future.done():
+							result_future.set_result(RouterResult(
+								reply=_9e_hl_clean or _hitl_reply, model="empty_board_setup",
+								executed_cmds=_9e_hl_cmds, pending_actions=_9e_hl_pending,
+							))
+						if _board_prefetch_task and not _board_prefetch_task.done():
+							_board_prefetch_task.cancel()
+						return
 					# Inject as a synthetic system message so the LLM treats it as
 					# authoritative ground truth, not something to speculate about.
 					_ctx_history = list(history) + [{
@@ -922,6 +1004,116 @@ async def route_message_stream(
 		routed_crews = await route_semantic(
 			user_text, _ctx_history, channel, think_mode=_think_mode, lang=lang,
 		)
+
+		# ── Multi-crew panel synthesis (spec 9f) ────────────────────────────
+		# If semantic router returned 2+ crews, check debate-OFF rules.
+		# Score-gap is already enforced inside route_semantic (gap ≤ 0.06 to appear
+		# in the panel), so we only need the message-level debate-OFF checks here.
+		_ACTION_STRIP_RE = re.compile(r'\[ACTION:[^\]]*\]', re.IGNORECASE)
+		if len(routed_crews) >= 2:
+			_panel = routed_crews[:2]
+			_word_count = len(user_text.split())
+			_has_decision_verb = bool(re.search(
+				r'\b(should|shall|soll|lohnt|which|welche|recommend|empfehlen|better|besser)\b',
+				user_text[:_MAX_RE_INPUT].lower(),
+			))
+			_is_simple_q = user_text.rstrip().endswith("?") and _word_count < 8
+			if not _has_decision_verb or _word_count < 5 or _is_simple_q:
+				# Debate-OFF: degrade to single-crew
+				logger.info("Router: panel debate-OFF (word_count=%d, decision_verb=%s, simple_q=%s) — single crew '%s'", _word_count, _has_decision_verb, _is_simple_q, _panel[0])
+				routed_crews = [_panel[0]]
+			else:
+				# Panel mode — run both crews in parallel, then Z synthesises
+				_force_cloud = True
+				logger.info("Router: panel mode — '%s' + '%s'", _panel[0], _panel[1])
+				await _status(_t.get("status_routing_crew", "Routing to {crew}...").format(crew=f"{_panel[0]} + {_panel[1]}"))
+
+				async def _run_panel_crew(_cid: str) -> tuple[str, str]:
+					_chunks: list[str] = []
+					async for _tok in native_crew_engine.run_crew_stream(_cid, user_text, history=_ctx_history, force_cloud=True):
+						_chunks.append(_tok)
+					return _cid, "".join(_chunks)
+
+				_panel_results = await asyncio.gather(
+					_run_panel_crew(_panel[0]),
+					_run_panel_crew(_panel[1]),
+					return_exceptions=True,
+				)
+
+				# Collect valid contributions (strip ACTION tags; kill switch ≥ 40 tokens)
+				_MIN_PANEL_TOKENS = 40
+				_contributions: list[tuple[str, str]] = []
+				for _pr in _panel_results:
+					if isinstance(_pr, Exception):
+						logger.warning("Router: panel crew failed: %s", _pr)
+						continue
+					_pcid, _pout = _pr
+					_pout_clean = _ACTION_STRIP_RE.sub("", _pout).strip()
+					if len(_pout_clean.split()) >= _MIN_PANEL_TOKENS:
+						_contributions.append((_pcid, _pout_clean))
+					else:
+						logger.info("Router: panel kill switch — crew '%s' output too short (%d words), dropped", _pcid, len(_pout_clean.split()))
+
+				if len(_contributions) < 2:
+					# Kill switch triggered: fall back to single crew
+					_fallback_id = _contributions[0][0] if _contributions else _panel[0]
+					logger.info("Router: panel fell below 2 viable contributions — single crew '%s'", _fallback_id)
+					routed_crews = [_fallback_id]
+					# Fall through to the normal single-crew path below
+				else:
+					# Check cosine similarity to decide labelling
+					import numpy as np
+					from app.services.semantic_router import _cosine as _vec_cosine
+					from app.services.memory import get_embedder
+					_loop = asyncio.get_event_loop()
+					try:
+						_v1 = await _loop.run_in_executor(None, lambda: np.array(get_embedder().encode(_contributions[0][1][:500])))
+						_v2 = await _loop.run_in_executor(None, lambda: np.array(get_embedder().encode(_contributions[1][1][:500])))
+						_sim = _vec_cosine(_v1, _v2)
+					except Exception as _se:
+						logger.warning("Router: panel cosine check failed: %s — assuming disagreement", _se)
+						_sim = 0.0
+					_disagree = _sim < 0.3
+					logger.info("Router: panel cosine similarity=%.3f → %s", _sim, "disagree (labeled)" if _disagree else "agree (silent merge)")
+
+					# Build synthesis body
+					if _disagree:
+						_synth_body = f"{_contributions[0][0].title()}: {_contributions[0][1]}\n\n{_contributions[1][0].title()}: {_contributions[1][1]}"
+						_merge_inst = "The crews disagree. Prefix each section with the crew's name label. Your final word overrules both."
+					else:
+						_synth_body = f"{_contributions[0][1]}\n\n{_contributions[1][1]}"
+						_merge_inst = "The crews broadly agree. Synthesize silently into one response — no section labels."
+
+					_synth_prompt = (
+						f"Two specialist crews responded to the user question: \"{user_text[:200]}\"\n\n"
+						f"{_synth_body}\n\n"
+						f"{_merge_inst} Reply in the user's language."
+					)
+					_synth_system = "You are Z. Synthesize crew outputs into a single clear, direct response. No meta-commentary about the synthesis process."
+
+					from app.services.llm import chat_stream
+					_synth_chunks: list[str] = []
+					async for _tok in chat_stream(_synth_prompt, system_override=_synth_system, tier="cloud", sanitize=False):
+						_synth_chunks.append(_tok)
+						yield _tok
+
+					_synth_full = rehydrate_response("".join(_synth_chunks), get_active_rep_map())
+					_panel_model = f"panel:{_panel[0]}+{_panel[1]}"
+					_p_clean, _p_cmds, _p_pending = await bus.commit_reply(
+						channel=channel, raw_reply=_synth_full,
+						model=_panel_model, user_text=user_text, save=save_history,
+					)
+					# Strip crew-run markers (no actions in panel mode)
+					_p_cmds = [c for c in _p_cmds if not c.startswith("__CREW_RUN__:")]
+					result_future.set_result(RouterResult(
+						reply=_p_clean, model=_panel_model,
+						executed_cmds=_p_cmds, pending_actions=_p_pending,
+						routed_to_crew=_panel[0],
+					))
+					from app.services.crews import record_crew_session
+					record_crew_session(channel, _panel[0])
+					return
+		# ── /panel synthesis end ────────────────────────────────────────────
 
 		if routed_crews:
 			crew_id = routed_crews[0]
