@@ -468,7 +468,7 @@ _FOLLOWUP_SIGNALS: frozenset = frozenset([
 ])
 
 # Matches the crew attribution footer added by _process_crew_stream.
-_CREW_ATTRIBUTION_RE = re.compile(r'\(Reasoning by crew ([^)]+)\)', re.IGNORECASE)
+_CREW_ATTRIBUTION_RE = re.compile(r'\(Reasoning by crew ([^)\n]{1,100})\)', re.IGNORECASE)
 
 
 def _last_attributed_crew(history: list) -> Optional[str]:

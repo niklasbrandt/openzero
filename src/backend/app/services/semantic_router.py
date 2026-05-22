@@ -16,6 +16,11 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+
+def _sanitize_for_log(text: str, max_len: int = 80) -> str:
+	"""Strip newlines from user-controlled text before writing to logs (CWE-117)."""
+	return str(text)[:max_len].replace('\n', '\\n').replace('\r', '\\r')
+
 # ---------------------------------------------------------------------------
 # Config path resolution — tries /app/config.yaml (Docker), then repo root
 # ---------------------------------------------------------------------------
@@ -257,7 +262,7 @@ async def route_semantic(
 				for cid, s in scores
 			]
 			scores.sort(key=lambda x: -x[1])
-			logger.debug("semantic_router: continuity bias +%.2f → '%s'", cont_bias, prev_crew)
+			logger.debug("semantic_router: continuity bias +%.2f → '%s'", cont_bias, _sanitize_for_log(prev_crew))
 
 	top_id, top_score = scores[0]
 	if top_score < t_match:
@@ -281,7 +286,7 @@ async def route_semantic(
 
 	logger.info(
 		"semantic_router: '%s...' → %s (scores: %s, think=%s)",
-		_msg[:40],
+		_sanitize_for_log(_msg[:40]),
 		panel,
 		", ".join(f"{cid}={s:.3f}" for cid, s in scores[:5]),
 		think_mode,
