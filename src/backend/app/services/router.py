@@ -4,7 +4,7 @@ All message-routing decisions that were previously duplicated across
 telegram_bot._process_freetext and dashboard.event_generator live here.
 
 Flow for every incoming user message:
-  1. Keyword-based crew routing  (resolve_active_crews)
+  1. Semantic crew routing  (route_semantic — cosine similarity over all-MiniLM-L6-v2)
   2. Z responds via chat_stream_with_context
   3. Sanitise + rehydrate assembled response
   4. ROUTE-tag interception (Z self-routes)
@@ -208,7 +208,6 @@ async def route_message_stream(
 		_budget = ResponseBudget()
 		_budget_token = budget_ctx.set(_budget)  # noqa: F841
 
-		from app.services.crews import resolve_active_crews
 		from app.services.crews_native import native_crew_engine
 		from app.services.llm import (
 			chat_stream_with_context,
@@ -917,35 +916,17 @@ async def route_message_stream(
 			except Exception as _bce:
 				logger.warning("Router: board context fetch failed: %s", _bce)
 
-		# ── 1. Keyword-based crew routing ────────────────────────────────────
-		from app.services.crews import _SYSTEM_ACTION_RE as _crew_action_re
-		routed_crews = await resolve_active_crews(_ctx_history, user_text, lang=lang)
-		if not routed_crews and not _crew_action_re.search(user_text[:_MAX_RE_INPUT]):
-			# ── 1.1 Speculative Fast-Intent (Qwen-0.6B) ──────────────────────
-			# Only run when keyword routing returned nothing AND the message is
-			# not a deterministic Planka mutation — otherwise the fast model will
-			# mis-classify e.g. "new life goal home" as the Life crew.
-			intent_prompt = (
-				"Classify if the user wants to engage a specialized crew. "
-				"Available: research, fitness, recipe, life, market-intel, legal.\n"
-				f"User: \"{user_text}\"\n"
-				"Reply with ONLY the crew ID or 'none'."
-			)
-			from app.services.llm import chat
-			try:
-				predicted = await asyncio.wait_for(chat(intent_prompt, tier="fast"), timeout=5.0)
-			except asyncio.TimeoutError:
-				predicted = ""
-				logger.debug("Router step1.1: fast-intent timed out — skipping")
-			predicted = predicted.lower().strip().strip("'\"") 
-			if predicted in ("research", "fitness", "recipe", "life", "market-intel", "legal"):
-				logger.info("Router: speculative-routing '%s...' → crew '%s'", _sanitize_for_log(user_text), predicted)
-				routed_crews = [predicted]
+		# ── 1. Semantic crew routing ─────────────────────────────────────────
+		from app.services.semantic_router import route_semantic
+		_think_mode = user_text.strip().lower().startswith("/think")
+		routed_crews = await route_semantic(
+			user_text, _ctx_history, channel, think_mode=_think_mode, lang=lang,
+		)
 
 		if routed_crews:
 			crew_id = routed_crews[0]
 			_force_cloud = True  # crew requests always need cloud tier
-			logger.info("Router: keyword-routing '%s...' → crew '%s'", _sanitize_for_log(user_text), crew_id)
+			logger.info("Router: semantic-routing '%s...' → crew '%s'", _sanitize_for_log(user_text), crew_id)
 			await _status(_t.get("status_routing_crew", "Routing to {crew}...").format(crew=crew_id))
 			chunks = []
 			async for token in native_crew_engine.run_crew_stream(crew_id, user_text, history=_ctx_history, force_cloud=True):

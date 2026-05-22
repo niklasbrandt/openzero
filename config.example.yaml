@@ -227,3 +227,14 @@ federation:
   # Store the result in .env as FEDERATION_KEK=<value>. Never commit a real key here.
   # Corresponds to env var FEDERATION_KEK.
   kek: ""
+
+# ── Semantic Crew Routing ─────────────────────────────────────────────────────
+# Thresholds for the embedding-based crew router (all-MiniLM-L6-v2 cosine).
+# Adjust after running the eval harness to tune precision/recall tradeoff.
+routing:
+  t_match: 0.55        # primary match threshold — below this Z answers directly
+  t_opt_in: 0.52       # secondary crew opt-in threshold (multi-crew panel)
+  gap: 0.06            # minimum gap between primary and secondary crew scores
+  max_crews: 3         # hard cap on crews in a single panel (0 = unlimited)
+  cont_bias: 0.05      # continuity bias added to previously active crew score
+  debate_gap: 0.06     # minimum score gap for a second crew to be shown
