@@ -379,6 +379,9 @@ async def morning_briefing():
 		# 6b. Persist to global_messages NOW — after delivery so dashboard and
 		# Telegram show the briefing at the same time (not 15 min early).
 		await save_global_message("telegram", "z", content, model=last_model_used.get())
+		# Record that a briefing was delivered this week for coach earning tracking
+		from app.services.coach_earning import record_briefing_sent
+		await record_briefing_sent()
 
 		# 5b. Wait for TTS to finish and send voice (with generous timeout — non-blocking for text above)
 		try:
