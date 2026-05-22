@@ -214,6 +214,42 @@ async def get_board_full_context(board_name_fragment: str) -> str:
 		return ""
 
 
+async def board_has_lists(board_name_fragment: str) -> bool:
+	"""Return False if a board matching board_name_fragment exists but has zero lists.
+
+	Returns True when the board has at least one list or when the board is not found (safe default).
+	Used by the empty-board auto-setup intercept in router.py (section 9e).
+	"""
+	try:
+		token = await get_planka_auth_token()
+		headers = {"Authorization": f"Bearer {token}"}
+		async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, timeout=10.0, headers=headers) as client:
+			pr = await client.get("/api/projects")
+			pr.raise_for_status()
+			projects = pr.json().get("items", [])
+			target_board_id: str | None = None
+			for p in projects:
+				det = await client.get(f"/api/projects/{p['id']}")
+				if det.status_code >= 400:
+					continue
+				boards = det.json().get("included", {}).get("boards", [])
+				for b in boards:
+					if board_name_fragment.lower() in b.get("name", "").lower():
+						target_board_id = b["id"]
+						break
+				if target_board_id:
+					break
+			if not target_board_id:
+				return True  # board not found — not our concern
+			resp = await client.get(f"/api/boards/{target_board_id}", params={"included": "lists"})
+			resp.raise_for_status()
+			lists = resp.json().get("included", {}).get("lists", [])
+			return bool(lists)
+	except Exception as _e:
+		logger.error("board_has_lists failed: %s", _sanitize_for_log(_e))
+		return True  # safe default on error
+
+
 async def create_task(board_name: str, list_name: str, title: str, description: str = "") -> Optional[str]:
 	"""Creates a card on the specified board and list.
 
