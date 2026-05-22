@@ -121,6 +121,14 @@ async def _handle_inbound(sender: str, text: str) -> None:
 		await send_whatsapp_message("Walk-throughs have been retired. Try /day or /week for briefings.")
 		return
 
+	# /remind command — recurring reminder CRUD (no LLM, no routing)
+	if text.strip().startswith("/remind"):
+		_remind_args = text.strip()[len("/remind"):].strip()
+		from app.services.reminder_parser import handle_remind_command
+		_remind_reply = await handle_remind_command(_remind_args, channel="whatsapp")
+		await send_whatsapp_message(_remind_reply)
+		return
+
 	history = await bus.ingest("whatsapp", text)
 
 	# Keyword crew routing (same priority as Telegram)

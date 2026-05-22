@@ -761,27 +761,9 @@ async def cmd_protocols(update: Update, context: ContextTypes.DEFAULT_TYPE):
 @owner_only
 async def cmd_remind(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	msg = update.message.text.replace("/remind", "").strip()
-	if not msg:
-		await safe_reply(update, "Usage: /remind 2 times an hour for 4 hours to drink water")
-		return
-		
-	from app.services.llm import chat
-	
-	# Let the LLM parse the natural language into the action tag
-	prompt = (
-		"Convert this reminder request into a [ACTION: REMIND ...] tag.\n"
-		"Format: [ACTION: REMIND | MESSAGE: <text> | INTERVAL: <minutes> | DURATION: <hours>]\n\n"
-		f"Input: {msg}"
-	)
-	
-	response = await chat(prompt, _feature="remind_parse")
-	from app.services.agent_actions import parse_and_execute_actions
-	_, executed, _ = await parse_and_execute_actions(response)
-	
-	if executed:
-		await safe_reply(update, "\n".join(executed))
-	else:
-		await safe_reply(update, "Could not parse the reminder frequency. Try: /remind 30m for 4h drink water")
+	from app.services.reminder_parser import handle_remind_command
+	reply = await handle_remind_command(msg, channel="telegram")
+	await safe_reply(update, reply)
 
 @owner_only
 async def cmd_custom(update: Update, context: ContextTypes.DEFAULT_TYPE):

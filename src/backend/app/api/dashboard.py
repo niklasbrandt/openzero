@@ -529,35 +529,12 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		_r = f"✅ Stored to memory: {topic}"
 		await _reply(_r)
 		return {"reply": _r}
-	elif msg.startswith("/remind "):
-		remind_msg = msg.replace("/remind", "").strip()
-		from app.services.llm import chat
-		from app.services.agent_actions import parse_and_execute_actions
-		prompt = (
-			"Convert this reminder request into a [ACTION: REMIND ...] tag.\n"
-			"Format: [ACTION: REMIND | MESSAGE: <text> | INTERVAL: <minutes> | DURATION: <hours>]\n\n"
-			f"Input: {remind_msg}"
-		)
-		response = await chat(prompt)
-		clean_reply, executed, pending = await parse_and_execute_actions(response, require_hitl=True)
-		
-		# Reasoning indicator extraction
-		crews = [c.split(":", 1)[1] for c in executed if c.startswith("__CREW_RUN__:")]
-		executed = [c for c in executed if not c.startswith("__CREW_RUN__:")]
-		if crews:
-			clean_reply += f"\n\n*(Reasoning by crew {', '.join(crews)})*"
-
-		if executed or pending:
-			_rmsg = " ".join([str(c) for c in executed])
-			safe_pending = [{"description": str(p.get("description", "Action")), "type": str(p.get("type", "UNKNOWN"))} for p in pending]
-			if pending:
-				_rmsg += f" (Pending: {len(pending)} actions)"
-			await _reply(f"✅ {_rmsg}")
-			return {"reply": f"✅ {_rmsg}", "pending_actions": safe_pending}
-		else:
-			_r = "Could not parse reminder. Try: '/remind 30m for 2h drink water'"
-			await _reply(_r)
-			return {"reply": _r}
+	elif msg.startswith("/remind"):
+		remind_args = msg[len("/remind"):].strip()
+		from app.services.reminder_parser import handle_remind_command
+		_r = await handle_remind_command(remind_args, channel="dashboard")
+		await _reply(_r)
+		return {"reply": _r}
 	elif msg.startswith("/custom "):
 		custom_msg = msg.replace("/custom", "").strip()
 		from app.services.llm import chat

@@ -444,6 +444,19 @@ This uses the **Meta WhatsApp Cloud API** (free tier, no monthly fee). You need 
 > [!NOTE]
 > Messages from any phone number other than `WHATSAPP_ALLOWED_PHONE` are silently discarded. This is enforced at the adapter level before any LLM call is made.
 
+### 5h. Recurring Reminders (`/remind`)
+
+The reminder system stores schedules in a PostgreSQL `reminders` table, created automatically via SQLAlchemy `create_all` on first startup. No manual migration is required for fresh installs. Existing deployments will have the table created on the next container restart.
+
+Usage:
+
+```
+/remind daily 08:00 take medication
+/remind weekly mon 19:00 review weekly goals
+/remind list
+/remind delete <id>
+```
+
 ---
 
 ### 5b. Restrict Dashboard to Tailscale Only (Optional, Recommended)
