@@ -334,6 +334,24 @@ async def start_scheduler():
 			settings.AMBIENT_POLL_INTERVAL_S,
 		)
 
+	# Recurring Reminders — check every minute for due daily/weekly reminders
+	from app.tasks.reminders import check_reminders
+	scheduler.add_job(
+		check_reminders,
+		IntervalTrigger(minutes=1),
+		id="recurring_reminders",
+		replace_existing=True,
+	)
+
+	# Proactive Crew Nudges — check every hour for eligible Recipe/Fitness crew nudges
+	from app.tasks.proactive_nudges import check_nudges
+	scheduler.add_job(
+		check_nudges,
+		IntervalTrigger(hours=1),
+		id="proactive_nudges",
+		replace_existing=True,
+	)
+
 	# 2. Load User-Defined Persistent Custom Tasks
 	await load_custom_tasks()
 
