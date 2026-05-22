@@ -268,7 +268,7 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 	if re.search(r'\[[A-Z]+_\d+\]', board_name):
 		logger.warning(
 			"create_task: board_name '%s' contains a sanitization token — defaulting to Operator Board",
-			board_name,
+			_sanitize_for_log(board_name),
 		)
 		board_name = "Operator Board"
 
@@ -291,7 +291,7 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 	if board_name.lower() == _my_projects_lower and list_name and list_name.lower() not in ("inbox", "today", _my_projects_lower):
 		logger.info(
 			"create_task: LLM misrouted '%s' as BOARD — treating list_name '%s' as real board",
-			board_name, list_name,
+			_sanitize_for_log(board_name), _sanitize_for_log(list_name),
 		)
 		board_name = list_name
 		list_name = "Inbox"
