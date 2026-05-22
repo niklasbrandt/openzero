@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 # the LLM emits a tag without any BOARD: field at all.
 
 _CREW_ACTION_TAG_RE = re.compile(
-	r'\[ACTION:\s*(CREATE_TASK|CREATE_LIST)\s*\|([^\]]*)\]',
+	r'\[ACTION:\s{0,20}(CREATE_TASK|CREATE_LIST)\s{0,20}\|([^\]\n]{0,500})\]',
 	re.IGNORECASE,
 )
 

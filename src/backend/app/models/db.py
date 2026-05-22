@@ -214,7 +214,7 @@ import re as _re
 # messages, and very short interrogative reminders that clutter context without
 # adding signal.
 _Z_NOISE_RE = _re.compile(
-    r'zu lange gedauert|bitte wiederhole|try again(?:\s|$)|something went wrong|'
+    r'zu lange gedauert|bitte wiederhole|try again(?:\s|\Z)|something went wrong|'
     r'ich bin wieder da|ich bin da\b|fehlgeschlagen|request timed? out|'
     r'bitte schick|schick.{0,20}nochmal|repeat.{0,20}request',
     _re.IGNORECASE,
