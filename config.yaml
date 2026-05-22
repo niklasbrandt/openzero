@@ -80,3 +80,12 @@ routing:
   max_crews: 3         # hard cap on crews in a single panel (0 = unlimited)
   cont_bias: 0.05      # continuity bias added to previously active crew score
   debate_gap: 0.06     # minimum score gap for a second crew to be shown
+
+# ------------------------------------------------------------------------------
+# 6. Proactive Crew Nudges
+# ------------------------------------------------------------------------------
+proactive_nudges:
+  enabled: true
+  silence_days: 3          # days of domain silence required before nudging
+  nudge_interval_hours: 48 # minimum hours between nudges for the same crew
+  earning_weeks: 2         # consecutive briefing-read weeks to earn proactive status

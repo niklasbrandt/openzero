@@ -209,6 +209,13 @@ async def route_message_stream(
 	result_future: asyncio.Future[RouterResult] = loop.create_future()
 
 	async def _generate() -> AsyncIterator[str]:
+		# ── Coach earning: record operator engagement for proactive crew unlocking ──
+		try:
+			from app.services.coach_earning import record_briefing_read
+			await record_briefing_read()
+		except Exception:
+			pass
+
 		# ── Budget initialization ─────────────────────────────────────────────
 		from app.common.response_budget import ResponseBudget, budget_ctx, RESPONSE_CEILING_S  # noqa: F401
 		_budget = ResponseBudget()
