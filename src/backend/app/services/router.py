@@ -24,6 +24,7 @@ from dataclasses import dataclass, field
 from typing import AsyncIterator, Callable, Awaitable
 
 from app.common.phantom import PHANTOM_RE as _PHANTOM_RE  # noqa: E402
+from app.services.z_core import build_z_core_context
 
 logger = logging.getLogger(__name__)
 
@@ -220,6 +221,9 @@ async def route_message_stream(
 		from app.services.translations import get_translations as _get_t
 		_t = _get_t(lang or "en")
 
+		# ── Z-core always-on context (workspace + signal interpretation) ──────
+		_z_core_ctx = build_z_core_context(user_text)
+
 		async def _status(msg: str) -> None:
 			if status_callback is not None:
 				try:
@@ -254,7 +258,7 @@ async def route_message_stream(
 		):
 			logger.debug("Router 0.0: fast-path bypass for '%s'", _sanitize_for_log(user_text))
 			_fp_chunks = []
-			async for _fp_token in chat_stream_with_context(user_text, history=history):
+			async for _fp_token in chat_stream_with_context(user_text, history=history, extra_system_context=_z_core_ctx):
 				_fp_chunks.append(_fp_token)
 				yield _fp_token
 			_fp_response = sanitise_output("".join(_fp_chunks))
@@ -1001,6 +1005,7 @@ async def route_message_stream(
 			include_projects=True,
 			include_people=True,
 			tier_override="cloud" if _force_cloud else None,
+			extra_system_context=_z_core_ctx,
 		):
 			chunks.append(token)
 			if _l5_mode == 2:

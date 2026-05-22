@@ -58,6 +58,11 @@ preferences:
   max_emails_per_briefing: 10 # Max number of emails to explicitly summarize
   stagnation_warning_days: 14 # Warn if a project card hasn't moved in X days
 
+  # Persona tone injected into briefing prompts and crew voice directives.
+  # Adjust to match your preferred Z communication style.
+  # Corresponds to env var PERSONA_TONE.
+  persona_tone: "helpful, grounded, occasionally warm but never forced humor"
+
   # Note: AI engine selection (local llama-server) and models are configured in .env
 
 # ------------------------------------------------------------------------------
