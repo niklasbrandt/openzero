@@ -117,6 +117,18 @@ class CustomTask(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
+class RecurringReminder(Base):
+    __tablename__ = "reminders"
+    id = Column(Integer, primary_key=True)
+    channel = Column(String(32), nullable=False)    # 'telegram', 'dashboard', 'whatsapp'
+    cadence = Column(String(16), nullable=False)    # 'daily' | 'weekly'
+    day_of_week = Column(String(3), nullable=True)  # 'mon'-'sun', NULL for daily
+    hour = Column(Integer, nullable=False)
+    minute = Column(Integer, nullable=False)
+    text = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=datetime.datetime.utcnow)
+    enabled = Column(Boolean, default=True)
+
 from sqlalchemy import select
 
 # Utility functions
