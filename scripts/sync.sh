@@ -44,7 +44,11 @@ if [ -d .git ]; then
   if [ -f "$LAST_SYNC_FILE" ]; then
     LAST_COMMIT=$(cat "$LAST_SYNC_FILE")
     CURRENT_COMMIT=$(git rev-parse HEAD)
-    if [ "$LAST_COMMIT" != "$CURRENT_COMMIT" ]; then
+    # Guard: stored hash may not exist after a history rewrite (e.g. git filter-repo)
+    if ! git cat-file -e "$LAST_COMMIT^{commit}" 2>/dev/null; then
+      echo "Changes since last deployment:" > agent/latest_changes.txt
+      git log --pretty=format:"- %s" -5 >> agent/latest_changes.txt
+    elif [ "$LAST_COMMIT" != "$CURRENT_COMMIT" ]; then
       # Use commit messages — readable for LLM summarization
       echo "Changes since last deployment:" > agent/latest_changes.txt
       git log --pretty=format:"- %s" "$LAST_COMMIT".."$CURRENT_COMMIT" >> agent/latest_changes.txt
