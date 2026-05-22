@@ -111,6 +111,7 @@ class CrewConfig(BaseModel):
 	briefing_months: Optional[str] = None
 	lead_time: Optional[int] = None
 	health_context: bool = False  # If True, health.md is included in the injected personal context
+	routing_disabled: bool = False  # If True, crew is excluded from semantic routing (scheduled-only crews)
 
 class CrewRegistry:
 	def __init__(self, agent_dir: str):
@@ -121,6 +122,8 @@ class CrewRegistry:
 		self._crews: Dict[str, CrewConfig] = {}
 		# mtime tracking for hot-reload: maps Path -> last known mtime
 		self._last_mtimes: Dict[Path, float] = {}
+		# Pre-embedded crew profile vectors keyed by crew_id (populated in load())
+		self._profile_vectors: dict = {}
 
 	def _get_mtime(self, path: Path) -> float:
 		"""Return mtime for path, 0.0 if not accessible."""
@@ -171,6 +174,7 @@ class CrewRegistry:
 				briefing_months=c.get("briefing_months"),
 				lead_time=c.get("lead_time"),
 				health_context=c.get("health_context", False),
+				routing_disabled=c.get("routing_disabled", False),
 			)
 		except Exception as _crew_err:
 			logger.error("Registry: Skipping crew '%s' — failed to load: %s", _cid, _crew_err)
@@ -242,7 +246,34 @@ class CrewRegistry:
 
 		logger.info("Registry: Successfully loaded %d active crews.", len(self._crews))
 		self._compute_panel_candidates()
-		await self._precache_keywords()
+		await self._build_semantic_profiles()
+
+	async def _build_semantic_profiles(self) -> None:
+		"""Embed crew profile texts and cache as numpy vectors.
+
+		Called from load() after all crews are parsed.  Uses get_embedder() from
+		memory.py so no second model instance is loaded.  Routable crews only
+		(routing_disabled=True crews are excluded).
+		"""
+		try:
+			import numpy as np  # noqa: PLC0415
+			from app.services.semantic_router import build_crew_profile
+			from app.services.memory import get_embedder
+			loop = asyncio.get_event_loop()
+			routable = [c for c in self._crews.values() if not c.routing_disabled]
+			if not routable:
+				self._profile_vectors = {}
+				logger.info("Registry: no routable crews — semantic profiles skipped")
+				return
+			profiles = [build_crew_profile(c) for c in routable]
+			def _encode_batch():
+				return get_embedder().encode(profiles, batch_size=32, show_progress_bar=False)
+			vectors = await loop.run_in_executor(None, _encode_batch)
+			self._profile_vectors = {c.id: np.array(v) for c, v in zip(routable, vectors)}
+			logger.info("Registry: built semantic profiles for %d routable crews", len(self._profile_vectors))
+		except Exception as _e:
+			logger.warning("Registry: semantic profile build failed — embedding unavailable: %s", _e)
+			self._profile_vectors = {}
 
 	async def _precache_keywords(self) -> None:
 		"""Pre-calculate and cache keyword lists for all enabled languages.
