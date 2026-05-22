@@ -585,8 +585,8 @@ async def route_message_stream(
 					_save_ctx_inject = {"role": "assistant", "content": _save_ctx}
 					logger.info(
 						"Router 0.4: injected Z's own output (%d chars) for save follow-up "
-						"(noun=%r recall_hint=%s)",
-						len(_zout), _save_noun, _save_is_recall_hint,
+						"(noun=%s recall_hint=%s)",
+						len(_zout), _sanitize_for_log(_save_noun), _save_is_recall_hint,
 					)
 				else:
 					_save_ctx_inject = None
@@ -615,7 +615,7 @@ async def route_message_stream(
 		_STATE_QUERY_RE = re.compile(
 			# German
 			r'\bwo\s+(?:sind|ist|sind\s+die|habe\s+ich|hast\s+du)\b'
-			r'|\bhast\s+du\s+(?:das|die|es|sie)?\s*(?:gespeichert|erstellt|hinzugef[üu]gt|abgelegt|gemacht)\b'
+			r'|\bhast\s+du\s+(?:(?:das|die|es|sie)\s+)?(?:gespeichert|erstellt|hinzugef[üu]gt|abgelegt|gemacht)\b'
 			r'|\bwurde\s+(?:das|es|die)\s+(?:gespeichert|erstellt|angelegt)\b'
 			r'|\bwo\s+(?:wurde|wurden|habe|hat)\b'
 			# English

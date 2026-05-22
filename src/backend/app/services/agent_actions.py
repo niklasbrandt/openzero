@@ -7,6 +7,11 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
+
+def _sanitize_for_log(text: str, max_len: int = 80) -> str:
+	"""Strip newlines from user-controlled text before writing to logs (CWE-117)."""
+	return str(text)[:max_len].replace('\n', '\\n').replace('\r', '\\r')
+
 # Module-level so tests and the phantom-guard check can import it directly.
 # Extended in Epoch 1 of the ambient capture plan (Section 17, H4 + S1):
 # adds AMBIENT_*, RENAME_*, and explicitly-forbidden SHARE_* / INVITE_* verbs
@@ -836,7 +841,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 		if crew_board_hint and board.lower() != crew_board_hint.lower():
 			logger.warning(
 				"CREATE_TASK: crew_board_hint override BOARD '%s' → '%s'",
-				board, crew_board_hint,
+				_sanitize_for_log(board), _sanitize_for_log(crew_board_hint),
 			)
 			board = crew_board_hint
 
@@ -1223,7 +1228,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 	# AMBIENT_CAPTURE_ENABLED=False (default): fall back to CREATE_TASK on Nutrition board.
 	# AMBIENT_CAPTURE_ENABLED=True (Epoch 2): store directly to Qdrant via store_memory.
 	# Supports both | CONTENT: ... and | CONTENT=... separators for model variance.
-	ambient_pattern = r"\[?ACTION:\s*AMBIENT_CAPTURE\s*\|\s*CONTENT[=:]\s*([^\|\]]{1,4000})(?:\s*\|\s*CATEGORY[=:]\s*([^\|\]]{1,500}))?\]?"
+	ambient_pattern = r"\[ACTION:\s{0,20}AMBIENT_CAPTURE\s{0,20}\|\s{0,20}CONTENT[=:]\s{0,20}([^\|\]]{1,4000})(?:\s{0,20}\|\s{0,20}CATEGORY[=:]\s{0,20}([^\|\]]{1,500}))?\]"
 	for match in re.finditer(ambient_pattern, reply[:200_000]):
 		raw_tag = match.group(0)
 		am_content = (match.group(1) or "").strip()
