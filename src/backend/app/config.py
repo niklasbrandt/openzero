@@ -131,6 +131,10 @@ class Settings(BaseSettings):
     # Briefing
     BRIEFING_CALIBRATION: bool = True
 
+    # Persona tone used in briefing prompts and crew voice directives.
+    # Adjust to match your preferred Z communication style.
+    PERSONA_TONE: str = "helpful, grounded, occasionally warm but never forced humor"
+
     # Self-audit
     # Name of the Planka project that serves as the container for user-initiated projects.
     # When set, the audit checks that newly created projects became boards under this parent

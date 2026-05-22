@@ -714,7 +714,6 @@ Before composing ANY response, evaluate whether a specialist crew is better suit
 Crew domain map:
   flow           → stuck tasks, stagnation, deep work, time blocking, productivity
   research       → research, synthesis, fact-finding, deep analysis
-  workspace      → Planka board structure, kanban scaffolding, project architecture
   market-intel   → industry trends, competitor analysis, market sentiment, SWOT
   leads          → lead scoring, CRM, sales pipeline, deal funnel
   meeting        → meeting transcripts, decisions, action item extraction
@@ -2027,6 +2026,7 @@ async def chat_stream_with_context(
 	include_people: bool = True,
 	tier_override: Optional[str] = None,
 	sanitize: bool = True,
+	extra_system_context: str = "",
 ) -> AsyncGenerator[str, None]:
 	"""Streaming version of chat_with_context() for real-time token delivery.
 	Used by Telegram and Dashboard streaming endpoints."""
@@ -2195,6 +2195,9 @@ async def chat_stream_with_context(
 		history_text = _build_history_text(_history_slice)
 		context_injection = "\n\n".join(filter(None, [full_prompt, history_text]))
 		system_with_context = f"{formatted_system_prompt}\n\n{context_injection}" if context_injection else formatted_system_prompt
+
+		if extra_system_context:
+			system_with_context = extra_system_context + "\n\n" + system_with_context
 
 		if len(user_message.strip()) < 30:
 			system_with_context += "\n\nRespond in 1-2 sentences. Ensure logical consistency (e.g. do not say 'Today is tomorrow')."

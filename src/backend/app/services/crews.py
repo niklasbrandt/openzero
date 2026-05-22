@@ -116,7 +116,65 @@ class CrewRegistry:
 	def __init__(self, agent_dir: str):
 		self.agent_dir = Path(agent_dir)
 		self.crews_yaml_path = self.agent_dir / "crews.yaml"
+		# personal/crews.yaml lives at the repo root's personal/ directory
+		self.personal_yaml_path = self.agent_dir.parent / "personal" / "crews.yaml"
 		self._crews: Dict[str, CrewConfig] = {}
+		# mtime tracking for hot-reload: maps Path -> last known mtime
+		self._last_mtimes: Dict[Path, float] = {}
+
+	def _get_mtime(self, path: Path) -> float:
+		"""Return mtime for path, 0.0 if not accessible."""
+		try:
+			return path.stat().st_mtime
+		except OSError:
+			return 0.0
+
+	def _mtimes_changed(self) -> bool:
+		"""Return True if any tracked file has been modified since last load."""
+		for path, known_mtime in self._last_mtimes.items():
+			if self._get_mtime(path) != known_mtime:
+				return True
+		return False
+
+	async def reload_if_changed(self) -> bool:
+		"""Re-load both YAML files if any of them has been modified. Returns True if reload occurred."""
+		if self._mtimes_changed():
+			logger.info("Registry: file change detected — hot-reloading crews")
+			await self.load()
+			return True
+		return False
+
+	def _parse_crews_list(self, raw_data: dict) -> list:
+		"""Extract the crews list from a loaded YAML dict, normalizing missing keys."""
+		return raw_data.get("crews", []) if isinstance(raw_data, dict) else []
+
+	def _build_config(self, c: dict) -> Optional["CrewConfig"]:
+		"""Build a CrewConfig from a raw dict; return None on validation error."""
+		_cid = c.get("id", "<unknown>")
+		try:
+			return CrewConfig(
+				id=c.get("id"),
+				name=c.get("name"),
+				type=c.get("type"),
+				group=c.get("group"),
+				description=c.get("description"),
+				enabled=c.get("enabled", True),
+				instructions=c.get("instructions"),
+				characters=c.get("characters"),
+				keywords=c.get("keywords"),
+				keywords_i18n=c.get("keywords_i18n"),
+				panel_exclude=c.get("panel_exclude"),
+				feeds_briefing=c.get("feeds_briefing"),
+				schedule=c.get("schedule"),
+				briefing_day=c.get("briefing_day"),
+				briefing_dom=c.get("briefing_dom"),
+				briefing_months=c.get("briefing_months"),
+				lead_time=c.get("lead_time"),
+				health_context=c.get("health_context", False),
+			)
+		except Exception as _crew_err:
+			logger.error("Registry: Skipping crew '%s' — failed to load: %s", _cid, _crew_err)
+			return None
 
 	async def load(self) -> None:
 		logger.info("Registry: Loading crews from %s", self.crews_yaml_path)
@@ -129,38 +187,59 @@ class CrewRegistry:
 		except Exception as _yaml_err:
 			logger.error("Registry: YAML parse failed for %s: %s", self.crews_yaml_path, _yaml_err)
 			return
-		
-		# Native Registry Manifest
-		crews_list = raw_data.get("crews", [])
+
+		# Record mtime for the primary file
+		self._last_mtimes = {self.crews_yaml_path: self._get_mtime(self.crews_yaml_path)}
+
+		# Native Registry Manifest — load base crews from agent/crews.yaml
+		crews_list = self._parse_crews_list(raw_data)
 		logger.info("Registry: Found %d potential crews in YAML", len(crews_list))
+
+		# Build an ordered dict: id → raw dict (preserves order, deduplicates by id)
+		merged: Dict[str, dict] = {}
 		for c in crews_list:
-			if not isinstance(c, dict) or not c.get("enabled", True): continue
-			_cid = c.get("id", "<unknown>")
+			if not isinstance(c, dict):
+				continue
+			cid = c.get("id")
+			if cid:
+				merged[cid] = c
+
+		# Merge personal/crews.yaml if it exists (gitignored, operator-local overrides)
+		if self.personal_yaml_path.exists():
 			try:
-				# Create config, ignoring any leftover Dify fields
-				config = CrewConfig(
-					id=c.get("id"),
-					name=c.get("name"),
-					type=c.get("type"),
-					group=c.get("group"),
-					description=c.get("description"),
-					enabled=c.get("enabled", True),
-					instructions=c.get("instructions"),
-					characters=c.get("characters"),
-					keywords=c.get("keywords"),
-					keywords_i18n=c.get("keywords_i18n"),
-					panel_exclude=c.get("panel_exclude"),
-					feeds_briefing=c.get("feeds_briefing"),
-					schedule=c.get("schedule"),
-					briefing_day=c.get("briefing_day"),
-					briefing_dom=c.get("briefing_dom"),
-					briefing_months=c.get("briefing_months"),
-					lead_time=c.get("lead_time"),
-					health_context=c.get("health_context", False),
+				with open(self.personal_yaml_path, "r", encoding="utf-8") as pf:
+					personal_data = yaml.safe_load(pf)
+				personal_list = self._parse_crews_list(personal_data)
+				self._last_mtimes[self.personal_yaml_path] = self._get_mtime(self.personal_yaml_path)
+				override_count = 0
+				append_count = 0
+				for c in personal_list:
+					if not isinstance(c, dict):
+						continue
+					cid = c.get("id")
+					if not cid:
+						continue
+					if cid in merged:
+						override_count += 1
+					else:
+						append_count += 1
+					merged[cid] = c
+				logger.info(
+					"Registry: personal/crews.yaml merged — %d overrides, %d new crews",
+					override_count, append_count,
 				)
-				self._crews[config.id] = config
-			except Exception as _crew_err:
-				logger.error("Registry: Skipping crew '%s' — failed to load: %s", _cid, _crew_err)
+			except Exception as _pe:
+				logger.warning("Registry: personal/crews.yaml parse failed — skipping: %s", _pe)
+
+		# Instantiate CrewConfig for each active merged entry
+		self._crews = {}
+		for cid, c in merged.items():
+			if not c.get("enabled", True):
+				continue
+			cfg = self._build_config(c)
+			if cfg is not None:
+				self._crews[cfg.id] = cfg
+
 		logger.info("Registry: Successfully loaded %d active crews.", len(self._crews))
 		self._compute_panel_candidates()
 		await self._precache_keywords()
