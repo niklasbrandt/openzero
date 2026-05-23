@@ -1481,6 +1481,8 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		display_reply = f"📝 <b>Transcript:</b>\n<i>{_html.escape(transcript)}</i>\n\n<b>{format_time()}</b>\n\n{html_reply}"
 		
 		footer = await _get_stats_footer()
+		lang = await get_user_lang()
+		t = get_translations(lang)
 		await safe_edit(status_msg, f"<blockquote>{display_reply}{footer}</blockquote>", parse_mode="HTML", nav_footer=get_nav_footer(t))
 	except Exception as e:
 		logger.error("handle_voice failed: %s", e)
