@@ -350,7 +350,6 @@ async def morning_briefing():
 			tz_str = await get_current_timezone()
 			tz = pytz.timezone(tz_str)
 			now = datetime.datetime.now(tz)
-			from app.models.db import Preference
 			async with AsyncSessionLocal() as session:
 				res = await session.execute(select(Preference).where(Preference.key == "briefing_time"))
 				bt_pref = res.scalar_one_or_none()
