@@ -204,7 +204,7 @@ export class BackupCard extends HTMLElement {
 	// ── Render ───────────────────────────────────────────────────────────────
 
 	private render() {
-		const root = this.shadowRoot!;
+		const root = this.shadowRoot as ShadowRoot;
 		root.innerHTML = `
 			<style>
 				${ACCESSIBILITY_STYLES}
@@ -765,7 +765,7 @@ export class BackupCard extends HTMLElement {
 	// ── Event binding ─────────────────────────────────────────────────────────
 
 	private _bindEvents() {
-		const root = this.shadowRoot!;
+		const root = this.shadowRoot as ShadowRoot;
 		const get = (id: string) => root.getElementById(id);
 
 		if (this.stage === 'preview') {
@@ -875,7 +875,7 @@ export class BackupCard extends HTMLElement {
 		});
 		body.querySelectorAll<HTMLInputElement>('input[type="checkbox"][data-item-key]').forEach(cb => {
 			cb.addEventListener('change', () => {
-				const key = cb.dataset.itemKey!;
+				const key = cb.dataset.itemKey ?? '';
 				if (cb.checked) this.excluded_paths.delete(key);
 				else            this.excluded_paths.add(key);
 				const row = cb.closest('.item-row') as HTMLElement | null;
@@ -888,7 +888,7 @@ export class BackupCard extends HTMLElement {
 	// ── Targeted DOM updates ──────────────────────────────────────────────────
 
 	private _updateStage() {
-		const root = this.shadowRoot!;
+		const root = this.shadowRoot as ShadowRoot;
 		const savedExportPass    = (root.getElementById('export-passphrase')         as HTMLInputElement | null)?.value ?? '';
 		const savedExportConfirm = (root.getElementById('export-passphrase-confirm') as HTMLInputElement | null)?.value ?? '';
 		const savedImportPass    = (root.getElementById('import-passphrase')         as HTMLInputElement | null)?.value ?? '';
@@ -908,7 +908,7 @@ export class BackupCard extends HTMLElement {
 	}
 
 	private _updateSectionBody(section: string) {
-		const root = this.shadowRoot!;
+		const root = this.shadowRoot as ShadowRoot;
 		const body = root.getElementById(`section-body-${section}`);
 		if (body) {
 			body.innerHTML = this._renderSectionBody(section);
@@ -923,7 +923,7 @@ export class BackupCard extends HTMLElement {
 	}
 
 	private _updateSummaryBar() {
-		const root = this.shadowRoot!;
+		const root = this.shadowRoot as ShadowRoot;
 		const bar = root.getElementById('summary-bar');
 		if (!bar) return;
 		const selectedCount = this._selectedCount();
@@ -939,7 +939,7 @@ export class BackupCard extends HTMLElement {
 	}
 
 	private _updateStrengthIndicator() {
-		const root = this.shadowRoot!;
+		const root = this.shadowRoot as ShadowRoot;
 		const s = this.passphraseStrength;
 		const pct = s === 0 ? 25 : s === 1 ? 60 : 100;
 		const barColor = s === 0 ? 'var(--red, hsla(0,75%,55%,1))' : s === 1 ? 'var(--orange, hsla(30,90%,55%,1))' : 'var(--green, hsla(145,65%,45%,1))';
@@ -1006,7 +1006,7 @@ export class BackupCard extends HTMLElement {
 	// ── Export ────────────────────────────────────────────────────────────────
 
 	private async _doExport() {
-		const root = this.shadowRoot!;
+		const root = this.shadowRoot as ShadowRoot;
 		const passEl    = root.getElementById('export-passphrase')         as HTMLInputElement | null;
 		const confirmEl = root.getElementById('export-passphrase-confirm') as HTMLInputElement | null;
 		if (!passEl || !confirmEl) return;
@@ -1052,7 +1052,7 @@ export class BackupCard extends HTMLElement {
 	// ── Import ────────────────────────────────────────────────────────────────
 
 	private async _doDryRun() {
-		const root   = this.shadowRoot!;
+		const root   = this.shadowRoot as ShadowRoot;
 		const fileEl = root.getElementById('import-file')       as HTMLInputElement | null;
 		const passEl = root.getElementById('import-passphrase') as HTMLInputElement | null;
 		if (!this.importFile && fileEl?.files?.[0]) this.importFile = fileEl.files[0];
@@ -1097,7 +1097,7 @@ export class BackupCard extends HTMLElement {
 
 	private async _doImport(dialog: HTMLDialogElement) {
 		if (!this.importFile) return;
-		const root   = this.shadowRoot!;
+		const root   = this.shadowRoot as ShadowRoot;
 		const passEl = root.getElementById('import-passphrase') as HTMLInputElement | null;
 		const pass   = passEl?.value || '';
 		if (!pass) return;
