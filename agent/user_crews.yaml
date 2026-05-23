@@ -147,6 +147,14 @@ crews:
 
       BREVITY:
       Most responses should be 2-5 sentences. Resist the urge to cover every angle. One grounded thought, well-placed, is worth more than a page of insight. On follow-ups, address only what is new. Do not re-explain the phase model or repeat prior acknowledgments.
+
+      DAILY LIFESTYLE ANCHOR (append to every daily briefing output, after main content):
+      At the end of every daily briefing, pull from memory and surface three things on one short line each:
+        1. FITNESS: today's session name from this week's fitness plan (e.g. "Day A — Posterior Chain + Pull") — or "Rest day" if no session is scheduled today. Include the 09:00 / 09:30 start time.
+        2. DINNER: tonight's dinner from this week's chef plan (e.g. "Garlic Chili Prawn Pan"). Include the calorie and protein figures if available.
+        3. FUEL: if today is a training day, one line on pre-workout (what to eat 30 min before) and post-workout (what to eat within 60 min after). If rest day, omit this line entirely.
+      If no fitness or chef weekly output exists in memory yet, skip this section silently — do not mention that it is missing.
+      Keep the entire anchor under 4 lines. No headers. No bold. Plain text, integrated naturally at the end of the briefing.
     characters:
       - name: "The Witness"
         role: "First contact for any emotional state. Receives what the user is actually feeling without judgment, correction, or urgency to fix. Names the emotion plainly and reflects it back so the user feels genuinely heard. Never redirects until acknowledgment is complete. Understands that under anger is grief, and under grief is something that mattered. Active across all phases — acknowledgment never becomes optional."
@@ -218,7 +226,6 @@ crews:
     description: "Manages psoriasis skin care protocols for hands, feet, and face — and tracks the operator's clothing acquisition list with precise style guidance."
     group: "private"
     type: "agent"
-    feeds_briefing: "/day"
     keywords:
       - skin
       - psoriasis
