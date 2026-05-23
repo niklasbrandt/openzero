@@ -9,7 +9,7 @@
 [![Chat Channels](https://img.shields.io/badge/Channels-Telegram_%C2%B7_WhatsApp-86D4DB.svg)](#channels)
 [![Search](https://img.shields.io/badge/Search-SearXNG-A4DFE0.svg)](#the-stack)
 [![Model Routing](https://img.shields.io/badge/Routing-Local_%2B_API-BFE9E5.svg)](#the-stack)
-[![Fast / Deep Routing](https://img.shields.io/badge/Routing-Fast_%2B_Deep-D8F3EE.svg)](#the-stack)
+[![Local + Cloud Routing](https://img.shields.io/badge/Routing-Local_%2B_Cloud-D8F3EE.svg)](#the-stack)
 [![Python](https://img.shields.io/badge/Python-3.12-DEF5F1?logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-CBF0EC?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-B8EBE6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
