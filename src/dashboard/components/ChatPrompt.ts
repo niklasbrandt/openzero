@@ -109,7 +109,7 @@ export class ChatPrompt extends HTMLElement {
 
 		// LLM Pre-Warming: Load model into RAM when user prepares to type
 		input?.addEventListener('focus', () => {
-			fetch('/api/dashboard/system').catch(() => { });
+			fetch('/api/dashboard/system').catch(() => { /* intentional no-op */ });
 		}, { once: true }); // Only once per session/load
 
 		// Sync chat (including Telegram messages) when the user returns to the tab/window

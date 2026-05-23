@@ -850,7 +850,7 @@ export class AgentsWidget extends HTMLElement {
 	}
 
 	private setupEventListeners() {
-		const shadow = this.shadowRoot!;
+		const shadow = this.shadowRoot as ShadowRoot;
 
 		shadow.querySelector('#edit-personality-btn')?.addEventListener('click', () => {
 			this.isEditing = true;

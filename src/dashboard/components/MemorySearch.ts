@@ -138,7 +138,7 @@ stored_at: i.stored_at ?? null,
 
 	private renderItem(item: MemoryItem, idx: number): string {
 		const canDelete = !!item.id && item.type === 'memory';
-		const isPending = canDelete && this.pendingDelete.has(item.id!);
+		const isPending = canDelete && this.pendingDelete.has(item.id ?? '');
 		const typeIcon = item.type === 'profile' ? '👤' : item.type === 'project' ? '🌳' : '🧠';
 		const scoreLabel = item.score != null
 			? `<span class="score" aria-label="${this.tr('aria_similarity_score', 'Similarity score')}: ${item.score}">${(item.score * 100).toFixed(0)}%</span>`
