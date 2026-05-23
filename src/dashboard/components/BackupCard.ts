@@ -213,6 +213,90 @@ export class BackupCard extends HTMLElement {
 
 				:host { display: block; font-family: inherit; }
 
+				/* ── Light-theme token bridge ─────────────────────────────────────────
+				 * BackupCard's local tokens (--surface, --text, --border, etc.) are not
+				 * defined in tokens.css, so they always fall back to their dark hardcoded
+				 * values. When [data-theme="light"] is set on <html>, the global tokens
+				 * (--text-primary, --text-muted) are correctly flipped to near-black, but
+				 * the card surface stays dark → near-zero contrast (WCAG AA failure).
+				 * These blocks bridge the gap by declaring light values on :host so all
+				 * shadow-DOM descendants inherit the correct token chain.
+				 * ──────────────────────────────────────────────────────────────────── */
+				:host-context([data-theme="light"]) {
+					--surface:       hsla(220, 20%, 98%, 1);
+					--surface-alt:   hsla(220, 20%, 93%, 1);
+					--surface-hover: hsla(220, 20%, 88%, 1);
+					--text:          hsla(228, 45%, 8%,  1);
+					--text-muted:    hsla(228, 45%, 28%, 1);
+					--border:        hsla(220, 15%, 80%, 1);
+					--border-faint:  hsla(220, 15%, 88%, 1);
+					--input-bg:      hsla(0,   0%, 100%, 1);
+					--focus-ring:    hsla(196, 78%, 30%, 1);
+				}
+
+				/* Mirror for media-query-based light mode (e.g. Playwright emulateMedia) */
+				@media (prefers-color-scheme: light) {
+					:host-context(:root:not([data-theme="dark"])) {
+						--surface:       hsla(220, 20%, 98%, 1);
+						--surface-alt:   hsla(220, 20%, 93%, 1);
+						--surface-hover: hsla(220, 20%, 88%, 1);
+						--text:          hsla(228, 45%, 8%,  1);
+						--text-muted:    hsla(228, 45%, 28%, 1);
+						--border:        hsla(220, 15%, 80%, 1);
+						--border-faint:  hsla(220, 15%, 88%, 1);
+						--input-bg:      hsla(0,   0%, 100%, 1);
+						--focus-ring:    hsla(196, 78%, 30%, 1);
+					}
+				}
+
+				/* ── Light-theme hard-excluded opacity fix ───────────────────────────
+				 * .hard-excluded { opacity: 0.65 } creates a compositing layer. axe-core
+				 * 4.x blends descendant text at that opacity against the card surface when
+				 * computing effective contrast. On a near-white card surface the blended
+				 * text color drops to ~3.7:1 (WCAG AA fail at 4.5:1 required).
+				 * Restoring opacity to 1 in light mode preserves visual de-emphasis via
+				 * the dashed border alone, while letting the raw --text-muted value
+				 * (~9.5:1 against near-white) satisfy the WCAG AA threshold.
+				 * ──────────────────────────────────────────────────────────────────── */
+				:host-context([data-theme="light"]) .hard-excluded {
+					opacity: 1;
+				}
+				@media (prefers-color-scheme: light) {
+					:host-context(:root:not([data-theme="dark"])) .hard-excluded {
+						opacity: 1;
+					}
+				}
+
+				/* ── Light-theme btn-ghost override ──────────────────────────────────
+				 * BUTTON_STYLES uses rgba(255,255,255,0.6) as fallback for --text-secondary
+				 * which is white-on-white in light mode. Override to use near-black text
+				 * on a light transparent surface to meet 4.5:1 WCAG AA.
+				 * ──────────────────────────────────────────────────────────────────── */
+				:host-context([data-theme="light"]) .btn-ghost,
+				:host-context([data-theme="light"]) .cancel-btn {
+					color: var(--text-secondary, hsla(228, 45%, 15%, 0.8));
+					border-color: var(--border-medium, hsla(228, 45%, 4%, 0.2));
+				}
+				:host-context([data-theme="light"]) .btn-ghost:hover,
+				:host-context([data-theme="light"]) .cancel-btn:hover {
+					background: var(--surface-hover, hsla(220, 20%, 88%, 1));
+					border-color: hsla(228, 45%, 4%, 0.35);
+					color: hsla(228, 45%, 8%, 1);
+				}
+				@media (prefers-color-scheme: light) {
+					:host-context(:root:not([data-theme="dark"])) .btn-ghost,
+					:host-context(:root:not([data-theme="dark"])) .cancel-btn {
+						color: var(--text-secondary, hsla(228, 45%, 15%, 0.8));
+						border-color: var(--border-medium, hsla(228, 45%, 4%, 0.2));
+					}
+					:host-context(:root:not([data-theme="dark"])) .btn-ghost:hover,
+					:host-context(:root:not([data-theme="dark"])) .cancel-btn:hover {
+						background: var(--surface-hover, hsla(220, 20%, 88%, 1));
+						border-color: hsla(228, 45%, 4%, 0.35);
+						color: hsla(228, 45%, 8%, 1);
+					}
+				}
+
 				.card {
 					background: var(--surface, hsla(220, 20%, 12%, 1));
 					border: 1px solid var(--border, hsla(220, 15%, 22%, 1));
