@@ -20,7 +20,7 @@ import re
 import socket
 import zipfile
 from datetime import datetime, timezone, timedelta
-from typing import Any, Optional
+from typing import Any, Iterable, Optional, cast
 
 from pydantic import BaseModel, Field, field_validator
 from pydantic import ConfigDict
@@ -440,7 +440,7 @@ async def _export_planka() -> tuple[PlankaExportV3, list[str]]:
 
 			out_projects: list[ProjectNode] = []
 			for i, p_resp in enumerate(project_resps):
-				if isinstance(p_resp, Exception):
+				if isinstance(p_resp, BaseException):
 					exclusions.append(f"planka/project/{projects_raw[i].get('name', i)}: fetch failed")
 					continue
 				p_resp.raise_for_status()  # type: ignore[union-attr]
@@ -453,7 +453,7 @@ async def _export_planka() -> tuple[PlankaExportV3, list[str]]:
 				board_resps = await asyncio.gather(*board_tasks, return_exceptions=True)
 
 				for j, b_resp in enumerate(board_resps):
-					if isinstance(b_resp, Exception):
+					if isinstance(b_resp, BaseException):
 						exclusions.append(f"planka/{proj_name}/{boards_raw[j].get('name', j)}: fetch failed")
 						continue
 					b_resp.raise_for_status()  # type: ignore[union-attr]
@@ -971,7 +971,7 @@ async def build_export_bundle(
 			if hasattr(obj, "model_dump"):
 				b = json.dumps(obj.model_dump(), default=str).encode("utf-8")
 			else:
-				b = json.dumps([x.model_dump() if hasattr(x, "model_dump") else x for x in obj], default=str).encode("utf-8")
+				b = json.dumps([x.model_dump() if hasattr(x, "model_dump") else x for x in cast(Iterable[Any], obj)], default=str).encode("utf-8")
 			section_bytes[name] = b
 
 	sha256_map = {k: _sha256(v) for k, v in section_bytes.items()}
@@ -1406,7 +1406,9 @@ async def _import_memory(memory_raw: Optional[list], conflict: str, report: Impo
 			if pt.text in existing_texts and conflict == "skip":
 				skipped += 1
 				continue
-			vec = await loop.run_in_executor(None, lambda t=pt.text: get_embedder().encode(t).tolist())
+			def _encode_text(_t: str = pt.text) -> list:  # noqa: E306
+				return get_embedder().encode(_t).tolist()  # type: ignore[return-value]
+			vec = await loop.run_in_executor(None, _encode_text)
 			payload = {**pt.payload, "text": pt.text, "imported_from_backup": True}
 			client.upsert(collection_name=COLLECTION_NAME, points=[
 				PointStruct(id=pt.id, vector=vec, payload=payload)

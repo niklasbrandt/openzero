@@ -31,7 +31,7 @@ import logging
 import re
 import time
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ _MAX_INPUT = 500
 
 # In-process cache for Planka project/board snapshot
 _CACHE_TTL_SECONDS = 30.0
-_cache: dict[str, object] = {"ts": 0.0, "projects": []}
+_cache: dict[str, Any] = {"ts": 0.0, "projects": []}
 
 
 @dataclass
@@ -2219,7 +2219,7 @@ async def dispatch_structural_intent(intent: StructuralIntent, lang: str) -> str
 				# ── Step 3: Execute plan deterministically ────────────────────
 				all_list_index = {(l["name"] or "").lower(): l["id"] for l in lists}
 				card_index = {(c["name"] or "").lower(): c for c in cards}
-				results: list[str] = []
+				_sort_results: list[str] = []
 
 				# Create new lists from plan
 				for new_name in plan.get("new_lists", []):
@@ -2231,7 +2231,7 @@ async def dispatch_structural_intent(intent: StructuralIntent, lang: str) -> str
 						new_id = (cr.json().get("item") or {}).get("id", "")
 						if new_id:
 							all_list_index[new_name.lower()] = new_id
-							results.append(f"Created list: {new_name}")
+							_sort_results.append(f"Created list: {new_name}")
 
 				# Move cards according to plan
 				for card_name, target_list in plan.get("moves", {}).items():
@@ -2240,14 +2240,14 @@ async def dispatch_structural_intent(intent: StructuralIntent, lang: str) -> str
 					if card and target_id and card.get("listId") != target_id:
 						mv = await client.patch(f"/api/cards/{card['id']}", json={"listId": target_id, "position": _step})
 						if mv.status_code < 400:
-							results.append(f"Moved '{card_name}' → {target_list}")
+							_sort_results.append(f"Moved '{card_name}' → {target_list}")
 
 				# ── Step 4: Build summary ─────────────────────────────────────
 				lines = [f"Reorganised '{board_name}':"]
 				lines.append(f"Lists (alphabetical): {', '.join(l.get('name','?') for l in sorted_lists)}")
-				if results:
+				if _sort_results:
 					lines.append("")
-					lines.extend(results)
+					lines.extend(_sort_results)
 				if not plan.get("new_lists") and not plan.get("moves"):
 					lines.append("Cards already well-grouped — no moves needed.")
 				lines.append("\nTo move a card: 'move <card> to <list>'.")
