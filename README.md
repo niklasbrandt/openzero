@@ -1,498 +1,334 @@
 # openZero
 
 [![Agent Native](https://img.shields.io/badge/Agent--Native-Pure-black.svg)](https://github.com/niklasbrandt/openzero)
-[![Low Inference](https://img.shields.io/badge/Inference-Low_Resource_Optimized-orange.svg)](#stack)
-[![Privacy First](https://img.shields.io/badge/Privacy-100%25_Local-purple.svg)](#security)
+[![Low Inference](https://img.shields.io/badge/Inference-Low_Resource_Optimized-orange.svg)](#the-stack)
+[![Privacy First](https://img.shields.io/badge/Privacy-100%25_Local-purple.svg)](#network-perimeter)
 [![Self-Hosted](https://img.shields.io/badge/Deployment-Self--Hosted-blue.svg)](BUILD.md)
-[![LLM Agnostic](https://img.shields.io/badge/LLM-Local_%2B_API_Agnostic-FF6B35.svg)](#stack)
-[![Dual LLM Tier](https://img.shields.io/badge/Routing-Fast_%2B_Deep_Tier-blueviolet.svg)](#stack)
-[![Autonomous Crews](https://img.shields.io/badge/Crews-YAML_Scheduled-brightgreen.svg)](#autonomous-crews)
-[![Crew Output](https://img.shields.io/badge/Crew_Output-Planka_Kanban-0079BF.svg)](#autonomous-crews)
-[![Web Search](https://img.shields.io/badge/Search-SearXNG_Self--Hosted-3498db.svg)](#stack)
-[![Semantic Memory](https://img.shields.io/badge/Memory-Qdrant_Vector-8e44ad.svg)](#memory--learning)
+[![LLM Agnostic](https://img.shields.io/badge/LLM-Local_%2B_API_Agnostic-FF6B35.svg)](#the-stack)
+[![Dual LLM Tier](https://img.shields.io/badge/Routing-Fast_%2B_Deep_Tier-blueviolet.svg)](#the-stack)
+[![Autonomous Crews](https://img.shields.io/badge/Crews-YAML_Scheduled-brightgreen.svg)](#crews)
+[![Crew Output](https://img.shields.io/badge/Crew_Output-Planka_Kanban-0079BF.svg)](#crews)
+[![Web Search](https://img.shields.io/badge/Search-SearXNG_Self--Hosted-3498db.svg)](#the-stack)
+[![Semantic Memory](https://img.shields.io/badge/Memory-Qdrant_Vector-8e44ad.svg)](#memory-connections)
 [![Multi-Channel](https://img.shields.io/badge/Messaging-Telegram_%C2%B7_WhatsApp-25D366.svg)](#channels)
-[![Voice I/O](https://img.shields.io/badge/Voice-Whisper_%2B_TTS-e74c3c.svg)](#stack)
-[![DNS Filtering](https://img.shields.io/badge/DNS-Pi--hole_Builtin-c0392b.svg)](#stack)
+[![Voice I/O](https://img.shields.io/badge/Voice-Whisper_%2B_TTS-e74c3c.svg)](#the-stack)
+[![DNS Filtering](https://img.shields.io/badge/DNS-Pi--hole_Builtin-c0392b.svg)](#the-stack)
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/Vite-6-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
-[![Redis](https://img.shields.io/badge/Redis-7.4-DC382D?logo=redis&logoColor=white)](https://redis.io/)
-[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](docker-compose.yml)
-[![Tailscale](https://img.shields.io/badge/Zero_Trust-Tailscale-black?logo=tailscale&logoColor=white)](https://tailscale.com/)
-[![WCAG 2.1 AA](https://img.shields.io/badge/Accessibility-WCAG%202.1%20AA-teal.svg)](https://www.w3.org/TR/WCAG21/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-openZero is a sovereign, self-hosted AI that builds a living memory of whatever domain you point it at — a life, a business, a research area, a team — and thinks alongside you there. Every byte stays on your hardware.
+openZero is a self-hosted AI companion — called Z — that you talk to through Telegram, WhatsApp, or a web dashboard. It builds a persistent memory from every conversation and from the work its background agents do on your behalf. Optionally, it reads your calendar and email. Everything runs on hardware you own, inside a network perimeter you control.
+
+Background agents — called crews — run on schedules you define. They reason over Z's accumulated memory, calendar events, and email to produce briefings you can act on.
 
 ---
 
-## In plain terms
+## Scheduled agents
 
-You deploy openZero and connect it to your sources: calendar, email, documents, notes, voice, or any data feed you configure. It reads everything, builds a structured memory from it, and from that point forward operates as a context engine for that domain.
+The most important work happens without you.
 
-Ask it a question over Telegram or WhatsApp and it answers with full historical context — not just what you told it five minutes ago, but what it has observed across weeks or months of input. It knows which decisions were made and when, what has changed recently, and where two pieces of information conflict with each other.
+Background agents — called crews — run on schedules you define. Each crew is a council of purpose-shaped reasoning characters that work over Z's accumulated conversation memory, calendar events (if connected), email (if connected), and the memory points from prior crew outputs. By the time your morning briefing arrives, Z has already cross-referenced what it knows about you, identified what needs your attention, and proposed concrete next steps.
 
-On a schedule it runs autonomous reasoning tasks — called **crews** — that synthesise memory into structured output: briefings, analyses, plans. These arrive as step-by-step walk-throughs you move through at your own pace, or as cards in a self-hosted Kanban board (Planka).
+Briefings arrive at whatever cadence you configure: daily, weekly, monthly, quarterly, yearly. They are not digests. They are reasoned assessments grounded in everything Z has learned about you. A morning briefing might surface a stalled project, a meeting conflict, a market signal, or a health observation — not because you set rules for any of it, but because Z had built enough context to notice the relationship.
 
-The dashboard opens directly to the **Memory Atlas** — a navigable map of everything the system has learned, with relationships, timelines, decisions, and contradictions all queryable and traceable back to source evidence.
-
-### What it is used for
-
-openZero is domain-agnostic. You define the domain at setup time. One deployment is called an **instance** and is scoped to one domain. Common uses:
-
-| Domain | What the substrate tracks |
-| --- | --- |
-| Personal life | Goals, habits, health history, journal entries, recurring decisions |
-| Solo business or freelance | Client context, project decisions, proposal history, competitive research |
-| Research | Sources and contradictions between them, hypothesis evolution, synthesis over time |
-| Team operations | Meeting decisions, project state, onboarding context, shared institutional memory |
-| Any long-running project | Anything where you spend time re-reading old notes to reconstruct what you already knew |
-
-You can run multiple instances on the same hardware — `life-Z`, `work-Z`, `research-Z`, `team-Z` — each with its own memory, crew schedule, and visual theme. Federation (opt-in) lets instances share curated reasoning slices without exposing raw data.
+Between briefings, you talk to Z the same way you text anyone: via Telegram, WhatsApp, or the web dashboard. Z reads the same memory. The conversation is continuous across all three channels.
 
 ---
 
-## The problem it solves
+## The stack
 
-**Context collapse.** The information exists — spread across emails, documents, meetings, messages, notes — but reconstructing the right slice at the right moment requires manual search and re-reading. Conventional tools manage tasks or store notes, but leave you as the context engine: you remember that a client changed direction in February, that last quarter's decision was superseded, that two project briefs contradict each other.
+Every service runs in Docker Compose on a single VPS you own.
 
-openZero inverts this. The substrate is the context engine. You interact with it conversationally, and it surfaces what is relevant, flags what conflicts, and alerts you when a past decision is due for review. You stop managing information and start thinking with it.
+| Service | Role |
+|---|---|
+| llama.cpp | Local LLM inference — all interactive chat, auto-sized to your hardware |
+| Qdrant | Vector memory store — semantic search over everything Z has learned |
+| PostgreSQL | Relational store — structured state, task boards, conversation history |
+| Redis | Task queue and pub/sub message bus |
+| Planka | Kanban board — crews can create and move cards; you can too |
+| Traefik | Internal reverse proxy — routes dashboard, API, and board traffic |
+| Pi-hole | DNS resolver — resolves `open.zero` within your Tailscale network |
+| SearXNG | Self-hosted meta-search — web search without API keys or tracking |
+| Whisper | Speech-to-text (optional, `voice` profile) |
+| openedai-speech | Text-to-speech (optional, `voice` profile) |
 
----
-
-## How it works
-
-### The substrate
-
-openZero is not a chatbot layered over a file store. It is a **thinking substrate** — a structured memory layer that continuously ingests, relates, and re-examines everything it knows.
-
-When a source is connected, the substrate works in four continuous passes:
-
-1. **Ingest** — raw content is chunked, embedded, and stored in Qdrant, an open-source vector database that enables semantic retrieval rather than keyword search
-2. **Relate** — entities are extracted and linked as nodes in a typed knowledge graph: people, projects, decisions, topics, events, facts
-3. **Weight** — each node and relationship carries a confidence score, updated as confirming or contradicting evidence accumulates
-4. **Surface** — changes, contradictions, and due decisions are tracked in structured tables and surfaced on demand or on a schedule
-
-Nothing is summarised away at ingest. The substrate retains evidence and re-derives its structure as new information arrives.
-
-### Crews — the reasoning layer
-
-The substrate holds memory. **Crews** reason over it.
-
-A crew is a YAML-defined team of specialist agent characters that executes a multi-step analysis and delivers structured output. Each character has a defined role and sees the output of the previous step. No code changes are required to add a crew — drop a new entry into `agent/crews.yaml`, restart the backend, and it is live.
-
-Crews run on a schedule (daily, weekly, monthly, quarterly, or annually) or are triggered by message keywords. Output is written to two layers simultaneously:
-
-- **Planka** — a self-hosted Kanban board used as the operational output layer (cards, lists, projects)
-- **Qdrant** — key findings are stored back into the substrate as tagged memory points, so future crews and conversations build on accumulated reasoning rather than re-ingesting raw data
-
-Briefing crews deliver output as **walk-throughs**: step-by-step summaries you move through one stop at a time, in the dashboard or via Telegram and WhatsApp.
-
-### The Memory Atlas
-
-The **Memory Atlas** is the primary view in the dashboard and the main interface for reading and interacting with the substrate's memory. Think of it as a live, navigable knowledge map of everything the system has learned — not a file browser or task list, but a structured, evidence-linked view with full traceability back to source.
-
-Through the Atlas you can:
-
-- **Browse nodes** — every entity the substrate has identified: people, projects, topics, events, facts
-- **Read spines** — the substrate's inferred standing beliefs about your domain (e.g. "primary constraint is X", "recurring focus is Y"), each with a confidence score and the evidence behind it
-- **Navigate timelines** — a chronological view of what the substrate has learned and when
-- **Inspect decisions** — past decisions with their context, outcome, and revisit date; flagged automatically when a revisit is due
-- **Trace contradictions** — conflicting signals held open until resolved; raised by the `contradiction_detector` crew from periodic memory scans
-- **Walk through briefings** — scheduled or ad-hoc briefings delivered as sequenced stops, navigable with arrow keys or swipe
-- **Ask why** — press `?` on any node, spine, or decision to see its source evidence, confidence derivation, and the reasoning path behind it
-- **Explore the inferred domain** — a substrate-generated description of what this instance appears to be about, which you can confirm or refine
-
-A persistent **diff ribbon** at the top of every page shows what the substrate has learned or changed since you last opened it — so you always know what is new without having to search.
-
-### Two-tier inference
-
-Every request is routed through two LLM tiers to minimise latency and cloud dependency:
-
-- **Fast tier** — a small local model (llama.cpp or any OpenAI-compatible local endpoint) handles routing decisions, binary classifications, keyword extraction, and short-form answers. Runs in milliseconds with no cloud involvement.
-- **Deep tier** — a larger model (local or cloud API) handles reasoning-heavy tasks: strategic analysis, contradiction resolution, synthesis, briefing generation. Requires explicit human-in-the-loop approval when called from the dashboard.
-
-No cloud model is called by default. Cloud inference is opt-in via `CLOUD_LLM_URL` in `.env`.
+The dashboard and backend are built from source; everything else runs from published images with pinned version tags. No service binds to a public port. All external access goes through Tailscale.
 
 ---
 
-## Quick Start
+## Hardware
+
+Z auto-detects available RAM and CPU count on every start and sizes the LLM context window, thread count, batch size, and memory strategy accordingly. You do not need to tune these unless you want to override a specific value.
+
+| Profile | RAM | vCPU | Default model |
+|---|---|---|---|
+| Minimal | 8 GB | 4 | Qwen3-1.7B Q4\_K\_M |
+| Standard | 12 GB | 4-6 | Qwen3-1.7B Q4\_K\_M |
+| Comfortable | 24 GB | 8 | Qwen3-4B Q4\_K\_M |
+
+A Raspberry Pi 5 runs the Minimal profile. A mid-range cloud VPS (~4 EUR/month, 4 vCPU / 8 GB) runs Standard. Voice services are off by default on 8 GB machines to free RAM for the LLM; enable them with `docker compose --profile voice up -d` on 12 GB+.
+
+An optional cloud LLM tier (any OpenAI-compatible API) handles requests the local model is not sized for. A spaCy NER sanitization layer exists in the codebase — it can strip named entities from prompts before they leave your server and re-inject them into the response — but it is disabled by default due to false-positive rates on non-personal content. Enable it with `CLOUD_LLM_SANITIZE=true` in `.env` if you are routing genuinely personal data through a cloud provider.
+
+---
+
+## Quick start
+
+You need: a VPS running Ubuntu 24.04, Docker installed, Tailscale installed on both server and client, and a Telegram bot token.
+
+**1. Prepare the server**
 
 ```bash
-git clone https://github.com/your-org/openzero.git
-cd openzero
-cp config.example.yaml config.yaml && cp .env.example .env
-# fill in your domain, secrets, and credentials
-docker compose up -d
+	# Add swap — mandatory first step
+	sudo fallocate -l 8G /swapfile
+	sudo chmod 600 /swapfile
+	sudo mkswap /swapfile
+	sudo swapon /swapfile
+	echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+
+	# Create the project user
+	adduser openzero
+	usermod -aG sudo openzero
+	usermod -aG docker openzero
+
+	# Firewall — port 80 only through Tailscale, never public
+	sudo ufw allow ssh
+	sudo ufw allow in on tailscale0 to any port 80
+	sudo ufw deny 80
+	sudo ufw allow in on tailscale0 from 100.64.0.0/10 to any port 53 proto udp
+	sudo ufw allow in on tailscale0 from 100.64.0.0/10 to any port 53 proto tcp
+	sudo ufw allow in from 172.16.0.0/12 to any port 53 proto udp
+	sudo ufw allow in from 172.16.0.0/12 to any port 53 proto tcp
+	sudo ufw --force enable
 ```
 
-DB migrations run automatically on first boot. Telegram starts as soon as `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` are set. WhatsApp requires a Meta Cloud API webhook — see [BUILD.md](BUILD.md).
-
-See [BUILD.md](BUILD.md) for a complete variable reference.
-
----
-
-## Personal context
-
-Z is grounded in your domain through two local directories that are never committed:
+**2. Clone and configure (on your laptop)**
 
 ```bash
-cp -r personal.example/ personal/   # about-me, business, health, requirements
-cp -r agent.example/   agent/       # agent-rules, crews.yaml, kanban config
+	git clone https://github.com/your-org/openzero.git
+	cd openzero
+	cp .env.example .env
 ```
 
-These files are injected into every system prompt alongside live memory retrieval.
+Edit `.env` and set at minimum:
+
+```bash
+	TELEGRAM_BOT_TOKEN=your_bot_token
+	REMOTE_HOST=your_server_ip
+	REMOTE_USER=openzero
+	REDIS_PASSWORD=$(openssl rand -hex 24)
+	DASHBOARD_TOKEN=$(python3 -c "import secrets; print(secrets.token_urlsafe(32))")
+	BASE_URL=http://open.zero
+	LLM_LOCAL_MODEL_URL=https://huggingface.co/unsloth/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B-Q4_K_M.gguf
+	LLM_LOCAL_MODEL_FILE=Qwen3-1.7B-Q4_K_M.gguf
+```
+
+**3. Set up your personal context**
+
+```bash
+	cp -r personal.example personal
+	# Edit personal/*.md with your actual details.
+	# This folder is never committed and never synced to git.
+	# It is injected into every system prompt on the server.
+```
+
+**4. Set up your agent skills and crews**
+
+```bash
+	cp -r agent.example agent
+	# Edit agent/crews.yaml to activate the crews you want.
+	# Edit agent/agent-rules.md to add hard-coded behavioral rules.
+	# This folder is never committed and never synced to git.
+```
+
+**5. Configure Planka (on the server)**
+
+```bash
+	cp .env.planka.example .env.planka
+	# Edit .env.planka:
+	#   BASE_URL=http://your_server_ip
+	#   DATABASE_URL — update password to match DB_PASSWORD in .env
+	#   SECRET_KEY — replace with a long random string
+	#   Default admin password — set something you will remember
+```
+
+**6. Deploy**
+
+```bash
+	./scripts/sync.sh
+```
+
+The sync script builds the dashboard, copies all non-sensitive files to the server over SSH, and brings the stack up. The LLM container downloads the model file on first start — this takes a few minutes depending on connection speed.
+
+**7. Access the dashboard**
+
+```
+	http://open.zero/dashboard?token=your_dashboard_token
+```
+
+Open this once in your browser. The token is saved to `localStorage` and stripped from the URL. Subsequent visits do not need it. On mobile, open it once, then bookmark the stripped URL.
 
 ---
 
-## Messaging channels
+## Configuration
 
-Both Telegram and WhatsApp route to the same Z agent with full context: memory retrieval, personal context, and LLM generation.
+openZero configuration lives in three places.
 
-### Telegram commands
+**`config.yaml`** (feature toggles and schedules)
 
-| Command            | Effect                                          |
-| ------------------ | ----------------------------------------------- |
-| `/start`           | Onboarding message and menu                     |
-| `/help`            | List all commands (alias `/commands`)           |
-| `/day`             | Daily briefing                                  |
-| `/week`            | Weekly briefing                                 |
-| `/month`           | Monthly briefing                                |
-| `/quarter`         | Quarterly briefing                              |
-| `/year`            | Annual briefing                                 |
-| `/search <query>`  | Semantic memory search                          |
-| `/memories`        | Browse stored memory points                     |
-| `/learn <text>`    | Store a fact to long-term memory (alias `/add`) |
-| `/unlearn <query>` | Remove a memory point (with confirmation)       |
-| `/purge`           | Wipe memory (requires confirmation)             |
-| `/board`           | Show the active Planka board                    |
-| `/tree`            | Project / board / list tree                     |
-| `/remind <text>`   | Schedule a one-off or repeating reminder        |
-| `/custom <spec>`   | Register a persistent scheduled job             |
-| `/protocols`       | List active Z protocols                         |
-| `/personal`        | Show personal context summary                   |
-| `/agent`           | Show agent rules summary (alias `/skills`)      |
-| `/think <query>`   | Force the deep-tier model with HITL approval    |
-| `/crew <id>`       | Trigger a named crew immediately                |
-| `/crews`           | List crews and their status                     |
-| `/status`          | Deep integration health check                   |
+Copy `config.example.yaml` to `config.yaml`. Toggle integrations on or off, set briefing times and days, and adjust polling intervals. Key defaults:
 
-### WhatsApp
+```yaml
+	features:
+	  messenger_bot: true
+	  whatsapp_bot: false
+	  task_board_integration: false
+	  email_monitoring: false
+	  calendar_monitoring: false
 
-Free-form messages work identically — every message goes through the full Z context pipeline. There are no slash commands; just write naturally.
+	schedules:
+	  morning_briefing:
+	    enabled: true
+	    time: "07:30"
+	    days: "mon-fri"
+	  weekly_review:
+	    enabled: true
+	    time: "10:00"
+	    day: "sun"
+```
+
+Email and calendar integrations are opt-in. When `email_monitoring: false`, no email surface exists anywhere in the system — no UI, no API routes, no nav link. Z behaves as if email does not exist. The same principle applies to every integration: off means absent, not hidden.
+
+**`.env`** (secrets and infrastructure)
+
+See `.env.example` for the full list. Critical vars: `TELEGRAM_BOT_TOKEN`, `REDIS_PASSWORD`, `DASHBOARD_TOKEN`, `BASE_URL`, `LLM_LOCAL_MODEL_URL`. Optional: `LLM_CLOUD_BASE_URL` and `LLM_CLOUD_API_KEY` for cloud fallback, `BACKUP_PASSPHRASE` for encrypted exports.
+
+**`agent/` folder** (operator identity and crews)
+
+The agent folder is bind-mounted read-only into the backend container. Changes take effect on the next container restart or crew execution cycle.
+
+- `crews.yaml` — crew definitions, schedules, and character priming
+- `agent-rules.md` — hard-coded behavioral rules injected into every prompt
+- `kanban.md` and `planka.md` — operational methodology (pre-filled; edit or leave as-is)
+- Any additional `.md`, `.txt`, `.pdf`, or `.docx` files are loaded as skill context
 
 ---
 
 ## Crews
 
-Crews are YAML-defined multi-character agent tasks in `agent/crews.yaml`. They run on a schedule, fire in response to messages, or get triggered manually. No code changes needed to add one — define the crew, restart the backend, and it is live.
+Crews are multi-character background agents. Each crew is a set of reasoning archetypes that collaborate over a question or domain, running on a schedule or triggered by conversation keywords. Their output feeds briefings, creates Planka board cards, or stores memory points in Qdrant.
 
-### Routing
+The crew registry lives in `agent/crews.yaml` — bind-mounted read-only into the container, never committed to git, never leaves your machine except via rsync to your own server.
 
-On every incoming message Z decides whether to answer directly or delegate to a specialist crew. The same logic applies across all channels. It has three layers, evaluated in order:
+The shipped example includes two system-level crews:
 
-1. **Crew ID match** — if the crew's own ID appears as a whole word in the message (e.g. "coach, am I on track this week?"), Z routes to it immediately with no further evaluation.
-2. **Keyword routing** — each crew can declare a `keywords` list. If any keyword matches (word-boundary, language-aware), Z routes to that crew directly. Keywords are automatically translated to the user's configured language on first use and cached.
-3. **LLM routing** — if neither of the above matches, Z passes the message to the fast-tier model with the full crew registry as context. The model returns the best-fit crew ID, or `none` to handle the message itself.
+**scrum** — monitors your Planka boards for stalled items, blocked tasks, and WIP violations. Surfaces the single most actionable next step at each daily briefing and tracks every verbal commitment made in conversation, converting them into board cards before they disappear into chat history.
 
-The routing decision is always logged, so you can tune keywords or add crews without touching code.
+**focus** — reads all available context (memory, briefings, calendar, boards, recent conversations) and surfaces what is objectively most important right now. Cuts through noise and competing priorities to give you one clear answer: what to do next.
 
-For example, the `nutrition` crew listens for words like `recipe`, `meal`, `cook`, `grocery`, `macro` — so sending "make me a high-protein dinner recipe for tonight" routes directly to it, runs the full multi-character crew, and outputs a structured Planka board with the recipe and shopping list. A message like "what should I eat to hit 180g protein today?" contains no exact keyword but the fast-tier model correctly identifies `nutrition` as the best crew and delegates accordingly.
+Personal and domain crews — health, nutrition, coaching, research, travel, security, and whatever else fits your life — are defined entirely by you in `agent/crews.yaml`. The YAML schema and character priming documentation in the file header explain how to write them. The example file ships with a generic life-coaching crew as a starting template.
 
-### Panels
+Each crew specifies which briefing cadence it feeds (`feeds_briefing: "/day"`, `"/week"`, `"/month"`, etc.) and how many minutes before briefing time it should start. The scheduler handles the timing automatically.
 
-When a primary crew is selected, Z automatically identifies domain-similar candidates by computing word-overlap (Jaccard similarity) across crew names, descriptions, and character roles at startup — no manual configuration required. Each candidate is offered a fast yes/no relevance gate (a single token from the local model). Any crew that judges the query relevant joins the response as a secondary panel. Secondaries receive the accumulated output as context and add their perspective without repeating what is already covered. The result is a single reply composed of up to three crew sections, each attributed to its crew. Crews that find the query outside their scope stay silent — so a recipe request pulls in nutrition and possibly health (dietary constraints), but not fitness.
-
-To explicitly prevent a specific crew from ever joining a panel, add `panel_exclude` to its YAML config.
-
-**Example — one message, two crews, one board:**
-
-> "I want to drop 3 kg over the next 6 weeks while keeping my training load up"
-
-Z routes this to `fitness` (primary crew). The auto-similarity check identifies `nutrition` as a high-overlap candidate. Both crews submit to the relevance gate — both opt in. `fitness` produces a 6-week progressive programme; `nutrition` adds a calorie-deficit meal plan aligned to the training schedule. The full panel output is saved automatically as structured cards in the `Fitness` Planka board under a `Weekly Plan` list — no commands needed.
-
-### Memory
-
-Every crew writes to two memory layers:
-
-- **Planka** — structured, human-readable output. Each crew creates or updates cards on its own board: recipes as cards with ingredient lists and cook steps, workout plans as weekly list layouts, research findings as titled task cards. This is the operational layer — you can act on it directly, modify it, or hand it off to a team.
-- **Qdrant** — semantic vector memory. Key findings, preferences, and progress checkpoints are stored as tagged memory points (e.g. `[fitness-plan]`, `[nutrition-weekly]`) and retrieved automatically in future prompts. A crew running next Monday can recall what it decided last Monday without you repeating yourself.
-
-You can ask Z "what did the coach crew say last week?" and it will retrieve the relevant memory points, while the original Planka card remains separately available as a reference artifact.
-
-### Adding a crew
-
-Drop a new entry into `agent/crews.yaml` and restart the backend — no code changes required:
-
-```yaml
-- id: "my-crew" # unique slug, used in /crew commands and routing
-  name: "My Crew Display Name"
-  description: "One sentence describing what this crew does."
-  group: "private" # groups: basic | business | education | private
-  type: "agent"
-  feeds_briefing: "/week" # or /day | /month | /quarter — omit for cron-only
-  briefing_day: "MON" # MON–SUN, required when feeds_briefing is /week
-  # schedule: "0 14 * * 2"   # alternative: fixed cron, 5-field syntax
-  keywords: # optional — word-boundary matches route here directly
-      - trigger word
-  # panel_exclude:            # optional — crew IDs blocked from co-running here
-  #   - other-crew-id
-  instructions: |
-      Describe what the crew should do. Reference personal/health.md, personal/about-me.md,
-      or personal/requirements.md for grounding. End instructions with explicit Planka
-      persistence steps (CREATE_PROJECT / CREATE_BOARD / CREATE_LIST / CREATE_TASK).
-  characters:
-      - name: "The Role Name"
-        role: "One sentence describing this character's specific function."
-      - name: "The Second Role"
-        role: "What this character contributes that the first does not."
-```
-
-Scheduling: `feeds_briefing: /day|/week|/month|/quarter` (briefing-relative, recommended) · `schedule: "0 7 * * *"` (fixed cron)
-
-Triggers: briefing-relative · fixed cron · manual via `/crew <id>` on Telegram or dashboard
+Character names in a crew definition are semantic priming, not display labels. Naming a character "The Contrarian Auditor" rather than "the devil's advocate" causes the underlying model to adopt a more rigorous adversarial reasoning pattern. This is documented in the YAML header.
 
 ---
 
-## Intent routing & semantic understanding
+## Channels
 
-Z processes every incoming message through a layered interception pipeline before — and often instead of — calling a large language model. The goal is deterministic, reliable execution without hallucination, at sub-second latency for the majority of board operations.
+Z maintains a single context state regardless of where you interact with it.
 
-### Interception pipeline
+**Telegram** — the primary channel. Z polls for messages and streams replies. Crew briefings arrive here by default.
 
-Steps are evaluated in order. Each step may short-circuit and return a response without reaching the next. Step numbers are fractional so that new intercept points can be inserted between existing ones without renumbering the chain.
+**WhatsApp** — optional second channel via the Meta WhatsApp Cloud API (free tier, no monthly fee). Requires a Meta developer account and a dedicated phone number. Enable with `whatsapp_bot: true` in `config.yaml` and the corresponding `WHATSAPP_*` vars in `.env`. Messages are routed through the same message bus; replies appear in both the WhatsApp thread and the dashboard conversation view.
 
-| Step | Name                    | What it does                                                                                                                                                                                                                                                                                          |
-| ---- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| −1   | Audit                   | Strips prompt-injection attempts from user input                                                                                                                                                                                                                                                      |
-| 0    | Recall                  | Injects relevant Qdrant memory points into context                                                                                                                                                                                                                                                    |
-| 0.5  | Structural intent       | Fast-path regex match across all known verb families in all 11 languages                                                                                                                                                                                                                              |
-| 0.52 | Semantic board fallback | When step 0.5 finds no match, the fast-tier model is asked a single constrained binary question with a forced output format (`SORT_BOARD:<name>` or `NO`). Binary classification on a fixed schema is well within a small model's capability and avoids a cloud round-trip on every unmatched message |
-| 0.55 | Board context injection | Fetches the full live state of the relevant Planka board (lists + card titles) and injects it as grounding context                                                                                                                                                                                    |
-| 0.6  | Ambient capture         | Routes ambient notes, facts, and reminders to the capture pipeline                                                                                                                                                                                                                                    |
-| 1    | Crew routing            | Keyword match → LLM crew classification → specialist crew                                                                                                                                                                                                                                             |
-| 2    | LLM reply               | Full generation pass if no earlier step matched                                                                                                                                                                                                                                                       |
+**Dashboard** — a web application served at `http://open.zero/dashboard` behind your Tailscale network. Provides a chat interface, memory search, briefing history, calendar view, hardware health monitoring, crew status, and the Memory Atlas — a visual map of Z's accumulated memory and the connections between ideas, people, and events.
 
-### Pre-existing deterministic intents
-
-The following verb families have been handled deterministically since before this session — they never reach the LLM:
-
-- `MOVE_CARD` / `MOVE_BOARD` — move a card or board by name
-- `RENAME_CARD` / `RENAME_LIST` / `RENAME_PROJECT` / `RENAME_BOARD`
-- `DELETE_CARD` / `DELETE_LIST` / `DELETE_BOARD` / `DELETE_PROJECT`
-- `ARCHIVE_CARD` / `MARK_DONE`
-- `CREATE_LIST` / `CREATE_CARD` (single form)
-- `BOARD_ITEM_ADD` (single form) — "new task: meditation" adds to the correct list automatically
-
-All of these are pattern-matched across 11 languages (EN, DE, ES, FR, PT, RU, JA, ZH, KO, HI, AR) with Unicode word-boundary awareness. Intent classification runs in microseconds.
-
-### Ambient semantic capabilities
-
-**`BOARD_ITEM_ADD` — bulk creation and semantic type classification**
-
-A single message can create multiple items at once using colon-list syntax:
-
-> "new life goals: home, eating garden, financial freedom"
-
-The router parses the colon-list, then classifies each title through `_LIST_NOUNS` — a frozenset of intent-bearing words (`goal`, `dream`, `wish`, `aspiration`, `vision`, `project`, `area`, `theme`, `category`, `topic`) — against task-bearing words (`item`, `task`, `todo`, `action`, `step`, `note`). Items whose title contains a LIST noun become Planka lists; everything else becomes a card. No LLM involvement, no ambiguity.
-
-**`SORT_BOARD` — fully deterministic board reorganisation**
-
-When you ask Z to sort, organise, or clean up a board, the operation runs in three deterministic steps:
-
-1. All existing lists are sorted alphabetically via direct Planka PATCH calls.
-2. A fast-tier model produces a compact (~80 token) JSON reorganisation plan: `{"new_lists": [...], "moves": {"card title": "target list"}}`. No prose, no narrative — only machine-parseable structure.
-3. The backend executes the plan deterministically: creates any new lists that do not exist, moves each card to its target list via the Planka API. The LLM never writes a confirmation message; the backend surfaces every create/move result directly.
-
-This replaces what previously required a 300-second LLM generation timeout with a sub-10-second structured API sequence.
-
-**Step 0.52 — semantic board fallback**
-
-When no pattern in step 0.5 matches, and the message appears board-related, a fast-tier model is asked a single constrained binary question:
-
-> "Is this message asking to reorganise, sort, or clean up a Planka board? Reply SORT_BOARD:<board name> or NO."
-
-Binary classification against a fixed output schema is well within a small model's capability. Using the cloud model here would add latency to every unmatched message regardless of complexity. If the model returns a `SORT_BOARD:` prefix, the router constructs a `StructuralIntent` and dispatches it with the same deterministic path as a regex match.
-
-**Anti-hallucination enforcement**
-
-The LLM system prompt includes an explicit rule: Z must never confirm an action in the past tense. Confirmations are generated by the action execution layer from actual API responses, not by the model describing what it wishes it had done. Every result — success and failure alike — is surfaced to the user.
-
-### What this achieves
-
-- Natural board management without requiring exact command syntax or knowledge of action tags.
-- Implicit intent recognition in colloquial phrasing across 11 languages.
-- Sub-second responses for structural mutations — no LLM round-trip, no timeout risk.
-- Reliable execution — deterministic Planka API calls, not generated prose, drive every state change.
-- The LLM is reserved for what it is good at: reasoning, synthesis, and ambiguous open-ended tasks. Everything with a deterministic interpretation is handled without it.
+All three channels receive briefings. A fix to message handling in one channel is applied to all three simultaneously.
 
 ---
 
-## Dashboard
+## Network perimeter
 
-21 Shadow DOM Web Components — no React, Vue, or Angular.
-38 HSLA theme presets, live switching.
-WCAG 2.1 AA, 2 UI languages (EN, DE), keyboard-navigable.
+Port 80 is blocked on all public interfaces. The dashboard, API, and Planka board are only reachable through the `tailscale0` interface. DNS (port 53) is only reachable from within the Tailscale CGNAT range (`100.64.0.0/10`). No service binds an external port in `docker-compose.yml`.
 
----
-
-## Stack
-
-```
-┌──────────────────────────────────────────────────┐
-│                 Your Devices                     │
-│      (Phone / Laptop / Tablet)                   │
-│                                                  │
-│   Telegram     ──── Chat, Voice, Commands        │
-│   WhatsApp     ──── Chat, Commands               │
-│   Dashboard    ──── Web UI, Benchmark, Config    │
-│   Planka PWA   ──── Kanban Boards                │
-└───────────────┬──────────────────────────────────┘
-                │  Tailscale VPN (encrypted mesh)
-                ▼
-┌──────────────────────────────────────────────────┐
-│               VPS / Homelab                      │
-│                                                  │
-│   ┌──────────────────────────────────────────┐   │
-│   │         Traefik / Pi-hole                │   │
-│   │    (Routing, DNS, Telemetry Blocking)    │   │
-│   └──────────────┬───────────────────────────┘   │
-│                  ▼                               │
-│   ┌──────────────────────────────────────────┐   │
-│   │   FastAPI Backend + APScheduler          │   │
-│   │     ├── Telegram (long-polling)          │   │
-│   │     ├── WhatsApp Cloud API (webhooks)    │   │
-│   │     ├── Semantic Action Tag Engine       │   │
-│   │     ├── Email Ingestion (opt-in)         │   │
-│   │     ├── Briefing + Walkthrough Engine    │   │
-│   │     └── Dashboard API (REST)             │   │
-│   └──────────────────────────────────────────┘   │
-│                                                  │
-│   ┌───────────┐  ┌─────────┐  ┌──────────────┐  │
-│   │ PostgreSQL│  │  Qdrant │  │  llama.cpp   │  │
-│   │  (data)   │  │ (memory)│  │  (llm-local) │  │
-│   └───────────┘  └─────────┘  └──────────────┘  │
-│                                                  │
-│   ┌───────────┐  ┌─────────┐  ┌──────────────┐  │
-│   │  Whisper  │  │   TTS   │  │   Planka     │  │
-│   │  (STT)    │  │ (speech)│  │  (Kanban)    │  │
-│   └───────────┘  └─────────┘  └──────────────┘  │
-│                                                  │
-│   ┌───────────┐  ┌─────────┐  ┌──────────────┐  │
-│   │  SearXNG  │  │  Crews  │  │   Redis      │  │
-│   │  (search) │  │ (.yaml) │  │  (cache)     │  │
-│   └───────────┘  └─────────┘  └──────────────┘  │
-└──────────────────────────────────────────────────┘
-```
-
-All services share the `internal` Docker network. The LLM container exposes only its inference port, and every backing store (PostgreSQL, Qdrant, Redis, Planka) is reached through the FastAPI backend, which holds all credentials.
-
-### Web search
-
-When the cloud tier model needs current information — news, prices, weather, recent events — it autonomously invokes a web search tool via standard OpenAI function-calling. The search runs against a self-hosted SearXNG instance (meta-search aggregator: Google, Bing, DuckDuckGo, Wikipedia) on the internal Docker network. No external API keys, no third-party services, full data sovereignty. Search queries are PII-sanitized when `CLOUD_LLM_SANITIZE=true`. Controlled by `CLOUD_LLM_TOOLS=true` (default on).
-
-### Compute peer routing
-
-openZero can offload inference to any Tailscale-connected device running Ollama or llama.cpp. Add one line to `.env`:
-
-```
-LLM_PEER_CANDIDATES=http://100.x.y.z:11434#MacBook
-```
-
-The `#MacBook` fragment sets the display name shown in the dashboard. Multiple candidates are comma-separated. Every 30 seconds, openZero probes all peers with a real inference call (not just a health check), measures actual tokens/s, and promotes the fastest peer automatically — but only if it reaches 80% of the VPS speed. A slower device stays on standby; the dashboard Diagnostics panel shows each peer's name, model, and live tok/s under **Inference Provider** inside the Local tier card.
+This means openZero does not need TLS certificates, a domain name, or a CDN. It is not on the internet. You access it from devices enrolled in your Tailscale network, which resolves `open.zero` to the Pi-hole DNS container on the server.
 
 ---
 
-## Security
+## Backup and export
 
-Security in openZero is defined by an explicit allowlist, not a blocklist. The agent can only perform actions that are declared in its action vocabulary. Everything else is structurally impossible.
+The dashboard includes an encrypted backup export. The archive is encrypted client-side with AES using a passphrase you provide before it streams to your browser. The passphrase is never stored on the server. Automated exports can be scripted against the `/api/dashboard/backup/export` endpoint with a `BACKUP_PASSPHRASE` env var set in `.env`.
 
-### Agent action vocabulary
-
-Z speaks to external systems through a structured set of action tags embedded in its replies. Only tags in this allowlist are parsed and executed; anything outside it is silently ignored. The canonical list lives in `_MUTATING_TAG_RE` in `src/backend/app/services/agent_actions.py`.
-
-| Action                                                            | What it does                                             |
-| ----------------------------------------------------------------- | -------------------------------------------------------- |
-| `CREATE_PROJECT`                                                  | Creates a Planka project                                 |
-| `CREATE_BOARD`                                                    | Creates a Planka board inside a project                  |
-| `CREATE_LIST`                                                     | Creates a list on a board                                |
-| `CREATE_TASK`                                                     | Creates a card on a list                                 |
-| `MOVE_CARD`                                                       | Moves a card to a different list                         |
-| `MOVE_BOARD`                                                      | Moves a board to a different project                     |
-| `MARK_DONE`                                                       | Marks a card as done                                     |
-| `ARCHIVE_CARD`                                                    | Archives a card                                          |
-| `APPEND_SHOPPING`                                                 | Appends an item to the shopping list                     |
-| `SET_CARD_DESC`                                                   | Sets or updates a card description                       |
-| `RENAME_CARD` / `RENAME_LIST` / `RENAME_PROJECT`                  | Renames the matching entity                              |
-| `DELETE_CARD` / `DELETE_LIST` / `DELETE_BOARD` / `DELETE_PROJECT` | Hard-deletes the matching entity (sensitive — see below) |
-| `SHARE_BOARD` / `SHARE_PROJECT`                                   | Issues a share link                                      |
-| `INVITE_USER` / `INVITE_MEMBER`                                   | Invites a collaborator                                   |
-| `AMBIENT_CAPTURE` / `AMBIENT_TEACH`                               | Routes ambient input into the capture pipeline           |
-| `CREATE_EVENT`                                                    | Creates a calendar event                                 |
-| `REMIND`                                                          | Sets a one-off or repeating reminder                     |
-| `LEARN`                                                           | Stores a fact to Qdrant long-term memory                 |
-| `SCHEDULE_CUSTOM`                                                 | Registers a persistent scheduled job                     |
-| `RUN_CREW`                                                        | Triggers a named crew immediately                        |
-| `SCHEDULE_CREW`                                                   | Schedules a crew at a cron spec                          |
-| `PROXIMITY_TRACK`                                                 | Initiates a task proximity tracking session              |
-
-Destructive actions (`DELETE_*`) are part of the vocabulary, not blocked at the parser layer. They are gated by the human-in-the-loop policy below — the safety guarantee is the HITL queue plus the structured allowlist, not the absence of delete verbs.
-
-### Human-in-the-loop gate
-
-A subset of actions that create persistent state or modify the agent's own behaviour are designated `SENSITIVE_ACTIONS`:
-
-`CREATE_PROJECT` · `CREATE_BOARD` · `CREATE_LIST` · `LEARN` · `SCHEDULE_CUSTOM` · `RUN_CREW` · `SCHEDULE_CREW` · `PROXIMITY_TRACK`
-
-When `require_hitl=True` is set on a reply (configurable per channel and per endpoint), sensitive actions are queued and require user confirmation before execution. Routine actions like `CREATE_TASK`, `MOVE_CARD`, and `CREATE_EVENT` execute immediately.
-
-### Network and infrastructure isolation
-
-- The local LLM container (`llm-local`, llama.cpp) runs on the internal Docker network with no direct access to the database, Qdrant, or Planka. All model calls go through the FastAPI backend, which owns every credential. The fast and deep tiers are routing decisions inside the backend, not separate containers.
-- Bearer token required on every API endpoint — no unauthenticated routes.
-- The entire stack is reachable only through the Tailscale mesh network. No ports are exposed to the public internet.
-- DNS (port 53) is bound to the Tailscale interface only — Pi-hole is not publicly reachable.
-
-### CI security gates
-
-Every push runs the GitHub Actions pipeline:
-
-- `pip-audit` — dependency CVE scan
-- `npm audit` — frontend dependency CVE scan
-- `bandit` — Python static security analysis
-- `trufflehog` — secret leak detection in git history
-- `ruff` + `mypy` — Python lint and type safety
-- ESLint + `tsc --noEmit` — TypeScript lint and strict type-check
-- CodeQL static-analysis pre-flight
-- Lighthouse CI audit
-- Playwright accessibility audit (WCAG 2.1 AA)
-- Docker build smoke-test
-- Prompt-injection test suite (`tests/test_security_prompt_injection.py`)
-- i18n key parity (`tests/test_i18n_coverage.py`) and live regression tests
+Minimum passphrase length is 12 characters. If you lose the passphrase, existing archives cannot be decrypted.
 
 ---
 
-## Development
+## Running the quality gate
+
+Before any commit:
 
 ```bash
-bash scripts/dev.sh          # hot-reload backend + dashboard
+	# TypeScript type check
+	cd src/dashboard && npx tsc --noEmit
 
-pytest tests/ -v             # full suite
-pytest tests/test_security_prompt_injection.py -v
-pytest tests/test_i18n_coverage.py -v
+	# Python linting
+	cd src/backend && ruff check app/
 
-cd src/dashboard && npm run dev
+	# i18n key parity (all keys in _EN must exist in _DE)
+	pytest tests/test_i18n_coverage.py -v
 
-# deploy
-git add -A && git commit -m "msg" && git push && bash scripts/sync.sh
+	# Security and static analysis
+	pytest tests/test_security_prompt_injection.py tests/test_static_analysis.py -v
 ```
+
+The full test suite includes 268 security tests across 25 attack classes, Playwright accessibility audits (axe-core, WCAG 2.1 AA), i18n coverage gates, and a live regression suite that runs against a deployed instance.
+
+---
+
+## Project structure
+
+```
+	agent/              operator skills, rules, and crew definitions (not committed)
+	agent.example/      template for agent/ (committed, sanitized)
+	docs/artifacts/     design decisions, phase plans, architectural records
+	personal/           highest-priority context injected into every prompt (not committed)
+	personal.example/   template for personal/ (committed, sanitized)
+	scripts/            sync, backup, dev utilities
+	src/backend/        FastAPI application — API, services, tasks, LLM routing
+	src/dashboard/      TypeScript Web Components dashboard — Shadow DOM, no framework
+	tests/              full test suite — security, a11y, i18n, regression
+	agent.json          Z's identity and voice configuration
+	config.yaml         feature toggles and briefing schedules
+	docker-compose.yml  service definitions
+```
+
+The backend is a single FastAPI application. Services for LLM routing, memory, calendar, Gmail, web search, voice, crews, and notifiers live in `src/backend/app/services/`. API endpoints are in `src/backend/app/api/`.
+
+The dashboard is built with native Web Components using Shadow DOM. No framework dependency. Each component is a single TypeScript file with encapsulated CSS and full i18n support. The build output in `src/dashboard/dist/` is served as static files by the backend container.
+
+---
+
+## Federation
+
+openZero supports optional peer federation. Reasoning slices — structured summaries derived from memory — can be exchanged between instances without raw data ever leaving either instance's perimeter. This enables, for example, a `work-Z` and `life-Z` instance to share relevant signals without merging their memory stores or exposing personal data to a work context.
+
+Federation is disabled by default and requires explicit configuration in `.env`. The protocol ships structured reasoning artifacts, not conversation history.
+
+---
+
+## Memory connections
+
+Z's memory currently grows from three sources: your conversations, the outputs crews write as memory points, and the optional calendar and email integrations.
+
+The backend uses a MemorySource plugin architecture. Additional connectors — note vaults, document folders, Slack workspaces, RSS feeds — can be registered as plugins without modifying core services. None of these connectors exist yet as first-party integrations; they are the natural next layer for operators who want Z to know more without telling it manually.
 
 ---
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT License. Copyright (c) 2026 OpenZero Contributors.
 
-openZero is personal infrastructure. You run it, you own it.
+You are free to use, modify, and distribute this software under the terms of the MIT License. See the `LICENSE` file at the repository root for the full text.
