@@ -1,0 +1,25 @@
+# user_crews.yaml — private operator crews
+# Copy to agent/user_crews.yaml and define your personal crews here.
+# This file is gitignored. Do NOT commit agent/user_crews.yaml.
+#
+# Schema mirrors crews.yaml. Each entry is a full crew definition.
+# Example skeleton:
+
+crews: []
+
+# To add a crew, replace [] with a list:
+# crews:
+#   - id: my_crew
+#     name: My Crew
+#     description: "What this crew does."
+#     group: "private"
+#     type: "agent"
+#     feeds_briefing: "/day"
+#     keywords:
+#       - example
+#       - keyword
+#     instructions: |
+#       Crew instructions go here.
+#     characters:
+#       - name: "The Example Archetype"
+#         role: "What this character does within the crew."
