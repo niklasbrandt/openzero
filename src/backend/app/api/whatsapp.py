@@ -111,7 +111,7 @@ async def _handle_inbound(sender: str, text: str) -> None:
 	identically to the Telegram and Dashboard channels.
 	"""
 	from app.services.message_bus import bus
-	from app.services.router import route_message_stream
+	from app.services.router import route_message_stream, RouterResult as _RouterResult
 	from app.services.crews import resolve_active_crews
 
 	# /walk command — retired stub
@@ -174,7 +174,7 @@ async def _handle_inbound(sender: str, text: str) -> None:
 			await send_whatsapp_message("I ran out of time on that one. Please try again.")
 			return
 		try:
-			result = await _asyncio.wait_for(_asyncio.shield(result_fut), timeout=30.0)
+			_route_result: _RouterResult = await _asyncio.wait_for(_asyncio.shield(result_fut), timeout=30.0)  # type: ignore[arg-type]
 		except _asyncio.TimeoutError:
 			logger.error("WhatsApp: result_fut never resolved — generator may have crashed silently")
 			await send_whatsapp_message("Something went wrong processing that. Please try again.")
@@ -184,8 +184,8 @@ async def _handle_inbound(sender: str, text: str) -> None:
 		await send_whatsapp_message("I encountered an error reaching my reasoning core. Try again in a moment.")
 		return
 
-	if result.reply.strip():
-		await send_whatsapp_message(result.reply)
+	if _route_result.reply.strip():
+		await send_whatsapp_message(_route_result.reply)
 
 
 async def _download_whatsapp_media(media_id: str) -> bytes:
@@ -211,7 +211,7 @@ async def _handle_inbound_image(sender: str, media_id: str, user_hint: str) -> N
 	"""Download a WhatsApp image, caption it via the vision service, and route through Z."""
 	from app.services.vision import caption_image
 	from app.services.message_bus import bus
-	from app.services.router import route_message_stream
+	from app.services.router import route_message_stream, RouterResult as _RouterResult
 	from app.services.crews import resolve_active_crews
 
 	try:
@@ -265,14 +265,14 @@ async def _handle_inbound_image(sender: str, media_id: str, user_hint: str) -> N
 		await send_whatsapp_message("I ran out of time processing that image. Please try again.")
 		return
 	try:
-		result = await _asyncio.wait_for(_asyncio.shield(result_fut), timeout=30.0)
+		_route_result: _RouterResult = await _asyncio.wait_for(_asyncio.shield(result_fut), timeout=30.0)  # type: ignore[arg-type]
 	except _asyncio.TimeoutError:
 		logger.error("WhatsApp image: result_fut never resolved — generator may have crashed silently")
 		await send_whatsapp_message("Something went wrong processing that. Please try again.")
 		return
 
-	if result.reply.strip():
-		await send_whatsapp_message(result.reply)
+	if _route_result.reply.strip():
+		await send_whatsapp_message(_route_result.reply)
 
 
 # ─── Webhook Routes ───────────────────────────────────────────────────────────

@@ -156,8 +156,9 @@ class NativeCrewEngine:
 			results = ["", "", ""]
 
 		# Unpack results with safety checks
-		personality = results[0] if not isinstance(results[0], Exception) else ""
-		if isinstance(results[0], Exception):
+		_r0 = results[0]
+		personality: str = "" if isinstance(_r0, BaseException) else _r0
+		if isinstance(results[0], BaseException):
 			logger.debug("Native Engine: Failed to load agent personality: %s", results[0])
 
 		mem_ctx = results[1] if not isinstance(results[1], Exception) else ""

@@ -1051,7 +1051,7 @@ async def route_message_stream(
 				_MIN_PANEL_TOKENS = 40
 				_contributions: list[tuple[str, str]] = []
 				for _pr in _panel_results:
-					if isinstance(_pr, Exception):
+					if isinstance(_pr, BaseException):
 						logger.warning("Router: panel crew failed: %s", _pr)
 						continue
 					_pcid, _pout = _pr
@@ -1127,7 +1127,7 @@ async def route_message_stream(
 			_force_cloud = True  # crew requests always need cloud tier
 			logger.info("Router: semantic-routing '%s...' → crew '%s'", _sanitize_for_log(user_text), crew_id)
 			await _status(_t.get("status_routing_crew", "Routing to {crew}...").format(crew=crew_id))
-			chunks = []
+			chunks: list[str] = []
 			async for token in native_crew_engine.run_crew_stream(crew_id, user_text, history=_ctx_history, force_cloud=True):
 				chunks.append(token)
 				yield token
@@ -1175,7 +1175,7 @@ async def route_message_stream(
 		# never receives a partial tag. Zero added latency for pure-conversation
 		# responses — the `else: yield token` path runs every iteration.
 		# Mode: 0=normal  1=suspect(saw '[')  2=confirmed [ACTION: — hold until ']'
-		chunks: list[str] = []
+		_reply_chunks: list[str] = []
 		_l5_hold: list[str] = []
 		_l5_mode = 0
 		await _status(_t.get("status_composing", "Composing response..."))
@@ -1187,7 +1187,7 @@ async def route_message_stream(
 			tier_override="cloud" if _force_cloud else None,
 			extra_system_context=_z_core_ctx,
 		):
-			chunks.append(token)
+			_reply_chunks.append(token)
 			if _l5_mode == 2:
 				_l5_hold.append(token)
 				if ']' in token:
@@ -1220,7 +1220,7 @@ async def route_message_stream(
 			yield "".join(_l5_hold)
 			_l5_hold.clear()
 
-		response = sanitise_output("".join(chunks))
+		response = sanitise_output("".join(_reply_chunks))
 		response = rehydrate_response(response, get_active_rep_map())
 
 		if not response.strip():

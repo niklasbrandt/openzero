@@ -436,7 +436,7 @@ async def start_discovery_loop() -> None:
 	"""
 	if getattr(start_discovery_loop, '_started', False):
 		return
-	start_discovery_loop._started = True
+	start_discovery_loop._started = True  # type: ignore[attr-defined]
 
 	_peers[:] = _build_peer_list()
 
