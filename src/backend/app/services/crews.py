@@ -117,6 +117,8 @@ class CrewRegistry:
 	def __init__(self, agent_dir: str):
 		self.agent_dir = Path(agent_dir)
 		self.crews_yaml_path = self.agent_dir / "crews.yaml"
+		# user_crews.yaml — gitignored private operator crews, same agent/ directory
+		self.user_crews_yaml_path = self.agent_dir / "user_crews.yaml"
 		# personal/crews.yaml lives at the repo root's personal/ directory
 		self.personal_yaml_path = self.agent_dir.parent / "personal" / "crews.yaml"
 		self._crews: Dict[str, CrewConfig] = {}
@@ -140,7 +142,7 @@ class CrewRegistry:
 		return False
 
 	async def reload_if_changed(self) -> bool:
-		"""Re-load both YAML files if any of them has been modified. Returns True if reload occurred."""
+		"""Re-load all tracked YAML files if any of them has been modified. Returns True if reload occurred."""
 		if self._mtimes_changed():
 			logger.info("Registry: file change detected — hot-reloading crews")
 			await self.load()
@@ -207,6 +209,33 @@ class CrewRegistry:
 			cid = c.get("id")
 			if cid:
 				merged[cid] = c
+
+		# Merge agent/user_crews.yaml if it exists (gitignored, private operator crews)
+		if self.user_crews_yaml_path.exists():
+			try:
+				with open(self.user_crews_yaml_path, "r", encoding="utf-8") as uf:
+					user_data = yaml.safe_load(uf)
+				user_list = self._parse_crews_list(user_data)
+				self._last_mtimes[self.user_crews_yaml_path] = self._get_mtime(self.user_crews_yaml_path)
+				user_override_count = 0
+				user_append_count = 0
+				for c in user_list:
+					if not isinstance(c, dict):
+						continue
+					cid = c.get("id")
+					if not cid:
+						continue
+					if cid in merged:
+						user_override_count += 1
+					else:
+						user_append_count += 1
+					merged[cid] = c
+				logger.info(
+					"Registry: user_crews.yaml merged — %d overrides, %d new crews",
+					user_override_count, user_append_count,
+				)
+			except Exception as _ue:
+				logger.warning("Registry: user_crews.yaml parse failed — skipping: %s", _ue)
 
 		# Merge personal/crews.yaml if it exists (gitignored, operator-local overrides)
 		if self.personal_yaml_path.exists():
