@@ -137,7 +137,7 @@ export class UserCard extends HTMLElement {
 	}
 
 	async saveIdentity() {
-		const shadow = this.shadowRoot!;
+		const shadow = this.shadowRoot as ShadowRoot;
 		const identityPayload = {
 			name: (shadow.querySelector('#name-input') as HTMLInputElement).value,
 			birthday: (shadow.querySelector('#bday-input') as HTMLInputElement).value,

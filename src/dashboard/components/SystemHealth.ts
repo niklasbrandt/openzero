@@ -855,7 +855,7 @@ export class SystemHealth extends HTMLElement {
 
 		this.shadowRoot?.querySelector('button[data-tier="all"]')?.addEventListener('click', () => this.runAllBenchmarks());
 		this.shadowRoot?.querySelectorAll('button.sm').forEach(b => {
-			b.addEventListener('click', () => this.runBenchmark(b.getAttribute('data-tier')!));
+			b.addEventListener('click', () => this.runBenchmark(b.getAttribute('data-tier') ?? ''));
 		});
 
 		const setupBarTooltips = (barId: string, tipId: string, stripSelector: string) => {
