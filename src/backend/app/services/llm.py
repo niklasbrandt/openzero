@@ -526,7 +526,9 @@ def rehydrate_response(text: str, replacement_map: dict[str, str]) -> str:
 		# Use a lambda for the replacement so that backslash sequences in the
 		# original (e.g. a Windows path like '\1System') are never interpreted
 		# as regex backreferences by re.sub, which would raise re.error.
-		text = re.sub(re.escape(token), lambda _m, o=original: o, text, flags=re.IGNORECASE)
+		def _repl(_m: re.Match[str], _o: str = original) -> str:
+			return _o
+		text = re.sub(re.escape(token), _repl, text, flags=re.IGNORECASE)
 
 	return text
 
@@ -1996,6 +1998,9 @@ async def chat_with_context(
 		if len(user_message.strip()) < 30:
 			system_with_context += "\n\nRespond in 1-2 sentences. Ensure logical consistency (e.g. do not say 'Today is tomorrow')."
 
+		_chat_kw: dict[str, Any] = {}
+		if thinking is not None:
+			_chat_kw["thinking"] = thinking
 		return sanitise_output(await chat(
 			user_message,
 			system_override=system_with_context,
@@ -2004,7 +2009,7 @@ async def chat_with_context(
 			user_name=user_name,
 			user_profile=user_profile,
 			_feature="user_chat",
-			**(({"thinking": thinking}) if thinking is not None else {}),
+			**_chat_kw,
 		))
 	except Exception as e:
 		logger.warning("chat_with_context failed, falling back to bare chat: %s", e)
