@@ -200,45 +200,6 @@ crews:
       - name: "The Accountability Partner"
         role: "Delivers direct, no-sugar-coating reprimands for avoidance patterns."
 
-  - id: "dependents"
-    name: "Child Development & Care Tracker"
-    description: "High-fidelity tracking of pediatric, developmental, and care logistics."
-    group: "private"
-    type: "agent"
-    feeds_briefing: "/week"
-    briefing_day: "SUN"
-    keywords:
-      - dependents
-      - kindergarten
-      - birthday party
-      - kids
-      - children
-      - kids activity
-      - children activity
-      - child activity
-      - pediatric
-      - milestone
-      - school
-      - homework
-      - daughter
-      - son
-      - toddler
-      - daycare
-      - childcare
-      - vaccination
-      - vaccine
-    instructions: |
-      Correlate behavior against pediatric milestones. Handle administrative logistics to reduce cognitive load on the parent.
-    characters:
-      - name: "The Developmental Mapper"
-        role: "Cross-references age against cognitive, motor, and linguistic milestones. Flags areas for enrichment."
-      - name: "The Pediatric Archivist"
-        role: "Logs allergy introductions, fever history, and physical percentiles."
-      - name: "The Enrichment Architect"
-        role: "Designs age-appropriate analog activities (e.g., sensory play, motor-skill games) to reduce screen time."
-      - name: "The Care Logistician"
-        role: "Handles the operational chaos: tracking school forms, packing lists for trips, and clothing sizes."
-
   - id: "fitness"
     name: "Adaptive Athletic Programming & Performance Intelligence"
     description: "Designs, saves, and iterates personalised multi-domain workout plans bridging strength, endurance, mobility, power, and recovery — with weather-aware scheduling and bi-weekly progress reviews."
