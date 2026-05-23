@@ -195,7 +195,6 @@ async def get_board_full_context(board_name_fragment: str) -> str:
 			detail = resp.json()
 			lists = detail.get("included", {}).get("lists", [])
 			cards = detail.get("included", {}).get("cards", [])
-			list_map: dict[str, str] = {l["id"]: l.get("name", "?") for l in lists}
 			list_cards: dict[str, list[str]] = {l["id"]: [] for l in lists}
 			for c in cards:
 				lid = c.get("listId", "")
@@ -1883,7 +1882,6 @@ async def get_board_walkthrough(min_stale_days: int = 5) -> str:
 				b_name = board_names[b_idx]
 				lists = b_data.get("included", {}).get("lists", [])
 				cards = b_data.get("included", {}).get("cards", [])
-				done_list_ids = {l["id"] for l in lists if _is_done_list(l.get("name", ""))}
 				non_done_list_ids = {l["id"] for l in lists if not _is_done_list(l.get("name", ""))}
 				active_cards = [c for c in cards if c["listId"] in non_done_list_ids]
 

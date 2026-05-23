@@ -1646,7 +1646,7 @@ async def chat_with_context(
 	async def fetch_people():
 		# Always fetch identity (needed for user_name/profile), but skip circle context for trivial messages
 		try:
-			async with AsyncSessionLocal() as session:
+			async with AsyncSessionLocal():
 				people = []  # Person table removed (substrate pivot)
 				identity_name = "User"
 				user_profile = {}
@@ -2048,7 +2048,7 @@ async def chat_stream_with_context(
 	# Reuse the same context-fetching logic
 	async def fetch_people():
 		try:
-			async with AsyncSessionLocal() as session:
+			async with AsyncSessionLocal():
 				people = []  # Person table removed (substrate pivot)
 				identity_name = "User"
 				user_profile = {}
