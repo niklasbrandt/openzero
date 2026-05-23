@@ -19,11 +19,13 @@
 [![Vite](https://img.shields.io/badge/Vite-6-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 
-Every AI assistant you use today forgets you the moment the conversation ends. Each session starts from zero. Context you built over months — your goals, your constraints, what you tried and what failed — has to be re-explained every time, or it is lost entirely.
+openZero is a self-hosted AI system — called Z — that runs entirely on hardware you own. You talk to it through Telegram, WhatsApp, or a web dashboard. Background agents called crews run on schedules you define, reason over everything Z knows about you, and deliver briefings you can act on. Optionally, Z reads your calendar and email.
 
-openZero is a self-hosted AI companion — called Z — that you talk to through Telegram, WhatsApp, or a web dashboard. It builds a persistent memory from every conversation and from the work its background agents do on your behalf. Optionally, it reads your calendar and email. Everything runs on hardware you own, inside a network perimeter you control.
+**Sovereignty.** Cloud AI assistants store memory on infrastructure you do not control, behind retention policies you did not write. openZero keeps everything inside your network perimeter. Memory is deep — built from every conversation, every crew output, and every source you connect — and it compounds over time.
 
-Background agents — called crews — run on schedules you define. They reason over Z's accumulated memory, calendar events, and email to produce briefings you can act on.
+**Shared workspace.** Z and you share a live Kanban board (Planka). Background agents create cards, move tasks, and track commitments you made in conversation. When your morning briefing arrives, the board already reflects what changed overnight. The board is the shared context, not a tool you maintain separately.
+
+**Proactive reach-out.** Z does not wait for you to check in. When a crew surfaces a decision or detects a commitment at risk, Z sends you a message — unprompted. You stay in flow and engage only when there is something to act on.
 
 ---
 
