@@ -19,6 +19,8 @@
 [![Vite](https://img.shields.io/badge/Vite-6-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 
+Every AI assistant you use today forgets you the moment the conversation ends. Each session starts from zero. Context you built over months — your goals, your constraints, what you tried and what failed — has to be re-explained every time, or it is lost entirely.
+
 openZero is a self-hosted AI companion — called Z — that you talk to through Telegram, WhatsApp, or a web dashboard. It builds a persistent memory from every conversation and from the work its background agents do on your behalf. Optionally, it reads your calendar and email. Everything runs on hardware you own, inside a network perimeter you control.
 
 Background agents — called crews — run on schedules you define. They reason over Z's accumulated memory, calendar events, and email to produce briefings you can act on.
