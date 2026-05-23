@@ -8,7 +8,7 @@
 [![Planka Workspace](https://img.shields.io/badge/Workspace-Planka_Board-64C6D6.svg)](#crews)
 [![Chat Channels](https://img.shields.io/badge/Channels-Telegram_%C2%B7_WhatsApp-86D4DB.svg)](#channels)
 [![Search](https://img.shields.io/badge/Search-SearXNG-A4DFE0.svg)](#the-stack)
-[![Model Routing](https://img.shields.io/badge/Routing-Local_%2B_API-BFE9E5.svg)](#the-stack)
+[![Local Tier](https://img.shields.io/badge/Routing-Local_Tier-BFE9E5.svg)](#the-stack)
 [![Local + Cloud Routing](https://img.shields.io/badge/Routing-Local_%2B_Cloud-D8F3EE.svg)](#the-stack)
 [![Python](https://img.shields.io/badge/Python-3.12-DEF5F1?logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-CBF0EC?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
