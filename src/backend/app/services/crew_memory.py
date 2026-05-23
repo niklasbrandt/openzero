@@ -458,7 +458,6 @@ async def get_crew_board_work_context(crew_id: str) -> str:
 		lang = await get_user_lang()
 		t = get_translations(lang)
 		project_name: str = t.get("crews_project_name", "Crews")
-		conversation_list_name: str = t.get("crew_conversation_list", "Conversation")
 		board_name = _crew_board_name(crew_id)
 
 		async with await _planka_client() as client:
@@ -527,7 +526,6 @@ async def get_crew_memory_context(crew_id: str) -> str:
 		lang = await get_user_lang()
 		t = get_translations(lang)
 		project_name: str = t.get("crews_project_name", "Crews")
-		list_name: str = t.get("crew_conversation_list", "Conversation")
 		board_name = _crew_board_name(crew_id)
 
 		date_fmt = await _get_user_date_format()

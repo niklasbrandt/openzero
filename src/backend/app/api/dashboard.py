@@ -39,7 +39,6 @@ import posixpath
 import urllib.parse
 import subprocess
 import redis
-import asyncio
 import logging
 
 logger = logging.getLogger(__name__)
@@ -1631,14 +1630,9 @@ async def get_calendar(year: Optional[int] = None, month: Optional[int] = None, 
 	# Calculate range: One month view based on year/month params, or 30 days ahead from now
 	if year and month:
 		start_date = datetime.datetime(year, month, 1)
-		if month == 12:
-			end_date = datetime.datetime(year + 1, 1, 1) - datetime.timedelta(seconds=1)
-		else:
-			end_date = datetime.datetime(year, month + 1, 1) - datetime.timedelta(seconds=1)
 	else:
 		# Default to a rolling 35-day window to cover current month view
 		start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
-		end_date = start_date + datetime.timedelta(days=35)
 
 	# 1. Fetch Aggregated Events (Google + CalDAV + Local DB)
 	from app.services.calendar import fetch_unified_events

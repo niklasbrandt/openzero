@@ -1215,7 +1215,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 	for match in re.finditer(move_board_pattern, reply):
 		raw_tag = match.group(0)
 		mb_board_name = match.group(1).strip().strip('"\'')
-		mb_target_project = match.group(2).strip().strip('"\'"')
+		mb_target_project = match.group(2).strip().strip('"\'')
 
 		async def _exec_move_board(mb_board_name=mb_board_name, mb_target_project=mb_target_project):
 			return await execute_move_board(mb_board_name, mb_target_project)
@@ -1283,7 +1283,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 				return f"\u26a0 Could not save ambient capture '{content[:60]}'. Check Planka connection."
 			except Exception as _e:
 				logger.error("AMBIENT_CAPTURE failed: %s", _e)
-				return f"\u26a0 Failed to save ambient capture. System error."
+				return "\u26a0 Failed to save ambient capture. System error."
 
 		_dedup_ac = f"AMBIENT_CAPTURE:{am_content.strip().lower()[:120]}"
 		await handle_action("AMBIENT_CAPTURE", raw_tag, _exec_ambient_capture, f"Ambient capture: {am_content[:60]}", dedup_key=_dedup_ac)
