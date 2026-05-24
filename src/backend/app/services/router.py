@@ -1019,68 +1019,72 @@ async def route_message_stream(
 
 
 		# ── Multi-crew panel synthesis (spec 9f) ────────────────────────────
-		# If semantic router returned 2+ crews, check if we actually need both.
-		# We use a fast LLM call to decide if the user's message requires reasoning
-		# from multiple experts or if it's a straightforward command/query.
+		# Always expand the candidate pool via domain-similarity panel candidates,
+		# regardless of whether the semantic router returned 1 or more crews.
+		# This ensures cross-domain queries (e.g. stress + workout) always reach
+		# the LLM dispatcher even when only one crew clears the semantic threshold.
 		_ACTION_STRIP_RE = re.compile(r'\[ACTION:[^\]]*\]', re.IGNORECASE)
-		if len(routed_crews) >= 2:
-			_panel = routed_crews[:3]
-			_word_count = len(user_text.split())
-			_is_simple_q = user_text.rstrip().endswith("?") and _word_count < 8
+		_primary_crew = routed_crews[0] if routed_crews else None
+		_all_candidates: list[str] = list(routed_crews)  # start with semantic results
 
-			_requires_panel = False
-			if _word_count < 5 or _is_simple_q:
-				# Too short to warrant debate
-				_requires_panel = False
-			else:
-				try:
-					await _status("Evaluating expert routing...")
-					from app.services.llm import chat as _fast_chat
-					_candidates_str = ", ".join(routed_crews[:5])
-					_panel_prompt = (
-						f"Message: \"{user_text[:300]}\"\n\n"
-						f"Available expert crews: {_candidates_str}\n\n"
-						"Does this message require complex reasoning, a decision, or synthesizing opinions from multiple specialized experts? "
-						"If it does, reply with a comma-separated list of the experts needed (choose at most 3). "
-						"If it is a straightforward request that only requires the primary expert, reply with exactly 'NO'."
-					)
-					# Use cloud tier for speed and reliability, but allow 25s for local fallbacks
-					_panel_decision = await asyncio.wait_for(_fast_chat(_panel_prompt, tier="cloud"), timeout=25.0)
-					_panel_decision = _panel_decision.strip()
-					logger.info("Router: panel decision LLM returned '%s'", _panel_decision[:50])
-					
-					if _panel_decision.upper().startswith("NO") or _panel_decision.upper().startswith("'NO"):
-						_requires_panel = False
+		if _primary_crew:
+			from app.services.crews import crew_registry as _cr
+			_panel_pool = _cr._panel_candidates.get(_primary_crew, [])
+			for _cid in _panel_pool:
+				if _cid not in _all_candidates:
+					_all_candidates.append(_cid)
+
+		_word_count = len(user_text.split())
+		_is_simple_q = user_text.rstrip().endswith("?") and _word_count < 8
+		_panel = routed_crews[:3]
+		_requires_panel = False
+
+		if _primary_crew and len(_all_candidates) >= 2 and _word_count >= 5 and not _is_simple_q:
+			try:
+				await _status("Evaluating expert routing...")
+				from app.services.llm import chat as _fast_chat
+				_candidates_str = ", ".join(_all_candidates[:6])
+				_panel_prompt = (
+					f"Message: \"{user_text[:300]}\"\n\n"
+					f"Available expert crews: {_candidates_str}\n\n"
+					"Does this message require complex reasoning, a decision, or synthesizing opinions from multiple specialized experts? "
+					"If it does, reply with a comma-separated list of the expert crew IDs needed (choose at most 3, use exact IDs from the list above). "
+					"If it is a straightforward request that only requires the primary expert, reply with exactly 'NO'."
+				)
+				_panel_decision = await asyncio.wait_for(_fast_chat(_panel_prompt, tier="cloud"), timeout=25.0)
+				_panel_decision = _panel_decision.strip()
+				logger.info("Router: panel decision LLM returned '%s'", _panel_decision[:50])
+
+				if _panel_decision.upper().startswith("NO") or _panel_decision.upper().startswith("'NO"):
+					_requires_panel = False
+				else:
+					# Parse CSV, validate against full candidate pool (not just semantic results)
+					_raw_list = re.split(r'[,|]', _panel_decision)
+					_selected = [re.sub(r'[^a-z0-9_]', '', c.strip().lower()) for c in _raw_list]
+					_selected = [c for c in _selected if c]
+					_valid_selected = [c for c in _selected if c in _all_candidates]
+
+					# Always anchor on the primary crew
+					if _primary_crew not in _valid_selected:
+						_valid_selected.insert(0, _primary_crew)
+
+					# Deduplicate, preserve order
+					_seen: set[str] = set()
+					_final_panel: list[str] = []
+					for c in _valid_selected:
+						if c not in _seen:
+							_seen.add(c)
+							_final_panel.append(c)
+
+					if len(_final_panel) >= 2:
+						_requires_panel = True
+						_panel = _final_panel[:3]
 					else:
-						# Parse the CSV list of crews, strip quotes/punctuation
-						_raw_list = re.split(r'[,|]', _panel_decision)
-						_selected = [re.sub(r'[^a-z0-9_]', '', c.strip().lower()) for c in _raw_list]
-						_selected = [c for c in _selected if c]
-						# Only keep valid crews from our semantic routed list
-						_valid_selected = [c for c in _selected if c in routed_crews]
-						
-						# Ensure primary crew is always included if we form a panel
-						if routed_crews[0] not in _valid_selected:
-							_valid_selected.insert(0, routed_crews[0])
-							
-						# Deduplicate while preserving order
-						_seen = set()
-						_final_panel = []
-						for c in _valid_selected:
-							if c not in _seen:
-								_seen.add(c)
-								_final_panel.append(c)
-								
-						if len(_final_panel) >= 2:
-							_requires_panel = True
-							_panel = _final_panel[:3]
-						else:
-							_requires_panel = False
-							
-				except Exception as _pe:
-					logger.warning("Router: panel decision LLM failed: %s — defaulting to YES (safe fallback)", _pe)
-					_requires_panel = True
-					_panel = routed_crews[:3] # Fallback to top 3 semantic matches
+						_requires_panel = False
+
+			except Exception as _pe:
+				logger.warning("Router: panel decision LLM failed: %s — defaulting NO (safe fallback)", _pe)
+				_requires_panel = False
 
 
 			if not _requires_panel:
@@ -1097,12 +1101,27 @@ async def route_message_stream(
 				_MIN_PANEL_TOKENS = 40
 				_r1_contributions: list[tuple[str, str]] = []
 
+				async def _crew_summary(crew_name: str, draft: str, round_label: str) -> str:
+					"""Generate a 1-2 sentence summary of a crew's round output for the status bubble."""
+					try:
+						from app.services.llm import chat as _sc
+						_sp = (
+							f"The {crew_name} expert just completed {round_label}.\n"
+							f"Their output (first 600 chars): {draft[:600]}\n\n"
+							"Summarise their key position or recommendation in 1-2 short sentences. "
+							"Be specific and concrete. No filler phrases like 'the expert said'."
+						)
+						_sum = await asyncio.wait_for(_sc(_sp, tier="cloud"), timeout=12.0)
+						return _sum.strip()
+					except Exception:
+						return ""
+
 				# ROUND 1: Initial Drafts
 				for _cid in _panel:
-					await _status(f"Round 1: Consulting {_cid.title()} expert...")
+					await _status(f"{_cid.title()} · Round 1 — writing initial position...")
 					_header = f"\n\n**[{_cid.title()} - Round 1]**\n"
 					yield _header
-					
+
 					_chunks: list[str] = []
 					try:
 						async for _tok in native_crew_engine.run_crew_stream(_cid, user_text, history=_ctx_history, force_cloud=True):
@@ -1112,6 +1131,12 @@ async def route_message_stream(
 						_pout_clean = _ACTION_STRIP_RE.sub("", _pout).strip()
 						if len(_pout_clean.split()) >= _MIN_PANEL_TOKENS:
 							_r1_contributions.append((_cid, _pout_clean))
+							# Generate and display summary in status bubble
+							_r1_summary = await _crew_summary(_cid.title(), _pout_clean, "Round 1")
+							if _r1_summary:
+								await _status(f"{_cid.title()} · Round 1 done\n{_r1_summary}")
+							else:
+								await _status(f"{_cid.title()} · Round 1 done")
 						else:
 							logger.info("Router: panel kill switch — crew '%s' output too short (%d words)", _cid, len(_pout_clean.split()))
 					except Exception as _e:
@@ -1128,10 +1153,10 @@ async def route_message_stream(
 					# ROUND 2: Rebuttal Loop
 					_r2_contributions: list[tuple[str, str]] = []
 					for _cid, _draft in _r1_contributions:
-						await _status(f"Round 2: {_cid.title()} expert rebuttal...")
+						await _status(f"{_cid.title()} · Round 2 — reviewing peers and updating position...")
 						_header = f"\n\n**[{_cid.title()} - Round 2 Rebuttal]**\n"
 						yield _header
-						
+
 						_others = [f"{o_cid.title()}: {o_draft}" for o_cid, o_draft in _r1_contributions if o_cid != _cid]
 						_others_str = "\n\n".join(_others)
 						_rebuttal_prompt = (
@@ -1139,7 +1164,7 @@ async def route_message_stream(
 							f"Your peers on the panel suggested:\n{_others_str}\n\n"
 							f"Review their advice alongside your own. What do you agree with? What do you disagree with? Provide your final updated recommendation."
 						)
-						
+
 						_chunks = []
 						try:
 							async for _tok in native_crew_engine.run_crew_stream(_cid, _rebuttal_prompt, history=_ctx_history, force_cloud=True):
@@ -1148,6 +1173,12 @@ async def route_message_stream(
 							_pout = "".join(_chunks)
 							_pout_clean = _ACTION_STRIP_RE.sub("", _pout).strip()
 							_r2_contributions.append((_cid, _pout_clean))
+							# Generate and display rebuttal summary
+							_r2_summary = await _crew_summary(_cid.title(), _pout_clean, "Round 2 rebuttal")
+							if _r2_summary:
+								await _status(f"{_cid.title()} · Round 2 done\n{_r2_summary}")
+							else:
+								await _status(f"{_cid.title()} · Round 2 done")
 						except Exception as _e:
 							logger.warning("Router: panel crew %s rebuttal failed: %s", _cid, _e)
 
@@ -1173,7 +1204,10 @@ async def route_message_stream(
 						logger.warning("Router: panel cosine check failed: %s — assuming disagreement", _se)
 						_disagree = True
 
-					await _status("Synthesizing expert opinions...")
+					# Build synthesis preview from what the crews agreed/disagreed on
+					_names_str = " and ".join([c[0].title() for c in _r2_contributions])
+					_agree_str = "broadly converge" if not _disagree else "disagree on key points"
+					await _status(f"Z · Synthesizing\n{_names_str} {_agree_str}. Composing final answer...")
 					yield f"\n\n**[Z - Executive Synthesis]**\n"
 
 					# Build synthesis body
