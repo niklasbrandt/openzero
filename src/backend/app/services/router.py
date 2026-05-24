@@ -1011,23 +1011,47 @@ async def route_message_stream(
 		routed_crews = await route_semantic(
 			user_text, _ctx_history, channel, think_mode=_think_mode, lang=lang,
 		)
+		
+		# Reset response budget after semantic routing (which may block while embedding model loads on cold start)
+		# This ensures we always have a full 20s budget for the actual LLM call, preventing false-positive timeouts.
+		_budget = ResponseBudget()
+		_budget_token = budget_ctx.set(_budget)
+
 
 		# ── Multi-crew panel synthesis (spec 9f) ────────────────────────────
-		# If semantic router returned 2+ crews, check debate-OFF rules.
-		# Score-gap is already enforced inside route_semantic (gap ≤ 0.06 to appear
-		# in the panel), so we only need the message-level debate-OFF checks here.
+		# If semantic router returned 2+ crews, check if we actually need both.
+		# We use a fast LLM call to decide if the user's message requires reasoning
+		# from multiple experts or if it's a straightforward command/query.
 		_ACTION_STRIP_RE = re.compile(r'\[ACTION:[^\]]*\]', re.IGNORECASE)
 		if len(routed_crews) >= 2:
 			_panel = routed_crews[:2]
 			_word_count = len(user_text.split())
-			_has_decision_verb = bool(re.search(
-				r'\b(should|shall|soll|lohnt|which|welche|recommend|empfehlen|better|besser)\b',
-				user_text[:_MAX_RE_INPUT].lower(),
-			))
 			_is_simple_q = user_text.rstrip().endswith("?") and _word_count < 8
-			if not _has_decision_verb or _word_count < 5 or _is_simple_q:
+
+			_requires_panel = False
+			if _word_count < 5 or _is_simple_q:
+				# Too short to warrant debate
+				_requires_panel = False
+			else:
+				try:
+					from app.services.llm import chat as _fast_chat
+					_panel_prompt = (
+						f"Message: \"{user_text[:300]}\"\n\n"
+						"Does this message require complex reasoning, a decision, or synthesizing opinions from multiple specialized experts? "
+						"Or is it a straightforward request/question that one expert can handle alone?\n"
+						"Reply with exactly 'YES' if it requires multiple experts, or 'NO' if not."
+					)
+					# Use cloud tier for speed and reliability
+					_panel_decision = await asyncio.wait_for(_fast_chat(_panel_prompt, tier="cloud"), timeout=5.0)
+					_requires_panel = _panel_decision.strip().upper().startswith("YES")
+					logger.info("Router: panel decision LLM returned '%s'", _panel_decision.strip()[:10])
+				except Exception as _pe:
+					logger.warning("Router: panel decision LLM failed: %s — defaulting to NO", _pe)
+					_requires_panel = False
+
+			if not _requires_panel:
 				# Debate-OFF: degrade to single-crew
-				logger.info("Router: panel debate-OFF (word_count=%d, decision_verb=%s, simple_q=%s) — single crew '%s'", _word_count, _has_decision_verb, _is_simple_q, _panel[0])
+				logger.info("Router: panel debate-OFF (requires_panel=False) — single crew '%s'", _panel[0])
 				routed_crews = [_panel[0]]
 			else:
 				# Panel mode — run both crews in parallel, then Z synthesises

@@ -131,28 +131,6 @@ async def _handle_inbound(sender: str, text: str) -> None:
 
 	history = await bus.ingest("whatsapp", text)
 
-	# Keyword crew routing (same priority as Telegram)
-	routed_crews = await resolve_active_crews(history, text, lang="en")
-	if routed_crews:
-		from app.services.crews_native import native_crew_engine
-		from app.services.llm import last_model_used
-		try:
-			result = await native_crew_engine.run_crew(routed_crews[0], text)
-		except Exception as exc:
-			logger.error("WhatsApp crew engine failed: %s", exc)
-			await send_whatsapp_message("I encountered an error running that crew. Try again in a moment.")
-			return
-		reply, _, _ = await bus.commit_reply(
-			channel="whatsapp",
-			raw_reply=result,
-			model=last_model_used.get(),
-			user_text=text,
-		)
-		from app.services.crews import record_crew_session
-		record_crew_session("whatsapp", routed_crews[0])
-		await send_whatsapp_message(reply)
-		return
-
 	# Full router — handles intent classification, ACTION tags, phantom guard, memory
 	try:
 		import asyncio as _asyncio
@@ -229,22 +207,6 @@ async def _handle_inbound_image(sender: str, media_id: str, user_hint: str) -> N
 	logger.info("WhatsApp vision caption: %s", caption[:120])
 
 	history = await bus.ingest("whatsapp", caption)
-
-	routed_crews = await resolve_active_crews(history, caption, lang="en")
-	if routed_crews:
-		from app.services.crews_native import native_crew_engine
-		from app.services.llm import last_model_used
-		result = await native_crew_engine.run_crew(routed_crews[0], caption)
-		reply, _, _ = await bus.commit_reply(
-			channel="whatsapp",
-			raw_reply=result,
-			model=last_model_used.get(),
-			user_text=caption,
-		)
-		from app.services.crews import record_crew_session
-		record_crew_session("whatsapp", routed_crews[0])
-		await send_whatsapp_message(reply)
-		return
 
 	import asyncio as _asyncio
 	token_stream, result_fut = await route_message_stream(
