@@ -1256,7 +1256,7 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 		r'\b([5-9]|[1-9]\d+)\s+(?:rezepte?|recipes?|mahlzeiten|gerichte?|workouts?|trainings?|pl[aä]ne?|items?|notizen?)\b',
 		user_text[:500], re.IGNORECASE,
 	))
-	_stream_timeout = 300.0 if (_is_complex_reorg or _is_bulk_save) else 240.0
+	_stream_timeout = 900.0 if (_is_complex_reorg or _is_bulk_save) else 900.0
 	try:
 		async with asyncio.timeout(_stream_timeout):
 			async for token in token_stream:
