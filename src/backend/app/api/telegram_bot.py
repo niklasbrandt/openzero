@@ -1637,16 +1637,7 @@ async def _process_crew_stream(update: Update, context: ContextTypes.DEFAULT_TYP
 		if action_errors:
 			clean_reply += "\n\n" + "  ".join(action_errors)
 			logger.warning("Crew panel '%s' action errors: %s", crew_display, action_errors)
-		elif not all_executed_cmds:
-			# No actions executed — check if the crew hallucinated a confirmation
-			_phantom_words = ("created", "added", "saved", "set up", "scheduled", "built", "generated")
-			if any(w in clean_reply.lower() for w in _phantom_words):
-				clean_reply += (
-					"\n\n\u26a0 Nothing was actually saved \u2014 "
-					"the crew described the action without executing it. Please try again."
-				)
-				logger.warning("Crew panel '%s': phantom confirmation (no executed_cmds)", crew_display)
-		else:
+		elif all_executed_cmds:
 			logger.info("Crew panel '%s' executed actions: %s", crew_display, all_executed_cmds)
 
 		display_clean = clean_reply.strip()

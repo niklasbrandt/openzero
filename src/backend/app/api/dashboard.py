@@ -1070,7 +1070,7 @@ async def dashboard_crew_stream(crew_id: str, req: ChatRequest, request: Request
 		try:
 			import asyncio as _asyncio
 			try:
-				async with _asyncio.timeout(180.0):
+				async with _asyncio.timeout(_stream_timeout):
 					async for chunk in native_crew_engine.run_crew_stream(crew_id, req.message):
 						if await request.is_disconnected():
 							logger.info("Dashboard crew '%s' stream aborted by client", str(crew_id).replace('\n', ' ').replace('\r', ' '))
@@ -1078,7 +1078,7 @@ async def dashboard_crew_stream(crew_id: str, req: ChatRequest, request: Request
 						chunks.append(chunk)
 						yield f"data: {json.dumps({'token': chunk})}\n\n"
 			except _asyncio.TimeoutError:
-				logger.warning("Dashboard crew '%s' stream timed out after 180 s", str(crew_id).replace('\n', ' ').replace('\r', ' '))
+				logger.warning("Dashboard crew '%s' stream timed out after %s s", str(crew_id).replace('\n', ' ').replace('\r', ' '), _stream_timeout)
 				yield f"data: {json.dumps({'error': 'Crew response timed out. Please try again.'})}\n\n"
 				return
 
