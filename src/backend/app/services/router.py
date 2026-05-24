@@ -1066,11 +1066,15 @@ async def route_message_stream(
 						_chunks.append(_tok)
 					return _cid, "".join(_chunks)
 
-				_panel_results = await asyncio.gather(
-					_run_panel_crew(_panel[0]),
-					_run_panel_crew(_panel[1]),
-					return_exceptions=True,
-				)
+				_panel_results = []
+				for _cid in _panel:
+					await _status(f"Consulting {_cid.title()} expert...")
+					try:
+						_res = await _run_panel_crew(_cid)
+						_panel_results.append(_res)
+					except Exception as _e:
+						logger.warning("Router: panel crew %s failed: %s", _cid, _e)
+						_panel_results.append(Exception(f"Failed: {_e}"))
 
 				# Collect valid contributions (strip ACTION tags; kill switch ≥ 40 tokens)
 				_MIN_PANEL_TOKENS = 40
