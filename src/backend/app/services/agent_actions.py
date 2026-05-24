@@ -1386,6 +1386,16 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 			_warn = "No action was executed — please try again."
 		clean_reply = clean_reply.rstrip() + "\n\n\u26a0 " + _warn
 		logger.warning("parse_and_execute_actions: phantom confirmation — raw reply had mutating ACTION tags but nothing executed")
+	elif not executed_cmds and not pending_actions:
+		# Natural language phantom guard: no action tags were generated, but the LLM
+		# hallucinated completing an action using confident English verbs.
+		_phantom_words = ("created", "added", "saved", "set up", "scheduled", "built", "generated")
+		if any(w in clean_reply.lower() for w in _phantom_words):
+			clean_reply += (
+				"\n\n\u26a0 Nothing was actually saved \u2014 "
+				"the AI described the action without executing it. Please try again."
+			)
+			logger.warning("parse_and_execute_actions: phantom confirmation — hallucinated action execution (no tags)")
 
 	return clean_reply, executed_cmds, pending_actions
 
