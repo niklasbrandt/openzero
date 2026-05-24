@@ -29,7 +29,7 @@ _DOCKER_PATH = Path("/app/agent")
 try:
 	_LOCAL_PATH = Path(__file__).parents[4] / "agent"
 except IndexError:
-	_LOCAL_PATH = _DOCKER_PATH
+	_LOCAL_PATH = Path("agent")
 AGENT_FOLDER_PATH: Path = _DOCKER_PATH if _DOCKER_PATH.exists() else _LOCAL_PATH
 
 SUPPORTED_EXTENSIONS = {".md", ".txt", ".docx", ".pdf"}
