@@ -1034,6 +1034,7 @@ async def route_message_stream(
 				_requires_panel = False
 			else:
 				try:
+					await _status("Evaluating expert routing...")
 					from app.services.llm import chat as _fast_chat
 					_panel_prompt = (
 						f"Message: \"{user_text[:300]}\"\n\n"
@@ -1041,13 +1042,13 @@ async def route_message_stream(
 						"Or is it a straightforward request/question that one expert can handle alone?\n"
 						"Reply with exactly 'YES' if it requires multiple experts, or 'NO' if not."
 					)
-					# Use cloud tier for speed and reliability
-					_panel_decision = await asyncio.wait_for(_fast_chat(_panel_prompt, tier="cloud"), timeout=5.0)
+					# Use cloud tier for speed and reliability, but allow 25s for local fallbacks
+					_panel_decision = await asyncio.wait_for(_fast_chat(_panel_prompt, tier="cloud"), timeout=25.0)
 					_requires_panel = _panel_decision.strip().upper().startswith("YES")
 					logger.info("Router: panel decision LLM returned '%s'", _panel_decision.strip()[:10])
 				except Exception as _pe:
-					logger.warning("Router: panel decision LLM failed: %s — defaulting to NO", _pe)
-					_requires_panel = False
+					logger.warning("Router: panel decision LLM failed: %s — defaulting to YES (safe fallback)", _pe)
+					_requires_panel = True
 
 			if not _requires_panel:
 				# Debate-OFF: degrade to single-crew
@@ -1128,10 +1129,13 @@ async def route_message_stream(
 						_synth_chunks.append(_tok)
 						yield _tok
 
+					attribution = f"\n\n_(Reasoning by crew {_panel[0]} + {_panel[1]})_"
+					yield attribution
+
 					_synth_full = rehydrate_response("".join(_synth_chunks), get_active_rep_map())
 					_panel_model = f"panel:{_panel[0]}+{_panel[1]}"
 					_p_clean, _p_cmds, _p_pending = await bus.commit_reply(
-						channel=channel, raw_reply=_synth_full,
+						channel=channel, raw_reply=_synth_full + attribution,
 						model=_panel_model, user_text=user_text, save=save_history,
 					)
 					# Strip crew-run markers (no actions in panel mode)
@@ -1159,6 +1163,8 @@ async def route_message_stream(
 			# Include attribution in raw_reply so it is stored in DB and
 			# _last_attributed_crew can detect this crew for follow-up continuation.
 			attribution = f"\n\n_(Reasoning by crew {crew_id})_"
+			yield attribution
+
 			clean, cmds, pending = await bus.commit_reply(
 				channel=channel, raw_reply=full + attribution,
 				model=f"crew:{crew_id}", user_text=user_text, save=save_history,
