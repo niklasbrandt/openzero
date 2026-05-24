@@ -1034,6 +1034,29 @@ async def route_message_stream(
 				if _cid not in _all_candidates:
 					_all_candidates.append(_cid)
 
+		# Belt-and-suspenders: if panel_candidates is empty/short (e.g. cold-start
+		# before embeddings are computed), expand directly from profile_vectors.
+		# This ensures multi-domain messages always have a candidate pool to evaluate.
+		if _primary_crew and len(_all_candidates) < 2:
+			try:
+				import numpy as _np
+				from app.services.crews import crew_registry as _cr2
+				from app.services.semantic_router import _cosine as _r_cosine
+				_pvecs = getattr(_cr2, "_profile_vectors", {})
+				if _pvecs and _primary_crew in _pvecs:
+					_pv = _pvecs[_primary_crew]
+					_sims = [
+						(cid, _r_cosine(_pv, v))
+						for cid, v in _pvecs.items() if cid != _primary_crew
+					]
+					_sims.sort(key=lambda x: -x[1])
+					for _scid, _ssim in _sims[:4]:
+						if _scid not in _all_candidates:
+							_all_candidates.append(_scid)
+					logger.debug("Router: expanded candidates from profile_vectors: %s", _all_candidates)
+			except Exception as _exp_e:
+				logger.debug("Router: profile_vectors expansion failed: %s", _exp_e)
+
 		_word_count = len(user_text.split())
 		_is_simple_q = user_text.rstrip().endswith("?") and _word_count < 8
 		_panel = routed_crews[:3]

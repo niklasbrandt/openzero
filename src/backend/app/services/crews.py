@@ -274,8 +274,8 @@ class CrewRegistry:
 				self._crews[cfg.id] = cfg
 
 		logger.info("Registry: Successfully loaded %d active crews.", len(self._crews))
-		self._compute_panel_candidates()
 		await self._build_semantic_profiles()
+		self._compute_panel_candidates()
 
 	async def _build_semantic_profiles(self) -> None:
 		"""Embed crew profile texts and cache as numpy vectors.
@@ -322,25 +322,43 @@ class CrewRegistry:
 			await asyncio.gather(*tasks, return_exceptions=True)
 		logger.info("Registry: Keyword pre-cache complete for %d crews across %s", len(self._crews), languages)
 
-	def _compute_panel_candidates(self, top_n: int = 5, min_score: float = 0.15) -> None:
-		"""Auto-compute domain-similar crew pairs via bag-of-words Jaccard on name + description + character roles.
+	def _compute_panel_candidates(self, top_n: int = 5, min_score: float = 0.25) -> None:
+		"""Auto-compute domain-similar crew pairs using cosine similarity on sentence embeddings.
 
-		Run once after load(). Result cached in self._panel_candidates.
+		Must be called AFTER _build_semantic_profiles() so _profile_vectors exist.
+		Result cached in self._panel_candidates.
 		"""
-		crews = list(self._crews.values())
-		vectors = {c.id: _crew_tokens(c) for c in crews}
+		import numpy as np
+
+		profile_vectors: dict = getattr(self, "_profile_vectors", {})
+		if not profile_vectors:
+			# Embedder not ready yet — fall back to all crews being candidates for each other.
+			# This is a bootstrap situation; the router will re-expand from _all_candidates anyway.
+			all_ids = list(self._crews.keys())
+			self._panel_candidates = {cid: [o for o in all_ids if o != cid] for cid in all_ids}
+			logger.info("Panel candidates (bootstrap — no embeddings yet): %d crews all-vs-all", len(all_ids))
+			return
+
+		def _cosine(a: np.ndarray, b: np.ndarray) -> float:
+			na = np.linalg.norm(a)
+			nb = np.linalg.norm(b)
+			if na == 0 or nb == 0:
+				return 0.0
+			return float(np.dot(a, b) / (na * nb))
+
 		self._panel_candidates: Dict[str, List[str]] = {}
-		for crew in crews:
+		crew_ids = list(profile_vectors.keys())
+		for cid in crew_ids:
 			scores = [
-				(other.id, _jaccard(vectors[crew.id], vectors[other.id]))
-				for other in crews if other.id != crew.id
+				(other_id, _cosine(profile_vectors[cid], profile_vectors[other_id]))
+				for other_id in crew_ids if other_id != cid
 			]
 			scores.sort(key=lambda x: -x[1])
-			self._panel_candidates[crew.id] = [
-				cid for cid, s in scores[:top_n] if s >= min_score
+			self._panel_candidates[cid] = [
+				oid for oid, s in scores[:top_n] if s >= min_score
 			]
 		nonempty = {k: v for k, v in self._panel_candidates.items() if v}
-		logger.info("Panel candidates (auto-computed): %s", nonempty)
+		logger.info("Panel candidates (cosine similarity >= %.2f): %s", min_score, nonempty)
 
 	def get(self, crew_id: str) -> Optional[CrewConfig]:
 		return self._crews.get(crew_id)
