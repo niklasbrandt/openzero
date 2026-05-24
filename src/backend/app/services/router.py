@@ -1024,7 +1024,7 @@ async def route_message_stream(
 		# from multiple experts or if it's a straightforward command/query.
 		_ACTION_STRIP_RE = re.compile(r'\[ACTION:[^\]]*\]', re.IGNORECASE)
 		if len(routed_crews) >= 2:
-			_panel = routed_crews[:2]
+			_panel = routed_crews[:3]
 			_word_count = len(user_text.split())
 			_is_simple_q = user_text.rstrip().endswith("?") and _word_count < 8
 
@@ -1036,93 +1036,157 @@ async def route_message_stream(
 				try:
 					await _status("Evaluating expert routing...")
 					from app.services.llm import chat as _fast_chat
+					_candidates_str = ", ".join(routed_crews[:5])
 					_panel_prompt = (
 						f"Message: \"{user_text[:300]}\"\n\n"
+						f"Available expert crews: {_candidates_str}\n\n"
 						"Does this message require complex reasoning, a decision, or synthesizing opinions from multiple specialized experts? "
-						"Or is it a straightforward request/question that one expert can handle alone?\n"
-						"Reply with exactly 'YES' if it requires multiple experts, or 'NO' if not."
+						"If it does, reply with a comma-separated list of the experts needed (choose at most 3). "
+						"If it is a straightforward request that only requires the primary expert, reply with exactly 'NO'."
 					)
 					# Use cloud tier for speed and reliability, but allow 25s for local fallbacks
 					_panel_decision = await asyncio.wait_for(_fast_chat(_panel_prompt, tier="cloud"), timeout=25.0)
-					_requires_panel = _panel_decision.strip().upper().startswith("YES")
-					logger.info("Router: panel decision LLM returned '%s'", _panel_decision.strip()[:10])
+					_panel_decision = _panel_decision.strip()
+					logger.info("Router: panel decision LLM returned '%s'", _panel_decision[:50])
+					
+					if _panel_decision.upper().startswith("NO") or _panel_decision.upper().startswith("'NO"):
+						_requires_panel = False
+					else:
+						# Parse the CSV list of crews, strip quotes/punctuation
+						_raw_list = re.split(r'[,|]', _panel_decision)
+						_selected = [re.sub(r'[^a-z0-9_]', '', c.strip().lower()) for c in _raw_list]
+						_selected = [c for c in _selected if c]
+						# Only keep valid crews from our semantic routed list
+						_valid_selected = [c for c in _selected if c in routed_crews]
+						
+						# Ensure primary crew is always included if we form a panel
+						if routed_crews[0] not in _valid_selected:
+							_valid_selected.insert(0, routed_crews[0])
+							
+						# Deduplicate while preserving order
+						_seen = set()
+						_final_panel = []
+						for c in _valid_selected:
+							if c not in _seen:
+								_seen.add(c)
+								_final_panel.append(c)
+								
+						if len(_final_panel) >= 2:
+							_requires_panel = True
+							_panel = _final_panel[:3]
+						else:
+							_requires_panel = False
+							
 				except Exception as _pe:
 					logger.warning("Router: panel decision LLM failed: %s — defaulting to YES (safe fallback)", _pe)
 					_requires_panel = True
+					_panel = routed_crews[:3] # Fallback to top 3 semantic matches
+
 
 			if not _requires_panel:
 				# Debate-OFF: degrade to single-crew
 				logger.info("Router: panel debate-OFF (requires_panel=False) — single crew '%s'", _panel[0])
 				routed_crews = [_panel[0]]
 			else:
-				# Panel mode — run both crews in parallel, then Z synthesises
+				# Panel mode — run 2-3 crews, then multi-round debate, then Z synthesises
 				_force_cloud = True
-				logger.info("Router: panel mode — '%s' + '%s'", _panel[0], _panel[1])
-				await _status(_t.get("status_routing_crew", "Routing to {crew}...").format(crew=f"{_panel[0]} + {_panel[1]}"))
+				_panel_str = " + ".join(_panel)
+				logger.info("Router: panel mode — %s", _panel_str)
+				await _status(_t.get("status_routing_crew", "Routing to {crew}...").format(crew=_panel_str))
 
-				async def _run_panel_crew(_cid: str) -> tuple[str, str]:
-					_chunks: list[str] = []
-					async for _tok in native_crew_engine.run_crew_stream(_cid, user_text, history=_ctx_history, force_cloud=True):
-						_chunks.append(_tok)
-					return _cid, "".join(_chunks)
+				_MIN_PANEL_TOKENS = 40
+				_r1_contributions: list[tuple[str, str]] = []
 
-				_panel_results = []
+				# ROUND 1: Initial Drafts
 				for _cid in _panel:
-					await _status(f"Consulting {_cid.title()} expert...")
+					await _status(f"Round 1: Consulting {_cid.title()} expert...")
+					_header = f"\n\n**[{_cid.title()} - Round 1]**\n"
+					yield _header
+					
+					_chunks: list[str] = []
 					try:
-						_res = await _run_panel_crew(_cid)
-						_panel_results.append(_res)
+						async for _tok in native_crew_engine.run_crew_stream(_cid, user_text, history=_ctx_history, force_cloud=True):
+							_chunks.append(_tok)
+							yield _tok
+						_pout = "".join(_chunks)
+						_pout_clean = _ACTION_STRIP_RE.sub("", _pout).strip()
+						if len(_pout_clean.split()) >= _MIN_PANEL_TOKENS:
+							_r1_contributions.append((_cid, _pout_clean))
+						else:
+							logger.info("Router: panel kill switch — crew '%s' output too short (%d words)", _cid, len(_pout_clean.split()))
 					except Exception as _e:
 						logger.warning("Router: panel crew %s failed: %s", _cid, _e)
-						_panel_results.append(Exception(f"Failed: {_e}"))
 
-				# Collect valid contributions (strip ACTION tags; kill switch ≥ 40 tokens)
-				_MIN_PANEL_TOKENS = 40
-				_contributions: list[tuple[str, str]] = []
-				for _pr in _panel_results:
-					if isinstance(_pr, BaseException):
-						logger.warning("Router: panel crew failed: %s", _pr)
-						continue
-					_pcid, _pout = _pr
-					_pout_clean = _ACTION_STRIP_RE.sub("", _pout).strip()
-					if len(_pout_clean.split()) >= _MIN_PANEL_TOKENS:
-						_contributions.append((_pcid, _pout_clean))
-					else:
-						logger.info("Router: panel kill switch — crew '%s' output too short (%d words), dropped", _pcid, len(_pout_clean.split()))
-
-				if len(_contributions) < 2:
+				if len(_r1_contributions) < 2:
 					# Kill switch triggered: fall back to single crew
-					_fallback_id = _contributions[0][0] if _contributions else _panel[0]
+					_fallback_id = _r1_contributions[0][0] if _r1_contributions else _panel[0]
 					logger.info("Router: panel fell below 2 viable contributions — single crew '%s'", _fallback_id)
 					routed_crews = [_fallback_id]
+					yield f"\n\n_(Debate aborted, deferring to {_fallback_id.title()})_\n"
 					# Fall through to the normal single-crew path below
 				else:
-					# Check cosine similarity to decide labelling
+					# ROUND 2: Rebuttal Loop
+					_r2_contributions: list[tuple[str, str]] = []
+					for _cid, _draft in _r1_contributions:
+						await _status(f"Round 2: {_cid.title()} expert rebuttal...")
+						_header = f"\n\n**[{_cid.title()} - Round 2 Rebuttal]**\n"
+						yield _header
+						
+						_others = [f"{o_cid.title()}: {o_draft}" for o_cid, o_draft in _r1_contributions if o_cid != _cid]
+						_others_str = "\n\n".join(_others)
+						_rebuttal_prompt = (
+							f"User asked: \"{user_text}\"\n\n"
+							f"Your peers on the panel suggested:\n{_others_str}\n\n"
+							f"Review their advice alongside your own. What do you agree with? What do you disagree with? Provide your final updated recommendation."
+						)
+						
+						_chunks = []
+						try:
+							async for _tok in native_crew_engine.run_crew_stream(_cid, _rebuttal_prompt, history=_ctx_history, force_cloud=True):
+								_chunks.append(_tok)
+								yield _tok
+							_pout = "".join(_chunks)
+							_pout_clean = _ACTION_STRIP_RE.sub("", _pout).strip()
+							_r2_contributions.append((_cid, _pout_clean))
+						except Exception as _e:
+							logger.warning("Router: panel crew %s rebuttal failed: %s", _cid, _e)
+
+					# Check cosine similarity to decide labelling (on the rebuttals)
 					import numpy as np
 					from app.services.semantic_router import _cosine as _vec_cosine
 					from app.services.memory import get_embedder
 					_loop = asyncio.get_event_loop()
+					_disagree = False
 					try:
-						_v1 = await _loop.run_in_executor(None, lambda: np.array(get_embedder().encode(_contributions[0][1][:500])))
-						_v2 = await _loop.run_in_executor(None, lambda: np.array(get_embedder().encode(_contributions[1][1][:500])))
-						_sim = _vec_cosine(_v1, _v2)
+						_vecs = []
+						for _, _draft in _r2_contributions:
+							_vec = await _loop.run_in_executor(None, lambda d=_draft: np.array(get_embedder().encode(d[:500])))
+							_vecs.append(_vec)
+						_sims = []
+						for i in range(len(_vecs)):
+							for j in range(i+1, len(_vecs)):
+								_sims.append(_vec_cosine(_vecs[i], _vecs[j]))
+						_min_sim = min(_sims) if _sims else 1.0
+						_disagree = _min_sim < 0.3
+						logger.info("Router: panel cosine similarity=%.3f → %s", _min_sim, "disagree (labeled)" if _disagree else "agree (silent merge)")
 					except Exception as _se:
 						logger.warning("Router: panel cosine check failed: %s — assuming disagreement", _se)
-						_sim = 0.0
-					_disagree = _sim < 0.3
-					logger.info("Router: panel cosine similarity=%.3f → %s", _sim, "disagree (labeled)" if _disagree else "agree (silent merge)")
+						_disagree = True
+
+					await _status("Synthesizing expert opinions...")
+					yield f"\n\n**[Z - Executive Synthesis]**\n"
 
 					# Build synthesis body
 					if _disagree:
-						_synth_body = f"{_contributions[0][0].title()}: {_contributions[0][1]}\n\n{_contributions[1][0].title()}: {_contributions[1][1]}"
-						_merge_inst = "The crews disagree. Prefix each section with the crew's name label. Your final word overrules both."
+						_synth_body = "\n\n".join([f"{c[0].title()}: {c[1]}" for c in _r2_contributions])
+						_merge_inst = "The crews disagree. Prefix each section with the crew's name label. Your final word overrules them."
 					else:
-						_synth_body = f"{_contributions[0][1]}\n\n{_contributions[1][1]}"
+						_synth_body = "\n\n".join([f"{c[1]}" for c in _r2_contributions])
 						_merge_inst = "The crews broadly agree. Synthesize silently into one response — no section labels."
 
 					_synth_prompt = (
-						f"Two specialist crews responded to the user question: \"{user_text[:200]}\"\n\n"
-						f"{_synth_body}\n\n"
+						f"A panel of {len(_r2_contributions)} specialist crews debated the user question: \"{user_text[:200]}\"\n\n"
+						f"Their final stances are:\n\n{_synth_body}\n\n"
 						f"{_merge_inst} Reply in the user's language."
 					)
 					_synth_system = "You are Z. Synthesize crew outputs into a single clear, direct response. No meta-commentary about the synthesis process."
@@ -1133,11 +1197,11 @@ async def route_message_stream(
 						_synth_chunks.append(_tok)
 						yield _tok
 
-					attribution = f"\n\n_(Reasoning by crew {_panel[0]} + {_panel[1]})_"
+					attribution = f"\n\n_(Reasoning by crew {' + '.join([c[0] for c in _r2_contributions])})_"
 					yield attribution
 
 					_synth_full = rehydrate_response("".join(_synth_chunks), get_active_rep_map())
-					_panel_model = f"panel:{_panel[0]}+{_panel[1]}"
+					_panel_model = f"panel:{'+'.join([c[0] for c in _r2_contributions])}"
 					_p_clean, _p_cmds, _p_pending = await bus.commit_reply(
 						channel=channel, raw_reply=_synth_full + attribution,
 						model=_panel_model, user_text=user_text, save=save_history,

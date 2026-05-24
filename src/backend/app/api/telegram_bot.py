@@ -1345,9 +1345,7 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 
 	clean_reply = strip_llm_time_header(result.reply)
 
-	# Strip attribution footer from display path — raw_reply in DB already stores it
-	# for crew follow-up routing; stripping here prevents "(Reasoning by crew X)" leaking to chat.
-	display_clean = re.sub(r'\n\n_?\(Reasoning by crew [^)]{1,200}\)_?', '', clean_reply).strip()
+	display_clean = clean_reply.strip()
 
 	html_reply = _md_to_html(display_clean)
 	footer = await _get_stats_footer()
@@ -1651,9 +1649,7 @@ async def _process_crew_stream(update: Update, context: ContextTypes.DEFAULT_TYP
 		else:
 			logger.info("Crew panel '%s' executed actions: %s", crew_display, all_executed_cmds)
 
-		# Attribution already included in last section via commit — no extra append needed.
-		# Strip attribution footer from display path; DB copy (via commit_reply) retains it.
-		display_clean = re.sub(r'\n\n_?\(Reasoning by crew [^)]{1,200}\)_?', '', clean_reply).strip()
+		display_clean = clean_reply.strip()
 		display_final = f"<b>{format_time(dt=receipt_dt)}</b>\n\n{_md_to_html(display_clean)}"
 		await _send_chunked_reply(thinking_msg, display_final, nav_footer=get_nav_footer(t))
 
