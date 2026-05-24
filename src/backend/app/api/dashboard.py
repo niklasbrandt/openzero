@@ -548,12 +548,7 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		response = await chat(prompt)
 		clean_reply, executed, pending = await parse_and_execute_actions(response, require_hitl=True)
 		
-		# Reasoning indicator extraction
-		crews = [c.split(":", 1)[1] for c in executed if c.startswith("__CREW_RUN__:")]
-		executed = [c for c in executed if not c.startswith("__CREW_RUN__:")]
-		if crews:
-			clean_reply += f"\n\n*(Reasoning by crew {', '.join(crews)})*"
-
+		# Crews are already attributed in the raw text by the router
 		if executed or pending:
 			_cmsg = " ".join([str(c) for c in executed])
 			safe_pending = [{"description": str(p.get("description", "Action")), "type": str(p.get("type", "UNKNOWN"))} for p in pending]
@@ -621,12 +616,7 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 		from app.services.agent_actions import parse_and_execute_actions
 		clean_reply, executed_cmds, pending_actions = await parse_and_execute_actions(msg, db=db, require_hitl=True)
 		
-		# Reasoning indicator extraction
-		crews = [c.split(":", 1)[1] for c in executed_cmds if c.startswith("__CREW_RUN__:")]
-		executed_cmds = [c for c in executed_cmds if not c.startswith("__CREW_RUN__:")]
-		if crews:
-			clean_reply += f"\n\n*(Reasoning by crew {', '.join(crews)})*"
-
+		# Crews are already attributed in the raw text by the router
 		_direct = clean_reply or "Direct execution complete."
 		await _reply(_direct, model="operator_direct")
 		if not req.skip_history:
@@ -662,12 +652,7 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 			save=not req.skip_history,
 		)
 
-		# Reasoning indicator extraction
-		crews = [c.split(":", 1)[1] for c in executed_cmds if c.startswith("__CREW_RUN__:")]
-		executed_cmds = [c for c in executed_cmds if not c.startswith("__CREW_RUN__:")]
-		if crews:
-			clean_reply += f"\n\n*(Reasoning by crew {', '.join(crews)})*"
-
+		# Crews are already attributed in the raw text by the router
 		safe_executed = [str(c) for c in executed_cmds]
 		safe_pending = [{"description": str(p.get("description", "Action")), "type": str(p.get("type", "UNKNOWN"))} for p in pending_actions]
 		
@@ -1111,7 +1096,7 @@ async def dashboard_crew_stream(crew_id: str, req: ChatRequest, request: Request
 			)
 			if executed_cmds:
 				logger.info("Dashboard crew '%s' executed actions: %s", safe_crew_id, str(executed_cmds).replace('\n', ' ').replace('\r', ' '))
-			clean_reply += f"\n\n*(Reasoning by crew {crew_id})*"
+			# Attribution is handled by the router or bus
 			yield f"data: {json.dumps({'done': True, 'reply': clean_reply, 'actions': executed_cmds, 'pending': pending_actions})}\n\n"
 		except Exception as e:
 			logger.error("Dashboard Crew Stream Error: %s", e)

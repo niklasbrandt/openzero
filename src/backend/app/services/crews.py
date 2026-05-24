@@ -736,14 +736,8 @@ async def resolve_active_crews(history: list, user_text: str, lang: str = "en", 
 	candidate_configs = [crew_registry.get(sid) for sid in candidates if sid != primary and sid not in exclude]
 	candidate_configs = [c for c in candidate_configs if c]
 	
-	if candidate_configs:
-		kw_tasks = [_get_effective_keywords(cc, lang) for cc in candidate_configs]
-		kw_lists = await asyncio.gather(*kw_tasks)
-		for secondary_cfg, secondary_kws in zip(candidate_configs, kw_lists):
-			if len(result) >= max_crews:
-				break
-			# Only include a secondary crew if it also keyword-matches the current message.
-			# This prevents domain-similarity alone from pulling in unrelated crews.
-			if secondary_kws and _keyword_matches(secondary_kws, lower_text):
-				result.append(secondary_cfg.id)
+	for secondary_cfg in candidate_configs:
+		if len(result) >= max_crews:
+			break
+		result.append(secondary_cfg.id)
 	return result
