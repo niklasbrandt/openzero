@@ -123,6 +123,8 @@ class MessageBus:
 	def __init__(self) -> None:
 		# channel_id → push function for proactive outbound messages
 		self._channels: dict[str, _PushFn] = {}
+		self.warmup_complete: bool = False
+		self.missed_messages_during_warmup: bool = False
 
 	# ─── Channel Registration ──────────────────────────────────────────────
 
@@ -158,6 +160,9 @@ class MessageBus:
 		Returns:
 			Cross-channel history list ready to pass to chat_with_context(history=…).
 		"""
+		if not self.warmup_complete:
+			self.missed_messages_during_warmup = True
+
 		from app.models.db import save_global_message, get_rolling_history
 		if save:
 			await save_global_message(channel, "user", user_text)
