@@ -1176,7 +1176,6 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 	"""
 	import time
 	from app.services.router import route_message_stream
-	from app.services.crews import resolve_active_crews
 
 	# Capture receipt time before any LLM call so the timestamp header reflects
 	# when the user's message arrived, not when the model finished generating.
@@ -1184,16 +1183,6 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 
 	lang = await get_user_lang()
 	t = get_translations(lang)
-
-	# For non-followup messages, check keyword routing first so we can hand off
-	# to _process_crew_stream (which handles its own Telegram UX).
-	if not is_followup:
-		_h = history or []
-		routed_crews = await resolve_active_crews(_h, user_text, lang=lang)
-		if routed_crews:
-			logger.info("Auto-routing '%s...' to crew panel %s", user_text[:40], routed_crews)
-			await _process_crew_stream(update, context, routed_crews, user_text, t, already_ingested=True)
-			return False
 
 	# Use native Telegram typing indicator. thinking_msg is created lazily
 	# on first status update so we don't send a placeholder that just sits there.

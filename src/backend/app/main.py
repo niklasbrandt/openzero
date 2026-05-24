@@ -160,12 +160,6 @@ CREATE TABLE IF NOT EXISTS walkthrough_stops (
 
                 logging.info("✓ Background heartbeat: All systems fully operational.")
 
-                try:
-                    from app.services.message_bus import bus
-                    await bus.push_all("I am back!")
-                except Exception as _bus_err:
-                    logging.warning("⚠ Failed to send warmup notification: %s", _bus_err)
-
             except Exception as _bg_err:
                 logging.warning("⚠ Warning: Background init tasks failed: %s", _bg_err)
 
