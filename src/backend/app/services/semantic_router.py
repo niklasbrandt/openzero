@@ -24,8 +24,12 @@ def _sanitize_for_log(text: str, max_len: int = 80) -> str:
 # ---------------------------------------------------------------------------
 # Config path resolution — tries /app/config.yaml (Docker), then repo root
 # ---------------------------------------------------------------------------
-_REPO_CONFIG = Path(__file__).parents[4] / "config.yaml"
 _DOCKER_CONFIG = Path("/app/config.yaml")
+try:
+	_REPO_CONFIG = Path(__file__).parents[4] / "config.yaml"
+except IndexError:
+	_REPO_CONFIG = Path("config.yaml")
+
 _CONFIG_PATH = _DOCKER_CONFIG if _DOCKER_CONFIG.exists() else _REPO_CONFIG
 
 _ROUTING_CFG: Optional[dict] = None
