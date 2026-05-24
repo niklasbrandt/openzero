@@ -348,7 +348,11 @@ class CrewRegistry:
 	def list_active(self) -> List[CrewConfig]:
 		return list(self._crews.values())
 
-AGENT_FOLDER_PATH = Path("/app/agent") if Path("/app/agent").exists() else Path(__file__).parents[4] / "agent"
+try:
+	_fallback_agent = Path(__file__).parents[4] / "agent"
+except IndexError:
+	_fallback_agent = Path("agent")
+AGENT_FOLDER_PATH = Path("/app/agent") if Path("/app/agent").exists() else _fallback_agent
 crew_registry = CrewRegistry(agent_dir=str(AGENT_FOLDER_PATH))
 
 # ISO 639-1 code → human-readable language name for the translation prompt
