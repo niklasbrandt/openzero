@@ -1029,6 +1029,10 @@ async def dashboard_chat_stream(req: ChatRequest, request: Request, _rl: None = 
 			_stream_timeout = 900.0 if _reorg_re.search(msg[:500]) else 900.0
 			async with _asyncio.timeout(_stream_timeout):
 				async for token in token_stream:
+					# Suppress the panel-mode sentinel — it is an internal routing
+					# signal for channel handlers and must never reach the frontend.
+					if token == "__PANEL_MODE__":
+						continue
 					yield f"data: {json.dumps({'token': token})}\n\n"
 		except _asyncio.TimeoutError:
 			logger.warning("Dashboard chat stream timed out after %s s", _stream_timeout)

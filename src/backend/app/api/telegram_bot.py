@@ -1244,6 +1244,11 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 	chunks: list[str] = []
 	last_edit_time = time.time()
 	EDIT_INTERVAL = 1.5
+	# Panel mode flag: set True when the router emits the __PANEL_MODE__ sentinel.
+	# In panel mode the status bubble is reserved for per-round crew progress updates
+	# emitted by _status_update(); we suppress progressive token preview so those
+	# updates are not immediately overwritten by growing raw token text.
+	_panel_mode = False
 	# Board-reorganisation requests require generating many action tags (MOVE_CARD,
 	# CREATE_LIST) which can exceed 120 s on a local 3-8 B model. Detect early and
 	# give those requests up to 300 s. Everything else keeps the 120 s cap.
@@ -1260,7 +1265,17 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 	try:
 		async with asyncio.timeout(_stream_timeout):
 			async for token in token_stream:
+				# Intercept the panel-mode sentinel — never include it in the reply.
+				if token == "__PANEL_MODE__":
+					_panel_mode = True
+					logger.debug("_process_freetext: panel mode activated — suppressing progressive preview")
+					continue
 				chunks.append(token)
+				# In panel mode the status bubble is managed by _status_update().
+				# Skip the progressive token preview so we don't overwrite per-round
+				# crew progress messages with raw streaming text.
+				if _panel_mode:
+					continue
 				now = time.time()
 				if now - last_edit_time >= EDIT_INTERVAL:
 					partial = "".join(chunks)

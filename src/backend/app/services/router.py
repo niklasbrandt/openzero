@@ -1083,8 +1083,20 @@ async def route_message_stream(
 						_requires_panel = False
 
 			except Exception as _pe:
-				logger.warning("Router: panel decision LLM failed: %s — defaulting NO (safe fallback)", _pe)
-				_requires_panel = False
+				# When the panel-decision LLM is unavailable (timeout / cloud error),
+				# default to YES — the semantic router already identified 2+ relevant
+				# crews, so a panel is warranted. Defaulting NO silently degrades
+				# multi-domain queries to single-crew without any user-visible signal.
+				logger.warning(
+					"Router: panel decision LLM failed: %s — defaulting YES (semantic router found %d candidates)",
+					_pe, len(_all_candidates),
+				)
+				_final_panel_fallback = list(dict.fromkeys(_all_candidates[:3]))
+				if len(_final_panel_fallback) >= 2:
+					_requires_panel = True
+					_panel = _final_panel_fallback
+				else:
+					_requires_panel = False
 
 
 			if not _requires_panel:
@@ -1096,6 +1108,10 @@ async def route_message_stream(
 				_force_cloud = True
 				_panel_str = " + ".join(_panel)
 				logger.info("Router: panel mode — %s", _panel_str)
+				# Emit sentinel so channel handlers (Telegram) know to suppress
+				# progressive token preview and preserve the status bubble for
+				# per-round crew progress updates instead.
+				yield "__PANEL_MODE__"
 				await _status(_t.get("status_routing_crew", "Routing to {crew}...").format(crew=_panel_str))
 
 				_MIN_PANEL_TOKENS = 40
