@@ -480,7 +480,7 @@ async def get_crew_board_work_context(crew_id: str) -> str:
 		if not work_lists:
 			return ""
 
-		work_lists.sort(key=lambda x: x.get("position", 0))
+		work_lists.sort(key=lambda x: x.get("position") or 0)
 
 		lines: list[str] = [
 			f"CREW BOARD HISTORY — {board_name} "
@@ -493,7 +493,7 @@ async def get_crew_board_work_context(crew_id: str) -> str:
 			if not lst_cards:
 				continue
 			found_any = True
-			lst_cards.sort(key=lambda x: x.get("position", 0))
+			lst_cards.sort(key=lambda x: x.get("position") or 0)
 			lines.append(f"\n[{lst['name']}]")
 			for c in lst_cards:
 				card_line = f"  - {c['name']}"
