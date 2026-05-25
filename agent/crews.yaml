@@ -60,7 +60,7 @@ crews:
   - id: "scrum"
     name: "Kanban Flow & Delivery Intelligence System"
     description: "Monitors Planka boards for stale items, blocked tasks, and WIP violations — then surfaces the single most actionable next step to keep the operator moving forward."
-    group: "basic"
+    group: "wired"
     type: "agent"
     feeds_briefing: "/day"
     keywords:
@@ -152,7 +152,7 @@ crews:
   - id: "focus"
     name: "Cross-Domain Priority Synthesis & Clarity Intelligence"
     description: "Reads all available context — memory, briefings, calendar, boards, recent conversations — and surfaces what is objectively most important for the operator right now."
-    group: "basic"
+    group: "wired"
     type: "agent"
     feeds_briefing: "/day"
     lead_time: 45
