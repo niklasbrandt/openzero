@@ -281,15 +281,19 @@ def _discover_files() -> list[Path]:
 
 
 def _compute_hash(files: list[Path]) -> str:
-	"""SHA-256 of all file mtimes + sizes — fast change detection (not cryptographic use)."""
+	"""SHA-256 of all file contents + names + sizes — robust change detection without mtime dependency."""
 	h = hashlib.sha256()
 	for p in files:
 		try:
-			st = p.stat()
-			h.update(f"{p.name}:{st.st_mtime}:{st.st_size}".encode())
-		except OSError as _oe:
-			logger.debug("Agent context file stats failed: %s", _oe)
+			h.update(p.name.encode())
+			h.update(str(p.stat().st_size).encode())
+			with open(p, "rb") as fh:
+				while chunk := fh.read(8192):
+					h.update(chunk)
+		except Exception as _oe:
+			logger.debug("Agent context file hash failed: %s", _oe)
 	return h.hexdigest()
+
 
 
 # ---------------------------------------------------------------------------
