@@ -235,6 +235,13 @@ Each crew specifies which briefing cadence it feeds (`feeds_briefing: "/day"`, `
 
 Character names in a crew definition are semantic priming, not display labels. Naming a character "The Contrarian Auditor" rather than "the devil's advocate" causes the underlying model to adopt a more rigorous adversarial reasoning pattern. This is documented in the YAML header.
 
+**Sequential panel debates.** When you prompt Z with a complex query touching multiple domains (e.g. stress deload, training volume, and recipe choices), the system triggers a collaborative panel debate among the relevant experts. The panel operates in a strict, sequenced priority chain:
+1. **Domain Experts** (e.g. health, fitness, chef) run first, drafting their respective domain plans independently.
+2. **Focus** (Clarity & Priority Synthesizer) runs next, reviewing the drafts, evaluating conflict points, checking your actual calendar/mood levels, and resolving contradictions to establish a singular focus plan.
+3. **Scrum** (WIP/Commitment Auditor) runs last, checking cards to be added or updated on Planka, validating WIP limit counts, and formatting Planka actions for clean project hygiene.
+
+**Dynamic round scaling.** If Focus detects a critical contradiction or safety/burnout veto that remains unresolved after the initial rebuttal round (e.g. fitness proposing high exertion despite a severe stress deload veto from health), it dynamically triggers a third **Reconciliation Round**. The conflicting crews are adaptively queried to resolve the conflict safely under Focus's guidance, ensuring Z's final Executive Synthesis is perfectly aligned, cohesive, and safe.
+
 ---
 
 ## Channels
