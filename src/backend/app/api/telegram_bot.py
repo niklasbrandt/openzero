@@ -1345,15 +1345,7 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 			await safe_reply(update, t.get("empty_response_retry", "Meine Antwort war leer — bitte versuche es erneut."))
 			return False
 
-		# If router redirected to a crew (ROUTE tag), delete thinking msg and hand off
-		if result.routed_to_crew:
-			if thinking_msg is not None:
-				try:
-					await thinking_msg.delete()
-				except Exception as _e:
-					logger.debug("Telegram delete (route handoff) ignored: %s", _e)
-			await _process_crew_stream(update, context, [result.routed_to_crew], user_text, t, already_ingested=True)
-			return False
+
 
 		clean_reply = strip_llm_time_header(result.reply)
 
@@ -1491,13 +1483,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 				logger.debug("status_msg delete skipped: %s", _e)
 			return
 
-		if result.routed_to_crew:
-			try:
-				await status_msg.delete()
-			except Exception as _e:
-				logger.debug("status_msg delete skipped: %s", _e)
-			await _process_crew_stream(update, context, [result.routed_to_crew], caption, t, already_ingested=True)
-			return
+
 
 		clean_reply = strip_llm_time_header(result.reply)
 		html_reply = _md_to_html(clean_reply)
