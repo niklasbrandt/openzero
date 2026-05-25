@@ -240,8 +240,8 @@ async def route_message_stream(
 			if status_callback is not None:
 				try:
 					await status_callback(msg)
-				except Exception:
-					pass
+				except Exception as _scb_e:
+					logger.warning("Router: _status callback failed: %s", _scb_e)
 
 		# ── 9e: Empty-board setup confirmation intercept ───────────────────────
 		# Must run before step 0.0 so "yes" / "ja" / "ok" replies are caught here
@@ -1062,6 +1062,10 @@ async def route_message_stream(
 		_panel = routed_crews[:3]
 		_requires_panel = False
 
+		logger.warning(
+			"Router: panel gate — primary=%s candidates=%s word_count=%d is_simple_q=%s",
+			_primary_crew, _all_candidates, _word_count, _is_simple_q,
+		)
 		if _primary_crew and len(_all_candidates) >= 2 and _word_count >= 5 and not _is_simple_q:
 			try:
 				await _status("Evaluating expert routing...")
@@ -1131,6 +1135,7 @@ async def route_message_stream(
 				_force_cloud = True
 				_panel_str = " + ".join(_panel)
 				logger.info("Router: panel mode — %s", _panel_str)
+				logger.warning("Router: panel mode ACTIVE — crews=%s", _panel)
 				# Emit sentinel so channel handlers (Telegram) know to suppress
 				# progressive token preview and preserve the status bubble for
 				# per-round crew progress updates instead.
@@ -1157,6 +1162,7 @@ async def route_message_stream(
 
 				# ROUND 1: Initial Drafts
 				for _cid in _panel:
+					logger.warning("Router: panel R1 starting crew '%s'", _cid)
 					await _status(f"{_cid.title()} · Round 1 — writing initial position...")
 					_header = f"\n\n**[{_cid.title()} - Round 1]**\n"
 					yield _header
