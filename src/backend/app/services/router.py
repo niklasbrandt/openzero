@@ -236,10 +236,31 @@ async def route_message_stream(
 		# ── Z-core always-on context (workspace + signal interpretation) ──────
 		_z_core_ctx = build_z_core_context(user_text)
 
+		_status_history: list[str] = []
+
 		async def _status(msg: str) -> None:
 			if status_callback is not None:
 				try:
-					await status_callback(msg)
+					normalized_msg = msg.strip()
+					# Check if the new message is an update to an in-progress step of the same crew
+					# (e.g. replacing 'writing' or 'reviewing' with 'done')
+					if _status_history:
+						last_line = _status_history[-1]
+						parts_new = normalized_msg.split(" · ")
+						parts_old = last_line.split(" · ")
+						if len(parts_new) > 1 and len(parts_old) > 1 and parts_new[0] == parts_old[0]:
+							# Same crew! Let's check if the old one was in-progress
+							if "—" in parts_old[1] or "writing" in parts_old[1] or "reviewing" in parts_old[1]:
+								_status_history[-1] = normalized_msg
+							else:
+								_status_history.append(normalized_msg)
+						else:
+							_status_history.append(normalized_msg)
+					else:
+						_status_history.append(normalized_msg)
+
+					full_status = "\n".join(_status_history)
+					await status_callback(full_status)
 				except Exception as _scb_e:
 					logger.warning("Router: _status callback failed: %s", _scb_e)
 
@@ -1074,9 +1095,13 @@ async def route_message_stream(
 				_panel_prompt = (
 					f"Message: \"{user_text[:300]}\"\n\n"
 					f"Available expert crews: {_candidates_str}\n\n"
-					"Does this message require complex reasoning, a decision, or synthesizing opinions from multiple specialized experts? "
-					"If it does, reply with a comma-separated list of the expert crew IDs needed (choose at most 3, use exact IDs from the list above). "
-					"If it is a straightforward request that only requires the primary expert, reply with exactly 'NO'."
+					"Evaluate if the message touches multiple overlapping domains (e.g., fitness overlapping with health/stress/fatigue, "
+					"diet/chef overlapping with training/macros, life/psychology overlapping with stress). "
+					"If the message involves multi-domain reasoning, lifestyle adjustments under stress, "
+					"or requires synthesizing opinions from multiple specialized experts, reply with a comma-separated "
+					"list of the expert crew IDs needed (choose at most 3, use exact IDs from the list above). "
+					"If the message is strictly single-domain and does NOT benefit from other experts' perspectives, "
+					"reply with exactly 'NO'."
 				)
 				_panel_decision = await asyncio.wait_for(_fast_chat(_panel_prompt, tier="cloud"), timeout=25.0)
 				_panel_decision = _panel_decision.strip()

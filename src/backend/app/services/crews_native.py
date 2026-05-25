@@ -36,9 +36,10 @@ _CREW_ACTION_TAG_RE = re.compile(
 
 def crew_board_name_for_id(crew_id: str) -> str:
 	"""Return the Planka board name for a crew. e.g. 'market-intel' -> 'Market Intel'."""
-	# Transition alias: recipe crew maps to Planka board "Nutrition" (remove after v0.next when board is renamed)
+	# Transition alias: recipe/nutrition crew maps to Planka board "Chef"
 	_BOARD_NAME_OVERRIDES: dict[str, str] = {
-		"recipe": "Nutrition",
+		"recipe": "Chef",
+		"nutrition": "Chef",
 	}
 	if crew_id in _BOARD_NAME_OVERRIDES:
 		return _BOARD_NAME_OVERRIDES[crew_id]
@@ -105,6 +106,8 @@ class NativeCrewEngine:
 
 	async def run_crew(self, crew_id: str, user_input: str) -> str:
 		"""Executes a crew mission directly via the local LLM engine."""
+		if crew_id == "nutrition":
+			crew_id = "chef"
 		full_res = ""
 		async for chunk in self.run_crew_stream(crew_id, user_input):
 			full_res += chunk
@@ -118,6 +121,8 @@ class NativeCrewEngine:
 			user_input: The user's message.
 			history: Optional pre-fetched conversation history.
 		"""
+		if crew_id == "nutrition":
+			crew_id = "chef"
 		config = crew_registry.get(crew_id)
 		if not config:
 			raise ValueError(f"Crew '{crew_id}' is not defined in registry.")
