@@ -863,7 +863,15 @@ async def route_message_stream(
 				)
 				# Use tier="cloud" — "auto" is not a valid tier value and falls to local silently.
 				# The classify prompt is tiny (~100 tokens). Cloud response < 500 ms.
-				_sem = await asyncio.wait_for(_fast_chat(_sem_prompt, tier="cloud"), timeout=8.0)
+				# Pass system_override to bypass loading massive personal context files.
+				_sem = await asyncio.wait_for(
+					_fast_chat(
+						_sem_prompt,
+						tier="cloud",
+						system_override="You are a precise board-management intent classifier. Analyze the message and reply strictly in the requested format."
+					),
+					timeout=8.0
+				)
 				_sem = _sem.strip()
 				if _sem.upper().startswith("SORT_BOARD:"):
 					_board_frag = _sem.split(":", 1)[1].strip().rstrip(".,;!?")
@@ -976,7 +984,15 @@ async def route_message_stream(
 								f"Board name: '{_board_frag}'. What are 3-5 appropriate list column names "
 								"for this Kanban board? Reply with ONLY a comma-separated list, no explanation."
 							)
-							_raw_lists = await asyncio.wait_for(_fast_chat_9e(_list_prompt, tier="cloud"), timeout=15.0)
+							# Pass system_override to bypass loading massive personal context.
+							_raw_lists = await asyncio.wait_for(
+								_fast_chat_9e(
+									_list_prompt,
+									tier="cloud",
+									system_override="You are a precise Kanban board setup moderator. Reply with ONLY a comma-separated list of 3-5 appropriate list column names for the given board name."
+								),
+								timeout=15.0
+							)
 							_proposed = [n.strip().strip("'\"") for n in _raw_lists.split(",") if n.strip()][:5]
 							if not _proposed:
 								_proposed = ["To Do", "In Progress", "Done"]
@@ -1103,7 +1119,15 @@ async def route_message_stream(
 					"If the message is strictly single-domain and does NOT benefit from other experts' perspectives, "
 					"reply with exactly 'NO'."
 				)
-				_panel_decision = await asyncio.wait_for(_fast_chat(_panel_prompt, tier="cloud"), timeout=25.0)
+				# Pass system_override to bypass loading massive personal context files.
+				_panel_decision = await asyncio.wait_for(
+					_fast_chat(
+						_panel_prompt,
+						tier="cloud",
+						system_override="You are openZero's expert routing moderator. Analyze the message and available crews and reply strictly in the requested format."
+					),
+					timeout=25.0
+				)
 				_panel_decision = _panel_decision.strip()
 				logger.info("Router: panel decision LLM returned '%s'", _panel_decision[:50])
 
@@ -1180,7 +1204,15 @@ async def route_message_stream(
 							"Summarise their key position or recommendation in 1-2 short sentences. "
 							"Be specific and concrete. No filler phrases like 'the expert said'."
 						)
-						_sum = await asyncio.wait_for(_sc(_sp, tier="cloud"), timeout=12.0)
+						# Pass system_override to bypass loading massive personal context.
+						_sum = await asyncio.wait_for(
+							_sc(
+								_sp,
+								tier="cloud",
+								system_override="You are a precise text summariser. Summarise the key position or recommendation in 1-2 short, direct sentences. Be specific and concrete."
+							),
+							timeout=12.0
+						)
 						return _sum.strip()
 					except Exception:
 						return ""
@@ -1311,7 +1343,16 @@ async def route_message_stream(
 							f"If there is a conflict requiring explicit reconciliation, reply with EXACTLY 'YES: <1-sentence description of the conflict to resolve>'. "
 							f"If they have converged safely, reply with EXACTLY 'NO'."
 						)
-						_r3_decision = await asyncio.wait_for(_fast_chat(_r3_eval_prompt, tier="fast"), timeout=15.0)
+						# Use tier="cloud" instead of "fast" (local CPU is too slow for 15s budget)
+						# and pass system_override to bypass loading massive personal context.
+						_r3_decision = await asyncio.wait_for(
+							_fast_chat(
+								_r3_eval_prompt,
+								tier="cloud",
+								system_override="You are an expert panel moderator. Evaluate if there is an unresolved contradiction or safety/burnout veto between crews, and reply strictly in the requested format."
+							),
+							timeout=15.0
+						)
 						_r3_decision = _r3_decision.strip()
 						if _r3_decision.upper().startswith("YES"):
 							_requires_r3 = True
