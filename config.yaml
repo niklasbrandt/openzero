@@ -74,8 +74,8 @@ intelligence:
 # 5. Semantic Crew Routing
 # ------------------------------------------------------------------------------
 routing:
-  t_match: 0.40        # primary match threshold — below this Z answers directly
-  t_opt_in: 0.38       # secondary crew opt-in threshold (multi-crew panel)
+  t_match: 0.35        # primary match threshold — below this Z answers directly
+  t_opt_in: 0.33       # secondary crew opt-in threshold (multi-crew panel)
   gap: 0.06            # minimum gap between primary and secondary crew scores
   max_crews: 3         # hard cap on crews in a single panel (0 = unlimited)
   cont_bias: 0.05      # continuity bias added to previously active crew score
