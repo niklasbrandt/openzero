@@ -304,11 +304,21 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 		async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, timeout=10.0, headers=headers) as client:
 			# 1. SPECIAL CASE: Operator Board
 			target_board = None
+			resolved_project_name = None
 			if board_name.lower() == "operator board":
 				logger.info("Targeting Operator Board, ensuring initialization...")
 				_, b_id = await operator_service.initialize_board(client)
 				target_board = {"id": b_id, "name": "Operator Board"}
+				try:
+					resolved_project_name = operator_service.project_name
+				except Exception:
+					resolved_project_name = "Operations"
 			else:
+				# Normalize board name with overrides/synonyms (e.g. nutrition -> Chef/Nutrition)
+				search_board_names = {board_name.lower()}
+				if board_name.lower() in ("nutrition", "chef"):
+					search_board_names.update({"nutrition", "chef"})
+
 				# General Search across all projects
 				projects_resp = await client.get("/api/projects")
 				projects = projects_resp.json().get("items", [])
@@ -317,21 +327,26 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 					p_det = p_det_resp.json()
 					# Boards might be in 'included' or 'boards' key depending on version/sideloading
 					boards = p_det.get("included", {}).get("boards", []) or p_det.get("boards", [])
-					match = next((b for b in boards if (b.get("name") or "").lower() == board_name.lower()), None)
+					match = next((b for b in boards if (b.get("name") or "").lower() in search_board_names), None)
 					if not match:
-						# Fuzzy fallback 1: board name contains the search term (e.g. "tank" -> "Reef Tank")
-						match = next((b for b in boards if board_name.lower() in (b.get("name") or "").lower()), None)
+						# Fuzzy fallback 1: board name contains any of the search terms (e.g. "tank" -> "Reef Tank")
+						match = next((b for b in boards if any(term in (b.get("name") or "").lower() for term in search_board_names)), None)
 					if not match:
-						# Fuzzy fallback 2: search term contains the board name (e.g. "reef tank board" -> "Reef Tank")
-						match = next((b for b in boards if (b.get("name") or "").lower() in board_name.lower() and (b.get("name") or "").strip()), None)
+						# Fuzzy fallback 2: search terms contain the board name (e.g. "reef tank board" -> "Reef Tank")
+						match = next((b for b in boards if any((b.get("name") or "").lower() in term and (b.get("name") or "").strip() for term in search_board_names)), None)
 					if match:
 						target_board = match
+						resolved_project_name = p["name"]
 						break
 
 			if not target_board:
 				logger.debug("Board %s not found. Defaulting to Operator Board.", _sanitize_for_log(board_name))
 				_, b_id = await operator_service.initialize_board(client)
 				target_board = {"id": b_id, "name": "Operator Board"}
+				try:
+					resolved_project_name = operator_service.project_name
+				except Exception:
+					resolved_project_name = "Operations"
 
 			# 2. Find List
 			board_id = target_board["id"]
@@ -339,24 +354,48 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 			b_detail_resp.raise_for_status()
 			b_detail = b_detail_resp.json()
 			lists = b_detail.get("included", {}).get("lists", []) or b_detail.get("lists", [])
-			target_list = next((l for l in lists if (l.get("name") or "").lower() == list_name.lower()), None)
+
+			is_date = bool(re.match(r"^\d{4}[\.\-\/]\d{2}[\.\-\/]\d{2}$", title.strip()))
+			is_conv_list = list_name.lower() in {
+				"conversation", "conversations", "gespräch", "konversation", "unterhaltung",
+				"conversación", "conversa", "对话", "会話", "разговор", "대화", "वार्तालाप", "बातचीत"
+			}
+
+			lookup_list_name = list_name
+			if not is_date and is_conv_list:
+				lookup_list_name = "Tasks"
+				logger.info("create_task: redirecting non-date task card '%s' from Conversation list to Tasks list", _sanitize_for_log(title))
+
+			target_list = next((l for l in lists if (l.get("name") or "").lower() == lookup_list_name.lower()), None)
 			if not target_list:
 				# Fuzzy fallback 1: list name contains the search term
-				target_list = next((l for l in lists if list_name.lower() in (l.get("name") or "").lower()), None)
+				target_list = next((l for l in lists if lookup_list_name.lower() in (l.get("name") or "").lower()), None)
 			if not target_list:
 				# Fuzzy fallback 2: search term contains the list name
-				target_list = next((l for l in lists if (l.get("name") or "").lower() in list_name.lower() and (l.get("name") or "").strip()), None)
+				target_list = next((l for l in lists if (l.get("name") or "").lower() in lookup_list_name.lower() and (l.get("name") or "").strip()), None)
 
 			if not target_list:
-				# Fall back to first active named list — never use archive/trash lists (cards would be invisible).
-				active_lists = [l for l in lists if l.get("type") == "active" and (l.get("name") or "").strip()]
-				if active_lists:
-					target_list = active_lists[0]
-					logger.info("create_task: list '%s' not found on board '%s', falling back to '%s'", _sanitize_for_log(list_name), _sanitize_for_log(target_board["name"]), _sanitize_for_log(target_list.get("name")))
-				else:
-					l_resp = await client.post(f"/api/boards/{board_id}/lists", json={"name": "Inbox", "type": "active", "position": 65535})
+				if lookup_list_name.lower() == "tasks":
+					l_resp = await client.post(f"/api/boards/{board_id}/lists", json={"name": "Tasks", "type": "active", "position": 65535})
 					l_resp.raise_for_status()
 					target_list = l_resp.json().get("item")
+					logger.info("create_task: created new list 'Tasks' on board '%s'", _sanitize_for_log(target_board["name"]))
+				else:
+					# Fall back to first active named list — never use archive/trash lists (cards would be invisible).
+					active_lists = [l for l in lists if l.get("type") == "active" and (l.get("name") or "").strip()]
+					if not is_date:
+						active_lists = [l for l in active_lists if (l.get("name") or "").lower() not in {
+							"conversation", "conversations", "gespräch", "konversation", "unterhaltung",
+							"conversación", "conversa", "对话", "会話", "разговор", "대화", "वार्तालाप", "बातचीत"
+						}]
+					if active_lists:
+						target_list = active_lists[0]
+						logger.info("create_task: list '%s' not found on board '%s', falling back to '%s'", _sanitize_for_log(list_name), _sanitize_for_log(target_board["name"]), _sanitize_for_log(target_list.get("name")))
+					else:
+						fallback_name = "Inbox" if is_date else "Tasks"
+						l_resp = await client.post(f"/api/boards/{board_id}/lists", json={"name": fallback_name, "type": "active", "position": 65535})
+						l_resp.raise_for_status()
+						target_list = l_resp.json().get("item")
 
 			if not target_list:
 				raise ValueError(f"List '{list_name}' not found and could not be created on board '{target_board['name']}'")
@@ -369,13 +408,7 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 				card_payload["description"] = description
 			res = await client.post(f"/api/lists/{target_list['id']}/cards", json=card_payload)
 			res.raise_for_status()
-			# Resolve the project name for the path string
-			project_name = "Operations"
-			try:
-				from app.services.operator_board import operator_service
-				project_name = operator_service.project_name
-			except Exception:
-				logger.debug("create_task: operator_service not ready, using default project name")
+			project_name = resolved_project_name or "Operations"
 			path = f"{project_name} → {target_board['name']} → {target_list['name']}"
 			logger.info("Card created successfully: %s", path)
 			return path
@@ -1778,11 +1811,12 @@ async def get_stale_cards(min_days: int = 5) -> str:
 		return f"[STALE CARDS DATA UNAVAILABLE: {_exc_type}]"
 
 
-_CREW_BOARD_NAMES = {"fitness", "nutrition", "life", "health", "finance", "work", "learning"}
+_CREW_BOARD_NAMES = {"fitness", "nutrition", "chef", "life", "health", "finance", "work", "learning"}
 
-# Transition alias: Planka board "Nutrition" → recipe crew (remove after v0.next when board is renamed)
+# Transition alias: Planka board "Nutrition" / "Chef" → recipe/chef crew
 BOARD_NAME_ALIASES: dict[str, str] = {
 	"Nutrition": "recipe",
+	"Chef": "chef",
 }
 
 

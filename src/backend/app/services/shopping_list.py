@@ -87,9 +87,8 @@ async def _find_nutrition_board(client: httpx.AsyncClient) -> tuple[str | None, 
 
 		det = await client.get(f"/api/projects/{project_id}")
 		det.raise_for_status()
-		board_id = None
 		for b in det.json().get("included", {}).get("boards", []):
-			if (b.get("name") or "").lower() == "nutrition":
+			if (b.get("name") or "").lower() in ("nutrition", "chef"):
 				board_id = b["id"]
 				break
 		if not board_id:
