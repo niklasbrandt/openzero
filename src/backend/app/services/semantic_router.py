@@ -38,8 +38,8 @@ _ROUTING_CFG: Optional[dict] = None
 def _load_routing_config() -> dict:
 	"""Load routing thresholds from config.yaml routing: block, falling back to defaults."""
 	defaults: dict = {
-		"t_match": 0.40,
-		"t_opt_in": 0.38,
+		"t_match": 0.35,
+		"t_opt_in": 0.33,
 		"gap": 0.06,
 		"max_crews": 3,
 		"cont_bias": 0.05,
