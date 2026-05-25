@@ -330,40 +330,67 @@ class NativeCrewEngine:
 		if settings.cloud_configured or force_cloud:
 			req_headers["Authorization"] = f"Bearer {settings.LLM_CLOUD_API_KEY}"
 
-		# When force_cloud is active and cloud is configured, use the cloud URL explicitly
-		# rather than the constructor-bound self.llm_url (which may point to local if cloud
-		# was not configured at module-import time). LLM_CLOUD_BASE_URL may already include
-		# the /v1 suffix (e.g. https://api.mistral.ai/v1) — only append it if missing to avoid
-		# producing a double /v1/v1 path that 404s.
 		_cloud_base = settings.LLM_CLOUD_BASE_URL.rstrip("/")
 		_cloud_url = _cloud_base if _cloud_base.endswith("/v1") else f"{_cloud_base}/v1"
 		_effective_url = _cloud_url if (force_cloud and settings.cloud_configured) else self.llm_url
-		async with httpx.AsyncClient(timeout=3600.0) as client:
+
+		# Determine timeouts: cloud tier uses 180s (generous), local tier uses 130s.
+		read_timeout = 180.0 if (settings.cloud_configured or force_cloud) else 130.0
+		client_timeout = httpx.Timeout(read_timeout, connect=10.0)
+
+		max_attempts = 3
+		for attempt in range(max_attempts):
 			try:
-				async with client.stream("POST", f"{_effective_url}/chat/completions", headers=req_headers, json=payload) as response:
-					response.raise_for_status()
-					collected_chunks: list[str] = []
-					async for line in response.aiter_lines():
-						if not line or not line.startswith("data: "):
-							continue
+				async with httpx.AsyncClient(timeout=client_timeout) as client:
+					async with client.stream("POST", f"{_effective_url}/chat/completions", headers=req_headers, json=payload) as response:
+						response.raise_for_status()
+						collected_chunks: list[str] = []
+						async for line in response.aiter_lines():
+							if not line or not line.startswith("data: "):
+								continue
 
-						data_str = line[6:].strip()
-						if data_str == "[DONE]":
-							break
+							data_str = line[6:].strip()
+							if data_str == "[DONE]":
+								break
 
-						try:
-							chunk_data = json.loads(data_str)
-							delta = chunk_data.get("choices", [{}])[0].get("delta", {})
-							content = delta.get("content", "")
-							if content:
-								collected_chunks.append(content)
-								yield content
-						except Exception as je:
-							logger.debug("Stream Chunk Parse Error (non-fatal): %s", je)
-					# Write crew memory after stream completes
-					full_response = "".join(collected_chunks)
-					if full_response.strip():
-						await _write_crew_memory(crew_id, user_input, full_response)
+							try:
+								chunk_data = json.loads(data_str)
+								delta = chunk_data.get("choices", [{}])[0].get("delta", {})
+								content = delta.get("content", "")
+								if content:
+									collected_chunks.append(content)
+									yield content
+							except Exception as je:
+								logger.debug("Stream Chunk Parse Error (non-fatal): %s", je)
+						
+						# Write crew memory after stream completes successfully
+						full_response = "".join(collected_chunks)
+						if full_response.strip():
+							await _write_crew_memory(crew_id, user_input, full_response)
+						break  # Success — break out of retry loop
+			except httpx.HTTPStatusError as http_err:
+				status = http_err.response.status_code
+				if status in (503, 429, 502) and attempt < max_attempts - 1:
+					wait_secs = 3 * (attempt + 1)
+					logger.warning(
+						"Native Engine: crew '%s' HTTP %d error on attempt %d/%d — retrying in %ds...",
+						safe_crew_id, status, attempt + 1, max_attempts, wait_secs
+					)
+					await asyncio.sleep(wait_secs)
+					continue
+				logger.error("Native Engine Streaming Failure: %s", http_err)
+				raise
+			except (httpx.ReadTimeout, httpx.ConnectTimeout) as timeout_err:
+				if attempt < max_attempts - 1:
+					wait_secs = 3 * (attempt + 1)
+					logger.warning(
+						"Native Engine: crew '%s' timeout on attempt %d/%d — retrying in %ds...",
+						safe_crew_id, attempt + 1, max_attempts, wait_secs
+					)
+					await asyncio.sleep(wait_secs)
+					continue
+				logger.error("Native Engine Streaming Failure: %s", timeout_err)
+				raise
 			except Exception as e:
 				logger.error("Native Engine Streaming Failure: %s", e)
 				raise
