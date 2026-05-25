@@ -1229,8 +1229,8 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 					)
 			else:
 				await safe_edit(thinking_msg, f"<blockquote><i>{text}</i></blockquote>", parse_mode="HTML")
-		except Exception:
-			pass
+		except Exception as _su_e:
+			logger.warning("_status_update failed (text=%r): %s", text[:60], _su_e)
 
 	token_stream, result_fut = await route_message_stream(
 		user_text=user_text,
