@@ -38,8 +38,8 @@ _ROUTING_CFG: Optional[dict] = None
 def _load_routing_config() -> dict:
 	"""Load routing thresholds from config.yaml routing: block, falling back to defaults."""
 	defaults: dict = {
-		"t_match": 0.55,
-		"t_opt_in": 0.52,
+		"t_match": 0.40,
+		"t_opt_in": 0.38,
 		"gap": 0.06,
 		"max_crews": 3,
 		"cont_bias": 0.05,
@@ -58,11 +58,8 @@ def _load_routing_config() -> dict:
 
 
 def get_routing_config() -> dict:
-	"""Return routing config dict, loading from disk on first call."""
-	global _ROUTING_CFG
-	if _ROUTING_CFG is None:
-		_ROUTING_CFG = _load_routing_config()
-	return _ROUTING_CFG
+	"""Return routing config, always re-reading from disk for hot-reload support."""
+	return _load_routing_config()
 
 
 def invalidate_routing_config() -> None:
