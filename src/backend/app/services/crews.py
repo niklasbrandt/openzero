@@ -18,6 +18,7 @@ SYSTEM_PROTOCOL:
 2. Execute the mission with extreme precision.
 3. Your results will be integrated into the Operator's universal context.
 4. Always respect the user's local unit system (Metric/Celsius for EU) and only enforce health constraints explicitly provided in their personal vault.
+5. CONTEXT GROUNDING: You MUST thoroughly inspect the injected 'CREW CONVERSATION MEMORY' (past daily diary cards) and 'CREW BOARD HISTORY' (existing board items/suggestions/decisions). Ground your logic, suggestions, and decisions in what was previously discussed, agreed upon, or tracked. Never repeat recommendations, create duplicate tasks, or ask redundant questions that have already been resolved. Use the context to deliver a continuous, progressive, and premium operator experience.
 
 PLANKA PERSISTENCE (mandatory for all crews):
 Every crew MUST save its output to Planka using ONLY the [ACTION: ...] tag format below.
@@ -361,7 +362,10 @@ class CrewRegistry:
 		logger.info("Panel candidates (cosine similarity >= %.2f): %s", min_score, nonempty)
 
 	def get(self, crew_id: str) -> Optional[CrewConfig]:
-		return self._crews.get(crew_id)
+		normalized_id = crew_id
+		if crew_id == "nutrition":
+			normalized_id = "chef"
+		return self._crews.get(normalized_id)
 
 	def list_active(self) -> List[CrewConfig]:
 		return list(self._crews.values())

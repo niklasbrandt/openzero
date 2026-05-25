@@ -1244,11 +1244,11 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 					from app.services.memory import store_memory
 					await store_memory(content)
 					return f"Memory stored: {content[:80]}"
-				# Fallback: persist as a Planka card on the Nutrition board.
+				# Fallback: persist as a Planka card on the Chef board.
 				# Derive a sensible list name from the category string (first word, title-cased).
 				_list_name = category.split()[0].title() if category.split() else "Inbox"
 				path = await planka_create_task(
-					board_name="Nutrition",
+					board_name="Chef",
 					list_name=_list_name,
 					title=content[:500],
 					description="",

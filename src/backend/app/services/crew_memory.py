@@ -399,6 +399,45 @@ def _build_updated_description(current: str, user_msg: str, crew_response: str, 
 	return updated
 
 
+async def _compress_daily_diary(current: str, user_msg: str, crew_response: str, now_str: str) -> str:
+	"""Update and compress the rolling log of today's exchange into a clean, dense, bulleted summary."""
+	try:
+		from app.services.llm import chat
+		import re
+
+		# Strip action tags from crew response before storing/sending
+		clean_response = re.sub(r"\[?ACTION:[^\]]+\]?", "", crew_response).strip()
+		clean_response = re.sub(r"\n{3,}", "\n\n", clean_response)
+
+		prompt = (
+			f"You are a dense information compression engine for openZero.\n"
+			f"Update and compress the daily conversation diary log for a crew board.\n\n"
+			f"Existing diary log summary:\n\"\"\"\n{current}\n\"\"\"\n\n"
+			f"New exchange to incorporate:\n"
+			f"- Time: {now_str}\n"
+			f"- User message: {user_msg.strip()}\n"
+			f"- Crew response: {clean_response}\n\n"
+			f"Output a single, unified, highly dense, bulleted summary of the entire day's conversation, "
+			f"key decisions made, actions/topics discussed, and context.\n"
+			f"CRITICAL: Do NOT use emojis. Indent using tabs. Spell the project name as openZero. "
+			f"Keep it extremely compact and token-efficient so it fits in a small context window."
+		)
+
+		# Call local/fast tier LLM
+		summary = await chat(
+			user_message=prompt,
+			system_override="You are a dense, professional memory summarization utility for openZero.",
+			tier="fast"
+		)
+		if summary and summary.strip():
+			return summary.strip()
+	except Exception as e:
+		logger.warning("crew_memory: _compress_daily_diary LLM pass failed, falling back to raw append: %s", e)
+
+	# Fallback to standard raw appending
+	return _build_updated_description(current, user_msg, crew_response, now_str)
+
+
 async def append_crew_exchange(crew_id: str, user_msg: str, crew_response: str) -> None:
 	"""Create or update today's conversation card for the given crew."""
 	try:
@@ -432,7 +471,7 @@ async def append_crew_exchange(crew_id: str, user_msg: str, crew_response: str) 
 			card_id, current_desc = await _get_or_create_today_card(client, board_id, list_id, date_str)
 			if not card_id:
 				return
-			updated_desc = _build_updated_description(current_desc, user_msg, crew_response, time_str)
+			updated_desc = await _compress_daily_diary(current_desc, user_msg, crew_response, time_str)
 			await _patch_card_description(client, card_id, updated_desc)
 			logger.info("crew_memory: updated conversation card for crew '%s' (%s)", crew_id.replace('\n', ' ').replace('\r', ' '), date_str)
 	except Exception as e:
