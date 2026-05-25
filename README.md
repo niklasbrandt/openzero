@@ -16,7 +16,7 @@
 [![Vite](https://img.shields.io/badge/Vite-6-A5E6E0?logo=vite&logoColor=white)](https://vitejs.dev/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-90E0EF?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 
-openZero is a self-hosted AI system — called Z — that runs entirely on hardware you own. You talk to it through Telegram, WhatsApp, or a web dashboard. Background agents called crews run on schedules you define, reason over everything Z knows about you, and deliver briefings you can act on. Optionally, Z reads your calendar and email.
+openZero is a self-hosted AI system — called Z — that runs entirely on hardware you own. You talk to it through Telegram, WhatsApp, or a web dashboard. Background agents called crews run on schedules you define, reason over everything Z knows about your projects, life, or business, and deliver briefings you can act on. Optionally, Z reads your calendar and email.
 
 **Sovereignty.** Cloud AI assistants store memory on infrastructure you do not control, behind retention policies you did not write. openZero keeps everything inside your network perimeter. Memory is deep — built from every conversation, every crew output, and every source you connect — and it compounds over time.
 
@@ -30,9 +30,9 @@ openZero is a self-hosted AI system — called Z — that runs entirely on hardw
 
 The most important work happens without you.
 
-Background agents — called crews — run on schedules you define. Each crew is a council of purpose-shaped reasoning characters that work over Z's accumulated conversation memory, calendar events (if connected), email (if connected), and the memory points from prior crew outputs. By the time your morning briefing arrives, Z has already cross-referenced what it knows about you, identified what needs your attention, and proposed concrete next steps.
+Background agents — called crews — run on schedules you define. Each crew is a council of purpose-shaped reasoning characters that work over Z's accumulated conversation memory, calendar events (if connected), email (if connected), and the memory points from prior crew outputs. By the time your morning briefing arrives, Z has already cross-referenced what it knows about your context, identified what needs your attention, and proposed concrete next steps for your life, team, or business.
 
-Briefings arrive at whatever cadence you configure: daily, weekly, monthly, quarterly, yearly. They are not digests. They are reasoned assessments grounded in everything Z has learned about you. A morning briefing might surface a stalled project, a meeting conflict, a market signal, or a health observation — not because you set rules for any of it, but because Z had built enough context to notice the relationship.
+Briefings arrive at whatever cadence you configure: daily, weekly, monthly, quarterly, yearly. They are not digests. They are reasoned assessments grounded in everything Z has learned about your goals, projects, and domains. A morning briefing might surface a stalled project, a meeting conflict, a market signal, or a health observation — not because you set rules for any of it, but because Z had built enough context to notice the relationship.
 
 Between briefings, you talk to Z the same way you text anyone: via Telegram, WhatsApp, or the web dashboard. Z reads the same memory. The conversation is continuous across all three channels.
 
@@ -229,7 +229,7 @@ The shipped example includes two system-level crews:
 
 **focus** — reads all available context (memory, briefings, calendar, boards, recent conversations) and surfaces what is objectively most important right now. Cuts through noise and competing priorities to give you one clear answer: what to do next.
 
-Personal and domain crews — health, nutrition, coaching, research, travel, security, and whatever else fits your life — are defined entirely by you in `agent/crews.yaml`. The YAML schema and character priming documentation in the file header explain how to write them. The example file ships with a generic life-coaching crew as a starting template.
+Custom and domain crews — e.g., software development, market research, sales leads, financial analysis, legal auditing, health, travels, and whatever else fits your life, business, or team — are defined entirely by you in `agent/crews.yaml`. The YAML schema and character priming documentation in the file header explain how to write them. The template files ship with starting examples for both system-level workflows and custom domain panels.
 
 Each crew specifies which briefing cadence it feeds (`feeds_briefing: "/day"`, `"/week"`, `"/month"`, etc.) and how many minutes before briefing time it should start. The scheduler handles the timing automatically.
 
