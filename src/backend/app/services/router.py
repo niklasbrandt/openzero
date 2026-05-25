@@ -833,12 +833,12 @@ async def route_message_stream(
 				_board_names_hint = ", ".join((b.get("name") or "") for b in _all_boards) or "none"
 				_sem_prompt = (
 					f"Available Planka boards: {_board_names_hint}\n"
-					"Is this message asking to reorganise, sort, tidy, or restructure one of those boards?\n"
+					"Does the user EXPLICITLY ask to sort, reorganise, tidy, clean up, reorder, or restructure one of those boards?\n"
+					"IMPORTANT: The message must contain a clear intent to REARRANGE or REORGANISE board content.\n"
+					"Talking ABOUT a topic (e.g. fitness, work, cooking) does NOT count — only explicit board manipulation commands count.\n"
 					f"Message: \"{user_text[:300]}\"\n"
-					"IMPORTANT: The user may use a nickname or synonym (e.g. 'aquarium' for 'reef tank').\n"
-					"Pick the single most semantically related board from the list above.\n"
-					"If yes: reply SORT_BOARD:<exact board name from the list above>\n"
-					"If no: reply NO"
+					"If YES (explicit sort/reorganise request): reply SORT_BOARD:<exact board name from the list above>\n"
+					"If NO (conversational message, question, or anything other than explicit board reorganisation): reply NO"
 				)
 				# Use tier="cloud" — "auto" is not a valid tier value and falls to local silently.
 				# The classify prompt is tiny (~100 tokens). Cloud response < 500 ms.

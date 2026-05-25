@@ -2181,7 +2181,7 @@ async def dispatch_structural_intent(intent: StructuralIntent, lang: str) -> str
 					return f"⚠ Board '{board_name}' has no lists to sort."
 
 				# ── Step 1: Sort lists alphabetically via position patch ──────
-				sorted_lists = sorted(lists, key=lambda l: l.get("name", "").lower())
+				sorted_lists = sorted(lists, key=lambda l: (l.get("name") or "").lower())
 				_step = 65535
 				for i, lst in enumerate(sorted_lists):
 					await client.patch(f"/api/lists/{lst['id']}", json={"position": _step * (i + 1)})
