@@ -270,7 +270,11 @@ async def route_semantic(
 
 	top_id, top_score = scores[0]
 	if top_score < t_match:
-		logger.debug("semantic_router: top '%s' score=%.3f < T_MATCH=%.2f — Z-direct", top_id, top_score, t_match)
+		logger.warning(
+			"semantic_router: score miss — top '%s'=%.3f < T_MATCH=%.2f — Z-direct. All scores: %s",
+			top_id, top_score, t_match,
+			", ".join(f"{cid}={s:.3f}" for cid, s in scores[:5]),
+		)
 		return []
 
 	# ── Build panel ──────────────────────────────────────────────────────────
