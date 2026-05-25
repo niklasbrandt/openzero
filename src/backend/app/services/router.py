@@ -842,7 +842,7 @@ async def route_message_stream(
 				)
 				# Use tier="cloud" — "auto" is not a valid tier value and falls to local silently.
 				# The classify prompt is tiny (~100 tokens). Cloud response < 500 ms.
-				_sem = await asyncio.wait_for(_fast_chat(_sem_prompt, tier="cloud"), timeout=20.0)
+				_sem = await asyncio.wait_for(_fast_chat(_sem_prompt, tier="cloud"), timeout=8.0)
 				_sem = _sem.strip()
 				if _sem.upper().startswith("SORT_BOARD:"):
 					_board_frag = _sem.split(":", 1)[1].strip().rstrip(".,;!?")
