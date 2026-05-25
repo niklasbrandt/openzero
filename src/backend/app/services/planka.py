@@ -314,10 +314,26 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 				except Exception:
 					resolved_project_name = "Operations"
 			else:
-				# Normalize board name with overrides/synonyms (e.g. nutrition -> Chef/Nutrition)
+				# Normalize board name with overrides/synonyms dynamically
 				search_board_names = {board_name.lower()}
-				if board_name.lower() in ("nutrition", "chef"):
-					search_board_names.update({"nutrition", "chef"})
+				try:
+					from app.services.crews import crew_registry
+					from app.services.crews_native import crew_board_name_for_id
+
+					# Resolve if board_name is a crew ID or mapped board name
+					for c in crew_registry.list_active():
+						c_bname = crew_board_name_for_id(c.id).lower()
+						if c_bname == board_name.lower() or c.id.lower() == board_name.lower():
+							search_board_names.add(c.id.lower())
+							search_board_names.add(c_bname)
+							# Support transition synonyms dynamically
+							if c.id == "chef" or c.id == "recipe":
+								search_board_names.update({"nutrition", "recipe", "chef"})
+				except Exception as _ex:
+					logger.debug("planka: dynamic crew board resolution in create_task failed: %s", _ex)
+					# Static fallback mapping for robustness
+					if board_name.lower() in ("nutrition", "chef"):
+						search_board_names.update({"nutrition", "chef"})
 
 				# General Search across all projects
 				projects_resp = await client.get("/api/projects")
@@ -1811,7 +1827,23 @@ async def get_stale_cards(min_days: int = 5) -> str:
 		return f"[STALE CARDS DATA UNAVAILABLE: {_exc_type}]"
 
 
-_CREW_BOARD_NAMES = {"fitness", "nutrition", "chef", "life", "health", "finance", "work", "learning"}
+async def _get_crew_board_names() -> set[str]:
+	"""Dynamically build the set of active crew board names and legacy synonyms from registry."""
+	try:
+		from app.services.crews import crew_registry
+		from app.services.crews_native import crew_board_name_for_id
+		names = set()
+		for c in crew_registry.list_active():
+			names.add(c.id.lower())
+			board_name = crew_board_name_for_id(c.id)
+			names.add(board_name.lower())
+		if "chef" in names or "recipe" in names:
+			names.update({"nutrition", "recipe", "chef"})
+		return names
+	except Exception as ex:
+		logger.warning("planka: _get_crew_board_names failed to load dynamically: %s", ex)
+		return {"fitness", "nutrition", "chef", "life", "health", "finance", "work", "learning"}
+
 
 # Transition alias: Planka board "Nutrition" / "Chef" → recipe/chef crew
 BOARD_NAME_ALIASES: dict[str, str] = {
@@ -1834,13 +1866,15 @@ async def get_crew_board_snapshot() -> str:
 			all_details_tasks = [client.get(f"/api/projects/{p['id']}") for p in projects]
 			all_details_resps = await asyncio.gather(*all_details_tasks)
 
+			crew_board_names = await _get_crew_board_names()
+
 			board_tasks = []
 			board_names = []
 			for r in all_details_resps:
 				d = r.json()
 				boards = d.get("included", {}).get("boards", []) or d.get("boards", [])
 				for b in boards:
-					if (b.get("name") or "").strip().lower() in _CREW_BOARD_NAMES:
+					if (b.get("name") or "").strip().lower() in crew_board_names:
 						board_tasks.append(client.get(f"/api/boards/{b['id']}", params={"included": "lists,cards"}))
 						board_names.append(b.get("name") or "")
 

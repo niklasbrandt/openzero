@@ -1185,21 +1185,51 @@ async def route_message_stream(
 					except Exception:
 						return ""
 
+				_domain_crews = [c for c in _panel if c not in ("focus", "scrum")]
+				# Always include focus as the cross-domain priority moderator if there are 2 or more domain experts
+				_has_focus = "focus" in _panel or len(_domain_crews) >= 2
+				_has_scrum = "scrum" in _panel
+
+				# Build the Tiered Sequential execution panel
+				_tiered_panel = list(_domain_crews)
+				if _has_focus and "focus" not in _tiered_panel:
+					_tiered_panel.append("focus")
+				if _has_scrum and "scrum" not in _tiered_panel:
+					_tiered_panel.append("scrum")
+
 				# ROUND 1: Initial Drafts
-				for _cid in _panel:
+				for _cid in _tiered_panel:
 					logger.warning("Router: panel R1 starting crew '%s'", _cid)
 					await _status(f"{_cid.title()} · Round 1 — writing initial position...")
 					_header = f"\n\n**[{_cid.title()} - Round 1]**\n"
 					yield _header
 
+					# Build customized prompt for focus and scrum in Round 1
+					if _cid == "focus":
+						_dom_drafts = "\n\n".join([f"{dc.title()}: {d}" for dc, d in _r1_contributions])
+						_round_prompt = (
+							f"User asked: \"{user_text}\"\n\n"
+							f"The domain-specific experts suggested the following initial positions:\n{_dom_drafts}\n\n"
+							f"As the Clarity and Focus priority synthesizer, reconcile these recommendations against the operator's general goals, physical capacity, and calendar. Write a cohesive, high-leverage priority focus draft."
+						)
+					elif _cid == "scrum":
+						_all_drafts = "\n\n".join([f"{dc.title()}: {d}" for dc, d in _r1_contributions])
+						_round_prompt = (
+							f"User asked: \"{user_text}\"\n\n"
+							f"The experts and Focus proposed the following:\n{_all_drafts}\n\n"
+							f"As the Kanban and delivery intelligence auditor, check if any card creations, moves, or updates are being proposed. Draft the required Planka actions and commitments, checking WIP limits and duplicate items."
+						)
+					else:
+						_round_prompt = user_text
+
 					_chunks: list[str] = []
 					try:
-						async for _tok in native_crew_engine.run_crew_stream(_cid, user_text, history=_ctx_history, force_cloud=True):
+						async for _tok in native_crew_engine.run_crew_stream(_cid, _round_prompt, history=_ctx_history, force_cloud=True):
 							_chunks.append(_tok)
 							yield _tok
 						_pout = "".join(_chunks)
 						_pout_clean = _ACTION_STRIP_RE.sub("", _pout).strip()
-						if len(_pout_clean.split()) >= _MIN_PANEL_TOKENS:
+						if len(_pout_clean.split()) >= _MIN_PANEL_TOKENS or _cid in ("focus", "scrum"):
 							_r1_contributions.append((_cid, _pout_clean))
 							# Generate and display summary in status bubble
 							_r1_summary = await _crew_summary(_cid.title(), _pout_clean, "Round 1")
@@ -1212,13 +1242,13 @@ async def route_message_stream(
 					except Exception as _e:
 						logger.warning("Router: panel crew %s failed: %s", _cid, _e)
 
-				if len(_r1_contributions) < 2:
+				_viable_domains = [c for c, _ in _r1_contributions if c not in ("focus", "scrum")]
+				if len(_viable_domains) < 1:
 					# Kill switch triggered: fall back to single crew
-					_fallback_id = _r1_contributions[0][0] if _r1_contributions else _panel[0]
-					logger.info("Router: panel fell below 2 viable contributions — single crew '%s'", _fallback_id)
+					_fallback_id = _viable_domains[0] if _viable_domains else _panel[0]
+					logger.info("Router: panel fell below viable domain contributions — single crew '%s'", _fallback_id)
 					routed_crews = [_fallback_id]
 					yield f"\n\n_(Debate aborted, deferring to {_fallback_id.title()})_\n"
-					# Fall through to the normal single-crew path below
 				else:
 					# ROUND 2: Rebuttal Loop
 					_r2_contributions: list[tuple[str, str]] = []
@@ -1227,13 +1257,28 @@ async def route_message_stream(
 						_header = f"\n\n**[{_cid.title()} - Round 2 Rebuttal]**\n"
 						yield _header
 
-						_others = [f"{o_cid.title()}: {o_draft}" for o_cid, o_draft in _r1_contributions if o_cid != _cid]
-						_others_str = "\n\n".join(_others)
-						_rebuttal_prompt = (
-							f"User asked: \"{user_text}\"\n\n"
-							f"Your peers on the panel suggested:\n{_others_str}\n\n"
-							f"Review their advice alongside your own. What do you agree with? What do you disagree with? Provide your final updated recommendation."
-						)
+						if _cid == "focus":
+							_dom_rebuts = "\n\n".join([f"{dc.title()}: {d}" for dc, d in _r2_contributions if dc not in ("focus", "scrum")])
+							_rebuttal_prompt = (
+								f"User asked: \"{user_text}\"\n\n"
+								f"The domain experts have submitted their Round 2 rebuttals:\n{_dom_rebuts}\n\n"
+								f"Review these final expert positions. Adapt and finalize your priority focus recommendation and compromises accordingly."
+							)
+						elif _cid == "scrum":
+							_all_rebuts = "\n\n".join([f"{dc.title()}: {d}" for dc, d in _r2_contributions if dc != "scrum"])
+							_rebuttal_prompt = (
+								f"User asked: \"{user_text}\"\n\n"
+								f"The final expert consensus is:\n{_all_rebuts}\n\n"
+								f"Review their final recommendations. Finalize the required Planka task creations, updates, list selections, and card formatting, checking WIP limits and duplicate items."
+							)
+						else:
+							_others = [f"{o_cid.title()}: {o_draft}" for o_cid, o_draft in _r1_contributions if o_cid != _cid]
+							_others_str = "\n\n".join(_others)
+							_rebuttal_prompt = (
+								f"User asked: \"{user_text}\"\n\n"
+								f"Your peers on the panel suggested:\n{_others_str}\n\n"
+								f"Review their advice alongside your own. What do you agree with? What do you disagree with? Provide your final updated recommendation."
+							)
 
 						_chunks = []
 						try:
@@ -1251,6 +1296,114 @@ async def route_message_stream(
 								await _status(f"{_cid.title()} · Round 2 done")
 						except Exception as _e:
 							logger.warning("Router: panel crew %s rebuttal failed: %s", _cid, _e)
+
+					# DYNAMIC ROUND SCALING: Round 3 Reconciliation check (triggered by focus)
+					_requires_r3 = False
+					_r3_topic = ""
+					try:
+						from app.services.llm import chat as _fast_chat
+						_r2_str = "\n\n".join([f"{dc.title()}: {d}" for dc, d in _r2_contributions if dc not in ("focus", "scrum")])
+						_r3_eval_prompt = (
+							f"User asked: \"{user_text}\"\n\n"
+							f"The panel experts have completed two rounds of debate. Here are their current stances:\n{_r2_str}\n\n"
+							f"Evaluate if there is still a critical, unresolved contradiction or safety/burnout veto "
+							f"(such as fitness proposing hard training while health demands rest due to extreme stress/fatigue). "
+							f"If there is a conflict requiring explicit reconciliation, reply with EXACTLY 'YES: <1-sentence description of the conflict to resolve>'. "
+							f"If they have converged safely, reply with EXACTLY 'NO'."
+						)
+						_r3_decision = await asyncio.wait_for(_fast_chat(_r3_eval_prompt, tier="fast"), timeout=15.0)
+						_r3_decision = _r3_decision.strip()
+						if _r3_decision.upper().startswith("YES"):
+							_requires_r3 = True
+							_r3_topic = _r3_decision[4:].strip()
+							logger.warning("Router: dynamic panel debate scaling triggered Round 3 for conflict: %s", _r3_topic)
+					except Exception as _r3_e:
+						logger.warning("Router: Round 3 dynamic scaling evaluation failed: %s", _r3_e)
+
+					if _requires_r3:
+						_r3_contributions = []
+						# Run Round 3 for domain crews
+						for _cid, _r2_draft in [c for c in _r2_contributions if c[0] not in ("focus", "scrum")]:
+							await _status(f"{_cid.title()} · Round 3 — reconciling conflict...")
+							_header = f"\n\n**[{_cid.title()} - Round 3 Reconciliation]**\n"
+							yield _header
+
+							_r3_prompt = (
+								f"User asked: \"{user_text}\"\n\n"
+								f"Your Round 2 stance was:\n{_r2_draft}\n\n"
+								f"CRITICAL CONFLICT DETECTED: {_r3_topic}\n\n"
+								f"You MUST adapt your recommendation to resolve this conflict. Modify your stance to reconcile safely with the safety/burnout constraints described above. Provide your final reconciled recommendation."
+							)
+
+							_chunks = []
+							try:
+								async for _tok in native_crew_engine.run_crew_stream(_cid, _r3_prompt, history=_ctx_history, force_cloud=True):
+									_chunks.append(_tok)
+									yield _tok
+								_pout = "".join(_chunks)
+								_pout_clean = _ACTION_STRIP_RE.sub("", _pout).strip()
+								_r3_contributions.append((_cid, _pout_clean))
+								_r3_summary = await _crew_summary(_cid.title(), _pout_clean, "Round 3 reconciliation")
+								if _r3_summary:
+									await _status(f"{_cid.title()} · Round 3 done\n{_r3_summary}")
+								else:
+									await _status(f"{_cid.title()} · Round 3 done")
+							except Exception as _e:
+								logger.warning("Router: panel crew %s Round 3 failed: %s", _cid, _e)
+
+						# Update domain drafts in _r2_contributions with reconciled ones
+						_updated_r2 = []
+						for _cid, _draft in _r2_contributions:
+							_r3_match = next((d for c, d in _r3_contributions if c == _cid), None)
+							if _r3_match:
+								_updated_r2.append((_cid, _r3_match))
+							else:
+								_updated_r2.append((_cid, _draft))
+						_r2_contributions = _updated_r2
+
+						# Run Focus last to synthesize reconciled priority
+						if _has_focus:
+							await _status("Focus · Round 3 — synthesizing final reconciled priorities...")
+							_header = f"\n\n**[Focus - Round 3 Final Synthesis]**\n"
+							yield _header
+							_reconciled_str = "\n\n".join([f"{c[0].title()}: {c[1]}" for c in _r3_contributions])
+							_focus_r3_prompt = (
+								f"The experts have reconciled their conflict as follows:\n{_reconciled_str}\n\n"
+								f"Review their final reconciled positions. Write your final priority synthesis and action plan for the operator."
+							)
+							_chunks = []
+							try:
+								async for _tok in native_crew_engine.run_crew_stream("focus", _focus_r3_prompt, history=_ctx_history, force_cloud=True):
+									_chunks.append(_tok)
+									yield _tok
+								_pout = "".join(_chunks)
+								_pout_clean = _ACTION_STRIP_RE.sub("", _pout).strip()
+								_r2_contributions = [(c, d if c != "focus" else _pout_clean) for c, d in _r2_contributions]
+								await _status("Focus · Round 3 done")
+							except Exception as _e:
+								logger.warning("Router: Focus Round 3 failed: %s", _e)
+
+						# Run Scrum one last time to audit the compiled card tasks
+						if _has_scrum:
+							await _status("Scrum · Round 3 — auditing finalized task lists...")
+							_header = f"\n\n**[Scrum - Round 3 Final Audit]**\n"
+							yield _header
+							_final_reconciled = "\n\n".join([f"{c[0].title()}: {c[1]}" for c in _r2_contributions if c[0] != "scrum"])
+							_scrum_r3_prompt = (
+								f"The final reconciled consensus is:\n{_final_reconciled}\n\n"
+								f"Audit this reconciled recommendation. Ensure all commitments and cards to be generated strictly conform to WIP limits, target the correct Lists/Boards, and represent no duplicates."
+							)
+							_chunks = []
+							try:
+								async for _tok in native_crew_engine.run_crew_stream("scrum", _scrum_r3_prompt, history=_ctx_history, force_cloud=True):
+									_chunks.append(_tok)
+									yield _tok
+								_pout = "".join(_chunks)
+								_pout_clean = _ACTION_STRIP_RE.sub("", _pout).strip()
+								_r2_contributions = [(c, d if c != "scrum" else _pout_clean) for c, d in _r2_contributions]
+								await _status("Scrum · Round 3 done")
+							except Exception as _e:
+								logger.warning("Router: Scrum Round 3 failed: %s", _e)
 
 					# Check cosine similarity to decide labelling (on the rebuttals)
 					import numpy as np
