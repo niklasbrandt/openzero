@@ -1501,7 +1501,16 @@ async def chat_stream(
 						await asyncio.sleep(3)
 					continue
 			except httpx.HTTPStatusError as http_err:
-				logger.error("LLM HTTP %d error (%s): %s", http_err.response.status_code, tier_name, http_err)
+				status = http_err.response.status_code
+				if status in (503, 429, 502) and attempt < max_attempts - 1:
+					wait_secs = 3 * (attempt + 1)
+					logger.warning(
+						"LLM HTTP %d (%s, attempt %d/%d) — retrying in %ds",
+						status, tier_name, attempt + 1, max_attempts, wait_secs,
+					)
+					await asyncio.sleep(wait_secs)
+					continue
+				logger.error("LLM HTTP %d error (%s): %s", status, tier_name, http_err)
 				yield "I'm having trouble reaching the model. Please try again."
 				return
 			except Exception as e:
