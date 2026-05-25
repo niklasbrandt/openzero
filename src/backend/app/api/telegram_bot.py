@@ -1202,172 +1202,170 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 
 	_typing_task = asyncio.create_task(_keep_typing())
 
-	# history is always set by bus.ingest() in the normal calling path;
-	# this fallback exists for test callers that pass history=None.
-	if history is None:
-		from app.models.db import get_rolling_history
-		merged_history = await get_rolling_history(days=4, limit=60)
-	else:
-		merged_history = history
+	try:
+		# history is always set by bus.ingest() in the normal calling path;
+		# this fallback exists for test callers that pass history=None.
+		if history is None:
+			from app.models.db import get_rolling_history
+			merged_history = await get_rolling_history(days=4, limit=60)
+		else:
+			merged_history = history
 
-	# Stream via unified router — collect tokens for progressive edits
-	async def _status_update(text: str) -> None:
-		nonlocal thinking_msg
-		try:
-			if thinking_msg is None:
-				# First status update — send the actual message now
-				if is_followup:
-					thinking_msg = await context.bot.send_message(
-						chat_id=chat_id,
-						text=f"<blockquote><i>{text}</i></blockquote>",
-						parse_mode="HTML",
-					)
+		# Stream via unified router — collect tokens for progressive edits
+		async def _status_update(text: str) -> None:
+			nonlocal thinking_msg
+			try:
+				if thinking_msg is None:
+					# First status update — send the actual message now
+					if is_followup:
+						thinking_msg = await context.bot.send_message(
+							chat_id=chat_id,
+							text=f"<blockquote><i>{text}</i></blockquote>",
+							parse_mode="HTML",
+						)
+					else:
+						thinking_msg = await update.message.reply_text(
+							f"<blockquote><i>{text}</i></blockquote>",
+							parse_mode="HTML",
+						)
 				else:
-					thinking_msg = await update.message.reply_text(
-						f"<blockquote><i>{text}</i></blockquote>",
-						parse_mode="HTML",
-					)
-			else:
-				await safe_edit(thinking_msg, f"<blockquote><i>{text}</i></blockquote>", parse_mode="HTML")
-		except Exception as _su_e:
-			logger.warning("_status_update failed (text=%r): %s", text[:60], _su_e)
+					await safe_edit(thinking_msg, f"<blockquote><i>{text}</i></blockquote>", parse_mode="HTML")
+			except Exception as _su_e:
+				logger.warning("_status_update failed (text=%r): %s", text[:60], _su_e)
 
-	token_stream, result_fut = await route_message_stream(
-		user_text=user_text,
-		history=merged_history,
-		channel="telegram",
-		lang=lang,
-		save_history=True,
-		status_callback=_status_update,
-	)
+		token_stream, result_fut = await route_message_stream(
+			user_text=user_text,
+			history=merged_history,
+			channel="telegram",
+			lang=lang,
+			save_history=True,
+			status_callback=_status_update,
+		)
 
-	chunks: list[str] = []
-	last_edit_time = time.time()
-	EDIT_INTERVAL = 1.5
-	# Panel mode flag: set True when the router emits the __PANEL_MODE__ sentinel.
-	# In panel mode the status bubble is reserved for per-round crew progress updates
-	# emitted by _status_update(); we suppress progressive token preview so those
-	# updates are not immediately overwritten by growing raw token text.
-	_panel_mode = False
-	# Board-reorganisation requests require generating many action tags (MOVE_CARD,
-	# CREATE_LIST) which can exceed 120 s on a local 3-8 B model. Detect early and
-	# give those requests up to 300 s. Everything else keeps the 120 s cap.
-	try:
-		from app.services.router import _REORGANIZE_BOARD_RE as _reorg_re
-		_is_complex_reorg = bool(_reorg_re.search(user_text[:500]))
-	except Exception:
-		_is_complex_reorg = False
-	_is_bulk_save = bool(re.search(
-		r'\b([5-9]|[1-9]\d+)\s+(?:rezepte?|recipes?|mahlzeiten|gerichte?|workouts?|trainings?|pl[aä]ne?|items?|notizen?)\b',
-		user_text[:500], re.IGNORECASE,
-	))
-	_stream_timeout = 900.0 if (_is_complex_reorg or _is_bulk_save) else 900.0
-	try:
-		async with asyncio.timeout(_stream_timeout):
-			async for token in token_stream:
-				# Intercept the panel-mode sentinel — never include it in the reply.
-				if token == "__PANEL_MODE__":
-					_panel_mode = True
-					logger.debug("_process_freetext: panel mode activated — suppressing progressive preview")
-					continue
-				chunks.append(token)
-				# In panel mode the status bubble is managed by _status_update().
-				# Skip the progressive token preview so we don't overwrite per-round
-				# crew progress messages with raw streaming text.
-				if _panel_mode:
-					continue
-				now = time.time()
-				if now - last_edit_time >= EDIT_INTERVAL:
-					partial = "".join(chunks)
-					if len(partial.strip()) > 3:
-						try:
-							display = f"<blockquote><i>{_md_to_html(partial)}...</i></blockquote>"
-							if thinking_msg is None:
-								if is_followup:
-									thinking_msg = await context.bot.send_message(chat_id=chat_id, text=display, parse_mode="HTML")
-								else:
-									thinking_msg = await update.message.reply_text(display, parse_mode="HTML")
-							else:
-								await safe_edit(thinking_msg, display, parse_mode="HTML")
-						except Exception as _ee:
-							logger.debug("Progressive edit skip: %s", _ee)
-						last_edit_time = now
-	except asyncio.TimeoutError:
-		_typing_task.cancel()
-		logger.warning("_process_freetext: stream timed out after %.0f s — aborting", _stream_timeout)
-		if thinking_msg is not None:
-			try:
-				await thinking_msg.delete()
-			except Exception as _e:
-				logger.debug("thinking_msg delete skipped: %s", _e)
+		chunks: list[str] = []
+		last_edit_time = time.time()
+		EDIT_INTERVAL = 1.5
+		# Panel mode flag: set True when the router emits the __PANEL_MODE__ sentinel.
+		# In panel mode the status bubble is reserved for per-round crew progress updates
+		# emitted by _status_update(); we suppress progressive token preview so those
+		# updates are not immediately overwritten by growing raw token text.
+		_panel_mode = False
+		# Board-reorganisation requests require generating many action tags (MOVE_CARD,
+		# CREATE_LIST) which can exceed 120 s on a local 3-8 B model. Detect early and
+		# give those requests up to 300 s. Everything else keeps the 120 s cap.
 		try:
-			await safe_reply(update, "I ran out of time on that one. Please try again.")
-		except Exception as _e:
-			logger.debug("safe_reply skipped: %s", _e)
-		return True
-
-	try:
-		result = await asyncio.wait_for(asyncio.shield(result_fut), timeout=30.0)
-	except asyncio.TimeoutError:
-		_typing_task.cancel()
-		logger.error("_process_freetext: result_fut never resolved — generator may have crashed silently")
-		if thinking_msg is not None:
+			from app.services.router import _REORGANIZE_BOARD_RE as _reorg_re
+			_is_complex_reorg = bool(_reorg_re.search(user_text[:500]))
+		except Exception:
+			_is_complex_reorg = False
+		_is_bulk_save = bool(re.search(
+			r'\b([5-9]|[1-9]\d+)\s+(?:rezepte?|recipes?|mahlzeiten|gerichte?|workouts?|trainings?|pl[aä]ne?|items?|notizen?)\b',
+			user_text[:500], re.IGNORECASE,
+		))
+		_stream_timeout = 900.0 if (_is_complex_reorg or _is_bulk_save) else 900.0
+		try:
+			async with asyncio.timeout(_stream_timeout):
+				async for token in token_stream:
+					# Intercept the panel-mode sentinel — never include it in the reply.
+					if token == "__PANEL_MODE__":
+						_panel_mode = True
+						logger.debug("_process_freetext: panel mode activated — suppressing progressive preview")
+						continue
+					chunks.append(token)
+					# In panel mode the status bubble is managed by _status_update().
+					# Skip the progressive token preview so we don't overwrite per-round
+					# crew progress messages with raw streaming text.
+					if _panel_mode:
+						continue
+					now = time.time()
+					if now - last_edit_time >= EDIT_INTERVAL:
+						partial = "".join(chunks)
+						if len(partial.strip()) > 3:
+							try:
+								display = f"<blockquote><i>{_md_to_html(partial)}...</i></blockquote>"
+								if thinking_msg is None:
+									if is_followup:
+										thinking_msg = await context.bot.send_message(chat_id=chat_id, text=display, parse_mode="HTML")
+									else:
+										thinking_msg = await update.message.reply_text(display, parse_mode="HTML")
+								else:
+									await safe_edit(thinking_msg, display, parse_mode="HTML")
+							except Exception as _ee:
+								logger.debug("Progressive edit skip: %s", _ee)
+							last_edit_time = now
+		except asyncio.TimeoutError:
+			logger.warning("_process_freetext: stream timed out after %.0f s — aborting", _stream_timeout)
+			if thinking_msg is not None:
+				try:
+					await thinking_msg.delete()
+				except Exception as _e:
+					logger.debug("thinking_msg delete skipped: %s", _e)
 			try:
-				await thinking_msg.delete()
+				await safe_reply(update, "I ran out of time on that one. Please try again.")
+			except Exception as _e:
+				logger.debug("safe_reply skipped: %s", _e)
+			return True
+
+		try:
+			result = await asyncio.wait_for(asyncio.shield(result_fut), timeout=30.0)
+		except asyncio.TimeoutError:
+			logger.error("_process_freetext: result_fut never resolved — generator may have crashed silently")
+			if thinking_msg is not None:
+				try:
+					await thinking_msg.delete()
+				except Exception:
+					pass
+			try:
+				await safe_reply(update, "Something went wrong processing that. Please try again.")
 			except Exception:
 				pass
-		try:
-			await safe_reply(update, "Something went wrong processing that. Please try again.")
-		except Exception:
-			pass
-		return True
+			return True
 
-	# Ensure thinking_msg exists before delivery (fast responses may skip status updates)
-	if thinking_msg is None:
-		if is_followup:
-			thinking_msg = await context.bot.send_message(
-				chat_id=chat_id,
-				text=f"<blockquote><i>{t.get('thinking_followup', 'Processing your follow-up...')}</i></blockquote>",
-				parse_mode="HTML",
-			)
-		else:
-			thinking_msg = await update.message.reply_text(
-				f"<blockquote><i>{t.get('thinking', 'Thinking...')}</i></blockquote>",
-				parse_mode="HTML",
-			)
+		# Ensure thinking_msg exists before delivery (fast responses may skip status updates)
+		if thinking_msg is None:
+			if is_followup:
+				thinking_msg = await context.bot.send_message(
+					chat_id=chat_id,
+					text=f"<blockquote><i>{t.get('thinking_followup', 'Processing your follow-up...')}</i></blockquote>",
+					parse_mode="HTML",
+				)
+			else:
+				thinking_msg = await update.message.reply_text(
+					f"<blockquote><i>{t.get('thinking', 'Thinking...')}</i></blockquote>",
+					parse_mode="HTML",
+				)
 
-	# Empty response — LLM timed out or returned nothing
-	if not result.reply.strip():
-		_typing_task.cancel()
-		if thinking_msg is not None:
-			try:
-				await thinking_msg.delete()
-			except Exception as _e:
-				logger.debug("Telegram delete ignored: %s", _e)
-		await safe_reply(update, t.get("empty_response_retry", "Meine Antwort war leer — bitte versuche es erneut."))
+		# Empty response — LLM timed out or returned nothing
+		if not result.reply.strip():
+			if thinking_msg is not None:
+				try:
+					await thinking_msg.delete()
+				except Exception as _e:
+					logger.debug("Telegram delete ignored: %s", _e)
+			await safe_reply(update, t.get("empty_response_retry", "Meine Antwort war leer — bitte versuche es erneut."))
+			return False
+
+		# If router redirected to a crew (ROUTE tag), delete thinking msg and hand off
+		if result.routed_to_crew:
+			if thinking_msg is not None:
+				try:
+					await thinking_msg.delete()
+				except Exception as _e:
+					logger.debug("Telegram delete (route handoff) ignored: %s", _e)
+			await _process_crew_stream(update, context, [result.routed_to_crew], user_text, t, already_ingested=True)
+			return False
+
+		clean_reply = strip_llm_time_header(result.reply)
+
+		display_clean = clean_reply.strip()
+
+		html_reply = _md_to_html(display_clean)
+		footer = await _get_stats_footer()
+		display_reply = f"<b>{format_time(dt=receipt_dt)}</b>\n\n{html_reply}{footer}"
+		await _send_chunked_reply(thinking_msg, display_reply, nav_footer=get_nav_footer(t))
 		return False
-
-	# If router redirected to a crew (ROUTE tag), delete thinking msg and hand off
-	if result.routed_to_crew:
+	finally:
 		_typing_task.cancel()
-		if thinking_msg is not None:
-			try:
-				await thinking_msg.delete()
-			except Exception as _e:
-				logger.debug("Telegram delete (route handoff) ignored: %s", _e)
-		await _process_crew_stream(update, context, [result.routed_to_crew], user_text, t, already_ingested=True)
-		return False
-
-	clean_reply = strip_llm_time_header(result.reply)
-
-	display_clean = clean_reply.strip()
-
-	html_reply = _md_to_html(display_clean)
-	footer = await _get_stats_footer()
-	display_reply = f"<b>{format_time(dt=receipt_dt)}</b>\n\n{html_reply}{footer}"
-	_typing_task.cancel()
-	await _send_chunked_reply(thinking_msg, display_reply, nav_footer=get_nav_footer(t))
-	return False
 
 @owner_only
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
