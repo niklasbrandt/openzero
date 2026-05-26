@@ -7,6 +7,7 @@ crews:
     description: "A council of eight psychological archetypes guiding the user through five phases: emotional stabilisation, structural rebuild, autonomous identity, calibrated re-entry into connection, and integrated life design — with acknowledgment first, body second, action third."
     group: "private"
     type: "agent"
+    health_context: true
     feeds_briefing: "/day"
     keywords:
       - anger
