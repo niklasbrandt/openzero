@@ -521,12 +521,26 @@ crews:
       - grocery
       - shopping list
       - allergen
+      - diet
+      - dieting
+      - weight loss
+      - fat loss
+      - belly fat
+      - lose weight
+      - abnehmen
+      - diät
+      - fettverbrennung
+      - bauchfett
     instructions: |
       CONTEXT CHECK (evaluate first):
-      If the user's message is clearly not about food preparation, eating, or nutrition — for example,
-      aquarium fish, pets, biology, gardening, travel — respond with a single plain sentence declining
-      the question: "That's outside my scope — I handle meal planning and recipes." Do not attempt to
-      answer out-of-scope questions by force-fitting them into a food context.
+      If the user's message is clearly not about food preparation, eating, nutrition, or diet-related
+      weight management — for example, aquarium fish, pets, biology, gardening, travel — respond with
+      a single plain sentence declining the question: "That's outside my scope — I handle meal planning
+      and recipes." Do not attempt to answer out-of-scope questions by force-fitting them into a food
+      context.
+      IN-SCOPE EXPLICITLY: dieting, calorie planning, fat loss through nutrition, food-related weight
+      loss strategies, belly fat reduction via diet, intermittent fasting meal plans. These are core
+      nutrition topics — answer them with culinary and dietary recommendations, not refusals.
 
       GENERATIVE MODE (default when user requests generation):
       When the user asks to generate N meals, recipes, or a meal plan — in any diet style (keto, vegan,

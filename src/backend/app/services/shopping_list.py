@@ -87,7 +87,9 @@ async def _find_nutrition_board(client: httpx.AsyncClient) -> tuple[str | None, 
 
 		det = await client.get(f"/api/projects/{project_id}")
 		det.raise_for_status()
-		for b in det.json().get("included", {}).get("boards", []):
+		_inc = det.json().get("included")
+		_boards = _inc.get("boards", []) if isinstance(_inc, dict) else []
+		for b in _boards:
 			if (b.get("name") or "").lower() in ("nutrition", "chef"):
 				board_id = b["id"]
 				break
@@ -97,7 +99,8 @@ async def _find_nutrition_board(client: httpx.AsyncClient) -> tuple[str | None, 
 		# Find the Shopping List
 		b_detail = await client.get(f"/api/boards/{board_id}", params={"included": "lists"})
 		b_detail.raise_for_status()
-		lists = b_detail.json().get("included", {}).get("lists", [])
+		_b_inc = b_detail.json().get("included")
+		lists = _b_inc.get("lists", []) if isinstance(_b_inc, dict) else []
 		list_id = None
 		for lst in lists:
 			if (lst.get("name") or "").lower() == list_name.lower():
@@ -146,7 +149,8 @@ async def _get_or_create_weekly_card(
 	try:
 		b_detail = await client.get(f"/api/boards/{board_id}", params={"included": "lists,cards"})
 		b_detail.raise_for_status()
-		cards = b_detail.json().get("included", {}).get("cards", [])
+		_c_inc = b_detail.json().get("included")
+		cards = _c_inc.get("cards", []) if isinstance(_c_inc, dict) else []
 		for c in cards:
 			if c.get("listId") == list_id and c.get("name") == card_name:
 				return c["id"], c.get("description") or ""

@@ -1342,6 +1342,25 @@ async def create_list(board_name: str, list_name: str, project_name: Optional[st
 		resp.raise_for_status()
 		projects = resp.json().get("items", [])
 
+		# Normalize board name with overrides/synonyms dynamically (mirrors create_task)
+		search_board_names = {board_name.lower()}
+		try:
+			from app.services.crews import crew_registry
+			from app.services.crews_native import crew_board_name_for_id
+
+			for c in crew_registry.list_active():
+				c_bname = crew_board_name_for_id(c.id).lower()
+				if c_bname == board_name.lower() or c.id.lower() == board_name.lower():
+					search_board_names.add(c.id.lower())
+					search_board_names.add(c_bname)
+					if c.id == "chef" or c.id == "recipe":
+						search_board_names.update({"nutrition", "recipe", "chef"})
+		except Exception as _ex:
+			logger.debug("create_list: dynamic crew board resolution failed: %s", _ex)
+			# Static fallback mapping
+			if board_name.lower() in ("nutrition", "chef", "recipe"):
+				search_board_names.update({"nutrition", "chef", "recipe"})
+
 		board_id = None
 		existing_lists = []
 		for proj in projects:
@@ -1350,23 +1369,31 @@ async def create_list(board_name: str, list_name: str, project_name: Optional[st
 			det = await client.get(f"/api/projects/{proj['id']}")
 			det.raise_for_status()
 			det_data = det.json()
-			boards = det_data.get("included", {}).get("boards", []) or det_data.get("boards", [])
+			# Boards might be in 'included' or 'boards' key depending on version/sideloading
+			_included = det_data.get("included")
+			if isinstance(_included, dict):
+				boards = _included.get("boards", [])
+			else:
+				boards = det_data.get("boards", [])
+			if not boards:
+				boards = []
 			for b in boards:
-				if b["name"].lower() == board_name.lower():
+				if (b.get("name") or "").lower() in search_board_names:
 					board_id = b["id"]
 					break
 			if board_id:
 				break
 
 		if not board_id:
-			logger.debug("create_list - board '%s' not found", _sanitize_for_log(board_name))
+			logger.debug("create_list - board '%s' not found (searched: %s)", _sanitize_for_log(board_name), search_board_names)
 			return None
 
 		# Dedup: check if a list with the same name already exists on this board
 		try:
 			b_detail = await client.get(f"/api/boards/{board_id}", params={"included": "lists"})
 			b_detail.raise_for_status()
-			existing_lists = b_detail.json().get("included", {}).get("lists", [])
+			_inc = b_detail.json().get("included")
+			existing_lists = _inc.get("lists", []) if isinstance(_inc, dict) else []
 			for lst in existing_lists:
 				if lst.get("type") in ("archive", "trash"):
 					continue

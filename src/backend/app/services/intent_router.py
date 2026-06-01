@@ -2175,8 +2175,9 @@ async def dispatch_structural_intent(intent: StructuralIntent, lang: str) -> str
 				resp = await client.get(f"/api/boards/{board_id}", params={"included": "lists,cards"})
 				resp.raise_for_status()
 				detail = resp.json()
-				lists = detail.get("included", {}).get("lists", [])
-				cards = detail.get("included", {}).get("cards", [])
+				_inc = detail.get("included")
+				lists = _inc.get("lists", []) if isinstance(_inc, dict) else []
+				cards = _inc.get("cards", []) if isinstance(_inc, dict) else []
 				if not lists:
 					return f"⚠ Board '{board_name}' has no lists to sort."
 

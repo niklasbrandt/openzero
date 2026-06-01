@@ -130,6 +130,9 @@ async def _handle_inbound(sender: str, text: str) -> None:
 		return
 
 	history = await bus.ingest("whatsapp", text)
+	if not history:
+		logger.info("WhatsApp: dedup hit — skipping duplicate message")
+		return
 
 	# Full router — handles intent classification, ACTION tags, phantom guard, memory
 	try:
