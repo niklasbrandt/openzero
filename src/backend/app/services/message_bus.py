@@ -77,7 +77,9 @@ Channel adapters own only the channel-specific parts:
 """
 
 import asyncio
+import hashlib
 import logging
+import time
 from datetime import datetime, timedelta
 from typing import Any, Awaitable, Callable
 from uuid import uuid4
@@ -121,8 +123,11 @@ class MessageBus:
 	"""Persistence and routing hub for all Z messenger channels."""
 
 	def __init__(self) -> None:
-		# channel_id → push function for proactive outbound messages
+		# channel_id -> push function for proactive outbound messages
 		self._channels: dict[str, _PushFn] = {}
+		# Dedup cache: hash(normalised_text) -> timestamp
+		self._dedup_cache: dict[str, float] = {}
+		self._dedup_window_s: float = 15.0
 
 	# ─── Channel Registration ──────────────────────────────────────────────
 
@@ -157,8 +162,26 @@ class MessageBus:
 
 		Returns:
 			Cross-channel history list ready to pass to chat_with_context(history=…).
+			Returns an empty list if the message is a cross-channel duplicate.
 		"""
 		from app.models.db import save_global_message, get_rolling_history
+
+		# ── Dedup: skip duplicate messages arriving within the sliding window ──
+		_norm = user_text.strip().lower()
+		_hash = hashlib.md5(_norm.encode("utf-8", errors="replace")).hexdigest()
+		_now = time.monotonic()
+
+		# Prune expired entries
+		expired = [k for k, ts in self._dedup_cache.items() if _now - ts > self._dedup_window_s]
+		for k in expired:
+			del self._dedup_cache[k]
+
+		if _hash in self._dedup_cache:
+			logger.info("MessageBus: dedup hit — skipping duplicate from %s (within %.0fs window)", channel, self._dedup_window_s)
+			return []
+
+		self._dedup_cache[_hash] = _now
+
 		if save:
 			await save_global_message(channel, "user", user_text)
 		return await get_rolling_history(days=4, limit=60)

@@ -315,6 +315,8 @@ async def dashboard_chat(req: ChatRequest, request: Request, db: AsyncSession = 
 	from app.services.message_bus import bus
 	if not req.skip_history:
 		merged_history = await bus.ingest("dashboard", msg)
+		if not merged_history:
+			return {"reply": ""}
 	else:
 		from app.models.db import get_rolling_history
 		merged_history = await get_rolling_history(days=4, limit=60)
@@ -1004,6 +1006,9 @@ async def dashboard_chat_stream(req: ChatRequest, request: Request, _rl: None = 
 		# even if the client disconnects mid-stream.
 		if not req.skip_history:
 			merged_history = await bus.ingest("dashboard", msg)
+			if not merged_history:
+				yield "data: [DONE]\n\n"
+				return
 		else:
 			from app.models.db import get_rolling_history
 			merged_history = await get_rolling_history(days=4, limit=60)

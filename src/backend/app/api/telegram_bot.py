@@ -1102,6 +1102,9 @@ async def handle_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		# Save user message FIRST via the bus — guarantees persistence even if
 		# the LLM times out, and returns cross-channel history in one call.
 		_hist = await bus.ingest("telegram", user_text)
+		if not _hist:
+			logger.info("Telegram: dedup hit — skipping duplicate message")
+			return
 
 		llm_user_text = user_text
 
