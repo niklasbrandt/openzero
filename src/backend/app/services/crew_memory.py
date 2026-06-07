@@ -423,11 +423,11 @@ async def _compress_daily_diary(current: str, user_msg: str, crew_response: str,
 			f"Keep it extremely compact and token-efficient so it fits in a small context window."
 		)
 
-		# Call local/fast tier LLM
+		# Call cloud tier LLM
 		summary = await chat(
 			user_message=prompt,
 			system_override="You are a dense, professional memory summarization utility for openZero.",
-			tier="fast"
+			tier="cloud"
 		)
 		if summary and summary.strip():
 			return summary.strip()
