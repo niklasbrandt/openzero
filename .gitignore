@@ -79,3 +79,4 @@ Thumbs.db
 .vite/
 .mypy_cache/
 agent/domain.derived.yaml
+z_output.txt
