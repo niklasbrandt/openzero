@@ -152,7 +152,7 @@ async def _generate_nudge_text(crew_id: str) -> str:
 		from app.services.llm import chat
 		text = await chat(
 			user_message=_NUDGE_PROMPTS[crew_id],
-			tier="local",
+			tier="cloud",
 			max_tokens=80,
 		)
 		text = (text or "").strip()
