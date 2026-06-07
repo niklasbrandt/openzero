@@ -1075,6 +1075,7 @@ async def dashboard_crew_stream(crew_id: str, req: ChatRequest, request: Request
 	from app.services.message_bus import bus
 
 	async def event_generator():
+		_stream_timeout = 900.0
 		chunks = []
 		try:
 			import asyncio as _asyncio

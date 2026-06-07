@@ -112,7 +112,6 @@ async def _handle_inbound(sender: str, text: str) -> None:
 	"""
 	from app.services.message_bus import bus
 	from app.services.router import route_message_stream, RouterResult as _RouterResult
-	from app.services.crews import resolve_active_crews
 
 	# /walk command — retired stub
 	import re as _re
@@ -193,7 +192,6 @@ async def _handle_inbound_image(sender: str, media_id: str, user_hint: str) -> N
 	from app.services.vision import caption_image
 	from app.services.message_bus import bus
 	from app.services.router import route_message_stream, RouterResult as _RouterResult
-	from app.services.crews import resolve_active_crews
 
 	try:
 		image_bytes = await _download_whatsapp_media(media_id)

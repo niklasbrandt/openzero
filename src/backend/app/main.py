@@ -219,6 +219,7 @@ from app.api.dashboard import router as dashboard_router, auth_router
 from app.api.health import router as health_router
 from app.api.whatsapp import router as whatsapp_router, send_whatsapp_message
 from app.api.backup import router as backup_router
+from app.api.atlas import router as atlas_router
 
 class SecurityHeaderMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
@@ -253,6 +254,7 @@ app.include_router(dashboard_router)
 app.include_router(health_router)
 app.include_router(whatsapp_router)
 app.include_router(backup_router)
+app.include_router(atlas_router)
 
 @app.get("/calendar", include_in_schema=False)
 async def calendar_redirect():

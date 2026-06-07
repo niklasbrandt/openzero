@@ -1076,7 +1076,6 @@ async def route_message_stream(
 		# This ensures multi-domain messages always have a candidate pool to evaluate.
 		if _primary_crew and len(_all_candidates) < 2:
 			try:
-				import numpy as _np
 				from app.services.crews import crew_registry as _cr2
 				from app.services.semantic_router import _cosine as _r_cosine
 				_pvecs = getattr(_cr2, "_profile_vectors", {})
@@ -1410,7 +1409,7 @@ async def route_message_stream(
 						# Run Focus last to synthesize reconciled priority
 						if _has_focus:
 							await _status("**Focus · Round 3** — synthesizing final reconciled priorities...")
-							_header = f"\n\n**[Focus - Round 3 Final Synthesis]**\n"
+							_header = "\n\n**[Focus - Round 3 Final Synthesis]**\n"
 							yield _header
 							_reconciled_str = "\n\n".join([f"{c[0].title()}: {c[1]}" for c in _r3_contributions])
 							_focus_r3_prompt = (
@@ -1432,7 +1431,7 @@ async def route_message_stream(
 						# Run Scrum one last time to audit the compiled card tasks
 						if _has_scrum:
 							await _status("**Scrum · Round 3** — auditing finalized task lists...")
-							_header = f"\n\n**[Scrum - Round 3 Final Audit]**\n"
+							_header = "\n\n**[Scrum - Round 3 Final Audit]**\n"
 							yield _header
 							_final_reconciled = "\n\n".join([f"{c[0].title()}: {c[1]}" for c in _r2_contributions if c[0] != "scrum"])
 							_scrum_r3_prompt = (
@@ -1477,7 +1476,7 @@ async def route_message_stream(
 					_names_str = " and ".join([c[0].title() for c in _r2_contributions])
 					_agree_str = "broadly converge" if not _disagree else "disagree on key points"
 					await _status(f"**Z · Synthesizing**\n{_names_str} {_agree_str}. Composing final answer...")
-					yield f"\n\n**[Z - Executive Synthesis]**\n"
+					yield "\n\n**[Z - Executive Synthesis]**\n"
 
 					# Build synthesis body
 					if _disagree:
