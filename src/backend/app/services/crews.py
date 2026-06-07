@@ -528,6 +528,38 @@ _FOLLOWUP_SIGNALS: frozenset = frozenset([
 _CREW_ATTRIBUTION_RE = re.compile(r'\(Reasoning by crew ([^)\n]{1,100})\)', re.IGNORECASE)
 
 
+async def is_system_action_or_operational_query(text: str) -> bool:
+	"""Reasoning-based check to determine if the message is a structural Planka command
+	or an operational query, in any language."""
+	try:
+		from app.services.llm import chat as cloud_chat
+		import asyncio
+
+		system_override = (
+			"You are a precise multilingual intent classifier for an AI project assistant.\n"
+			"Analyze the user's message to determine if it falls into either of these two categories:\n"
+			"1. Structural Planka Operations: Actions requesting to create, move, delete, rename, archive, sort, or reorganize boards, lists, cards, tasks, or projects (e.g., 'new board X', 'move card Y to done', 'reorganize board Z', 'create card', 'pon la receta en chef list', 'crea una lista', 'mach das ins board', 'schieb das in die liste').\n"
+			"2. Operational Queries: Direct questions asking about the status, outcome, or confirmation of a previous action (e.g., 'did it work?', 'did you do it?', 'did it save?', '¿funcionó?', '¿lo hiciste?', 'hat es geklappt?', 'no feedback from you').\n\n"
+			"Respond with exactly 'YES' if the message belongs to either of these categories. Respond with exactly 'NO' otherwise. Do not include any explanations, greetings, or other text."
+		)
+
+		decision = await asyncio.wait_for(
+			cloud_chat(
+				user_message=f"Message: \"{text[:1000]}\"",
+				system_override=system_override,
+				tier="cloud",
+				sanitize=False,
+			),
+			timeout=5.0
+		)
+		decision_clean = decision.strip().upper()
+		logger.debug("is_system_action_or_operational_query: classification result for '%s': %s", text[:100], decision_clean)
+		return "YES" in decision_clean
+	except Exception as exc:
+		logger.warning("is_system_action_or_operational_query reasoning check failed: %s. Falling back to False.", exc)
+		return False
+
+
 def _last_attributed_crew(history: list) -> Optional[str]:
 	"""Return the most recently active crew ID from the immediately preceding Z
 	message, or None.
@@ -680,12 +712,17 @@ async def resolve_active_crew(history: list, user_text: str, lang: str = "en") -
 	# crew causes persona/dialect bleed in what must be a plain, language-correct
 	# confirmation. Bypass ALL crew routing — session continuity included.
 	if _SYSTEM_ACTION_RE.search(user_text[:500]):
-		logger.debug("Router: system action detected — bypassing crew routing")
+		logger.debug("Router: system action detected (regex) — bypassing crew routing")
 		return None
 
 	# -1. Operational query guard: status / confirmation questions skip all crew routing.
 	if _OPERATIONAL_QUERY_RE.search(user_text[:2000]):
-		logger.debug("Router: operational query detected — bypassing crew routing")
+		logger.debug("Router: operational query detected (regex) — bypassing crew routing")
+		return None
+
+	# -0.5. Reasoning-based check for non-English/German languages and complex queries
+	if await is_system_action_or_operational_query(user_text):
+		logger.debug("Router: system action or operational query detected (reasoning) — bypassing crew routing")
 		return None
 
 	# 0. Priority: explicit crew ID in message — beats keyword order entirely.

@@ -181,6 +181,7 @@ async def route_semantic(
 		_OPERATIONAL_QUERY_RE,
 		get_active_crew_session,
 		_last_attributed_crew,
+		is_system_action_or_operational_query,
 	)
 
 	await crew_registry.reload_if_changed()
@@ -191,6 +192,9 @@ async def route_semantic(
 		return []
 	if _OPERATIONAL_QUERY_RE.search(message[:2000]):
 		logger.debug("semantic_router: operational query — Z-direct")
+		return []
+	if await is_system_action_or_operational_query(message):
+		logger.debug("semantic_router: system action or operational query detected (reasoning) — Z-direct")
 		return []
 
 	# ── Active routable crews ────────────────────────────────────────────────
