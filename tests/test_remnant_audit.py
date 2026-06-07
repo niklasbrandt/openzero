@@ -234,10 +234,11 @@ def _scan_phase(phase_key: str) -> list[tuple[str, str, str, int, str]]:
 				if pat.search(line):
 					hits.append((sym, "identifiers", rel, lineno, line.strip()[:120]))
 
-			# i18n_keys: quoted key occurrences
-			for sym, pat in i18n_pats:
-				if pat.search(line):
-					hits.append((sym, "i18n_keys", rel, lineno, line.strip()[:120]))
+			# i18n_keys: quoted key occurrences (skip backup.py to avoid false positives on backup section names)
+			if "backup.py" not in rel:
+				for sym, pat in i18n_pats:
+					if pat.search(line):
+						hits.append((sym, "i18n_keys", rel, lineno, line.strip()[:120]))
 
 			# api_routes: literal path in any code line
 			for sym, pat in route_pats:
