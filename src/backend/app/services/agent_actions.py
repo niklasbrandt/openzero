@@ -1109,39 +1109,58 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 		await handle_action("SCHEDULE_CREW", raw_tag, _exec_schedule_crew, f"Schedule Crew {crew_id} at {cron_spec}")
 		clean_reply = strip_tag(clean_reply, raw_tag)
 
-	# 9. Move Card Tag
-	move_card_pattern = r"\[?ACTION: MOVE_CARD \| CARD: ([^\|\]]+) \| LIST: ([^\|\]]+)(?: \| BOARD: ([^\|\]]+))?\]?"
-	for match in re.finditer(move_card_pattern, reply):
+	# 9. Move Card Tag (Order-Independent)
+	move_card_pattern = r"\[?ACTION:\s*MOVE_CARD\b([^\]]*)\]?"
+	for match in re.finditer(move_card_pattern, reply, re.IGNORECASE):
 		raw_tag = match.group(0)
-		card_frag = match.group(1).strip()
-		dest_list = match.group(2).strip()
-		board = (match.group(3) or "").strip()
-		
+		tag_content = match.group(1)
+		params = {}
+		for part in tag_content.split("|"):
+			if ":" in part:
+				k, v = part.split(":", 1)
+				params[k.strip().upper()] = v.strip().strip('"\'')
+		card_frag = params.get("CARD", "").strip()
+		dest_list = params.get("LIST", "").strip()
+		board = params.get("BOARD", "").strip()
+		if not card_frag or not dest_list:
+			continue
 		async def _exec_move(card_frag=card_frag, dest_list=dest_list, board=board):
 			return await execute_move_card(card_frag, dest_list, board)
-
 		await handle_action("MOVE_CARD", raw_tag, _exec_move, f"Move card '{card_frag}' to '{dest_list}'")
 		clean_reply = strip_tag(clean_reply, raw_tag)
 
 	# 10. Mark Done Tag (shortcut: moves card to Done list)
-	mark_done_pattern = r"\[?ACTION: MARK_DONE \| CARD: ([^\|\]]+)\]?"
-	for match in re.finditer(mark_done_pattern, reply):
+	mark_done_pattern = r"\[?ACTION:\s*MARK_DONE\b([^\]]*)\]?"
+	for match in re.finditer(mark_done_pattern, reply, re.IGNORECASE):
 		raw_tag = match.group(0)
-		card_frag = match.group(1).strip()
-
+		tag_content = match.group(1)
+		params = {}
+		for part in tag_content.split("|"):
+			if ":" in part:
+				k, v = part.split(":", 1)
+				params[k.strip().upper()] = v.strip().strip('"\'')
+		card_frag = params.get("CARD", "").strip()
+		if not card_frag:
+			continue
 		async def _exec_done(card_frag=card_frag):
 			return await execute_mark_done(card_frag)
-
 		await handle_action("MARK_DONE", raw_tag, _exec_done, f"Mark card '{card_frag}' as done")
 		clean_reply = strip_tag(clean_reply, raw_tag)
 
-	# 8. Set Nudge Interval Tag
-	nudge_interval_pattern = r"\[?ACTION: SET_NUDGE_INTERVAL \| TASK: ([^\|\]]+) \| INTERVAL: ([^\|\]]+)\]?"
-	for match in re.finditer(nudge_interval_pattern, reply):
+	# 11. Set Nudge Interval Tag (Order-Independent)
+	nudge_interval_pattern = r"\[?ACTION:\s*SET_NUDGE_INTERVAL\b([^\]]*)\]?"
+	for match in re.finditer(nudge_interval_pattern, reply, re.IGNORECASE):
 		raw_tag = match.group(0)
-		task_f, interval_raw = match.groups()
-		task_f = task_f.strip()
-
+		tag_content = match.group(1)
+		params = {}
+		for part in tag_content.split("|"):
+			if ":" in part:
+				k, v = part.split(":", 1)
+				params[k.strip().upper()] = v.strip().strip('"\'')
+		task_f = params.get("TASK", "").strip()
+		interval_raw = params.get("INTERVAL", "").strip()
+		if not task_f or not interval_raw:
+			continue
 		async def _exec_nudge(task_f=task_f, interval_raw=interval_raw):
 			try:
 				minutes = int(interval_raw.strip())
@@ -1156,16 +1175,22 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 			except Exception as _e:
 				logger.error("SET_NUDGE_INTERVAL failed: %s", _e)
 				return f"\u26a0 Failed to set nudge interval for '{task_f}'. Check scheduler."
-
-		await handle_action("SET_NUDGE_INTERVAL", raw_tag, _exec_nudge, f"Set nudge interval for '{task_f}' to {interval_raw.strip()}m")
+		await handle_action("SET_NUDGE_INTERVAL", raw_tag, _exec_nudge, f"Set nudge interval for '{task_f}' to {interval_raw}m")
 		clean_reply = strip_tag(clean_reply, raw_tag)
 
 	# 12. Append Shopping List Tag — appends items to the weekly shopping card.
-	shopping_pattern = r"\[?ACTION: APPEND_SHOPPING \| ITEMS: ([^\]]{1,4000})\]?"
-	for match in re.finditer(shopping_pattern, reply):
+	shopping_pattern = r"\[?ACTION:\s*APPEND_SHOPPING\b([^\]]*)\]?"
+	for match in re.finditer(shopping_pattern, reply, re.IGNORECASE):
 		raw_tag = match.group(0)
-		items_text = match.group(1).strip()
-
+		tag_content = match.group(1)
+		params = {}
+		for part in tag_content.split("|"):
+			if ":" in part:
+				k, v = part.split(":", 1)
+				params[k.strip().upper()] = v.strip().strip('"\'')
+		items_text = params.get("ITEMS", "").strip() or params.get("ITEM", "").strip()
+		if not items_text:
+			continue
 		async def _exec_shopping(items_text=items_text):
 			try:
 				from app.services.shopping_list import append_shopping_items
@@ -1176,50 +1201,65 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 			except Exception as _e:
 				logger.error("APPEND_SHOPPING failed: %s", _e)
 				return "\u26a0 Failed to update shopping list."
-
 		await handle_action("APPEND_SHOPPING", raw_tag, _exec_shopping, "Append items to weekly shopping list")
 		clean_reply = strip_tag(clean_reply, raw_tag)
 
 	# Archive Card Tag — moves card to the "Archive" list instead of deleting.
 	# Deletion of projects/boards is intentionally NOT available as an agent action.
 	# Agents can only archive (reversible). Hard deletion is a manual user action in Planka.
-	archive_card_pattern = r"\[?ACTION: (?:ARCHIVE_CARD|DELETE_CARD) \| CARD: ([^\|\]]+)(?: \| BOARD: ([^\|\]]+))?\]?"
-	for match in re.finditer(archive_card_pattern, reply):
+	archive_card_pattern = r"\[?ACTION:\s*(?:ARCHIVE_CARD|DELETE_CARD)\b([^\]]*)\]?"
+	for match in re.finditer(archive_card_pattern, reply, re.IGNORECASE):
 		raw_tag = match.group(0)
-		card_frag = match.group(1).strip()
-		board = (match.group(2) or "").strip()
-
+		tag_content = match.group(1)
+		params = {}
+		for part in tag_content.split("|"):
+			if ":" in part:
+				k, v = part.split(":", 1)
+				params[k.strip().upper()] = v.strip().strip('"\'')
+		card_frag = params.get("CARD", "").strip()
+		board = params.get("BOARD", "").strip()
+		if not card_frag:
+			continue
 		async def _exec_archive_card(card_frag=card_frag, board=board):
 			return await execute_archive_card(card_frag, board)
-
 		await handle_action("ARCHIVE_CARD", raw_tag, _exec_archive_card, f"Archive card '{card_frag}'")
 		clean_reply = strip_tag(clean_reply, raw_tag)
 
 	# Set Card Description Tag — updates the description field of an existing card.
-	set_desc_pattern = r"\[?ACTION: SET_CARD_DESC \| CARD: ([^\|\]]{1,500}) \| DESCRIPTION: ([^\]]{1,2000})\]"
-	for match in re.finditer(set_desc_pattern, reply):
+	set_desc_pattern = r"\[?ACTION:\s*SET_CARD_DESC\b([^\]]*)\]"
+	for match in re.finditer(set_desc_pattern, reply, re.IGNORECASE):
 		raw_tag = match.group(0)
-		card_frag = match.group(1).strip()
-		desc_text = match.group(2).strip()
+		tag_content = match.group(1)
+		params = {}
+		for part in tag_content.split("|"):
+			if ":" in part:
+				k, v = part.split(":", 1)
+				params[k.strip().upper()] = v.strip().strip('"\'')
+		card_frag = params.get("CARD", "").strip()
+		desc_text = params.get("DESCRIPTION", "").strip() or params.get("DESC", "").strip()
 		if not card_frag or not desc_text:
 			continue
-
 		async def _exec_set_desc(card_frag=card_frag, desc_text=desc_text):
 			return await execute_set_card_desc(card_frag, desc_text)
-
 		await handle_action("SET_CARD_DESC", raw_tag, _exec_set_desc, f"Set description on card '{card_frag}'")
 		clean_reply = strip_tag(clean_reply, raw_tag)
 
 	# Move Board Tag — patches a board's projectId to move it to a different project.
-	move_board_pattern = r"\[?ACTION: MOVE_BOARD \| BOARD: ([^\|\]]+) \| TO_PROJECT: ([^\|\]]+)\]?"
-	for match in re.finditer(move_board_pattern, reply):
+	move_board_pattern = r"\[?ACTION:\s*MOVE_BOARD\b([^\]]*)\]?"
+	for match in re.finditer(move_board_pattern, reply, re.IGNORECASE):
 		raw_tag = match.group(0)
-		mb_board_name = match.group(1).strip().strip('"\'')
-		mb_target_project = match.group(2).strip().strip('"\'')
-
+		tag_content = match.group(1)
+		params = {}
+		for part in tag_content.split("|"):
+			if ":" in part:
+				k, v = part.split(":", 1)
+				params[k.strip().upper()] = v.strip().strip('"\'')
+		mb_board_name = params.get("BOARD", "").strip()
+		mb_target_project = params.get("TO_PROJECT", "").strip() or params.get("PROJECT", "").strip()
+		if not mb_board_name or not mb_target_project:
+			continue
 		async def _exec_move_board(mb_board_name=mb_board_name, mb_target_project=mb_target_project):
 			return await execute_move_board(mb_board_name, mb_target_project)
-
 		_dedup_mb = f"MOVE_BOARD:{mb_board_name.strip().lower()}:{mb_target_project.strip().lower()}"
 		await handle_action("MOVE_BOARD", raw_tag, _exec_move_board, f"Move board '{mb_board_name}' to project '{mb_target_project}'", dedup_key=_dedup_mb)
 		clean_reply = strip_tag(clean_reply, raw_tag)
