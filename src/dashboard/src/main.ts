@@ -11,6 +11,7 @@ import '../components/UserCard'
 //    is free for first paint (reduces TBT / long-tasks significantly).
 function loadLazyComponents(): void {
 	import('../components/MemorySearch')
+	import('../components/MemoryAtlas')
 	import('../components/BriefingHistory')
 	import('../components/CreateProject')
 	import('../components/CalendarAgenda')

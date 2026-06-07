@@ -105,10 +105,7 @@
 			<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
 			<span data-tr="nav_briefing">Briefing</span>
 		</a>
-		<a href="#section-email" data-section="section-email" aria-label="Email">
-			<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-			<span data-tr="nav_email">Email</span>
-		</a>
+
 		<a href="#section-protocols" data-section="section-protocols" aria-label="Protocols">
 			<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
 			<span data-tr="nav_protocols">Protocols</span>
@@ -122,10 +119,6 @@
 			<span data-tr="nav_agents">Agents</span>
 		</a>
 		<div class="drawer-divider" role="separator" aria-hidden="true"></div>
-		<a href="#section-diagnostics" data-section="section-diagnostics" aria-label="Diagnostics">
-			<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
-			<span data-tr="nav_diagnostics">Diagnostics</span>
-		</a>
 		<a href="#section-backup" data-section="section-backup" aria-label="Backup">
 			<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
 			<span data-tr="nav_backup">Backup</span>
@@ -134,11 +127,8 @@
 
 	<main id="main-content">
 
-		<!-- ── Diff Ribbon (Phase D) — persistent change feed above all routes ── -->
-		<diff-ribbon></diff-ribbon>
-
-		<!-- ── Decision Capture modal (Phase DC) — global Cmd/Ctrl+Shift+D ── -->
-		<decision-capture></decision-capture>
+			<!-- ── Diff Ribbon (Phase D) — rendered by MemoryAtlas when ATLAS_DIFF_RIBBON=1 ── -->
+			<!-- ── Decision Capture (Phase DC) — rendered by MemoryAtlas when ready ── -->
 
 		<!-- ── Mobile full-screen nav drawer (hamburger, <700 px) ──
 		     WCAG 2.4.3 traversal order / EN 301 549 §9.2.4.3 -->
@@ -171,10 +161,7 @@
 				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
 				<span data-tr="nav_briefing">Briefing</span>
 			</a>
-			<a href="#section-email" data-section="section-email" aria-label="Email">
-				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-				<span data-tr="nav_email">Email</span>
-			</a>
+
 			<a href="#section-protocols" data-section="section-protocols" aria-label="Protocols">
 				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
 				<span data-tr="nav_protocols">Protocols</span>
@@ -188,10 +175,6 @@
 				<span data-tr="nav_agents">Agents</span>
 			</a>
 			<div class="drawer-divider" role="separator" aria-hidden="true"></div>
-			<a href="#section-diagnostics" data-section="section-diagnostics" aria-label="Diagnostics">
-				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
-				<span data-tr="nav_diagnostics">Diagnostics</span>
-			</a>
 			<a href="#section-backup" data-section="section-backup" aria-label="Backup">
 				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
 				<span data-tr="nav_backup">Backup</span>
@@ -253,9 +236,7 @@
 				<briefing-history></briefing-history>
 			</section>
 
-			<section class="dashboard-card" id="section-email" aria-label="Email" data-tr-aria="nav_email" style="order: 40;">
-				<email-rules></email-rules>
-			</section>
+
 
 			<section class="dashboard-card" id="section-protocols" aria-label="Protocols" data-tr-aria="nav_protocols" style="order: 45;">
 				<z-protocols></z-protocols>
@@ -271,10 +252,7 @@
 				<agents-widget></agents-widget>
 			</section>
 
-			<section class="dashboard-card full-width-card" id="section-diagnostics" aria-label="Diagnostics"
-				data-tr-aria="nav_diagnostics" style="order: 90;">
-				<diagnostics-widget></diagnostics-widget>
-			</section>
+
 
 			<section class="dashboard-card" id="section-backup" aria-label="Backup"
 				data-tr-aria="nav_backup" style="order: 95;">
