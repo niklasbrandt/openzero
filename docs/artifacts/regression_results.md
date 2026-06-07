@@ -1,15 +1,25 @@
 # Regression Test Report
-**Date:** 2026-03-30 19:28:38
-**Target:** http://localhost:8000
+**Date:** 2026-06-07 17:55:26
+**Target:** http://open.zero
 
 ### Log
 ```text
 # Regression Test Report
-**Date:** 2026-03-30 19:28:38
-**Target:** http://localhost:8000
+**Date:** 2026-06-07 17:55:26
+**Target:** http://open.zero
 
+✅ System health OK
+✅ Planka connectivity OK
+✅ /help OK
+✅ /protocols OK
+✅ /tree OK
+✅ Life-tree API OK
+✅ /crews & /crew OK
+✅ /learn + /search round-trip verified
+✅ /memories OK
 
-❌ Suite failed: All connection attempts failed
+❌ Suite failed: /unlearn returned 429
+✅ Server-side cleanup completed
 
 🏁 Suite aborted/failed. Cleanup complete.
 ```
