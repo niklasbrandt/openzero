@@ -225,7 +225,7 @@ async def _llm_compress(filename: str, text: str) -> str:
 				"with a bracket placeholder like [CITY_1], [NAME_2], or similar tokens. "
 				"Output only the compressed text, nothing else."
 			),
-			tier="local",
+			tier="cloud",
 			_feature="context_compress",
 		)
 		compressed = compressed.strip()

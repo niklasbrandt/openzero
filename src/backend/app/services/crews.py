@@ -450,7 +450,7 @@ async def _translate_keywords_to_lang(crew_id: str, lang: str, keywords: list) -
 		raw = await chat(
 			prompt,
 			system_override="You are a translation assistant. Reply with only a valid JSON array of strings.",
-			tier="local",
+			tier="cloud",
 			sanitize=False,
 			_feature="crew_kw_translate",
 		)

@@ -320,7 +320,7 @@ class NativeCrewEngine:
 		max_tokens = 4000 if settings.cloud_configured else 1500
 
 		payload = {
-			"model": settings.LLM_MODEL_CLOUD if (settings.cloud_configured or force_cloud) else "local",
+			"model": settings.LLM_MODEL_CLOUD if not is_local else "local",
 			"messages": messages,
 			"temperature": 0.7,
 			"max_tokens": max_tokens,
@@ -332,15 +332,15 @@ class NativeCrewEngine:
 		logger.info("Native Engine: Executing streaming mission for '%s'...", safe_crew_id)
 
 		req_headers = {}
-		if settings.cloud_configured or force_cloud:
+		if not is_local:
 			req_headers["Authorization"] = f"Bearer {settings.LLM_CLOUD_API_KEY}"
 
 		_cloud_base = settings.LLM_CLOUD_BASE_URL.rstrip("/")
 		_cloud_url = _cloud_base if _cloud_base.endswith("/v1") else f"{_cloud_base}/v1"
-		_effective_url = _cloud_url if (force_cloud and settings.cloud_configured) else self.llm_url
+		_effective_url = _cloud_url if not is_local else self.llm_url
 
 		# Determine timeouts: cloud tier uses 180s (generous), local tier uses 130s.
-		read_timeout = 180.0 if (settings.cloud_configured or force_cloud) else 130.0
+		read_timeout = 180.0 if not is_local else 130.0
 		client_timeout = httpx.Timeout(read_timeout, connect=10.0)
 
 		max_attempts = 3
