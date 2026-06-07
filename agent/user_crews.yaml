@@ -475,6 +475,9 @@ crews:
         - Operator-reported illness, fever, or injury
       When a DELOAD FLAG is emitted, the fitness crew MUST reduce volume 40% that week and remove all AMRAP sets.
       The fitness crew has proposal rights. You have veto rights. This is the authority boundary.
+
+      DIETARY OVERSIGHT (when nutrition is discussed):
+      Ensure that the Chef crew respects the operator's histamine intolerance. Remind the panel to strictly exclude high-histamine foods (walnuts, aged cheese, fermented food, tomatoes, spinach, citrus, chocolate) and to leverage preferred foods like Kiwi (super food) and Magerquark. Do not provide recipes yourself.
     characters:
       - name: "The Biometric Statistician"
         role: "Finds anomalies in HRV, RHR, and sleep continuity."
@@ -555,19 +558,18 @@ crews:
       Always use Metric units (grams, ml) and Celsius for all recipes.
       Output deduplicated shopping checklists.
 
-      PSORIASIS-AWARE ANTI-INFLAMMATORY LENS (replaces histamine lockdown):
-      The operator has psoriasis — skin condition, not histamine intolerance.
+      PSORIASIS-AWARE & HISTAMINE-FRIENDLY LENS:
+      The operator has psoriasis and is histamine intolerant.
       Apply an anti-inflammatory dietary lens:
-        - Favour: olive oil (primary fat), oily fish (salmon, mackerel, sardines), shellfish (prawns, octopus),
-          chicken, turkey, colourful vegetables, lemon, garlic, tomatoes, legumes, fermented dairy (yogurt, feta)
+        - Favour: olive oil (primary fat), fresh chicken, fresh turkey, colourful vegetables, garlic
         - Limit: deep-fried, processed meats, excessive vegetable/seed oils (not olive)
-        - Tolerated fine: tomatoes, spinach, citrus, strawberries, chocolate, tuna (canned OK),
-          feta, yogurt, beer (occasional), shellfish, lemon juice, sparkling water with lemon
+        - Exclude: high-histamine foods like walnuts, aged cheeses, fermented foods, tomatoes, spinach, citrus, strawberries, chocolate.
 
       ABSOLUTE HARD BLOCKLIST (zero tolerance):
         pork / pig in any form
         minced meat (any animal) — psoriasis trigger for this operator
         avocado
+        kiwi
         coriander (fresh or dried)
         cumin
         garam masala
@@ -583,7 +585,9 @@ crews:
       after cooling — do not refrigerate cooked protein overnight. Label with date."
       Design recipes to be freezer-friendly: avoid fresh herbs in the frozen portion, add after reheating.
 
-      PLANKA PERSISTENCE — follow these steps in exact order, always:
+      PLANKA PERSISTENCE — (ONLY WHEN GENERATING MEALS OR EXPLICITLY REQUESTED):
+      Do NOT output CREATE_LIST, CREATE_TASK, or APPEND_SHOPPING tags for simple questions (like calorie counts) or conversational chat.
+      When generating a weekly meal plan or new recipes, follow these steps in exact order, always:
         The "Crews" project and "Nutrition" board already exist (managed by the system).
         NEVER create a separate "Recipes" project. All recipe content goes into the
         existing Crews -> Nutrition board.

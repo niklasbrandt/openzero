@@ -17,7 +17,7 @@
 - **Dietary approach:** Mediterranean-leaning omnivore, anti-inflammatory lens for psoriasis
 - **Protein anchors:** chicken, turkey, fresh fish (all types), shellfish (prawns, octopus — high preference), eggs, legumes
 - **Preferred cuisine:** Mediterranean, ocean-island, BBQ/oven methods, simple spice-forward recipes
-- **Excluded:** pork/pig, minced meat (any animal), avocado
+- **Excluded:** pork/pig, minced meat (any animal), avocado, dates (Datteln), kiwi
 - **Excluded spice profiles:** coriander, cumin, garam masala, Indian spice profiles
 - **Preferred spices/herbs:** smoked paprika, rosemary, thyme, oregano, basil, dill, mint, fennel seed, sumac, chili flakes, habanero, garlic, lemon
 - **Alcohol:** occasional — weekend beer + caipirinha or mojito (clear spirits). Account in calorie budget. Not excluded.
@@ -38,7 +38,8 @@
 - **Affected areas:** hands (dry cracking), feet (heel/sole), face
 - **Known triggers:** stress, dehydration, frequent handwashing (barrier loss), minced beef during cooking
 - **Approach:** anti-inflammatory diet (olive oil, oily fish, colourful vegetables, legumes), barrier cream immediately after handwashing, avoid hot water on affected areas
-- **Histamine status:** NOT histamine intolerant — do not apply histamine restrictions
+- **Histamine status:** Histamine Intolerant. Exclude high-histamine foods (e.g. walnuts, aged cheeses, fermented foods).
+- **Preferred Foods:** Magerquark, fresh low-histamine berries.
 
 ## Workout Preferences
 
