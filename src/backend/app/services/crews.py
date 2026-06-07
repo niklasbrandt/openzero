@@ -489,6 +489,8 @@ _SYSTEM_ACTION_RE = re.compile(
 	r'|archive\s+(?:a\s+)?(?:board|card|task|list|project)\b'
 	r'|add\s+(?:a\s+)?(?:card|task)\s+to\s+(?:board|list)\b'
 	r'|(?:add|create|new)\s+(?:a\s+)?(?:list|card|task)\s+(?:on|in|to)\b'
+	r'|(?:pack|tu|leg|schieb|mach)\s+(?:es|das|die|den).+(?:ins|in|auf).+(?:board|liste|karte)\b'
+	r'|(?:ins|in\s+das|auf\s+das|auf\s+die|in\s+die)\s+(?:\w+\s+){0,2}(?:board|liste)\b'
 	r')',
 	re.IGNORECASE,
 )
