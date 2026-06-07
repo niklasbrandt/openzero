@@ -2145,7 +2145,7 @@ async def dispatch_structural_intent(intent: StructuralIntent, lang: str) -> str
 						"The user may use a synonym or nickname (e.g. 'aquarium' for 'reef tank').\n"
 						"Reply with ONLY the exact board name from the list, or NONE."
 					)
-					_res_ans = await asyncio.wait_for(_res_chat(_res_q, tier="fast"), timeout=30.0)
+					_res_ans = await asyncio.wait_for(_res_chat(_res_q, tier="cloud"), timeout=30.0)
 					_res_ans = _res_ans.strip().strip("'\".").rstrip(".,;!?")
 					if _res_ans.upper() != "NONE":
 						for _b in _all_b:
@@ -2209,7 +2209,7 @@ async def dispatch_structural_intent(intent: StructuralIntent, lang: str) -> str
 				)
 				plan: dict = {}
 				try:
-					plan_text = await asyncio.wait_for(chat(plan_prompt, tier="fast"), timeout=25.0)
+					plan_text = await asyncio.wait_for(chat(plan_prompt, tier="cloud"), timeout=25.0)
 					_js = plan_text.find("{")
 					_je = plan_text.rfind("}") + 1
 					if _js >= 0 and _je > _js:
