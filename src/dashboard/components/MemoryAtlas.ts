@@ -81,45 +81,56 @@ export class MemoryAtlas extends HTMLElement {
 			this.nodes = data.nodes;
 			this.edges = data.edges;
 		} catch (_) {
-			// Backend not yet available — show illustrative placeholder graph
-			this.nodes = this.placeholderNodes();
-			this.edges = this.placeholderEdges();
+			// Backend not yet available — leave nodes empty, show empty state
+			this.nodes = [];
+			this.edges = [];
 		}
-		this.initPositions();
 		this.updateListLens();
-		this.startSim();
+		if (this.nodes.length > 0) {
+			this.initPositions();
+			this.startSim();
+		} else {
+			this.showGraphEmptyState();
+		}
 	}
 
-	// ── Placeholder data (shown when /api/atlas/graph unavailable) ────────────
+	// ── Empty state for graph canvas ─────────────────────────────────────────
 
-	private placeholderNodes(): AtlasNode[] {
-		return [
-			{ id: 'n1', label: 'Sprint Q3',        type: 'project',  confidence: 0.9 },
-			{ id: 'n2', label: 'API Migration',     type: 'project',  confidence: 0.85 },
-			{ id: 'n3', label: 'Budget Review',     type: 'decision', confidence: 0.8 },
-			{ id: 'n4', label: 'Sarah',             type: 'memory',   confidence: 0.75 },
-			{ id: 'n5', label: 'Health Log',        type: 'memory',   confidence: 0.7 },
-			{ id: 'n6', label: 'Investors',         type: 'memory',   confidence: 0.78 },
-			{ id: 'n7', label: 'Team Meeting',      type: 'memory',   confidence: 0.6 },
-			{ id: 'n8', label: 'Dev Crew',          type: 'source',   confidence: 0.88 },
-			{ id: 'n9', label: 'Focus Crew',        type: 'source',   confidence: 0.92 },
-			{ id: 'n10', label: 'Morning Briefing', type: 'memory',   confidence: 0.95 },
-		];
-	}
-
-	private placeholderEdges(): AtlasEdge[] {
-		return [
-			{ source: 'n1', target: 'n2', weight: 0.8 },
-			{ source: 'n1', target: 'n3', weight: 0.6 },
-			{ source: 'n1', target: 'n9', weight: 0.7 },
-			{ source: 'n2', target: 'n4', weight: 0.5 },
-			{ source: 'n2', target: 'n8', weight: 0.9 },
-			{ source: 'n3', target: 'n6', weight: 0.65 },
-			{ source: 'n4', target: 'n7', weight: 0.55 },
-			{ source: 'n8', target: 'n10', weight: 0.75 },
-			{ source: 'n9', target: 'n10', weight: 0.8 },
-			{ source: 'n5', target: 'n1', weight: 0.4 },
-		];
+	private showGraphEmptyState() {
+		const canvas = this.canvas;
+		const ctx = this.ctx;
+		if (!canvas || !ctx) return;
+		const dpr = window.devicePixelRatio || 1;
+		const W = canvas.offsetWidth || 600;
+		const H = canvas.offsetHeight || 360;
+		canvas.width = Math.round(W * dpr);
+		canvas.height = Math.round(H * dpr);
+		ctx.scale(dpr, dpr);
+		ctx.clearRect(0, 0, W, H);
+		// Subtle centre icon
+		ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+		ctx.lineWidth = 1;
+		for (let i = 0; i < 6; i++) {
+			const angle = (i / 6) * Math.PI * 2;
+			const r = 48;
+			ctx.beginPath();
+			ctx.arc(W / 2 + r * Math.cos(angle), H / 2 + r * Math.sin(angle), 5, 0, Math.PI * 2);
+			ctx.stroke();
+			ctx.beginPath();
+			ctx.moveTo(W / 2, H / 2);
+			ctx.lineTo(W / 2 + r * Math.cos(angle), H / 2 + r * Math.sin(angle));
+			ctx.stroke();
+		}
+		ctx.beginPath();
+		ctx.arc(W / 2, H / 2, 7, 0, Math.PI * 2);
+		ctx.strokeStyle = 'rgba(20,184,166,0.3)';
+		ctx.lineWidth = 1.5;
+		ctx.stroke();
+		// Label
+		ctx.font = '400 13px Inter, sans-serif';
+		ctx.fillStyle = 'rgba(255,255,255,0.25)';
+		ctx.textAlign = 'center';
+		ctx.fillText(this.tr('atlas_empty_graph', 'The Atlas will populate as Z learns from your conversations and crews.'), W / 2, H / 2 + 52);
 	}
 
 	// ── Force-directed layout ─────────────────────────────────────────────────
