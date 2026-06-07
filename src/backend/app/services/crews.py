@@ -792,7 +792,6 @@ async def resolve_active_crews(history: list, user_text: str, lang: str = "en", 
 	cfg = crew_registry.get(primary)
 	exclude = set(cfg.panel_exclude or []) if cfg else set()
 	candidates = crew_registry._panel_candidates.get(primary, [])
-	lower_text = user_text.lower()
 	
 	candidate_configs = [crew_registry.get(sid) for sid in candidates if sid != primary and sid not in exclude]
 	candidate_configs = [c for c in candidate_configs if c]

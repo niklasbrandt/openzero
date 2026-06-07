@@ -1656,45 +1656,7 @@ async def chat_with_context(
 
 	async def fetch_people():
 		# Always fetch identity (needed for user_name/profile), but skip circle context for trivial messages
-		try:
-			async with AsyncSessionLocal():
-				people = []  # Person table removed (substrate pivot)
-				identity_name = "User"
-				user_profile = {}
-				if people:
-					ident = next((p for p in people if p.circle_type == "identity"), None)
-					if ident:
-						identity_name = ident.name
-						user_profile = {
-							"name": ident.name,
-							"birthday": ident.birthday,
-							"gender": ident.gender,
-							"residency": ident.residency,
-							"work_times": ident.work_times,
-							"briefing_time": ident.briefing_time,
-							"context": ident.context,
-							"language": getattr(ident, "language", "en") or "en",
-						}
-
-					# Skip full circle context for trivial/short messages
-					if not include_people or len(user_message.strip()) < 20:
-						return "", identity_name, user_profile
-
-					from app.services.timezone import get_birthday_proximity
-					def _birthday_tag(p):
-						tag = get_birthday_proximity(p.birthday)
-						return f". Note: {p.name}'s birthday is {tag}." if tag else ""
-
-					inner = [f"- {p.name} ({p.relationship}){_birthday_tag(p)}" for p in people if p.circle_type == "inner"]
-					outer = [f"- {p.name} ({p.relationship})" for p in people if p.circle_type == "outer"]
-
-					context = ""
-					if inner: context += "INNER CIRCLE:\n" + "\n".join(inner) + "\n"
-					if outer: context += "OUTER CIRCLE (acquaintances -- mention only when directly relevant):\n" + "\n".join(outer)
-					return context[:2000], identity_name, user_profile
-				return "", identity_name, {}
-		except Exception:
-			return "", "User", {}
+		return "", "User", {}
 
 	async def fetch_projects():
 		if not include_projects: return ""
@@ -2061,40 +2023,7 @@ async def chat_stream_with_context(
 
 	# Reuse the same context-fetching logic
 	async def fetch_people():
-		try:
-			async with AsyncSessionLocal():
-				people = []  # Person table removed (substrate pivot)
-				identity_name = "User"
-				user_profile = {}
-				if people:
-					ident = next((p for p in people if p.circle_type == "identity"), None)
-					if ident:
-						identity_name = ident.name
-						user_profile = {
-							"name": ident.name,
-							"birthday": ident.birthday,
-							"gender": ident.gender,
-							"residency": ident.residency,
-							"work_times": ident.work_times,
-							"briefing_time": ident.briefing_time,
-							"context": ident.context,
-							"language": getattr(ident, "language", "en") or "en",
-						}
-					if not include_people or len(user_message.strip()) < 20:
-						return "", identity_name, user_profile
-					from app.services.timezone import get_birthday_proximity
-					def _birthday_tag(p):
-						tag = get_birthday_proximity(p.birthday)
-						return f". Note: {p.name}'s birthday is {tag}." if tag else ""
-					inner = [f"- {p.name} ({p.relationship}){_birthday_tag(p)}" for p in people if p.circle_type == "inner"]
-					outer = [f"- {p.name} ({p.relationship})" for p in people if p.circle_type == "outer"]
-					context = ""
-					if inner: context += "INNER CIRCLE:\n" + "\n".join(inner) + "\n"
-					if outer: context += "OUTER CIRCLE (acquaintances -- mention only when directly relevant):\n" + "\n".join(outer)
-					return context[:2000], identity_name, user_profile
-				return "", identity_name, {}
-		except Exception:
-			return "", "User", {}
+		return "", "User", {}
 
 	async def fetch_projects():
 		if not include_projects: return ""

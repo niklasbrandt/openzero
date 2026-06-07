@@ -168,7 +168,7 @@ class MessageBus:
 
 		# ── Dedup: skip duplicate messages arriving within the sliding window ──
 		_norm = user_text.strip().lower()
-		_hash = hashlib.md5(_norm.encode("utf-8", errors="replace")).hexdigest()
+		_hash = hashlib.sha256(_norm.encode("utf-8", errors="replace")).hexdigest()
 		_now = time.monotonic()
 
 		# Prune expired entries
