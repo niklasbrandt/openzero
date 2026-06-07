@@ -135,6 +135,15 @@ class NativeCrewEngine:
 			logger.warning("NativeCrewEngine: force_cloud requested but cloud not configured — using local LLM")
 			is_local = True
 
+		# Update last_model_used provenance context
+		from app.services.llm import last_model_used
+		if not is_local:
+			last_model_used.set(f"Cloud: {settings.LLM_MODEL_CLOUD}")
+		else:
+			from app.services.llm_peers import get_active_local_endpoint
+			_, local_model = get_active_local_endpoint()
+			last_model_used.set(f"Local: {local_model}")
+
 		# 1. Base Instructions and Protocol
 		now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
