@@ -1232,7 +1232,7 @@ async def route_message_stream(
 				# ROUND 1: Initial Drafts
 				for _cid in _tiered_panel:
 					logger.warning("Router: panel R1 starting crew '%s'", _cid)
-					await _status(f"{_cid.title()} · Round 1 — writing initial position...")
+					await _status(f"**{_cid.title()} · Round 1** — writing initial position...")
 					_header = f"\n\n**[{_cid.title()} - Round 1]**\n"
 					yield _header
 
@@ -1252,7 +1252,10 @@ async def route_message_stream(
 							f"As the Kanban and delivery intelligence auditor, check if any card creations, moves, or updates are being proposed. Draft the required Planka actions and commitments, checking WIP limits and duplicate items."
 						)
 					else:
-						_round_prompt = user_text
+						_round_prompt = (
+							f"User asked: \"{user_text}\"\n\n"
+							f"[SYSTEM DIRECTIVE: Respond STRICTLY from the perspective of your specific domain. If the user asks for something outside your domain (e.g. recipes when you are Health), simply provide your domain-specific constraint or sign-off instead of fulfilling the request yourself.]"
+						)
 
 					_chunks: list[str] = []
 					try:
@@ -1266,9 +1269,9 @@ async def route_message_stream(
 							# Generate and display summary in status bubble
 							_r1_summary = await _crew_summary(_cid.title(), _pout_clean, "Round 1")
 							if _r1_summary:
-								await _status(f"{_cid.title()} · Round 1 done\n{_r1_summary}")
+								await _status(f"**{_cid.title()} · Round 1 done**\n{_r1_summary}")
 							else:
-								await _status(f"{_cid.title()} · Round 1 done")
+								await _status(f"**{_cid.title()} · Round 1 done**")
 						else:
 							logger.info("Router: panel kill switch — crew '%s' output too short (%d words)", _cid, len(_pout_clean.split()))
 					except Exception as _e:
@@ -1285,7 +1288,7 @@ async def route_message_stream(
 					# ROUND 2: Rebuttal Loop
 					_r2_contributions: list[tuple[str, str]] = []
 					for _cid, _draft in _r1_contributions:
-						await _status(f"{_cid.title()} · Round 2 — reviewing peers and updating position...")
+						await _status(f"**{_cid.title()} · Round 2** — reviewing peers and updating position...")
 						_header = f"\n\n**[{_cid.title()} - Round 2 Rebuttal]**\n"
 						yield _header
 
@@ -1309,7 +1312,8 @@ async def route_message_stream(
 							_rebuttal_prompt = (
 								f"User asked: \"{user_text}\"\n\n"
 								f"Your peers on the panel suggested:\n{_others_str}\n\n"
-								f"Review their advice alongside your own. What do you agree with? What do you disagree with? Provide your final updated recommendation."
+								f"Review their advice alongside your own. What do you agree with? What do you disagree with? Provide your final updated recommendation.\n\n"
+								f"[SYSTEM DIRECTIVE: Respond STRICTLY from the perspective of your specific domain. If the user asks for something outside your domain (e.g. recipes when you are Health), simply provide your domain-specific constraint or sign-off instead of fulfilling the request yourself.]"
 							)
 
 						_chunks = []
@@ -1323,9 +1327,9 @@ async def route_message_stream(
 							# Generate and display rebuttal summary
 							_r2_summary = await _crew_summary(_cid.title(), _pout_clean, "Round 2 rebuttal")
 							if _r2_summary:
-								await _status(f"{_cid.title()} · Round 2 done\n{_r2_summary}")
+								await _status(f"**{_cid.title()} · Round 2 done**\n{_r2_summary}")
 							else:
-								await _status(f"{_cid.title()} · Round 2 done")
+								await _status(f"**{_cid.title()} · Round 2 done**")
 						except Exception as _e:
 							logger.warning("Router: panel crew %s rebuttal failed: %s", _cid, _e)
 
@@ -1365,7 +1369,7 @@ async def route_message_stream(
 						_r3_contributions = []
 						# Run Round 3 for domain crews
 						for _cid, _r2_draft in [c for c in _r2_contributions if c[0] not in ("focus", "scrum")]:
-							await _status(f"{_cid.title()} · Round 3 — reconciling conflict...")
+							await _status(f"**{_cid.title()} · Round 3** — reconciling conflict...")
 							_header = f"\n\n**[{_cid.title()} - Round 3 Reconciliation]**\n"
 							yield _header
 
@@ -1373,7 +1377,8 @@ async def route_message_stream(
 								f"User asked: \"{user_text}\"\n\n"
 								f"Your Round 2 stance was:\n{_r2_draft}\n\n"
 								f"CRITICAL CONFLICT DETECTED: {_r3_topic}\n\n"
-								f"You MUST adapt your recommendation to resolve this conflict. Modify your stance to reconcile safely with the safety/burnout constraints described above. Provide your final reconciled recommendation."
+								f"You MUST adapt your recommendation to resolve this conflict. Modify your stance to reconcile safely with the safety/burnout constraints described above. Provide your final reconciled recommendation.\n\n"
+								f"[SYSTEM DIRECTIVE: Respond STRICTLY from the perspective of your specific domain. If the user asks for something outside your domain (e.g. recipes when you are Health), simply provide your domain-specific constraint or sign-off instead of fulfilling the request yourself.]"
 							)
 
 							_chunks = []
@@ -1386,9 +1391,9 @@ async def route_message_stream(
 								_r3_contributions.append((_cid, _pout_clean))
 								_r3_summary = await _crew_summary(_cid.title(), _pout_clean, "Round 3 reconciliation")
 								if _r3_summary:
-									await _status(f"{_cid.title()} · Round 3 done\n{_r3_summary}")
+									await _status(f"**{_cid.title()} · Round 3 done**\n{_r3_summary}")
 								else:
-									await _status(f"{_cid.title()} · Round 3 done")
+									await _status(f"**{_cid.title()} · Round 3 done**")
 							except Exception as _e:
 								logger.warning("Router: panel crew %s Round 3 failed: %s", _cid, _e)
 
@@ -1404,7 +1409,7 @@ async def route_message_stream(
 
 						# Run Focus last to synthesize reconciled priority
 						if _has_focus:
-							await _status("Focus · Round 3 — synthesizing final reconciled priorities...")
+							await _status("**Focus · Round 3** — synthesizing final reconciled priorities...")
 							_header = f"\n\n**[Focus - Round 3 Final Synthesis]**\n"
 							yield _header
 							_reconciled_str = "\n\n".join([f"{c[0].title()}: {c[1]}" for c in _r3_contributions])
@@ -1420,13 +1425,13 @@ async def route_message_stream(
 								_pout = "".join(_chunks)
 								_pout_clean = _ACTION_STRIP_RE.sub("", _pout).strip()
 								_r2_contributions = [(c, d if c != "focus" else _pout_clean) for c, d in _r2_contributions]
-								await _status("Focus · Round 3 done")
+								await _status("**Focus · Round 3 done**")
 							except Exception as _e:
 								logger.warning("Router: Focus Round 3 failed: %s", _e)
 
 						# Run Scrum one last time to audit the compiled card tasks
 						if _has_scrum:
-							await _status("Scrum · Round 3 — auditing finalized task lists...")
+							await _status("**Scrum · Round 3** — auditing finalized task lists...")
 							_header = f"\n\n**[Scrum - Round 3 Final Audit]**\n"
 							yield _header
 							_final_reconciled = "\n\n".join([f"{c[0].title()}: {c[1]}" for c in _r2_contributions if c[0] != "scrum"])
@@ -1442,7 +1447,7 @@ async def route_message_stream(
 								_pout = "".join(_chunks)
 								_pout_clean = _ACTION_STRIP_RE.sub("", _pout).strip()
 								_r2_contributions = [(c, d if c != "scrum" else _pout_clean) for c, d in _r2_contributions]
-								await _status("Scrum · Round 3 done")
+								await _status("**Scrum · Round 3 done**")
 							except Exception as _e:
 								logger.warning("Router: Scrum Round 3 failed: %s", _e)
 
@@ -1471,7 +1476,7 @@ async def route_message_stream(
 					# Build synthesis preview from what the crews agreed/disagreed on
 					_names_str = " and ".join([c[0].title() for c in _r2_contributions])
 					_agree_str = "broadly converge" if not _disagree else "disagree on key points"
-					await _status(f"Z · Synthesizing\n{_names_str} {_agree_str}. Composing final answer...")
+					await _status(f"**Z · Synthesizing**\n{_names_str} {_agree_str}. Composing final answer...")
 					yield f"\n\n**[Z - Executive Synthesis]**\n"
 
 					# Build synthesis body

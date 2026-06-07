@@ -357,15 +357,14 @@ async def send_nudge_notification(text: str, reply_markup=None, nav_footer: str 
 
 	prior = _last_nudge.get(chat_id)
 	if prior:
-		prior_msg_id, prior_body = prior
+		prior_msg_id, _ = prior
 		# Delete old message so the fresh send triggers a push notification.
 		try:
 			await bot.delete_message(chat_id=chat_id, message_id=prior_msg_id)
 		except Exception as _e:
 			logger.debug("send_nudge_notification: delete failed (%s), continuing", _e)
-		combined = f"{prior_body}\n\n• {html_text}"
-	else:
-		combined = html_text
+		
+	combined = html_text
 
 	# Fresh send — always triggers audible notification on the user's device.
 	sent = await bot.send_message(
@@ -1215,24 +1214,27 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 			merged_history = history
 
 		# Stream via unified router — collect tokens for progressive edits
+		_panel_html_cache = ""
 		async def _status_update(text: str) -> None:
-			nonlocal thinking_msg
+			nonlocal thinking_msg, _panel_html_cache
 			try:
+				_html_block = f"<blockquote><i>{text}</i></blockquote>"
+				_panel_html_cache = _html_block
 				if thinking_msg is None:
 					# First status update — send the actual message now
 					if is_followup:
 						thinking_msg = await context.bot.send_message(
 							chat_id=chat_id,
-							text=f"<blockquote><i>{text}</i></blockquote>",
+							text=_html_block,
 							parse_mode="HTML",
 						)
 					else:
 						thinking_msg = await update.message.reply_text(
-							f"<blockquote><i>{text}</i></blockquote>",
+							_html_block,
 							parse_mode="HTML",
 						)
 				else:
-					await safe_edit(thinking_msg, f"<blockquote><i>{text}</i></blockquote>", parse_mode="HTML")
+					await safe_edit(thinking_msg, _html_block, parse_mode="HTML")
 			except Exception as _su_e:
 				logger.warning("_status_update failed (text=%r): %s", text[:60], _su_e)
 
@@ -1357,7 +1359,36 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 		html_reply = _md_to_html(display_clean)
 		footer = await _get_stats_footer()
 		display_reply = f"<b>{format_time(dt=receipt_dt)}</b>\n\n{html_reply}{footer}"
-		await _send_chunked_reply(thinking_msg, display_reply, nav_footer=get_nav_footer(t))
+		
+		if _panel_mode:
+			# Persistent panel: Finalize the debate bubble instead of overwriting it
+			try:
+				_panel_html = _panel_html_cache if _panel_html_cache else "<blockquote><i>Debate Complete</i></blockquote>"
+				if not _panel_html.endswith("</blockquote>"):
+					_panel_html = f"<blockquote><i>{_panel_html}</i></blockquote>"
+				await safe_edit(thinking_msg, _panel_html + "\n\n✅ <b>Debate Concluded</b>", parse_mode="HTML")
+			except Exception as _e:
+				logger.debug("Panel finalization skipped: %s", _e)
+			
+			# Send the final synthesis as a brand new message below the panel
+			_nav = get_nav_footer(t)
+			if _nav:
+				display_reply += f"\n\n{_nav}"
+			if is_followup:
+				try:
+					await context.bot.send_message(chat_id=chat_id, text=display_reply, parse_mode="HTML")
+				except Exception as _pe:
+					logger.warning("Telegram panel delivery HTML parse error: %s", _pe)
+					await context.bot.send_message(chat_id=chat_id, text=display_reply, parse_mode=None)
+			else:
+				try:
+					await update.message.reply_text(display_reply, parse_mode="HTML")
+				except Exception as _pe:
+					logger.warning("Telegram panel delivery HTML parse error: %s", _pe)
+					await update.message.reply_text(display_reply, parse_mode=None)
+		else:
+			await _send_chunked_reply(thinking_msg, display_reply, nav_footer=get_nav_footer(t))
+		
 		return False
 	finally:
 		_typing_task.cancel()

@@ -1183,7 +1183,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 	# Archive Card Tag — moves card to the "Archive" list instead of deleting.
 	# Deletion of projects/boards is intentionally NOT available as an agent action.
 	# Agents can only archive (reversible). Hard deletion is a manual user action in Planka.
-	archive_card_pattern = r"\[?ACTION: ARCHIVE_CARD \| CARD: ([^\|\]]+)(?: \| BOARD: ([^\|\]]+))?\]?"
+	archive_card_pattern = r"\[?ACTION: (?:ARCHIVE_CARD|DELETE_CARD) \| CARD: ([^\|\]]+)(?: \| BOARD: ([^\|\]]+))?\]?"
 	for match in re.finditer(archive_card_pattern, reply):
 		raw_tag = match.group(0)
 		card_frag = match.group(1).strip()
@@ -1386,9 +1386,10 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 			_warn = "No action was executed — please try again."
 		clean_reply = clean_reply.rstrip() + "\n\n\u26a0 " + _warn
 		logger.warning("parse_and_execute_actions: phantom confirmation — raw reply had mutating ACTION tags but nothing executed")
-	elif not executed_cmds and not pending_actions:
+	elif not executed_cmds and not pending_actions and user_text:
 		# Natural language phantom guard: no action tags were generated, but the LLM
 		# hallucinated completing an action using confident English verbs.
+		# Conditioned on user_text to skip background/scheduled processes.
 		_phantom_words = ("created", "added", "saved", "set up", "scheduled", "built", "generated")
 		if any(w in clean_reply.lower() for w in _phantom_words):
 			clean_reply += (
