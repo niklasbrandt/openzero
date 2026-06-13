@@ -52,7 +52,7 @@
 				},
 				"group": {
 					"type": "string",
-					"enum": ["basic", "business", "education", "private"]
+					"enum": ["basic", "business", "education", "private", "wired"]
 				},
 				"instructions": {
 					"type": "string",
