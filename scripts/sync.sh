@@ -94,13 +94,11 @@ done
 
 # Detect if Planka view/asset files changed since last sync.
 # index.ejs is cached in memory by Node — Planka must restart to pick it up.
+# Use LAST_COMMIT/CURRENT_COMMIT already captured before the marker update.
 PLANKA_CHANGED=0
-if [ -d .git ] && [ -f "$LAST_SYNC_FILE" ]; then
-  LAST_COMMIT=$(cat "$LAST_SYNC_FILE")
-  if git cat-file -e "$LAST_COMMIT^{commit}" 2>/dev/null; then
-    if git diff --name-only "$LAST_COMMIT"..HEAD | grep -q '^infrastructure/planka/'; then
-      PLANKA_CHANGED=1
-    fi
+if [ -n "${LAST_COMMIT:-}" ] && [ -n "${CURRENT_COMMIT:-}" ] && [ "$LAST_COMMIT" != "$CURRENT_COMMIT" ]; then
+  if git diff --name-only "$LAST_COMMIT".."$CURRENT_COMMIT" | grep -q '^infrastructure/planka/'; then
+    PLANKA_CHANGED=1
   fi
 fi
 
