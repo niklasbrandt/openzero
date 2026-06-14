@@ -92,11 +92,33 @@ for arg in "$@"; do
   [[ "$arg" == "--rebuild" ]] && REBUILD_CMD="docker compose build backend && docker compose up -d --force-recreate backend"
 done
 
-ssh $REMOTE_USER@$REMOTE_HOST "cd $REMOTE_DIR \
-  && $REBUILD_CMD \
-  && docker compose up -d --remove-orphans \
-  && docker builder prune -f \
-  && docker image prune -f"
+# Detect if Planka view/asset files changed since last sync.
+# index.ejs is cached in memory by Node — Planka must restart to pick it up.
+PLANKA_CHANGED=0
+if [ -d .git ] && [ -f "$LAST_SYNC_FILE" ]; then
+  LAST_COMMIT=$(cat "$LAST_SYNC_FILE")
+  if git cat-file -e "$LAST_COMMIT^{commit}" 2>/dev/null; then
+    if git diff --name-only "$LAST_COMMIT"..HEAD | grep -q '^infrastructure/planka/'; then
+      PLANKA_CHANGED=1
+    fi
+  fi
+fi
+
+if [ "$PLANKA_CHANGED" -eq 1 ]; then
+  echo "Planka views/assets changed — will restart planka container."
+  ssh $REMOTE_USER@$REMOTE_HOST "cd $REMOTE_DIR \
+    && $REBUILD_CMD \
+    && docker compose up -d --remove-orphans \
+    && docker compose restart planka \
+    && docker builder prune -f \
+    && docker image prune -f"
+else
+  ssh $REMOTE_USER@$REMOTE_HOST "cd $REMOTE_DIR \
+    && $REBUILD_CMD \
+    && docker compose up -d --remove-orphans \
+    && docker builder prune -f \
+    && docker image prune -f"
+fi
 
 # Clean up local release notes file (already synced to remote)
 rm -f agent/latest_changes.txt
