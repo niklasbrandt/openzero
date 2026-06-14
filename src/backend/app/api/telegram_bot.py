@@ -277,48 +277,61 @@ def _format_raw_changes_html(changes: str, online_label: str = "I'm back!") -> s
 
 async def _send_changes_notification_if_needed():
 	"""Send the deployment-changes banner if a latest_changes.txt exists.
-	Called at startup after watchdog recovery handles any unanswered messages."""
+	Called at startup after watchdog recovery handles any unanswered messages.
+	Retries once if the LLM is still warming up, then falls back to raw diff."""
 	await asyncio.sleep(15)
 	changes = _read_latest_changes()
 	if not changes:
 		await _send_online_notification()
 		return
 	logger.info("Startup: deployment changes detected, summarising for user.")
-	try:
-		from app.services.llm import chat_with_context
-		changes_prompt = (
-			"You just came back online after a deployment. Tell the user what was shipped — "
-			"factually, like reading out a changelog. One sentence per change maximum. "
-			"Plain language, no fluff.\n\n"
-			"STRICT RULES:\n"
-			"- Do NOT say 'I am now better', 'I have been improved', 'I was fixed', 'I work better now', "
-			"'die letzten Updates haben', 'ich wurde gefixt', 'ich bin jetzt besser', or any equivalent.\n"
-			"- Do NOT frame changes as improvements to yourself. Just report what the system now does.\n"
-			"- Do NOT use bullet lists or headers.\n"
-			"- Keep it under 60 words total.\n\n"
-			f"Deployment notes:\n{changes[:1500]}"
-		)
-		raw = await asyncio.wait_for(
-			chat_with_context(
-				changes_prompt,
-				history=[],
-				include_projects=False,
-				include_people=False,
-				use_agent=False,
-				tier_override="fast",
-				thinking=False,
-			),
-			timeout=60,
-		)
-		if raw and not _is_error_stub(raw):
-			clean = strip_llm_time_header(raw)
-			_consume_latest_changes()
-			await _send_online_notification(recovery_html=_md_to_html(clean))
-			return
-	except Exception as _ce:
-		logger.warning("Startup: changes LLM call failed (%r) — falling back to silent notification.", _ce)
+	from app.services.llm import chat_with_context
+	changes_prompt = (
+		"You just came back online after a deployment. Tell the user what was shipped — "
+		"factually, like reading out a changelog. One sentence per change maximum. "
+		"Plain language, no fluff.\n\n"
+		"STRICT RULES:\n"
+		"- Do NOT say 'I am now better', 'I have been improved', 'I was fixed', 'I work better now', "
+		"'die letzten Updates haben', 'ich wurde gefixt', 'ich bin jetzt besser', or any equivalent.\n"
+		"- Do NOT frame changes as improvements to yourself. Just report what the system now does.\n"
+		"- Do NOT use bullet lists or headers.\n"
+		"- Keep it under 60 words total.\n\n"
+		f"Deployment notes:\n{changes[:1500]}"
+	)
+	# Try up to 2 times — the second attempt gives the local LLM model
+	# 45 extra seconds to finish warming up after a cold container start.
+	for attempt in range(2):
+		try:
+			raw = await asyncio.wait_for(
+				chat_with_context(
+					changes_prompt,
+					history=[],
+					include_projects=False,
+					include_people=False,
+					use_agent=False,
+					tier_override="fast",
+					thinking=False,
+				),
+				timeout=60,
+			)
+			if raw and not _is_error_stub(raw):
+				clean = strip_llm_time_header(raw)
+				_consume_latest_changes()
+				await _send_online_notification(recovery_html=_md_to_html(clean))
+				return
+			if attempt == 0:
+				logger.info("Startup: LLM stub on attempt 1, retrying in 45s.")
+				await asyncio.sleep(45)
+		except Exception as _ce:
+			logger.warning("Startup: changes LLM attempt %d failed (%r).", attempt + 1, _ce)
+			if attempt == 0:
+				await asyncio.sleep(45)
+	# Both attempts failed — send raw commit list so changes are never lost.
+	logger.warning("Startup: LLM unavailable, sending raw changelog as fallback.")
 	_consume_latest_changes()
-	await _send_online_notification()
+	fallback_html = _format_raw_changes_html(changes, online_label="I'm back!")
+	await _send_online_notification(recovery_html=fallback_html or "")
+
 
 
 async def _recover_unanswered_messages():
@@ -1668,7 +1681,6 @@ async def _process_crew_stream(update: Update, context: ContextTypes.DEFAULT_TYP
 		# a card/board/task was not actually created.
 		action_errors = [c for c in all_executed_cmds if isinstance(c, str) and c.startswith("\u26a0")]
 		if action_errors:
-			clean_reply += "\n\n" + "  ".join(action_errors)
 			logger.warning("Crew panel '%s' action errors: %s", crew_display, action_errors)
 		elif all_executed_cmds:
 			logger.info("Crew panel '%s' executed actions: %s", crew_display, all_executed_cmds)
