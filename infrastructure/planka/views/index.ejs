@@ -154,6 +154,85 @@
 		/* Semantic UI segment (used inside card detail sections) */
 		.ui.segment { background: #383438 !important; color: rgba(255,255,255,0.85) !important; }
 
+		/* ── Semantic UI popup (Add Task List + all sidebar action popups) ─ */
+		/* Planka uses Semantic UI's <Popup> for card-side action panels.
+		   This covers: Add Task List, Members, Labels, Due Date, Stopwatch, etc. */
+
+		.ui.popup {
+			background: #2c2829 !important;
+			color: rgba(255,255,255,0.85) !important;
+			border-color: rgba(255,255,255,0.12) !important;
+			box-shadow: 0 4px 16px rgba(0,0,0,0.6) !important;
+		}
+
+		/* Popup arrow (the little triangle pointing back at the trigger) */
+		.ui.popup::before {
+			background: #2c2829 !important;
+			box-shadow: -1px -1px 0 0 rgba(255,255,255,0.12) !important;
+		}
+
+		/* Popup title / header */
+		.ui.popup > .header,
+		.ui.popup .header {
+			color: rgba(255,255,255,0.85) !important;
+			border-bottom-color: rgba(255,255,255,0.1) !important;
+		}
+
+		/* All text nodes inside any popup */
+		.ui.popup div,
+		.ui.popup span,
+		.ui.popup p,
+		.ui.popup label,
+		.ui.popup h1,
+		.ui.popup h2,
+		.ui.popup h3 {
+			color: rgba(255,255,255,0.85) !important;
+		}
+
+		/* Inputs inside popup (task list title field etc.) */
+		.ui.popup input[type=text],
+		.ui.popup input[type=search],
+		.ui.popup textarea,
+		.ui.popup .ui.input > input {
+			background: #383438 !important;
+			color: rgba(255,255,255,0.85) !important;
+			border-color: rgba(255,255,255,0.15) !important;
+		}
+
+		/* Popup form labels */
+		.ui.popup .field > label,
+		.ui.popup label {
+			color: rgba(255,255,255,0.7) !important;
+		}
+
+		/* Divider inside popup */
+		.ui.popup .ui.divider,
+		.ui.popup hr {
+			border-color: rgba(255,255,255,0.1) !important;
+		}
+
+		/* ── Kanban card task-list preview items ──────────────────────── */
+		/* The condensed task list shown directly on the kanban card uses
+		   CSS module class names that change per build. Target structurally
+		   inside the known card wrapper. */
+
+		#app ._wrapper_36a26_43 [class*="_task"],
+		#app ._wrapper_36a26_43 [class*="_item"],
+		#app ._wrapper_36a26_43 [class*="_content"],
+		#app ._wrapper_36a26_43 [class*="_name"],
+		#app ._wrapper_36a26_43 span,
+		#app ._wrapper_36a26_43 p {
+			color: rgba(255,255,255,0.7) !important;
+		}
+
+		/* Broad fallback — any task/item text inside any card shell */
+		#app [class*="_outerWrapper_"] [class*="_task"],
+		#app [class*="_outerWrapper_"] [class*="_item"],
+		#app [class*="_outerWrapper_"] [class*="_taskName"],
+		#app [class*="_outerWrapper_"] [class*="_taskContent"] {
+			color: rgba(255,255,255,0.7) !important;
+		}
+
 		/* ── Card detail section wrappers ────────────────────── */
 
 		#app ._wrapper_kv1fg_5,
