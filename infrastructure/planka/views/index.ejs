@@ -252,6 +252,174 @@
 			color: rgba(255,255,255,0.85) !important;
 			border-color: rgba(255,255,255,0.15) !important;
 		}
+
+		/* ── Gravity UI dialog / sheet / popup (Add Task List etc.) ── */
+
+		/* Gravity UI Sheet / Dialog backdrop and container —
+		   also catches native <dialog>, [role="dialog"], and
+		   Planka CSS-module popup/_modal_ classes. */
+		.g-dialog-bg,
+		.g-sheet,
+		.g-modal,
+		.g-popup,
+		.g-sheet__body,
+		.g-dialog,
+		.g-dialog__content,
+		[class*="g-sheet"],
+		[class*="g-dialog"],
+		[class*="g-modal"],
+		[class*="g-popup"],
+		dialog,
+		[role="dialog"],
+		#app [class*="_popup_"],
+		#app [class*="_modal_"],
+		#app [class*="_overlay_"],
+		#app [class*="_drawer_"] {
+			background: #221d22 !important;
+			color: rgba(255,255,255,0.85) !important;
+		}
+
+		/* Gravity UI dialog close button and title */
+		[class*="g-sheet"] [class*="title"],
+		[class*="g-dialog"] [class*="title"],
+		[class*="g-sheet"] [class*="close"],
+		[class*="g-dialog"] [class*="close"],
+		dialog [class*="title"],
+		dialog [class*="close"],
+		[role="dialog"] [class*="title"],
+		[role="dialog"] [class*="close"] {
+			color: rgba(255,255,255,0.85) !important;
+		}
+
+		/* Gravity UI dialog header bar */
+		[class*="g-sheet"] [class*="header"],
+		[class*="g-dialog"] [class*="header"],
+		dialog [class*="header"],
+		[role="dialog"] [class*="header"],
+		#app [class*="_popup_"] [class*="_header_"],
+		#app [class*="_modal_"] [class*="_header_"] {
+			background: #221d22 !important;
+			border-bottom-color: rgba(255,255,255,0.1) !important;
+			color: rgba(255,255,255,0.85) !important;
+		}
+
+		/* ── Gravity UI switch / toggle (off-state track) ─────────── */
+
+		/* Switch track — off state: Gravity UI + Planka CSS modules.
+		   Use a dark fill with a visible border so the knob reads clearly
+		   against the dark popup background. */
+		.g-switch__slider,
+		[class*="g-switch"] [class*="slider"],
+		[class*="switch"][class*="slider"],
+		#app [class*="_switch_"],
+		#app [class*="_toggle_"],
+		.ui.toggle.checkbox input:not(:checked) ~ label:before,
+		.ui.toggle.checkbox input:not(:checked) ~ label::before {
+			background: #4a4648 !important;
+			border: 1px solid rgba(255,255,255,0.25) !important;
+		}
+
+		/* Switch / toggle label text — fix white-on-white.
+		   Reset colour explicitly so it stays readable on the dark popup
+		   background regardless of how broad parent rules set it. */
+		[class*="g-switch"] label,
+		[class*="g-switch"] [class*="label"],
+		[class*="g-switch"] [class*="content"],
+		#app [class*="_switch_"] label,
+		#app [class*="_toggle_"] label,
+		#app [class*="_switchLabel_"],
+		#app [class*="_toggleLabel_"],
+		.ui.toggle.checkbox label {
+			color: rgba(255,255,255,0.85) !important;
+		}
+
+		/* ── Checklist / Task List container (card detail) ─────────── */
+
+		/* Broad structural override — targets the white checklist box
+		   inside the Semantic UI modal card detail. The hashed class names
+		   change on Planka upgrades so we also target by data-attribute
+		   and structure. */
+		.ui.modal [class*="_wrapper_"] {
+			background: #383438 !important;
+			color: rgba(255,255,255,0.85) !important;
+			border-color: rgba(255,255,255,0.1) !important;
+		}
+
+		/* Checklist header row (task list title + checkbox icon) */
+		.ui.modal [class*="_header_"],
+		.ui.modal [class*="_taskListTitle_"],
+		.ui.modal [class*="_taskListHeader_"] {
+			background: #383438 !important;
+			color: rgba(255,255,255,0.85) !important;
+		}
+
+		/* Checklist progress bar container */
+		.ui.modal [class*="_progressBar_"],
+		.ui.modal [class*="_progress_"] {
+			background: rgba(255,255,255,0.1) !important;
+		}
+
+		/* Individual task item row */
+		.ui.modal [class*="_item_"],
+		.ui.modal [class*="_taskItem_"] {
+			color: rgba(255,255,255,0.85) !important;
+		}
+
+		/* Task item checkbox — Semantic UI checkbox inside modal */
+		.ui.modal .ui.checkbox input[type=checkbox],
+		.ui.modal .ui.checkbox label:before,
+		.ui.modal .ui.checkbox label::before,
+		.ui.modal [class*="_checkbox_"] {
+			background: #383438 !important;
+			border-color: rgba(255,255,255,0.25) !important;
+		}
+
+		.ui.modal .ui.checkbox label,
+		.ui.modal .ui.checkbox label:after,
+		.ui.modal .ui.checkbox label::after {
+			color: rgba(255,255,255,0.85) !important;
+		}
+
+		/* Checked checkbox fill */
+		.ui.modal .ui.checkbox input:checked ~ label:before,
+		.ui.modal .ui.checkbox input:checked ~ label::before {
+			background: #383438 !important;
+			border-color: rgba(255,255,255,0.4) !important;
+		}
+
+		/* "Add another task" link text */
+		.ui.modal [class*="_addTask_"],
+		.ui.modal [class*="_addAnotherTask_"] {
+			color: rgba(255,255,255,0.5) !important;
+		}
+
+		/* ── Gravity UI inputs inside dialogs ──────────────────────── */
+
+		/* Text inputs inside Gravity UI sheet/dialog */
+		[class*="g-sheet"] input,
+		[class*="g-sheet"] textarea,
+		[class*="g-dialog"] input,
+		[class*="g-dialog"] textarea,
+		[class*="g-text-input"],
+		[class*="g-input"] input {
+			background: #383438 !important;
+			color: rgba(255,255,255,0.85) !important;
+			border-color: rgba(255,255,255,0.15) !important;
+		}
+
+		/* Labels inside Gravity UI dialogs */
+		[class*="g-sheet"] label,
+		[class*="g-dialog"] label,
+		[class*="g-sheet"] [class*="label"],
+		[class*="g-dialog"] [class*="label"] {
+			color: rgba(255,255,255,0.85) !important;
+		}
+
+		/* Divider inside dialogs */
+		[class*="g-sheet"] [class*="divider"],
+		[class*="g-dialog"] [class*="divider"] {
+			border-color: rgba(255,255,255,0.1) !important;
+		}
 	</style>
   </head>
   <body id="app"></body>
