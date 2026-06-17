@@ -25,6 +25,11 @@ _CREW_DOMAINS: dict = {
 		"cardio", "lift", "lifting", "programme", "program", "fitness",
 		"strength", "endurance", "squat", "deadlift", "bench",
 	],
+	"life": [
+		"feeling", "mood", "energy", "stress", "sleep", "overwhelm",
+		"burnout", "tired", "exhausted", "traurig", "müde", "stress",
+		"erschöpft",
+	],
 }
 
 _NUDGE_PROMPTS: dict = {
@@ -36,11 +41,16 @@ _NUDGE_PROMPTS: dict = {
 		"Generate a single short sentence (under 15 words) nudging the user to schedule their workout. "
 		"Be direct and motivating. No greeting, no closing. Output only the sentence."
 	),
+	"life": (
+		"Generate a single short sentence (under 15 words) checking in on the user's wellbeing. "
+		"Be genuine, empathetic, and not clinical. No greeting, no closing. Output only the sentence."
+	),
 }
 
 _FALLBACK_NUDGE: dict = {
 	"recipe": "Time to plan your meals for the week.",
 	"fitness": "Ready to schedule your next workout?",
+	"life": "Haven't heard much lately -- how are you holding up?",
 }
 
 

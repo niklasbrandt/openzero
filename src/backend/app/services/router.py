@@ -25,7 +25,7 @@ from dataclasses import dataclass, field
 from typing import AsyncIterator, Callable, Awaitable
 
 from app.common.phantom import PHANTOM_RE as _PHANTOM_RE  # noqa: E402
-from app.services.z_core import build_z_core_context
+from app.services.z_core import build_z_core_context, _EMOTIONAL_MARKER_RE
 
 logger = logging.getLogger(__name__)
 
@@ -236,6 +236,17 @@ async def route_message_stream(
 		# ── Z-core always-on context (workspace + signal interpretation) ──────
 		_z_core_ctx = build_z_core_context(user_text)
 
+		_emotional_ctx = ""
+		_crew_prompt = user_text
+		if _EMOTIONAL_MARKER_RE.search(user_text):
+			_emotional_ctx = (
+				"\n[EMOTIONAL CONTEXT: The user appears to be in a state of emotional "
+				"distress (fatigue/stress/overwhelm/sadness). Adapt your recommendations to be "
+				"low-effort, comforting, and practical. Do not suggest ambitious or "
+				"complex plans. Lead with warmth.]\n"
+			)
+			_crew_prompt = _emotional_ctx + user_text
+
 		_status_history: list[str] = []
 
 		async def _status(msg: str) -> None:
@@ -320,6 +331,7 @@ async def route_message_stream(
 			len(_trimmed.split()) <= 4
 			and _FAST_PATH_RE.match(_trimmed[:_MAX_RE_INPUT])
 			and not _HAS_ACTION_VERB_RE.search(_trimmed[:_MAX_RE_INPUT])
+			and not _EMOTIONAL_MARKER_RE.search(_trimmed[:_MAX_RE_INPUT])
 		):
 			logger.debug("Router 0.0: fast-path bypass for '%s'", _sanitize_for_log(user_text))
 			_fp_chunks = []
@@ -1239,20 +1251,20 @@ async def route_message_stream(
 					if _cid == "focus":
 						_dom_drafts = "\n\n".join([f"{dc.title()}: {d}" for dc, d in _r1_contributions])
 						_round_prompt = (
-							f"User asked: \"{user_text}\"\n\n"
+							f"User asked: \"{_crew_prompt}\"\n\n"
 							f"The domain-specific experts suggested the following initial positions:\n{_dom_drafts}\n\n"
 							f"As the Clarity and Focus priority synthesizer, reconcile these recommendations against the operator's general goals, physical capacity, and calendar. Write a cohesive, high-leverage priority focus draft."
 						)
 					elif _cid == "scrum":
 						_all_drafts = "\n\n".join([f"{dc.title()}: {d}" for dc, d in _r1_contributions])
 						_round_prompt = (
-							f"User asked: \"{user_text}\"\n\n"
+							f"User asked: \"{_crew_prompt}\"\n\n"
 							f"The experts and Focus proposed the following:\n{_all_drafts}\n\n"
 							f"As the Kanban and delivery intelligence auditor, check if any card creations, moves, or updates are being proposed. Draft the required Planka actions and commitments, checking WIP limits and duplicate items."
 						)
 					else:
 						_round_prompt = (
-							f"User asked: \"{user_text}\"\n\n"
+							f"User asked: \"{_crew_prompt}\"\n\n"
 							f"[SYSTEM DIRECTIVE: Respond STRICTLY from the perspective of your specific domain. If the user asks for something outside your domain (e.g. recipes when you are Health), simply provide your domain-specific constraint or sign-off instead of fulfilling the request yourself.]"
 						)
 
@@ -1294,14 +1306,14 @@ async def route_message_stream(
 						if _cid == "focus":
 							_dom_rebuts = "\n\n".join([f"{dc.title()}: {d}" for dc, d in _r2_contributions if dc not in ("focus", "scrum")])
 							_rebuttal_prompt = (
-								f"User asked: \"{user_text}\"\n\n"
+								f"User asked: \"{_crew_prompt}\"\n\n"
 								f"The domain experts have submitted their Round 2 rebuttals:\n{_dom_rebuts}\n\n"
 								f"Review these final expert positions. Adapt and finalize your priority focus recommendation and compromises accordingly."
 							)
 						elif _cid == "scrum":
 							_all_rebuts = "\n\n".join([f"{dc.title()}: {d}" for dc, d in _r2_contributions if dc != "scrum"])
 							_rebuttal_prompt = (
-								f"User asked: \"{user_text}\"\n\n"
+								f"User asked: \"{_crew_prompt}\"\n\n"
 								f"The final expert consensus is:\n{_all_rebuts}\n\n"
 								f"Review their final recommendations. Finalize the required Planka task creations, updates, list selections, and card formatting, checking WIP limits and duplicate items."
 							)
@@ -1309,7 +1321,7 @@ async def route_message_stream(
 							_others = [f"{o_cid.title()}: {o_draft}" for o_cid, o_draft in _r1_contributions if o_cid != _cid]
 							_others_str = "\n\n".join(_others)
 							_rebuttal_prompt = (
-								f"User asked: \"{user_text}\"\n\n"
+								f"User asked: \"{_crew_prompt}\"\n\n"
 								f"Your peers on the panel suggested:\n{_others_str}\n\n"
 								f"Review their advice alongside your own. What do you agree with? What do you disagree with? Provide your final updated recommendation.\n\n"
 								f"[SYSTEM DIRECTIVE: Respond STRICTLY from the perspective of your specific domain. If the user asks for something outside your domain (e.g. recipes when you are Health), simply provide your domain-specific constraint or sign-off instead of fulfilling the request yourself.]"
@@ -1339,7 +1351,7 @@ async def route_message_stream(
 						from app.services.llm import chat as _fast_chat
 						_r2_str = "\n\n".join([f"{dc.title()}: {d}" for dc, d in _r2_contributions if dc not in ("focus", "scrum")])
 						_r3_eval_prompt = (
-							f"User asked: \"{user_text}\"\n\n"
+							f"User asked: \"{_crew_prompt}\"\n\n"
 							f"The panel experts have completed two rounds of debate. Here are their current stances:\n{_r2_str}\n\n"
 							f"Evaluate if there is still a critical, unresolved contradiction or safety/burnout veto "
 							f"(such as fitness proposing hard training while health demands rest due to extreme stress/fatigue). "
@@ -1373,7 +1385,7 @@ async def route_message_stream(
 							yield _header
 
 							_r3_prompt = (
-								f"User asked: \"{user_text}\"\n\n"
+								f"User asked: \"{_crew_prompt}\"\n\n"
 								f"Your Round 2 stance was:\n{_r2_draft}\n\n"
 								f"CRITICAL CONFLICT DETECTED: {_r3_topic}\n\n"
 								f"You MUST adapt your recommendation to resolve this conflict. Modify your stance to reconcile safely with the safety/burnout constraints described above. Provide your final reconciled recommendation.\n\n"
@@ -1487,11 +1499,13 @@ async def route_message_stream(
 						_merge_inst = "The crews broadly agree. Synthesize silently into one response — no section labels."
 
 					_synth_prompt = (
-						f"A panel of {len(_r2_contributions)} specialist crews debated the user question: \"{user_text[:200]}\"\n\n"
+						f"A panel of {len(_r2_contributions)} specialist crews debated the user question: \"{_crew_prompt[:200]}\"\n\n"
 						f"Their final stances are:\n\n{_synth_body}\n\n"
 						f"{_merge_inst} Reply in the user's language."
 					)
 					_synth_system = "You are Z. Synthesize crew outputs into a single clear, direct response. No meta-commentary about the synthesis process."
+					if _emotional_ctx:
+						_synth_system += " The user is experiencing emotional distress. Lead the synthesis response with a warm, genuine 1-2 sentence empathetic validation before giving any synthesized recommendations or plans."
 
 					from app.services.llm import chat_stream
 					_synth_chunks: list[str] = []
@@ -1524,9 +1538,14 @@ async def route_message_stream(
 			crew_id = routed_crews[0]
 			_force_cloud = True  # crew requests always need cloud tier
 			logger.info("Router: semantic-routing '%s...' → crew '%s'", _sanitize_for_log(user_text), crew_id)
-			await _status(_t.get("status_routing_crew", "Routing to {crew}...").format(crew=crew_id))
+			_other_candidates = [c for c in _all_candidates if c != crew_id]
+			if _other_candidates:
+				_also_considered = ", ".join(_other_candidates[:3])
+				await _status(_t.get("status_routing_crew", "Routing to {crew}...").format(crew=crew_id) + f" (also considered: {_also_considered})")
+			else:
+				await _status(_t.get("status_routing_crew", "Routing to {crew}...").format(crew=crew_id))
 			chunks: list[str] = []
-			async for token in native_crew_engine.run_crew_stream(crew_id, user_text, history=_ctx_history, force_cloud=True):
+			async for token in native_crew_engine.run_crew_stream(crew_id, _crew_prompt, history=_ctx_history, force_cloud=True):
 				chunks.append(token)
 				yield token
 			full = rehydrate_response("".join(chunks), get_active_rep_map())
@@ -1541,9 +1560,7 @@ async def route_message_stream(
 			)
 			cmds = [c for c in cmds if not c.startswith("__CREW_RUN__:")]
 			action_errors = [c for c in cmds if isinstance(c, str) and c.startswith("\u26a0")]
-			if action_errors:
-				clean += "\n\n" + "  ".join(action_errors)
-			elif not cmds and _PHANTOM_RE.search(clean[:_MAX_RE_REPLY]):
+			if not cmds and _PHANTOM_RE.search(clean[:_MAX_RE_REPLY]):
 				clean += (
 					"\n\n\u26a0 Nothing was actually saved — "
 					"the crew described the action without executing it. Please try again."
@@ -1634,7 +1651,7 @@ async def route_message_stream(
 			crew_id = m.group(1).strip().lower()
 			logger.info("Router: Z self-routed '%s...' → crew '%s'", _sanitize_for_log(user_text), crew_id)
 			r_chunks: list[str] = []
-			async for token in native_crew_engine.run_crew_stream(crew_id, user_text, history=_ctx_history, force_cloud=True):
+			async for token in native_crew_engine.run_crew_stream(crew_id, _crew_prompt, history=_ctx_history, force_cloud=True):
 				r_chunks.append(token)
 				yield token
 			r_full = rehydrate_response("".join(r_chunks), get_active_rep_map())
@@ -1647,9 +1664,7 @@ async def route_message_stream(
 			)
 			r_cmds = [c for c in r_cmds if not c.startswith("__CREW_RUN__:")]
 			r_action_errors = [c for c in r_cmds if isinstance(c, str) and c.startswith("\u26a0")]
-			if r_action_errors:
-				r_clean += "\n\n" + "  ".join(r_action_errors)
-			elif not r_cmds and _PHANTOM_RE.search(r_clean[:_MAX_RE_REPLY]):
+			if not r_cmds and _PHANTOM_RE.search(r_clean[:_MAX_RE_REPLY]):
 				r_clean += (
 					"\n\n\u26a0 Nothing was actually saved — "
 					"the crew described the action without executing it. Please try again."
@@ -1678,9 +1693,6 @@ async def route_message_stream(
 			clean += f"\n\n_(Reasoning by crew {', '.join(crew_labels)})_"
 
 		action_errors = [c for c in cmds if isinstance(c, str) and c.startswith("\u26a0")]
-		if action_errors:
-			clean += "\n\n" + "  ".join(action_errors)
-
 		if not cmds and _PHANTOM_RE.search(clean[:_MAX_RE_REPLY]):
 			clean += (
 				"\n\n\u26a0 Nothing was actually saved — "
