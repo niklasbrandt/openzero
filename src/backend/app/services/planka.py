@@ -36,6 +36,18 @@ _DONE_LIST_NAMES = {"erledigt", "done", "closed", "fertig", "abgeschlossen", "ar
 def _is_done_list(list_name: str) -> bool:
 	return (list_name or "").strip().lower() in _DONE_LIST_NAMES
 
+def _card_title_matches(card_name: str, fragment: str) -> bool:
+	"""Return True if the card name matches the query fragment (case-insensitive).
+	
+	Supports bidirectional substring matching to handle cases where either the
+	card name or the query fragment has extra words or embellishments (e.g. LLM output).
+	"""
+	name_clean = (card_name or "").strip().lower()
+	frag_clean = (fragment or "").strip().strip('"\'').strip().lower()
+	if not frag_clean or not name_clean:
+		return False
+	return frag_clean in name_clean or name_clean in frag_clean
+
 async def get_project_tree(as_html: bool = True) -> str:
 	"""Recursively build a semantic text tree. Uses parallel requests and caching for speed."""
 	cache_key = f"tree_{as_html}"
@@ -455,7 +467,7 @@ async def archive_card(card_title_fragment: str, board_name: str = "") -> bool:
 					cards = bdata.get("included", {}).get("cards", [])
 					lists = bdata.get("included", {}).get("lists", [])
 					card = next(
-						(c for c in cards if card_title_fragment.lower() in (c.get("name") or "").lower()),
+						(c for c in cards if _card_title_matches(c.get("name") or "", card_title_fragment)),
 						None,
 					)
 					if not card:
@@ -777,7 +789,7 @@ async def move_card(card_title_fragment: str, destination_list: str, board_name:
 					lists = b_data.get("included", {}).get("lists", [])
 					cards = b_data.get("included", {}).get("cards", [])
 					for c in cards:
-						if card_title_fragment in (c.get("name") or "").lower():
+						if _card_title_matches(c.get("name") or "", card_title_fragment):
 							found_card = c
 							dest_list = next(
 								(l for l in lists if (l.get("name") or "").lower() == destination_list.lower()), None
@@ -835,7 +847,7 @@ async def rename_card(card_title_fragment: str, new_name: str, board_name: str =
 					b_det = await client.get(f"/api/boards/{b['id']}", params={"included": "cards"})
 					cards = b_det.json().get("included", {}).get("cards", [])
 					for c in cards:
-						if card_title_fragment in c["name"].lower():
+						if _card_title_matches(c.get("name") or "", card_title_fragment):
 							found_card = c
 							break
 					if found_card:
@@ -925,7 +937,7 @@ async def set_card_description(card_fragment: str, description: str, board_name:
 					b_det = await client.get(f"/api/boards/{b['id']}", params={"included": "cards"})
 					cards = b_det.json().get("included", {}).get("cards", [])
 					for c in cards:
-						if card_fragment in c["name"].lower():
+						if _card_title_matches(c.get("name") or "", card_fragment):
 							found_card = c
 							break
 					if found_card:
@@ -970,7 +982,7 @@ async def add_card_task(card_fragment: str, task_name: str, board_name: str = ""
 					b_det = await client.get(f"/api/boards/{b['id']}", params={"included": "cards"})
 					cards = b_det.json().get("included", {}).get("cards", [])
 					for c in cards:
-						if card_fragment in c["name"].lower():
+						if _card_title_matches(c.get("name") or "", card_fragment):
 							found_card = c
 							break
 					if found_card:
@@ -1013,7 +1025,7 @@ async def check_card_task(card_fragment: str, task_fragment: str, board_name: st
 					b_det = await client.get(f"/api/boards/{b['id']}", params={"included": "cards"})
 					cards = b_det.json().get("included", {}).get("cards", [])
 					for c in cards:
-						if card_fragment in c["name"].lower():
+						if _card_title_matches(c.get("name") or "", card_fragment):
 							found_card = c
 							found_board_id = b["id"]
 							break
@@ -1068,7 +1080,7 @@ async def rename_card_task(card_fragment: str, task_fragment: str, new_name: str
 					b_det = await client.get(f"/api/boards/{b['id']}", params={"included": "cards"})
 					cards = b_det.json().get("included", {}).get("cards", [])
 					for c in cards:
-						if card_fragment in c["name"].lower():
+						if _card_title_matches(c.get("name") or "", card_fragment):
 							found_card = c
 							found_board_id = b["id"]
 							break
@@ -1117,7 +1129,7 @@ async def delete_card(card_fragment: str, board_name: str = "") -> bool:
 					b_det = await client.get(f"/api/boards/{b['id']}", params={"included": "cards"})
 					cards = b_det.json().get("included", {}).get("cards", [])
 					for c in cards:
-						if card_fragment in c["name"].lower():
+						if _card_title_matches(c.get("name") or "", card_fragment):
 							found_card = c
 							break
 					if found_card:
@@ -1201,7 +1213,7 @@ async def delete_card_task(card_fragment: str, task_fragment: str, board_name: s
 					b_det = await client.get(f"/api/boards/{b['id']}", params={"included": "cards"})
 					cards = b_det.json().get("included", {}).get("cards", [])
 					for c in cards:
-						if card_fragment in c["name"].lower():
+						if _card_title_matches(c.get("name") or "", card_fragment):
 							found_card = c
 							found_board_id = b["id"]
 							break
