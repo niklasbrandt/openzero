@@ -9,6 +9,16 @@ import zoneinfo
 from app.config import settings
 
 
+import re
+
+_EMOTIONAL_MARKER_RE = re.compile(
+	r'\b(?:drained|exhausted|stressed|anxious|overwhelmed|frustrated|'
+	r'sad|angry|upset|burnt?\s*out|tired|not\s+ok|can.t\s+cope|'
+	r'erschöpft|gestresst|müde|frustriert|überfordert|traurig|ausgelaugt)\b',
+	re.IGNORECASE,
+)
+
+
 def build_z_core_context(user_text: str, session_context: dict | None = None) -> str:
 	"""Return an always-on context string to prepend to the Z system prompt.
 
@@ -43,4 +53,10 @@ def build_z_core_context(user_text: str, session_context: dict | None = None) ->
 		"forcing an analysis overlay. One proposed action per message, never a list of guesses.",
 	]
 
+	if _EMOTIONAL_MARKER_RE.search(user_text):
+		lines.append("")
+		lines.append("ACTIVE SIGNALS:")
+		lines.append("  - DETECTED: user emotional distress. Open with genuine empathy and validation first. Adjust recommendations to be comforting and low-effort.")
+
 	return "\n".join(lines)
+
