@@ -198,10 +198,9 @@ async def morning_briefing():
 			memory_review = "\n".join([f"• {m['text']}" for m in recent_memories])
 		except Exception as e:
 			logger.warning("Optional memory retrieval skipped for briefing: %s", e)
-			memory_review = "" # Ensure it's empty if retrieval fails
-
-		# 2.5 Build crew context — summarise which crews are active and what they cover
+			memory_review = "" # Ensure it'		# 2.5 Build crew context — summarise which crews are active and what they cover
 		crew_context = ""
+		active_crews = []
 		try:
 			active_crews = crew_registry.list_active()
 			if active_crews:
@@ -225,6 +224,41 @@ async def morning_briefing():
 			activity_days=activity_days,
 		)
 
+		# Coordinate active crews to check in and generate domain-specific insights
+		crew_insights = []
+		if active_crews:
+			from app.services.crews_native import native_crew_engine
+			import re
+			_ACTION_STRIP_RE = re.compile(r'\[ACTION:[^\]]*\]', re.IGNORECASE)
+
+			async def _get_crew_insight(crew_config):
+				try:
+					crew_prompt = (
+						f"You are the {crew_config.name} crew. We are preparing the daily morning briefing for the operator.\n"
+						f"Here is the day's raw data:\n\n{skeleton}\n\n"
+						f"Based on your specialized domain, review this data and generate a single short paragraph (under 40 words) with your top insight, recommendation, or warning for today. "
+						f"Be extremely concise. Write only the paragraph. Do not introduce yourself, and do not say 'Here is my insight'."
+					)
+					res = await native_crew_engine.run_crew(crew_config.id, crew_prompt)
+					res_clean = _ACTION_STRIP_RE.sub("", res).strip()
+					if res_clean:
+						return f"**{crew_config.name}**: {res_clean}"
+				except Exception as ex:
+					logger.warning("Failed to get briefing insight from crew %s: %s", crew_config.id, ex)
+				return None
+
+			try:
+				insights_results = await asyncio.wait_for(
+					asyncio.gather(*[_get_crew_insight(c) for c in active_crews]),
+					timeout=90.0
+				)
+				crew_insights = [ins for ins in insights_results if ins]
+			except Exception as e:
+				logger.warning("Gathering active crew insights for morning briefing failed/timed out: %s", e)
+
+		if crew_insights:
+			skeleton += "\n\nACTIVE CREW INSIGHTS:\n" + "\n".join(crew_insights)
+
 		full_prompt = (
 			f"You are Z, a personal AI assistant. Write the following briefing in a direct, uplifting tone — "
 			f"no preamble, no 'Here is your briefing' opener, no robotic recap. Begin immediately with the most relevant information. "
@@ -244,7 +278,7 @@ async def morning_briefing():
 			"DO NOT make meta questions generic — they must reference specific card names or board states from the data.\n"
 			"DO NOT add any information not present in the BRIEFING DRAFT.\n"
 			"DO NOT invent events, cards, emails, people, or project names.\n"
-			"DO NOT add suggestions, meal ideas, or fitness plans unless they appear in the Crew boards section.\n"
+			"DO NOT add suggestions, meal ideas, or fitness plans unless they appear in the Crew boards or ACTIVE CREW INSIGHTS sections.\n"
 			"If a section is absent from the draft, it does not exist today — do not mention it.\n"
 			"You may emit action tags silently (they are stripped before delivery): "
 			"[ACTION: MOVE_CARD | CARD: <fragment> | LIST: <list>], [ACTION: MARK_DONE | CARD: <fragment>], [ACTION: LEARN | TEXT: <fact>]. "
