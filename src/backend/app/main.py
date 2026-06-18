@@ -66,6 +66,106 @@ CREATE TABLE IF NOT EXISTS domain_signals (
 );
 """))
             await conn.execute(text("""
+CREATE TABLE IF NOT EXISTS atlas_nodes (
+	id SERIAL PRIMARY KEY,
+	type VARCHAR(64) NOT NULL,
+	label TEXT NOT NULL,
+	payload JSONB DEFAULT '{}'::jsonb,
+	confidence FLOAT DEFAULT 0.5,
+	created_at TIMESTAMP DEFAULT NOW(),
+	updated_at TIMESTAMP DEFAULT NOW(),
+	last_mentioned_at TIMESTAMP
+);
+"""))
+            await conn.execute(text("""
+CREATE TABLE IF NOT EXISTS atlas_edges (
+	id SERIAL PRIMARY KEY,
+	source_node_id INTEGER NOT NULL REFERENCES atlas_nodes(id) ON DELETE CASCADE,
+	target_node_id INTEGER NOT NULL REFERENCES atlas_nodes(id) ON DELETE CASCADE,
+	kind VARCHAR(64) NOT NULL,
+	weight FLOAT DEFAULT 1.0,
+	payload JSONB DEFAULT '{}'::jsonb,
+	created_at TIMESTAMP DEFAULT NOW()
+);
+"""))
+            await conn.execute(text("""
+CREATE TABLE IF NOT EXISTS atlas_spines (
+	id SERIAL PRIMARY KEY,
+	label TEXT NOT NULL,
+	confidence FLOAT DEFAULT 0.5,
+	payload JSONB DEFAULT '{}'::jsonb,
+	derived BOOLEAN DEFAULT true,
+	locked BOOLEAN DEFAULT false,
+	updated_at TIMESTAMP DEFAULT NOW()
+);
+"""))
+            await conn.execute(text("""
+CREATE TABLE IF NOT EXISTS atlas_spine_members (
+	spine_id INTEGER NOT NULL REFERENCES atlas_spines(id) ON DELETE CASCADE,
+	node_id INTEGER NOT NULL REFERENCES atlas_nodes(id) ON DELETE CASCADE,
+	weight FLOAT DEFAULT 1.0,
+	PRIMARY KEY (spine_id, node_id)
+);
+"""))
+            await conn.execute(text("""
+CREATE TABLE IF NOT EXISTS atlas_spine_summaries (
+	spine_id INTEGER NOT NULL REFERENCES atlas_spines(id) ON DELETE CASCADE,
+	generated_at TIMESTAMP DEFAULT NOW(),
+	summary_text TEXT NOT NULL,
+	source_refs JSONB DEFAULT '[]'::jsonb
+);
+"""))
+            await conn.execute(text("""
+CREATE TABLE IF NOT EXISTS atlas_decisions (
+	id SERIAL PRIMARY KEY,
+	node_id INTEGER REFERENCES atlas_nodes(id) ON DELETE CASCADE,
+	made_at TIMESTAMP DEFAULT NOW(),
+	rationale TEXT,
+	revisit_when TEXT,
+	status VARCHAR(32) DEFAULT 'open',
+	payload JSONB DEFAULT '{}'::jsonb
+);
+"""))
+            await conn.execute(text("""
+CREATE TABLE IF NOT EXISTS atlas_contradictions (
+	id SERIAL PRIMARY KEY,
+	primary_node_id INTEGER NOT NULL REFERENCES atlas_nodes(id) ON DELETE CASCADE,
+	opposing_node_id INTEGER NOT NULL REFERENCES atlas_nodes(id) ON DELETE CASCADE,
+	detected_at TIMESTAMP DEFAULT NOW(),
+	status VARCHAR(32) DEFAULT 'open',
+	payload JSONB DEFAULT '{}'::jsonb
+);
+"""))
+            await conn.execute(text("""
+CREATE TABLE IF NOT EXISTS atlas_diffs (
+	id SERIAL PRIMARY KEY,
+	node_id INTEGER REFERENCES atlas_nodes(id) ON DELETE CASCADE,
+	spine_id INTEGER REFERENCES atlas_spines(id) ON DELETE CASCADE,
+	kind VARCHAR(64) NOT NULL,
+	since TIMESTAMP,
+	until TIMESTAMP,
+	summary TEXT,
+	payload JSONB DEFAULT '{}'::jsonb
+);
+"""))
+            await conn.execute(text("""
+CREATE TABLE IF NOT EXISTS atlas_why_traces (
+	id SERIAL PRIMARY KEY,
+	subject_kind VARCHAR(64) NOT NULL,
+	subject_id INTEGER,
+	generated_at TIMESTAMP DEFAULT NOW(),
+	source_refs JSONB DEFAULT '[]'::jsonb,
+	confidence FLOAT DEFAULT 0.5
+);
+"""))
+            await conn.execute(text("""
+CREATE TABLE IF NOT EXISTS operator_identity (
+	id SERIAL PRIMARY KEY,
+	name TEXT NOT NULL,
+	payload JSONB DEFAULT '{}'::jsonb
+);
+"""))
+            await conn.execute(text("""
 CREATE TABLE IF NOT EXISTS walkthroughs (
 	id SERIAL PRIMARY KEY,
 	title TEXT NOT NULL,
