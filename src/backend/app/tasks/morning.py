@@ -169,7 +169,19 @@ async def morning_briefing():
 
 		from app.services.planka import get_activity_report, get_recent_activity, get_stale_cards, get_crew_board_snapshot, get_board_walkthrough
 		from app.services.translations import get_user_lang
-		weather_report, tree, email_summary, activity, recent_activity, stale_cards, crew_snapshot, board_walkthrough, user_language = await asyncio.gather(
+		from app.services.crew_memory import get_recent_crew_outputs
+		(
+			weather_report,
+			tree,
+			email_summary,
+			activity,
+			recent_activity,
+			stale_cards,
+			crew_snapshot,
+			board_walkthrough,
+			user_language,
+			crew_outputs,
+		) = await asyncio.gather(
 			get_weather_forecast(detected_location),
 			get_project_tree(as_html=False),
 			_get_email_summary(),
@@ -179,8 +191,25 @@ async def morning_briefing():
 			get_crew_board_snapshot(),
 			get_board_walkthrough(),
 			get_user_lang(),
+			get_recent_crew_outputs(hours=24),
 		)
 		logger.debug("morning_briefing — batch-2 done in %.1fs", asyncio.get_event_loop().time() - _t2)
+
+		# Fetch last briefing for delta comparison
+		previous_briefing_content = ""
+		try:
+			async with AsyncSessionLocal() as session:
+				res = await session.execute(
+					select(Briefing)
+					.where(Briefing.type == "day")
+					.order_by(Briefing.created_at.desc())
+					.limit(1)
+				)
+				prev_briefing = res.scalar_one_or_none()
+				if prev_briefing and prev_briefing.content:
+					previous_briefing_content = prev_briefing.content
+		except Exception as pbe:
+			logger.warning("morning_briefing: could not fetch previous briefing: %s", pbe)
 
 		# Detect Planka unavailability — prevent LLM hallucination when all board data fails
 		_planka_unavailable_warning = ""
@@ -198,7 +227,9 @@ async def morning_briefing():
 			memory_review = "\n".join([f"• {m['text']}" for m in recent_memories])
 		except Exception as e:
 			logger.warning("Optional memory retrieval skipped for briefing: %s", e)
-			memory_review = "" # Ensure it'		# 2.5 Build crew context — summarise which crews are active and what they cover
+			memory_review = "" 
+
+		# 2.5 Build crew context — summarise which crews are active and what they cover
 		crew_context = ""
 		active_crews = []
 		try:
@@ -224,7 +255,31 @@ async def morning_briefing():
 			activity_days=activity_days,
 		)
 
-		# Coordinate active crews to check in and generate domain-specific insights
+		# Inject recent crew outputs directly into the skeleton
+		if crew_outputs:
+			skeleton += "\n\nCREW REASONING & DOMAIN INSIGHTS (from scheduled crew runs):\n"
+			# Put scrum and focus in first, then life, then others.
+			# Format: --- crew_id --- \n text
+			priorities = ["scrum", "focus"]
+			for cid in priorities:
+				if cid in crew_outputs:
+					skeleton += f"--- {cid} ---\n{crew_outputs[cid]}\n"
+			
+			if "life" in crew_outputs:
+				life_out = crew_outputs["life"]
+				# Cap life crew output to ~300 chars
+				if len(life_out) > 300:
+					life_out = life_out[:300] + "..."
+				skeleton += f"--- life (private reflection) ---\n{life_out}\n"
+
+			# Other crews that ran in last 24h (e.g. chef, fitness, etc.)
+			other_crews = [cid for cid in crew_outputs if cid not in priorities and cid != "life"]
+			if other_crews:
+				skeleton += "\nRECENT WEEKLY CREW UPDATES:\n"
+				for cid in other_crews:
+					skeleton += f"--- {cid} ---\n{crew_outputs[cid]}\n"
+
+		# Coordinate active crews to check in and generate domain-specific insights (fallback-only)
 		crew_insights = []
 		if active_crews:
 			from app.services.crews_native import native_crew_engine
@@ -232,6 +287,9 @@ async def morning_briefing():
 			_ACTION_STRIP_RE = re.compile(r'\[ACTION:[^\]]*\]', re.IGNORECASE)
 
 			async def _get_crew_insight(crew_config):
+				# Fallback only: skip if crew already has recent output loaded from Planka
+				if crew_config.id in crew_outputs:
+					return None
 				try:
 					crew_prompt = (
 						f"You are the {crew_config.name} crew. We are preparing the daily morning briefing for the operator.\n"
@@ -257,12 +315,23 @@ async def morning_briefing():
 				logger.warning("Gathering active crew insights for morning briefing failed/timed out: %s", e)
 
 		if crew_insights:
-			skeleton += "\n\nACTIVE CREW INSIGHTS:\n" + "\n".join(crew_insights)
+			skeleton += "\n\nACTIVE CREW INSIGHTS (fallback pass):\n" + "\n".join(crew_insights)
+
+		# Add previous briefing delta block if available
+		prev_briefing_block = ""
+		if previous_briefing_content:
+			prev_briefing_block = (
+				f"PREVIOUS BRIEFING (yesterday):\n"
+				f"{previous_briefing_content}\n\n"
+				f"Compare today's data with the PREVIOUS BRIEFING above. Note what moved, what is new, and what persisted unchanged. "
+				f"Do not repeat yesterday's observations verbatim -- focus on surfacing deltas and actual progress.\n\n"
+			)
 
 		full_prompt = (
 			f"You are Z, a personal AI assistant. Write the following briefing in a direct, uplifting tone — "
 			f"no preamble, no 'Here is your briefing' opener, no robotic recap. Begin immediately with the most relevant information. "
 			f"Tone: {settings.PERSONA_TONE}. Only use humor when it is clearly appropriate and actually funny.\n\n"
+			f"{prev_briefing_block}"
 			"Note naturally what has changed since the last briefing — surface it as a living update, not a diff.\n\n"
 			"The BRIEFING DRAFT below contains ALL the facts for today's briefing. Your role is THREE THINGS:\n"
 			"Begin the response with a compact table of contents — one line listing only the sections that have real content (skip empty or [NO DATA] sections). Format example: '1. Boards  2. Activity  3. Stale  4. Day Structure  5. Observations'\n"
@@ -273,12 +342,14 @@ async def morning_briefing():
 			"   - 'You have 3 separate [ProjectName] cards across different boards — should those become one focused sprint?'\n"
 			"   - 'The [BoardName] board has nothing in progress — is that intentional recovery time, or has momentum stalled?'\n"
 			"   These questions must be specific to the actual board data — provocative but not anxious — and brief (1 sentence each).\n"
-			"4. End with 'Irgendwas Neues fuer heute?' (or equivalent in the user's language)\n\n"
+			"4. CREW SYNTHESIS: The CREW REASONING section contains domain-specific analysis from scheduled crew runs. Each crew has already reasoned over board state, memory, and operator context. Your job is to SYNTHESISE their outputs -- weave their key findings into the relevant briefing sections (not a separate crew block). If a crew flags a contradiction or risk, surface it prominently. Do not echo crew outputs verbatim -- integrate them as part of your own analysis.\n"
+			"   For the 'life (private reflection)' section: include a brief, warm 1-2 sentence reflection note at the end of the briefing, before the calibration section. Keep it grounded and personal.\n"
+			"5. End with 'Irgendwas Neues fuer heute?' (or equivalent in the user's language)\n\n"
 			"DO NOT invent board names, card titles, or project names. Only reference what appears in the skeleton data.\n"
 			"DO NOT make meta questions generic — they must reference specific card names or board states from the data.\n"
 			"DO NOT add any information not present in the BRIEFING DRAFT.\n"
 			"DO NOT invent events, cards, emails, people, or project names.\n"
-			"DO NOT add suggestions, meal ideas, or fitness plans unless they appear in the Crew boards or ACTIVE CREW INSIGHTS sections.\n"
+			"DO NOT add suggestions, meal ideas, or fitness plans unless they appear in the Crew boards or CREW REASONING sections.\n"
 			"If a section is absent from the draft, it does not exist today — do not mention it.\n"
 			"You may emit action tags silently (they are stripped before delivery): "
 			"[ACTION: MOVE_CARD | CARD: <fragment> | LIST: <list>], [ACTION: MARK_DONE | CARD: <fragment>], [ACTION: LEARN | TEXT: <fact>]. "
