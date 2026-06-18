@@ -714,24 +714,8 @@ CREW ROUTING — MANDATORY FIRST STEP:
 Before composing ANY response, evaluate whether a specialist crew is better suited than you. You are a generalist — your role is conversation, task management, memory, and coordination. For domain-specific work, always prefer the specialist. This evaluation is not optional.
 
 Crew domain map:
-  flow           → stuck tasks, stagnation, deep work, time blocking, productivity
-  research       → research, synthesis, fact-finding, deep analysis
-  market-intel   → industry trends, competitor analysis, market sentiment, SWOT
-  leads          → lead scoring, CRM, sales pipeline, deal funnel
-  meeting        → meeting transcripts, decisions, action item extraction
-  content        → writing, copywriting, brand voice, editorial planning
-  legal          → contracts, risk, compliance, legal review, negotiation
-  lessons        → lesson planning, pedagogy, curriculum, classroom design
-  edu-communication → parent/stakeholder communication, school admin, de-escalation
-  health         → sleep, HRV, biometrics, recovery, burnout, health score
-  nutrition      → food, recipes, meals, cooking, ingredients, macros, calories
-  coach          → life audit, values vs execution, accountability, strategic self-review
-  residence      → home maintenance, HVAC, boiler, smart home, utilities
-  travels        → travel, trips, itineraries, flights, hotels, visas
-  security       → OPSEC, privacy, data protection, digital security, password hygiene
-  dependents     → kids, childcare, milestones, school, pediatric, children's activities
-  fitness        → workouts, training, exercise, gym, strength, cardio, programmes
-  life           → emotional state, feelings, draining, grief, loneliness, anxiety, relationships, life design, post-separation, anger, sadness, exhaustion
+  {crew_domain_map}
+
 
 If a crew is the right handler: emit `[ACTION: ROUTE | CREW: crew_id]` (see ACTION_TAG_DOCS) — write ONE short sentence so the user knows why, then the tag. Do not answer the question yourself.
 If the message is general conversation, task management, memory, or does not fit any crew: handle it yourself.
@@ -819,9 +803,9 @@ CRITICAL — USE EXACT NAMES IN PROSE: When confirming a CREATE_TASK, your prose
 - Route to Specialist Crew: `[ACTION: ROUTE | CREW: crew_id]`
   FIRST-PRINCIPLE ROUTING: You MUST evaluate this before responding to any non-trivial message. If a specialist crew covers the domain, route immediately — do not answer it yourself.
   Write ONE short handoff sentence before the tag so the user understands why. Then stop — the crew will take over.
-  Available crew IDs: flow, research, workspace, market-intel, leads, meeting, content, legal, lessons, edu-communication, health, chef (formerly nutrition), coach, residence, travels, security, dependents, fitness, life
+  Available crew IDs: {available_crew_ids}
   Examples: user says "make that chicken thing spicier" → `[ACTION: ROUTE | CREW: chef]`
-            user says "I feel drained and exhausted" → `[ACTION: ROUTE | CREW: life]`
+            user says "I need to plan my workouts" → `[ACTION: ROUTE | CREW: fitness]`
             user says "design a workout plan for me" → `[ACTION: ROUTE | CREW: fitness]`
             user says "analyse this contract" → `[ACTION: ROUTE | CREW: legal]`
   NEVER route if the message is casual conversation, a generic question, a simple task/reminder, or does not clearly fit a crew domain — handle those yourself.
@@ -933,8 +917,24 @@ async def get_agent_personality() -> str:
 	except Exception:
 		return ""
 
-async def build_system_prompt(user_name: str, user_profile: dict, include_agent_skills: bool = True, include_health: bool = True) -> tuple[str, str, str]:
+async def build_system_prompt(user_name: str, user_profile: dict, include_agent_skills: bool = True, include_health: bool = True) -> tuple[str, str, str, str]:
 	from app.services.timezone import format_time, format_date_full, get_now
+	from app.services.crews import crew_registry
+	
+	active_crews = crew_registry.list_active()
+	lines = []
+	crew_ids = []
+	for crew in active_crews:
+		if not crew.enabled: continue
+		crew_ids.append(crew.id)
+		desc = (crew.description or "").strip()
+		kw_str = ""
+		if crew.keywords:
+			kw_str = f" Keywords: {', '.join(crew.keywords[:5])}."
+		lines.append(f"  {crew.id:<14} → {crew.name}. {desc}{kw_str}")
+	
+	crew_domain_map = "\n".join(lines)
+	available_crew_ids = ", ".join(crew_ids)
 	
 	now = get_now()
 	simplified_time = format_time(now)
@@ -1008,8 +1008,13 @@ async def build_system_prompt(user_name: str, user_profile: dict, include_agent_
 	# <context> block. This allows llama.cpp to cache the KV-prefix.
 
 	formatted_system_prompt = SYSTEM_PROMPT_CHAT.format(
+		crew_domain_map=crew_domain_map,
 		current_time="[PRE-CACHED]",
 		user_name="[SUBJECT ZERO]"
+	)
+	
+	formatted_action_docs = ACTION_TAG_DOCS.format(
+		available_crew_ids=available_crew_ids
 	)
 
 	# Bug-1 guard: if get_agent_personality() returned empty due to a DB error,
@@ -1040,7 +1045,7 @@ async def build_system_prompt(user_name: str, user_profile: dict, include_agent_
 	context_header = f"Current Local Time (Raw): {format_date_full(now)}\n"
 	context_header += f"Current Formatted Time (Use This): {simplified_time}\n\n"
 	
-	return formatted_system_prompt, context_header, simplified_time
+	return formatted_system_prompt, context_header, simplified_time, formatted_action_docs
 
 async def chat(
 	user_message: str,
@@ -1208,7 +1213,7 @@ async def chat_stream(
 			system_prompt = system_override
 	else:
 		_include_health = kwargs.get("include_health", True)
-		formatted_system_prompt, context_header, simplified_time = await build_system_prompt(user_name, user_profile, include_health=_include_health)
+		formatted_system_prompt, context_header, simplified_time, formatted_action_docs = await build_system_prompt(user_name, user_profile, include_health=_include_health)
 		system_prompt = context_header + formatted_system_prompt
 
 	provider = (provider or settings.LLM_PROVIDER).lower()
@@ -1777,7 +1782,7 @@ async def chat_with_context(
 		]))
 
 		# Build system prompt with real user identity from DB
-		formatted_system_prompt, _, _ = await build_system_prompt(user_name, user_profile)
+		formatted_system_prompt, _, _, formatted_action_docs = await build_system_prompt(user_name, user_profile)
 
 		logger.debug("Context gathered in %.2fs", time.time() - start_time)
 
@@ -1829,7 +1834,7 @@ async def chat_with_context(
 			from app.services.agent_actions import AVAILABLE_TOOLS  # lazy — avoids cyclic import with task modules
 			agent_executor = create_react_agent(llm, AVAILABLE_TOOLS)
 			# Include action tag docs only for agent path
-			rich_system_prompt = f"{formatted_system_prompt}\n{ACTION_TAG_DOCS}\n\n{full_prompt}"
+			rich_system_prompt = f"{formatted_system_prompt}\n{formatted_action_docs}\n\n{full_prompt}"
 			messages = [SystemMessage(content=rich_system_prompt)]
 			for h in (history or []):
 				content = h.get('content', '')
@@ -1849,7 +1854,7 @@ async def chat_with_context(
 			# Only trust the agent result if it actually called at least one tool.
 			# If no ToolMessages were produced the local model responded conversationally
 			# (tool-calling unsupported / refused) — fall through to the direct-chat path
-			# which injects ACTION_TAG_DOCS so text action tags are emitted instead.
+			# which injects formatted_action_docs so text action tags are emitted instead.
 			from langchain_core.messages import ToolMessage as _ToolMessage
 			tools_were_called = any(isinstance(m, _ToolMessage) for m in result["messages"])
 			if tools_were_called:
@@ -1888,13 +1893,13 @@ async def chat_with_context(
 				logger.debug("Agent called no tools — falling back to direct chat with action tags")
 
 		# --- Direct chat path --- conversational messages and agent fallback
-		# ACTION_TAG_DOCS is always injected so any language triggers tags correctly.
+		# formatted_action_docs is always injected so any language triggers tags correctly.
 		# The model's own rules prevent spurious emission on casual messages.
 		# When the LangGraph agent was attempted but called no tools, add an extra
 		# imperative so the fallback path still emits the expected tag.
 		if needs_agent:
 			_action_docs_block = (
-				f"\n{ACTION_TAG_DOCS}"
+				f"\n{formatted_action_docs}"
 				"\nCRITICAL: You MUST emit the appropriate action tag(s) at the END of your reply. "
 				"Do NOT just describe what you will do — actually emit the tag. "
 				"If the user says something was sent/done/finished/submitted, emit MARK_DONE. "
@@ -1902,7 +1907,7 @@ async def chat_with_context(
 			)
 		else:
 			# Always include docs — the model emits tags only when appropriate.
-			_action_docs_block = f"\n{ACTION_TAG_DOCS}"
+			_action_docs_block = f"\n{formatted_action_docs}"
 
 		# Smart cloud routing: try local first with 2s first-token race.
 		# If local is too slow AND cloud is configured, escalate to cloud.
@@ -2126,7 +2131,7 @@ async def chat_stream_with_context(
 		# Short conversational messages: skip agent skills (~1800 tokens) and cap history
 		# to reduce input token count and improve TTFT on cloud inference.
 		_is_short_msg = len(user_message.strip()) < 40
-		formatted_system_prompt, _, _ = await build_system_prompt(
+		formatted_system_prompt, _, _, _ = await build_system_prompt(
 			user_name, user_profile, include_agent_skills=not _is_short_msg
 		)
 		logger.debug("Stream context gathered in %.2fs", time.time() - start_time)

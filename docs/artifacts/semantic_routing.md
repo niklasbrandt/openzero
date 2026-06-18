@@ -74,7 +74,7 @@ route(M, history, lang, channel):
   debate = (
       len(panel) >= 2
       and contains_decision_verb(M)   # should / shall I / soll ich / lohnt sich
-      and crew_domains_diverge(panel) # e.g. fitness + recipe + life on same Q
+      and crew_domains_diverge(panel) # e.g. fitness + recipe on same Q
   )
 
   return PRIMARY=primary, PANEL=panel, DEBATE=debate
@@ -347,7 +347,7 @@ as proactive coaches, Z absorbing workspace/signal/general).
                        and current action."*
 - `health`          -- biometric / wellbeing. Distinct from fitness (data
                        vs programming).
-- `life`            -- separation / reconstruction. Personal, high-stakes.
+
 - `dependents`      -- child development. Highly specific.
 - `residence`       -- IoT / utilities. Specific.
 - `travels`         -- trip logistics. Specific.
@@ -388,8 +388,8 @@ fewer co-activation collisions, sharper top-1 scores.
 
 Debate is *valuable* on:
 - "Should I run tomorrow morning or skip for sleep?" -> fitness vs health.
-- "Worth signing this client at this rate?" -> leads vs life vs idea.
-- "Move to Lisbon next year?" -> travels vs life vs residence.
+- "Worth signing this client at this rate?" -> leads vs idea.
+- "Move to Lisbon next year?" -> travels vs residence.
 
 Debate becomes *noise* on:
 - Information requests ("how many calories in 200g chicken?").
