@@ -571,9 +571,9 @@ def _last_attributed_crew(history: list) -> Optional[str]:
 	"did you do it?" or "no feedback from you?".
 
 	The previous 3-turn scan was introduced to handle restart notifications but
-	caused false positives: a 'life' crew reply earlier in the session would
+	caused false positives: a crew reply earlier in the session would
 	re-engage when the user asked a simple status question because the word "it"
-	triggered _is_followup_text while the life attribution was still in range.
+	triggered _is_followup_text while the attribution was still in range.
 	Post-restart continuation is now handled by _infer_crew_from_user_history.
 	"""
 	for msg in reversed(history):
