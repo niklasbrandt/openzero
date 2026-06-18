@@ -1950,6 +1950,49 @@ async def get_project_tree_text() -> str:
 	return await get_project_tree(as_html=False)
 
 
+async def get_briefing_editor_output_today() -> str:
+	"""
+	Returns the briefing_editor crew's assembled briefing if it was created today, else empty string.
+	morning.py uses this to skip the full skeleton+LLM assembly when the editor has already run.
+	"""
+	import datetime
+	try:
+		today = datetime.date.today().isoformat()
+		token = await get_planka_auth_token()
+		headers = {"Authorization": f"Bearer {token}"}
+		async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, timeout=20.0, headers=headers) as client:
+			resp = await client.get("/api/projects")
+			projects = resp.json().get("items", [])
+
+			for p in projects:
+				if (p.get("name") or "").strip().lower() != "crews":
+					continue
+				detail = (await client.get(f"/api/projects/{p['id']}", params={"included": "boards"})).json()
+				boards = detail.get("included", {}).get("boards", []) or detail.get("boards", [])
+				for b in boards:
+					if (b.get("name") or "").strip().lower() != "briefing_editor":
+						continue
+					b_data = (await client.get(f"/api/boards/{b['id']}", params={"included": "lists,cards"})).json()
+					lists = b_data.get("included", {}).get("lists", [])
+					cards = b_data.get("included", {}).get("cards", [])
+					done_list_ids = {l["id"] for l in lists if _is_done_list(l.get("name", ""))}
+					for card in sorted(cards, key=lambda c: c.get("createdAt") or "", reverse=True):
+						if card["listId"] in done_list_ids:
+							continue
+						created = (card.get("createdAt") or "")[:10]
+						if created != today:
+							break
+						# Fetch card description (stored in the first attachment or description field)
+						card_detail = (await client.get(f"/api/cards/{card['id']}", params={"included": "attachments,actions"})).json()
+						desc = card_detail.get("item", {}).get("description") or ""
+						if desc:
+							return desc
+		return ""
+	except Exception as e:
+		logger.debug("get_briefing_editor_output_today: %s", e)
+		return ""
+
+
 async def get_board_walkthrough(min_stale_days: int = 5) -> str:
 	"""
 	Returns a per-board walkthrough for every non-empty board:
