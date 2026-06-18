@@ -8,13 +8,26 @@ async def quarterly_review():
 	"""Generate and store the quarterly strategic review."""
 	from app.services.llm import chat, last_model_used
 	from app.services.planka import get_project_tree, get_activity_report
+	from app.services.crew_memory import get_recent_crew_outputs
 	logger.info("Quarterly Review started...")
 	try:
-		tree = await get_project_tree(as_html=False)
-		activity = await get_activity_report(days=90)
+		tree, activity, crew_outputs = await asyncio.gather(
+			get_project_tree(as_html=False),
+			get_activity_report(days=90),
+			get_recent_crew_outputs(hours=2160),
+		)
 
 		activity_block = activity if activity and not str(activity).strip().startswith("### OPERATIONAL DATA FAILURE") else "[EMPTY — omit the activity/accomplishments section entirely]"
 		tree_block = tree if tree and str(tree).strip() else "[EMPTY — omit the project tree section entirely]"
+
+		crew_outputs_block = ""
+		if crew_outputs:
+			parts = []
+			for cid, text in crew_outputs.items():
+				parts.append(f"--- {cid} ---\n{text}")
+			crew_outputs_block = "CREW REASONING & DOMAIN INSIGHTS:\n" + "\n\n".join(parts)
+		else:
+			crew_outputs_block = "[EMPTY — no recent crew outputs]"
 
 		prompt = (
 			"Z, three months have passed — write the quarterly review.\n"
@@ -25,6 +38,7 @@ async def quarterly_review():
 			"OPERATIONAL DATA (PAST 90 DAYS ACTIVITY):\n"
 			f"{activity_block}\n\n"
 			f"FULL PROJECT TREE:\n{tree_block}\n\n"
+			f"{crew_outputs_block}\n\n"
 			"HALLUCINATION RULES (never break these):\n"
 			"- Only include a section if real data for it was provided in the context above.\n"
 			"- If a data block is marked [EMPTY] or contains no items — omit that section entirely. No heading, no placeholder text.\n"
@@ -32,6 +46,9 @@ async def quarterly_review():
 			"- Never assume what happened during the quarter if no data confirms it.\n"
 			"- The 'What was accomplished' section must only contain items explicitly present in OPERATIONAL DATA or PROJECT TREE above. If no cards moved, state that plainly — do not invent progress.\n"
 			"- Proactive suggestions for the next quarter are allowed but must be clearly framed as suggestions, not as confirmed facts.\n\n"
+			"CREW SYNTHESIS:\n"
+			"- The CREW REASONING & DOMAIN INSIGHTS section contains domain-specific analysis from scheduled crew runs over this period.\n"
+			"- Your job is to SYNTHESISE their outputs -- weave their key findings into the relevant review sections. Do not echo crew outputs verbatim -- integrate them as part of your own high-level analysis of the period. If a section is marked [EMPTY], do not mention crew insights.\n\n"
 			"RULES:\n"
 			"1. Analyze the past 90 days based ONLY on the data above.\n"
 			"2. If OPERATIONAL DATA is marked [EMPTY], do not list any specific card names or board progress — acknowledge honestly that no activity data is available for this period.\n"
