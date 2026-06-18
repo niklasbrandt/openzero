@@ -356,3 +356,96 @@ async def get_range_exchanges(days: int = 7):
         )
         messages = result.scalars().all()
         return [{"role": m.role, "content": m.content, "at": m.created_at.isoformat() + "Z"} for m in messages]
+
+
+from sqlalchemy import JSON, Float
+
+class AtlasNode(Base):
+	__tablename__ = "atlas_nodes"
+	id = Column(Integer, primary_key=True)
+	type = Column(String(64), nullable=False)
+	label = Column(Text, nullable=False)
+	payload = Column(JSON, default=dict)
+	confidence = Column(Float, default=0.5)
+	created_at = Column(DateTime, default=datetime.datetime.utcnow)
+	updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+	last_mentioned_at = Column(DateTime, nullable=True)
+
+class AtlasEdge(Base):
+	__tablename__ = "atlas_edges"
+	id = Column(Integer, primary_key=True)
+	source_node_id = Column(Integer, ForeignKey("atlas_nodes.id", ondelete="CASCADE"), nullable=False)
+	target_node_id = Column(Integer, ForeignKey("atlas_nodes.id", ondelete="CASCADE"), nullable=False)
+	kind = Column(String(64), nullable=False)
+	weight = Column(Float, default=1.0)
+	payload = Column(JSON, default=dict)
+	created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+class AtlasSpine(Base):
+	__tablename__ = "atlas_spines"
+	id = Column(Integer, primary_key=True)
+	label = Column(Text, nullable=False)
+	confidence = Column(Float, default=0.5)
+	payload = Column(JSON, default=dict)
+	derived = Column(Boolean, default=True)
+	locked = Column(Boolean, default=False)
+	updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+class AtlasSpineMember(Base):
+	__tablename__ = "atlas_spine_members"
+	spine_id = Column(Integer, ForeignKey("atlas_spines.id", ondelete="CASCADE"), primary_key=True)
+	node_id = Column(Integer, ForeignKey("atlas_nodes.id", ondelete="CASCADE"), primary_key=True)
+	weight = Column(Float, default=1.0)
+
+class AtlasSpineSummary(Base):
+	__tablename__ = "atlas_spine_summaries"
+	spine_id = Column(Integer, ForeignKey("atlas_spines.id", ondelete="CASCADE"), primary_key=True)
+	generated_at = Column(DateTime, default=datetime.datetime.utcnow)
+	summary_text = Column(Text, nullable=False)
+	source_refs = Column(JSON, default=list)
+
+class AtlasDecision(Base):
+	__tablename__ = "atlas_decisions"
+	id = Column(Integer, primary_key=True)
+	node_id = Column(Integer, ForeignKey("atlas_nodes.id", ondelete="CASCADE"), nullable=True)
+	made_at = Column(DateTime, default=datetime.datetime.utcnow)
+	rationale = Column(Text, nullable=True)
+	revisit_when = Column(Text, nullable=True)
+	status = Column(String(32), default="open")
+	payload = Column(JSON, default=dict)
+
+class AtlasContradiction(Base):
+	__tablename__ = "atlas_contradictions"
+	id = Column(Integer, primary_key=True)
+	primary_node_id = Column(Integer, ForeignKey("atlas_nodes.id", ondelete="CASCADE"), nullable=False)
+	opposing_node_id = Column(Integer, ForeignKey("atlas_nodes.id", ondelete="CASCADE"), nullable=False)
+	detected_at = Column(DateTime, default=datetime.datetime.utcnow)
+	status = Column(String(32), default="open")
+	payload = Column(JSON, default=dict)
+
+class AtlasDiff(Base):
+	__tablename__ = "atlas_diffs"
+	id = Column(Integer, primary_key=True)
+	node_id = Column(Integer, ForeignKey("atlas_nodes.id", ondelete="CASCADE"), nullable=True)
+	spine_id = Column(Integer, ForeignKey("atlas_spines.id", ondelete="CASCADE"), nullable=True)
+	kind = Column(String(64), nullable=False)
+	since = Column(DateTime, nullable=True)
+	until = Column(DateTime, nullable=True)
+	summary = Column(Text, nullable=True)
+	payload = Column(JSON, default=dict)
+
+class AtlasWhyTrace(Base):
+	__tablename__ = "atlas_why_traces"
+	id = Column(Integer, primary_key=True)
+	subject_kind = Column(String(64), nullable=False)
+	subject_id = Column(Integer, nullable=True)
+	generated_at = Column(DateTime, default=datetime.datetime.utcnow)
+	source_refs = Column(JSON, default=list)
+	confidence = Column(Float, default=0.5)
+
+class OperatorIdentity(Base):
+	__tablename__ = "operator_identity"
+	id = Column(Integer, primary_key=True)
+	name = Column(Text, nullable=False)
+	payload = Column(JSON, default=dict)
+
