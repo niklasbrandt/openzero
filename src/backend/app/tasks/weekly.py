@@ -11,15 +11,26 @@ async def weekly_review():
 	logger.info("Weekly Review started...")
 	
 	try:
-		tree, recent_activity, stale_cards = await asyncio.gather(
+		from app.services.crew_memory import get_recent_crew_outputs
+		tree, recent_activity, stale_cards, crew_outputs = await asyncio.gather(
 			get_project_tree(as_html=False),
 			get_recent_activity(hours=336),
 			get_stale_cards(min_days=14),
+			get_recent_crew_outputs(hours=168),
 		)
 
 		activity_block = recent_activity if recent_activity and not recent_activity.startswith("### RECENT ACTIVITY FETCH FAILED") else "[EMPTY — omit the activity/accomplishments section entirely]"
 		stale_block = stale_cards if stale_cards and stale_cards != "[NO STALE ITEMS]" and not stale_cards.startswith("### STALE") else "[NO STALE ITEMS — all active cards have been touched recently]"
 		tree_block = tree if tree and str(tree).strip() else "[EMPTY — omit the project tree section entirely]"
+
+		crew_outputs_block = ""
+		if crew_outputs:
+			parts = []
+			for cid, text in crew_outputs.items():
+				parts.append(f"--- {cid} ---\n{text}")
+			crew_outputs_block = "CREW REASONING & DOMAIN INSIGHTS:\n" + "\n\n".join(parts)
+		else:
+			crew_outputs_block = "[EMPTY — no recent crew outputs]"
 
 		prompt = (
 			"ABSOLUTE RULE — FABRICATION IS FORBIDDEN:\n"
@@ -35,6 +46,7 @@ async def weekly_review():
 			f"RECENT ACTIVITY (LAST 14 DAYS):\n{activity_block}\n\n"
 			f"STALE / NO MOVEMENT (14+ DAYS):\n{stale_block}\n\n"
 			f"PROJECT TREE:\n{tree_block}\n\n"
+			f"{crew_outputs_block}\n\n"
 			"HALLUCINATION RULES (never break these):\n"
 			"- Only include a section if real data for it was provided in the context above.\n"
 			"- If a data block is marked [EMPTY] or contains no items — omit that section entirely. No heading, no placeholder text.\n"
@@ -42,6 +54,9 @@ async def weekly_review():
 			"- Never assume what happened during the week if no data confirms it.\n"
 			"- The 'What was accomplished' section must only contain items explicitly present in RECENT ACTIVITY or PROJECT TREE above. If no cards moved, state that plainly — do not invent progress.\n"
 			"- Every bullet must trace back to a card name, board name, or list name that appears verbatim in the data above.\n\n"
+			"CREW SYNTHESIS:\n"
+			"- The CREW REASONING & DOMAIN INSIGHTS section contains domain-specific analysis from scheduled crew runs over this period.\n"
+			"- Your job is to SYNTHESISE their outputs -- weave their key findings into the relevant review sections. Do not echo crew outputs verbatim -- integrate them as part of your own high-level analysis of the period. If a section is marked [EMPTY], do not mention crew insights.\n\n"
 			"RULES:\n"
 			"- Base your message ONLY on the data sections provided above.\n"
 			"- If RECENT ACTIVITY is marked [EMPTY], do not list any specific card names or board progress — acknowledge honestly that no activity data is available for this period.\n"

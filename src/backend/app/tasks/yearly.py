@@ -10,11 +10,24 @@ async def yearly_review():
 	"""Generate and store the yearly review."""
 	logger.info("Yearly Review started...")
 	try:
-		tree = await get_project_tree(as_html=False)
-		activity = await get_activity_report(days=365)
+		from app.services.crew_memory import get_recent_crew_outputs
+		tree, activity, crew_outputs = await asyncio.gather(
+			get_project_tree(as_html=False),
+			get_activity_report(days=365),
+			get_recent_crew_outputs(hours=8760),
+		)
 
 		activity_block = activity if activity and not str(activity).strip().startswith("### OPERATIONAL DATA FAILURE") else "[EMPTY — omit the activity/accomplishments section entirely]"
 		tree_block = tree if tree and str(tree).strip() else "[EMPTY — omit the project tree section entirely]"
+
+		crew_outputs_block = ""
+		if crew_outputs:
+			parts = []
+			for cid, text in crew_outputs.items():
+				parts.append(f"--- {cid} ---\n{text}")
+			crew_outputs_block = "CREW REASONING & DOMAIN INSIGHTS:\n" + "\n\n".join(parts)
+		else:
+			crew_outputs_block = "[EMPTY — no recent crew outputs]"
 
 		prompt = (
 			"Z, it's been a full year — write the yearly review.\n"
@@ -25,6 +38,7 @@ async def yearly_review():
 			"OPERATIONAL DATA (PAST 365 DAYS ACTIVITY):\n"
 			f"{activity_block}\n\n"
 			f"FULL PROJECT TREE:\n{tree_block}\n\n"
+			f"{crew_outputs_block}\n\n"
 			"HALLUCINATION RULES (never break these):\n"
 			"- Only include a section if real data for it was provided in the context above.\n"
 			"- If a data block is marked [EMPTY] or contains no items — omit that section entirely. No heading, no placeholder text.\n"
@@ -32,6 +46,9 @@ async def yearly_review():
 			"- Never assume what happened during the year if no data confirms it.\n"
 			"- The 'What was accomplished' section must only contain items explicitly present in OPERATIONAL DATA or PROJECT TREE above. If no cards moved, state that plainly — do not invent progress.\n"
 			"- Proposed goals for next year are allowed but must be clearly framed as suggestions, not as confirmed plans.\n\n"
+			"CREW SYNTHESIS:\n"
+			"- The CREW REASONING & DOMAIN INSIGHTS section contains domain-specific analysis from scheduled crew runs over this period.\n"
+			"- Your job is to SYNTHESISE their outputs -- weave their key findings into the relevant review sections. Do not echo crew outputs verbatim -- integrate them as part of your own high-level analysis of the period. If a section is marked [EMPTY], do not mention crew insights.\n\n"
 			"INSTRUCTIONS:\n"
 			"1. Summarize high-level progress and identify themes based ONLY on the data above.\n"
 			"2. If OPERATIONAL DATA is marked [EMPTY], do not list any specific card names or board progress — acknowledge honestly that no activity data is available for this period.\n"
