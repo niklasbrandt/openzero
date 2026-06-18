@@ -632,3 +632,88 @@ async def get_crew_memory_context(crew_id: str) -> str:
 	except Exception as e:
 		logger.warning("crew_memory: get_crew_memory_context failed: %s", e)
 		return ""
+
+
+async def get_recent_crew_outputs(hours: int = 24) -> dict[str, str]:
+	"""
+	Scans the Planka boards for all active crews to find the most recent
+	conversation card created or modified within the last `hours`.
+	Returns a dictionary mapping {crew_id: card_description}.
+	"""
+	try:
+		from app.services.crews import crew_registry
+		from app.services.translations import get_translations, get_user_lang
+		lang = await get_user_lang()
+		t = get_translations(lang)
+		project_name: str = t.get("crews_project_name", "Crews")
+
+		active_crews = crew_registry.list_active()
+		if not active_crews:
+			return {}
+
+		# Prepare target dates we are interested in.
+		# Conversation cards are usually named by date (e.g. 2026.06.18).
+		# We check cards updated within the last `hours`.
+		cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+
+		results: dict[str, str] = {}
+
+		async with await _planka_client() as client:
+			for crew in active_crews:
+				crew_id = crew.id
+				board_name = _crew_board_name(crew_id)
+				project_id, board_id = await _resolve_crew_board_ids(client, project_name, board_name)
+				if not project_id or not board_id:
+					continue
+
+				# Get board cards
+				bd = await client.get(f"/api/boards/{board_id}", params={"included": "lists,cards"})
+				if bd.status_code != 200:
+					continue
+				bd_data = bd.json()
+				all_lists = bd_data.get("included", {}).get("lists", []) or bd_data.get("lists", [])
+				all_cards = bd_data.get("included", {}).get("cards", []) or bd_data.get("cards", [])
+
+				# Locate conversation list
+				list_id = await _load_crew_list_id(crew_id, "conversation")
+				if not list_id:
+					from app.services.translations import get_all_values
+					all_conv_names = get_all_values("crew_conversation_list") | _CONVERSATION_LIST_LEGACY_NAMES
+					matched = next((lst for lst in all_lists if (lst.get("name") or "") in all_conv_names), None)
+					if matched:
+						list_id = matched["id"]
+				if not list_id:
+					continue
+
+				cards = [c for c in all_cards if c.get("listId") == list_id]
+				if not cards:
+					continue
+
+				# Find most recently updated card
+				valid_cards = []
+				for c in cards:
+					updated_at_str = c.get("updatedAt")
+					if not updated_at_str:
+						continue
+					try:
+						# Planka returns ISO format, e.g. "2026-06-18T18:00:00.000Z"
+						# Strip fractional seconds/Z if necessary for parsing
+						clean_ts = re.sub(r'\.\d+Z$', 'Z', updated_at_str)
+						dt = datetime.strptime(clean_ts, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+						if dt >= cutoff:
+							valid_cards.append((dt, c.get("description", "")))
+					except Exception:
+						continue
+
+				if valid_cards:
+					# Sort by datetime descending, get description of the newest one
+					valid_cards.sort(key=lambda x: x[0], reverse=True)
+					desc = valid_cards[0][1].strip()
+					if desc:
+						results[crew_id] = desc
+
+		return results
+	except Exception as e:
+		logger.warning("crew_memory: get_recent_crew_outputs failed: %s", e)
+		return {}
+
