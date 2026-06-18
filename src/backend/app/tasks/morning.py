@@ -225,45 +225,53 @@ async def morning_briefing():
 			activity_days=activity_days,
 		)
 
-		full_prompt = (
-			f"You are Z, a personal AI assistant. Write the following briefing in a direct, uplifting tone — "
-			f"no preamble, no 'Here is your briefing' opener, no robotic recap. Begin immediately with the most relevant information. "
-			f"Tone: {settings.PERSONA_TONE}. Only use humor when it is clearly appropriate and actually funny.\n\n"
-			"Note naturally what has changed since the last briefing — surface it as a living update, not a diff.\n\n"
-			"The BRIEFING DRAFT below contains ALL the facts for today's briefing. Your role is THREE THINGS:\n"
-			"Begin the response with a compact table of contents — one line listing only the sections that have real content (skip empty or [NO DATA] sections). Format example: '1. Boards  2. Activity  3. Stale  4. Day Structure  5. Observations'\n"
-			"1. VOICE: Present the data clearly and concisely in Z's voice (warm, direct, no corporate language, no emoji). Prefer bullet points and short lines over full sentences. Headers should be 1-2 words. Avoid connective tissue prose ('As you can see...', 'It is worth noting that...'). Get to the point.\n"
-			f"2. KANBAN ANALYST: Add up to {max_obs} observations about board health — stale cards, stuck items, WIP violations, boards with nothing active, pull signals.\n"
-			"3. PROACTIVE THINKER: For 1-2 boards or projects, add a brief 'meta' question or path that sparks strategic thinking. Examples of the right tone:\n"
-			"   - 'The [BoardName] board has been in-progress for 3 weeks — is this an MVP or an exploration? Naming it would help.'\n"
-			"   - 'You have 3 separate [ProjectName] cards across different boards — should those become one focused sprint?'\n"
-			"   - 'The [BoardName] board has nothing in progress — is that intentional recovery time, or has momentum stalled?'\n"
-			"   These questions must be specific to the actual board data — provocative but not anxious — and brief (1 sentence each).\n"
-			"4. End with 'Irgendwas Neues fuer heute?' (or equivalent in the user's language)\n\n"
-			"DO NOT invent board names, card titles, or project names. Only reference what appears in the skeleton data.\n"
-			"DO NOT make meta questions generic — they must reference specific card names or board states from the data.\n"
-			"DO NOT add any information not present in the BRIEFING DRAFT.\n"
-			"DO NOT invent events, cards, emails, people, or project names.\n"
-			"DO NOT add suggestions, meal ideas, or fitness plans unless they appear in the Crew boards section.\n"
-			"If a section is absent from the draft, it does not exist today — do not mention it.\n"
-			"You may emit action tags silently (they are stripped before delivery): "
-			"[ACTION: MOVE_CARD | CARD: <fragment> | LIST: <list>], [ACTION: MARK_DONE | CARD: <fragment>], [ACTION: LEARN | TEXT: <fact>]. "
-			"Only for cards/boards named verbatim in the draft.\n\n"
-			"RECENCY NOTE: Items in 'Recent changes' are the highest priority for observations. Stale items are second priority. Board walkthrough gives the full picture.\n\n"
-			f"BRIEFING DRAFT:\n{skeleton}\n\n"
-			f"Write the final briefing now, in {user_language}. Write only as much as the data warrants. If activity is light, a short focused briefing is better than a padded one. If there is a lot happening, up to ~500 words is fine. Never pad. Never repeat information already in the skeleton headers."
-		)
+		# 2.6 Briefing-editor fast-path: if briefing_editor crew already assembled today's briefing,
+		# skip the full skeleton+LLM assembly call and deliver directly.
+		from app.services.planka import get_briefing_editor_output_today
+		_editor_output = await get_briefing_editor_output_today()
+		if _editor_output:
+			logger.info("morning_briefing — briefing_editor output found, skipping LLM assembly")
+			raw_content = _editor_output
+		else:
+			full_prompt = (
+				f"You are Z, a personal AI assistant. Write the following briefing in a direct, uplifting tone — "
+				f"no preamble, no 'Here is your briefing' opener, no robotic recap. Begin immediately with the most relevant information. "
+				f"Tone: {settings.PERSONA_TONE}. Only use humor when it is clearly appropriate and actually funny.\n\n"
+				"Note naturally what has changed since the last briefing — surface it as a living update, not a diff.\n\n"
+				"The BRIEFING DRAFT below contains ALL the facts for today's briefing. Your role is THREE THINGS:\n"
+				"Begin the response with a compact table of contents — one line listing only the sections that have real content (skip empty or [NO DATA] sections). Format example: '1. Boards  2. Activity  3. Stale  4. Day Structure  5. Observations'\n"
+				"1. VOICE: Present the data clearly and concisely in Z's voice (warm, direct, no corporate language, no emoji). Prefer bullet points and short lines over full sentences. Headers should be 1-2 words. Avoid connective tissue prose ('As you can see...', 'It is worth noting that...'). Get to the point.\n"
+				f"2. KANBAN ANALYST: Add up to {max_obs} observations about board health — stale cards, stuck items, WIP violations, boards with nothing active, pull signals.\n"
+				"3. PROACTIVE THINKER: For 1-2 boards or projects, add a brief 'meta' question or path that sparks strategic thinking. Examples of the right tone:\n"
+				"   - 'The [BoardName] board has been in-progress for 3 weeks — is this an MVP or an exploration? Naming it would help.'\n"
+				"   - 'You have 3 separate [ProjectName] cards across different boards — should those become one focused sprint?'\n"
+				"   - 'The [BoardName] board has nothing in progress — is that intentional recovery time, or has momentum stalled?'\n"
+				"   These questions must be specific to the actual board data — provocative but not anxious — and brief (1 sentence each).\n"
+				"4. End with 'Irgendwas Neues fuer heute?' (or equivalent in the user's language)\n\n"
+				"DO NOT invent board names, card titles, or project names. Only reference what appears in the skeleton data.\n"
+				"DO NOT make meta questions generic — they must reference specific card names or board states from the data.\n"
+				"DO NOT add any information not present in the BRIEFING DRAFT.\n"
+				"DO NOT invent events, cards, emails, people, or project names.\n"
+				"DO NOT add suggestions, meal ideas, or fitness plans unless they appear in the Crew boards section.\n"
+				"If a section is absent from the draft, it does not exist today — do not mention it.\n"
+				"You may emit action tags silently (they are stripped before delivery): "
+				"[ACTION: MOVE_CARD | CARD: <fragment> | LIST: <list>], [ACTION: MARK_DONE | CARD: <fragment>], [ACTION: LEARN | TEXT: <fact>]. "
+				"Only for cards/boards named verbatim in the draft.\n\n"
+				"RECENCY NOTE: Items in 'Recent changes' are the highest priority for observations. Stale items are second priority. Board walkthrough gives the full picture.\n\n"
+				f"BRIEFING DRAFT:\n{skeleton}\n\n"
+				f"Write the final briefing now, in {user_language}. Write only as much as the data warrants. If activity is light, a short focused briefing is better than a padded one. If there is a lot happening, up to ~500 words is fine. Never pad. Never repeat information already in the skeleton headers."
+			)
 
-		# 3. Generate Briefing — cloud tier with 600s hard timeout, retry on failure
-		logger.debug("morning_briefing — starting LLM generation")
-		_t3 = asyncio.get_event_loop().time()
-		try:
-			logger.info("Generating morning briefing (600s budget)...")
-			raw_content = await asyncio.wait_for(chat(full_prompt, tier="cloud", _feature="morning_briefing", include_health=False), timeout=600.0)
-		except asyncio.TimeoutError:
-			logger.warning("morning_briefing — cloud tier timed out after 600s, retrying")
-			raw_content = await chat(full_prompt, tier="cloud", _feature="morning_briefing", include_health=False)
-		logger.debug("morning_briefing — LLM done in %.1fs", asyncio.get_event_loop().time() - _t3)
+			# 3. Generate Briefing — cloud tier with 600s hard timeout, capped retry on failure
+			logger.debug("morning_briefing — starting LLM generation")
+			_t3 = asyncio.get_event_loop().time()
+			try:
+				logger.info("Generating morning briefing (600s budget)...")
+				raw_content = await asyncio.wait_for(chat(full_prompt, tier="cloud", _feature="morning_briefing", include_health=False), timeout=600.0)
+			except asyncio.TimeoutError:
+				logger.warning("morning_briefing — cloud tier timed out after 600s, retrying (300s cap)")
+				raw_content = await asyncio.wait_for(chat(full_prompt, tier="cloud", _feature="morning_briefing", include_health=False), timeout=300.0)
+			logger.debug("morning_briefing — LLM done in %.1fs", asyncio.get_event_loop().time() - _t3)
 
 		# 3.2 Post-Processing & Cleanup
 		from app.services.agent_actions import parse_and_execute_actions
