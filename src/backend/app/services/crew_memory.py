@@ -702,7 +702,7 @@ async def get_recent_crew_outputs(hours: int = 24) -> dict[str, str]:
 						clean_ts = re.sub(r'\.\d+Z$', 'Z', updated_at_str)
 						dt = datetime.strptime(clean_ts, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
 						if dt >= cutoff:
-							valid_cards.append((dt, c.get("description", "")))
+							valid_cards.append((dt, c.get("description") or ""))
 					except Exception:
 						continue
 
