@@ -635,10 +635,10 @@ async def get_crew_memory_context(crew_id: str) -> str:
 		return ""
 
 
-async def get_recent_crew_outputs(hours: int = 24) -> dict[str, str]:
+async def get_recent_crew_outputs(hours: Optional[int] = None) -> dict[str, str]:
 	"""
 	Scans the Planka boards for all active crews to find the most recent
-	conversation card created or modified within the last `hours`.
+	conversation card.
 	Returns a dictionary mapping {crew_id: card_description}.
 	"""
 	try:
@@ -651,11 +651,6 @@ async def get_recent_crew_outputs(hours: int = 24) -> dict[str, str]:
 		active_crews = crew_registry.list_active()
 		if not active_crews:
 			return {}
-
-		# Prepare target dates we are interested in.
-		# Conversation cards are usually named by date (e.g. 2026.06.18).
-		# We check cards updated within the last `hours`.
-		cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
 
 		results: dict[str, str] = {}
 
@@ -701,8 +696,7 @@ async def get_recent_crew_outputs(hours: int = 24) -> dict[str, str]:
 						# Strip fractional seconds/Z if necessary for parsing
 						clean_ts = re.sub(r'\.\d+Z$', 'Z', updated_at_str)
 						dt = datetime.strptime(clean_ts, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
-						if dt >= cutoff:
-							valid_cards.append((dt, c.get("description") or ""))
+						valid_cards.append((dt, c.get("description") or ""))
 					except Exception:
 						continue
 
