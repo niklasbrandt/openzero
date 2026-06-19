@@ -255,32 +255,8 @@ async def morning_briefing():
 			activity_days=activity_days,
 		)
 
-		# Inject recent crew outputs directly into the skeleton
-		if crew_outputs:
-			skeleton += "\n\nCREW REASONING & DOMAIN INSIGHTS (from scheduled crew runs):\n"
-			# Put scrum and focus in first, then life, then others.
-			# Format: --- crew_id --- \n text
-			priorities = ["scrum", "focus"]
-			for cid in priorities:
-				if cid in crew_outputs:
-					skeleton += f"--- {cid} ---\n{crew_outputs[cid]}\n"
-			
-			if "life" in crew_outputs:
-				life_out = crew_outputs["life"]
-				# Cap life crew output to ~300 chars
-				if len(life_out) > 300:
-					life_out = life_out[:300] + "..."
-				skeleton += f"--- life (private reflection) ---\n{life_out}\n"
-
-			# Other crews that ran in last 24h (e.g. chef, fitness, etc.)
-			other_crews = [cid for cid in crew_outputs if cid not in priorities and cid != "life"]
-			if other_crews:
-				skeleton += "\nRECENT WEEKLY CREW UPDATES:\n"
-				for cid in other_crews:
-					skeleton += f"--- {cid} ---\n{crew_outputs[cid]}\n"
-
-		# Coordinate active crews to check in and generate domain-specific insights (fallback-only)
-		crew_insights = []
+		# Coordinate active crews to check in and generate domain-specific insights
+		dynamic_insights = {}
 		if active_crews:
 			from app.services.crews_native import native_crew_engine
 			import re
@@ -297,22 +273,47 @@ async def morning_briefing():
 					res = await native_crew_engine.run_crew(crew_config.id, crew_prompt)
 					res_clean = _ACTION_STRIP_RE.sub("", res).strip()
 					if res_clean:
-						return f"**{crew_config.name}**: {res_clean}"
+						return crew_config.id, res_clean
 				except Exception as ex:
 					logger.warning("Failed to get briefing insight from crew %s: %s", crew_config.id, ex)
-				return None
+				return crew_config.id, None
 
 			try:
 				insights_results = await asyncio.wait_for(
 					asyncio.gather(*[_get_crew_insight(c) for c in active_crews]),
 					timeout=90.0
 				)
-				crew_insights = [ins for ins in insights_results if ins]
+				for cid, ins in insights_results:
+					if ins:
+						dynamic_insights[cid] = ins
 			except Exception as e:
 				logger.warning("Gathering active crew insights for morning briefing failed/timed out: %s", e)
 
-		if crew_insights:
-			skeleton += "\n\nACTIVE CREW INSIGHTS (fallback pass):\n" + "\n".join(crew_insights)
+		# Build unified Crew Reasoning block
+		crew_blocks = []
+		for c in active_crews:
+			cid = c.id
+			name = c.name
+			
+			has_insight = cid in dynamic_insights
+			has_output = crew_outputs and cid in crew_outputs
+			if not has_insight and not has_output:
+				continue
+				
+			crew_block = f"--- Crew: {name} ({cid}) ---\n"
+			if has_insight:
+				crew_block += f"Daily Insight: {dynamic_insights[cid]}\n"
+			if has_output:
+				log_text = crew_outputs[cid]
+				if cid == "life" and len(log_text) > 300:
+					log_text = log_text[:300] + "..."
+				elif len(log_text) > 1500:
+					log_text = log_text[:1500] + "..."
+				crew_block += f"Detailed Log/Context:\n{log_text}\n"
+			crew_blocks.append(crew_block)
+
+		if crew_blocks:
+			skeleton += "\n\nCREW REASONING & DOMAIN INSIGHTS:\n" + "\n\n".join(crew_blocks)
 
 		# Add previous briefing delta block if available
 		prev_briefing_block = ""
@@ -339,7 +340,7 @@ async def morning_briefing():
 			"   - 'You have 3 separate [ProjectName] cards across different boards — should those become one focused sprint?'\n"
 			"   - 'The [BoardName] board has nothing in progress — is that intentional recovery time, or has momentum stalled?'\n"
 			"   These questions must be specific to the actual board data — provocative but not anxious — and brief (1 sentence each).\n"
-			"4. CREWS: Show explicit reasoning, feedback, and domain insights from scheduled crew runs (from the CREW REASONING section in the draft). List each crew name as a subheader and summarize their specific feedback or recommendations (e.g. '**Scrum**: ...', '**Focus**: ...'). Focus on their contradiction warnings, risks, or findings. For the 'life (private reflection)' crew output: if present, summarize its reflection as a warm, grounded 1-2 sentence note in the dedicated 'Life' section of the briefing instead of the 'Crews' section.\n"
+			"4. CREWS: You MUST include a dedicated 'Crews' section in the final briefing. List every crew present in the CREW REASONING section of the draft (e.g. Scrum, Focus, Kids, Chef, Fitness, etc.). For each crew, summarize their 'Daily Insight' and 'Detailed Log/Context' in Z's voice. If a crew has an elaborate weekly cadence (e.g. nutrition meal plans or training schedules in their detailed log), provide an elaborate summary of their feedback, meal ideas, or fitness plans. Focus on their contradiction warnings, risks, and strategic guidance. For the 'life (private reflection)' crew output: if present, summarize its reflection as a warm, grounded 1-2 sentence note in the dedicated 'Life' section of the briefing instead of the 'Crews' section. Do not skip any crew.\n"
 			"5. End with 'Irgendwas Neues fuer heute?' (or equivalent in the user's language)\n\n"
 			"DO NOT invent board names, card titles, or project names. Only reference what appears in the skeleton data.\n"
 			"DO NOT make meta questions generic — they must reference specific card names or board states from the data.\n"
