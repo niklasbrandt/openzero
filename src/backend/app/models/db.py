@@ -229,46 +229,25 @@ _USER_ACK_RE = _re.compile(
 
 
 def _is_quality_message(role: str, content: str, model: Optional[str]) -> bool:
-    """Return True if this message adds enough signal to be worth injecting into LLM context.
-
-    Rules by role
-    ─────────────
-    system  — always keep; these are verified action receipts (ground truth).
-    user    — keep if ≥ 3 words and not a bare acknowledgment.
-    z       — keep if:
-                • structured content (≥ 3 newlines: lists, briefings, plans), OR
-                • word count ≥ 8 AND no noise pattern AND not a short interrogative
-                  (catches proactive follow-up reminders like "Wie läuft's mit X?").
-    Utility model labels ("recall", "self_audit") are always dropped — they are
-    internal router artefacts, not conversation history.
-    """
-    if role == "system":
-        return True
-    if model in ("recall", "self_audit"):
-        return False
-    stripped = content.strip()
-    words = stripped.split()
-    if role == "user":
-        if _USER_ACK_RE.match(stripped):
-            return False
-        return len(words) >= 3
-    if role in ("z", "assistant"):
-        # Structured content (list, briefing, plan) is always valuable
-        if stripped.count("\n") >= 3:
-            return True
-        # Known error / recovery noise
-        if _Z_NOISE_RE.search(stripped[:400]):
-            return False
-        # Short proactive reminders / check-in questions
-        # e.g. "Wie läuft's mit den Stufenkanten? Irgendwas hängt noch?"
-        # They end with "?" and are short with no structured body.
-        if len(words) < 25 and stripped.endswith("?") and "\n" not in stripped:
-            return False
-        # Very short non-structured replies (acks, stubs)
-        if len(words) < 8:
-            return False
-        return True
-    return True
+	"""Return True if this message adds enough signal to be worth injecting into LLM context."""
+	if role == "system":
+		return True
+	if model in ("recall", "self_audit"):
+		return False
+	stripped = content.strip()
+	words = stripped.split()
+	if not words:
+		return False
+	if role == "user":
+		if _USER_ACK_RE.match(stripped):
+			return False
+		return True
+	if role in ("z", "assistant"):
+		# Known error / recovery noise
+		if _Z_NOISE_RE.search(stripped[:400]):
+			return False
+		return True
+	return True
 
 
 async def get_rolling_history(days: int = 4, limit: int = 60):
