@@ -1529,7 +1529,7 @@ async def chat_stream(
 					continue
 				
 				if tier_name == "cloud":
-					logger.warning("Cloud LLM HTTP %d error after %d attempts — falling back to local", status, attempt + 1, max_attempts)
+					logger.warning("Cloud LLM HTTP %d error after %d/%d attempts — falling back to local", status, attempt + 1, max_attempts)
 					last_model_used.set(f"Local: {settings.LLM_MODEL_LOCAL} (fallback)")
 					async for chunk in chat_stream(
 						user_message,
