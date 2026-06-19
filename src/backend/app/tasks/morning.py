@@ -287,9 +287,6 @@ async def morning_briefing():
 			_ACTION_STRIP_RE = re.compile(r'\[ACTION:[^\]]*\]', re.IGNORECASE)
 
 			async def _get_crew_insight(crew_config):
-				# Fallback only: skip if crew already has recent output loaded from Planka
-				if crew_config.id in crew_outputs:
-					return None
 				try:
 					crew_prompt = (
 						f"You are the {crew_config.name} crew. We are preparing the daily morning briefing for the operator.\n"

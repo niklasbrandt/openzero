@@ -23,11 +23,51 @@ async def weekly_review():
 		stale_block = stale_cards if stale_cards and stale_cards != "[NO STALE ITEMS]" and not stale_cards.startswith("### STALE") else "[NO STALE ITEMS — all active cards have been touched recently]"
 		tree_block = tree if tree and str(tree).strip() else "[EMPTY — omit the project tree section entirely]"
 
+		# Load crew registry and collect insights from all active crews
+		crew_insights = []
+		try:
+			from app.services.crews import crew_registry
+			await crew_registry.load()
+			active_crews = crew_registry.list_active()
+			if active_crews:
+				from app.services.crews_native import native_crew_engine
+				import re
+				_ACTION_STRIP_RE = re.compile(r'\[ACTION:[^\]]*\]', re.IGNORECASE)
+
+				async def _get_crew_insight(crew_config):
+					try:
+						crew_prompt = (
+							f"You are the {crew_config.name} crew. We are preparing the weekly review for the operator.\n"
+							f"Here is the week's raw data:\n\n"
+							f"ACTIVITY:\n{activity_block}\n\n"
+							f"PROJECTS:\n{tree_block}\n\n"
+							f"Based on your specialized domain, review this data and generate a single short paragraph (under 40 words) with your top insight, recommendation, or warning for this week. "
+							f"Be extremely concise. Write only the paragraph. Do not introduce yourself."
+						)
+						res = await native_crew_engine.run_crew(crew_config.id, crew_prompt)
+						res_clean = _ACTION_STRIP_RE.sub("", res).strip()
+						if res_clean:
+							return f"**{crew_config.name}**: {res_clean}"
+					except Exception as ex:
+						logger.warning("Failed to get weekly insight from crew %s: %s", crew_config.id, ex)
+					return None
+
+				insights_results = await asyncio.wait_for(
+					asyncio.gather(*[_get_crew_insight(c) for c in active_crews]),
+					timeout=90.0
+				)
+				crew_insights = [ins for ins in insights_results if ins]
+		except Exception as e:
+			logger.warning("Gathering active crew insights for weekly review failed: %s", e)
+
 		crew_outputs_block = ""
-		if crew_outputs:
+		if crew_outputs or crew_insights:
 			parts = []
-			for cid, text in crew_outputs.items():
-				parts.append(f"--- {cid} ---\n{text}")
+			if crew_outputs:
+				for cid, text in crew_outputs.items():
+					parts.append(f"--- {cid} (scheduled run) ---\n{text}")
+			if crew_insights:
+				parts.append("--- Active Crew Insights ---\n" + "\n".join(crew_insights))
 			crew_outputs_block = "CREW REASONING & DOMAIN INSIGHTS:\n" + "\n\n".join(parts)
 		else:
 			crew_outputs_block = "[EMPTY — no recent crew outputs]"
