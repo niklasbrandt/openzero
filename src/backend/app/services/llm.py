@@ -1504,7 +1504,19 @@ async def chat_stream(
 					if attempt < max_attempts - 1:
 						logger.debug("LLM cloud timeout (attempt %d/%d). Retrying in 3s...", attempt + 1, max_attempts)
 						await asyncio.sleep(3)
-					continue
+						continue
+					else:
+						logger.warning("Cloud LLM timeout after %d attempts — falling back to local", max_attempts)
+						last_model_used.set(f"Local: {settings.LLM_MODEL_LOCAL} (fallback)")
+						async for chunk in chat_stream(
+							user_message,
+							system_override=system_prompt,
+							tier="local",
+							sanitize=False,
+							**{k: v for k, v in kwargs.items() if k not in ("thinking",)},
+						):
+							yield chunk
+						return
 			except httpx.HTTPStatusError as http_err:
 				status = http_err.response.status_code
 				if status in (503, 429, 502) and attempt < max_attempts - 1:
@@ -1515,6 +1527,20 @@ async def chat_stream(
 					)
 					await asyncio.sleep(wait_secs)
 					continue
+				
+				if tier_name == "cloud":
+					logger.warning("Cloud LLM HTTP %d error after %d attempts — falling back to local", status, attempt + 1, max_attempts)
+					last_model_used.set(f"Local: {settings.LLM_MODEL_LOCAL} (fallback)")
+					async for chunk in chat_stream(
+						user_message,
+						system_override=system_prompt,
+						tier="local",
+						sanitize=False,
+						**{k: v for k, v in kwargs.items() if k not in ("thinking",)},
+					):
+						yield chunk
+					return
+
 				logger.error("LLM HTTP %d error (%s): %s", status, tier_name, http_err)
 				yield "I'm having trouble reaching the model. Please try again."
 				return
