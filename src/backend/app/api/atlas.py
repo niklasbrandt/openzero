@@ -5,7 +5,7 @@ from app.models.db import AsyncSessionLocal, AtlasNode, AtlasEdge
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/atlas", tags=["atlas"])
+router = APIRouter(prefix="/api/dashboard/atlas", tags=["atlas"])
 
 @router.get("/graph")
 async def get_atlas_graph(limit: int = Query(80, ge=1, le=200)):

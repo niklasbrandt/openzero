@@ -75,7 +75,7 @@ export class MemoryAtlas extends HTMLElement {
 
 	private async fetchGraph() {
 		try {
-			const res = await fetch('/api/atlas/graph?limit=80');
+			const res = await fetch('/api/dashboard/atlas/graph?limit=80');
 			if (!res.ok) throw new Error('not ok');
 			const data: AtlasGraph = await res.json();
 			this.nodes = data.nodes;
