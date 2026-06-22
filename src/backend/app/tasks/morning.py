@@ -268,6 +268,7 @@ async def morning_briefing():
 						f"You are the {crew_config.name} crew. We are preparing the daily morning briefing for the operator.\n"
 						f"Here is the day's raw data:\n\n{skeleton}\n\n"
 						f"Based on your specialized domain, review this data and generate a single short paragraph (under 40 words) with your top insight, recommendation, or warning for today. "
+						f"STRICT: Do NOT invent background details, hypothetical scenarios, or context not present in the raw data (e.g. do not invent status notes or user habits like cooking rice). "
 						f"Be extremely concise. Write only the paragraph. Do not introduce yourself, and do not say 'Here is my insight'."
 					)
 					res = await native_crew_engine.run_crew(crew_config.id, crew_prompt)
@@ -347,6 +348,7 @@ async def morning_briefing():
 			"DO NOT add any information not present in the BRIEFING DRAFT.\n"
 			"DO NOT invent events, cards, emails, people, or project names.\n"
 			"DO NOT add suggestions, meal ideas, or fitness plans unless they appear in the Crew boards or CREW REASONING sections.\n"
+			"DO NOT append any fictional status notes, parenthetical remarks, or hypothetical scenarios to the tasks or crew outputs (e.g., do not add landlord status, or invent what the user will eat if shopping is incomplete). Only report tasks and observations exactly as represented in the data.\n"
 			"If a section is absent from the draft, it does not exist today — do not mention it.\n"
 			"You may emit action tags silently (they are stripped before delivery): "
 			"[ACTION: MOVE_CARD | CARD: <fragment> | LIST: <list>], [ACTION: MARK_DONE | CARD: <fragment>], [ACTION: LEARN | TEXT: <fact>]. "
