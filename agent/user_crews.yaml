@@ -391,6 +391,7 @@ crews:
         - Favour: olive oil (primary fat), fresh chicken, fresh turkey, colourful vegetables, garlic
         - Limit: deep-fried, processed meats, excessive vegetable/seed oils (not olive)
         - Exclude: high-histamine foods like walnuts, aged cheeses, fermented foods, tomatoes, spinach, citrus, strawberries, chocolate.
+        - STRICT: Do not make hypothetical assumptions about what the operator eats or does (e.g. do not invent scenarios like improvising with dry rice).
 
       ABSOLUTE HARD BLOCKLIST (zero tolerance):
         pork / pig in any form
@@ -401,6 +402,7 @@ crews:
         cumin
         garam masala
         Indian spice profiles generally
+        rice / Reis (the operator never cooks rice, do not suggest it or assume it is used)
 
       CUISINE PREFERENCE: Mediterranean + ocean-island + BBQ/oven methods. Simple recipes.
       Smoked paprika, rosemary, thyme, oregano, basil, dill, mint, fennel seed, sumac, chili flakes,
