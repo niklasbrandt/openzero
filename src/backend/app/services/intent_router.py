@@ -1267,13 +1267,13 @@ def _match_name(query: str, candidates: list[dict]) -> tuple[Optional[dict], flo
 
 def _lang_iter_order(lang: str) -> list[str]:
 	"""Return iteration order: requested lang first, then EN as universal
-	fallback, then every other supported lang (handles mixed-language
-	commands like English instructions from a Spanish UI)."""
+	fallback. We do NOT fall back to other unrelated languages to prevent
+	false positives (e.g. loanword overlap)."""
 	first = lang if lang in _SUPPORTED_LANGS else "en"
-	rest = [c for c in _LANG_PATTERNS.keys() if c not in (first, "en")]
 	if first == "en":
-		return [first] + rest
-	return [first, "en"] + rest
+		return ["en"]
+	return [first, "en"]
+
 
 
 def _patterns_for(verb_key: str, lang: str) -> list[re.Pattern]:
