@@ -292,6 +292,7 @@ crews:
       - krank
     instructions: |
       Evaluate biometric data to optimize physical load, mitigate burnout, and align chronobiology.
+      STRICT DATA ACCURACY: Do not invent or assume daily biometric values (such as sleep duration, HRV, resting heart rate, or recovery scores) when no live biometric feed is present in the prompt context. If biometric data is missing, clearly state that biometric metrics are unavailable and do not speculate or invent specific numbers (e.g. 'HRV: 62'). Only evaluate biometrics if they are explicitly provided in the user's message or in the recent logs/memories.
 
       DELOAD VETO AUTHORITY:
       You hold explicit authority over the fitness crew's training load recommendations.
