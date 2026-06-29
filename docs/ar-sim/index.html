@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="en" data-mode="ar">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>openZero AR Simulator</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com" />
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+	<style>
+		/* ── Design tokens ───────────────────────────────────────────── */
+		:root {
+			--accent-primary-h: 173;
+			--accent-primary-s: 80%;
+			--accent-primary-l: 40%;
+			--accent-primary-rgb: 20, 184, 166;
+			--accent-primary: hsla(173, 80%, 40%, 1);
+
+			--surface-overlay: rgba(10, 14, 20, 0.72);
+			--surface-card: rgba(14, 20, 28, 0.80);
+			--border-subtle: rgba(255, 255, 255, 0.08);
+			--text-primary: rgba(255, 255, 255, 0.95);
+			--text-muted: rgba(255, 255, 255, 0.45);
+			--font-sans: 'Inter', sans-serif;
+
+			--toast-blur: 28px;
+			--sidebar-blur: 36px;
+			--sidebar-width: 320px;
+			--toast-width: 288px;
+			--border-radius-ar: 12px;
+			--transition-fast: 200ms;
+			--transition-base: 350ms;
+		}
+
+		/* ── Reset & base ────────────────────────────────────────────── */
+		*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+		body {
+			font-family: var(--font-sans);
+			background: #000;
+			width: 100vw;
+			height: 100vh;
+			overflow: hidden;
+			color: var(--text-primary);
+			-webkit-font-smoothing: antialiased;
+		}
+
+		/* ── Webcam layer ────────────────────────────────────────────── */
+		#world {
+			position: fixed;
+			inset: 0;
+			width: 100%;
+			height: 100%;
+			object-fit: cover;
+			z-index: 0;
+			opacity: 0;
+			transition: opacity 600ms ease;
+		}
+		#world.active { opacity: 1; }
+
+		/* Fallback gradient when no camera */
+		#world-fallback {
+			position: fixed;
+			inset: 0;
+			z-index: 0;
+			background:
+				radial-gradient(ellipse at 20% 50%, rgba(20, 184, 166, 0.06) 0%, transparent 60%),
+				radial-gradient(ellipse at 80% 20%, rgba(99, 102, 241, 0.05) 0%, transparent 50%),
+				linear-gradient(135deg, #050810 0%, #0a0e18 50%, #060b14 100%);
+		}
+
+		/* ── AR overlay shell ────────────────────────────────────────── */
+		#ar-shell {
+			position: fixed;
+			inset: 0;
+			z-index: 10;
+			pointer-events: none;
+		}
+
+		/* ── Keyboard shortcut bar (dev helper) ──────────────────────── */
+		#shortcut-bar {
+			position: fixed;
+			bottom: 0;
+			left: 0;
+			right: 0;
+			z-index: 100;
+			display: flex;
+			gap: 1px;
+			background: rgba(0,0,0,0.6);
+			backdrop-filter: blur(8px);
+			border-top: 1px solid var(--border-subtle);
+			pointer-events: all;
+		}
+		.shortcut-btn {
+			flex: 1;
+			padding: 8px 4px;
+			font-family: var(--font-sans);
+			font-size: 11px;
+			font-weight: 500;
+			color: var(--text-muted);
+			background: transparent;
+			border: none;
+			cursor: pointer;
+			transition: color var(--transition-fast), background var(--transition-fast);
+			text-align: center;
+			line-height: 1.4;
+		}
+		.shortcut-btn:hover {
+			color: var(--text-primary);
+			background: rgba(20, 184, 166, 0.08);
+		}
+		.shortcut-btn kbd {
+			display: block;
+			font-size: 13px;
+			color: var(--accent-primary);
+			font-style: normal;
+			margin-bottom: 2px;
+		}
+
+		/* ── Toast stack ─────────────────────────────────────────────── */
+		#toast-stack {
+			position: fixed;
+			bottom: 48px; /* above shortcut bar */
+			right: 20px;
+			z-index: 50;
+			display: flex;
+			flex-direction: column-reverse;
+			gap: 8px;
+			align-items: flex-end;
+			pointer-events: all;
+		}
+
+		.toast {
+			display: flex;
+			align-items: flex-start;
+			gap: 10px;
+			width: var(--toast-width);
+			padding: 12px 14px;
+			background: var(--surface-overlay);
+			backdrop-filter: blur(var(--toast-blur));
+			-webkit-backdrop-filter: blur(var(--toast-blur));
+			border: 1px solid var(--border-subtle);
+			border-left: 3px solid var(--accent-primary);
+			border-radius: var(--border-radius-ar);
+			box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 0.5px rgba(255,255,255,0.04) inset;
+			cursor: pointer;
+			position: relative;
+			overflow: hidden;
+
+			/* entry: slide up + fade */
+			animation: toastIn 320ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+			transform-origin: bottom right;
+		}
+
+		.toast.dismissing {
+			animation: toastOut 220ms cubic-bezier(0.4, 0, 1, 1) forwards;
+		}
+
+		.toast::after {
+			content: '';
+			position: absolute;
+			bottom: 0;
+			left: 0;
+			height: 2px;
+			width: 100%;
+			background: var(--accent-primary);
+			opacity: 0.3;
+			transform-origin: left;
+			animation: toastProgress var(--toast-duration, 6000ms) linear forwards;
+		}
+
+		.toast:hover::after { animation-play-state: paused; }
+
+		@keyframes toastIn {
+			from { opacity: 0; transform: translateX(20px) translateY(8px) scale(0.96); }
+			to   { opacity: 1; transform: translateX(0) translateY(0) scale(1); }
+		}
+		@keyframes toastOut {
+			from { opacity: 1; transform: translateX(0); max-height: 120px; margin-bottom: 0; }
+			to   { opacity: 0; transform: translateX(32px); max-height: 0; margin-bottom: -8px; }
+		}
+		@keyframes toastProgress {
+			from { transform: scaleX(1); }
+			to   { transform: scaleX(0); }
+		}
+
+		.toast-icon {
+			flex-shrink: 0;
+			width: 20px;
+			height: 20px;
+			margin-top: 1px;
+			opacity: 0.8;
+		}
+		.toast-icon svg { width: 20px; height: 20px; }
+
+		.toast-content { flex: 1; min-width: 0; }
+		.toast-title {
+			font-size: 13px;
+			font-weight: 600;
+			color: var(--text-primary);
+			line-height: 1.3;
+		}
+		.toast-body {
+			font-size: 12px;
+			color: var(--text-muted);
+			line-height: 1.4;
+			margin-top: 2px;
+		}
+
+		.toast-dismiss {
+			flex-shrink: 0;
+			width: 18px;
+			height: 18px;
+			background: none;
+			border: none;
+			cursor: pointer;
+			color: var(--text-muted);
+			padding: 0;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			border-radius: 4px;
+			transition: color var(--transition-fast), background var(--transition-fast);
+			margin-top: 1px;
+		}
+		.toast-dismiss:hover {
+			color: var(--text-primary);
+			background: rgba(255,255,255,0.08);
+		}
+		.toast-dismiss svg { width: 12px; height: 12px; }
+
+		/* toast type accent variants */
+		.toast[data-type="system"] { border-left-color: rgba(148, 163, 184, 0.7); }
+		.toast[data-type="board-update"] { border-left-color: hsla(262, 80%, 65%, 1); }
+		.toast[data-type="commitment"] { border-left-color: hsla(38, 92%, 60%, 1); }
+		.toast[data-type="crew-briefing"] { border-left-color: var(--accent-primary); }
+		.toast[data-type="proactive"] { border-left-color: hsla(173, 80%, 50%, 1); }
+
+		/* ── Sidebar ─────────────────────────────────────────────────── */
+		#sidebar {
+			position: fixed;
+			top: 0;
+			right: 0;
+			width: var(--sidebar-width);
+			height: calc(100vh - 40px); /* above shortcut bar */
+			z-index: 40;
+			pointer-events: all;
+
+			background: var(--surface-overlay);
+			backdrop-filter: blur(var(--sidebar-blur));
+			-webkit-backdrop-filter: blur(var(--sidebar-blur));
+			border-left: 1px solid var(--border-subtle);
+			box-shadow: -8px 0 48px rgba(0,0,0,0.4);
+
+			display: flex;
+			flex-direction: column;
+
+			transform: translateX(100%);
+			transition: transform 400ms cubic-bezier(0.16, 1, 0.3, 1);
+		}
+		#sidebar.open {
+			transform: translateX(0);
+		}
+
+		/* Grab handle */
+		#sidebar-handle {
+			position: absolute;
+			left: -22px;
+			top: 50%;
+			transform: translateY(-50%);
+			width: 22px;
+			height: 56px;
+			background: var(--surface-overlay);
+			backdrop-filter: blur(var(--sidebar-blur));
+			-webkit-backdrop-filter: blur(var(--sidebar-blur));
+			border: 1px solid var(--border-subtle);
+			border-right: none;
+			border-radius: 8px 0 0 8px;
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			transition: background var(--transition-fast);
+		}
+		#sidebar-handle:hover { background: rgba(20, 184, 166, 0.15); }
+		#sidebar-handle svg { width: 10px; height: 10px; color: var(--text-muted); }
+
+		/* Sidebar header */
+		.sidebar-header {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			padding: 16px 16px 12px;
+			border-bottom: 1px solid var(--border-subtle);
+			flex-shrink: 0;
+		}
+		.z-avatar {
+			width: 28px;
+			height: 28px;
+			border-radius: 50%;
+			background: linear-gradient(135deg, hsla(173, 80%, 35%, 1), hsla(173, 80%, 25%, 1));
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-size: 13px;
+			font-weight: 700;
+			color: #fff;
+			flex-shrink: 0;
+		}
+		.z-label {
+			font-size: 13px;
+			font-weight: 600;
+			color: var(--text-primary);
+			letter-spacing: 0.02em;
+		}
+		.status-dot {
+			width: 7px;
+			height: 7px;
+			border-radius: 50%;
+			background: var(--accent-primary);
+			box-shadow: 0 0 6px hsla(173, 80%, 40%, 0.8);
+			animation: pulse 2.4s ease-in-out infinite;
+		}
+		@keyframes pulse {
+			0%, 100% { opacity: 1; }
+			50% { opacity: 0.5; }
+		}
+		.sidebar-header-close {
+			margin-left: auto;
+			width: 24px;
+			height: 24px;
+			background: none;
+			border: none;
+			cursor: pointer;
+			color: var(--text-muted);
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			border-radius: 6px;
+			transition: color var(--transition-fast), background var(--transition-fast);
+		}
+		.sidebar-header-close:hover {
+			color: var(--text-primary);
+			background: rgba(255,255,255,0.07);
+		}
+
+		/* Sidebar sections */
+		.sidebar-section {
+			border-bottom: 1px solid var(--border-subtle);
+			flex-shrink: 0;
+		}
+		.sidebar-section:last-child { border-bottom: none; }
+
+		.section-label {
+			font-size: 10px;
+			font-weight: 600;
+			letter-spacing: 0.1em;
+			text-transform: uppercase;
+			color: var(--text-muted);
+			padding: 10px 16px 6px;
+		}
+
+		/* Chat section */
+		#chat-section {
+			flex: 1;
+			display: flex;
+			flex-direction: column;
+			overflow: hidden;
+			min-height: 0;
+		}
+		#chat-messages {
+			flex: 1;
+			overflow-y: auto;
+			padding: 8px 14px;
+			display: flex;
+			flex-direction: column;
+			gap: 6px;
+			scrollbar-width: thin;
+			scrollbar-color: rgba(255,255,255,0.1) transparent;
+		}
+		#chat-messages::-webkit-scrollbar { width: 4px; }
+		#chat-messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+		.msg {
+			max-width: 88%;
+			padding: 7px 10px;
+			border-radius: 10px;
+			font-size: 12.5px;
+			line-height: 1.45;
+			animation: msgIn 200ms ease forwards;
+		}
+		@keyframes msgIn {
+			from { opacity: 0; transform: translateY(4px); }
+			to   { opacity: 1; transform: translateY(0); }
+		}
+		.msg-user {
+			align-self: flex-end;
+			background: rgba(20, 184, 166, 0.18);
+			border: 1px solid rgba(20, 184, 166, 0.25);
+			color: var(--text-primary);
+			border-bottom-right-radius: 3px;
+		}
+		.msg-z {
+			align-self: flex-start;
+			background: rgba(255,255,255,0.06);
+			border: 1px solid var(--border-subtle);
+			color: var(--text-primary);
+			border-bottom-left-radius: 3px;
+		}
+		.msg-time {
+			font-size: 10px;
+			color: var(--text-muted);
+			margin-top: 1px;
+			display: block;
+		}
+
+		.typing-indicator {
+			align-self: flex-start;
+			display: flex;
+			gap: 4px;
+			padding: 10px 14px;
+			background: rgba(255,255,255,0.06);
+			border: 1px solid var(--border-subtle);
+			border-radius: 10px;
+			border-bottom-left-radius: 3px;
+		}
+		.typing-dot {
+			width: 5px;
+			height: 5px;
+			border-radius: 50%;
+			background: var(--text-muted);
+			animation: typingBounce 1.2s ease-in-out infinite;
+		}
+		.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+		.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+		@keyframes typingBounce {
+			0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+			30% { transform: translateY(-4px); opacity: 1; }
+		}
+
+		#chat-input-row {
+			display: flex;
+			gap: 8px;
+			padding: 10px 14px 12px;
+			border-top: 1px solid var(--border-subtle);
+			flex-shrink: 0;
+		}
+		#chat-input {
+			flex: 1;
+			background: rgba(255,255,255,0.06);
+			border: 1px solid var(--border-subtle);
+			border-radius: 8px;
+			padding: 8px 10px;
+			font-family: var(--font-sans);
+			font-size: 12.5px;
+			color: var(--text-primary);
+			outline: none;
+			transition: border-color var(--transition-fast);
+		}
+		#chat-input::placeholder { color: var(--text-muted); }
+		#chat-input:focus { border-color: rgba(20, 184, 166, 0.4); }
+		#chat-send {
+			width: 32px;
+			height: 32px;
+			flex-shrink: 0;
+			background: var(--accent-primary);
+			border: none;
+			border-radius: 8px;
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			transition: opacity var(--transition-fast), transform var(--transition-fast);
+			align-self: center;
+		}
+		#chat-send:hover { opacity: 0.85; transform: scale(1.05); }
+		#chat-send svg { width: 14px; height: 14px; color: #fff; }
+
+		/* Crews section */
+		#crews-section { padding: 0 0 8px; }
+		.crew-row {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			padding: 6px 16px;
+			font-size: 12.5px;
+			transition: background var(--transition-fast);
+			cursor: default;
+		}
+		.crew-row:hover { background: rgba(255,255,255,0.03); }
+		.crew-dot {
+			width: 6px;
+			height: 6px;
+			border-radius: 50%;
+			flex-shrink: 0;
+		}
+		.crew-dot.running {
+			background: var(--accent-primary);
+			box-shadow: 0 0 5px hsla(173, 80%, 40%, 0.7);
+			animation: pulse 2s ease-in-out infinite;
+		}
+		.crew-dot.idle { background: rgba(255,255,255,0.2); }
+		.crew-dot.error { background: hsla(0, 80%, 60%, 1); }
+		.crew-name { flex: 1; color: var(--text-primary); }
+		.crew-state {
+			font-size: 11px;
+			color: var(--text-muted);
+			font-weight: 500;
+		}
+		.crew-state.running { color: var(--accent-primary); }
+
+		/* Atlas section */
+		#atlas-section { padding-bottom: 8px; }
+		#atlas-canvas {
+			display: block;
+			width: 100%;
+			height: 110px;
+			cursor: crosshair;
+		}
+
+		/* Briefings section */
+		#briefings-section { padding: 0 0 8px; }
+		.briefing-row {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			padding: 6px 16px;
+			font-size: 12px;
+			cursor: pointer;
+			transition: background var(--transition-fast);
+		}
+		.briefing-row:hover { background: rgba(255,255,255,0.04); }
+		.briefing-dot {
+			width: 5px;
+			height: 5px;
+			border-radius: 50%;
+			background: var(--accent-primary);
+			opacity: 0.6;
+			flex-shrink: 0;
+		}
+		.briefing-label { flex: 1; color: var(--text-primary); }
+		.briefing-time { font-size: 11px; color: var(--text-muted); }
+
+		/* ── Camera permission prompt ────────────────────────────────── */
+		#cam-prompt {
+			position: fixed;
+			top: 20px;
+			left: 50%;
+			transform: translateX(-50%);
+			z-index: 200;
+			background: var(--surface-overlay);
+			backdrop-filter: blur(20px);
+			border: 1px solid var(--border-subtle);
+			border-radius: var(--border-radius-ar);
+			padding: 14px 20px;
+			font-size: 13px;
+			color: var(--text-muted);
+			text-align: center;
+			pointer-events: all;
+			display: none;
+		}
+		#cam-prompt.visible { display: block; }
+		#cam-prompt button {
+			margin-top: 10px;
+			padding: 7px 16px;
+			background: var(--accent-primary);
+			border: none;
+			border-radius: 7px;
+			font-family: var(--font-sans);
+			font-size: 12px;
+			font-weight: 600;
+			color: #fff;
+			cursor: pointer;
+			display: block;
+			width: 100%;
+		}
+
+		/* ── Sr-only ─────────────────────────────────────────────────── */
+		.sr-only {
+			position: absolute;
+			width: 1px; height: 1px;
+			padding: 0; margin: -1px;
+			overflow: hidden;
+			clip: rect(0,0,0,0);
+			white-space: nowrap;
+			border: 0;
+		}
+
+		/* ── Reduced motion ──────────────────────────────────────────── */
+		@media (prefers-reduced-motion: reduce) {
+			.toast, #sidebar, .msg, .typing-dot, .status-dot, .crew-dot { animation: none !important; transition: none !important; }
+		}
+	</style>
+</head>
+<body>
+	<!-- World view (webcam or fallback gradient) -->
+	<div id="world-fallback" aria-hidden="true"></div>
+	<video id="world" autoplay muted playsinline aria-hidden="true"></video>
+
+	<!-- Camera prompt -->
+	<div id="cam-prompt" role="status" aria-live="polite">
+		<span>Enable webcam for full AR simulation</span><br />
+		<button id="cam-btn">Allow camera</button>
+	</div>
+
+	<!-- AR overlay shell -->
+	<div id="ar-shell" role="region" aria-label="openZero AR overlay">
+
+		<!-- Toast stack -->
+		<div id="toast-stack" role="log" aria-live="polite" aria-label="Notifications"></div>
+
+		<!-- Sidebar -->
+		<aside id="sidebar" role="complementary" aria-label="openZero sidebar" aria-hidden="true">
+
+			<button id="sidebar-handle" aria-label="Toggle sidebar" aria-expanded="false">
+				<svg viewBox="0 0 10 18" fill="none" stroke="currentColor" stroke-width="1.5">
+					<polyline points="7,2 2,9 7,16" />
+				</svg>
+			</button>
+
+			<!-- Header -->
+			<div class="sidebar-header">
+				<div class="z-avatar" aria-hidden="true">Z</div>
+				<span class="z-label">openZero</span>
+				<div class="status-dot" role="status" aria-label="Z is online"></div>
+				<button class="sidebar-header-close" aria-label="Close sidebar">
+					<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5">
+						<path d="M2 2l10 10M12 2L2 12"/>
+					</svg>
+				</button>
+			</div>
+
+			<!-- Chat -->
+			<div id="chat-section" class="sidebar-section" aria-label="Chat with Z">
+				<div class="section-label">Chat</div>
+				<div id="chat-messages" role="log" aria-live="polite" aria-label="Conversation">
+					<div class="msg msg-z">
+						<span>Hello. I'm running locally. What are you working on?</span>
+						<span class="msg-time" aria-label="7:30 AM">07:30</span>
+					</div>
+				</div>
+				<div id="chat-input-row">
+					<input
+						id="chat-input"
+						type="text"
+						placeholder="Ask Z anything..."
+						aria-label="Message to Z"
+						autocomplete="off"
+					/>
+					<button id="chat-send" aria-label="Send message">
+						<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
+							<path d="M2 8h12M9 3l5 5-5 5"/>
+						</svg>
+					</button>
+				</div>
+			</div>
+
+			<!-- Active Crews -->
+			<div id="crews-section" class="sidebar-section" aria-label="Active crews">
+				<div class="section-label">Active Crews</div>
+				<div class="crew-row">
+					<span class="crew-dot running" aria-hidden="true"></span>
+					<span class="crew-name">focus</span>
+					<span class="crew-state running" role="status">running</span>
+				</div>
+				<div class="crew-row">
+					<span class="crew-dot idle" aria-hidden="true"></span>
+					<span class="crew-name">scrum</span>
+					<span class="crew-state" role="status">idle</span>
+				</div>
+				<div class="crew-row">
+					<span class="crew-dot idle" aria-hidden="true"></span>
+					<span class="crew-name">dev</span>
+					<span class="crew-state" role="status">idle</span>
+				</div>
+			</div>
+
+			<!-- Memory Atlas -->
+			<div id="atlas-section" class="sidebar-section" aria-label="Memory atlas">
+				<div class="section-label">Memory Atlas</div>
+				<canvas id="atlas-canvas" aria-label="Force-directed memory graph" role="img"></canvas>
+			</div>
+
+			<!-- Recent Briefings -->
+			<div id="briefings-section" aria-label="Recent briefings">
+				<div class="section-label">Recent Briefings</div>
+				<div class="briefing-row" tabindex="0" role="button" aria-label="Morning briefing at 07:30">
+					<span class="briefing-dot" aria-hidden="true"></span>
+					<span class="briefing-label">Morning briefing</span>
+					<span class="briefing-time">07:30</span>
+				</div>
+				<div class="briefing-row" tabindex="0" role="button" aria-label="Weekly review briefing">
+					<span class="briefing-dot" aria-hidden="true"></span>
+					<span class="briefing-label">Weekly review</span>
+					<span class="briefing-time">Sun 10:00</span>
+				</div>
+				<div class="briefing-row" tabindex="0" role="button" aria-label="Dev crew briefing">
+					<span class="briefing-dot" aria-hidden="true"></span>
+					<span class="briefing-label">Dev crew</span>
+					<span class="briefing-time">Yesterday</span>
+				</div>
+			</div>
+
+		</aside>
+	</div>
+
+	<!-- Keyboard shortcut bar -->
+	<div id="shortcut-bar" role="toolbar" aria-label="Simulator controls">
+		<button class="shortcut-btn" id="btn-sidebar" aria-label="Toggle sidebar shortcut S">
+			<kbd>S</kbd>Sidebar
+		</button>
+		<button class="shortcut-btn" id="btn-brief" aria-label="Trigger briefing toast shortcut B">
+			<kbd>B</kbd>Briefing
+		</button>
+		<button class="shortcut-btn" id="btn-proactive" aria-label="Trigger proactive toast shortcut P">
+			<kbd>P</kbd>Proactive
+		</button>
+		<button class="shortcut-btn" id="btn-commit" aria-label="Trigger commitment toast shortcut C">
+			<kbd>C</kbd>Commitment
+		</button>
+		<button class="shortcut-btn" id="btn-board" aria-label="Trigger board update toast shortcut D">
+			<kbd>D</kbd>Board update
+		</button>
+		<button class="shortcut-btn" id="btn-system" aria-label="Trigger system toast shortcut Y">
+			<kbd>Y</kbd>System
+		</button>
+		<button class="shortcut-btn" id="btn-cam" aria-label="Toggle camera shortcut K">
+			<kbd>K</kbd>Camera
+		</button>
+	</div>
+
+	<script>
+	'use strict';
+
+	// ── Toast system ──────────────────────────────────────────────────────────
+
+	const TOAST_DURATION = 6000;
+	const TOAST_MAX = 3;
+	const toastStack = document.getElementById('toast-stack');
+	let toastQueue = [];
+	let activeToasts = [];
+
+	const TOAST_TEMPLATES = {
+		'crew-briefing': {
+			icon: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="8"/><path d="M10 6v4l2.5 2.5"/></svg>`,
+			title: 'Morning briefing ready',
+			body: 'Focus crew completed analysis. 3 items need your attention.'
+		},
+		proactive: {
+			icon: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2l2.4 5 5.6.7-4 4 1 5.6L10 14.8 5 17.3l1-5.6-4-4 5.6-.7z"/></svg>`,
+			title: 'Meeting with Sarah in 8 min',
+			body: 'Blocked card on her sprint — API migration dependency.'
+		},
+		commitment: {
+			icon: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 10l4 4 8-8"/><circle cx="10" cy="10" r="8"/></svg>`,
+			title: 'Commitment due today',
+			body: 'You said you\'d send the report by Friday.'
+		},
+		'board-update': {
+			icon: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="14" height="12" rx="2"/><path d="M7 8h6M7 12h4"/></svg>`,
+			title: 'API migration moved to Blocked',
+			body: 'Scrum crew flagged a WIP violation — 4 items in progress.'
+		},
+		system: {
+			icon: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="3"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.2 4.2l1.4 1.4M14.4 14.4l1.4 1.4M4.2 15.8l1.4-1.4M14.4 5.6l1.4-1.4"/></svg>`,
+			title: 'Cloud fallback active',
+			body: 'Local model restarting. Routing via cloud tier temporarily.'
+		}
+	};
+
+	function now() {
+		return new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+	}
+
+	function pushToast(type) {
+		const tpl = TOAST_TEMPLATES[type];
+		if (!tpl) return;
+
+		if (activeToasts.length >= TOAST_MAX) {
+			toastQueue.push(type);
+			return;
+		}
+
+		const el = document.createElement('div');
+		el.className = 'toast';
+		el.setAttribute('data-type', type);
+		el.setAttribute('role', 'status');
+		el.style.setProperty('--toast-duration', TOAST_DURATION + 'ms');
+
+		el.innerHTML = `
+			<span class="toast-icon" aria-hidden="true">${tpl.icon}</span>
+			<div class="toast-content">
+				<div class="toast-title">${tpl.title}</div>
+				${tpl.body ? `<div class="toast-body">${tpl.body}</div>` : ''}
+			</div>
+			<button class="toast-dismiss" aria-label="Dismiss notification">
+				<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5">
+					<path d="M2 2l8 8M10 2L2 10"/>
+				</svg>
+			</button>
+		`;
+
+		activeToasts.push(el);
+		toastStack.appendChild(el);
+
+		const dismissBtn = el.querySelector('.toast-dismiss');
+		dismissBtn.addEventListener('click', (e) => {
+			e.stopPropagation();
+			dismissToast(el);
+		});
+
+		// Click toast to open in chat
+		el.addEventListener('click', () => {
+			openSidebar();
+			appendMsg('z', `You tapped the "${tpl.title}" toast. Here is the full context: ${tpl.body || 'No additional detail.'}`);
+			dismissToast(el);
+		});
+
+		// Pause dismiss on hover
+		let timer;
+		const startTimer = () => {
+			timer = setTimeout(() => dismissToast(el), TOAST_DURATION);
+		};
+		el.addEventListener('mouseenter', () => clearTimeout(timer));
+		el.addEventListener('mouseleave', () => startTimer());
+		startTimer();
+	}
+
+	function dismissToast(el) {
+		if (!el.isConnected) return;
+		el.classList.add('dismissing');
+		el.addEventListener('animationend', () => {
+			el.remove();
+			activeToasts = activeToasts.filter(t => t !== el);
+			// drain queue
+			if (toastQueue.length > 0) {
+				const next = toastQueue.shift();
+				setTimeout(() => pushToast(next), 80);
+			}
+		}, { once: true });
+	}
+
+	// ── Sidebar ───────────────────────────────────────────────────────────────
+
+	const sidebar = document.getElementById('sidebar');
+	const handle = document.getElementById('sidebar-handle');
+	const closeBtn = sidebar.querySelector('.sidebar-header-close');
+	let sidebarOpen = false;
+
+	function openSidebar() {
+		if (sidebarOpen) return;
+		sidebarOpen = true;
+		sidebar.classList.add('open');
+		sidebar.setAttribute('aria-hidden', 'false');
+		handle.setAttribute('aria-expanded', 'true');
+		handle.querySelector('svg polyline').setAttribute('points', '3,2 8,9 3,16');
+		scrollChatBottom();
+	}
+
+	function closeSidebar() {
+		if (!sidebarOpen) return;
+		sidebarOpen = false;
+		sidebar.classList.remove('open');
+		sidebar.setAttribute('aria-hidden', 'true');
+		handle.setAttribute('aria-expanded', 'false');
+		handle.querySelector('svg polyline').setAttribute('points', '7,2 2,9 7,16');
+	}
+
+	function toggleSidebar() {
+		sidebarOpen ? closeSidebar() : openSidebar();
+	}
+
+	handle.addEventListener('click', toggleSidebar);
+	closeBtn.addEventListener('click', closeSidebar);
+
+	// ── Chat ──────────────────────────────────────────────────────────────────
+
+	const chatMessages = document.getElementById('chat-messages');
+	const chatInput = document.getElementById('chat-input');
+	const chatSend = document.getElementById('chat-send');
+
+	const Z_RESPONSES = [
+		"I've noted that and added it to your context.",
+		"Cross-referencing with your active crews now. Focus crew has relevant context.",
+		"Memory updated. This will surface in your next briefing if it's relevant.",
+		"Understood. The scrum crew will track any related commitments.",
+		"Got it. I'll flag this if it conflicts with anything on your board.",
+		"Running that through the current crew context. Stand by.",
+	];
+	let zRespIdx = 0;
+
+	function scrollChatBottom() {
+		setTimeout(() => { chatMessages.scrollTop = chatMessages.scrollHeight; }, 30);
+	}
+
+	function appendMsg(who, text) {
+		const div = document.createElement('div');
+		div.className = `msg msg-${who}`;
+		div.innerHTML = `<span>${text}</span><span class="msg-time" aria-hidden="true">${now()}</span>`;
+		chatMessages.appendChild(div);
+		scrollChatBottom();
+	}
+
+	function showTyping() {
+		const el = document.createElement('div');
+		el.className = 'typing-indicator';
+		el.id = 'typing-indicator';
+		el.setAttribute('aria-hidden', 'true');
+		el.innerHTML = `<span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>`;
+		chatMessages.appendChild(el);
+		scrollChatBottom();
+		return el;
+	}
+
+	function sendChat() {
+		const val = chatInput.value.trim();
+		if (!val) return;
+		appendMsg('user', val);
+		chatInput.value = '';
+
+		const typing = showTyping();
+		setTimeout(() => {
+			typing.remove();
+			appendMsg('z', Z_RESPONSES[zRespIdx % Z_RESPONSES.length]);
+			zRespIdx++;
+		}, 900 + Math.random() * 600);
+	}
+
+	chatSend.addEventListener('click', sendChat);
+	chatInput.addEventListener('keydown', (e) => {
+		if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
+	});
+
+	// ── Memory Atlas (Canvas) ─────────────────────────────────────────────────
+
+	const canvas = document.getElementById('atlas-canvas');
+	const ctx = canvas.getContext('2d');
+
+	const NODES = [
+		{ label: 'Sprint Q3', x: 0.5, y: 0.4, r: 5, links: [1,2,4] },
+		{ label: 'API Migration', x: 0.28, y: 0.6, r: 4, links: [0,3] },
+		{ label: 'Budget', x: 0.72, y: 0.25, r: 3.5, links: [0,5] },
+		{ label: 'Sarah', x: 0.18, y: 0.35, r: 3, links: [1,6] },
+		{ label: 'Health', x: 0.78, y: 0.7, r: 3, links: [0] },
+		{ label: 'Investors', x: 0.88, y: 0.38, r: 3.5, links: [2] },
+		{ label: 'Meeting', x: 0.08, y: 0.6, r: 2.5, links: [3] },
+		{ label: 'Dev', x: 0.42, y: 0.78, r: 2.5, links: [1,0] },
+		{ label: 'Focus', x: 0.6, y: 0.55, r: 2, links: [0] },
+	];
+
+	let atlasHover = -1;
+	let animFrame = null;
+
+	function drawAtlas() {
+		const dpr = window.devicePixelRatio || 1;
+		const rect = canvas.getBoundingClientRect();
+		canvas.width = rect.width * dpr;
+		canvas.height = rect.height * dpr;
+		ctx.scale(dpr, dpr);
+
+		const W = rect.width, H = rect.height;
+		const accent = `hsla(173, 80%, 40%, 1)`;
+		const accentDim = `hsla(173, 80%, 40%, 0.25)`;
+		const edgeColor = `rgba(255,255,255,0.07)`;
+
+		ctx.clearRect(0, 0, W, H);
+
+		// Draw edges
+		NODES.forEach((n, i) => {
+			n.links.forEach(j => {
+				if (j > i) {
+					ctx.beginPath();
+					ctx.strokeStyle = edgeColor;
+					ctx.lineWidth = 0.8;
+					ctx.moveTo(n.x * W, n.y * H);
+					ctx.lineTo(NODES[j].x * W, NODES[j].y * H);
+					ctx.stroke();
+				}
+			});
+		});
+
+		// Draw nodes
+		NODES.forEach((n, i) => {
+			const x = n.x * W, y = n.y * H;
+			const isHovered = i === atlasHover;
+			const r = isHovered ? n.r + 2 : n.r;
+
+			// Glow
+			if (isHovered) {
+				const grd = ctx.createRadialGradient(x, y, 0, x, y, r * 3);
+				grd.addColorStop(0, `hsla(173, 80%, 40%, 0.3)`);
+				grd.addColorStop(1, `hsla(173, 80%, 40%, 0)`);
+				ctx.beginPath();
+				ctx.arc(x, y, r * 3, 0, Math.PI * 2);
+				ctx.fillStyle = grd;
+				ctx.fill();
+			}
+
+			// Node circle
+			ctx.beginPath();
+			ctx.arc(x, y, r, 0, Math.PI * 2);
+			ctx.fillStyle = isHovered ? accent : accentDim;
+			ctx.fill();
+
+			// Stroke
+			ctx.beginPath();
+			ctx.arc(x, y, r, 0, Math.PI * 2);
+			ctx.strokeStyle = accent;
+			ctx.lineWidth = isHovered ? 1.5 : 0.7;
+			ctx.stroke();
+
+			// Label on hover
+			if (isHovered) {
+				ctx.font = '500 10px Inter, sans-serif';
+				ctx.fillStyle = 'rgba(255,255,255,0.9)';
+				ctx.textAlign = 'center';
+				ctx.fillText(n.label, x, y - r - 4);
+			}
+		});
+	}
+
+	canvas.addEventListener('mousemove', (e) => {
+		const rect = canvas.getBoundingClientRect();
+		const mx = (e.clientX - rect.left) / rect.width;
+		const my = (e.clientY - rect.top) / rect.height;
+		let found = -1;
+		NODES.forEach((n, i) => {
+			const dx = n.x - mx, dy = n.y - my;
+			if (Math.sqrt(dx*dx + dy*dy) < 0.07) found = i;
+		});
+		if (found !== atlasHover) {
+			atlasHover = found;
+			drawAtlas();
+		}
+	});
+	canvas.addEventListener('mouseleave', () => { atlasHover = -1; drawAtlas(); });
+	canvas.addEventListener('click', (e) => {
+		if (atlasHover >= 0) {
+			const n = NODES[atlasHover];
+			openSidebar();
+			appendMsg('z', `Memory node: "${n.label}". This connects to ${n.links.length} other node${n.links.length !== 1 ? 's' : ''}. Ask me to explore this area.`);
+		}
+	});
+
+	const ro = new ResizeObserver(() => drawAtlas());
+	ro.observe(canvas);
+	drawAtlas();
+
+	// ── Camera ────────────────────────────────────────────────────────────────
+
+	const worldVideo = document.getElementById('world');
+	const camPrompt = document.getElementById('cam-prompt');
+	const camBtn = document.getElementById('cam-btn');
+	let cameraActive = false;
+	let mediaStream = null;
+
+	async function startCamera() {
+		try {
+			mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+			worldVideo.srcObject = mediaStream;
+			worldVideo.classList.add('active');
+			cameraActive = true;
+			camPrompt.classList.remove('visible');
+		} catch (err) {
+			camPrompt.innerHTML = `<span>Camera unavailable. Using gradient background.</span>`;
+			camPrompt.classList.add('visible');
+			setTimeout(() => camPrompt.classList.remove('visible'), 3000);
+		}
+	}
+
+	function stopCamera() {
+		if (mediaStream) {
+			mediaStream.getTracks().forEach(t => t.stop());
+			mediaStream = null;
+		}
+		worldVideo.srcObject = null;
+		worldVideo.classList.remove('active');
+		cameraActive = false;
+	}
+
+	function toggleCamera() {
+		if (cameraActive) stopCamera();
+		else startCamera();
+	}
+
+	camBtn.addEventListener('click', startCamera);
+
+	// Show camera prompt briefly on load
+	camPrompt.classList.add('visible');
+	setTimeout(() => camPrompt.classList.remove('visible'), 4000);
+
+	// ── Keyboard bindings ─────────────────────────────────────────────────────
+
+	const keyMap = {
+		's': toggleSidebar,
+		'b': () => pushToast('crew-briefing'),
+		'p': () => pushToast('proactive'),
+		'c': () => pushToast('commitment'),
+		'd': () => pushToast('board-update'),
+		'y': () => pushToast('system'),
+		'k': toggleCamera,
+		'Escape': closeSidebar,
+	};
+
+	document.addEventListener('keydown', (e) => {
+		if (e.target === chatInput) return;
+		const fn = keyMap[e.key.toLowerCase()] || keyMap[e.key];
+		if (fn) { e.preventDefault(); fn(); }
+	});
+
+	document.getElementById('btn-sidebar').addEventListener('click', toggleSidebar);
+	document.getElementById('btn-brief').addEventListener('click', () => pushToast('crew-briefing'));
+	document.getElementById('btn-proactive').addEventListener('click', () => pushToast('proactive'));
+	document.getElementById('btn-commit').addEventListener('click', () => pushToast('commitment'));
+	document.getElementById('btn-board').addEventListener('click', () => pushToast('board-update'));
+	document.getElementById('btn-system').addEventListener('click', () => pushToast('system'));
+	document.getElementById('btn-cam').addEventListener('click', toggleCamera);
+
+	// ── Demo: auto-fire a proactive toast after 2s ────────────────────────────
+	setTimeout(() => pushToast('proactive'), 2000);
+	</script>
+</body>
+</html>
