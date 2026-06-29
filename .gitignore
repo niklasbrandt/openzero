@@ -80,3 +80,7 @@ Thumbs.db
 .mypy_cache/
 agent/domain.derived.yaml
 z_output.txt
+
+# Scratch scripts
+scratch.py
+src/backend/test_qdrant_points.py
