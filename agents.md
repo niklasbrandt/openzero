@@ -10,6 +10,12 @@
 - You must use the context from these files to ensure your behavior aligns with the project's specific boundaries and that you do not repeat errors recorded in the log.
 - **Artifact Scan:** List the `docs/artifacts/` directory and read the first 20 lines of each artifact file to understand available context before starting work. Do not read entire artifacts unless the task directly requires their content.
 
+## 1. AI Tooling & Customizations (.agent vs .agents)
+
+- **`.agents` (Plural):** This is the primary Workspace Customizations Root for IDE-based agents (like Antigravity). It contains `skills/` (with `SKILL.md` files) and acts as the canonical source for workspace skills.
+- **`.agent` (Singular):** This folder (containing `AGENT.md` files and workflows) is configured for other AI frameworks (like GitHub Copilot Agents, Cursor, or legacy CLI tools).
+- **Universal Rule:** Regardless of the harness being used, all AI agents MUST read and prioritize this `agents.md` file as the central source of truth for repository rules.
+
 ## 10. Build Documentation Maintenance
 
 - **Post-Task Audit:** After completing a task or prompt execution, you MUST check if the changes you made should be reflected in the project's build and setup instructions in `BUILD.md` (root of the repository). This is the canonical manual setup guide for operators.
