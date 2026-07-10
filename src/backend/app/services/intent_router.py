@@ -49,6 +49,8 @@ class StructuralIntent:
 	entities: dict = field(default_factory=dict)
 	raw_text: str = ""
 	confidence: float = 0.0
+	reasoning: str = ""
+	is_validated: bool = False
 
 
 # ─── Verb detection patterns ─────────────────────────────────────────────────
@@ -1292,8 +1294,8 @@ _BOARD_WORD_RE = re.compile(
 )
 
 
-async def classify_structural_intent(text: str, lang: str) -> Optional[StructuralIntent]:
-	"""Detect a high-confidence Planka mutation intent in the user message.
+async def _classify_structural_intent_regex(text: str, lang: str) -> Optional[StructuralIntent]:
+	"""Detect a high-confidence Planka mutation intent in the user message via Regex.
 
 	Multilingual: tries the user's locale first, then English, then every
 	other supported language. The entity match against live Planka state is
@@ -1805,6 +1807,54 @@ async def classify_structural_intent(text: str, lang: str) -> Optional[Structura
 			)
 
 	return None
+
+
+async def validate_intent_with_reasoning(text: str, intent: StructuralIntent) -> StructuralIntent:
+	"""Validate a regex-proposed intent using an LLM reasoning pass."""
+	from app.services.llm import chat
+	
+	prompt = (
+		f"The user said: '{text}'.\n"
+		f"A regex classifier thinks they want to '{intent.verb}' the entity '{intent.entities}'.\n"
+		"Based on semantic reasoning, is this truly their intent?\n"
+		"Explain your reasoning briefly, then output exactly VALID or OVERRULE at the end."
+	)
+	
+	try:
+		# Use the fast tier for rapid validation
+		response = await chat(
+			prompt, 
+			tier="fast", 
+			system_override="You are a strict intent validation classifier. You must output VALID or OVERRULE at the very end of your response.", 
+			_feature="intent_validation"
+		)
+		intent.reasoning = response.strip()
+		if "OVERRULE" in response.upper():
+			intent.is_validated = False
+		else:
+			intent.is_validated = True
+	except Exception as e:
+		logger.warning("intent_router: validation failed: %s", e)
+		intent.is_validated = True  # fallback to trust regex if LLM fails
+		intent.reasoning = f"LLM validation failed: {e}"
+	
+	return intent
+
+async def classify_structural_intent(text: str, lang: str) -> Optional[StructuralIntent]:
+	"""Detect a high-confidence Planka mutation intent with LLM reasoning validation."""
+	intent = await _classify_structural_intent_regex(text, lang)
+	if not intent:
+		return None
+	
+	intent = await validate_intent_with_reasoning(text, intent)
+	if not intent.is_validated:
+		logger.info(
+			"intent_router: OVERRULED intent '%s' (conf=%.2f) for '%s...' Reason: %s",
+			intent.verb, intent.confidence, text[:80], intent.reasoning
+		)
+		return None
+		
+	return intent
 
 
 async def dispatch_structural_intent(intent: StructuralIntent, lang: str) -> str:

@@ -131,6 +131,34 @@ async def _do_check_unanswered() -> None:
 
 	unanswered.reverse()  # chronological
 	combined = "\n".join(unanswered)
+
+	# Reasoning validation check to ensure a response is actually expected
+	from app.services.llm import chat
+	try:
+		prompt = (
+			f"The user sent the following message(s) that went unanswered:\n"
+			f"\"\"\"\n{combined}\n\"\"\"\n"
+			"Does this content contain a question, a command, a request, or an explicit statement "
+			"where the user reasonably expects a response or action from the assistant? "
+			"Or is it just simple feedback, an acknowledgment (e.g. 'ok', 'danke'), a greeting, "
+			"or a statement not requiring any response?\n"
+			"Explain your reasoning briefly, then output exactly RESPOND or IGNORE at the end."
+		)
+		response = await chat(
+			prompt,
+			tier="fast",
+			system_override="You are a message responsiveness judge. You must output RESPOND or IGNORE at the very end of your response.",
+			_feature="watchdog_validation"
+		)
+		if "IGNORE" in response.upper():
+			logger.info("Watchdog: Ignored recovering messages because LLM judged them as not expecting a reply. Reason: %s", response.strip())
+			# Mark them as recovered so we don't evaluate them again
+			for content in unanswered:
+				_recovered_message_hashes.add(_msg_hash(content))
+			return
+	except Exception as e:
+		logger.warning("Watchdog: reasoning validation failed: %s. Proceeding with recovery.", e)
+
 	logger.info("Watchdog: %d unanswered message(s) found — routing now.", len(unanswered))
 
 	# Mark them immediately so a parallel scheduler tick won't double-recover
