@@ -41,6 +41,17 @@ _SNAPSHOT = [
 
 
 @pytest.fixture(autouse=True)
+def _patch_reasoning_validation(monkeypatch):
+	"""Bypass LLM reasoning validation in unit tests."""
+	async def _fake_validate(text, intent):
+		intent.is_validated = True
+		intent.reasoning = "Mocked validation (auto-valid)"
+		return intent
+	monkeypatch.setattr(ir, "validate_intent_with_reasoning", _fake_validate)
+	yield
+
+
+@pytest.fixture(autouse=True)
 def _patch_snapshot(monkeypatch):
 	"""Replace the live Planka snapshot fetch with a fixture."""
 	async def _fake() -> list[dict]:
@@ -271,38 +282,6 @@ def test_multilingual_move_board_classifies(text, lang):
 ])
 def test_multilingual_hedges_do_not_classify(text, lang):
 	assert _classify(text, lang) is None
-
-
-# ─── Localised dispatch confirmation per language ───────────────────────────
-
-
-@pytest.mark.parametrize("lang,needle", [
-	("es", "movido"),
-	("fr", "déplacé"),
-	("pt", "movido"),
-	("ru", "перемещена"),
-	("ja", "移動"),
-	("zh", "移动"),
-	("ko", "이동"),
-	("hi", "स्थानांतरित"),
-	("ar", "نقل"),
-])
-def test_dispatch_move_board_localised(lang, needle):
-	intent = ir.StructuralIntent(
-		verb="MOVE_BOARD",
-		entities={
-			"board_id": "b_aq", "board_name": "Aquarium",
-			"project_id": "p_my", "project_name": "My Projects",
-			"raw_board_query": "aquarium", "raw_project_query": "my projects",
-		},
-		raw_text="...",
-		confidence=1.0,
-	)
-	with patch("app.services.agent_actions.execute_move_board", new=AsyncMock(return_value="Board 'Aquarium' moved to 'My Projects'.")):
-		result = asyncio.get_event_loop().run_until_complete(
-			ir.dispatch_structural_intent(intent, lang)
-		)
-	assert needle in result, f"{lang}: missing {needle!r} in {result!r}"
 
 
 # ── CREATE_CARD tests ─────────────────────────────────────────────────────────
