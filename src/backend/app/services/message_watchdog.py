@@ -107,6 +107,9 @@ async def _do_check_unanswered() -> None:
 			# Real Z reply — everything before this point is answered
 			break
 
+		if role != "user":
+			continue
+
 		# role == "user"
 		h = _msg_hash(content)
 		if h in _recovered_message_hashes:
