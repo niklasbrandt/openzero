@@ -2145,6 +2145,10 @@ async def chat_stream_with_context(
 						"RELEVANT MEMORIES (background facts about the user from past conversations):\n"
 						"NOTE: These are NOT the current request. Always answer what the user is asking NOW. "
 						f"Never redirect or refuse based on a past session's topic.{_history_note}\n"
+						"STRICT: Do NOT elaborate beyond what these memories state. Do NOT invent details, "
+						"timelines, frameworks, or narrative context not explicitly written here. If a memory "
+						"says 'user has card X', say 'du hast eine Karte X' — do not add why, when, or what "
+						"it means unless the memory itself contains that information.\n"
 						f"{result}"
 					)
 			return ""
@@ -2175,8 +2179,12 @@ async def chat_stream_with_context(
 		if extra_system_context:
 			system_with_context = extra_system_context + "\n\n" + system_with_context
 
-		if len(user_message.strip()) < 30:
-			system_with_context += "\n\nRespond in 1-2 sentences. Ensure logical consistency (e.g. do not say 'Today is tomorrow')."
+		if len(user_message.strip()) < 60:
+			system_with_context += (
+				"\n\nRespond in 1-3 sentences. State only facts you can verify from the data provided. "
+				"Do not fabricate timelines, frameworks, or narrative context. "
+				"Ensure logical consistency (e.g. do not say 'Today is tomorrow')."
+			)
 
 		# Cloud-primary with local fallback: use cloud when it is the selected tier.
 		# Falls back to local transparently if cloud fails or is unreachable.

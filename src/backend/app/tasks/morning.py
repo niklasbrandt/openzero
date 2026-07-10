@@ -71,6 +71,12 @@ def build_briefing_skeleton(
 	lines.append("[PLANNER: structure today based on the cards and activity above — suggest AM/PM blocks, flag any urgent cards or stale items that need attention today. Keep it concise. Do NOT invent tasks. Only reference what is in the skeleton above.]")
 	lines.append("")
 
+	lines.append("=== END OF VERIFIED DATA ===")
+	lines.append("Everything above this line is verified system data from live APIs.")
+	lines.append("Do NOT add status notes, parenthetical remarks, or hypothetical scenarios to items above.")
+	lines.append("Report card names and task titles EXACTLY as written — no renaming, no merging, no editorialising.")
+	lines.append("")
+
 	return "\n".join(lines)
 
 
@@ -195,21 +201,10 @@ async def morning_briefing():
 		)
 		logger.debug("morning_briefing — batch-2 done in %.1fs", asyncio.get_event_loop().time() - _t2)
 
-		# Fetch last briefing for delta comparison
-		previous_briefing_content = ""
-		try:
-			async with AsyncSessionLocal() as session:
-				res = await session.execute(
-					select(Briefing)
-					.where(Briefing.type == "day")
-					.order_by(Briefing.created_at.desc())
-					.limit(1)
-				)
-				prev_briefing = res.scalar_one_or_none()
-				if prev_briefing and prev_briefing.content:
-					previous_briefing_content = prev_briefing.content
-		except Exception as pbe:
-			logger.warning("morning_briefing: could not fetch previous briefing: %s", pbe)
+		# NOTE: Previous briefing injection REMOVED (Change 7).
+		# Injecting yesterday's LLM-generated prose created a hallucination echo chamber:
+		# fabricated status notes from yesterday were read as facts today and elaborated.
+		# The skeleton's recent_activity and stale_cards data already cover delta detection.
 
 		# Detect Planka unavailability — prevent LLM hallucination when all board data fails
 		_planka_unavailable_warning = ""
@@ -316,46 +311,46 @@ async def morning_briefing():
 		if crew_blocks:
 			skeleton += "\n\nCREW REASONING & DOMAIN INSIGHTS:\n" + "\n\n".join(crew_blocks)
 
-		# Add previous briefing delta block if available
-		prev_briefing_block = ""
-		if previous_briefing_content:
-			prev_briefing_block = (
-				f"PREVIOUS BRIEFING (yesterday):\n"
-				f"{previous_briefing_content}\n\n"
-				f"Compare today's data with the PREVIOUS BRIEFING above. Note what moved, what is new, and what persisted unchanged. "
-				f"Do not repeat yesterday's observations verbatim -- focus on surfacing deltas and actual progress.\n\n"
+		# Build crew prompt block conditionally — only when actual crew data exists
+		_crew_prompt_block = ""
+		if crew_blocks:
+			_crew_prompt_block = (
+				"4. CREWS: Include a 'Crews' section listing every crew present in the CREW REASONING section of the draft. "
+				"For each crew, summarize their 'Daily Insight' and 'Detailed Log/Context' in Z's voice. "
+				"For the 'life (private reflection)' crew output: if present, summarize as a warm 1-2 sentence note in a 'Life' section. Do not skip any crew.\n"
+			)
+		else:
+			_crew_prompt_block = (
+				"4. CREWS: No crew data is available today. Do NOT generate a Crews section. "
+				"Do NOT invent crew insights, meal plans, fitness plans, or any domain-specific content.\n"
 			)
 
 		full_prompt = (
 			f"You are Z, a personal AI assistant. Write the following briefing in a direct, uplifting tone — "
 			f"no preamble, no 'Here is your briefing' opener, no robotic recap. Begin immediately with the most relevant information. "
 			f"Tone: {settings.PERSONA_TONE}. Only use humor when it is clearly appropriate and actually funny.\n\n"
-			f"{prev_briefing_block}"
-			"Note naturally what has changed since the last briefing — surface it as a living update, not a diff.\n\n"
 			"The BRIEFING DRAFT below contains ALL the facts for today's briefing. Your role is as follows:\n"
-			"Begin the response with a compact table of contents — one line listing only the sections that have real content (skip empty or [NO DATA] sections). Format example: '1. Boards  2. Stale  3. Crews  4. Meta  5. Life  6. Calibration'\n"
-			"1. VOICE: Present the data clearly and concisely in Z's voice (warm, direct, no corporate language, no emoji). Prefer bullet points and short lines over full sentences. Headers should be 1-2 words. Avoid connective tissue prose ('As you can see...', 'It is worth noting that...'). Get to the point.\n"
-			f"2. KANBAN ANALYST: Add up to {max_obs} observations about board health — stale cards, stuck items, WIP violations, boards with nothing active, pull signals.\n"
-			"3. PROACTIVE THINKER: For 1-2 boards or projects, add a brief 'meta' question or path that sparks strategic thinking. Examples of the right tone:\n"
-			"   - 'The [BoardName] board has been in-progress for 3 weeks — is this an MVP or an exploration? Naming it would help.'\n"
-			"   - 'You have 3 separate [ProjectName] cards across different boards — should those become one focused sprint?'\n"
-			"   - 'The [BoardName] board has nothing in progress — is that intentional recovery time, or has momentum stalled?'\n"
-			"   These questions must be specific to the actual board data — provocative but not anxious — and brief (1 sentence each).\n"
-			"4. CREWS: You MUST include a dedicated 'Crews' section in the final briefing. List every crew present in the CREW REASONING section of the draft (e.g. Scrum, Focus, Kids, Chef, Fitness, etc.). For each crew, summarize their 'Daily Insight' and 'Detailed Log/Context' in Z's voice. If a crew has an elaborate weekly cadence (e.g. nutrition meal plans or training schedules in their detailed log), provide an elaborate summary of their feedback, meal ideas, or fitness plans. Focus on their contradiction warnings, risks, and strategic guidance. For the 'life (private reflection)' crew output: if present, summarize its reflection as a warm, grounded 1-2 sentence note in the dedicated 'Life' section of the briefing instead of the 'Crews' section. Do not skip any crew.\n"
+			"Begin the response with a compact table of contents — one line listing only the sections that have real content (skip empty or [NO DATA] sections). Format example: '1. Boards  2. Stale  3. Meta  4. Calibration'\n"
+			"1. VOICE: Present the data clearly and concisely in Z's voice (warm, direct, no corporate language, no emoji). Prefer bullet points and short lines over full sentences. Headers should be 1-2 words. Get to the point.\n"
+			f"2. KANBAN ANALYST: Add up to {max_obs} observations about board health — stale cards, stuck items, WIP violations, boards with nothing active.\n"
+			"3. PROACTIVE THINKER: For 1-2 boards or projects, add a brief meta question that sparks strategic thinking. Must reference specific card names from the data.\n"
+			f"{_crew_prompt_block}"
 			"5. End with 'Irgendwas Neues fuer heute?' (or equivalent in the user's language)\n\n"
-			"DO NOT invent board names, card titles, or project names. Only reference what appears in the skeleton data.\n"
-			"DO NOT make meta questions generic — they must reference specific card names or board states from the data.\n"
-			"DO NOT add any information not present in the BRIEFING DRAFT.\n"
-			"DO NOT invent events, cards, emails, people, or project names.\n"
-			"DO NOT add suggestions, meal ideas, or fitness plans unless they appear in the Crew boards or CREW REASONING sections.\n"
-			"DO NOT append any fictional status notes, parenthetical remarks, or hypothetical scenarios to the tasks or crew outputs (e.g., do not add landlord status, or invent what the user will eat if shopping is incomplete). Only report tasks and observations exactly as represented in the data.\n"
-			"If a section is absent from the draft, it does not exist today — do not mention it.\n"
+			"=== HARD RULES (violation = failure) ===\n"
+			"- STRICT LENGTH: Target 150-250 words. Over 400 words is a hard failure. If the skeleton has few active items, a 100-word briefing is ideal.\n"
+			"- DO NOT invent board names, card titles, or project names. Only reference what appears in the skeleton.\n"
+			"- DO NOT add parenthetical status annotations to card names (e.g. '(verschoben von gestern?)', '(HRV im Stressbereich)', '(Vermieter wartet)'). Report card names EXACTLY as written in the skeleton — verbatim, no additions.\n"
+			"- DO NOT merge separate cards into one entry (e.g. do not combine 'edible machen' and 'Intel Depth camera' into one line).\n"
+			"- DO NOT invent shopping lists, ingredient lists, meal plans, biometric data (HRV, heart rate, sleep hours), or exercise routines unless they appear VERBATIM in the CREW REASONING section.\n"
+			"- DO NOT add any information not present in the BRIEFING DRAFT.\n"
+			"- DO NOT invent events, cards, emails, people, or project names.\n"
+			"- If a section is absent from the draft, it does not exist today — do not mention it. Do NOT generate content for empty sections.\n"
+			"- Cards from different boards/projects must stay in their respective sections. Do not cross-attribute cards.\n"
 			"You may emit action tags silently (they are stripped before delivery): "
 			"[ACTION: MOVE_CARD | CARD: <fragment> | LIST: <list>], [ACTION: MARK_DONE | CARD: <fragment>], [ACTION: LEARN | TEXT: <fact>]. "
 			"Only for cards/boards named verbatim in the draft.\n\n"
-			"RECENCY NOTE: Items in 'Recent changes' are the highest priority for observations. Stale items are second priority. Board walkthrough gives the full picture.\n\n"
 			f"BRIEFING DRAFT:\n{skeleton}\n\n"
-			f"Write the final briefing now, in {user_language}. Write only as much as the data warrants. If activity is light, a short focused briefing is better than a padded one. If there is a lot happening, up to ~500 words is fine. Never pad. Never repeat information already in the skeleton headers."
+			f"Write the final briefing now, in {user_language}. Write only as much as the data warrants."
 		)
 
 		# 3. Generate Briefing — cloud tier with 600s hard timeout, retry on failure
