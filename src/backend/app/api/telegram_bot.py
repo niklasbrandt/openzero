@@ -923,6 +923,19 @@ async def handle_checkin_callback(update: Update, context: ContextTypes.DEFAULT_
 		)
 		return
 
+	if data == "checkin_okay":
+		session = get_session(channel, chat_id)
+		if not session:
+			await query.answer("Keine aktive Sitzung.")
+			return
+		await query.answer("Bestätigt.")
+		# Process simulated confirmation text
+		from app.services.translations import get_user_lang
+		lang = await get_user_lang()
+		simulated_text = "Okay, mach das" if lang == "de" else "Okay, do it"
+		await _process_freetext(update, context, chat_id, simulated_text, is_followup=True)
+		return
+
 
 async def _deliver_checkin_stop(bot, chat_id: int, session, t: dict) -> None:
 	"""Send text + optional voice for the current check-in stop, with nav buttons."""
@@ -952,6 +965,18 @@ async def _deliver_checkin_stop(bot, chat_id: int, session, t: dict) -> None:
 			f"◀ {t.get('checkin_btn_prev', 'Previous')}",
 			callback_data="checkin_prev",
 		))
+
+	if stop.board_id:
+		from app.config import settings
+		nav_row.append(InlineKeyboardButton(
+			f"🔗 {t.get('checkin_btn_goto', 'Go to')}",
+			url=f"{settings.BASE_URL}/boards/{stop.board_id}",
+		))
+		nav_row.append(InlineKeyboardButton(
+			f"👌 {t.get('checkin_btn_okay', 'Okay')}",
+			callback_data="checkin_okay",
+		))
+
 	if not session.is_last:
 		nav_row.append(InlineKeyboardButton(
 			f"{t.get('checkin_btn_next', 'Next')} ▶",
@@ -1420,7 +1445,7 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 				_panel_html_cache = _html_block
 				if thinking_msg is None:
 					# First status update — send the actual message now
-					if is_followup:
+					if is_followup or not update.message:
 						thinking_msg = await context.bot.send_message(
 							chat_id=chat_id,
 							text=_html_block,
@@ -1572,7 +1597,7 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 			_nav = get_nav_footer(t)
 			if _nav:
 				display_reply += f"\n\n{_nav}"
-			if is_followup:
+			if is_followup or not update.message:
 				try:
 					await context.bot.send_message(chat_id=chat_id, text=display_reply, parse_mode="HTML", reply_markup=checkin_markup)
 				except Exception as _pe:

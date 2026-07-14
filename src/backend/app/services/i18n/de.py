@@ -400,6 +400,8 @@ translations: dict[str, str] = {
 	"checkin_btn_next": "Weiter",
 	"checkin_btn_prev": "Zurück",
 	"checkin_btn_done": "Fertig",
+	"checkin_btn_goto": "Öffnen",
+	"checkin_btn_okay": "Okay",
 	"checkin_done_msg": "Check-in abgeschlossen. Bring jetzt etwas in Bewegung.",
 	"checkin_no_session": "Keine aktive Check-in-Sitzung. Starte mit /day.",
 	"checkin_voice_caption": "Check-in Audio",
