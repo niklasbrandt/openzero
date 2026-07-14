@@ -901,6 +901,13 @@ async def handle_checkin_callback(update: Update, context: ContextTypes.DEFAULT_
 		return
 
 	if data == "checkin_done":
+		session = get_session(channel, chat_id)
+		if session and hasattr(session, "last_msg_ids") and session.last_msg_ids:
+			for mid in session.last_msg_ids:
+				try:
+					await context.bot.delete_message(chat_id=chat_id, message_id=mid)
+				except Exception:
+					pass
 		close_session(channel, chat_id)
 		await context.bot.send_message(
 			chat_id=chat_id,
@@ -913,6 +920,17 @@ async def handle_checkin_callback(update: Update, context: ContextTypes.DEFAULT_
 async def _deliver_checkin_stop(bot, chat_id: int, session, t: dict) -> None:
 	"""Send text + optional voice for the current check-in stop, with nav buttons."""
 	from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+
+	# Delete previous messages if they exist to keep the chat clean
+	if hasattr(session, "last_msg_ids") and session.last_msg_ids:
+		for mid in session.last_msg_ids:
+			try:
+				await bot.delete_message(chat_id=chat_id, message_id=mid)
+			except Exception:
+				pass
+		session.last_msg_ids.clear()
+	else:
+		session.last_msg_ids = []
 
 	stop = session.current
 	step_label = t.get("checkin_step_label", "Step {index} of {total}").format(
@@ -941,12 +959,13 @@ async def _deliver_checkin_stop(bot, chat_id: int, session, t: dict) -> None:
 	markup = InlineKeyboardMarkup([nav_row])
 	text = f"<b>{stop.title}</b>  <i>{step_label}</i>\n\n{_md_to_html(stop.body)}"
 
-	await bot.send_message(
+	msg = await bot.send_message(
 		chat_id=chat_id,
 		text=f"<blockquote>{text}</blockquote>",
 		parse_mode="HTML",
 		reply_markup=markup,
 	)
+	session.last_msg_ids.append(msg.message_id)
 
 	# Send voice if pre-compiled audio is ready
 	if stop.audio:
@@ -955,12 +974,13 @@ async def _deliver_checkin_stop(bot, chat_id: int, session, t: dict) -> None:
 		voice_file.name = "checkin.mp3"
 		caption_text = t.get("checkin_voice_caption", "Check-in audio")
 		try:
-			await bot.send_voice(
+			v_msg = await bot.send_voice(
 				chat_id=chat_id,
 				voice=voice_file,
 				caption=f"<blockquote>{_md_to_html(caption_text)}</blockquote>",
 				parse_mode="HTML",
 			)
+			session.last_msg_ids.append(v_msg.message_id)
 		except Exception as exc:
 			logger.debug("check-in voice send failed: %s", exc)
 

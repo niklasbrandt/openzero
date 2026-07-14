@@ -49,6 +49,7 @@ class CheckinSession:
 	key: str                        # "{channel}:{chat_id}"
 	stops: list[CheckinStop]
 	index: int = 0                  # active stop index
+	last_msg_ids: list[int] = field(default_factory=list) # IDs of messages sent for the current stop
 
 	@property
 	def current(self) -> CheckinStop:
@@ -174,10 +175,7 @@ async def _fetch_boards_raw() -> list[dict]:
 					list_name = list_map.get(card.get("listId", ""), "?")
 					active_cards.append((ts, card.get("name") or "?", list_name))
 
-				if not active_cards:
-					continue
-
-				last_updated = max(ts for ts, _, _ in active_cards)
+				last_updated = max(ts for ts, _, _ in active_cards) if active_cards else _epoch
 				boards.append({
 					"project": proj_name,
 					"name": board_name,
@@ -187,51 +185,58 @@ async def _fetch_boards_raw() -> list[dict]:
 	except Exception as exc:
 		logger.warning("_fetch_boards_raw failed: %s", exc)
 
-	# Sort by most-recently-updated first
+	# Sort by last active (most recent first), but empty/unused boards go to the bottom
 	boards.sort(key=lambda b: b["last_updated"], reverse=True)
 	return boards
 
 
-def _build_sorted_board_context(boards_raw: list[dict], budget: int = 4000) -> str:
+def _build_sorted_board_context(boards_raw: list[dict], budget: int = 5000) -> str:
 	"""Build a LLM-ready board context string.
 
-	Boards are in recency order (most recently updated first).
-	Each board gets a proportional share of the budget; if the total would exceed
-	`budget` chars, boards at the end of the list (oldest) are dropped first.
-	A footer line notes any omitted boards so the LLM knows they exist but were dropped.
+	Ensures the LLM sees the absolute master list of all boards first, then prints details in recency order.
+	If budget is exceeded, card details are truncated but board headers remain.
 	"""
-	from datetime import datetime, timezone
+	from datetime import datetime
 
 	if not boards_raw:
-		return "(no active boards)"
+		return "(no boards found)"
+
+	master_list = [f"{b['project']} / {b['name']}" for b in boards_raw]
+	header_block = "MASTER BOARD LIST (Must generate a stop for each of these):\n" + "\n".join(f"- {m}" for m in master_list)
 
 	lines_per_board: list[str] = []
 	for b in boards_raw:
-		days_ago = (datetime.utcnow() - b["last_updated"]).days
-		age_label = f"{days_ago}d ago" if days_ago > 0 else "today"
+		if b["last_updated"] == datetime(1970, 1, 1):
+			age_label = "no active cards/never active"
+		else:
+			days_ago = (datetime.utcnow() - b["last_updated"]).days
+			age_label = f"{days_ago}d ago" if days_ago > 0 else "today"
+
 		header = f"[{b['project']} / {b['name']}] (last active: {age_label})"
-		card_lines = [
-			f"  - {name} ({lst})"
-			for _, name, lst in sorted(b["cards"], key=lambda x: x[0], reverse=True)[:20]
-		]
+		if not b["cards"]:
+			card_lines = ["  (no active cards / only finished or empty lists)"]
+		else:
+			card_lines = [
+				f"  - {name} ({lst})"
+				for _, name, lst in sorted(b["cards"], key=lambda x: x[0], reverse=True)[:15]
+			]
 		lines_per_board.append("\n".join([header] + card_lines))
 
-	# Greedily include boards front-to-back; drop from the tail
-	included: list[str] = []
-	used = 0
-	omitted: list[str] = []
-	for i, block in enumerate(lines_per_board):
-		cost = len(block) + 2  # +2 for separator
+	# Include header block, then fit board details as much as possible
+	result_parts = [header_block, "\nBOARD DETAILS:"]
+	used = len(header_block) + 20
+	for block in lines_per_board:
+		cost = len(block) + 2
 		if used + cost > budget:
-			omitted = [b["name"] for b in boards_raw[i:]]
-			break
-		included.append(block)
-		used += cost
+			# Just append the header without card details to save budget
+			header_only = block.split("\n")[0] + "\n  (details truncated due to context size)"
+			result_parts.append(header_only)
+			used += len(header_only) + 2
+		else:
+			result_parts.append(block)
+			used += cost
 
-	result = "\n\n".join(included)
-	if omitted:
-		result += f"\n\n(Boards omitted — no recent changes: {', '.join(omitted)})"
-	return result
+	return "\n\n".join(result_parts)
 
 
 async def _gather_day_data() -> dict:
@@ -293,7 +298,7 @@ async def _build_stops(data: dict) -> list[CheckinStop]:
 	_LANG_NAMES = {"de": "German (Deutsch)", "en": "English", "fr": "French", "es": "Spanish", "it": "Italian"}
 	_lang_code = data.get("lang", "en")
 	_lang_name = _LANG_NAMES.get(_lang_code, _lang_code)
-	_board_ctx = _build_sorted_board_context(data.get("boards_raw", []), budget=4000)
+	_board_ctx = _build_sorted_board_context(data.get("boards_raw", []), budget=6000)
 
 	personal_ctx = ""
 	try:
@@ -317,26 +322,25 @@ async def _build_stops(data: dict) -> list[CheckinStop]:
 		'1. id="calibration" — A breathing or grounding exercise (12–20 seconds spoken, calm, physical, present-moment).\n'
 		'2. id="weather"     — Weather + any calendar events for today. Keep it to 2 sentences.\n'
 		'3. id="operator"    — Operator Board todos only. Be specific: name the actual card titles. Max 3 sentences.\n'
-		'4. One stop per BOARD listed in the board data below.\n'
-		'   Boards are already sorted most-recently-active first.\n'
+		'4. One stop per board listed in the MASTER BOARD LIST below. Do not skip any boards.\n'
 		'   Use the exact board name as the title.\n'
-		'   id = lowercase board slug (spaces → underscores).\n'
-		'   Boards listed under "Boards omitted" at the end of the data MUST be skipped entirely.\n'
-		'5. id="outro"       — Brief closing. Name one concrete action for today. End with "Irgendwas Neues heute?".\n\n'
+		'   id = lowercase board slug.\n'
+		'   If a board is empty or has only older cards/conversations, use this stop to ask if they want to check on conversations, update lists, or pick up older threads there.\n'
+		'5. id="meta"        — Overarching meta thoughts, mood, direction, and reminders synthesized from the Personal Context below that are not tied to a specific board.\n'
+		'6. id="outro"       — Brief closing. Name one concrete action for today. End by asking a question (in the target language) about if there is anything new today.\n\n'
 		"Rules:\n"
-		f"- Write every body field in {_lang_name}. Titles may stay in the board's original name.\n"
+		f"- Write every body field in {_lang_name}. Titles must stay in their original board names.\n"
 		"- body must be natural spoken prose, not bullet points.\n"
-		"- Never invent board data. Only reference cards / lists that appear in the data below.\n"
+		"- Never invent board data. Only reference boards, cards, and lists that appear in the data below.\n"
 		"- Keep each body under 60 words.\n"
-		"- If a board has only stale cards, mention that explicitly.\n"
 		"- Output ONLY the JSON array, no other text.\n\n"
 		f"Today's data:\n"
 		f"Weather: {data.get('weather', 'unknown')}\n"
 		f"Calendar:\n{calendar_text}\n"
-		f"Boards (most recently active first):\n{_board_ctx}\n"
+		f"Boards and Projects:\n{_board_ctx}\n"
 		f"Recent board activity (last 4 days):\n{str(data.get('recent_activity', ''))[:2000]}\n"
 		f"Stale cards (no update in 5+ days):\n{str(data.get('stale_cards', ''))[:1500]}\n"
-		f"Personal context:\n{personal_ctx[:600]}\n\n"
+		f"Personal context:\n{personal_ctx[:1000]}\n\n"
 		f"Output language: {_lang_name}\n"
 		"Output JSON array only:"
 	)
