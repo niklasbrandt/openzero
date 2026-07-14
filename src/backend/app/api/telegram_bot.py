@@ -930,7 +930,6 @@ async def handle_checkin_callback(update: Update, context: ContextTypes.DEFAULT_
 			return
 		await query.answer("Bestätigt.")
 		# Process simulated confirmation text
-		from app.services.translations import get_user_lang
 		lang = await get_user_lang()
 		simulated_text = "Okay, mach das" if lang == "de" else "Okay, do it"
 		await _process_freetext(update, context, chat_id, simulated_text, is_followup=True)
