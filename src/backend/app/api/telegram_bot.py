@@ -140,6 +140,7 @@ async def start_telegram_bot():
 	bot_app.add_handler(CallbackQueryHandler(handle_draft_approval, pattern="^draft_"))
 	bot_app.add_handler(CallbackQueryHandler(handle_memories_callback, pattern="^call_memories$"))
 	bot_app.add_handler(CallbackQueryHandler(handle_help_callback, pattern="^call_help$"))
+	bot_app.add_handler(CallbackQueryHandler(handle_checkin_callback, pattern="^checkin_"))
 	bot_app.add_handler(CommandHandler("help", cmd_help))
 	bot_app.add_handler(CommandHandler("commands", cmd_help))
 	bot_app.add_handler(CommandHandler("status", cmd_status))
@@ -814,11 +815,155 @@ async def cmd_quarter(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 @owner_only
 async def cmd_day(update: Update, context: ContextTypes.DEFAULT_TYPE):
-	try:
-		from app.tasks.morning import morning_briefing
-		await morning_briefing()
-	except Exception as e:
-		await safe_reply(update, f"Morning briefing failed: {e}")
+	"""Show choice: Full Briefing or Guided Check-in."""
+	lang = await get_user_lang()
+	t = get_translations(lang)
+	keyboard = InlineKeyboardMarkup([
+		[
+			InlineKeyboardButton(t.get("checkin_btn_full", "Read Full Briefing"), callback_data="checkin_legacy"),
+			InlineKeyboardButton(t.get("checkin_btn_guided", "Start Guided Check-in"), callback_data="checkin_start"),
+		]
+	])
+	await safe_reply(update, t.get("checkin_choose_prompt", "How would you like to start your day?"), reply_markup=keyboard)
+
+
+# ─── Check-in callback handler ─────────────────────────────────────────────────
+
+@owner_only
+async def handle_checkin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+	"""Handle all checkin_* inline button callbacks."""
+	query = update.callback_query
+	await query.answer()
+	data = query.data  # e.g. "checkin_start", "checkin_next", "checkin_done", "checkin_legacy"
+
+	lang = await get_user_lang()
+	t = get_translations(lang)
+	chat_id = update.effective_chat.id
+	channel = "telegram"
+
+	if data == "checkin_legacy":
+		# Full briefing path — run morning_briefing normally
+		await query.edit_message_text(
+			"<blockquote>Generating your full daily briefing...</blockquote>",
+			parse_mode="HTML",
+		)
+		try:
+			from app.tasks.morning import morning_briefing
+			await morning_briefing()
+		except Exception as exc:
+			logger.error("handle_checkin_callback legacy briefing failed: %s", exc)
+		return
+
+	if data == "checkin_start":
+		await query.edit_message_text(
+			f"<blockquote>{t.get('checkin_building', 'Building your check-in. This takes a moment...')}</blockquote>",
+			parse_mode="HTML",
+		)
+		from app.services.checkin import start_session
+		try:
+			session = await start_session(channel, chat_id)
+		except Exception as exc:
+			logger.error("handle_checkin_callback start failed: %s", exc)
+			await context.bot.send_message(
+				chat_id=chat_id,
+				text="<blockquote>Could not build check-in. Try /day again.</blockquote>",
+				parse_mode="HTML",
+			)
+			return
+		await _deliver_checkin_stop(context.bot, chat_id, session, t)
+		return
+
+	# Navigation callbacks
+	from app.services.checkin import get_session, advance_session, retreat_session, close_session
+
+	if data == "checkin_next":
+		session = advance_session(channel, chat_id)
+		if not session:
+			await context.bot.send_message(
+				chat_id=chat_id,
+				text=f"<blockquote>{t.get('checkin_no_session', 'No active check-in. Use /day to start one.')}</blockquote>",
+				parse_mode="HTML",
+			)
+			return
+		await _deliver_checkin_stop(context.bot, chat_id, session, t)
+		return
+
+	if data == "checkin_prev":
+		session = retreat_session(channel, chat_id)
+		if not session:
+			await context.bot.send_message(
+				chat_id=chat_id,
+				text=f"<blockquote>{t.get('checkin_no_session', 'No active check-in. Use /day to start one.')}</blockquote>",
+				parse_mode="HTML",
+			)
+			return
+		await _deliver_checkin_stop(context.bot, chat_id, session, t)
+		return
+
+	if data == "checkin_done":
+		close_session(channel, chat_id)
+		await context.bot.send_message(
+			chat_id=chat_id,
+			text=f"<blockquote>{t.get('checkin_done_msg', 'Check-in complete. Go make something move.')}</blockquote>",
+			parse_mode="HTML",
+		)
+		return
+
+
+async def _deliver_checkin_stop(bot, chat_id: int, session, t: dict) -> None:
+	"""Send text + optional voice for the current check-in stop, with nav buttons."""
+	from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+
+	stop = session.current
+	step_label = t.get("checkin_step_label", "Step {index} of {total}").format(
+		index=session.index + 1,
+		total=session.total,
+	)
+
+	# Build navigation row
+	nav_row = []
+	if not session.is_first:
+		nav_row.append(InlineKeyboardButton(
+			f"◀ {t.get('checkin_btn_prev', 'Previous')}",
+			callback_data="checkin_prev",
+		))
+	if not session.is_last:
+		nav_row.append(InlineKeyboardButton(
+			f"{t.get('checkin_btn_next', 'Next')} ▶",
+			callback_data="checkin_next",
+		))
+	else:
+		nav_row.append(InlineKeyboardButton(
+			f"✅ {t.get('checkin_btn_done', 'Done')}",
+			callback_data="checkin_done",
+		))
+
+	markup = InlineKeyboardMarkup([nav_row])
+	text = f"<b>{stop.title}</b>  <i>{step_label}</i>\n\n{_md_to_html(stop.body)}"
+
+	await bot.send_message(
+		chat_id=chat_id,
+		text=f"<blockquote>{text}</blockquote>",
+		parse_mode="HTML",
+		reply_markup=markup,
+	)
+
+	# Send voice if pre-compiled audio is ready
+	if stop.audio:
+		import io
+		voice_file = io.BytesIO(stop.audio)
+		voice_file.name = "checkin.mp3"
+		caption_text = t.get("checkin_voice_caption", "Check-in audio")
+		try:
+			await bot.send_voice(
+				chat_id=chat_id,
+				voice=voice_file,
+				caption=f"<blockquote>{_md_to_html(caption_text)}</blockquote>",
+				parse_mode="HTML",
+			)
+		except Exception as exc:
+			logger.debug("check-in voice send failed: %s", exc)
+
 
 @owner_only
 async def cmd_year(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -828,6 +973,7 @@ async def cmd_year(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		await safe_reply(update, report)
 	except Exception as e:
 		await safe_reply(update, f"Yearly review failed: {e}")
+
 
 @owner_only
 async def cmd_walk(update: Update, context: ContextTypes.DEFAULT_TYPE):

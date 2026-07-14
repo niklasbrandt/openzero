@@ -393,4 +393,16 @@ translations: dict[str, str] = {
 	"intent_router_rename_project_success": "Project '{project}' renamed to '{new_name}'.",
 	"intent_router_delete_project_not_found": "Could not delete project '{project}' — not found.",
 	"intent_router_delete_project_success": "Project '{project}' deleted.",
+	# ── Check-in flow ──────────────────────────────────────────────────────────
+	"checkin_choose_prompt": "How would you like to start your day?",
+	"checkin_btn_full": "Read Full Briefing",
+	"checkin_btn_guided": "Start Guided Check-in",
+	"checkin_building": "Building your check-in. This takes a moment...",
+	"checkin_step_label": "Step {index} of {total}",
+	"checkin_btn_next": "Next",
+	"checkin_btn_prev": "Previous",
+	"checkin_btn_done": "Done",
+	"checkin_done_msg": "Check-in complete. Go make something move.",
+	"checkin_no_session": "No active check-in session. Use /day to start one.",
+	"checkin_voice_caption": "Check-in audio",
 }

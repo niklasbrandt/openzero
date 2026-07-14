@@ -298,6 +298,56 @@ async def route_message_stream(
 				except Exception as _scb_e:
 					logger.warning("Router: _status callback failed: %s", _scb_e)
 
+		# ── 0: Active check-in session navigation intercept ───────────────────
+		# Intercepts navigation words ("next", "weiter", "back", "done"…) when
+		# an interactive guided check-in session is in progress.  Must run before
+		# every other intercept so that freetext navigation never reaches the LLM.
+		_CHECKIN_NEXT_RE = re.compile(
+			r'^(?:next|weiter|vor|forward)\s*[!.]?$', re.IGNORECASE
+		)
+		_CHECKIN_PREV_RE = re.compile(
+			r'^(?:back|prev(?:ious)?|zur[uü]ck|previous)\s*[!.]?$', re.IGNORECASE
+		)
+		_CHECKIN_DONE_RE = re.compile(
+			r'^(?:done|fertig|finish|end|close|finish)\s*[!.]?$', re.IGNORECASE
+		)
+		_trimmed_ci = user_text.strip()
+		_ci_is_nav = (
+			_CHECKIN_NEXT_RE.match(_trimmed_ci[:64])
+			or _CHECKIN_PREV_RE.match(_trimmed_ci[:64])
+			or _CHECKIN_DONE_RE.match(_trimmed_ci[:64])
+		)
+		if _ci_is_nav:
+			from app.services.checkin import (
+				get_any_session_for_channel as _ci_get,
+				advance_session as _ci_adv,
+				retreat_session as _ci_ret,
+				close_any_session_for_channel as _ci_close,
+			)
+			_ci_session = _ci_get(channel)
+			if _ci_session:
+				from app.services.translations import get_translations as _ci_t
+				_ci_tr = _ci_t(lang)
+				_ci_key_parts = _ci_session.key.split(":", 1)
+				_ci_chat_id = _ci_key_parts[1] if len(_ci_key_parts) > 1 else channel
+				if _CHECKIN_DONE_RE.match(_trimmed_ci[:64]):
+					_ci_close(channel)
+					_ci_msg = _ci_tr.get("checkin_done_msg", "Check-in complete.")
+					yield _ci_msg
+					return
+				elif _CHECKIN_NEXT_RE.match(_trimmed_ci[:64]):
+					_ci_session = _ci_adv(channel, _ci_chat_id)
+				else:
+					_ci_session = _ci_ret(channel, _ci_chat_id)
+				if _ci_session:
+					_ci_stop = _ci_session.current
+					_ci_label = _ci_tr.get("checkin_step_label", "Step {index} of {total}").format(
+						index=_ci_session.index + 1, total=_ci_session.total
+					)
+					yield f"**{_ci_stop.title}** — {_ci_label}\n\n{_ci_stop.body}"
+					return
+
+
 		# ── 9e: Empty-board setup confirmation intercept ───────────────────────
 		# Must run before step 0.0 so "yes" / "ja" / "ok" replies are caught here
 		# first when a pending empty-board setup is awaiting one-shot HITL confirmation.
@@ -305,6 +355,7 @@ async def route_message_stream(
 			r'^(?:yes|ja|yeah|yep|ok|okay|sure|confirm|go\s+ahead|do\s+it|mach\s+es)\s*[!.]?$',
 			re.IGNORECASE,
 		)
+
 		_trimmed_9e = user_text.strip()
 		if _YES_CONFIRM_RE.match(_trimmed_9e[:_MAX_RE_INPUT]):
 			_pending_9e = _EMPTY_BOARD_PENDING.pop(channel, None)
