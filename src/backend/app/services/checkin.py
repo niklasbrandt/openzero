@@ -106,11 +106,139 @@ def close_any_session_for_channel(channel: str) -> None:
 
 # ─── Data helpers ─────────────────────────────────────────────────────────────
 
+async def _fetch_boards_raw() -> list[dict]:
+	"""Fetch all boards with their cards and per-card timestamps from Planka.
+
+	Returns a list of dicts:
+	  {"name": str, "project": str, "last_updated": datetime, "cards": [str, ...]}
+	sorted by last_updated descending (most recent first).
+	"""
+	from app.services.planka import get_planka_auth_token, _is_done_list
+	from app.config import settings
+	import httpx
+	from datetime import datetime
+
+	boards: list[dict] = []
+	try:
+		token = await get_planka_auth_token()
+		headers = {"Authorization": f"Bearer {token}"}
+		async with httpx.AsyncClient(
+			base_url=settings.PLANKA_BASE_URL, timeout=20.0, headers=headers
+		) as client:
+			resp = await client.get("/api/projects")
+			projects = resp.json().get("items", [])
+
+			# Fetch project details in parallel to get board lists
+			project_resps = await asyncio.gather(
+				*[client.get(f"/api/projects/{p['id']}") for p in projects],
+				return_exceptions=True,
+			)
+
+			# Collect board stubs
+			board_stubs: list[tuple[str, str, str]] = []  # (project_name, board_name, board_id)
+			for p, p_resp in zip(projects, project_resps):
+				if isinstance(p_resp, BaseException):
+					continue
+				p_data = p_resp.json()
+				for b in p_data.get("included", {}).get("boards", []):
+					board_stubs.append((p["name"], b["name"], b["id"]))
+
+			# Fetch board details in parallel
+			board_resps = await asyncio.gather(
+				*[client.get(f"/api/boards/{bid}", params={"included": "lists,cards"})
+				  for _, _, bid in board_stubs],
+				return_exceptions=True,
+			)
+
+			now = datetime.utcnow()
+			_epoch = datetime(1970, 1, 1)
+
+			for (proj_name, board_name, _), b_resp in zip(board_stubs, board_resps):
+				if isinstance(b_resp, BaseException):
+					continue
+				b_data = b_resp.json()
+				lists = b_data.get("included", {}).get("lists", [])
+				cards = b_data.get("included", {}).get("cards", [])
+				done_ids = {l["id"] for l in lists if _is_done_list(l.get("name", ""))}
+				list_map = {l["id"]: l.get("name", "?") for l in lists}
+
+				active_cards: list[tuple[datetime, str, str]] = []  # (ts, card_name, list_name)
+				for card in cards:
+					if card.get("listId") in done_ids:
+						continue
+					raw_u = card.get("updatedAt") or card.get("createdAt") or ""
+					try:
+						ts = datetime.fromisoformat(raw_u.replace("Z", "")) if raw_u else _epoch
+					except ValueError:
+						ts = _epoch
+					list_name = list_map.get(card.get("listId", ""), "?")
+					active_cards.append((ts, card.get("name") or "?", list_name))
+
+				if not active_cards:
+					continue
+
+				last_updated = max(ts for ts, _, _ in active_cards)
+				boards.append({
+					"project": proj_name,
+					"name": board_name,
+					"last_updated": last_updated,
+					"cards": active_cards,  # list of (ts, name, list_name)
+				})
+	except Exception as exc:
+		logger.warning("_fetch_boards_raw failed: %s", exc)
+
+	# Sort by most-recently-updated first
+	boards.sort(key=lambda b: b["last_updated"], reverse=True)
+	return boards
+
+
+def _build_sorted_board_context(boards_raw: list[dict], budget: int = 4000) -> str:
+	"""Build a LLM-ready board context string.
+
+	Boards are in recency order (most recently updated first).
+	Each board gets a proportional share of the budget; if the total would exceed
+	`budget` chars, boards at the end of the list (oldest) are dropped first.
+	A footer line notes any omitted boards so the LLM knows they exist but were dropped.
+	"""
+	from datetime import datetime, timezone
+
+	if not boards_raw:
+		return "(no active boards)"
+
+	lines_per_board: list[str] = []
+	for b in boards_raw:
+		days_ago = (datetime.utcnow() - b["last_updated"]).days
+		age_label = f"{days_ago}d ago" if days_ago > 0 else "today"
+		header = f"[{b['project']} / {b['name']}] (last active: {age_label})"
+		card_lines = [
+			f"  - {name} ({lst})"
+			for _, name, lst in sorted(b["cards"], key=lambda x: x[0], reverse=True)[:20]
+		]
+		lines_per_board.append("\n".join([header] + card_lines))
+
+	# Greedily include boards front-to-back; drop from the tail
+	included: list[str] = []
+	used = 0
+	omitted: list[str] = []
+	for i, block in enumerate(lines_per_board):
+		cost = len(block) + 2  # +2 for separator
+		if used + cost > budget:
+			omitted = [b["name"] for b in boards_raw[i:]]
+			break
+		included.append(block)
+		used += cost
+
+	result = "\n\n".join(included)
+	if omitted:
+		result += f"\n\n(Boards omitted — no recent changes: {', '.join(omitted)})"
+	return result
+
+
 async def _gather_day_data() -> dict:
 	"""Collect the same raw data used by the morning briefing pipeline."""
 	from app.services.calendar import fetch_calendar_events
 	from app.services.weather import get_weather_forecast
-	from app.services.planka import get_project_tree, get_recent_activity, get_stale_cards
+	from app.services.planka import get_recent_activity, get_stale_cards
 	from app.services.translations import get_user_lang
 
 	async def _safe(coro, fallback=""):
@@ -123,14 +251,14 @@ async def _gather_day_data() -> dict:
 	(
 		calendar_events,
 		weather,
-		tree,
+		boards_raw,
 		recent_activity,
 		stale_cards,
 		lang,
 	) = await asyncio.gather(
 		_safe(fetch_calendar_events(days_ahead=0), []),
 		_safe(get_weather_forecast()),
-		_safe(get_project_tree(as_html=False)),
+		_safe(_fetch_boards_raw(), []),
 		_safe(get_recent_activity(hours=96)),
 		_safe(get_stale_cards(min_days=5)),
 		_safe(get_user_lang(), "en"),
@@ -138,11 +266,12 @@ async def _gather_day_data() -> dict:
 	return {
 		"calendar": calendar_events,
 		"weather": weather,
-		"tree": tree,
+		"boards_raw": boards_raw,
 		"recent_activity": recent_activity,
 		"stale_cards": stale_cards,
 		"lang": lang,
 	}
+
 
 
 # ─── Stop builder ─────────────────────────────────────────────────────────────
@@ -161,6 +290,11 @@ async def _build_stops(data: dict) -> list[CheckinStop]:
 	from app.services.llm import chat
 	from app.services.personal_context import get_personal_context_for_prompt_no_health
 
+	_LANG_NAMES = {"de": "German (Deutsch)", "en": "English", "fr": "French", "es": "Spanish", "it": "Italian"}
+	_lang_code = data.get("lang", "en")
+	_lang_name = _LANG_NAMES.get(_lang_code, _lang_code)
+	_board_ctx = _build_sorted_board_context(data.get("boards_raw", []), budget=4000)
+
 	personal_ctx = ""
 	try:
 		personal_ctx = get_personal_context_for_prompt_no_health()
@@ -175,30 +309,35 @@ async def _build_stops(data: dict) -> list[CheckinStop]:
 	calendar_text = "\n".join(calendar_lines) if calendar_lines else "No events today."
 
 	prompt = (
-		"You are Z, the personal AI companion. Generate a JSON array for today's guided morning check-in.\n\n"
+		f"You are Z, the personal AI companion. Generate a JSON array for today's guided morning check-in.\n"
+		f"CRITICAL: ALL body text in the JSON MUST be written in {_lang_name}. No exceptions.\n\n"
 		"Each item in the array must have exactly these fields:\n"
 		'  {"id": "slug", "title": "Short Title", "body": "1-3 spoken sentences"}\n\n'
 		"Required stop sequence:\n"
 		'1. id="calibration" — A breathing or grounding exercise (12–20 seconds spoken, calm, physical, present-moment).\n'
 		'2. id="weather"     — Weather + any calendar events for today. Keep it to 2 sentences.\n'
-		'3. id="boards"      — Most important / stale items from the boards. Be specific, name cards. Max 3 sentences.\n'
-		'4. One stop per life domain that has data: health, career, family, finance, creative.\n'
-		'   Only include domains that have board cards or activity data.\n'
-		'   id = domain slug (e.g. "health"), title = domain name.\n'
+		'3. id="operator"    — Operator Board todos only. Be specific: name the actual card titles. Max 3 sentences.\n'
+		'4. One stop per BOARD listed in the board data below.\n'
+		'   Boards are already sorted most-recently-active first.\n'
+		'   Use the exact board name as the title.\n'
+		'   id = lowercase board slug (spaces → underscores).\n'
+		'   Boards listed under "Boards omitted" at the end of the data MUST be skipped entirely.\n'
 		'5. id="outro"       — Brief closing. Name one concrete action for today. End with "Irgendwas Neues heute?".\n\n'
 		"Rules:\n"
+		f"- Write every body field in {_lang_name}. Titles may stay in the board's original name.\n"
 		"- body must be natural spoken prose, not bullet points.\n"
-		"- Never invent board data. Only reference cards that appear in the data below.\n"
-		"- Keep each body under 50 words.\n"
+		"- Never invent board data. Only reference cards / lists that appear in the data below.\n"
+		"- Keep each body under 60 words.\n"
+		"- If a board has only stale cards, mention that explicitly.\n"
 		"- Output ONLY the JSON array, no other text.\n\n"
 		f"Today's data:\n"
 		f"Weather: {data.get('weather', 'unknown')}\n"
 		f"Calendar:\n{calendar_text}\n"
-		f"Boards overview:\n{str(data.get('tree', ''))[:1000]}\n"
-		f"Recent activity (last 4 days):\n{str(data.get('recent_activity', ''))[:800]}\n"
-		f"Stale cards:\n{str(data.get('stale_cards', ''))[:600]}\n"
+		f"Boards (most recently active first):\n{_board_ctx}\n"
+		f"Recent board activity (last 4 days):\n{str(data.get('recent_activity', ''))[:2000]}\n"
+		f"Stale cards (no update in 5+ days):\n{str(data.get('stale_cards', ''))[:1500]}\n"
 		f"Personal context:\n{personal_ctx[:600]}\n\n"
-		f"Language for body text: {data.get('lang', 'en')}\n"
+		f"Output language: {_lang_name}\n"
 		"Output JSON array only:"
 	)
 
@@ -228,9 +367,8 @@ async def _build_stops(data: dict) -> list[CheckinStop]:
 
 # ─── TTS pre-compilation ──────────────────────────────────────────────────────
 
-async def _compile_audio(stops: list[CheckinStop]) -> None:
+async def _compile_audio(stops: list[CheckinStop], lang: str = "en") -> None:
 	"""Generate slow TTS audio for each stop in place (fire-and-forget friendly)."""
-	from app.services.tts import generate_speech
 	from app.config import settings
 
 	if not getattr(settings, "TTS_BASE_URL", None):
@@ -240,14 +378,18 @@ async def _compile_audio(stops: list[CheckinStop]) -> None:
 		try:
 			import httpx
 			url = f"{settings.TTS_BASE_URL}/v1/audio/speech"
-			data = {
+			payload: dict = {
 				"model": "tts-1",
 				"input": stop.body,
 				"voice": "alloy",
-				"speed": 0.80,   # Slower than default (0.85) for meditative pacing
+				"speed": 0.80,
 			}
+			# Pass language hint — OpenAI API ignores it; local servers (kokoro,
+			# xtts) use it to select the correct pronunciation model.
+			if lang and lang != "en":
+				payload["language"] = lang
 			async with httpx.AsyncClient(timeout=60.0) as client:
-				resp = await client.post(url, json=data)
+				resp = await client.post(url, json=payload)
 				if resp.status_code == 200:
 					stop.audio = resp.content
 		except Exception as exc:
@@ -274,7 +416,8 @@ async def start_session(
 
 	if compile_audio:
 		# Fire audio compilation in background; Telegram can display text immediately
-		task = asyncio.create_task(_compile_audio(stops))
+		_lang = data.get("lang", "en")
+		task = asyncio.create_task(_compile_audio(stops, lang=_lang))
 		# Keep a strong reference so GC doesn't collect it
 		_audio_tasks.add(task)
 		task.add_done_callback(_audio_tasks.discard)
