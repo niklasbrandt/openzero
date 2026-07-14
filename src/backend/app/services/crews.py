@@ -3,7 +3,7 @@ import json as _json
 import logging
 import re
 from pathlib import Path
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Union
 import yaml
 from pydantic import BaseModel
 
@@ -108,8 +108,8 @@ class CrewConfig(BaseModel):
 	feeds_briefing: Optional[str] = None
 	schedule: Optional[str] = None
 	briefing_day: Optional[str] = None
-	briefing_dom: Optional[str] = None
-	briefing_months: Optional[str] = None
+	briefing_dom: Optional[Union[str, int]] = None
+	briefing_months: Optional[Union[str, int]] = None
 	lead_time: Optional[int] = None
 	health_context: bool = False  # If True, health.md is included in the injected personal context
 	routing_disabled: bool = False  # If True, crew is excluded from semantic routing (scheduled-only crews)
