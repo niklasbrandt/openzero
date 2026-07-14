@@ -300,7 +300,7 @@ _JSON_STRIP_RE = re.compile(r'^```(?:json)?\s*|\s*```$', re.MULTILINE)
 
 
 async def _build_stops(data: dict) -> list[CheckinStop]:
-	"""Ask the LLM to produce a JSON array of check-in stops from today's data."""
+	"""Ask the LLM to produce a JSON object of check-in stop bodies from today's data."""
 	from app.services.llm import chat
 	from app.services.personal_context import get_personal_context_for_prompt_no_health
 
@@ -322,28 +322,53 @@ async def _build_stops(data: dict) -> list[CheckinStop]:
 		calendar_lines.append(f"- {time_str} {ev.get('summary', '')}".strip())
 	calendar_text = "\n".join(calendar_lines) if calendar_lines else "No events today."
 
+	# 1. Programmatically define all stops to ensure NO boards are skipped
+	stops: list[CheckinStop] = []
+	stops.append(CheckinStop(id="calibration", title="Calibration", body=""))
+	stops.append(CheckinStop(id="weather", title="Weather & Calendar", body=""))
+	stops.append(CheckinStop(id="operator", title="Operator Board", body=""))
+
+	board_slug_map = {}
+	for b in data.get("boards_raw", []):
+		name = b["name"]
+		# Exclude Scrum and Focus stops as requested (handled in Meta/outro or standalone)
+		if name.lower() in ["scrum", "focus"]:
+			continue
+		slug = name.lower().replace(" ", "-").replace("/", "-")
+		
+		# Ensure unique slug
+		orig_slug = slug
+		counter = 1
+		while any(s.id == slug for s in stops):
+			slug = f"{orig_slug}-{counter}"
+			counter += 1
+			
+		board_slug_map[slug] = name
+		stops.append(CheckinStop(id=slug, title=name, body=""))
+
+	stops.append(CheckinStop(id="meta", title="Meta Thoughts", body=""))
+	stops.append(CheckinStop(id="outro", title="Checkout", body=""))
+
+	# Expected JSON keys list
+	expected_keys = [s.id for s in stops]
+
 	prompt = (
-		f"You are Z, the personal AI companion. Generate a JSON array for today's guided morning check-in.\n"
-		f"CRITICAL: ALL body text in the JSON MUST be written in {_lang_name}. No exceptions.\n\n"
-		"Each item in the array must have exactly these fields:\n"
-		'  {"id": "slug", "title": "Short Title", "body": "1-3 spoken sentences"}\n\n'
-		"Required stop sequence:\n"
-		'1. id="calibration" — A breathing or grounding exercise (12–20 seconds spoken, calm, physical, present-moment).\n'
-		'2. id="weather"     — Weather + any calendar events for today. Keep it to 2 sentences.\n'
-		'3. id="operator"    — Operator Board todos only. Be specific: name the actual card titles. Max 3 sentences.\n'
-		'4. One stop per board listed in the MASTER BOARD LIST below. Do not skip any boards.\n'
-		'   Use the exact board name as the title.\n'
-		'   id = lowercase board slug.\n'
-		'   If a board has no active cards, look at the "Recent board activity" block below to see what topics or conversations were recently updated or discussed in this board/domain, and explicitly summarize those topics. Acknowledge and state what was worked on. If there is no activity either, suggest defining next steps or ask if it should remain dormant.\n'
-		'5. id="meta"        — Overarching meta thoughts, mood, direction, and reminders synthesized from the Personal Context below that are not tied to a specific board.\n'
-		'   Do NOT parrot system architecture goals like "privacy-first" or "builder mindset" unless they are explicitly listed in the Operator Board today.\n'
-		'6. id="outro"       — Brief closing. Name one concrete action for today. End by asking a question (in the target language) about if there is anything new today.\n\n'
+		f"You are Z, the personal AI companion. Generate the spoken text for today's guided morning check-in.\n"
+		f"CRITICAL: ALL values in the JSON MUST be written in {_lang_name}. No exceptions.\n\n"
+		f"You MUST return a JSON object containing exactly the following keys, with the spoken text as string values. Do not omit any keys:\n"
+		f"{json.dumps(expected_keys)}\n\n"
+		"Key Descriptions:\n"
+		"- 'calibration': A breathing or grounding exercise (12–20 seconds spoken, calm, physical, present-moment).\n"
+		"- 'weather': Weather + any calendar events for today. Keep it to 2 sentences.\n"
+		"- 'operator': Operator Board todos only. Be specific: name the actual card titles. Max 3 sentences.\n"
+		"- Board slugs (e.g. 'appearance', 'clothing-brand'): Look at the board's active cards or recent activity logs.\n"
+		"  Summarize active tasks or recent updates. If a board has no active cards/activity, ask if they want to add new focus areas or leave it dormant.\n"
+		"- 'meta': Overarching meta thoughts, mood, direction, synthesized from Personal Context below. Do not parrot system goals.\n"
+		"- 'outro': Brief closing. Name one concrete action. End with a question (in the target language) about if there is anything new today.\n\n"
 		"Rules:\n"
-		f"- Write every body field in {_lang_name}. Titles must stay in their original board names.\n"
-		"- body must be natural spoken prose, not bullet points.\n"
-		"- Never invent board data. Only reference boards, cards, lists, and activity logs that appear in the data below. Look at the recent activity log to find real topics discussed recently.\n"
-		"- Write 2-4 sentences for each body. Feel free to elaborate, synthesize context, and be proactive in suggesting next steps based on the card descriptions.\n"
-		"- Output ONLY the JSON array, no other text.\n\n"
+		f"- Write every value in {_lang_name}.\n"
+		"- Keep each value short (1-2 natural spoken sentences, max 40 words per key) so the overall check-in is efficient and does not get cut off.\n"
+		"- Output ONLY the JSON object, no markdown, no wrapping other than valid JSON.\n\n"
 		f"Today's data:\n"
 		f"Weather: {data.get('weather', 'unknown')}\n"
 		f"Calendar:\n{calendar_text}\n"
@@ -352,7 +377,7 @@ async def _build_stops(data: dict) -> list[CheckinStop]:
 		f"Stale cards (no update in 5+ days):\n{str(data.get('stale_cards', ''))[:1500]}\n"
 		f"Personal context:\n{personal_ctx[:1000]}\n\n"
 		f"Output language: {_lang_name}\n"
-		"Output JSON array only:"
+		"Output JSON object only:"
 	)
 
 	try:
@@ -360,22 +385,33 @@ async def _build_stops(data: dict) -> list[CheckinStop]:
 			chat(prompt, tier="cloud", _feature="checkin_build", include_health=False),
 			timeout=90.0,
 		)
-		# Strip markdown fences if present
 		cleaned = _JSON_STRIP_RE.sub("", raw).strip()
 		parsed = json.loads(cleaned)
-		stops = []
-		for item in parsed:
-			if isinstance(item, dict) and "id" in item and "body" in item:
-				stops.append(CheckinStop(
-					id=str(item["id"]),
-					title=str(item.get("title", item["id"].title())),
-					body=str(item["body"]),
-				))
-		if stops:
-			return stops
+		
+		# Map the parsed text back to our programmatic stops
+		for s in stops:
+			if s.id in parsed and parsed[s.id]:
+				s.body = str(parsed[s.id])
+			else:
+				# A fallback body message in the target language if the key was skipped
+				if _lang_code == "de":
+					s.body = f"Lass uns über {s.title} sprechen. Gibt es hier neue Entwicklungen oder nächste Schritte?"
+				else:
+					s.body = f"Let's check in on {s.title}. Are there any new updates or next steps you want to define?"
+					
+		return stops
 	except Exception as exc:
 		logger.warning("checkin: stop builder LLM failed (%s), using fallback stops", exc)
 
+	# Basic fallback
+	for s in _FALLBACK_STOPS:
+		if _lang_code == "de":
+			if s.id == "calibration":
+				s.body = "Atme langsam ein und aus. Du bist hier."
+			elif s.id == "review":
+				s.body = "Hier ist dein Tagesüberblick. Lass uns deine Boards durchgehen."
+			elif s.id == "outro":
+				s.body = "Das ist dein Check-in. Bring heute eine Sache in Bewegung. Irgendwas Neues?"
 	return _FALLBACK_STOPS
 
 
