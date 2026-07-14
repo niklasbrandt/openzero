@@ -163,7 +163,7 @@ async def _fetch_boards_raw() -> list[dict]:
 				done_ids = {l["id"] for l in lists if _is_done_list(l.get("name", ""))}
 				list_map = {l["id"]: l.get("name", "?") for l in lists}
 
-				active_cards: list[tuple[datetime, str, str]] = []  # (ts, card_name, list_name)
+				active_cards: list[tuple[datetime, str, str, str]] = []  # (ts, card_name, list_name, desc)
 				for card in cards:
 					if card.get("listId") in done_ids:
 						continue
@@ -173,7 +173,10 @@ async def _fetch_boards_raw() -> list[dict]:
 					except ValueError:
 						ts = _epoch
 					list_name = list_map.get(card.get("listId", ""), "?")
-					active_cards.append((ts, card.get("name") or "?", list_name))
+					desc = card.get("description") or ""
+					if len(desc) > 100:
+						desc = desc[:97] + "..."
+					active_cards.append((ts, card.get("name") or "?", list_name, desc))
 
 				last_updated = max(ts for ts, _, _ in active_cards) if active_cards else _epoch
 				boards.append({
@@ -187,7 +190,7 @@ async def _fetch_boards_raw() -> list[dict]:
 
 	# Sort by last active (most recent first), but empty/unused boards go to the bottom
 	boards.sort(key=lambda b: b["last_updated"], reverse=True)
-	return boards
+	return boards[:8]
 
 
 def _build_sorted_board_context(boards_raw: list[dict], budget: int = 5000) -> str:
@@ -201,7 +204,13 @@ def _build_sorted_board_context(boards_raw: list[dict], budget: int = 5000) -> s
 	if not boards_raw:
 		return "(no boards found)"
 
-	master_list = [f"{b['project']} / {b['name']}" for b in boards_raw]
+	master_list = []
+	for b in boards_raw:
+		# Exclude Scrum and Focus from explicit stop list, but keep context for Meta Thoughts
+		if b['name'].lower() in ["scrum", "focus"]:
+			continue
+		master_list.append(f"{b['project']} / {b['name']}")
+		
 	header_block = "MASTER BOARD LIST (Must generate a stop for each of these):\n" + "\n".join(f"- {m}" for m in master_list)
 
 	lines_per_board: list[str] = []
@@ -216,10 +225,10 @@ def _build_sorted_board_context(boards_raw: list[dict], budget: int = 5000) -> s
 		if not b["cards"]:
 			card_lines = ["  (no active cards / only finished or empty lists)"]
 		else:
-			card_lines = [
-				f"  - {name} ({lst})"
-				for _, name, lst in sorted(b["cards"], key=lambda x: x[0], reverse=True)[:15]
-			]
+			card_lines = []
+			for _, name, lst, desc in sorted(b["cards"], key=lambda x: x[0], reverse=True)[:15]:
+				desc_str = f" - {desc}" if desc else ""
+				card_lines.append(f"  - {name} ({lst}){desc_str}")
 		lines_per_board.append("\n".join([header] + card_lines))
 
 	# Include header block, then fit board details as much as possible
@@ -325,14 +334,15 @@ async def _build_stops(data: dict) -> list[CheckinStop]:
 		'4. One stop per board listed in the MASTER BOARD LIST below. Do not skip any boards.\n'
 		'   Use the exact board name as the title.\n'
 		'   id = lowercase board slug.\n'
-		'   If a board is empty or has only older cards/conversations, use this stop to ask if they want to check on conversations, update lists, or pick up older threads there.\n'
+		'   If a board has no active cards, look at the "Recent board activity" block below to see what topics or conversations were recently updated or discussed in this board/domain, and explicitly summarize those topics. Acknowledge and state what was worked on. If there is no activity either, suggest defining next steps or ask if it should remain dormant.\n'
 		'5. id="meta"        — Overarching meta thoughts, mood, direction, and reminders synthesized from the Personal Context below that are not tied to a specific board.\n'
+		'   Do NOT parrot system architecture goals like "privacy-first" or "builder mindset" unless they are explicitly listed in the Operator Board today.\n'
 		'6. id="outro"       — Brief closing. Name one concrete action for today. End by asking a question (in the target language) about if there is anything new today.\n\n'
 		"Rules:\n"
 		f"- Write every body field in {_lang_name}. Titles must stay in their original board names.\n"
 		"- body must be natural spoken prose, not bullet points.\n"
-		"- Never invent board data. Only reference boards, cards, and lists that appear in the data below.\n"
-		"- Keep each body under 60 words.\n"
+		"- Never invent board data. Only reference boards, cards, lists, and activity logs that appear in the data below. Look at the recent activity log to find real topics discussed recently.\n"
+		"- Write 2-4 sentences for each body. Feel free to elaborate, synthesize context, and be proactive in suggesting next steps based on the card descriptions.\n"
 		"- Output ONLY the JSON array, no other text.\n\n"
 		f"Today's data:\n"
 		f"Weather: {data.get('weather', 'unknown')}\n"

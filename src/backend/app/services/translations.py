@@ -73,7 +73,19 @@ async def get_user_lang() -> str:
 	try:
 		from app.models.db import AsyncSessionLocal, Preference
 		from sqlalchemy import select
+		import json
 		async with AsyncSessionLocal() as session:
+			# Try operator_identity first
+			res = await session.execute(select(Preference).where(Preference.key == "operator_identity"))
+			pref = res.scalar_one_or_none()
+			if pref and pref.value:
+				try:
+					data = json.loads(pref.value)
+					if isinstance(data, dict) and data.get("language"):
+						return data["language"].strip()
+				except Exception:
+					pass
+
 			res = await session.execute(select(Preference).where(Preference.key == "language"))
 			pref = res.scalar_one_or_none()
 			return pref.value if pref and pref.value else "en"

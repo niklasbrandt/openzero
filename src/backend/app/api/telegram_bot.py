@@ -834,6 +834,10 @@ async def handle_checkin_callback(update: Update, context: ContextTypes.DEFAULT_
 	"""Handle all checkin_* inline button callbacks."""
 	query = update.callback_query
 	await query.answer()
+	try:
+		await query.edit_message_reply_markup(reply_markup=None)
+	except Exception:
+		pass
 	data = query.data  # e.g. "checkin_start", "checkin_next", "checkin_done", "checkin_legacy"
 
 	lang = await get_user_lang()
@@ -859,9 +863,12 @@ async def handle_checkin_callback(update: Update, context: ContextTypes.DEFAULT_
 			f"<blockquote>{t.get('checkin_building', 'Building your check-in. This takes a moment...')}</blockquote>",
 			parse_mode="HTML",
 		)
+		# Clear existing context if user restarts
 		from app.services.checkin import start_session
 		try:
 			session = await start_session(channel, chat_id)
+			if query.message:
+				session.last_msg_ids.append(query.message.message_id)
 		except Exception as exc:
 			logger.error("handle_checkin_callback start failed: %s", exc)
 			await context.bot.send_message(
@@ -1392,6 +1399,21 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 		else:
 			merged_history = history
 
+		from app.services.checkin import get_session
+		ci_session = get_session("telegram", chat_id)
+		checkin_markup = None
+		if ci_session:
+			user_text = user_text + "\n\n(System: We are currently in a guided check-in. Briefly answer the user, then ask if they are ready to proceed to the next step.)"
+			from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+			nav_row = []
+			if not ci_session.is_first:
+				nav_row.append(InlineKeyboardButton(f"◀ {t.get('checkin_btn_prev', 'Previous')}", callback_data="checkin_prev"))
+			if not ci_session.is_last:
+				nav_row.append(InlineKeyboardButton(f"{t.get('checkin_btn_next', 'Next')} ▶", callback_data="checkin_next"))
+			else:
+				nav_row.append(InlineKeyboardButton(f"✅ {t.get('checkin_btn_done', 'Done')}", callback_data="checkin_done"))
+			checkin_markup = InlineKeyboardMarkup([nav_row])
+
 		# Stream via unified router — collect tokens for progressive edits
 		_panel_html_cache = ""
 		async def _status_update(text: str) -> None:
@@ -1555,18 +1577,18 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 				display_reply += f"\n\n{_nav}"
 			if is_followup:
 				try:
-					await context.bot.send_message(chat_id=chat_id, text=display_reply, parse_mode="HTML")
+					await context.bot.send_message(chat_id=chat_id, text=display_reply, parse_mode="HTML", reply_markup=checkin_markup)
 				except Exception as _pe:
 					logger.warning("Telegram panel delivery HTML parse error: %s", _pe)
-					await context.bot.send_message(chat_id=chat_id, text=display_reply, parse_mode=None)
+					await context.bot.send_message(chat_id=chat_id, text=display_reply, parse_mode=None, reply_markup=checkin_markup)
 			else:
 				try:
-					await update.message.reply_text(display_reply, parse_mode="HTML")
+					await update.message.reply_text(display_reply, parse_mode="HTML", reply_markup=checkin_markup)
 				except Exception as _pe:
 					logger.warning("Telegram panel delivery HTML parse error: %s", _pe)
-					await update.message.reply_text(display_reply, parse_mode=None)
+					await update.message.reply_text(display_reply, parse_mode=None, reply_markup=checkin_markup)
 		else:
-			await _send_chunked_reply(thinking_msg, display_reply, nav_footer=get_nav_footer(t))
+			await _send_chunked_reply(thinking_msg, display_reply, nav_footer=get_nav_footer(t), reply_markup=checkin_markup)
 		
 		return False
 	finally:
