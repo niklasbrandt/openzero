@@ -42,6 +42,7 @@ class CheckinStop:
 	id: str
 	title: str
 	body: str
+	board_id: Optional[str] = None
 	audio: Optional[bytes] = field(default=None, compare=False, repr=False)
 
 @dataclass
@@ -182,6 +183,7 @@ async def _fetch_boards_raw() -> list[dict]:
 				boards.append({
 					"project": proj_name,
 					"name": board_name,
+					"board_id": bid,
 					"last_updated": last_updated,
 					"cards": active_cards,  # list of (ts, name, list_name)
 				})
@@ -248,6 +250,37 @@ def _build_sorted_board_context(boards_raw: list[dict], budget: int = 5000) -> s
 	return "\n\n".join(result_parts)
 
 
+async def _fetch_recent_crew_conversations() -> dict[str, str]:
+	"""Query the last 5 messages for each active crew domain from global_messages."""
+	from app.models.db import AsyncSessionLocal
+	from sqlalchemy import text
+	
+	domains = ["kids", "chef", "coach", "life", "health", "nutrition", "appearance", "scrum", "focus"]
+	histories = {}
+	
+	try:
+		async with AsyncSessionLocal() as session:
+			for dom in domains:
+				model_tag = f"crew:{dom}"
+				stmt = text(
+					"SELECT role, content FROM global_messages "
+					"WHERE model = :model_tag "
+					"ORDER BY created_at DESC LIMIT 5"
+				)
+				res = await session.execute(stmt, {"model_tag": model_tag})
+				rows = res.all()
+				if rows:
+					lines = []
+					for role, content in reversed(rows):
+						clean_content = content.split("_(Reasoning")[0].strip()
+						lines.append(f"- {role.upper()}: {clean_content}")
+					histories[dom] = "\n".join(lines)
+	except Exception as exc:
+		logger.warning("_fetch_recent_crew_conversations failed: %s", exc)
+		
+	return histories
+
+
 async def _gather_day_data() -> dict:
 	"""Collect the same raw data used by the morning briefing pipeline."""
 	from app.services.calendar import fetch_calendar_events
@@ -269,6 +302,7 @@ async def _gather_day_data() -> dict:
 		recent_activity,
 		stale_cards,
 		lang,
+		crew_histories,
 	) = await asyncio.gather(
 		_safe(fetch_calendar_events(days_ahead=0), []),
 		_safe(get_weather_forecast()),
@@ -276,6 +310,7 @@ async def _gather_day_data() -> dict:
 		_safe(get_recent_activity(hours=96)),
 		_safe(get_stale_cards(min_days=5)),
 		_safe(get_user_lang(), "en"),
+		_safe(_fetch_recent_crew_conversations(), {}),
 	)
 	return {
 		"calendar": calendar_events,
@@ -284,6 +319,7 @@ async def _gather_day_data() -> dict:
 		"recent_activity": recent_activity,
 		"stale_cards": stale_cards,
 		"lang": lang,
+		"crew_histories": crew_histories,
 	}
 
 
@@ -344,13 +380,19 @@ async def _build_stops(data: dict) -> list[CheckinStop]:
 			counter += 1
 			
 		board_slug_map[slug] = name
-		stops.append(CheckinStop(id=slug, title=name, body=""))
+		stops.append(CheckinStop(id=slug, title=name, body="", board_id=b.get("board_id")))
 
 	stops.append(CheckinStop(id="meta", title="Meta Thoughts", body=""))
 	stops.append(CheckinStop(id="outro", title="Checkout", body=""))
 
 	# Expected JSON keys list
 	expected_keys = [s.id for s in stops]
+
+	# Format crew histories context
+	crew_history_lines = []
+	for dom, hist in data.get("crew_histories", {}).items():
+		crew_history_lines.append(f"[{dom.upper()} Crew Recent Conversation]:\n{hist}")
+	crew_history_ctx = "\n\n".join(crew_history_lines)
 
 	prompt = (
 		f"You are Z, the personal AI companion. Generate the spoken text for today's guided morning check-in.\n"
@@ -361,8 +403,8 @@ async def _build_stops(data: dict) -> list[CheckinStop]:
 		"- 'calibration': A breathing or grounding exercise (12–20 seconds spoken, calm, physical, present-moment).\n"
 		"- 'weather': Weather + any calendar events for today. Keep it to 2 sentences.\n"
 		"- 'operator': Operator Board todos only. Be specific: name the actual card titles. Max 3 sentences.\n"
-		"- Board slugs (e.g. 'appearance', 'clothing-brand'): Look at the board's active cards or recent activity logs.\n"
-		"  Summarize active tasks or recent updates. If a board has no active cards/activity, ask if they want to add new focus areas or leave it dormant.\n"
+		"- Board slugs (e.g. 'appearance', 'kids', 'chef'): For each domain, look at its active cards, recent activity, AND 'Recent Crew Conversations' block below.\n"
+		"  You MUST extract active task topics or recent chat points from the conversations block and suggest/ask about concrete next steps discussed. Be proactive. Do not just say 'no updates' or 'kita is running' if there are recent chats showing active work/debates. Suggest an action item for the user. Keep it natural.\n"
 		"- 'meta': Overarching meta thoughts, mood, direction, synthesized from Personal Context below. Do not parrot system goals.\n"
 		"- 'outro': Brief closing. Name one concrete action. End with a question (in the target language) about if there is anything new today.\n\n"
 		"Rules:\n"
@@ -372,6 +414,7 @@ async def _build_stops(data: dict) -> list[CheckinStop]:
 		f"Today's data:\n"
 		f"Weather: {data.get('weather', 'unknown')}\n"
 		f"Calendar:\n{calendar_text}\n"
+		f"Recent Crew Conversations:\n{crew_history_ctx}\n\n"
 		f"Boards and Projects:\n{_board_ctx}\n"
 		f"Recent board activity (last 4 days):\n{str(data.get('recent_activity', ''))[:2000]}\n"
 		f"Stale cards (no update in 5+ days):\n{str(data.get('stale_cards', ''))[:1500]}\n"
