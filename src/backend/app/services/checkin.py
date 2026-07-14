@@ -190,7 +190,7 @@ async def _fetch_boards_raw() -> list[dict]:
 
 	# Sort by last active (most recent first), but empty/unused boards go to the bottom
 	boards.sort(key=lambda b: b["last_updated"], reverse=True)
-	return boards[:8]
+	return boards
 
 
 def _build_sorted_board_context(boards_raw: list[dict], budget: int = 5000) -> str:
