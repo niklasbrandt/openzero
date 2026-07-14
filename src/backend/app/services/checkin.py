@@ -178,7 +178,7 @@ async def _fetch_boards_raw() -> list[dict]:
 						desc = desc[:97] + "..."
 					active_cards.append((ts, card.get("name") or "?", list_name, desc))
 
-				last_updated = max(ts for ts, _, _ in active_cards) if active_cards else _epoch
+				last_updated = max(card[0] for card in active_cards) if active_cards else _epoch
 				boards.append({
 					"project": proj_name,
 					"name": board_name,

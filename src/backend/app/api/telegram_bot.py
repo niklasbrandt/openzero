@@ -1410,15 +1410,6 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 				f"Address the user's message in the context of this specific step. "
 				f"Briefly answer the user, then ask if they are ready to proceed to the next step.)"
 			)
-			from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-			nav_row = []
-			if not ci_session.is_first:
-				nav_row.append(InlineKeyboardButton(f"◀ {t.get('checkin_btn_prev', 'Previous')}", callback_data="checkin_prev"))
-			if not ci_session.is_last:
-				nav_row.append(InlineKeyboardButton(f"{t.get('checkin_btn_next', 'Next')} ▶", callback_data="checkin_next"))
-			else:
-				nav_row.append(InlineKeyboardButton(f"✅ {t.get('checkin_btn_done', 'Done')}", callback_data="checkin_done"))
-			checkin_markup = InlineKeyboardMarkup([nav_row])
 
 		# Stream via unified router — collect tokens for progressive edits
 		_panel_html_cache = ""
