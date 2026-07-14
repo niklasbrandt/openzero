@@ -93,13 +93,16 @@ async def get_weather_forecast(location_name: Optional[str] = None) -> str:
 			h_precip = hourly.get("precipitation_probability", [])
 			h_wind = hourly.get("wind_speed_10m", [])
 
-			if len(h_temps) >= 23:
+			if len(h_temps) >= 24:
 				segments = [
-					("Morning (6-10)", 6, 10),
-					("Midday (10-13)", 10, 13),
-					("Afternoon (13-17)", 13, 17),
-					("Evening (17-21)", 17, 21),
-					("Night (21-24)", 21, 24),
+					("0-3", 0, 3),
+					("3-6", 3, 6),
+					("6-9", 6, 9),
+					("9-12", 9, 12),
+					("12-15", 12, 15),
+					("15-18", 15, 18),
+					("18-21", 18, 21),
+					("21-24", 21, 24),
 				]
 				for label, start, end in segments:
 					seg_temps = h_temps[start:end]
@@ -113,9 +116,9 @@ async def get_weather_forecast(location_name: Optional[str] = None) -> str:
 					max_precip = max(seg_precip) if seg_precip else 0
 					avg_wind = round(sum(seg_wind) / len(seg_wind), 1) if seg_wind else 0
 
-					seg_parts = [f"{label}: {_describe_code(dominant_code)}, {avg_temp}°C"]
+					seg_parts = [f"{label}: {avg_temp}°C {_describe_code(dominant_code)}"]
 					if max_precip > 20:
-						seg_parts.append(f"rain chance {max_precip}%")
+						seg_parts.append(f"rain {max_precip}%")
 					if avg_wind > 15:
 						seg_parts.append(f"wind {avg_wind} km/h")
 					lines.append(" | ".join(seg_parts))
