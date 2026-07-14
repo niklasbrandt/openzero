@@ -393,8 +393,8 @@ translations: dict[str, str] = {
 	"intent_router_delete_project_success": "Projekt '{project}' gelöscht.",
 	# ── Check-in flow ──────────────────────────────────────────────────────────
 	"checkin_choose_prompt": "Wie möchtest du in den Tag starten?",
-	"checkin_btn_full": "Vollständiges Briefing lesen",
-	"checkin_btn_guided": "Geführtes Check-in starten",
+	"checkin_btn_full": "Briefing lesen",
+	"checkin_btn_guided": "Geführtes Check-in",
 	"checkin_building": "Dein Check-in wird aufgebaut. Einen Moment...",
 	"checkin_step_label": "Schritt {index} von {total}",
 	"checkin_btn_next": "Weiter",
