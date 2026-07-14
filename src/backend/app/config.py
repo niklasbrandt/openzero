@@ -130,6 +130,11 @@ class Settings(BaseSettings):
 
     # Briefing
     BRIEFING_CALIBRATION: bool = True
+    
+    # Weather
+    # Fallback location for the weather module if the user hasn't set one via the dashboard.
+    # Format: "City" or "City, Country"
+    USER_LOCATION: str = ""
 
     # Persona tone used in briefing prompts and crew voice directives.
     # Adjust to match your preferred Z communication style.

@@ -17,6 +17,25 @@ async def refresh_user_settings():
 	global _cached_timezone, _cached_location
 	try:
 		async with AsyncSessionLocal() as session:
+			# Try operator_identity first
+			op_res = await session.execute(select(Preference).where(Preference.key == "operator_identity"))
+			op_pref = op_res.scalar_one_or_none()
+			if op_pref and op_pref.value:
+				try:
+					import json
+					data = json.loads(op_pref.value)
+					if isinstance(data, dict):
+						if data.get("timezone"):
+							_cached_timezone = data["timezone"].strip()
+						town = data.get("town", "").strip()
+						country = data.get("country", "").strip()
+						if town and country:
+							_cached_location = f"{town}, {country}"
+						elif town:
+							_cached_location = town
+				except Exception:
+					pass
+
 			tz_res = await session.execute(select(Preference).where(Preference.key == "user_timezone"))
 			tz_pref = tz_res.scalar_one_or_none()
 			if tz_pref and tz_pref.value.strip():
@@ -34,8 +53,9 @@ def get_user_timezone() -> str:
 	return _cached_timezone or "Europe/Berlin"
 
 def get_user_location() -> str:
-	"""Returns the user's location (City, CC) from DB identity, or empty."""
-	return _cached_location or ""
+	"""Returns the user's location (City, CC) from DB identity, or .env setting."""
+	from app.config import settings
+	return _cached_location or settings.USER_LOCATION
 
 async def update_detected_timezone():
 	"""
