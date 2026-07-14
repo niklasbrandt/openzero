@@ -155,7 +155,7 @@ async def _fetch_boards_raw() -> list[dict]:
 			now = datetime.utcnow()
 			_epoch = datetime(1970, 1, 1)
 
-			for (proj_name, board_name, _), b_resp in zip(board_stubs, board_resps):
+			for (proj_name, board_name, board_id), b_resp in zip(board_stubs, board_resps):
 				if isinstance(b_resp, BaseException):
 					continue
 				b_data = b_resp.json()
@@ -183,7 +183,7 @@ async def _fetch_boards_raw() -> list[dict]:
 				boards.append({
 					"project": proj_name,
 					"name": board_name,
-					"board_id": bid,
+					"board_id": board_id,
 					"last_updated": last_updated,
 					"cards": active_cards,  # list of (ts, name, list_name)
 				})
