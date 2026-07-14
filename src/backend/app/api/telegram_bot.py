@@ -1403,7 +1403,13 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 		ci_session = get_session("telegram", chat_id)
 		checkin_markup = None
 		if ci_session:
-			user_text = user_text + "\n\n(System: We are currently in a guided check-in. Briefly answer the user, then ask if they are ready to proceed to the next step.)"
+			curr = ci_session.current
+			user_text = user_text + (
+				f"\n\n(System: We are currently in a guided check-in. The user is currently on the step "
+				f"\"{curr.title}\" (ID: {curr.id}) and just heard this briefing: \"{curr.body}\". "
+				f"Address the user's message in the context of this specific step. "
+				f"Briefly answer the user, then ask if they are ready to proceed to the next step.)"
+			)
 			from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 			nav_row = []
 			if not ci_session.is_first:
