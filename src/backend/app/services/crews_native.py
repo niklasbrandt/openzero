@@ -286,20 +286,36 @@ class NativeCrewEngine:
 				content_lower = content.lower()
 				if not any(kw in content_lower for kw in crew_keywords):
 					continue  # skip irrelevant older history for keyword-scoped crews
-			history_messages.append({"role": "user", "content": content})
+			at_str = ""
+			if m.get("at"):
+				try:
+					dt_part, time_part = m["at"].split("T", 1)
+					time_clean = time_part.split(".", 1)[0].rstrip("Z")
+					at_str = f"[{dt_part} {time_clean} UTC] "
+				except Exception:
+					pass
+			history_messages.append({"role": "user", "content": f"{at_str}{content}"})
 
 		# Include the last assistant response so the crew knows what was already
 		# said and can avoid repeating itself on follow-up questions.
 		assistant_msgs = [m for m in history if m["role"] == "assistant"]
 		last_z_summary = ""
 		if assistant_msgs:
-			last_raw = assistant_msgs[-1].get("content", "") or ""
+			m_ast = assistant_msgs[-1]
+			last_raw = m_ast.get("content", "") or ""
 			last_z_summary = last_raw[:600]
 			if len(last_raw) > 600:
 				last_z_summary += "..."
 			# Bug-2 fix: strip ephemeral anonymization tokens so the crew never
 			# echoes unrehydratable PII placeholders back to the user.
 			last_z_summary = _ANON_TOKEN_RE.sub('', last_z_summary)
+			if m_ast.get("at"):
+				try:
+					dt_part, time_part = m_ast["at"].split("T", 1)
+					time_clean = time_part.split(".", 1)[0].rstrip("Z")
+					last_z_summary = f"[{dt_part} {time_clean} UTC] " + last_z_summary
+				except Exception:
+					pass
 
 		# Keep history small for local model (CTX_SIZE=4096 — prompt alone can be 2k+ tokens)
 		max_history = 5 if not settings.cloud_configured else 20

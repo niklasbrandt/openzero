@@ -1866,13 +1866,22 @@ async def chat_with_context(
 			messages = [SystemMessage(content=rich_system_prompt)]
 			for h in (history or []):
 				content = h.get('content', '')
+				at_str = ""
+				if h.get("at"):
+					try:
+						dt_part, time_part = h["at"].split("T", 1)
+						time_clean = time_part.split(".", 1)[0].rstrip("Z")
+						at_str = f"[{dt_part} {time_clean} UTC] "
+					except Exception:
+						pass
+				formatted_content = f"{at_str}{content}"
 				if h.get("role") == "user":
-					messages.append(HumanMessage(content=content))
+					messages.append(HumanMessage(content=formatted_content))
 				else:
 					# Only truncate Z's responses
-					if len(content) > 1200:
-						content = content[:1200] + "... [Truncated]"
-					messages.append(AIMessage(content=content))
+					if len(formatted_content) > 1200:
+						formatted_content = formatted_content[:1200] + "... [Truncated]"
+					messages.append(AIMessage(content=formatted_content))
 			messages.append(HumanMessage(content=user_message))
 
 			result = await agent_executor.ainvoke({"messages": messages}, config={"configurable": {"thread_id": str(uuid.uuid4())}})
@@ -2257,7 +2266,15 @@ def _build_history_text(history: Optional[list] = None) -> str:
 		# that created them; in subsequent requests the model echoes them raw and
 		# rehydrate_response has no mapping to reverse them.
 		content = _ANON_TOKEN_RE.sub('', content)
-		history_lines.append(f"{role}: {content}")
+		at_str = ""
+		if m.get("at"):
+			try:
+				dt_part, time_part = m["at"].split("T", 1)
+				time_clean = time_part.split(".", 1)[0].rstrip("Z")
+				at_str = f"[{dt_part} {time_clean} UTC] "
+			except Exception:
+				pass
+		history_lines.append(f"{at_str}{role}: {content}")
 	return "RECENT CONVERSATION:\n" + "\n".join(history_lines)
 
 async def generate_context_proposal(query: str) -> dict:
