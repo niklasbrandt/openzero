@@ -344,11 +344,20 @@ async def start_scheduler():
 	)
 
 	# Proactive Crew Nudges — check every hour for eligible Recipe/Fitness crew nudges
-	from app.tasks.proactive_nudges import check_nudges
+	from app.tasks.proactive_nudges import check_nudges, check_stale_cards
 	scheduler.add_job(
 		check_nudges,
 		IntervalTrigger(hours=1),
 		id="proactive_nudges",
+		replace_existing=True,
+	)
+
+	# Stale Card Nudges — check every 12 hours for high-priority / in-progress cards
+	# that have had no updates in 48+ hours and nudge the operator via Telegram.
+	scheduler.add_job(
+		check_stale_cards,
+		IntervalTrigger(hours=12),
+		id="stale_card_nudges",
 		replace_existing=True,
 	)
 
