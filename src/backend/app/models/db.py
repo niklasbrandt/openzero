@@ -239,8 +239,6 @@ def _is_quality_message(role: str, content: str, model: Optional[str]) -> bool:
 	if not words:
 		return False
 	if role == "user":
-		if _USER_ACK_RE.match(stripped):
-			return False
 		return True
 	if role in ("z", "assistant"):
 		# Known error / recovery noise
