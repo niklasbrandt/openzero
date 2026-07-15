@@ -1866,6 +1866,69 @@ async def get_stale_cards(min_days: int = 5) -> str:
 		return f"[STALE CARDS DATA UNAVAILABLE: {_exc_type}]"
 
 
+async def get_stale_cards_raw(min_hours: int = 48) -> list[dict]:
+	"""Return a list of card dicts for open, non-done cards unchanged for at least min_hours.
+
+	Each dict has keys: id, name, updatedAt, boardName, listName.
+	Returns empty list on any failure.
+	"""
+	threshold = datetime.now() - timedelta(hours=min_hours)
+	try:
+		token = await get_planka_auth_token()
+		headers = {"Authorization": f"Bearer {token}"}
+		async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, timeout=20.0, headers=headers) as client:
+			resp = await client.get("/api/projects")
+			projects = resp.json().get("items", [])
+			if not projects:
+				return []
+
+			all_details_resps = await asyncio.gather(*[client.get(f"/api/projects/{p['id']}") for p in projects])
+
+			board_tasks = []
+			board_names = []
+			for r in all_details_resps:
+				d = r.json()
+				boards = d.get("included", {}).get("boards", []) or d.get("boards", [])
+				for b in boards:
+					board_tasks.append(client.get(f"/api/boards/{b['id']}", params={"included": "lists,cards"}))
+					board_names.append(b.get("name") or "")
+
+			if not board_tasks:
+				return []
+
+			board_details = await asyncio.gather(*board_tasks)
+
+			result: list[dict] = []
+			for b_idx, b_resp in enumerate(board_details):
+				b_data = b_resp.json()
+				b_name = board_names[b_idx]
+				lists = b_data.get("included", {}).get("lists", [])
+				cards = b_data.get("included", {}).get("cards", [])
+				list_map = {l["id"]: (l.get("name") or "?") for l in lists}
+				done_list_ids = {l["id"] for l in lists if _is_done_list(l.get("name", ""))}
+				for card in cards:
+					if card["listId"] in done_list_ids:
+						continue
+					_raw_updated = card.get("updatedAt") or ""
+					try:
+						c_updated = datetime.fromisoformat(_raw_updated.replace("Z", "")) if _raw_updated else datetime.min
+					except Exception:
+						continue
+					if c_updated >= threshold:
+						continue
+					result.append({
+						"id": card.get("id", ""),
+						"name": card.get("name", ""),
+						"updatedAt": _raw_updated,
+						"boardName": b_name,
+						"listName": list_map.get(card["listId"], "?"),
+					})
+		return result
+	except Exception:
+		logger.exception("get_stale_cards_raw failed")
+		return []
+
+
 async def _get_crew_board_names() -> set[str]:
 	"""Dynamically build the set of active crew board names and legacy synonyms from registry."""
 	try:

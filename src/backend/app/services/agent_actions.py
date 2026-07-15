@@ -412,13 +412,23 @@ async def execute_delete_card_task(card_fragment: str, task_fragment: str, lang:
 
 
 async def execute_create_list(list_name: str, board_name: str = "", lang: str = "en") -> str:
-	"""Create a new Planka list on the given board. Falls back to Operator Board if no board specified."""
-	from app.services.planka import create_list as planka_create_list
+	"""Create a new Planka list on the given board. Falls back to Operator Board if no board specified.
+	If the target board doesn't exist, auto-bootstraps it before creating the list.
+	"""
+	from app.services.planka import create_list as planka_create_list, create_board_in_project as planka_create_board
 	target_board = board_name.strip() if board_name else "Operator Board"
 	result = await planka_create_list(board_name=target_board, list_name=list_name)
 	if result:
 		return f"List '{list_name}' created on '{target_board}'."
-	return f"\u26a0 Could not create list '{list_name}' on board '{target_board}'. Board not found."
+	# Board not found — auto-bootstrap it, then retry the list creation
+	logger.info("execute_create_list: board '%s' not found — auto-bootstrapping", target_board)
+	board_created = await planka_create_board(board_name=target_board, project_fragment="")
+	if not board_created:
+		return f"⚠ Could not create list '{list_name}' — board '{target_board}' not found and could not be created."
+	result = await planka_create_list(board_name=target_board, list_name=list_name)
+	if result:
+		return f"List '{list_name}' created on '{target_board}' (board auto-created)."
+	return f"⚠ Could not create list '{list_name}' on board '{target_board}' even after auto-creating the board."
 
 async def execute_create_board(board_name: str, project_fragment: str = "", lang: str = "en") -> str:
 	"""Create a new Planka board in the specified project."""

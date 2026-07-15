@@ -34,6 +34,42 @@ logger = logging.getLogger(__name__)
 _EMPTY_BOARD_PENDING: dict[str, dict] = {}
 _EMPTY_BOARD_TTL_S = 300  # 5 minutes — auto-expire if user does not confirm
 
+# ── Local-model search injection (Feature: local web search) ──────────────────
+# When the local model is active (no cloud tier forced) and the message looks like
+# a factual/web-search intent, fetch SearXNG results and inject them as context.
+# This gives the local model factual grounding without needing tool-calling capability.
+_SEARCH_INTENT_RE = re.compile(
+	r'(?:'
+	r'\b(?:suche|such|find|search|lookup|look up|nachschlagen|recherchiere?)\b'
+	r'|was (?:ist|sind|kostet|bedeutet|war)\b'
+	r'|wer (?:ist|war|sind)\b'
+	r'|wie (?:viel|viele|funktioniert|heißt|macht|lange|alt)\b'
+	r'|wann (?:ist|war|findet|hat)\b'
+	r'|wo (?:ist|war|liegt|befindet)\b'
+	r'|\b(?:aktuell|news|preis|price|latest|current|recent|heute|today)\b'
+	r'|what (?:is|are|does|was|were)\b'
+	r'|who (?:is|was|are)\b'
+	r'|when (?:is|was|does|did)\b'
+	r'|where (?:is|was|are)\b'
+	r'|how (?:much|many|does|do|long|old)\b'
+	r')',
+	re.IGNORECASE,
+)
+
+async def _inject_search_context(user_text: str) -> str:
+	"""Fetch top SearXNG results and return a formatted context block.
+
+	Returns an empty string on failure so the caller can proceed without results.
+	"""
+	try:
+		from app.services.web_search import execute_web_search
+		results = await execute_web_search(user_text, max_results=3)
+		if results and "No web results" not in results and "unavailable" not in results:
+			return f"\n\n[SEARCH CONTEXT — use the following to answer the user's question]\n{results}\n[END SEARCH CONTEXT]"
+	except Exception as _se:
+		logger.debug("router: search injection failed: %s", _se)
+	return ""
+
 # Maximum input length applied before running complex regexes on user-controlled
 # text to prevent polynomial (ReDoS) backtracking (CWE-1333).
 _MAX_RE_INPUT = 500
@@ -1612,8 +1648,67 @@ async def route_message_stream(
 		# ── /panel synthesis end ────────────────────────────────────────────
 
 		if routed_crews:
-			crew_id = routed_crews[0]
 			_force_cloud = True  # crew requests always need cloud tier
+			_synthesis_crews = [c for c in _all_candidates if c in routed_crews][:3]
+
+			if len(_synthesis_crews) >= 2:
+				# ── Multi-crew synthesis path ──────────────────────────────────
+				_crew_names = ", ".join(_synthesis_crews)
+				await _status(f"Consulting {_crew_names}...")
+				logger.info("Router: multi-crew synthesis for %d crews: %s", len(_synthesis_crews), _crew_names)
+
+				async def _gather_crew(cid: str) -> tuple[str, str]:
+					_chunks: list[str] = []
+					async for _tok in native_crew_engine.run_crew_stream(cid, _crew_prompt, history=_ctx_history, force_cloud=True):
+						_chunks.append(_tok)
+					return cid, rehydrate_response("".join(_chunks), get_active_rep_map())
+
+				_crew_results: list[tuple[str, str]] = await asyncio.gather(
+					*[_gather_crew(c) for c in _synthesis_crews],
+					return_exceptions=False,
+				)
+
+				_crew_blocks = "\n\n---\n\n".join(
+					f"[{cid.upper()} CREW]\n{out}" for cid, out in _crew_results
+				)
+				_synthesis_prompt = (
+					"Below are parallel briefings from your specialist crews. "
+					"Merge them into ONE cohesive, concise reply without duplication or contradiction. "
+					"Do not mention crew names or labels. Write as Z, not as a list of summaries.\n\n"
+					+ _crew_blocks
+				)
+				await _status("Synthesising...")
+				from app.services.llm import chat as _llm_chat
+				_synth_full = await _llm_chat(
+					user_message=_synthesis_prompt, tier="cloud", max_tokens=800,
+				)
+				_synth_full = _synth_full or _crew_blocks
+				_primary_crew = _synthesis_crews[0]
+				attribution = f"\n\n_(Synthesised from: {_crew_names})_"
+				yield _synth_full
+				yield attribution
+
+				clean, cmds, pending = await bus.commit_reply(
+					channel=channel, raw_reply=_synth_full + attribution,
+					model=f"crew:synthesis:{_primary_crew}", user_text=user_text, save=save_history,
+				)
+				cmds = [c for c in cmds if not c.startswith("__CREW_RUN__:")]
+				if not cmds and _PHANTOM_RE.search(_synth_full[:_MAX_RE_REPLY]):
+					_synth_full += (
+						"\n\n\u26a0 Nothing was actually saved — "
+						"the crew described the action without executing it. Please try again."
+					)
+				result_future.set_result(RouterResult(
+					reply=clean, model=f"crew:synthesis:{_primary_crew}",
+					executed_cmds=cmds, pending_actions=pending,
+					routed_to_crew=_primary_crew,
+				))
+				from app.services.crews import record_crew_session
+				record_crew_session(channel, _primary_crew)
+				return
+
+			# ── Single-crew path ──────────────────────────────────
+			crew_id = routed_crews[0]
 			logger.info("Router: semantic-routing '%s...' → crew '%s'", _sanitize_for_log(user_text), crew_id)
 			_other_candidates = [c for c in _all_candidates if c != crew_id]
 			if _other_candidates:
@@ -1673,8 +1768,18 @@ async def route_message_stream(
 		_l5_hold: list[str] = []
 		_l5_mode = 0
 		await _status(_t.get("status_composing", "Composing response..."))
+		# ── Local-model search injection ──────────────────────────────────────
+		# When not forced to cloud AND the message looks like a factual/lookup
+		# query, augment the prompt with SearXNG results so the local model can
+		# answer factual questions without native tool-calling capability.
+		_search_augmented_text = user_text
+		if not _force_cloud and _SEARCH_INTENT_RE.search(user_text[:_MAX_RE_INPUT]):
+			_search_ctx = await _inject_search_context(user_text)
+			if _search_ctx:
+				_search_augmented_text = user_text + _search_ctx
+				logger.info("Router: injected search context (%d chars) for local model", len(_search_ctx))
 		async for token in chat_stream_with_context(
-			user_text,
+			_search_augmented_text,
 			history=_ctx_history,
 			include_projects=True,
 			include_people=True,

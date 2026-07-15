@@ -224,3 +224,98 @@ async def check_nudges() -> None:
 
 	except Exception as _e:
 		logger.warning("proactive_nudges: check_nudges error: %s", _e)
+
+# ---------------------------------------------------------------------------
+# Stale high-priority card nudging (Feature 4)
+# ---------------------------------------------------------------------------
+
+# Card name urgency markers — any card with these in its name is treated as high-priority.
+_URGENCY_MARKERS = (
+	"dringend", "urgent", "asap", "wichtig", "priority", "!!", "kritisch", "critical",
+)
+# Active list names — cards in these lists are presumed in-flight and time-sensitive.
+_ACTIVE_LIST_NAMES = (
+	"doing", "in progress", "in bearbeitung", "active", "aktiv", "running", "laufend",
+)
+
+
+async def check_stale_cards() -> None:
+	"""Nudge operator when a high-priority or in-progress Planka card has had no
+	updates for more than STALE_CARD_HOURS hours (default 48).
+
+	Deduplicates via Redis — at most one nudge per card per day.
+	"""
+	cfg = _nudge_config()
+	if not cfg.get("enabled", True):
+		return
+
+	stale_hours = int(cfg.get("stale_card_hours", 48))
+
+	try:
+		from app.services.planka import get_stale_cards_raw
+		all_stale = await get_stale_cards_raw(min_hours=stale_hours)
+	except Exception as _e:
+		logger.debug("proactive_nudges: get_stale_cards_raw failed: %s", _e)
+		return
+
+	if not all_stale:
+		return
+
+	# Further filter to only high-priority / actively-in-progress cards
+	priority_cards = []
+	for card in all_stale:
+		name = (card.get("name") or "").lower()
+		list_name = (card.get("listName") or "").lower()
+		is_urgent = any(marker in name for marker in _URGENCY_MARKERS)
+		is_active = any(ln in list_name for ln in _ACTIVE_LIST_NAMES)
+		if is_urgent or is_active:
+			priority_cards.append(card)
+
+	if not priority_cards:
+		return
+
+	today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+	channel = await _last_used_channel()
+
+	try:
+		async with await _redis() as r:
+			for card in priority_cards[:5]:  # cap at 5 nudges per run
+				card_id = card.get("id", "")
+				if not card_id:
+					continue
+				dedup_key = f"stale_card_nudge:{card_id}:{today_str}"
+				if await r.get(dedup_key):
+					continue
+
+				card_name = card.get("name", "Unknown task")
+				board_name = card.get("boardName", "")
+				try:
+					_raw_upd = (card.get("updatedAt") or "").replace("Z", "")
+					_updated_dt = datetime.fromisoformat(_raw_upd).replace(tzinfo=timezone.utc) if _raw_upd else datetime.now(timezone.utc)
+				except Exception:
+					_updated_dt = datetime.now(timezone.utc)
+				age_h = int((datetime.now(timezone.utc) - _updated_dt).total_seconds() / 3600)
+
+				nudge_prompt = (
+					f"Generate a single concise sentence (under 20 words) nudging the operator about "
+					f"the stale task '{card_name}' (unchanged for {age_h}h). "
+					f"Be direct and specific. No greeting, no sign-off. Output only the sentence."
+				)
+				try:
+					from app.services.llm import chat
+					nudge_text = await chat(user_message=nudge_prompt, tier="cloud", max_tokens=60)
+					nudge_text = (nudge_text or "").strip()
+				except Exception:
+					nudge_text = f"'{card_name}' hasn't moved in {age_h}h. Still relevant?"
+
+				if not nudge_text:
+					continue
+
+				board_ctx = f" ({board_name})" if board_name else ""
+				full_nudge = f"⏳ Stale task{board_ctx}: {nudge_text}"
+				await _dispatch_nudge(channel, full_nudge)
+				await r.set(dedup_key, "1", ex=25 * 3600)
+				logger.info("proactive_nudges: stale card nudge sent for '%s' via %s", card_name, channel)
+
+	except Exception as _e:
+		logger.warning("proactive_nudges: check_stale_cards error: %s", _e)
