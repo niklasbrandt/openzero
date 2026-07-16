@@ -31,6 +31,7 @@ translations: dict[str, str] = {
 	"connecting": "Connecting...",
 	"cpu": "CPU",
 	"crews": "Crews",
+	"crews_project_name": "Crews",
 	"diag_bench_cloud_tip": "Test throughput of the cloud tier.",
 	"diag_bench_local_tip": "Test latency of the local tier.",
 	"diag_cloud_not_configured": "Not configured",

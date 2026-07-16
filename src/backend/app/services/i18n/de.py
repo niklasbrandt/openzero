@@ -30,6 +30,7 @@ translations: dict[str, str] = {
 	"connecting": 'Verbinde...',
 	"cpu": 'CPU',
 	"crews": "Crews",
+	"crews_project_name": "Crews",
 	"diag_bench_cloud_tip": 'Durchsatz des Cloud-Tiers testen.',
 	"diag_bench_local_tip": 'Latenz des lokalen Tiers testen.',
 	"diag_inference_provider": "Inferenz-Anbieter",
