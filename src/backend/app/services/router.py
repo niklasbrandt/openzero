@@ -761,14 +761,17 @@ async def route_message_stream(
 		_STATE_QUERY_RE = re.compile(
 			# German
 			r'\bwo\s+(?:sind|ist|sind\s+die|habe\s+ich|hast\s+du)\b'
-			r'|\bhast\s+du\s+(?:(?:das|die|es|sie)\s+)?(?:gespeichert|erstellt|hinzugef[üu]gt|abgelegt|gemacht)\b'
-			r'|\bwurde\s+(?:das|es|die)\s+(?:gespeichert|erstellt|angelegt)\b'
-			r'|\bwo\s+(?:wurde|wurden|habe|hat)\b'
+			r'|\bhast\s+du\s+.{0,100}?(?:gespeichert|erstellt|hinzugef[üu]gt|abgelegt|gemacht)\b'
+			r'|\bwurde\s+.{0,100}?(?:gespeichert|erstellt|angelegt)\b'
+			r'|\bwo\s+(?:wurde|wurden|habe|hat|steht|stehen|finde|findet|liegt|liegen)\b'
+			r'|wo\s+das\s+steht'
+			r'|\bwo\s+ist\s+das\b'
 			# English
 			r'|\bwhere\s+(?:is|are|did\s+you|was|were)\s+(?:it|they|the|that|those)\b'
-			r'|\bdid\s+you\s+(?:save|create|add|store|put|make)\b'
-			r'|\bwas\s+(?:it|that|the\s+(?:task|card|board|todo|item))\s+(?:saved|created|added|stored)\b'
-			r'|\bwere\s+(?:they|those|the\s+(?:tasks?|cards?|items?))\s+(?:saved|created|added|stored)\b'
+			r'|\bdid\s+you\s+.{0,100}?(?:save|create|add|store|put|make)\b'
+			r'|\bwas\s+.{0,100}?(?:saved|created|added|stored)\b'
+			r'|\bwere\s+.{0,100}?(?:saved|created|added|stored)\b'
+			r'|\bwhere\s+(?:can\s+i\s+find|to\s+find)\b'
 			# Spanish / French
 			r'|\b(?:d[oó]nde|où)\s+(?:est[aá]|son|est|sont)\b'
 			r'|\b(?:guardaste|enregistr[eé])\b',
@@ -783,11 +786,11 @@ async def route_message_stream(
 		):
 			# Extract a search fragment: last multi-word phrase or quoted term
 			# from the user message that might be a card/board title
-			_SQ_QUOTE_RE = re.compile(r'["\u201c]([^"\u201d]{2,50})["\u201d]')
+			_SQ_QUOTE_RE = re.compile(r'["\u201c\']([^"\u201d\']{2,50})["\u201d\']')
 			_SQ_FRAG_RE = re.compile(
 				r'(?:'
-				r'(?:die|den|der|das|mein|the|my|it|sie|es|los?|les?|las?)\s+)?'
-				r'([A-Za-z\u00c0-\u017e\u0400-\u04FF][A-Za-z\u00c0-\u017e\u0400-\u04FF\s]{1,40})'
+				r'(?:die|den|der|das|mein|meine|the|my|it|sie|es|los?|les?|las?)\s+)?'
+				r'([A-Za-z\u00c0-\u017e\u0400-\u04FF][A-Za-z\u00c0-\u017e\u0400-\u04FF\s]{1,200})'
 				r'(?:\s+(?:gespeichert|erstellt|saved|created|added|store|board|card|task|todo|list))?'
 				r'\??$',
 				re.IGNORECASE,
@@ -797,9 +800,28 @@ async def route_message_stream(
 			if _sq_q:
 				_sq_frag = _sq_q.group(1).strip()
 			else:
-				_sq_m = _SQ_FRAG_RE.search(user_text[:_MAX_RE_INPUT])
-				if _sq_m:
-					_sq_frag = _sq_m.group(1).strip()
+				# Split by sentence/clause boundaries and find a clause that does NOT match the state query regex
+				_clauses = [c.strip() for c in re.split(r'[?.!]', user_text[:_MAX_RE_INPUT]) if c.strip()]
+				_candidate_clauses = [c for c in _clauses if not _STATE_QUERY_RE.search(c)]
+				if _candidate_clauses:
+					_sq_frag = max(_candidate_clauses, key=len)
+				else:
+					_sq_m = _SQ_FRAG_RE.search(user_text[:_MAX_RE_INPUT])
+					if _sq_m:
+						_sq_frag = _sq_m.group(1).strip()
+
+			if _sq_frag:
+				# Words to strip from the extracted fragment
+				_STRIP_WORDS_RE = re.compile(
+					r'\b(?:wo\s+ist|wo\s+sind|wo\s+steht|wo\s+finde|where\s+is|where\s+are|where\s+can\s+i\s+find|hast\s+du|hast\s+du\s+das|did\s+you|was\s+it|wurde|wurde\s+das)\b',
+					re.IGNORECASE
+				)
+				_sq_frag = _STRIP_WORDS_RE.sub("", _sq_frag).strip()
+				# Strip leading/trailing common articles/prepositions
+				_sq_frag = re.sub(r'^(?:meine|mein|meinen|das|die|der|den|ein|eine|einen|my|the|a|an)\s+', '', _sq_frag, flags=re.IGNORECASE)
+				_sq_frag = re.sub(r'\s+(?:gespeichert|erstellt|hinzugefügt|abgelegt|saved|created|added|stored|aufgehoben|geschrieben|steht|ist|sind|where|wo|hast du)$', '', _sq_frag, flags=re.IGNORECASE)
+				_sq_frag = _sq_frag.strip().strip("'\"")
+
 			# If we got a reasonable fragment, look it up in Planka live
 			if _sq_frag and len(_sq_frag) >= 2:
 				try:
@@ -1223,11 +1245,12 @@ async def route_message_stream(
 		_panel = routed_crews[:3]
 		_requires_panel = False
 
+		_is_state_query = bool(_sq_extra_ctx)
 		logger.warning(
-			"Router: panel gate — primary=%s candidates=%s word_count=%d is_simple_q=%s",
-			_primary_crew, _all_candidates, _word_count, _is_simple_q,
+			"Router: panel gate — primary=%s candidates=%s word_count=%d is_simple_q=%s is_state_query=%s",
+			_primary_crew, _all_candidates, _word_count, _is_simple_q, _is_state_query,
 		)
-		if _primary_crew and len(_all_candidates) >= 2 and _word_count >= 5 and not _is_simple_q:
+		if _primary_crew and len(_all_candidates) >= 2 and _word_count >= 5 and not _is_simple_q and not _is_state_query:
 			try:
 				await _status("Evaluating expert routing...")
 				from app.services.llm import chat as _fast_chat
