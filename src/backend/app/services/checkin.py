@@ -410,6 +410,7 @@ async def _build_stops(data: dict) -> list[CheckinStop]:
 		"Rules:\n"
 		f"- Write every value in {_lang_name}.\n"
 		"- Keep each value short (1-2 natural spoken sentences, max 40 words per key, except 'weather' which can list the slots and be up to 80 words) so the overall check-in is efficient and does not get cut off.\n"
+		"- STRICT ANTI-HALLUCINATION / GROUNDING RULE: ONLY reference card names that are explicitly listed in the 'Boards and Projects' context below. If a board has no active cards (or is empty), do NOT invent card names; instead, state clearly that there are no active tasks on that board, or check if there are any stale items to mention. Do NOT under any circumstances hallucinate tasks that are not present in the data.\n"
 		"- Output ONLY the JSON object, no markdown, no wrapping other than valid JSON.\n\n"
 		f"Today's data:\n"
 		f"Weather: {data.get('weather', 'unknown')}\n"
