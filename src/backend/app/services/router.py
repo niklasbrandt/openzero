@@ -243,7 +243,7 @@ async def _validate_routing_intent(text: str, expected_intent: str) -> bool:
 		return True  # Fallback to trusting the keyword match on LLM error
 
 
-async def _classify_state_query(text: str) -> Optional[str]:
+async def _classify_state_query(text: str, history: list) -> Optional[str]:
 	"""Reasoning-based check to determine if the message is a state query/lookup.
 
 	Returns the extracted search fragment (topic) if it is a state query, or None.
@@ -252,15 +252,24 @@ async def _classify_state_query(text: str) -> Optional[str]:
 		from app.services.llm import chat as cloud_chat
 		system_override = (
 			"You are openZero's precise intent classifier.\n"
-			"Determine if the user is asking about the location, list, board, status, existence, or search for a card, task, list, board, or document on their task boards (e.g. 'where is X?', 'did you create Y?', 'Wo steht das?', 'is the list X saved?').\n\n"
+			"Determine if the user is asking about the location, list, board, status, existence, or search for a card, task, list, board, or document on their task boards (e.g. 'where is X?', 'did you create Y?', 'Wo steht das?', 'is the list X saved?').\n"
+			"Note: If the user is referring to a card or topic mentioned in previous messages (using pronouns like 'das', 'die Karte', 'it'), analyze the conversation history to identify the topic they are referring to.\n\n"
 			"If they are, reply with ONLY the exact name/title/topic of the item they are looking for, in its original language, without articles, quotes, or question words (e.g. 'Blaze brothers meeting vorbereiten', 'Einkaufsliste', 'Aquarium').\n"
 			"If they are NOT asking to locate, search, or query the status/location of a card/board/task/list, reply with exactly 'NO'.\n"
 			"Respond with ONLY the name or 'NO'. Do not include any explanations, greetings, or other text."
 		)
+		# Build a context string from the last few messages in history to help resolve anaphoras
+		history_context = ""
+		if history:
+			last_exchanges = history[-16:]
+			history_context = "\n".join(f"{msg.get('role', 'user')}: {msg.get('content', '')}" for msg in last_exchanges) + "\n"
+
+		user_message = f"{history_context}user: \"{text[:1000]}\""
+
 		# Use cloud chat with a 5.0 second timeout
 		decision = await asyncio.wait_for(
 			cloud_chat(
-				user_message=f"Message: \"{text[:1000]}\"",
+				user_message=user_message,
 				system_override=system_override,
 				tier="cloud",
 				sanitize=False,
@@ -274,6 +283,7 @@ async def _classify_state_query(text: str) -> Optional[str]:
 	except Exception as exc:
 		logger.warning("_classify_state_query failed: %s", exc)
 		return None
+
 
 
 async def route_message_stream(
@@ -799,7 +809,7 @@ async def route_message_stream(
 		# Merge save-follow-up context injection from step 0.4 (if any)
 		if _save_ctx_inject:
 			_sq_extra_ctx.append(_save_ctx_inject)
-		_sq_topic = await _classify_state_query(user_text)
+		_sq_topic = await _classify_state_query(user_text, history)
 		if _sq_topic:
 			# If we got a reasonable fragment, look it up in Planka live
 			if len(_sq_topic) >= 2:
@@ -816,12 +826,14 @@ async def route_message_stream(
 						_sq_context = (
 							f"[VERIFIED PLANKA STATE — cards matching '{_sq_topic}']\n"
 							+ "\n".join(_sq_lines)
-							+ "\n[END VERIFIED STATE — answer ONLY from the above. Do NOT guess.]"
+							+ "\n[END VERIFIED STATE — answer ONLY from the above. Do NOT guess.]\n"
+							"[INSTRUCTION: Start your response with exactly '[VERIFICATION: FOUND]' followed by the conversational answer.]"
 						)
 					else:
 						_sq_context = (
 							f"[VERIFIED PLANKA STATE — no cards found matching '{_sq_topic}']\n"
-							"[END VERIFIED STATE — if no cards found, say so clearly. Do NOT invent a location.]"
+							"[END VERIFIED STATE — if no cards found, say so clearly. Do NOT invent a location.]\n"
+							"[INSTRUCTION: Start your response with exactly '[VERIFICATION: MISSING]' followed by the conversational answer.]"
 						)
 					# Accumulate for injection at step 0.55 (avoids reassigning closure var)
 					_sq_extra_ctx.append({"role": "assistant", "content": _sq_context})
@@ -958,12 +970,11 @@ async def route_message_stream(
 					_board_prefetch_task.cancel()
 				return
 
-		# ── 0.52 pre-check: _force_cloud initialisation ─────────────────────────
-		# Default False; set True when crew is matched (step 1) or board context
+		# Default False; set True when state query is detected, crew is matched (step 1), or board context
 		# is injected (step 0.55). Crew requests MUST use cloud — local LLM is
 		# only for simple conversational replies. The old _bulk_save_re regex
 		# approach was fragile and is removed; crew=cloud covers all key cases.
-		_force_cloud = False
+		_force_cloud = bool(_sq_topic)
 
 		# ── 0.52 Semantic board-management fallback ───────────────────────────
 		# Fires when NO structural intent matched via regex. Uses the fast local
@@ -1171,9 +1182,14 @@ async def route_message_stream(
 		# ── 1. Semantic crew routing ─────────────────────────────────────────
 		from app.services.semantic_router import route_semantic
 		_think_mode = user_text.strip().lower().startswith("/think")
-		routed_crews = await route_semantic(
-			user_text, _ctx_history, channel, think_mode=_think_mode, lang=lang,
-		)
+		# If it's a state query, we completely bypass semantic crew routing
+		if _sq_topic:
+			logger.info("Router: bypassing semantic crew routing because state query was detected for topic: '%s'", _sq_topic)
+			routed_crews = []
+		else:
+			routed_crews = await route_semantic(
+				user_text, _ctx_history, channel, think_mode=_think_mode, lang=lang,
+			)
 		
 		# Reset response budget after semantic routing (which may block while embedding model loads on cold start)
 		# This ensures we always have a full 20s budget for the actual LLM call, preventing false-positive timeouts.
@@ -1765,7 +1781,7 @@ async def route_message_stream(
 		# Holds tokens while an [ACTION:] sequence is still open so the client
 		# never receives a partial tag. Zero added latency for pure-conversation
 		# responses — the `else: yield token` path runs every iteration.
-		# Mode: 0=normal  1=suspect(saw '[')  2=confirmed [ACTION: — hold until ']'
+		# Mode: 0=normal  1=suspect(saw '[')  2=confirmed [ACTION: or [VERIFICATION: — hold until ']'
 		_reply_chunks: list[str] = []
 		_l5_hold: list[str] = []
 		_l5_mode = 0
@@ -1789,19 +1805,23 @@ async def route_message_stream(
 			if _l5_mode == 2:
 				_l5_hold.append(token)
 				if ']' in token:
+					_l5_held_tag = "".join(_l5_hold)
 					_l5_mode = 0
-					yield "".join(_l5_hold)
 					_l5_hold.clear()
+					# Suppress [VERIFICATION: ...] tags from user view
+					if not re.search(r'^\[VERIFICATION:', _l5_held_tag, re.IGNORECASE):
+						yield _l5_held_tag
 			elif _l5_mode == 1:
 				_l5_hold.append(token)
 				_l5_held_text = "".join(_l5_hold)
 				if ']' in _l5_held_text:
-					# Closed without ACTION — regular [text](url) or similar
 					_l5_mode = 0
-					yield _l5_held_text
 					_l5_hold.clear()
-				elif re.search(r'\[ACTION:', _l5_held_text, re.IGNORECASE):
-					_l5_mode = 2  # confirmed action tag — hold until ']'
+					# Suppress [VERIFICATION: ...] tags from user view
+					if not re.search(r'^\[VERIFICATION:', _l5_held_text, re.IGNORECASE):
+						yield _l5_held_text
+				elif re.search(r'\[ACTION:|\[VERIFICATION:', _l5_held_text, re.IGNORECASE):
+					_l5_mode = 2  # confirmed action or verification tag — hold until ']'
 				elif len(_l5_held_text) > 50:
 					# Too many chars without ACTION confirmation — flush
 					_l5_mode = 0
@@ -1819,6 +1839,8 @@ async def route_message_stream(
 			_l5_hold.clear()
 
 		response = sanitise_output("".join(_reply_chunks))
+		# Strip any remaining VERIFICATION tags from response
+		response = re.sub(r'\[VERIFICATION:[^\]]*\]?', '', response, flags=re.IGNORECASE).strip()
 		response = rehydrate_response(response, get_active_rep_map())
 
 		if not response.strip():
