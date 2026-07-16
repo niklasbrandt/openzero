@@ -83,6 +83,7 @@ translations: dict[str, str] = {
 	"no_results": "No relevant patterns found.",
 	"offline": "Offline",
 	"online": "Online",
+	"status_online": "I'm back!",
 	"operator": "Operator",
 	"password": "Password",
 	"people": "People",

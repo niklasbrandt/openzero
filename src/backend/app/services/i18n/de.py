@@ -84,6 +84,7 @@ translations: dict[str, str] = {
 	"user": 'Benutzer',
 	"username": 'Benutzername',
 	"version": 'Version',
+	"status_online": "Ich bin wieder da!",
 	"weather": 'Wetter',
 	"week": 'Woche',
 	"weekly_review_time": 'Wochenrückblick-Zeit',
