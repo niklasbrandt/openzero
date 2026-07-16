@@ -213,6 +213,13 @@ class NativeCrewEngine:
 		if personality and not format_prefix:
 			instructions = personality + "\n\n" + instructions
 
+		# Inject exact board name for Planka persistence so the crew knows what to target
+		board_name = crew_board_name_for_id(crew_id)
+		instructions += (
+			f"\n\nYOUR PLANKA BOARD NAME: When creating lists or tasks on your own board, "
+			f"you MUST use exactly \"{board_name}\" as the board name (e.g. [ACTION: CREATE_BOARD | PROJECT: Crews | NAME: {board_name}])."
+		)
+
 		# 2. Semantic Priming: Character Roles
 		if config.characters:
 			char_block = "\nCREW COMPOSITION & ROLES:\n"
