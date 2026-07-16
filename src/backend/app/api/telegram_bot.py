@@ -270,11 +270,12 @@ def _consume_latest_changes():
 
 def _format_raw_changes_html(changes: str, online_label: str = "I'm back!") -> str:
 	"""Format raw commit messages as a minimal HTML fallback."""
-	lines = [l.strip() for l in changes.splitlines() if l.strip().startswith("- ")]
+	import html
+	lines = [html.escape(l.strip()) for l in changes.splitlines() if l.strip().startswith("- ")]
 	if not lines:
 		return ""
 	formatted = "\n".join(lines[:10])
-	return f"<i>{online_label}</i>\n\n<pre>{formatted}</pre>"
+	return f"<i>{html.escape(online_label)}</i>\n\n<pre>{formatted}</pre>"
 
 async def _send_changes_notification_if_needed():
 	"""Send the deployment-changes banner if a latest_changes.txt exists.
@@ -286,7 +287,7 @@ async def _send_changes_notification_if_needed():
 		await _send_online_notification()
 		return
 	logger.info("Startup: deployment changes detected, summarising for user.")
-	from app.services.llm import chat_with_context
+	from app.services.llm import chat
 	changes_prompt = (
 		"You just came back online after a deployment. Tell the user what was shipped — "
 		"factually, like reading out a changelog. One sentence per change maximum. "
@@ -304,14 +305,10 @@ async def _send_changes_notification_if_needed():
 	for attempt in range(2):
 		try:
 			raw = await asyncio.wait_for(
-				chat_with_context(
+				chat(
 					changes_prompt,
-					history=[],
-					include_projects=False,
-					include_people=False,
-					use_agent=False,
-					tier_override="fast",
-					thinking=False,
+					system_override="You are a helpful assistant. Keep it very brief.",
+					tier="fast"
 				),
 				timeout=60,
 			)
