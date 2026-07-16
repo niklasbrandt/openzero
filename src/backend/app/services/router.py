@@ -243,6 +243,39 @@ async def _validate_routing_intent(text: str, expected_intent: str) -> bool:
 		return True  # Fallback to trusting the keyword match on LLM error
 
 
+async def _classify_state_query(text: str) -> Optional[str]:
+	"""Reasoning-based check to determine if the message is a state query/lookup.
+
+	Returns the extracted search fragment (topic) if it is a state query, or None.
+	"""
+	try:
+		from app.services.llm import chat as cloud_chat
+		system_override = (
+			"You are openZero's precise intent classifier.\n"
+			"Determine if the user is asking about the location, list, board, status, existence, or search for a card, task, list, board, or document on their task boards (e.g. 'where is X?', 'did you create Y?', 'Wo steht das?', 'is the list X saved?').\n\n"
+			"If they are, reply with ONLY the exact name/title/topic of the item they are looking for, in its original language, without articles, quotes, or question words (e.g. 'Blaze brothers meeting vorbereiten', 'Einkaufsliste', 'Aquarium').\n"
+			"If they are NOT asking to locate, search, or query the status/location of a card/board/task/list, reply with exactly 'NO'.\n"
+			"Respond with ONLY the name or 'NO'. Do not include any explanations, greetings, or other text."
+		)
+		# Use cloud chat with a 5.0 second timeout
+		decision = await asyncio.wait_for(
+			cloud_chat(
+				user_message=f"Message: \"{text[:1000]}\"",
+				system_override=system_override,
+				tier="cloud",
+				sanitize=False,
+			),
+			timeout=5.0
+		)
+		decision_clean = decision.strip()
+		if decision_clean.upper() == "NO" or decision_clean.upper().startswith("'NO"):
+			return None
+		return decision_clean
+	except Exception as exc:
+		logger.warning("_classify_state_query failed: %s", exc)
+		return None
+
+
 async def route_message_stream(
 	user_text: str,
 	history: list,
@@ -758,76 +791,14 @@ async def route_message_stream(
 		# Merge save-follow-up context injection from step 0.4 (if any)
 		if _save_ctx_inject:
 			_sq_extra_ctx.append(_save_ctx_inject)
-		_STATE_QUERY_RE = re.compile(
-			# German
-			r'\bwo\s+(?:sind|ist|sind\s+die|habe\s+ich|hast\s+du)\b'
-			r'|\bhast\s+du\s+.{0,100}?(?:gespeichert|erstellt|hinzugef[üu]gt|abgelegt|gemacht)\b'
-			r'|\bwurde\s+.{0,100}?(?:gespeichert|erstellt|angelegt)\b'
-			r'|\bwo\s+(?:wurde|wurden|habe|hat|steht|stehen|finde|findet|liegt|liegen)\b'
-			r'|wo\s+das\s+steht'
-			r'|\bwo\s+ist\s+das\b'
-			# English
-			r'|\bwhere\s+(?:is|are|did\s+you|was|were)\s+(?:it|they|the|that|those)\b'
-			r'|\bdid\s+you\s+.{0,100}?(?:save|create|add|store|put|make)\b'
-			r'|\bwas\s+.{0,100}?(?:saved|created|added|stored)\b'
-			r'|\bwere\s+.{0,100}?(?:saved|created|added|stored)\b'
-			r'|\bwhere\s+(?:can\s+i\s+find|to\s+find)\b'
-			# Spanish / French
-			r'|\b(?:d[oó]nde|où)\s+(?:est[aá]|son|est|sont)\b'
-			r'|\b(?:guardaste|enregistr[eé])\b',
-			re.IGNORECASE,
-		)
-		# Minimum word count to bother searching — "wo" alone is too vague
-		_STATE_QUERY_WORDS_MIN = 2
-		_state_text_trimmed = user_text.strip()[:_MAX_RE_INPUT]
-		if (
-			len(_state_text_trimmed.split()) >= _STATE_QUERY_WORDS_MIN
-			and _STATE_QUERY_RE.search(_state_text_trimmed)
-		):
-			# Extract a search fragment: last multi-word phrase or quoted term
-			# from the user message that might be a card/board title
-			_SQ_QUOTE_RE = re.compile(r'["\u201c\']([^"\u201d\']{2,50})["\u201d\']')
-			_SQ_FRAG_RE = re.compile(
-				r'(?:'
-				r'(?:die|den|der|das|mein|meine|the|my|it|sie|es|los?|les?|las?)\s+)?'
-				r'([A-Za-z\u00c0-\u017e\u0400-\u04FF][A-Za-z\u00c0-\u017e\u0400-\u04FF\s]{1,200})'
-				r'(?:\s+(?:gespeichert|erstellt|saved|created|added|store|board|card|task|todo|list))?'
-				r'\??$',
-				re.IGNORECASE,
-			)
-			_sq_frag: str = ""
-			_sq_q = _SQ_QUOTE_RE.search(user_text[:_MAX_RE_INPUT])
-			if _sq_q:
-				_sq_frag = _sq_q.group(1).strip()
-			else:
-				# Split by sentence/clause boundaries and find a clause that does NOT match the state query regex
-				_clauses = [c.strip() for c in re.split(r'[?.!]', user_text[:_MAX_RE_INPUT]) if c.strip()]
-				_candidate_clauses = [c for c in _clauses if not _STATE_QUERY_RE.search(c)]
-				if _candidate_clauses:
-					_sq_frag = max(_candidate_clauses, key=len)
-				else:
-					_sq_m = _SQ_FRAG_RE.search(user_text[:_MAX_RE_INPUT])
-					if _sq_m:
-						_sq_frag = _sq_m.group(1).strip()
-
-			if _sq_frag:
-				# Words to strip from the extracted fragment
-				_STRIP_WORDS_RE = re.compile(
-					r'\b(?:wo\s+ist|wo\s+sind|wo\s+steht|wo\s+finde|where\s+is|where\s+are|where\s+can\s+i\s+find|hast\s+du|hast\s+du\s+das|did\s+you|was\s+it|wurde|wurde\s+das)\b',
-					re.IGNORECASE
-				)
-				_sq_frag = _STRIP_WORDS_RE.sub("", _sq_frag).strip()
-				# Strip leading/trailing common articles/prepositions
-				_sq_frag = re.sub(r'^(?:meine|mein|meinen|das|die|der|den|ein|eine|einen|my|the|a|an)\s+', '', _sq_frag, flags=re.IGNORECASE)
-				_sq_frag = re.sub(r'\s+(?:gespeichert|erstellt|hinzugefügt|abgelegt|saved|created|added|stored|aufgehoben|geschrieben|steht|ist|sind|where|wo|hast du)$', '', _sq_frag, flags=re.IGNORECASE)
-				_sq_frag = _sq_frag.strip().strip("'\"")
-
+		_sq_topic = await _classify_state_query(user_text)
+		if _sq_topic:
 			# If we got a reasonable fragment, look it up in Planka live
-			if _sq_frag and len(_sq_frag) >= 2:
+			if len(_sq_topic) >= 2:
 				try:
 					from app.services.planka import search_cards_in_planka
 					_sq_results = await asyncio.wait_for(
-						search_cards_in_planka(_sq_frag, limit=10), timeout=6.0,
+						search_cards_in_planka(_sq_topic, limit=10), timeout=6.0,
 					)
 					if _sq_results:
 						_sq_lines = [
@@ -835,20 +806,20 @@ async def route_message_stream(
 							for r in _sq_results
 						]
 						_sq_context = (
-							f"[VERIFIED PLANKA STATE — cards matching '{_sq_frag}']\n"
+							f"[VERIFIED PLANKA STATE — cards matching '{_sq_topic}']\n"
 							+ "\n".join(_sq_lines)
 							+ "\n[END VERIFIED STATE — answer ONLY from the above. Do NOT guess.]"
 						)
 					else:
 						_sq_context = (
-							f"[VERIFIED PLANKA STATE — no cards found matching '{_sq_frag}']\n"
+							f"[VERIFIED PLANKA STATE — no cards found matching '{_sq_topic}']\n"
 							"[END VERIFIED STATE — if no cards found, say so clearly. Do NOT invent a location.]"
 						)
 					# Accumulate for injection at step 0.55 (avoids reassigning closure var)
 					_sq_extra_ctx.append({"role": "assistant", "content": _sq_context})
 					logger.info(
 						"Router 0.45: injected Planka state for fragment '%s' (%d results)",
-						_sanitize_for_log(_sq_frag), len(_sq_results) if _sq_results else 0,
+						_sanitize_for_log(_sq_topic), len(_sq_results) if _sq_results else 0,
 					)
 					# L9 — count successful Planka state lookups for SLO monitoring
 					try:
@@ -857,9 +828,9 @@ async def route_message_stream(
 					except Exception:
 						pass
 				except asyncio.TimeoutError:
-					logger.warning("Router 0.45: Planka state query timed out for '%s'", _sanitize_for_log(_sq_frag))
+					logger.warning("Router 0.45: Planka state query timed out for '%s'", _sanitize_for_log(_sq_topic))
 				except Exception as _sq_err:
-					logger.warning("Router 0.45: Planka state query failed: %s", _sq_err)
+					logger.warning("Router 0.45 Planka query failed: %s", _sq_err)
 			# Whether or not the lookup succeeded, fall through to normal LLM path below
 
 		# ── L11 Parallel board-context prefetch ──────────────────────────────
