@@ -328,6 +328,11 @@ async def route_message_stream(
 		# ── Z-core always-on context (workspace + signal interpretation) ──────
 		_z_core_ctx = build_z_core_context(user_text)
 
+		# Fetch web search context early if a search intent is detected
+		_search_ctx = ""
+		if _SEARCH_INTENT_RE.search(user_text[:_MAX_RE_INPUT]):
+			_search_ctx = await _inject_search_context(user_text)
+
 		_emotional_ctx = ""
 		_crew_prompt = user_text
 		if _EMOTIONAL_MARKER_RE.search(user_text):
@@ -338,6 +343,9 @@ async def route_message_stream(
 				"complex plans. Lead with warmth.]\n"
 			)
 			_crew_prompt = _emotional_ctx + user_text
+
+		if _search_ctx:
+			_crew_prompt = _crew_prompt + _search_ctx
 
 		_status_history: list[str] = []
 
@@ -1762,16 +1770,13 @@ async def route_message_stream(
 		_l5_hold: list[str] = []
 		_l5_mode = 0
 		await _status(_t.get("status_composing", "Composing response..."))
-		# ── Local-model search injection ──────────────────────────────────────
-		# When not forced to cloud AND the message looks like a factual/lookup
-		# query, augment the prompt with SearXNG results so the local model can
-		# answer factual questions without native tool-calling capability.
+		# ── Search context injection ──────────────────────────────────────────
+		# Augment the prompt with SearXNG results so the model has access to recent
+		# facts / search queries when a search intent is detected.
 		_search_augmented_text = user_text
-		if not _force_cloud and _SEARCH_INTENT_RE.search(user_text[:_MAX_RE_INPUT]):
-			_search_ctx = await _inject_search_context(user_text)
-			if _search_ctx:
-				_search_augmented_text = user_text + _search_ctx
-				logger.info("Router: injected search context (%d chars) for local model", len(_search_ctx))
+		if _search_ctx:
+			_search_augmented_text = user_text + _search_ctx
+			logger.info("Router: injected search context (%d chars) into conversational path", len(_search_ctx))
 		async for token in chat_stream_with_context(
 			_search_augmented_text,
 			history=_ctx_history,
