@@ -233,13 +233,12 @@ async def _send_online_notification(recovery_html: str = ""):
 	try:
 		lang = await get_user_lang()
 		t = get_translations(lang)
+		_fallback = "I'm back!"
+		greeting = f"<i>{t.get('status_online', _fallback)}</i>"
 		if recovery_html:
-			# LLM response already carries the greeting — send it as-is.
-			msg = recovery_html
+			msg = f"{greeting}\n\n{recovery_html}"
 		else:
-			# Nothing to recover — just a warm translated greeting.
-			_fallback = "I'm back!"
-			msg = f"<i>{t.get('status_online', _fallback)}</i>"
+			msg = greeting
 		await send_notification_html(msg, nav_footer=get_nav_footer(t))
 	except Exception as _e:
 		logger.warning("Online notification failed: %s", _e)
@@ -268,14 +267,14 @@ def _consume_latest_changes():
 	except Exception as _e:
 		logger.debug("Could not remove latest-changes file: %s", _e)
 
-def _format_raw_changes_html(changes: str, online_label: str = "I'm back!") -> str:
+def _format_raw_changes_html(changes: str) -> str:
 	"""Format raw commit messages as a minimal HTML fallback."""
 	import html
 	lines = [html.escape(l.strip()) for l in changes.splitlines() if l.strip().startswith("- ")]
 	if not lines:
 		return ""
 	formatted = "\n".join(lines[:10])
-	return f"<i>{html.escape(online_label)}</i>\n\n<pre>{formatted}</pre>"
+	return f"<pre>{formatted}</pre>"
 
 async def _send_changes_notification_if_needed():
 	"""Send the deployment-changes banner if a latest_changes.txt exists.
@@ -288,10 +287,13 @@ async def _send_changes_notification_if_needed():
 		return
 	logger.info("Startup: deployment changes detected, summarising for user.")
 	from app.services.llm import chat
+	lang = await get_user_lang()
+	lang_name = "German" if lang == "de" else "English"
 	changes_prompt = (
 		"You just came back online after a deployment. Tell the user what was shipped — "
 		"factually, like reading out a changelog. One sentence per change maximum. "
-		"Plain language, no fluff.\n\n"
+		f"Write in clean, natural, grammatically correct {lang_name}. Plain language, no fluff.\n"
+		f"For example, instead of 'Der System wurde...' write 'Dem System wurde...' or 'Es wurde...'\n\n"
 		"STRICT RULES:\n"
 		"- Do NOT say 'I am now better', 'I have been improved', 'I was fixed', 'I work better now', "
 		"'die letzten Updates haben', 'ich wurde gefixt', 'ich bin jetzt besser', or any equivalent.\n"
@@ -327,7 +329,7 @@ async def _send_changes_notification_if_needed():
 	# Both attempts failed — send raw commit list so changes are never lost.
 	logger.warning("Startup: LLM unavailable, sending raw changelog as fallback.")
 	_consume_latest_changes()
-	fallback_html = _format_raw_changes_html(changes, online_label="I'm back!")
+	fallback_html = _format_raw_changes_html(changes)
 	await _send_online_notification(recovery_html=fallback_html or "")
 
 
