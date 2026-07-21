@@ -76,11 +76,12 @@ _MAX_RE_INPUT = 500
 _MAX_RE_REPLY = 10_000
 
 
-def _sanitize_for_log(text: str, max_len: int = 80) -> str:
+def _sanitize_for_log(text: Any, max_len: int = 80) -> str:
 	"""Strip newlines and control characters from user-controlled text before writing to logs (CWE-117)."""
-	if not text:
+	if text is None:
 		return ""
-	return re.sub(r'[\r\n\x00-\x1f]', ' ', str(text)[:max_len]).strip()
+	s = str(text)[:max_len]
+	return s.replace('\n', '\\n').replace('\r', '\\r')
 
 
 # Regex for Z-initiated ROUTE tags (tolerates missing 'ACTION:' prefix / closing ']')
@@ -875,7 +876,7 @@ async def route_message_stream(
 					_sanitize_for_log(_bfrag_l11),
 				)
 			except Exception as _l11_e:
-				logger.debug("Router L11: prefetch task creation failed: %s", _l11_e)
+				logger.debug("Router L11: prefetch task creation failed: %s", _sanitize_for_log(_l11_e))
 
 		# ── 0.5 Deterministic structural-intent intercept ────────────────────
 		# Pre-LLM router for high-confidence Planka mutations (move/archive/
@@ -913,7 +914,7 @@ async def route_message_stream(
 			logger.warning("Router: intent classifier timeout (>%.0fs) — falling through to LLM", _clf_timeout)
 		except Exception as _ie:
 			intent = None
-			logger.warning("Router: intent classifier failed: %s — falling through to LLM", _ie)
+			logger.warning("Router: intent classifier failed: %s — falling through to LLM", _sanitize_for_log(_ie))
 		if intent and intent.confidence >= 0.85:
 			logger.info(
 				"Router: structural intent '%s' (conf=%.2f) for '%s...'",
@@ -1136,7 +1137,7 @@ async def route_message_stream(
 							if not _proposed:
 								_proposed = ["To Do", "In Progress", "Done"]
 						except Exception as _9e_inf_err:
-							logger.warning("Router 9e: list inference failed for '%s': %s", _sanitize_for_log(_board_frag), _9e_inf_err)
+							logger.warning("Router 9e: list inference failed for '%s': %s", _sanitize_for_log(_board_frag), _sanitize_for_log(_9e_inf_err))
 							_proposed = ["To Do", "In Progress", "Done"]
 						_EMPTY_BOARD_PENDING[channel] = {
 							"board_name": _board_frag,
@@ -1149,7 +1150,7 @@ async def route_message_stream(
 							f"I'll create: {', '.join(_proposed)}. "
 							f"Reply 'yes' to confirm."
 						)
-						logger.info("Router 9e: empty-board HITL proposed for '%s' with lists %s", _sanitize_for_log(_board_frag), _proposed)
+						logger.info("Router 9e: empty-board HITL proposed for '%s' with lists %s", _sanitize_for_log(_board_frag), _sanitize_for_log(_proposed))
 						yield _hitl_reply
 						_9e_hl_clean, _9e_hl_cmds, _9e_hl_pending = await bus.commit_reply(
 							channel=channel, raw_reply=_hitl_reply,
