@@ -685,3 +685,35 @@ class TestHTTPExceptionFromException:
 			+ "\n".join(f"  {h}" for h in hits)
 		)
 
+
+class TestPrivateDataLeakPrevention:
+	"""Mitigation against committing personal context, operator user_crews, or secrets."""
+
+	def test_no_private_or_personal_files_tracked_in_git(self) -> None:
+		import subprocess
+		try:
+			tracked_files = subprocess.check_output(
+				["git", "ls-files"], cwd=str(REPO_ROOT)
+			).decode("utf-8").splitlines()
+		except Exception:
+			return  # Skip if git executable not in path
+
+		forbidden_prefixes = ["personal/", "agent/", ".env", ".env.remote", ".env.planka"]
+		forbidden_filenames = ["user_crews.yaml", "domain.derived.yaml"]
+
+		leaked: list[str] = []
+		for filepath in tracked_files:
+			# Exempt sanitized .example templates
+			if ".example" in filepath or "example" in filepath:
+				continue
+			if any(filepath == p or filepath.startswith(p) for p in forbidden_prefixes):
+				leaked.append(filepath)
+			elif any(f in filepath for f in forbidden_filenames):
+				leaked.append(filepath)
+
+		assert not leaked, (
+			"CRITICAL LEAK PREVENTION: The following private/personal files are tracked in git:\n"
+			+ "\n".join(f"  - {f}" for f in leaked)
+			+ "\nRun `git rm --cached <file>` and ensure `.gitignore` covers it."
+		)
+

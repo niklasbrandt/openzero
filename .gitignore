@@ -8,8 +8,12 @@
 # ===========================
 personal/
 personal/*
+personal/**
 agent/
 agent/*
+agent/**
+user_crews.yaml
+domain.derived.yaml
 
 # ===========================
 # Secrets & environment files
