@@ -1,10 +1,10 @@
 # openZero
 
+[![Scheduled Agents](https://img.shields.io/badge/Agents-Scheduled_Crews-8B5CF6?logo=clock&logoColor=white)](#crews)
 [![Self-Hosted Agent](https://img.shields.io/badge/Agent-Self--Hosted-14B8A6?logo=github&logoColor=white)](https://github.com/niklasbrandt/openzero)
 [![Local Data](https://img.shields.io/badge/Data-Local_Only-10B981?logo=shield&logoColor=white)](#network-perimeter)
 [![Deployment](https://img.shields.io/badge/Deployment-Docker-2496ED?logo=docker&logoColor=white)](BUILD.md)
 [![Memory](https://img.shields.io/badge/Memory-Qdrant-DC2626?logo=qdrant&logoColor=white)](#memory-connections)
-[![Scheduled Agents](https://img.shields.io/badge/Agents-Scheduled_Crews-8B5CF6?logo=clock&logoColor=white)](#crews)
 [![Planka Workspace](https://img.shields.io/badge/Workspace-Planka-0075FF?logo=trello&logoColor=white)](#crews)
 [![Telegram](https://img.shields.io/badge/Telegram-Bot-26A5E4?logo=telegram&logoColor=white)](#channels)
 [![WhatsApp](https://img.shields.io/badge/WhatsApp-Cloud_API-25D366?logo=whatsapp&logoColor=white)](#channels)
