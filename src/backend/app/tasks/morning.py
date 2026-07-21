@@ -466,11 +466,19 @@ async def morning_briefing():
 		# 6. Send text notification to Telegram immediately (does not wait for TTS)
 		from app.services.notifier import send_notification, send_voice_message, get_nav_footer
 		from app.services.translations import get_user_lang
+		from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+
 		lang = await get_user_lang()
 		t = get_translations(lang)
 
+		btn_text = t.get("checkin_btn_guided", "Geführtes Check-in")
+		keyboard = InlineKeyboardMarkup([
+			[InlineKeyboardButton(f"▶ {btn_text}", callback_data="checkin_start")]
+		])
+
 		await send_notification(
 			f"---\n{content}",
+			reply_markup=keyboard,
 			nav_footer=get_nav_footer(t)
 		)
 
