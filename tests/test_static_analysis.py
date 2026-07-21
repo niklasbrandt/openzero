@@ -717,3 +717,46 @@ class TestPrivateDataLeakPrevention:
 			+ "\nRun `git rm --cached <file>` and ensure `.gitignore` covers it."
 		)
 
+
+class TestExampleFileSanitization:
+	"""Ensures committed .example files never contain real IP addresses, API keys, or emails."""
+
+	def test_example_files_have_no_real_secrets(self) -> None:
+		example_files = sorted(
+			[p for p in REPO_ROOT.glob("**/*.example*") if p.is_file()]
+			+ [p for p in REPO_ROOT.glob("*.example*") if p.is_file()]
+			+ [p for p in REPO_ROOT.glob("agent.example/**/*") if p.is_file()]
+			+ [p for p in REPO_ROOT.glob("personal.example/**/*") if p.is_file()]
+		)
+
+		forbidden_patterns = [
+			(r"sk-[a-zA-Z0-9]{20,}", "Real OpenAI API Key"),
+			(r"ghp_[a-zA-Z0-9]{30,}", "Real GitHub Token"),
+			(r"[0-9]{8,10}:[a-zA-Z0-9_-]{35}", "Real Telegram Token"),
+			(r"\b(?!(?:127\.0\.0\.1|0\.0\.0\.0)\b)\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b", "Real IPv4 Address"),
+		]
+
+		violations: list[str] = []
+		for filepath in set(example_files):
+			try:
+				rel_path = filepath.relative_to(REPO_ROOT)
+			except ValueError:
+				continue
+			try:
+				content = filepath.read_text(encoding="utf-8", errors="ignore")
+				for lineno, line in enumerate(content.splitlines(), 1):
+					line_code = line.split("#")[0] if "#" in line else line
+					for pattern, category in forbidden_patterns:
+						matches = re.finditer(pattern, line_code)
+						for m in matches:
+							val = m.group(0)
+							violations.append(f"{rel_path}:{lineno} -> [{category}] {val}")
+			except Exception:
+				pass
+
+		assert not violations, (
+			"LEAK PREVENTION: Real secrets/IPs detected in .example template files:\n"
+			+ "\n".join(f"  - {v}" for v in violations)
+			+ "\nReplace with generic placeholders like `your_server_ip_here` or `CHANGE_ME_STRONG_PASSWORD`."
+		)
+

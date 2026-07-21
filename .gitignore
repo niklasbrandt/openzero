@@ -18,6 +18,7 @@ domain.derived.yaml
 # ===========================
 # Secrets & environment files
 # ===========================
+config.yaml
 .env
 .env.remote
 .env.planka
