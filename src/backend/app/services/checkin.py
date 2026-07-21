@@ -260,7 +260,7 @@ async def _fetch_recent_crew_conversations() -> dict[str, str]:
 		from app.services.crews import get_crew_registry
 		domains = [c.id for c in get_crew_registry().list_crews()]
 	except Exception:
-		domains = ["kids", "chef", "coach", "life", "health", "nutrition", "appearance", "scrum", "focus"]
+		pass
 	histories = {}
 	
 	try:
