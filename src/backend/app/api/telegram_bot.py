@@ -858,16 +858,17 @@ async def handle_checkin_callback(update: Update, context: ContextTypes.DEFAULT_
 		return
 
 	if data == "checkin_start":
-		await query.edit_message_text(
-			f"<blockquote>{t.get('checkin_building', 'Building your check-in. This takes a moment...')}</blockquote>",
+		status_msg = await context.bot.send_message(
+			chat_id=chat_id,
+			text=f"<blockquote>{t.get('checkin_building', 'Building your check-in. This takes a moment...')}</blockquote>",
 			parse_mode="HTML",
 		)
 		# Clear existing context if user restarts
 		from app.services.checkin import start_session
 		try:
 			session = await start_session(channel, chat_id)
-			if query.message:
-				session.last_msg_ids.append(query.message.message_id)
+			if status_msg:
+				session.last_msg_ids.append(status_msg.message_id)
 		except Exception as exc:
 			logger.error("handle_checkin_callback start failed: %s", exc)
 			await context.bot.send_message(
