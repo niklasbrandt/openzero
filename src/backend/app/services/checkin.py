@@ -255,7 +255,12 @@ async def _fetch_recent_crew_conversations() -> dict[str, str]:
 	from app.models.db import AsyncSessionLocal
 	from sqlalchemy import text
 	
-	domains = ["kids", "chef", "coach", "life", "health", "nutrition", "appearance", "scrum", "focus"]
+	domains = []
+	try:
+		from app.services.crews import get_crew_registry
+		domains = [c.id for c in get_crew_registry().list_crews()]
+	except Exception:
+		domains = ["kids", "chef", "coach", "life", "health", "nutrition", "appearance", "scrum", "focus"]
 	histories = {}
 	
 	try:
@@ -418,15 +423,14 @@ async def _build_stops(data: dict) -> list[CheckinStop]:
 		"- 'calibration': A breathing or grounding exercise (12–20 seconds spoken, calm, physical, present-moment).\n"
 		"- 'weather': Detail the weather forecast using the chronological 3-hour slots provided in the Today's data (e.g. '0-3: 17°C klar, 3-6: 20°C wolkig' etc.). List them all in order. Then mention any calendar events. Max 4 sentences.\n"
 		"- 'operator': Operator Board active tasks. You MUST ONLY reference card titles explicitly listed under 'EXACT OPERATOR BOARD CARDS' below. It is a critical error to mention any task not present in that list. Do NOT invent card names and do NOT take topics from recent chats. Max 3 sentences.\n"
-		"- 'kids': Focus on parent-child bonding, presence, quality time, and milestone reflections. STRICT ANTI-HALLUCINATION RULE: NEVER invent pickup times, schedules, or appointments (like 'Kita 16 Uhr'). If there are active cards on the kids board, mention them; otherwise ask about quality time or connection with the kids. Max 3 sentences.\n"
-		"- Board slugs (e.g. 'appearance', 'chef'): For each domain, look at its active cards, recent activity, AND 'Recent Crew Conversations' block below.\n"
-		"  You MUST extract active task topics or recent chat points from the conversations block and suggest/ask about concrete next steps discussed. Be proactive and natural. STRICT GROUNDING: Never invent pickup times, schedules, or appointments not present in the calendar data.\n"
+		"- Board slugs: For each domain board, look at its active cards, recent activity, AND 'Recent Crew Conversations' block below.\n"
+		"  You MUST extract active task topics or recent chat points from the conversations block and suggest/ask about concrete next steps discussed. Be proactive and natural.\n"
 		"- 'meta': Overarching meta thoughts, mood, direction, synthesized from Personal Context below. Do not parrot system goals.\n"
 		"- 'outro': Brief closing. Name one concrete action. End with a question (in the target language) about if there is anything new today.\n\n"
 		"Rules:\n"
 		f"- Write every value in {_lang_name}.\n"
 		"- Keep each value short (1-2 natural spoken sentences, max 40 words per key, except 'weather' which can list the slots and be up to 80 words) so the overall check-in is efficient and does not get cut off.\n"
-		"- STRICT ANTI-HALLUCINATION / GROUNDING RULE: ONLY reference card names that are explicitly listed in the 'Boards and Projects' or 'EXACT OPERATOR BOARD CARDS' context below. If a board has no active cards (or is empty), do NOT invent card names; instead, state clearly that there are no active tasks on that board. Do NOT under any circumstances hallucinate tasks that are not present in the data.\n"
+		"- UNIVERSAL ANTI-HALLUCINATION / GROUNDING RULE: ONLY reference card names, tasks, or facts that are explicitly listed in the provided data or recent conversations. NEVER invent or fabricate pickup times, appointments, meeting schedules, or card titles not present in the context.\n"
 		"- Output ONLY the JSON object, no markdown, no wrapping other than valid JSON.\n\n"
 		f"Today's data:\n"
 		f"Weather: {data.get('weather', 'unknown')}\n"
