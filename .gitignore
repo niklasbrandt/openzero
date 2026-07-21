@@ -4,10 +4,12 @@
 #     https://www.atlassian.com/git/tutorials/saving-changes/gitignore
 
 # ===========================
-# Personal data (NEVER commit)
+# Personal data & local agent config (NEVER commit)
 # ===========================
 personal/
+personal/*
 agent/
+agent/*
 
 # ===========================
 # Secrets & environment files
@@ -21,7 +23,6 @@ tokens/
 scripts/pass.txt
 scripts/*.log
 scripts/*.exp
-personal/
 
 # ===========================
 # Runtime & build artifacts
