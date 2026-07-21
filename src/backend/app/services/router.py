@@ -1180,7 +1180,7 @@ async def route_message_stream(
 			except asyncio.TimeoutError:
 				logger.warning("Router: board context fetch timed out for '%s'", _sanitize_for_log(_board_frag))
 			except Exception as _bce:
-				logger.warning("Router: board context fetch failed: %s", _bce)
+				logger.warning("Router: board context fetch failed: %s", _sanitize_for_log(_bce))
 
 		# ── 1. Semantic crew routing ─────────────────────────────────────────
 		from app.services.semantic_router import route_semantic
@@ -1730,7 +1730,7 @@ async def route_message_stream(
 
 			# ── Single-crew path ──────────────────────────────────
 			crew_id = routed_crews[0]
-			logger.info("Router: semantic-routing '%s...' → crew '%s'", _sanitize_for_log(user_text), crew_id)
+			logger.info("Router: semantic-routing '%s...' → crew '%s'", _sanitize_for_log(user_text), _sanitize_for_log(crew_id))
 			_other_candidates = [c for c in _all_candidates if c != crew_id]
 			if _other_candidates:
 				_also_considered = ", ".join(_other_candidates[:3])
@@ -1854,7 +1854,7 @@ async def route_message_stream(
 		m = _ROUTE_RE.search(response)
 		if m:
 			crew_id = m.group(1).strip().lower()
-			logger.info("Router: Z self-routed '%s...' → crew '%s'", _sanitize_for_log(user_text), crew_id)
+			logger.info("Router: Z self-routed '%s...' → crew '%s'", _sanitize_for_log(user_text), _sanitize_for_log(crew_id))
 			r_chunks: list[str] = []
 			async for token in native_crew_engine.run_crew_stream(crew_id, _crew_prompt, history=_ctx_history, force_cloud=True):
 				r_chunks.append(token)

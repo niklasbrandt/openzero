@@ -1857,7 +1857,7 @@ async def classify_structural_intent(text: str, lang: str) -> Optional[Structura
 	if not intent.is_validated:
 		logger.info(
 			"intent_router: OVERRULED intent '%s' (conf=%.2f) for '%s...' Reason: %s",
-			intent.verb, intent.confidence, _sanitize_for_log(text, 80), intent.reasoning
+			intent.verb, intent.confidence, _sanitize_for_log(text, 80), _sanitize_for_log(intent.reasoning, 120)
 		)
 		return None
 		

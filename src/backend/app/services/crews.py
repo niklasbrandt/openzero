@@ -561,10 +561,10 @@ async def is_system_action_or_operational_query(text: str) -> bool:
 			timeout=5.0
 		)
 		decision_clean = decision.strip().upper()
-		logger.debug("is_system_action_or_operational_query: classification result for '%s': %s", _sanitize_for_log(text, 100), decision_clean)
+		logger.debug("is_system_action_or_operational_query: classification result for '%s': %s", _sanitize_for_log(text, 100), _sanitize_for_log(decision_clean, 20))
 		return "YES" in decision_clean
 	except Exception as exc:
-		logger.warning("is_system_action_or_operational_query reasoning check failed: %s. Falling back to False.", exc)
+		logger.warning("is_system_action_or_operational_query reasoning check failed: %s. Falling back to False.", _sanitize_for_log(exc, 200))
 		return False
 
 
