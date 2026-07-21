@@ -379,7 +379,7 @@ async def morning_briefing():
 			methods = [
 				("Gratitude",
 				 "Before the day pulls you in, name three things you are grateful for right now. "
-				 "Be specific — not 'my kids' but 'the way Liya laughed at breakfast yesterday.' "
+				 "Be specific — not 'my kids' but 'the way my child laughed at breakfast yesterday.' "
 				 "Precision makes it real. Let each one land for a breath before moving to the next."),
 				("Intention",
 				 "Set one intention for how you want to move through today. Not a task — a way of being. "
