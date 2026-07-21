@@ -365,25 +365,40 @@ async def _build_stops(data: dict) -> list[CheckinStop]:
 	stops.append(CheckinStop(id="operator", title="Operator Board", body=""))
 
 	board_slug_map = {}
+	op_cards_lines = []
 	for b in data.get("boards_raw", []):
-		name = b["name"]
+		bname_lower = b["name"].lower()
+		proj_lower = b.get("project", "").lower()
+		is_op_board = bname_lower in ["operator board", "operator-board", "operator"] or proj_lower == "operationen"
+
+		if is_op_board:
+			# Link board_id to the pre-created operator stop
+			for s in stops:
+				if s.id == "operator":
+					s.board_id = b.get("board_id")
+			for _, cname, clist, _ in b.get("cards", []):
+				if clist.lower() not in ["archive", "erledigt", "done", "trash"]:
+					op_cards_lines.append(f"  - {cname} (List: {clist})")
+			continue  # Don't create duplicate stop for Operator Board
+
 		# Exclude Scrum and Focus stops as requested (handled in Meta/outro or standalone)
-		if name.lower() in ["scrum", "focus"]:
+		if bname_lower in ["scrum", "focus"]:
 			continue
-		slug = name.lower().replace(" ", "-").replace("/", "-")
-		
-		# Ensure unique slug
+
+		slug = bname_lower.replace(" ", "-").replace("/", "-")
 		orig_slug = slug
 		counter = 1
 		while any(s.id == slug for s in stops):
 			slug = f"{orig_slug}-{counter}"
 			counter += 1
-			
-		board_slug_map[slug] = name
-		stops.append(CheckinStop(id=slug, title=name, body="", board_id=b.get("board_id")))
+
+		board_slug_map[slug] = b["name"]
+		stops.append(CheckinStop(id=slug, title=b["name"], body="", board_id=b.get("board_id")))
 
 	stops.append(CheckinStop(id="meta", title="Meta Thoughts", body=""))
 	stops.append(CheckinStop(id="outro", title="Checkout", body=""))
+
+	operator_cards_ctx = "\n".join(op_cards_lines) if op_cards_lines else "  (No active cards on Operator Board)"
 
 	# Expected JSON keys list
 	expected_keys = [s.id for s in stops]
@@ -402,7 +417,7 @@ async def _build_stops(data: dict) -> list[CheckinStop]:
 		"Key Descriptions:\n"
 		"- 'calibration': A breathing or grounding exercise (12–20 seconds spoken, calm, physical, present-moment).\n"
 		"- 'weather': Detail the weather forecast using the chronological 3-hour slots provided in the Today's data (e.g. '0-3: 17°C klar, 3-6: 20°C wolkig' etc.). List them all in order. Then mention any calendar events. Max 4 sentences.\n"
-		"- 'operator': Operator Board todos only. Be specific: name the actual card titles. Max 3 sentences.\n"
+		"- 'operator': Operator Board active tasks. You MUST ONLY reference card titles explicitly listed under 'EXACT OPERATOR BOARD CARDS' below. It is a critical error to mention any task not present in that list. Do NOT invent card names and do NOT take topics from recent chats. Max 3 sentences.\n"
 		"- Board slugs (e.g. 'appearance', 'kids', 'chef'): For each domain, look at its active cards, recent activity, AND 'Recent Crew Conversations' block below.\n"
 		"  You MUST extract active task topics or recent chat points from the conversations block and suggest/ask about concrete next steps discussed. Be proactive. Do not just say 'no updates' or 'kita is running' if there are recent chats showing active work/debates. Suggest an action item for the user. Keep it natural.\n"
 		"- 'meta': Overarching meta thoughts, mood, direction, synthesized from Personal Context below. Do not parrot system goals.\n"
@@ -410,11 +425,12 @@ async def _build_stops(data: dict) -> list[CheckinStop]:
 		"Rules:\n"
 		f"- Write every value in {_lang_name}.\n"
 		"- Keep each value short (1-2 natural spoken sentences, max 40 words per key, except 'weather' which can list the slots and be up to 80 words) so the overall check-in is efficient and does not get cut off.\n"
-		"- STRICT ANTI-HALLUCINATION / GROUNDING RULE: ONLY reference card names that are explicitly listed in the 'Boards and Projects' context below. If a board has no active cards (or is empty), do NOT invent card names; instead, state clearly that there are no active tasks on that board, or check if there are any stale items to mention. Do NOT under any circumstances hallucinate tasks that are not present in the data.\n"
+		"- STRICT ANTI-HALLUCINATION / GROUNDING RULE: ONLY reference card names that are explicitly listed in the 'Boards and Projects' or 'EXACT OPERATOR BOARD CARDS' context below. If a board has no active cards (or is empty), do NOT invent card names; instead, state clearly that there are no active tasks on that board. Do NOT under any circumstances hallucinate tasks that are not present in the data.\n"
 		"- Output ONLY the JSON object, no markdown, no wrapping other than valid JSON.\n\n"
 		f"Today's data:\n"
 		f"Weather: {data.get('weather', 'unknown')}\n"
 		f"Calendar:\n{calendar_text}\n"
+		f"EXACT OPERATOR BOARD CARDS (Ground Truth for 'operator' key):\n{operator_cards_ctx}\n\n"
 		f"Recent Crew Conversations:\n{crew_history_ctx}\n\n"
 		f"Boards and Projects:\n{_board_ctx}\n"
 		f"Recent board activity (last 4 days):\n{str(data.get('recent_activity', ''))[:2000]}\n"
