@@ -896,7 +896,14 @@
 	function appendMsg(who, text) {
 		const div = document.createElement('div');
 		div.className = `msg msg-${who}`;
-		div.innerHTML = `<span>${text}</span><span class="msg-time" aria-hidden="true">${now()}</span>`;
+		const textSpan = document.createElement('span');
+		textSpan.textContent = text;
+		const timeSpan = document.createElement('span');
+		timeSpan.className = 'msg-time';
+		timeSpan.setAttribute('aria-hidden', 'true');
+		timeSpan.textContent = now();
+		div.appendChild(textSpan);
+		div.appendChild(timeSpan);
 		chatMessages.appendChild(div);
 		scrollChatBottom();
 	}

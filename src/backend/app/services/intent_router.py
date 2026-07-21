@@ -35,6 +35,13 @@ from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
+
+def _sanitize_for_log(text: str, max_len: int = 80) -> str:
+	"""Strip newlines and control characters from user-controlled text before writing to logs (CWE-117)."""
+	if not text:
+		return ""
+	return re.sub(r'[\r\n\x00-\x1f]', ' ', str(text)[:max_len]).strip()
+
 # Cap input length before running regex to prevent ReDoS (CWE-1333)
 _MAX_INPUT = 500
 
@@ -1850,7 +1857,7 @@ async def classify_structural_intent(text: str, lang: str) -> Optional[Structura
 	if not intent.is_validated:
 		logger.info(
 			"intent_router: OVERRULED intent '%s' (conf=%.2f) for '%s...' Reason: %s",
-			intent.verb, intent.confidence, text[:80], intent.reasoning
+			intent.verb, intent.confidence, _sanitize_for_log(text, 80), intent.reasoning
 		)
 		return None
 		

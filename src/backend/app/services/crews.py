@@ -9,6 +9,14 @@ from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
+
+def _sanitize_for_log(text: str, max_len: int = 80) -> str:
+	"""Strip newlines and control characters from user-controlled text before writing to logs (CWE-117)."""
+	if not text:
+		return ""
+	return re.sub(r'[\r\n\x00-\x1f]', ' ', str(text)[:max_len]).strip()
+
+
 # System Instructions Template
 SYSTEM_TEMPLATE = """
 {instructions}
@@ -489,7 +497,7 @@ _SYSTEM_ACTION_RE = re.compile(
 	r'|archive\s+(?:a\s+)?(?:board|card|task|list|project)\b'
 	r'|add\s+(?:a\s+)?(?:card|task)\s+to\s+(?:board|list)\b'
 	r'|(?:add|create|new)\s+(?:a\s+)?(?:list|card|task)\s+(?:on|in|to)\b'
-	r'|(?:pack|tu|leg|schieb|mach)\s+(?:es|das|die|den).+(?:ins|in|auf).+(?:board|liste|karte)\b'
+	r'|(?:pack|tu|leg|schieb|mach)\s+(?:es|das|die|den)\s+(?:\w+\s+){0,4}(?:ins|in|auf)\s+(?:\w+\s+){0,3}(?:board|liste|karte)\b'
 	r'|(?:ins|in\s+das|auf\s+das|auf\s+die|in\s+die)\s+(?:\w+\s+){0,2}(?:board|liste)\b'
 	r')',
 	re.IGNORECASE,
@@ -553,7 +561,7 @@ async def is_system_action_or_operational_query(text: str) -> bool:
 			timeout=5.0
 		)
 		decision_clean = decision.strip().upper()
-		logger.debug("is_system_action_or_operational_query: classification result for '%s': %s", text[:100], decision_clean)
+		logger.debug("is_system_action_or_operational_query: classification result for '%s': %s", _sanitize_for_log(text, 100), decision_clean)
 		return "YES" in decision_clean
 	except Exception as exc:
 		logger.warning("is_system_action_or_operational_query reasoning check failed: %s. Falling back to False.", exc)

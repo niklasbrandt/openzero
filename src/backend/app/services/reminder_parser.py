@@ -14,8 +14,8 @@ from sqlalchemy import select
 
 logger = logging.getLogger(__name__)
 
-_DAILY_RE = re.compile(r'^daily[ \t]+(\d{1,2}):(\d{2})[ \t]+([^\n]+)$', re.IGNORECASE)
-_WEEKLY_RE = re.compile(r'^weekly[ \t]+(mon|tue|wed|thu|fri|sat|sun)[ \t]+(\d{1,2}):(\d{2})[ \t]+([^\n]+)$', re.IGNORECASE)
+_DAILY_RE = re.compile(r'^daily[ \t]+(\d{1,2}):(\d{2})[ \t]+(\S[^\n]*)$', re.IGNORECASE)
+_WEEKLY_RE = re.compile(r'^weekly[ \t]+(mon|tue|wed|thu|fri|sat|sun)[ \t]+(\d{1,2}):(\d{2})[ \t]+(\S[^\n]*)$', re.IGNORECASE)
 _DELETE_RE = re.compile(r'^delete\s+(\d+)$', re.IGNORECASE)
 _LIST_RE = re.compile(r'^list$', re.IGNORECASE)
 

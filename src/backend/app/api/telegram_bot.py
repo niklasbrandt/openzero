@@ -982,8 +982,6 @@ def _build_checkin_keyboard(session, t: dict):
 
 	Returns an InlineKeyboardMarkup or None if the session has no stops.
 	"""
-	from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-
 	stop = session.current
 	nav_row = []
 	if not session.is_first:
@@ -993,7 +991,6 @@ def _build_checkin_keyboard(session, t: dict):
 		))
 
 	if stop.board_id:
-		from app.config import settings
 		nav_row.append(InlineKeyboardButton(
 			f"🔗 {t.get('checkin_btn_goto', 'Go to')}",
 			url=f"{settings.BASE_URL}/boards/{stop.board_id}",
