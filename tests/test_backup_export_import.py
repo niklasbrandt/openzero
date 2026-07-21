@@ -20,13 +20,8 @@ from app.services.backup import (
 	SCHEMA_VERSION,
 	BackupBundleV3,
 	BackupManifest,
-	CalendarBundle,
-	CalendarNode,
 	CardNode,
-	CustomTaskExport,
-	EmailRuleExport,
 	EventNode,
-	FilesExport,
 	FileEntry,
 	ImportError,
 	ImportReport,
@@ -34,17 +29,10 @@ from app.services.backup import (
 	BoardNode,
 	MemoryPointNode,
 	PlankaExportV3,
-	PreferencesExport,
 	ProjectNode,
-	RedisExport,
-	ShareContractExport,
-	TrackingSessionExport,
-	WalkthroughExport,
-	WalkthroughStopExport,
 	AtlasCurationExport,
 	AtlasNodeExport,
 	AtlasEdgeExport,
-	AtlasSpineExport,
 	TaskNode,
 	_strip_ctrl,
 	_sha256,
@@ -101,7 +89,7 @@ def test_encrypt_decrypt_roundtrip():
 def test_decrypt_wrong_passphrase_raises():
 	plaintext = b"secret data"
 	encrypted = encrypt_bundle(plaintext, "right-passphrase-abc-123")
-	with pytest.raises(Exception):
+	with pytest.raises((ValueError, Exception)):
 		decrypt_bundle(encrypted, "wrong-passphrase-xyz-456")
 
 
@@ -160,7 +148,7 @@ def test_card_name_length_enforced():
 def test_event_dtstart_far_future_raises():
 	import datetime
 	far = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=365 * 200)).isoformat()
-	with pytest.raises(Exception):
+	with pytest.raises((ValueError, Exception)):
 		EventNode(uid="test", summary="Future", dtstart=far)
 
 

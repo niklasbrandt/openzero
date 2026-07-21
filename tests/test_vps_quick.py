@@ -55,7 +55,7 @@ class RegressionSuite:
 
 	async def run(self):
 		timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-		self._log(f"# Regression Test Report", report_only=True)
+		self._log("# Regression Test Report", report_only=True)
 		self._log(f"**Date:** {timestamp}", report_only=True)
 		self._log(f"**Target:** {self.base_url}\n", report_only=True)
 		print(f"🚀 openZero Regression Suite -- {self.base_url}\n", flush=True)
@@ -114,7 +114,7 @@ class RegressionSuite:
 			)
 			with open(report_path, "w") as f:
 				f.write(content)
-			print(f"📄 Report saved to docs/artifacts/regression_results.md")
+			print("📄 Report saved to docs/artifacts/regression_results.md")
 		except Exception as e:
 			print(f"⚠️ Failed to save report: {e}")
 

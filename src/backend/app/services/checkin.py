@@ -152,7 +152,6 @@ async def _fetch_boards_raw() -> list[dict]:
 				return_exceptions=True,
 			)
 
-			now = datetime.utcnow()
 			_epoch = datetime(1970, 1, 1)
 
 			for (proj_name, board_name, board_id), b_resp in zip(board_stubs, board_resps):
