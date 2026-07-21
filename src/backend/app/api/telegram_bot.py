@@ -923,40 +923,28 @@ async def handle_checkin_callback(update: Update, context: ContextTypes.DEFAULT_
 		return
 
 	if data == "checkin_okay":
-		session = get_session(channel, chat_id)
+		# "Okay" = acknowledge current stop and advance, same as "Next".
+		# Never route through the LLM pipeline — that triggers crew routing.
+		session = advance_session(channel, chat_id)
 		if not session:
-			await query.answer("Keine aktive Sitzung.")
+			await context.bot.send_message(
+				chat_id=chat_id,
+				text=f"<blockquote>{t.get('checkin_no_session', 'No active check-in. Use /day to start one.')}</blockquote>",
+				parse_mode="HTML",
+			)
 			return
-		await query.answer("Bestätigt.")
-		# Process simulated confirmation text
-		lang = await get_user_lang()
-		simulated_text = "Okay, mach das" if lang == "de" else "Okay, do it"
-		await _process_freetext(update, context, chat_id, simulated_text, is_followup=True)
+		await _deliver_checkin_stop(context.bot, chat_id, session, t)
 		return
 
 
-async def _deliver_checkin_stop(bot, chat_id: int, session, t: dict) -> None:
-	"""Send text + optional voice for the current check-in stop, with nav buttons."""
+def _build_checkin_keyboard(session, t: dict):
+	"""Build the inline navigation keyboard for a check-in session.
+
+	Returns an InlineKeyboardMarkup or None if the session has no stops.
+	"""
 	from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
-	# Delete previous messages if they exist to keep the chat clean
-	if hasattr(session, "last_msg_ids") and session.last_msg_ids:
-		for mid in session.last_msg_ids:
-			try:
-				await bot.delete_message(chat_id=chat_id, message_id=mid)
-			except Exception:
-				pass
-		session.last_msg_ids.clear()
-	else:
-		session.last_msg_ids = []
-
 	stop = session.current
-	step_label = t.get("checkin_step_label", "Step {index} of {total}").format(
-		index=session.index + 1,
-		total=session.total,
-	)
-
-	# Build navigation row
 	nav_row = []
 	if not session.is_first:
 		nav_row.append(InlineKeyboardButton(
@@ -986,7 +974,30 @@ async def _deliver_checkin_stop(bot, chat_id: int, session, t: dict) -> None:
 			callback_data="checkin_done",
 		))
 
-	markup = InlineKeyboardMarkup([nav_row])
+	return InlineKeyboardMarkup([nav_row])
+
+
+async def _deliver_checkin_stop(bot, chat_id: int, session, t: dict) -> None:
+	"""Send text + optional voice for the current check-in stop, with nav buttons."""
+
+	# Delete previous messages if they exist to keep the chat clean
+	if hasattr(session, "last_msg_ids") and session.last_msg_ids:
+		for mid in session.last_msg_ids:
+			try:
+				await bot.delete_message(chat_id=chat_id, message_id=mid)
+			except Exception:
+				pass
+		session.last_msg_ids.clear()
+	else:
+		session.last_msg_ids = []
+
+	stop = session.current
+	step_label = t.get("checkin_step_label", "Step {index} of {total}").format(
+		index=session.index + 1,
+		total=session.total,
+	)
+
+	markup = _build_checkin_keyboard(session, t)
 	text = f"<b>{stop.title}</b>  <i>{step_label}</i>\n\n{_md_to_html(stop.body)}"
 
 	msg = await bot.send_message(
@@ -1433,6 +1444,8 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 				f"Address the user's message in the context of this specific step. "
 				f"Briefly answer the user, then ask if they are ready to proceed to the next step.)"
 			)
+			# Re-attach navigation buttons so user can continue the check-in
+			checkin_markup = _build_checkin_keyboard(ci_session, t)
 
 		# Stream via unified router — collect tokens for progressive edits
 		_panel_html_cache = ""
