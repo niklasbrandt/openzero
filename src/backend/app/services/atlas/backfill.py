@@ -60,9 +60,9 @@ async def run_backfill():
 			with_payload=True,
 			with_vectors=False,
 		)
-		logger.info(f"Retrieved {len(results)} memory points from Qdrant.")
+		logger.info("Retrieved %d memory points from Qdrant.", len(results))
 	except Exception as e:
-		logger.error(f"Failed to scroll Qdrant: {e}")
+		logger.error("Failed to scroll Qdrant: %s", e)
 		return
 
 	if not results:
@@ -102,7 +102,7 @@ async def run_backfill():
 			keywords = {w for w in words if w not in STOP_WORDS}
 			word_sets[node.id] = keywords
 
-		logger.info(f"Staged {len(inserted_nodes)} AtlasNode objects in Postgres.")
+		logger.info("Staged %d AtlasNode objects in Postgres.", len(inserted_nodes))
 
 		# 3. Build & Insert edges
 		edge_count = 0
@@ -143,7 +143,7 @@ async def run_backfill():
 						session.add(edge)
 						edge_count += 1
 
-		logger.info(f"Staged {edge_count} AtlasEdge objects in Postgres.")
+		logger.info("Staged %d AtlasEdge objects in Postgres.", edge_count)
 		
 		# 4. Commit transaction
 		await session.commit()

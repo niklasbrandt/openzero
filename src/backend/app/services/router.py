@@ -77,8 +77,10 @@ _MAX_RE_REPLY = 10_000
 
 
 def _sanitize_for_log(text: str, max_len: int = 80) -> str:
-	"""Strip newlines from user-controlled text before writing to logs (CWE-117)."""
-	return text[:max_len].replace('\n', '\\n').replace('\r', '\\r')
+	"""Strip newlines and control characters from user-controlled text before writing to logs (CWE-117)."""
+	if not text:
+		return ""
+	return re.sub(r'[\r\n\x00-\x1f]', ' ', str(text)[:max_len]).strip()
 
 
 # Regex for Z-initiated ROUTE tags (tolerates missing 'ACTION:' prefix / closing ']')

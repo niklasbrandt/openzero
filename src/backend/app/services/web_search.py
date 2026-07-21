@@ -22,7 +22,16 @@ import logging
 
 import httpx
 
+import re
+
 logger = logging.getLogger(__name__)
+
+
+def _sanitize_for_log(text: str, max_len: int = 80) -> str:
+	"""Strip newlines and control characters from user-controlled text before writing to logs (CWE-117)."""
+	if not text:
+		return ""
+	return re.sub(r'[\r\n\x00-\x1f]', ' ', str(text)[:max_len]).strip()
 
 # SearXNG runs on the internal Docker network — same compose stack
 SEARXNG_URL = "http://searxng:8080/search"
@@ -102,7 +111,7 @@ async def execute_web_search(query: str, max_results: int = 5) -> str:
 		return "\n".join(lines).strip()
 
 	except Exception as e:
-		logger.warning("web_search failed for query %r: %s", query, e)
+		logger.warning("web_search failed for query %r: %s", _sanitize_for_log(query, 100), e)
 		return "Web search temporarily unavailable. Please try again later."
 
 
