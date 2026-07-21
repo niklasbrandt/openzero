@@ -22,7 +22,7 @@ import re
 import asyncio
 import time as _time
 from dataclasses import dataclass, field
-from typing import AsyncIterator, Callable, Awaitable
+from typing import AsyncIterator, Callable, Awaitable, Optional
 
 from app.common.phantom import PHANTOM_RE as _PHANTOM_RE  # noqa: E402
 from app.services.z_core import build_z_core_context, _EMOTIONAL_MARKER_RE
@@ -1751,7 +1751,6 @@ async def route_message_stream(
 				model=f"crew:{crew_id}", user_text=user_text, save=save_history,
 			)
 			cmds = [c for c in cmds if not c.startswith("__CREW_RUN__:")]
-			action_errors = [c for c in cmds if isinstance(c, str) and c.startswith("\u26a0")]
 			if not cmds and _PHANTOM_RE.search(clean[:_MAX_RE_REPLY]):
 				clean += (
 					"\n\n\u26a0 Nothing was actually saved — "
@@ -1868,7 +1867,6 @@ async def route_message_stream(
 				model=f"crew:{crew_id}", user_text=user_text, save=save_history,
 			)
 			r_cmds = [c for c in r_cmds if not c.startswith("__CREW_RUN__:")]
-			r_action_errors = [c for c in r_cmds if isinstance(c, str) and c.startswith("\u26a0")]
 			if not r_cmds and _PHANTOM_RE.search(r_clean[:_MAX_RE_REPLY]):
 				r_clean += (
 					"\n\n\u26a0 Nothing was actually saved — "
@@ -1897,7 +1895,6 @@ async def route_message_stream(
 		if crew_labels:
 			clean += f"\n\n_(Reasoning by crew {', '.join(crew_labels)})_"
 
-		action_errors = [c for c in cmds if isinstance(c, str) and c.startswith("\u26a0")]
 		if not cmds and _PHANTOM_RE.search(clean[:_MAX_RE_REPLY]):
 			clean += (
 				"\n\n\u26a0 Nothing was actually saved — "

@@ -2226,7 +2226,8 @@ class TestPersonalContextSecurity:
 
 	def test_magic_byte_validation_pdf_rejected(self):
 		"""File with .pdf extension but EXE magic bytes must fail validation."""
-		import tempfile, os
+		import tempfile
+		import os
 		with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
 			tmp.write(b"MZ\x90\x00evil executable content")
 			tmp_path = tmp.name
@@ -2239,7 +2240,8 @@ class TestPersonalContextSecurity:
 
 	def test_magic_byte_validation_valid_pdf(self):
 		"""Genuine %PDF magic must pass validation."""
-		import tempfile, os
+		import tempfile
+		import os
 		with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
 			tmp.write(b"%PDF-1.4 fake content")
 			tmp_path = tmp.name
@@ -2252,7 +2254,8 @@ class TestPersonalContextSecurity:
 
 	def test_symlink_traversal_blocked(self):
 		"""Symlink pointing outside /personal must fail _is_safe_path()."""
-		import tempfile, os
+		import tempfile
+		import os
 		from pathlib import Path
 
 		with tempfile.TemporaryDirectory() as base_dir:
@@ -3087,7 +3090,6 @@ class TestCrewStreamRateLimitAndXFF:
 		it bypasses the CRLF sanitisation introduced in the helper.
 		"""
 		src = self._read_dashboard_src()
-		import re as _re
 
 		for fn_name in ("def _check_rate_limit(", "def _check_chat_rate_limit("):
 			idx = src.find(fn_name)

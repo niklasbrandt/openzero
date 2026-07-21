@@ -10,7 +10,6 @@ import re
 from pathlib import Path
 from typing import Generator
 
-import pytest
 
 _ROOT = Path(__file__).resolve().parent.parent
 
