@@ -924,9 +924,7 @@ async def handle_checkin_callback(update: Update, context: ContextTypes.DEFAULT_
 		return
 
 	if data == "checkin_okay":
-		# "Okay" = acknowledge current stop and advance, same as "Next".
-		# Never route through the LLM pipeline — that triggers crew routing.
-		session = advance_session(channel, chat_id)
+		session = get_session(channel, chat_id)
 		if not session:
 			await context.bot.send_message(
 				chat_id=chat_id,
@@ -934,6 +932,47 @@ async def handle_checkin_callback(update: Update, context: ContextTypes.DEFAULT_
 				parse_mode="HTML",
 			)
 			return
+
+		curr = session.current
+		await query.answer("Bestätigt.")
+
+		# Generate a fast 1-sentence acknowledgement for the current step suggestion
+		lang = await get_user_lang()
+		_lang_names = {"de": "German", "en": "English", "fr": "French", "es": "Spanish"}
+		lang_name = _lang_names.get(lang, "English")
+
+		ack_prompt = (
+			f"The user clicked 'Okay' on this check-in briefing step titled '{curr.title}': \"{curr.body}\".\n"
+			f"Write ONE short, natural spoken confirmation sentence in {lang_name} acknowledging the action or recommendation discussed "
+			f"(e.g. 'Alles klar, ich kümmere mich um die Rezepte!' or 'Verstanden, machen wir so!').\n"
+			f"Rules: Maximum 15 words. Do NOT ask any questions. Output ONLY the short confirmation sentence."
+		)
+
+		ack_text = ""
+		try:
+			from app.services.llm import chat as _fast_chat
+			ack_text = await asyncio.wait_for(
+				_fast_chat(
+					ack_prompt,
+					tier="cloud",
+					system_override="You are a brief conversational assistant. Reply with ONLY a one-sentence confirmation."
+				),
+				timeout=5.0
+			)
+			ack_text = ack_text.strip().strip('"')
+		except Exception as exc:
+			logger.warning("checkin_okay fast ack generation failed: %s", exc)
+			ack_text = "Alles klar, machen wir so!" if lang == "de" else "All right, let's do that!"
+
+		# Send the intermediate acknowledgement message
+		await context.bot.send_message(
+			chat_id=chat_id,
+			text=f"<blockquote>👌 <i>{_md_to_html(ack_text)}</i></blockquote>",
+			parse_mode="HTML",
+		)
+
+		# Advance session to next stop and deliver
+		session.advance()
 		await _deliver_checkin_stop(context.bot, chat_id, session, t)
 		return
 
