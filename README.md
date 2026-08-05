@@ -3,6 +3,7 @@
 [![Scheduled Agents](https://img.shields.io/badge/Agents-Scheduled_Crews-8B5CF6?logo=clock&logoColor=white)](#crews)
 [![Self-Hosted Agent](https://img.shields.io/badge/Agent-Self--Hosted-14B8A6?logo=github&logoColor=white)](https://github.com/niklasbrandt/openzero)
 [![Local Data](https://img.shields.io/badge/Data-Local_Only-10B981?logo=shield&logoColor=white)](#network-perimeter)
+[![Security Policy](https://img.shields.io/badge/Security-Policy-EF4444?logo=shield&logoColor=white)](SECURITY.md)
 [![Deployment](https://img.shields.io/badge/Deployment-Docker-2496ED?logo=docker&logoColor=white)](BUILD.md)
 [![Memory](https://img.shields.io/badge/Memory-Qdrant-DC2626?logo=qdrant&logoColor=white)](#memory-connections)
 [![Planka Workspace](https://img.shields.io/badge/Workspace-Planka-0075FF?logo=trello&logoColor=white)](#crews)
@@ -263,6 +264,25 @@ All three channels receive briefings. A fix to message handling in one channel i
 Port 80 is blocked on all public interfaces. The dashboard, API, and Planka board are only reachable through the `tailscale0` interface. DNS (port 53) is only reachable from within the Tailscale CGNAT range (`100.64.0.0/10`). No service binds an external port in `docker-compose.yml`.
 
 This means openZero does not need TLS certificates, a domain name, or a CDN. It is not on the internet. You access it from devices enrolled in your Tailscale network, which resolves `open.zero` to the Pi-hole DNS container on the server.
+
+---
+
+## Security
+
+See [SECURITY.md](SECURITY.md) for the full security policy and vulnerability reporting process.
+
+Every push and pull request to `main` runs six automated security checks:
+
+| Tool | Scope |
+|---|---|
+| Trufflehog OSS | Secret and credential leaks in the full Git diff |
+| CodeQL | SAST for Python and JavaScript |
+| Bandit | Python-specific high-severity SAST |
+| Trivy | Container image vulnerabilities (CRITICAL and HIGH block CI) |
+| pip-audit | Python dependency CVEs |
+| npm audit | Node dependency vulnerabilities |
+
+The test suite includes 268 prompt injection tests across 25 attack classes, a static analysis gate, and automated WCAG 2.1 AA accessibility audits via Playwright and axe-core. SARIF reports from Trivy and CodeQL are uploaded to the GitHub Security dashboard on every run.
 
 ---
 

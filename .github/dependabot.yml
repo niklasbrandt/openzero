@@ -1,0 +1,51 @@
+version: 2
+updates:
+	# npm dependencies (dashboard)
+	- package-ecosystem: "npm"
+		directory: "/src/dashboard"
+		schedule:
+			interval: "weekly"
+			day: "monday"
+			time: "09:00"
+			timezone: "Europe/Berlin"
+		open-pull-requests-limit: 10
+		labels:
+			- "dependencies"
+			- "npm"
+		# Security patches merge automatically; version bumps open as PRs
+		groups:
+			npm-security:
+				applies-to: security-updates
+				patterns:
+					- "*"
+
+	# pip dependencies (backend)
+	- package-ecosystem: "pip"
+		directory: "/src/backend"
+		schedule:
+			interval: "weekly"
+			day: "monday"
+			time: "09:00"
+			timezone: "Europe/Berlin"
+		open-pull-requests-limit: 10
+		labels:
+			- "dependencies"
+			- "python"
+		groups:
+			pip-security:
+				applies-to: security-updates
+				patterns:
+					- "*"
+
+	# GitHub Actions (keep action versions current)
+	- package-ecosystem: "github-actions"
+		directory: "/"
+		schedule:
+			interval: "monthly"
+			day: "monday"
+			time: "09:00"
+			timezone: "Europe/Berlin"
+		open-pull-requests-limit: 5
+		labels:
+			- "dependencies"
+			- "github-actions"
