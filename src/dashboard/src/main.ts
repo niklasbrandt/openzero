@@ -21,6 +21,7 @@ function loadLazyComponents(): void {
 	import('../components/ZProtocols')
 	import('../components/AgentsWidget')
 	import('../components/BackupCard')
+	import('../components/DocumentWidget')
 }
 
 if ('requestIdleCallback' in window) {

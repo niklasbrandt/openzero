@@ -247,3 +247,30 @@ proactive_nudges:
   silence_days: 3          # days of domain silence required before nudging
   nudge_interval_hours: 48 # minimum hours between nudges for the same crew
   earning_weeks: 2         # consecutive briefing-read weeks to earn proactive status
+
+# ------------------------------------------------------------------------------
+# 7. Document Processing (Proposal 1 -- Safe Document Processor)
+# ------------------------------------------------------------------------------
+# Allows Z to read, summarise, and optionally memorise documents uploaded
+# via the dashboard. Processed entirely on-hardware; PII-stripped before
+# any LLM call. Ships dark (enabled: false) by default.
+document_processing:
+  enabled: true
+  max_file_size_mb: 10
+  # Supported types: pdf, docx, txt, md
+  # DOCX requires python-docx (already installed). PDF uses PyMuPDF (fitz).
+
+# ------------------------------------------------------------------------------
+# 8. File Watcher (Proposal 3 -- Proactive File Watcher)
+# ------------------------------------------------------------------------------
+# Polls the watch_data Docker volume (/app/watch/) for new or changed files.
+# New files are processed, PII-stripped, stored in Qdrant, and the operator
+# is notified via Telegram. Ships dark (enabled: false) by default.
+#
+# To populate the watch directory from your machine:
+#   docker cp /path/to/file.pdf openzero-backend-v3:/app/watch/
+# Or via rsync in scripts/sync.sh (see BUILD.md for instructions).
+watch_directory:
+  enabled: false
+  poll_interval_seconds: 300   # How often to check for new files (5 minutes default)
+  notify_on_new_file: true     # Send Telegram notification after processing

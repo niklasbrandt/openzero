@@ -46,6 +46,10 @@ services:
           memory: ${LLM_LOCAL_MEM_LIMIT:-2048M}
     cap_add:
       - IPC_LOCK
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     ulimits:
       memlock:
         soft: -1
@@ -194,8 +198,23 @@ services:
       - ./src/backend/app:/app/app:ro
       - ./docker-compose.yml:/app/compose.yml:ro
       - ./src/dashboard/dist:/app/static:ro
+      - watch_data:/app/watch
     group_add:
       - "988"  # docker socket GID on VPS host (getent group docker | cut -d: -f3)
+    # Proposal 7 — Container Security Hardening
+    # Drop all Linux capabilities, then re-add only those strictly required.
+    # The backend needs: CHOWN/SETUID/SETGID for file ownership inside the
+    # container; DAC_OVERRIDE to read mounted volumes as the app user.
+    # SETFCAP is excluded — no file capabilities escalation permitted.
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+    security_opt:
+      - no-new-privileges:true
     extra_hosts:
       - "host.docker.internal:host-gateway"
       - "pihole:host-gateway"
@@ -340,3 +359,8 @@ volumes:
   redis_data:
   pihole_config:
   pihole_dnsmasq:
+  # Proposal 3 — Proactive File Watcher
+  # Operators can populate this volume via rsync or the dashboard upload endpoint.
+  # The backend polls it every WATCH_DIRECTORY_INTERVAL_SECONDS (default 300s).
+  # Enable with: watch_directory.enabled: true in config.yaml
+  watch_data:

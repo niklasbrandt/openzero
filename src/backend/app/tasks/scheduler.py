@@ -423,8 +423,27 @@ async def start_scheduler():
 				replace_existing=True,
 			)
 
+
+	# ── File Watcher (Proposal 3) ──────────────────────────────────────────
+	# Only registered when watch_directory.enabled is true in config.yaml.
+	# Ships dark by default — no-op until the operator opts in.
+	watch_enabled = getattr(settings, "WATCH_DIRECTORY_ENABLED", False)
+	watch_interval = int(getattr(settings, "WATCH_DIRECTORY_INTERVAL_SECONDS", 300))
+	if watch_enabled:
+		from app.tasks.file_watcher import run_file_watcher
+		scheduler.add_job(
+			run_file_watcher,
+			IntervalTrigger(seconds=watch_interval),
+			id="file_watcher",
+			replace_existing=True,
+		)
+		logger.info("File watcher registered (interval: %ds, dir: /app/watch/).", watch_interval)
+	else:
+		logger.debug("File watcher disabled — set watch_directory.enabled: true in config.yaml to activate.")
+
 	scheduler.start()
 	logger.info("Z: Missions scheduled. Morning Briefing set to %02d:%02d %s", brief_hour, brief_min, user_tz_str)
+
 
 async def cleanup_pending_thoughts():
 	"""Delete PendingThought rows older than 24 hours."""
