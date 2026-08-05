@@ -12,6 +12,17 @@ def _sanitize_for_log(text: str, max_len: int = 80) -> str:
 	"""Strip newlines from user-controlled text before writing to logs (CWE-117)."""
 	return str(text)[:max_len].replace('\n', '\\n').replace('\r', '\\r')
 
+
+def _parse_tag_params(tag_text: str) -> dict[str, str]:
+	"""Extract key-value pairs from action tag body (| KEY: VALUE). Keys normalized to UPPERCASE."""
+	params: dict[str, str] = {}
+	for match in re.finditer(r'\|\s*([A-Za-z0-9_]+)\s*:\s*([^\|\]]+)', tag_text):
+		key = match.group(1).strip().upper()
+		val = match.group(2).strip().strip('"\'')
+		params[key] = val
+	return params
+
+
 # Module-level so tests and the phantom-guard check can import it directly.
 # Extended in Epoch 1 of the ambient capture plan (Section 17, H4 + S1):
 # adds AMBIENT_*, RENAME_*, and explicitly-forbidden SHARE_* / INVITE_* verbs
@@ -564,14 +575,15 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 	newly_created_lists: dict[str, str] = {}
 
 	# 1. Create Project Tag — DESCRIPTION is optional (LLM may omit it).
-	# IMPORTANT: use greedy [^\|\]]+ (NOT lazy +?) — lazy combined with optional \]?
-	# causes the group to match only the first character of the project name.
-	# Bounded quantifiers prevent polynomial backtracking on uncontrolled input (CWE-1333).
-	proj_pattern = r"\[?ACTION: CREATE_PROJECT \| NAME: ([^\|\]]{1,500})(?:\s{0,20}\|\s{0,20}DESCRIPTION:\s{0,20}([^\|\]]{1,2000}))?\]?"
-	for match in re.finditer(proj_pattern, reply):
+	proj_pattern = r"\[?ACTION:\s*CREATE_PROJECT\b([^\]]*)\]?"
+	for match in re.finditer(proj_pattern, reply, re.IGNORECASE):
 		raw_tag = match.group(0)
-		name = match.group(1).strip().strip('"\'')
-		desc = (match.group(2) or "").strip().strip('"\'')
+		params = _parse_tag_params(raw_tag)
+		name = params.get("NAME") or params.get("PROJECT") or ""
+		desc = params.get("DESCRIPTION") or ""
+		if not name:
+			clean_reply = strip_tag(clean_reply, raw_tag)
+			continue
 
 		async def _exec_project(name=name, desc=desc):
 			try:
@@ -630,12 +642,15 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 		clean_reply = strip_tag(clean_reply, raw_tag)
 
 	# 2. Create Board Tag — uses newly_created_projects as a fast path.
-	board_pattern = r"\[?ACTION: CREATE_BOARD \| PROJECT: ([^\|\]]+) \| NAME: ([^\|\]]+)\]?"
-	for match in re.finditer(board_pattern, reply):
+	board_pattern = r"\[?ACTION:\s*CREATE_BOARD\b([^\]]*)\]?"
+	for match in re.finditer(board_pattern, reply, re.IGNORECASE):
 		raw_tag = match.group(0)
-		proj_name, board_name = match.groups()
-		proj_name = proj_name.strip().strip('"\'')
-		board_name = board_name.strip().strip('"\'')
+		params = _parse_tag_params(raw_tag)
+		board_name = params.get("NAME") or params.get("BOARD") or ""
+		proj_name = params.get("PROJECT") or "My projects"
+		if not board_name:
+			clean_reply = strip_tag(clean_reply, raw_tag)
+			continue
 		# Safety net: if the LLM emitted the full user sentence as the name instead of
 		# extracting just the label, and that sentence contains a quoted substring,
 		# the last quoted value is the intended label. No keyword matching — purely
@@ -684,12 +699,12 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 	# 3. Create List (Column) Tag — with auto-board-creation fallback.
 	# LLMs often skip CREATE_BOARD and reference the project name as the board name.
 	# If the board is not found, we try to auto-create it inside the project.
-	list_pattern = r"\[?ACTION: CREATE_LIST \| BOARD: ([^\|\]]+) \| NAME: ([^\|\]]+)\]?"
-	for match in re.finditer(list_pattern, reply):
+	list_pattern = r"\[?ACTION:\s*CREATE_LIST\b([^\]]*)\]?"
+	for match in re.finditer(list_pattern, reply, re.IGNORECASE):
 		raw_tag = match.group(0)
-		board_name, list_name = match.groups()
-		board_name = board_name.strip().strip('"\'')
-		list_name = list_name.strip().strip('"\'')
+		params = _parse_tag_params(raw_tag)
+		list_name = params.get("NAME") or params.get("LIST") or ""
+		board_name = params.get("BOARD") or params.get("PROJECT") or "Operator Board"
 
 		if not list_name:
 			logger.warning("CREATE_LIST: skipping tag with empty list name (board='%s')", board_name)
@@ -813,15 +828,19 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 		if _m:
 			_user_canonical_title = _m.group(1).strip()
 
-	task_pattern = r"\[?ACTION: CREATE_TASK \| BOARD: ([^\|\]]{1,500})(?:\s*\|\s*LIST:\s*([^\|\]]{1,500}))? \| TITLE: ([^\|\]]{1,500})(?:\s*\|\s*DESCRIPTION:\s*([\s\S]{0,20000}?))?\]"
+	task_pattern = r"\[?ACTION:\s*CREATE_TASK\b([^\]]*)\]?"
 	_task_coros: list = []
-	for match in re.finditer(task_pattern, reply[:200_000]):
+	for match in re.finditer(task_pattern, reply[:200_000], re.IGNORECASE):
 		raw_tag = match.group(0)
-		board, llist, title, desc = match.group(1), match.group(2), match.group(3), match.group(4)
-		board = board.strip().strip('"\'')
-		llist = (llist or "").strip().strip('"\'')
-		title = title.strip().strip('"\'')
-		desc = (desc or "").strip()
+		params = _parse_tag_params(raw_tag)
+		board = params.get("BOARD") or "Operator Board"
+		llist = params.get("LIST") or ""
+		title = params.get("TITLE") or params.get("NAME") or ""
+		desc = params.get("DESCRIPTION") or ""
+
+		if not title:
+			clean_reply = strip_tag(clean_reply, raw_tag)
+			continue
 
 		# Title-clamp: if the user gave a short literal command and the LLM expanded it,
 		# enforce the user's exact words as the title.
@@ -887,12 +906,16 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 				clean_reply = clean_reply.rstrip() + "\n\n" + _task_msg
 
 	# 3. Create Event Tag
-	event_pattern = r"\[?ACTION: CREATE_EVENT \| TITLE: ([^\|\]]+) \| START: ([^\|\]]+) \| END: ([^\|\]]+)\]?"
-	for match in re.finditer(event_pattern, reply):
+	event_pattern = r"\[?ACTION:\s*CREATE_EVENT\b([^\]]*)\]?"
+	for match in re.finditer(event_pattern, reply, re.IGNORECASE):
 		raw_tag = match.group(0)
-		title, start, end = match.groups()
-		# Clean potential quotes from model output
-		title = title.strip().strip('"').strip("'")
+		params = _parse_tag_params(raw_tag)
+		title = params.get("TITLE") or params.get("NAME") or ""
+		start = params.get("START") or params.get("START_TIME") or ""
+		end = params.get("END") or params.get("END_TIME") or ""
+		if not title or not start:
+			clean_reply = strip_tag(clean_reply, raw_tag)
+			continue
 		# Skip events where the LLM emitted a format placeholder (e.g. YYYY-MM-DD HH:MM)
 		if re.search(r'YYYY|MM-DD|HH:MM', start.strip()):
 			clean_reply = strip_tag(clean_reply, raw_tag)
@@ -913,12 +936,17 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 		clean_reply = strip_tag(clean_reply, raw_tag)
 
 	# 5. Remind Tag
-	remind_pattern = r"\[?ACTION: REMIND \| MESSAGE: ([^\|\]]+) \| INTERVAL: ([^\|\]]+) \| DURATION: ([^\|\]]+)\]?"
-	for match in re.finditer(remind_pattern, reply):
+	remind_pattern = r"\[?ACTION:\s*REMIND\b([^\]]*)\]?"
+	for match in re.finditer(remind_pattern, reply, re.IGNORECASE):
 		raw_tag = match.group(0)
-		message, interval, duration = match.groups()
-		message = message.strip()
-		
+		params = _parse_tag_params(raw_tag)
+		message = params.get("MESSAGE") or ""
+		interval = params.get("INTERVAL") or params.get("INTERVAL_MINUTES") or ""
+		duration = params.get("DURATION") or params.get("DURATION_HOURS") or ""
+		if not message or not interval or not duration:
+			clean_reply = strip_tag(clean_reply, raw_tag)
+			continue
+
 		async def _exec_remind(message=message, interval=interval, duration=duration):
 			try:
 				res = await schedule_reminder.ainvoke({
@@ -937,11 +965,17 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 		clean_reply = strip_tag(clean_reply, raw_tag)
 
 	# 6. Persistent Custom Tag
-	custom_pattern = r"\[?ACTION: SCHEDULE_CUSTOM \| NAME: ([^\|\]]+) \| MESSAGE: ([^\|\]]+) \| TYPE: ([^\|\]]+) \| SPEC: ([^\|\]]+)\]?"
-	for match in re.finditer(custom_pattern, reply):
+	custom_pattern = r"\[?ACTION:\s*SCHEDULE_CUSTOM\b([^\]]*)\]?"
+	for match in re.finditer(custom_pattern, reply, re.IGNORECASE):
 		raw_tag = match.group(0)
-		name, msg, ttype, spec = match.groups()
-		name, msg, ttype, spec = name.strip(), msg.strip(), ttype.strip().lower(), spec.strip()
+		params = _parse_tag_params(raw_tag)
+		name = params.get("NAME") or ""
+		msg = params.get("MESSAGE") or ""
+		ttype = (params.get("TYPE") or "").lower()
+		spec = params.get("SPEC") or ""
+		if not name or not msg or not ttype or not spec:
+			clean_reply = strip_tag(clean_reply, raw_tag)
+			continue
 
 		async def _exec_custom(name=name, msg=msg, ttype=ttype, spec=spec):
 			try:
