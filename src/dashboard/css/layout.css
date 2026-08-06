@@ -279,8 +279,8 @@ instance-entry {
 	}
 }
 
-/* Mobile / Narrow Viewport Layout for Overview Grid: Tree before Chat */
-@media (max-width: 850px) {
+/* Responsive Layout for Overview Grid: Tree before Chat on screens under 1200px */
+@media (max-width: 1200px) {
 	.overview-grid {
 		display: flex;
 		flex-direction: column;
