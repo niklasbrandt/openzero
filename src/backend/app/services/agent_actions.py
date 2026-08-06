@@ -317,14 +317,22 @@ async def execute_create_card(title: str, destination: str = "", lang: str = "en
 	If destination is empty or cannot be resolved, defaults to the Operator Board Inbox.
 	"""
 	from app.services.planka import create_task as planka_create_task
-	# Parse "X list on/in Y [board]" into separate list_name and board_name.
+	# Parse "X list on/in Y [board]" or "Y board" into separate list_name and board_name.
 	board_name = ""
-	list_name = destination.strip() if destination else "Inbox"
+	list_name = ""
 	if destination:
 		_dest_m = re.match(r'^(.+?)\s+list\s+(?:on|in|at)\s+(.+?)(?:\s+board)?$', destination.strip(), re.IGNORECASE)
 		if _dest_m:
 			list_name = _dest_m.group(1).strip()
 			board_name = _dest_m.group(2).strip()
+		else:
+			# Check if destination specifies a board (e.g. "guitar board" or "Reef tank")
+			_board_m = re.match(r'^(?:board\s+)?(.+?)(?:\s+board)?$', destination.strip(), re.IGNORECASE)
+			if _board_m and _board_m.group(1).strip().lower() not in ("inbox", "tasks", "todo"):
+				board_name = _board_m.group(1).strip()
+				list_name = ""
+			else:
+				list_name = destination.strip()
 	result = await planka_create_task(board_name=board_name, list_name=list_name, title=title, description="")
 	if result:
 		# Use the actual path returned by Planka (e.g. 'Operations → Operator Board → Heute')

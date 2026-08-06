@@ -1970,8 +1970,8 @@ async def dispatch_structural_intent(intent: StructuralIntent, lang: str) -> str
 					)
 					audit_parts.append(f"[AUDIT:board_item_add_list:{t_item}|board={board_label}]")
 			else:
-				# Item/todo/task/entry → create a CARD on the Inbox list of the board.
-				dest_arg = f"Inbox list on {board_dest}" if board_dest else ""
+				# Item/todo/task/entry → create a CARD on the board.
+				dest_arg = board_dest if board_dest else ""
 				raw = await execute_create_card(t_item, dest_arg, lang)
 				if raw.startswith("\u26a0"):
 					results.append(raw)

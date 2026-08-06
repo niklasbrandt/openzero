@@ -93,29 +93,22 @@ def _is_operator_name(name: str) -> bool:
 
 
 async def _sync_planka_db_positions(project_meta_list: list[dict]):
-	"""Sync sorted project and board positions directly to Planka's PostgreSQL database.
+	"""Sync sorted board positions directly to Planka's PostgreSQL database.
 
-	Planka's native web interface (navigation sidebar and project bar) displays projects and
-	boards ordered by their database `position` column. Updating these positions ensures that
-	Planka's UI navigation row matches the exact openZero ordering rules:
-	1. Operations / Operator Board always at position 1.
-	2. Remaining projects and boards ordered by latest modification date descending.
+	Planka's native web interface (navigation sidebar and project bar) displays boards
+	ordered by `board.position` column. Updating board positions in PostgreSQL ensures
+	that Planka's UI navigation row matches the exact openZero ordering rules:
+	1. Operator Board always at position 1.
+	2. Remaining boards ordered by latest modification date descending.
 	"""
 	try:
 		from sqlalchemy import text
 		from app.models.db import engine
 		async with engine.begin() as conn:
-			step = 65535
-			for p_idx, p_meta in enumerate(project_meta_list):
-				p_pos = (p_idx + 1) * step
-				pid = p_meta["id"]
-				safe_pid = int(pid) if str(pid).strip().isdigit() else str(pid)
-				await conn.execute(
-					text("UPDATE project SET position = :pos WHERE id = :pid"),
-					{"pos": p_pos, "pid": safe_pid}
-				)
-				for b_idx, b_meta in enumerate(p_meta["boards"]):
-					b_pos = (b_idx + 1) * step
+			step = 65535.0
+			for p_meta in project_meta_list:
+				for b_idx, b_meta in enumerate(p_meta.get("boards", [])):
+					b_pos = float((b_idx + 1) * step)
 					bid = b_meta["id"]
 					safe_bid = int(bid) if str(bid).strip().isdigit() else str(bid)
 					await conn.execute(
@@ -423,7 +416,9 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 	"""
 	# Clean LLM inputs (sometimes they pass literal quotes like '"Test Board"')
 	board_name = (board_name or "Operator Board").strip().strip('"\'')
-	list_name = (list_name or "Inbox").strip().strip('"\'')
+	list_name = (list_name or "").strip().strip('"\'')
+	if not list_name and board_name.lower() == "operator board":
+		list_name = "Inbox"
 	title = (title or "New Task").strip().strip('"\'')
 
 	# Detect PII-sanitization token leakage (e.g. board_name='[ORG_1] Board' when the
@@ -459,7 +454,7 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 			_sanitize_for_log(board_name), _sanitize_for_log(list_name),
 		)
 		board_name = list_name
-		list_name = "Inbox"
+		list_name = ""
 
 		logger.info("create_task requested -> Board: %s, List: %s, Title: %s", _sanitize_for_log(board_name), _sanitize_for_log(list_name), _sanitize_for_log(title))
 	try:
