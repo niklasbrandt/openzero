@@ -70,10 +70,35 @@ def _extract_latest_timestamp(*items) -> str:
 	return latest
 
 
+_KNOWN_OPERATOR_NAMES = {
+	"operations", "operator", "operator board", "operator-board", "boardname",
+	"projektname", "operationen", "openzero", "boards", "operaciones", "opérations",
+	"tablero de operaciones", "tableau de bord", "لوحة العمليات", "العمليات",
+	"オペレーターボード", "オペレーション", "操作员看板", "运营", "संचालن",
+	"operações", "운영", "운영자 보드", "операции", "панель оператора"
+}
+
+def _is_operator_name(name: str) -> bool:
+	if not name:
+		return False
+	clean = name.strip().lower()
+	if clean in _KNOWN_OPERATOR_NAMES:
+		return True
+	try:
+		from app.services.translations import get_all_values
+		trans_vals = set(get_all_values("project_name")) | set(get_all_values("board_name"))
+		if clean in {v.strip().lower() for v in trans_vals if v}:
+			return True
+	except Exception:
+		pass
+	return False
+
+
 async def get_project_tree(as_html: bool = True) -> str:
 	"""Recursively build a semantic text tree. Uses parallel requests and caching for speed.
 	Projects and boards are sorted by latest modification timestamp descending so that the
-	most recently updated/created boards and items appear first.
+	most recently updated/created boards and items appear first. The system Operator Board /
+	Operations project is always prioritized to the 1st position.
 	"""
 	cache_key = f"tree_{as_html}"
 	if cache_key in _tree_cache:
@@ -208,11 +233,27 @@ async def get_project_tree(as_html: bool = True) -> str:
 					"lines": b_lines
 				})
 
+			# Try to fetch configured IDs from operator_service if available
+			op_proj_id = None
+			op_board_id = None
+			try:
+				from app.services.operator_board import operator_service
+				op_proj_id = getattr(operator_service, "_project_id", None)
+				op_board_id = getattr(operator_service, "_board_id", None)
+			except Exception:
+				pass
+
 			# Sort boards within each project: Operator Board always comes first, others by latest_mod descending
 			for p_meta in project_meta_list:
+				for b in p_meta["boards"]:
+					b["is_operator"] = (
+						(op_board_id and b["id"] == op_board_id)
+						or _is_operator_name(b["name"])
+					)
+
 				p_meta["boards"].sort(
 					key=lambda b: (
-						b["name"].strip().lower() in {"operator board", "operator"},
+						b.get("is_operator", False),
 						b["latest_mod"]
 					),
 					reverse=True
@@ -221,8 +262,9 @@ async def get_project_tree(as_html: bool = True) -> str:
 				board_ts_max = max((b["latest_mod"] for b in p_meta["boards"]), default="")
 				p_meta["overall_ts"] = max(p_meta["project_ts"], board_ts_max)
 				p_meta["is_operator"] = (
-					p_meta["name"].strip().lower() in {"operations", "operator", "operator board"}
-					or any(b["name"].strip().lower() in {"operator board", "operator"} for b in p_meta["boards"])
+					(op_proj_id and p_meta["id"] == op_proj_id)
+					or _is_operator_name(p_meta["name"])
+					or any(b.get("is_operator", False) for b in p_meta["boards"])
 				)
 
 			# Sort projects: Operations / Operator project always comes first, others by overall_ts descending
