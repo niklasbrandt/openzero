@@ -71,10 +71,8 @@ def _extract_latest_timestamp(*items) -> str:
 
 
 _KNOWN_OPERATOR_NAMES = {
-	"operations", "operator", "operator board", "operator-board", "boardname",
-	"projektname", "operationen", "openzero", "boards", "operaciones", "opérations",
-	"tablero de operaciones", "tableau de bord", "لوحة العمليات", "العمليات",
-	"オペレーターボード", "オペレーション", "操作员看板", "运营", "संचालن",
+	"operations", "operator", "operator board", "operator-board", "operationen",
+	"operaciones", "opérations", "tablero de operaciones", "tableau de bord",
 	"operações", "운영", "운영자 보드", "операции", "панель оператора"
 }
 
