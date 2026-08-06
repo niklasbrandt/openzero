@@ -12,6 +12,10 @@ class Base(DeclarativeBase):
 engine = create_async_engine(settings.DATABASE_URL, echo=False)
 AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
+async def get_db():
+	async with AsyncSessionLocal() as session:
+		yield session
+
 class Project(Base):
     __tablename__ = "projects"
     id = Column(Integer, primary_key=True)

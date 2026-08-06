@@ -20,7 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Header, Backgrou
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, func
-from app.models.db import AsyncSessionLocal, Project, EmailRule, Briefing, LLMMetric
+from app.models.db import AsyncSessionLocal, get_db, Project, EmailRule, Briefing, LLMMetric
 from app.services.memory import semantic_search, semantic_search_raw, list_memories as list_memories_svc, delete_memory
 from app.services.planka import get_project_tree
 from app.services.operator_board import operator_service
@@ -222,9 +222,6 @@ PLANKA_ID_CACHE = {
 	"last_update": None
 }
 
-async def get_db():
-	async with AsyncSessionLocal() as session:
-		yield session
 
 def parse_birthday(bday_str: str):
 	"""Unified birthday parser supporting: DD.MM.YY, YYYY-MM-DD, DD.MM, etc."""
