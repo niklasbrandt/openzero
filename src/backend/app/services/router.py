@@ -1890,6 +1890,20 @@ async def route_message_stream(
 			model=last_model_used.get(), user_text=user_text, save=save_history,
 		)
 
+		# ── 4b. Record general (non-crew) conversation ────────────────────────
+		# Fire-and-forget: create/update today's General conversation card on Planka
+		# with the user message verbatim + a compressed Z summary.
+		# Only runs when save is enabled and no crew was routed to.
+		if save_history:
+			try:
+				from app.services.conversation_recorder import record_general_exchange
+				asyncio.create_task(
+					record_general_exchange(user_text, clean),
+					name="general_conversation_record",
+				)
+			except Exception as _rec_e:
+				logger.debug("Router: general conversation recorder hook failed: %s", _rec_e)
+
 		# ── 5. Post-processing ────────────────────────────────────────────────
 		crew_labels = [c.split(":", 1)[1] for c in cmds if c.startswith("__CREW_RUN__:")]
 		cmds = [c for c in cmds if not c.startswith("__CREW_RUN__:")]

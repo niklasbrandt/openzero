@@ -401,33 +401,53 @@ def _build_updated_description(current: str, user_msg: str, crew_response: str, 
 
 
 async def _compress_daily_diary(current: str, user_msg: str, crew_response: str, now_str: str) -> str:
-	"""Update and compress the rolling log of today's exchange into a clean, dense, bulleted summary."""
+	"""Update and compress the rolling log of today's crew exchange.
+
+	User messages are preserved verbatim (hard cap 500 chars).
+	Crew responses are compressed to key decisions and actions only.
+	This preserves user intent for future memory retrieval while keeping the
+	card description compact enough to inject into the crew system prompt.
+	"""
 	try:
 		from app.services.llm import chat
 		import re
 
 		# Strip action tags from crew response before storing/sending
-		clean_response = re.sub(r"\[?ACTION:[^\]]+\]?", "", crew_response).strip()
-		clean_response = re.sub(r"\n{3,}", "\n\n", clean_response)
+		clean_response = re.sub(r'\[?ACTION:[^\]]+\]?', '', crew_response).strip()
+		clean_response = re.sub(r'\n{3,}', '\n\n', clean_response)
+
+		# Preserve user message verbatim up to a hard cap
+		_USER_VERBATIM_CAP = 500
+		user_verbatim = user_msg.strip()
+		if len(user_verbatim) > _USER_VERBATIM_CAP:
+			user_verbatim = user_verbatim[:_USER_VERBATIM_CAP] + ' [...]'
 
 		prompt = (
-			f"You are a dense information compression engine for openZero.\n"
-			f"Update and compress the daily conversation diary log for a crew board.\n\n"
-			f"Existing diary log summary:\n\"\"\"\n{current}\n\"\"\"\n\n"
-			f"New exchange to incorporate:\n"
+			f"You are a dense conversation logger for openZero crew boards.\n"
+			f"Update the crew's daily conversation diary.\n\n"
+			f"Existing diary:\n\"\"\"\n{current}\n\"\"\"\n\n"
+			f"New exchange to append:\n"
 			f"- Time: {now_str}\n"
-			f"- User message: {user_msg.strip()}\n"
-			f"- Crew response: {clean_response}\n\n"
-			f"Output a single, unified, highly dense, bulleted summary of the entire day's conversation, "
-			f"key decisions made, actions/topics discussed, and context.\n"
-			f"CRITICAL: Do NOT use emojis. Indent using tabs. Spell the project name as openZero. "
-			f"Keep it extremely compact and token-efficient so it fits in a small context window."
+			f"- [USER] (verbatim): {user_verbatim}\n"
+			f"- [CREW] response: {clean_response}\n\n"
+			f"STRICT RULES:\n"
+			f"1. PRESERVE the [USER] message EXACTLY as written — never paraphrase, shorten, or reinterpret the user's words. "
+			f"User messages represent operator intent and must survive verbatim for future memory retrieval.\n"
+			f"2. COMPRESS [CREW] responses to the essential: key decisions made, specific recommendations, "
+			f"actions taken or queued. Strip filler, preamble, and conversational padding. 1-3 bullet points max.\n"
+			f"3. Keep ALL previous diary entries from the existing log intact — do not remove or alter them.\n"
+			f"4. Format every entry as:\n"
+			f"   [{now_str}] [USER]: <exact user words>\n"
+			f"   [{now_str}] [CREW]: <compressed key points>\n"
+			f"   ---\n"
+			f"5. Do NOT use emojis. Indent sub-bullets with tabs. Spell the project name as openZero.\n"
+			f"6. If total length exceeds {MAX_DESC_CHARS} characters, truncate the OLDEST entries first "
+			f"with a '[...earlier omitted...]' marker — never truncate the most recent exchange.\n"
 		)
 
-		# Call cloud tier LLM
 		summary = await chat(
 			user_message=prompt,
-			system_override="You are a dense, professional memory summarization utility for openZero.",
+			system_override="You are a precise crew conversation logger for openZero. Preserve user intent exactly.",
 			tier="cloud"
 		)
 		if summary and summary.strip():

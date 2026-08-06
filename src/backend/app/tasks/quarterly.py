@@ -41,7 +41,7 @@ async def quarterly_review():
 							f"Based on your specialized domain, review this data and generate a single short paragraph (under 40 words) with your top insight, recommendation, or warning for this quarter. "
 							f"Be extremely concise. Write only the paragraph. Do not introduce yourself."
 						)
-						res = await native_crew_engine.run_crew(crew_config.id, crew_prompt)
+						res = await native_crew_engine.run_crew(crew_config.id, crew_prompt, skip_memory=True)
 						res_clean = _ACTION_STRIP_RE.sub("", res).strip()
 						if res_clean:
 							return f"**{crew_config.name}**: {res_clean}"

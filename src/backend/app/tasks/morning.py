@@ -266,7 +266,7 @@ async def morning_briefing():
 						f"STRICT: Do NOT invent background details, hypothetical scenarios, or context not present in the raw data (e.g. do not invent status notes or user habits like cooking rice). "
 						f"Be extremely concise. Write only the paragraph. Do not introduce yourself, and do not say 'Here is my insight'."
 					)
-					res = await native_crew_engine.run_crew(crew_config.id, crew_prompt)
+					res = await native_crew_engine.run_crew(crew_config.id, crew_prompt, skip_memory=True)
 					res_clean = _ACTION_STRIP_RE.sub("", res).strip()
 					if res_clean:
 						return crew_config.id, res_clean

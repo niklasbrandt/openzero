@@ -104,16 +104,16 @@ class NativeCrewEngine:
 		if a_ctx: blocks.append(a_ctx)
 		return "\n\n".join(blocks) if blocks else ""
 
-	async def run_crew(self, crew_id: str, user_input: str) -> str:
+	async def run_crew(self, crew_id: str, user_input: str, skip_memory: bool = False) -> str:
 		"""Executes a crew mission directly via the local LLM engine."""
 		if crew_id == "nutrition":
 			crew_id = "chef"
 		full_res = ""
-		async for chunk in self.run_crew_stream(crew_id, user_input):
+		async for chunk in self.run_crew_stream(crew_id, user_input, skip_memory=skip_memory):
 			full_res += chunk
 		return full_res
 
-	async def run_crew_stream(self, crew_id: str, user_input: str, history: Optional[list] = None, slash_invoked: bool = False, force_cloud: bool = False):
+	async def run_crew_stream(self, crew_id: str, user_input: str, history: Optional[list] = None, slash_invoked: bool = False, force_cloud: bool = False, skip_memory: bool = False):
 		"""Executes a crew mission and yields tokens in real-time.
 
 		Args:
@@ -401,8 +401,10 @@ class NativeCrewEngine:
 								logger.debug("Stream Chunk Parse Error (non-fatal): %s", je)
 						
 						# Write crew memory after stream completes successfully
+						# skip_memory=True is set by scheduled/internal callers (e.g. morning briefing)
+						# to prevent system prompts from polluting the crew conversation card.
 						full_response = "".join(collected_chunks)
-						if full_response.strip():
+						if full_response.strip() and not skip_memory:
 							await _write_crew_memory(crew_id, user_input, full_response)
 						break  # Success — break out of retry loop
 			except httpx.HTTPStatusError as http_err:
