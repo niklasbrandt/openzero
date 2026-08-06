@@ -208,15 +208,31 @@ async def get_project_tree(as_html: bool = True) -> str:
 					"lines": b_lines
 				})
 
-			# Sort boards within each project by latest_mod descending (latest modified first)
+			# Sort boards within each project: Operator Board always comes first, others by latest_mod descending
 			for p_meta in project_meta_list:
-				p_meta["boards"].sort(key=lambda b: b["latest_mod"], reverse=True)
+				p_meta["boards"].sort(
+					key=lambda b: (
+						b["name"].strip().lower() in {"operator board", "operator"},
+						b["latest_mod"]
+					),
+					reverse=True
+				)
 				# Calculate overall project latest_mod including its boards
 				board_ts_max = max((b["latest_mod"] for b in p_meta["boards"]), default="")
 				p_meta["overall_ts"] = max(p_meta["project_ts"], board_ts_max)
+				p_meta["is_operator"] = (
+					p_meta["name"].strip().lower() in {"operations", "operator", "operator board"}
+					or any(b["name"].strip().lower() in {"operator board", "operator"} for b in p_meta["boards"])
+				)
 
-			# Sort projects by overall_ts descending (latest modified first)
-			project_meta_list.sort(key=lambda p: p["overall_ts"], reverse=True)
+			# Sort projects: Operations / Operator project always comes first, others by overall_ts descending
+			project_meta_list.sort(
+				key=lambda p: (
+					p.get("is_operator", False),
+					p["overall_ts"]
+				),
+				reverse=True
+			)
 
 			# Assemble final tree
 			final_lines = []

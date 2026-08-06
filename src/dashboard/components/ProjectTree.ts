@@ -109,12 +109,15 @@ export class ProjectTree extends HTMLElement {
 					h2 .h-icon {
 						background: linear-gradient(135deg, var(--accent-color, hsla(173, 80%, 40%, 1)) 0%, var(--accent-secondary, hsla(216, 100%, 50%, 1)) 100%);
 					}
-					:host { display: block; }
+					:host { display: block; width: 100%; min-width: 0; }
+					.card { width: 100%; min-width: 0; box-sizing: border-box; }
 					.header {
 						display: flex;
 						justify-content: space-between;
 						align-items: center;
 						margin-bottom: 1rem;
+						gap: 0.5rem;
+						flex-wrap: wrap;
 					}
 					
 					#new-project-btn {
@@ -137,18 +140,23 @@ export class ProjectTree extends HTMLElement {
 					}
 					pre {
 						background: var(--surface-input, hsla(0, 0%, 0%, 0.3));
-						padding: 1.5rem;
+						padding: 1.25rem 1.5rem;
 						border-radius: var(--radius-lg, 1rem);
 						font-family: var(--font-mono, 'Fira Code', monospace);
-						font-size: 0.95rem;
-						line-height: 1.6;
+						font-size: 0.9rem;
+						line-height: 1.65;
 						color: var(--accent-text, var(--accent-color, hsla(173, 80%, 45%, 1)));
 						border: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.05));
-						overflow-x: auto;
 						margin: 0;
+						white-space: pre-wrap;
+						word-break: break-word;
+						overflow-wrap: anywhere;
+						max-width: 100%;
+						box-sizing: border-box;
 					}
 					pre a {
 						transition: color var(--duration-fast, 0.2s) ease, text-shadow var(--duration-fast, 0.2s) ease;
+						word-break: break-word;
 					}
 					pre a:hover {
 						color: var(--accent-secondary, hsla(216, 100%, 50%, 1)) !important;

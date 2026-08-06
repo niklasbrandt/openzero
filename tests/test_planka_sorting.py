@@ -122,3 +122,68 @@ async def test_get_project_tree_sorting(mock_auth):
 		pos_stale_board = tree.find("[Stale Board]")
 		assert pos_hot_board != -1 and pos_stale_board != -1
 		assert pos_hot_board < pos_stale_board, "Board with latest modification should appear first within project"
+
+
+@pytest.mark.asyncio
+@patch("app.services.planka.get_planka_auth_token", new_callable=AsyncMock)
+async def test_operator_board_priority_in_project_tree(mock_auth):
+	mock_auth.return_value = "fake_token"
+	_tree_cache.clear()
+
+	projects_resp = {
+		"items": [
+			{"id": "proj_other", "name": "Other Project", "updatedAt": "2026-08-06T23:00:00Z"},
+			{"id": "proj_op", "name": "Operations", "updatedAt": "2026-01-01T00:00:00Z"},
+		]
+	}
+
+	proj_op_detail = {
+		"included": {
+			"boards": [
+				{"id": "b_stale", "name": "Secondary Board", "updatedAt": "2026-08-06T20:00:00Z"},
+				{"id": "b_operator", "name": "Operator Board", "updatedAt": "2026-01-01T00:00:00Z"},
+			]
+		}
+	}
+
+	proj_other_detail = {
+		"included": {
+			"boards": [
+				{"id": "b_other", "name": "Project X", "updatedAt": "2026-08-06T23:00:00Z"},
+			]
+		}
+	}
+
+	def mock_get(url, **kwargs):
+		res = MagicMock()
+		res.raise_for_status = lambda: None
+		if url == "/api/projects":
+			res.json.return_value = projects_resp
+		elif url == "/api/projects/proj_op":
+			res.json.return_value = proj_op_detail
+		elif url == "/api/projects/proj_other":
+			res.json.return_value = proj_other_detail
+		else:
+			res.json.return_value = {"included": {"lists": [], "cards": []}}
+		return res
+
+	with patch("app.services.planka.settings") as mock_settings, patch.object(httpx, "AsyncClient") as mock_client_cls:
+		mock_settings.PLANKA_BASE_URL = "http://planka:1337"
+		mock_settings.BASE_URL = "http://localhost:8000"
+		mock_client = AsyncMock()
+		mock_client.get.side_effect = mock_get
+		mock_client_cls.return_value.__aenter__.return_value = mock_client
+
+		tree = await get_project_tree(as_html=False)
+
+		# Operations project MUST come first even if Other Project has newer timestamps
+		pos_op_proj = tree.find("[Operations]")
+		pos_other_proj = tree.find("[Other Project]")
+		assert pos_op_proj != -1 and pos_other_proj != -1
+		assert pos_op_proj < pos_other_proj, "Operations project should always come first"
+
+		# Operator Board MUST come first within Operations project
+		pos_operator_board = tree.find("[Operator Board]")
+		pos_secondary_board = tree.find("[Secondary Board]")
+		assert pos_operator_board != -1 and pos_secondary_board != -1
+		assert pos_operator_board < pos_secondary_board, "Operator Board should always come first within Operations"
