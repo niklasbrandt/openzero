@@ -48,8 +48,33 @@ def _card_title_matches(card_name: str, fragment: str) -> bool:
 		return False
 	return frag_clean in name_clean or name_clean in frag_clean
 
+def _extract_latest_timestamp(*items) -> str:
+	"""Extract the latest ISO timestamp string from a list of objects or strings."""
+	latest = ""
+	for item in items:
+		if not item:
+			continue
+		if isinstance(item, str):
+			if item > latest:
+				latest = item
+		elif isinstance(item, dict):
+			for key in ("updatedAt", "createdAt"):
+				val = item.get(key)
+				if val and isinstance(val, str) and val > latest:
+					latest = val
+		elif isinstance(item, list):
+			for elem in item:
+				sub_val = _extract_latest_timestamp(elem)
+				if sub_val > latest:
+					latest = sub_val
+	return latest
+
+
 async def get_project_tree(as_html: bool = True) -> str:
-	"""Recursively build a semantic text tree. Uses parallel requests and caching for speed."""
+	"""Recursively build a semantic text tree. Uses parallel requests and caching for speed.
+	Projects and boards are sorted by latest modification timestamp descending so that the
+	most recently updated/created boards and items appear first.
+	"""
 	cache_key = f"tree_{as_html}"
 	if cache_key in _tree_cache:
 		timestamp, data = _tree_cache[cache_key]
@@ -72,7 +97,7 @@ async def get_project_tree(as_html: bool = True) -> str:
 			project_tasks = [client.get(f"/api/projects/{p['id']}") for p in projects]
 			project_resps = await asyncio.gather(*project_tasks)
 
-			tree_lines = []
+			project_meta_list = []
 			board_tasks = []
 			board_metadata = [] # Keep track of which board task belongs to which project/name
 
@@ -83,7 +108,6 @@ async def get_project_tree(as_html: bool = True) -> str:
 
 				project = projects[i]
 				project_id = project['id']
-
 				project_name = project['name']
 
 				# Make project names clickable
@@ -93,27 +117,47 @@ async def get_project_tree(as_html: bool = True) -> str:
 					# Use version without underscores for Telegram Markdown
 					p_display = f"**[{project_name}]({settings.BASE_URL}/api/dashboard/planka-redirect?targetprojectid={project_id})**"
 
-				tree_lines.append((i, "project", p_display))
+				proj_ts = _extract_latest_timestamp(project, detail)
+				project_meta_list.append({
+					"idx": i,
+					"id": project_id,
+					"name": project_name,
+					"display": p_display,
+					"project_ts": proj_ts,
+					"boards": []
+				})
 
 				for board in boards:
 					# Include labels and cardLabels for class-of-service/blocker detection
 					task = client.get(f"/api/boards/{board['id']}", params={"included": "lists,cards,labels,cardLabels"})
 					board_tasks.append(task)
-					board_metadata.append({"project_idx": i, "name": board['name'], "id": board['id']})
+					board_metadata.append({"project_idx": i, "name": board['name'], "id": board['id'], "board_obj": board})
 
 			# Fetch all board details in parallel
 			board_resps = await asyncio.gather(*board_tasks, return_exceptions=True)
 
 			# Map board responses back to their projects
-			project_boards: dict[int, list[str]] = {i: [] for i in range(len(projects))}
 			for meta, b_resp in zip(board_metadata, board_resps):
+				proj_idx = meta["project_idx"]
+				b_name = meta["name"]
+				b_id = meta["id"]
+				b_obj = meta["board_obj"]
+
 				if isinstance(b_resp, BaseException):
-					project_boards[meta["project_idx"]].append(f"  └── {meta['name']} (Stats offline)")
+					latest_ts = _extract_latest_timestamp(b_obj)
+					project_meta_list[proj_idx]["boards"].append({
+						"name": b_name,
+						"id": b_id,
+						"latest_mod": latest_ts,
+						"lines": [f"  └── {b_name} (Stats offline)"]
+					})
 					continue
 
 				b_detail = b_resp.json()
 				lists = b_detail.get("included", {}).get("lists", [])
 				cards = b_detail.get("included", {}).get("cards", [])
+
+				latest_mod = _extract_latest_timestamp(b_obj, b_detail, lists, cards)
 
 				total_cards = len(cards)
 				from app.services.translations import get_done_keywords
@@ -122,18 +166,16 @@ async def get_project_tree(as_html: bool = True) -> str:
 				done_cards = len([c for c in cards if c['listId'] in done_list_ids])
 
 				progress_pct = int((done_cards / total_cards) * 100) if total_cards > 0 else 0
-				board_id = meta["id"]
-				board_name = meta["name"]
 
+				b_lines = []
+				board_name = b_name
 				if as_html:
 					progress_str = f" <span style='color: #4ade80; font-size: 0.8rem;'>({progress_pct}%)</span>" if total_cards > 0 else ""
-					line = f"  └── <a href='/api/dashboard/planka-redirect?target_board_id={board_id}' target='_blank' style='color: inherit; text-decoration: none;'>{_html.escape(board_name)}</a>{progress_str}"
-					project_boards[meta["project_idx"]].append(line)
+					b_lines.append(f"  └── <a href='/api/dashboard/planka-redirect?target_board_id={b_id}' target='_blank' style='color: inherit; text-decoration: none;'>{_html.escape(board_name)}</a>{progress_str}")
 				else:
 					progress_str = f" ({progress_pct}%)" if total_cards > 0 else ""
 					# Use version without underscores for Telegram Markdown
-					line = f" • [{board_name}]({settings.BASE_URL}/api/dashboard/planka-redirect?targetboardid={board_id}){progress_str}"
-					project_boards[meta["project_idx"]].append(line)
+					b_lines.append(f" • [{b_name}]({settings.BASE_URL}/api/dashboard/planka-redirect?targetboardid={b_id}){progress_str}")
 					# Add list+card detail so LLM can reason about the actual board structure
 					label_map: dict[str, str] = {}
 					for lbl in b_detail.get("included", {}).get("labels", []):
@@ -157,12 +199,31 @@ async def get_project_tree(as_html: bool = True) -> str:
 						if not l_cards:
 							continue
 						visible = l_cards[:10]
-						project_boards[meta["project_idx"]].append(f"   [{lst['name']}]: {', '.join(visible)}")
+						b_lines.append(f"   [{lst['name']}]: {', '.join(visible)}")
+
+				project_meta_list[proj_idx]["boards"].append({
+					"name": b_name,
+					"id": b_id,
+					"latest_mod": latest_mod,
+					"lines": b_lines
+				})
+
+			# Sort boards within each project by latest_mod descending (latest modified first)
+			for p_meta in project_meta_list:
+				p_meta["boards"].sort(key=lambda b: b["latest_mod"], reverse=True)
+				# Calculate overall project latest_mod including its boards
+				board_ts_max = max((b["latest_mod"] for b in p_meta["boards"]), default="")
+				p_meta["overall_ts"] = max(p_meta["project_ts"], board_ts_max)
+
+			# Sort projects by overall_ts descending (latest modified first)
+			project_meta_list.sort(key=lambda p: p["overall_ts"], reverse=True)
+
 			# Assemble final tree
 			final_lines = []
-			for i, p_type, p_name in tree_lines:
-				final_lines.append(p_name)
-				final_lines.extend(project_boards[i])
+			for p_meta in project_meta_list:
+				final_lines.append(p_meta["display"])
+				for b_meta in p_meta["boards"]:
+					final_lines.extend(b_meta["lines"])
 				final_lines.append("")
 
 			result = "\n".join(final_lines)
@@ -1985,7 +2046,7 @@ async def get_crew_board_snapshot() -> str:
 
 			board_details = await asyncio.gather(*board_tasks)
 
-			lines = []
+			board_items = []
 			for b_idx, b_resp in enumerate(board_details):
 				b_data = b_resp.json()
 				b_name = board_names[b_idx]
@@ -1994,12 +2055,21 @@ async def get_crew_board_snapshot() -> str:
 				list_map = {l["id"]: (l.get("name") or "?") for l in lists}
 				done_list_ids = {l["id"] for l in lists if _is_done_list(l.get("name", ""))}
 				active_cards = [c for c in cards if c["listId"] not in done_list_ids]
+
+				latest_ts = _extract_latest_timestamp(b_data, lists, cards)
+
 				if not active_cards:
-					lines.append(f"{b_name}: no active items")
+					line = f"{b_name}: no active items"
 				else:
 					top = sorted(active_cards, key=lambda c: c.get("updatedAt") or "", reverse=True)[:2]
 					card_strs = ", ".join(f"{c.get('name') or '?'} ({list_map.get(c['listId'], '?')})" for c in top)
-					lines.append(f"{b_name}: {card_strs}")
+					line = f"{b_name}: {card_strs}"
+
+				board_items.append((latest_ts, line))
+
+			# Sort crew boards by latest modification date descending
+			board_items.sort(key=lambda item: item[0], reverse=True)
+			lines = [item[1] for item in board_items]
 
 		return "\n".join(lines) if lines else "(no crew boards found)"
 	except Exception as e:
