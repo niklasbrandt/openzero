@@ -541,7 +541,6 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 			lookup_list_name = list_name
 			if not is_date and is_conv_list:
 				lookup_list_name = "Tasks"
-				logger.info("create_task: redirecting non-date task card '%s' from Conversation list to Tasks list", _sanitize_for_log(title))
 
 			target_list = next((l for l in lists if (l.get("name") or "").lower() == lookup_list_name.lower()), None)
 			if not target_list:
@@ -552,27 +551,17 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 				target_list = next((l for l in lists if (l.get("name") or "").lower() in lookup_list_name.lower() and (l.get("name") or "").strip()), None)
 
 			if not target_list:
-				if lookup_list_name.lower() == "tasks":
-					l_resp = await client.post(f"/api/boards/{board_id}/lists", json={"name": "Tasks", "type": "active", "position": 65535})
-					l_resp.raise_for_status()
-					target_list = l_resp.json().get("item")
-					logger.info("create_task: created new list 'Tasks' on board '%s'", _sanitize_for_log(target_board["name"]))
-				else:
-					# Fall back to first active named list — never use archive/trash lists (cards would be invisible).
-					active_lists = [l for l in lists if l.get("type") == "active" and (l.get("name") or "").strip()]
-					if not is_date:
-						active_lists = [l for l in active_lists if (l.get("name") or "").lower() not in {
-							"conversation", "conversations", "gespräch", "konversation", "unterhaltung",
-							"conversación", "conversa", "对话", "会話", "разговор", "대화", "वार्तालाप", "बातचीत"
-						}]
-					if active_lists:
-						target_list = active_lists[0]
-						logger.info("create_task: list '%s' not found on board '%s', falling back to '%s'", _sanitize_for_log(list_name), _sanitize_for_log(target_board["name"]), _sanitize_for_log(target_list.get("name")))
-					else:
-						fallback_name = "Inbox" if is_date else "Tasks"
-						l_resp = await client.post(f"/api/boards/{board_id}/lists", json={"name": fallback_name, "type": "active", "position": 65535})
-						l_resp.raise_for_status()
-						target_list = l_resp.json().get("item")
+				# Prefer standard entry list names if present on the board (e.g. Inbox, Tasks, Today, To Do)
+				entry_names = {"inbox", "tasks", "today", "to do", "todo", "aufgaben"}
+				target_list = next((l for l in lists if (l.get("name") or "").lower() in entry_names), None)
+
+			if not target_list:
+				# Create a clean entry list ("Tasks" or "Inbox") at position 1 so tasks do not land in domain lists (e.g. 'children', 'physique')
+				fallback_name = "Inbox" if (board_name.lower() == "operator board" or is_date) else "Tasks"
+				l_resp = await client.post(f"/api/boards/{board_id}/lists", json={"name": fallback_name, "type": "active", "position": 1})
+				l_resp.raise_for_status()
+				target_list = l_resp.json().get("item")
+				logger.info("create_task: created new entry list '%s' on board '%s'", fallback_name, _sanitize_for_log(target_board["name"]))
 
 			if not target_list:
 				raise ValueError(f"List '{list_name}' not found and could not be created on board '{target_board['name']}'")
