@@ -373,12 +373,14 @@ async def _build_stops(data: dict) -> list[CheckinStop]:
 	try:
 		raw = await asyncio.wait_for(
 			chat(prompt, tier="cloud", _feature="checkin_build", include_health=False),
-			timeout=180.0,
+			timeout=240.0,
 		)
 		cleaned = _JSON_STRIP_RE.sub("", raw).strip()
+		json_truncated = False
 		try:
 			parsed = json.loads(cleaned)
 		except json.JSONDecodeError as e:
+			json_truncated = True
 			logger.warning("checkin: JSONDecodeError (%s), attempting regex extraction of partial JSON", e)
 			parsed = {}
 			matches = re.finditer(r'"([a-zA-Z0-9_-]+)"\s*:\s*"((?:\\.|[^"\\])*)"', cleaned)
@@ -408,10 +410,16 @@ async def _build_stops(data: dict) -> list[CheckinStop]:
 				s.options = options
 			else:
 				# A fallback body message in the target language if the key was skipped
-				if _lang_code == "de":
-					s.body = f"Lass uns über {s.title} sprechen. Gibt es hier neue Entwicklungen oder nächste Schritte?"
+				if s.id == "meta" and json_truncated:
+					if _lang_code == "de":
+						s.body = "⚠️ *Hinweis:* Z's Token-Limit wurde erreicht. Einige der letzten Boards wurden in diesem Check-in übersprungen."
+					else:
+						s.body = "⚠️ *Note:* Z's token limit was reached. Some of the final boards were skipped in this check-in."
 				else:
-					s.body = f"Let's check in on {s.title}. Are there any new updates or next steps you want to define?"
+					if _lang_code == "de":
+						s.body = f"Lass uns über {s.title} sprechen. Gibt es hier neue Entwicklungen oder nächste Schritte?"
+					else:
+						s.body = f"Let's check in on {s.title}. Are there any new updates or next steps you want to define?"
 					
 		return stops
 	except Exception as exc:
