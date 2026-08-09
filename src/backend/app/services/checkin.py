@@ -327,7 +327,7 @@ async def _build_stops(data: dict) -> list[CheckinStop]:
 	operator_cards_ctx = "\n".join(op_cards_lines) if op_cards_lines else "  (No active cards on Operator Board)"
 
 	# Expected JSON keys list
-	expected_keys = [s.id for s in stops]
+	expected_keys = [s.id for s in stops if s.id != "weather"]
 
 	# Format crew histories context
 	crew_history_lines = []
@@ -342,13 +342,12 @@ async def _build_stops(data: dict) -> list[CheckinStop]:
 		f"{json.dumps(expected_keys)}\n\n"
 		"Key Descriptions:\n"
 		"- 'calibration': A breathing or grounding exercise (12–20 seconds spoken, calm, physical, present-moment).\n"
-		"- 'weather': Detail the weather forecast using the chronological 3-hour slots provided in the Today's data (e.g. '0-3: 17°C klar, 3-6: 20°C wolkig' etc.). List them all in order. IMPORTANT: You MUST insert a line break (\\n) after each time slot so it is readable as a list. Then mention any calendar events on a new line.\n"
 		"- 'operator': Operator Board active tasks. You MUST ONLY reference card titles explicitly listed under 'EXACT OPERATOR BOARD CARDS' below. Do NOT invent card names and do NOT take topics from recent chats. Provide 1 to 3 distinct actionable steps (ordered by highest outcome/significance first). Format EACH actionable step at the end of the text as '[OPTION] Action Label'.\n"
 		"- Board slugs: For each domain board, look at its active cards, recent activity, AND 'Recent Crew Conversations'. You MUST extract active task topics or recent chat points. Provide 1 to 3 distinct concrete actionable steps (ordered by highest outcome/significance first). Format EACH actionable step at the end of the text as '[OPTION] Action Label'.\n"
 		"- 'meta': Overarching meta thoughts, mood, direction. Synthesize top 1 to 3 actionable steps from across ALL areas (ordered by highest significance). Format EACH actionable step at the end as '[OPTION] Action Label'. End with a question about if there is anything new today.\n\n"
 		"Rules:\n"
 		f"- Write every value in {_lang_name}.\n"
-		"- Keep each value short (1-2 natural spoken sentences, max 40 words per key, except 'weather' which can list the slots and be up to 80 words) so the overall check-in is efficient and does not get cut off.\n"
+		"- Keep each value short (1-2 natural spoken sentences, max 40 words per key) so the overall check-in is efficient and does not get cut off.\n"
 		"- ACTIVITY METRIC RULE: For every board stop, you MUST state how many days since last activity in the text (e.g. '25 Tage seit letzter Aktivität.' or 'Seit 12 Tagen inaktiv.').\n"
 		"- CARD PRESENCE RULE: If a board has active cards listed under 'Boards and Projects', those cards ARE active items and existing tasks. You MUST NOT say 'Keine Aktivitäten' (No activity) or 'Keine Tasks' when cards exist!\n"
 		"- DIGITAL RECORDING RULE FOR AUREL / STOIC: NEVER ask or advise the user to write something down on physical paper or with a pen. Always tell the user to reply directly here in the chat so Aurel / Z can save and record it in memory and on the board.\n"
@@ -381,7 +380,13 @@ async def _build_stops(data: dict) -> list[CheckinStop]:
 		
 		# Map the parsed text back to our programmatic stops using robust regex for [OPTION]
 		for s in stops:
-			if s.id in parsed and parsed[s.id]:
+			if s.id == "weather":
+				# Bypass LLM and use fixed template
+				cal_hdr = "📅 Kalender:" if _lang_code == "de" else "📅 Calendar:"
+				cal_body = calendar_text
+				s.body = f"{data.get('weather', '')}\n\n{cal_hdr}\n{cal_body}"
+				s.options = []
+			elif s.id in parsed and parsed[s.id]:
 				body_text = str(parsed[s.id])
 				# Robust regex extraction of options anywhere in the text
 				options = [opt.strip() for opt in re.findall(r'\[OPTION\]\s*([^\[\n]+)', body_text) if opt.strip()]

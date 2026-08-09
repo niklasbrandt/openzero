@@ -20,23 +20,39 @@ _WMO_CODES = {
 	95: "Thunderstorm", 96: "Thunderstorm with hail", 99: "Severe thunderstorm with hail"
 }
 
-def _describe_code(code: int) -> str:
+_WMO_CODES_DE = {
+	0: "Klarer Himmel",
+	1: "Überwiegend klar", 2: "Teilweise bewölkt", 3: "Bedeckt",
+	45: "Nebel", 48: "Raureifnebel",
+	51: "Leichter Nieselregen", 53: "Mäßiger Nieselregen", 55: "Dichter Nieselregen",
+	56: "Gefrierender Nieselregen", 57: "Starker gefrierender Nieselregen",
+	61: "Leichter Regen", 63: "Mäßiger Regen", 65: "Starker Regen",
+	66: "Gefrierender Regen", 67: "Starker gefrierender Regen",
+	71: "Leichter Schneefall", 73: "Mäßiger Schneefall", 75: "Starker Schneefall",
+	77: "Schneegriesel",
+	80: "Leichte Regenschauer", 81: "Mäßige Regenschauer", 82: "Heftige Regenschauer",
+	85: "Leichte Schneeschauer", 86: "Starke Schneeschauer",
+	95: "Gewitter", 96: "Gewitter mit Hagel", 99: "Schweres Gewitter mit Hagel"
+}
+
+def _describe_code(code: int, lang: str = "en") -> str:
+	if lang == "de":
+		return _WMO_CODES_DE.get(code, "Wechselhaft")
 	return _WMO_CODES.get(code, "Variable conditions")
 
-async def get_weather_forecast(location_name: Optional[str] = None) -> str:
+async def get_weather_forecast(location_name: Optional[str] = None, lang: str = "en") -> str:
 	"""
 	Fetches an hourly weather forecast for today, summarized into
-	morning / afternoon / evening segments with precipitation and wind.
+	segments with precipitation and wind.
 	If no location is provided, uses settings.USER_LOCATION.
 	"""
 	from app.services.timezone import get_user_location
 	location = location_name or get_user_location()
 	if not location:
-		return "Weather location not configured."
+		return "Wetterstandort nicht konfiguriert." if lang == "de" else "Weather location not configured."
 
 	try:
 		# 1. Geocoding: Get lat/lon for the location name
-		# Open-Meteo geocoding works best with just the city name (comma-separated format: "City, CC")
 		search_name = location.split(",")[0].strip()
 		geocoding_url = f"https://geocoding-api.open-meteo.com/v1/search?name={search_name}&count=1&language=en&format=json"
 		async with httpx.AsyncClient(timeout=10.0) as client:
@@ -45,7 +61,7 @@ async def get_weather_forecast(location_name: Optional[str] = None) -> str:
 			geo_data = geo_resp.json()
 
 			if not geo_data.get("results"):
-				return f"Could not find coordinates for: {location}"
+				return f"Konnte keine Koordinaten finden für: {location}" if lang == "de" else f"Could not find coordinates for: {location}"
 
 			city = geo_data["results"][0]
 			lat, lon = city["latitude"], city["longitude"]
@@ -66,7 +82,7 @@ async def get_weather_forecast(location_name: Optional[str] = None) -> str:
 			daily = w_data.get("daily", {})
 			hourly = w_data.get("hourly", {})
 			if not daily:
-				return "No weather data available."
+				return "Keine Wetterdaten verfügbar." if lang == "de" else "No weather data available."
 
 			# Daily overview
 			max_temp = daily["temperature_2m_max"][0]
@@ -77,15 +93,10 @@ async def get_weather_forecast(location_name: Optional[str] = None) -> str:
 			sunrise = daily.get("sunrise", [""])[0].split("T")[1][:5] if daily.get("sunrise") else ""
 			sunset = daily.get("sunset", [""])[0].split("T")[1][:5] if daily.get("sunset") else ""
 
-			lines = [f"Weather in {display_name}: {_describe_code(daily_code)}"]
-			lines.append(f"Temperature: {min_temp}°C to {max_temp}°C")
-
-			if precip_sum > 0:
-				lines.append(f"Total precipitation: {precip_sum} mm")
-			if wind_max > 0:
-				lines.append(f"Max wind: {wind_max} km/h")
-			if sunrise and sunset:
-				lines.append(f"Sunrise {sunrise} / Sunset {sunset}")
+			if lang == "de":
+				lines = [f"🌡️ Wetter in {display_name}: {_describe_code(daily_code, lang)}"]
+			else:
+				lines = [f"🌡️ Weather in {display_name}: {_describe_code(daily_code, lang)}"]
 
 			# 3. Hourly breakdown by time segment
 			h_temps = hourly.get("temperature_2m", [])
@@ -95,14 +106,18 @@ async def get_weather_forecast(location_name: Optional[str] = None) -> str:
 
 			if len(h_temps) >= 24:
 				segments = [
-					("0-3", 0, 3),
-					("3-6", 3, 6),
-					("6-9", 6, 9),
-					("9-12", 9, 12),
-					("12-15", 12, 15),
-					("15-18", 15, 18),
-					("18-21", 18, 21),
-					("21-24", 21, 24),
+					("00-03", 0, 3),
+					("03-07", 3, 7),
+					("07-09", 7, 9),
+					("09-11", 9, 11),
+					("11-13", 11, 13),
+					("13-15", 13, 15),
+					("15-17", 15, 17),
+					("17-18", 17, 18),
+					("18-19", 18, 19),
+					("19-20", 19, 20),
+					("20-22", 20, 22),
+					("22-00", 22, 24),
 				]
 				for label, start, end in segments:
 					seg_temps = h_temps[start:end]
@@ -116,15 +131,41 @@ async def get_weather_forecast(location_name: Optional[str] = None) -> str:
 					max_precip = max(seg_precip) if seg_precip else 0
 					avg_wind = round(sum(seg_wind) / len(seg_wind), 1) if seg_wind else 0
 
-					seg_parts = [f"{label}: {avg_temp}°C {_describe_code(dominant_code)}"]
-					if max_precip > 20:
-						seg_parts.append(f"rain {max_precip}%")
-					if avg_wind > 15:
-						seg_parts.append(f"wind {avg_wind} km/h")
+					if lang == "de":
+						seg_parts = [f"• {label} Uhr: {str(avg_temp).replace('.', ',')}°C ({_describe_code(dominant_code, lang)})"]
+					else:
+						seg_parts = [f"• {label}: {avg_temp}°C ({_describe_code(dominant_code, lang)})"]
+
+					# Always include wind as requested by user
+					if lang == "de":
+						wind_str = f"Wind: {avg_wind} km/h"
+						rain_str = f"Regen: {max_precip}%" if max_precip > 0 else ""
+					else:
+						wind_str = f"Wind: {avg_wind} km/h"
+						rain_str = f"Rain: {max_precip}%" if max_precip > 0 else ""
+
+					if rain_str:
+						seg_parts.append(f"{rain_str} | {wind_str}")
+					else:
+						seg_parts.append(wind_str)
+
 					lines.append(" | ".join(seg_parts))
+
+			# Append summary stats
+			lines.append("")
+			if lang == "de":
+				lines.append(f"Tageshöchstwert: {str(max_temp).replace('.', ',')}°C | Niederschlag: {str(precip_sum).replace('.', ',')} mm")
+				if sunrise and sunset:
+					lines.append(f"Sonnenaufgang: {sunrise} | Sonnenuntergang: {sunset}")
+			else:
+				lines.append(f"Max: {max_temp}°C | Precip: {precip_sum} mm")
+				if sunrise and sunset:
+					lines.append(f"Sunrise: {sunrise} | Sunset: {sunset}")
 
 			return "\n".join(lines)
 
 	except Exception as e:
 		logger.error("Weather fetch error: %s", e)
+		if lang == "de":
+			return f"Wetterdienst vorübergehend nicht erreichbar für {location}."
 		return f"Weather service temporarily unavailable for {location}."
