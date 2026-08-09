@@ -11,20 +11,20 @@ logger = logging.getLogger(__name__)
 def build_briefing_skeleton(
 	weather: str,
 	calendar_events: list,
-	project_tree: str,
+	boards_data: dict,
 	recent_activity: str,
 	stale_cards: str,
-	crew_snapshot: str,
 	email_summary: str = "",
-	board_walkthrough: str = "",
 	activity_days: int = 7,
 ) -> str:
 	"""Build a pre-formatted briefing draft from real data. The LLM only adds voice/tone."""
 	lines: list[str] = []
 
+	# 1. Weather
 	lines.append(f"Weather: {weather}")
 	lines.append("")
 
+	# 2. Calendar
 	if calendar_events:
 		lines.append("Calendar today:")
 		for ev in calendar_events:
@@ -36,34 +36,55 @@ def build_briefing_skeleton(
 					time_str = f"{t} "
 			lines.append(f"  - {time_str}{ev.get('summary', '?')}")
 		lines.append("")
+	
+	# Helper for formatting board buckets
+	def _format_board(b: dict) -> str:
+		days = b.get("days_since_active", 0)
+		header = f"[{b['project']} / {b['name']}] ({days} days since last activity)"
+		b_lines = [header]
+		if not b["cards"]:
+			b_lines.append("  (empty - no active items)")
+		else:
+			for _, name, lst, desc in sorted(b["cards"], key=lambda x: x[0], reverse=True)[:10]:
+				b_lines.append(f"  - {name} ({lst})")
+		return "\n".join(b_lines)
 
-	if project_tree and "Planka connection issue" not in project_tree and "[NO DATA]" not in project_tree:
-		lines.append("All active boards (current state):")
-		lines.append(project_tree)
-		lines.append("")
+	if boards_data:
+		# 3. Operator Board
+		op_b = boards_data.get("operator_board")
+		if op_b:
+			lines.append("=== OPERATOR BOARD ===")
+			lines.append(_format_board(op_b))
+			lines.append("")
 
-	if board_walkthrough and "UNAVAILABLE" not in board_walkthrough and "no projects" not in board_walkthrough:
-		lines.append("Board walkthrough (active + stale per board):")
-		lines.append(board_walkthrough)
-		lines.append("")
+		# 4. Crews + Crewboards
+		c_boards = boards_data.get("crew_boards", [])
+		if c_boards:
+			lines.append("=== CREW BOARDS ===")
+			for cb in c_boards:
+				lines.append(_format_board(cb))
+			lines.append("")
+
+		# 5. Project Boards
+		p_boards = boards_data.get("project_boards", [])
+		if p_boards:
+			lines.append("=== PROJECT BOARDS ===")
+			for pb in p_boards:
+				lines.append(_format_board(pb))
+			lines.append("")
 
 	if recent_activity and "NO ACTIVITY" not in recent_activity and "UNAVAILABLE" not in recent_activity:
-		lines.append(f"Recent changes (last {activity_days}d):")
+		lines.append(f"=== RECENT CHANGES (last {activity_days}d) ===")
 		lines.append(recent_activity)
 		lines.append("")
 
 	if stale_cards and "NO STALE" not in stale_cards and "UNAVAILABLE" not in stale_cards:
-		lines.append("No movement in 5+ days (may need attention):")
+		lines.append("=== STALE CARDS (no movement in 5+ days) ===")
 		lines.append(stale_cards)
 		lines.append("")
 
-	if crew_snapshot and "UNAVAILABLE" not in crew_snapshot and "no crew boards found" not in crew_snapshot:
-		lines.append("Crew boards:")
-		lines.append(crew_snapshot)
-		lines.append("")
-
 	if email_summary and not email_summary.startswith("[NO DATA"):
-		lines.append("Email (unread):")
+		lines.append("=== EMAIL (unread) ===")
 		lines.append(email_summary)
 		lines.append("")
 
@@ -173,29 +194,25 @@ async def morning_briefing():
 			emails = await fetch_unread_emails(max_results=5)
 			return "\n".join([f"- {e['from']}: {e['subject']}" for e in emails]) if emails else "[NO DATA — email is not connected or inbox is empty. The Email section MUST be absent from the briefing. Do NOT invent senders, subjects, or message content.]"
 
-		from app.services.planka import get_activity_report, get_recent_activity, get_stale_cards, get_crew_board_snapshot, get_board_walkthrough
+		from app.services.planka import get_activity_report, get_recent_activity, get_stale_cards, get_briefing_boards_data
 		from app.services.translations import get_user_lang
 		from app.services.crew_memory import get_recent_crew_outputs
 		(
 			weather_report,
-			tree,
+			boards_data,
 			email_summary,
 			activity,
 			recent_activity,
 			stale_cards,
-			crew_snapshot,
-			board_walkthrough,
 			user_language,
 			crew_outputs,
 		) = await asyncio.gather(
 			get_weather_forecast(detected_location),
-			get_project_tree(as_html=False),
+			get_briefing_boards_data(),
 			_get_email_summary(),
 			get_activity_report(days=1),
 			get_recent_activity(hours=activity_hours),
 			get_stale_cards(min_days=5),
-			get_crew_board_snapshot(),
-			get_board_walkthrough(),
 			get_user_lang(),
 			get_recent_crew_outputs(hours=24),
 		)
@@ -208,7 +225,7 @@ async def morning_briefing():
 
 		# Detect Planka unavailability — prevent LLM hallucination when all board data fails
 		_planka_unavailable_warning = ""
-		if "Planka connection issue" in tree or "OPERATIONAL DATA FAILURE" in activity:
+		if not boards_data or "OPERATIONAL DATA FAILURE" in activity:
 			_planka_unavailable_warning = (
 				"\nIMPORTANT: All board data is currently unavailable. Do NOT attempt to generate board content "
 				"from memory or inference. Simply say that board data could not be loaded and ask the user to "
@@ -241,12 +258,10 @@ async def morning_briefing():
 		skeleton = build_briefing_skeleton(
 			weather=weather_report,
 			calendar_events=calendar_events,
-			project_tree=tree,
+			boards_data=boards_data,
 			recent_activity=recent_activity,
 			stale_cards=stale_cards,
-			crew_snapshot=crew_snapshot,
 			email_summary=email_summary,
-			board_walkthrough=board_walkthrough,
 			activity_days=activity_days,
 		)
 

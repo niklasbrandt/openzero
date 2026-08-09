@@ -923,7 +923,7 @@ async def handle_checkin_callback(update: Update, context: ContextTypes.DEFAULT_
 		)
 		return
 
-	if data == "checkin_okay":
+	if data.startswith("checkin_okay"):
 		session = get_session(channel, chat_id)
 		if not session:
 			await context.bot.send_message(
@@ -936,13 +936,23 @@ async def handle_checkin_callback(update: Update, context: ContextTypes.DEFAULT_
 		curr = session.current
 		await query.answer("Bestätigt.")
 
+		# Determine which option the user clicked
+		selected_option = "Okay"
+		if data.startswith("checkin_okay_"):
+			try:
+				opt_idx = int(data.split("_")[-1])
+				if getattr(curr, "options", None) and opt_idx < len(curr.options):
+					selected_option = curr.options[opt_idx]
+			except ValueError:
+				pass
+
 		# Generate a fast 1-sentence acknowledgement for the current step suggestion
 		lang = await get_user_lang()
 		_lang_names = {"de": "German", "en": "English", "fr": "French", "es": "Spanish"}
 		lang_name = _lang_names.get(lang, "English")
 
 		ack_prompt = (
-			f"The user clicked 'Okay' on this check-in briefing step titled '{curr.title}': \"{curr.body}\".\n"
+			f"The user clicked the action button '{selected_option}' on this check-in briefing step titled '{curr.title}': \"{curr.body}\".\n"
 			f"Write ONE short, natural spoken confirmation sentence in {lang_name} acknowledging the action or recommendation discussed "
 			f"(e.g. 'Alles klar, ich kümmere mich um die Rezepte!' or 'Verstanden, machen wir so!').\n"
 			f"Rules: Maximum 15 words. Do NOT ask any questions. Output ONLY the short confirmation sentence."
@@ -983,6 +993,23 @@ def _build_checkin_keyboard(session, t: dict):
 	Returns an InlineKeyboardMarkup or None if the session has no stops.
 	"""
 	stop = session.current
+	keyboard = []
+
+	# Action buttons from LLM options
+	options = getattr(stop, "options", [])
+	if options:
+		for idx, opt_text in enumerate(options):
+			keyboard.append([InlineKeyboardButton(
+				f"⚡ {opt_text}",
+				callback_data=f"checkin_okay_{idx}"
+			)])
+	elif stop.board_id or stop.id == "meta":
+		# Fallback to single generic okay button if no options parsed
+		keyboard.append([InlineKeyboardButton(
+			f"👌 {t.get('checkin_btn_okay', 'Okay')}",
+			callback_data="checkin_okay"
+		)])
+
 	nav_row = []
 	if not session.is_first:
 		nav_row.append(InlineKeyboardButton(
@@ -995,10 +1022,6 @@ def _build_checkin_keyboard(session, t: dict):
 			f"🔗 {t.get('checkin_btn_goto', 'Go to')}",
 			url=f"{settings.BASE_URL}/boards/{stop.board_id}",
 		))
-		nav_row.append(InlineKeyboardButton(
-			f"👌 {t.get('checkin_btn_okay', 'Okay')}",
-			callback_data="checkin_okay",
-		))
 
 	if not session.is_last:
 		nav_row.append(InlineKeyboardButton(
@@ -1007,11 +1030,14 @@ def _build_checkin_keyboard(session, t: dict):
 		))
 	else:
 		nav_row.append(InlineKeyboardButton(
-			f"✅ {t.get('checkin_btn_done', 'Done')}",
+			f"✅ {t.get('checkin_btn_done', 'Fertig')}",
 			callback_data="checkin_done",
 		))
 
-	return InlineKeyboardMarkup([nav_row])
+	if nav_row:
+		keyboard.append(nav_row)
+
+	return InlineKeyboardMarkup(keyboard)
 
 
 async def _deliver_checkin_stop(bot, chat_id: int, session, t: dict) -> None:

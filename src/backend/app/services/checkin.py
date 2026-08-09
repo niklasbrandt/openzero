@@ -43,6 +43,7 @@ class CheckinStop:
 	title: str
 	body: str
 	board_id: Optional[str] = None
+	options: list[str] = field(default_factory=list)
 	audio: Optional[bytes] = field(default=None, compare=False, repr=False)
 
 @dataclass
@@ -108,105 +109,24 @@ def close_any_session_for_channel(channel: str) -> None:
 
 # ─── Data helpers ─────────────────────────────────────────────────────────────
 
-async def _fetch_boards_raw() -> list[dict]:
-	"""Fetch all boards with their cards and per-card timestamps from Planka.
-
-	Returns a list of dicts:
-	  {"name": str, "project": str, "last_updated": datetime, "cards": [str, ...]}
-	sorted by last_updated descending (most recent first).
-	"""
-	from app.services.planka import get_planka_auth_token, _is_done_list
-	from app.config import settings
-	import httpx
-	from datetime import datetime
-
-	boards: list[dict] = []
-	try:
-		token = await get_planka_auth_token()
-		headers = {"Authorization": f"Bearer {token}"}
-		async with httpx.AsyncClient(
-			base_url=settings.PLANKA_BASE_URL, timeout=20.0, headers=headers
-		) as client:
-			resp = await client.get("/api/projects")
-			projects = resp.json().get("items", [])
-
-			# Fetch project details in parallel to get board lists
-			project_resps = await asyncio.gather(
-				*[client.get(f"/api/projects/{p['id']}") for p in projects],
-				return_exceptions=True,
-			)
-
-			# Collect board stubs
-			board_stubs: list[tuple[str, str, str]] = []  # (project_name, board_name, board_id)
-			for p, p_resp in zip(projects, project_resps):
-				if isinstance(p_resp, BaseException):
-					continue
-				p_data = p_resp.json()
-				for b in p_data.get("included", {}).get("boards", []):
-					board_stubs.append((p["name"], b["name"], b["id"]))
-
-			# Fetch board details in parallel
-			board_resps = await asyncio.gather(
-				*[client.get(f"/api/boards/{bid}", params={"included": "lists,cards"})
-				  for _, _, bid in board_stubs],
-				return_exceptions=True,
-			)
-
-			_epoch = datetime(1970, 1, 1)
-
-			for (proj_name, board_name, board_id), b_resp in zip(board_stubs, board_resps):
-				if isinstance(b_resp, BaseException):
-					continue
-				b_data = b_resp.json()
-				lists = b_data.get("included", {}).get("lists", [])
-				cards = b_data.get("included", {}).get("cards", [])
-				done_ids = {l["id"] for l in lists if _is_done_list(l.get("name", ""))}
-				list_map = {l["id"]: l.get("name", "?") for l in lists}
-
-				active_cards: list[tuple[datetime, str, str, str]] = []  # (ts, card_name, list_name, desc)
-				for card in cards:
-					if card.get("listId") in done_ids:
-						continue
-					raw_u = card.get("updatedAt") or card.get("createdAt") or ""
-					try:
-						ts = datetime.fromisoformat(raw_u.replace("Z", "")) if raw_u else _epoch
-					except ValueError:
-						ts = _epoch
-					list_name = list_map.get(card.get("listId", ""), "?")
-					desc = card.get("description") or ""
-					if len(desc) > 100:
-						desc = desc[:97] + "..."
-					active_cards.append((ts, card.get("name") or "?", list_name, desc))
-
-				last_updated = max(card[0] for card in active_cards) if active_cards else _epoch
-				boards.append({
-					"project": proj_name,
-					"name": board_name,
-					"board_id": board_id,
-					"last_updated": last_updated,
-					"cards": active_cards,  # list of (ts, name, list_name)
-				})
-	except Exception as exc:
-		logger.warning("_fetch_boards_raw failed: %s", exc)
-
-	# Sort by last active (most recent first), but empty/unused boards go to the bottom
-	boards.sort(key=lambda b: b["last_updated"], reverse=True)
-	return boards
-
-
-def _build_sorted_board_context(boards_raw: list[dict], budget: int = 5000) -> str:
-	"""Build a LLM-ready board context string.
+def _build_sorted_board_context(boards_data: dict, budget: int = 6000) -> str:
+	"""Build a LLM-ready board context string from the bucketed boards data.
 
 	Ensures the LLM sees the absolute master list of all boards first, then prints details in recency order.
 	If budget is exceeded, card details are truncated but board headers remain.
 	"""
-	from datetime import datetime
-
-	if not boards_raw:
+	if not boards_data:
 		return "(no boards found)"
 
+	# Flatten the boards for building the context, keeping the order: Operator -> Crew -> Project
+	flat_boards = []
+	if boards_data.get("operator_board"):
+		flat_boards.append(boards_data["operator_board"])
+	flat_boards.extend(boards_data.get("crew_boards", []))
+	flat_boards.extend(boards_data.get("project_boards", []))
+
 	master_list = []
-	for b in boards_raw:
+	for b in flat_boards:
 		# Exclude Scrum and Focus from explicit stop list, but keep context for Meta Thoughts
 		if b['name'].lower() in ["scrum", "focus"]:
 			continue
@@ -215,14 +135,11 @@ def _build_sorted_board_context(boards_raw: list[dict], budget: int = 5000) -> s
 	header_block = "MASTER BOARD LIST (Must generate a stop for each of these):\n" + "\n".join(f"- {m}" for m in master_list)
 
 	lines_per_board: list[str] = []
-	for b in boards_raw:
-		if b["last_updated"] == datetime(1970, 1, 1):
-			age_label = "no active cards/never active"
-		else:
-			days_ago = (datetime.utcnow() - b["last_updated"]).days
-			age_label = f"{days_ago}d ago" if days_ago > 0 else "today"
+	for b in flat_boards:
+		days_ago = b.get("days_since_active", 0)
+		age_label = f"{days_ago} days since last activity" if days_ago > 0 else "active today"
 
-		header = f"[{b['project']} / {b['name']}] (last active: {age_label})"
+		header = f"[{b['project']} / {b['name']}] ({age_label})"
 		if not b["cards"]:
 			card_lines = ["  (no active cards / only finished or empty lists)"]
 		else:
@@ -289,7 +206,7 @@ async def _gather_day_data() -> dict:
 	"""Collect the same raw data used by the morning briefing pipeline."""
 	from app.services.calendar import fetch_calendar_events
 	from app.services.weather import get_weather_forecast
-	from app.services.planka import get_recent_activity, get_stale_cards
+	from app.services.planka import get_recent_activity, get_stale_cards, get_briefing_boards_data
 	from app.services.translations import get_user_lang
 
 	async def _safe(coro, fallback=""):
@@ -302,7 +219,7 @@ async def _gather_day_data() -> dict:
 	(
 		calendar_events,
 		weather,
-		boards_raw,
+		boards_data,
 		recent_activity,
 		stale_cards,
 		lang,
@@ -310,7 +227,7 @@ async def _gather_day_data() -> dict:
 	) = await asyncio.gather(
 		_safe(fetch_calendar_events(days_ahead=0), []),
 		_safe(get_weather_forecast()),
-		_safe(_fetch_boards_raw(), []),
+		_safe(get_briefing_boards_data(), {}),
 		_safe(get_recent_activity(hours=96)),
 		_safe(get_stale_cards(min_days=5)),
 		_safe(get_user_lang(), "en"),
@@ -319,7 +236,7 @@ async def _gather_day_data() -> dict:
 	return {
 		"calendar": calendar_events,
 		"weather": weather,
-		"boards_raw": boards_raw,
+		"boards_raw": boards_data,  # keeping the dict key name the same for compatibility with caller
 		"recent_activity": recent_activity,
 		"stale_cards": stale_cards,
 		"lang": lang,
@@ -333,7 +250,7 @@ async def _gather_day_data() -> dict:
 _FALLBACK_STOPS = [
 	CheckinStop("calibration", "Calibration", "Take a slow breath in for four counts, hold for four, and out for four. Let today begin deliberately. You are here."),
 	CheckinStop("review", "Day Review", "Here is a quick look at what is on your plate today. Take it one item at a time."),
-	CheckinStop("outro", "Checkout", "That is your full check-in for today. You have the picture. Now go make one thing move. Irgendwas Neues heute?"),
+	CheckinStop("meta", "Meta Thoughts", "That is your full check-in for today. You have the picture. Now go make one thing move. Irgendwas Neues heute?"),
 ]
 
 _JSON_STRIP_RE = re.compile(r'^```(?:json)?\s*|\s*```$', re.MULTILINE)
@@ -347,7 +264,9 @@ async def _build_stops(data: dict) -> list[CheckinStop]:
 	_LANG_NAMES = {"de": "German (Deutsch)", "en": "English", "fr": "French", "es": "Spanish", "it": "Italian"}
 	_lang_code = data.get("lang", "en")
 	_lang_name = _LANG_NAMES.get(_lang_code, _lang_code)
-	_board_ctx = _build_sorted_board_context(data.get("boards_raw", []), budget=6000)
+	
+	boards_data = data.get("boards_raw", {})
+	_board_ctx = _build_sorted_board_context(boards_data, budget=6000)
 
 	personal_ctx = ""
 	try:
@@ -366,25 +285,23 @@ async def _build_stops(data: dict) -> list[CheckinStop]:
 	stops: list[CheckinStop] = []
 	stops.append(CheckinStop(id="calibration", title="Calibration", body=""))
 	stops.append(CheckinStop(id="weather", title="Weather & Calendar", body=""))
-	stops.append(CheckinStop(id="operator", title="Operator Board", body=""))
 
 	board_slug_map = {}
 	op_cards_lines = []
-	for b in data.get("boards_raw", []):
+	
+	# Extract operator board details
+	op_b = boards_data.get("operator_board")
+	if op_b:
+		stops.append(CheckinStop(id="operator", title="Operator Board", body="", board_id=op_b.get("board_id")))
+		for _, cname, clist, _ in op_b.get("cards", []):
+			if clist.lower() not in ["archive", "erledigt", "done", "trash"]:
+				op_cards_lines.append(f"  - {cname} (List: {clist})")
+	else:
+		stops.append(CheckinStop(id="operator", title="Operator Board", body=""))
+
+	# Process Crews and Projects
+	for b in (boards_data.get("crew_boards", []) + boards_data.get("project_boards", [])):
 		bname_lower = b["name"].lower()
-		proj_lower = b.get("project", "").lower()
-		is_op_board = bname_lower in ["operator board", "operator-board", "operator"] or proj_lower == "operationen"
-
-		if is_op_board:
-			# Link board_id to the pre-created operator stop
-			for s in stops:
-				if s.id == "operator":
-					s.board_id = b.get("board_id")
-			for _, cname, clist, _ in b.get("cards", []):
-				if clist.lower() not in ["archive", "erledigt", "done", "trash"]:
-					op_cards_lines.append(f"  - {cname} (List: {clist})")
-			continue  # Don't create duplicate stop for Operator Board
-
 		# Exclude Scrum and Focus stops as requested (handled in Meta/outro or standalone)
 		if bname_lower in ["scrum", "focus"]:
 			continue
@@ -400,7 +317,6 @@ async def _build_stops(data: dict) -> list[CheckinStop]:
 		stops.append(CheckinStop(id=slug, title=b["name"], body="", board_id=b.get("board_id")))
 
 	stops.append(CheckinStop(id="meta", title="Meta Thoughts", body=""))
-	stops.append(CheckinStop(id="outro", title="Checkout", body=""))
 
 	operator_cards_ctx = "\n".join(op_cards_lines) if op_cards_lines else "  (No active cards on Operator Board)"
 
@@ -421,11 +337,9 @@ async def _build_stops(data: dict) -> list[CheckinStop]:
 		"Key Descriptions:\n"
 		"- 'calibration': A breathing or grounding exercise (12–20 seconds spoken, calm, physical, present-moment).\n"
 		"- 'weather': Detail the weather forecast using the chronological 3-hour slots provided in the Today's data (e.g. '0-3: 17°C klar, 3-6: 20°C wolkig' etc.). List them all in order. Then mention any calendar events. Max 4 sentences.\n"
-		"- 'operator': Operator Board active tasks. You MUST ONLY reference card titles explicitly listed under 'EXACT OPERATOR BOARD CARDS' below. It is a critical error to mention any task not present in that list. Do NOT invent card names and do NOT take topics from recent chats. Max 3 sentences.\n"
-		"- Board slugs: For each domain board, look at its active cards, recent activity, AND 'Recent Crew Conversations' block below.\n"
-		"  You MUST extract active task topics or recent chat points from the conversations block and suggest/ask about concrete next steps discussed. Be proactive and natural.\n"
-		"- 'meta': Overarching meta thoughts, mood, direction, synthesized from Personal Context below. Do not parrot system goals.\n"
-		"- 'outro': Brief closing. Name one concrete action. End with a question (in the target language) about if there is anything new today.\n\n"
+		"- 'operator': Operator Board active tasks. You MUST ONLY reference card titles explicitly listed under 'EXACT OPERATOR BOARD CARDS' below. Do NOT invent card names and do NOT take topics from recent chats. Provide 1 to 3 distinct actionable steps (ordered by highest outcome/significance first). Format EACH actionable step at the end of the text on a new line starting with '[OPTION] ' followed by a short (max 4 words) label for the action.\n"
+		"- Board slugs: For each domain board, look at its active cards, recent activity, AND 'Recent Crew Conversations'. You MUST extract active task topics or recent chat points. Provide 1 to 3 distinct concrete actionable steps (ordered by highest outcome/significance first). Format EACH actionable step at the end of the text on a new line starting with '[OPTION] ' followed by a short (max 4 words) label for the action.\n"
+		"- 'meta': Overarching meta thoughts, mood, direction. Provide 1 to 3 distinct actionable steps (ordered by highest outcome/significance first). Format EACH actionable step at the end of the text on a new line starting with '[OPTION] ' followed by a short (max 4 words) label for the action. End with a question about if there is anything new today.\n\n"
 		"Rules:\n"
 		f"- Write every value in {_lang_name}.\n"
 		"- Keep each value short (1-2 natural spoken sentences, max 40 words per key, except 'weather' which can list the slots and be up to 80 words) so the overall check-in is efficient and does not get cut off.\n"
@@ -455,7 +369,18 @@ async def _build_stops(data: dict) -> list[CheckinStop]:
 		# Map the parsed text back to our programmatic stops
 		for s in stops:
 			if s.id in parsed and parsed[s.id]:
-				s.body = str(parsed[s.id])
+				body_text = str(parsed[s.id])
+				options = []
+				clean_lines = []
+				for line in body_text.splitlines():
+					if line.strip().startswith("[OPTION]"):
+						opt_text = line.strip().replace("[OPTION]", "").strip()
+						if opt_text:
+							options.append(opt_text)
+					else:
+						clean_lines.append(line)
+				s.body = "\n".join(clean_lines).strip()
+				s.options = options
 			else:
 				# A fallback body message in the target language if the key was skipped
 				if _lang_code == "de":
@@ -474,7 +399,7 @@ async def _build_stops(data: dict) -> list[CheckinStop]:
 				s.body = "Atme langsam ein und aus. Du bist hier."
 			elif s.id == "review":
 				s.body = "Hier ist dein Tagesüberblick. Lass uns deine Boards durchgehen."
-			elif s.id == "outro":
+			elif s.id == "meta":
 				s.body = "Das ist dein Check-in. Bring heute eine Sache in Bewegung. Irgendwas Neues?"
 	return _FALLBACK_STOPS
 

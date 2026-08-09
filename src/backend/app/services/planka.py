@@ -2243,3 +2243,138 @@ async def get_board_walkthrough(min_stale_days: int = 5) -> str:
 		_exc_type = type(e).__name__
 		return f"[BOARD WALKTHROUGH UNAVAILABLE: {_exc_type}]"
 
+
+async def get_briefing_boards_data() -> dict:
+	"""Fetch all boards, categorize into exactly three buckets, and calculate days_since_active.
+	
+	Returns:
+		dict with keys:
+		- operator_board: dict | None
+		- crew_boards: list[dict]
+		- project_boards: list[dict]
+	"""
+	import httpx
+	from datetime import datetime
+
+	try:
+		crew_board_names = await _get_crew_board_names()
+	except Exception:
+		crew_board_names = set()
+
+	boards_raw = []
+	try:
+		token = await get_planka_auth_token()
+		headers = {"Authorization": f"Bearer {token}"}
+		async with httpx.AsyncClient(
+			base_url=settings.PLANKA_BASE_URL, timeout=20.0, headers=headers
+		) as client:
+			resp = await client.get("/api/projects")
+			projects = resp.json().get("items", [])
+
+			# Fetch project details in parallel to get board lists
+			project_resps = await asyncio.gather(
+				*[client.get(f"/api/projects/{p['id']}") for p in projects],
+				return_exceptions=True,
+			)
+
+			board_stubs: list[tuple[str, str, str]] = []  # (project_name, board_name, board_id)
+			for p, p_resp in zip(projects, project_resps):
+				if isinstance(p_resp, BaseException):
+					continue
+				p_data = p_resp.json()
+				for b in p_data.get("included", {}).get("boards", []):
+					board_stubs.append((p["name"], b["name"], b["id"]))
+
+			# Fetch board details in parallel
+			board_resps = await asyncio.gather(
+				*[client.get(f"/api/boards/{bid}", params={"included": "lists,cards"})
+				  for _, _, bid in board_stubs],
+				return_exceptions=True,
+			)
+
+			_epoch = datetime(1970, 1, 1)
+
+			for (proj_name, board_name, board_id), b_resp in zip(board_stubs, board_resps):
+				if isinstance(b_resp, BaseException):
+					continue
+				b_data = b_resp.json()
+				
+				# Get board creation date from data section if available
+				b_obj = b_data.get("data", {})
+				raw_c = b_obj.get("createdAt") or ""
+				try:
+					created_at = datetime.fromisoformat(raw_c.replace("Z", "")) if raw_c else _epoch
+				except ValueError:
+					created_at = _epoch
+
+				lists = b_data.get("included", {}).get("lists", [])
+				cards = b_data.get("included", {}).get("cards", [])
+				done_ids = {l["id"] for l in lists if _is_done_list(l.get("name", ""))}
+				list_map = {l["id"]: l.get("name", "?") for l in lists}
+
+				active_cards: list[tuple[datetime, str, str, str]] = []  # (ts, card_name, list_name, desc)
+				for card in cards:
+					if card.get("listId") in done_ids:
+						continue
+					raw_u = card.get("updatedAt") or card.get("createdAt") or ""
+					try:
+						ts = datetime.fromisoformat(raw_u.replace("Z", "")) if raw_u else _epoch
+					except ValueError:
+						ts = _epoch
+					list_name = list_map.get(card.get("listId", ""), "?")
+					desc = card.get("description") or ""
+					if len(desc) > 100:
+						desc = desc[:97] + "..."
+					active_cards.append((ts, card.get("name") or "?", list_name, desc))
+
+				# latest_mod is max of card updates, or board creation if no cards
+				last_updated = max(card[0] for card in active_cards) if active_cards else created_at
+				if last_updated == _epoch:
+					last_updated = datetime.utcnow() # fallback to not break logic
+
+				days_since_active = (datetime.utcnow() - last_updated).days
+				if days_since_active < 0:
+					days_since_active = 0
+				
+				# Determine Bucket
+				b_name_lower = (board_name or "").strip().lower()
+				is_operator = _is_operator_name(board_name) or proj_name.lower() in ["operationen", "operations"]
+				is_crew = b_name_lower in crew_board_names and not is_operator
+
+				boards_raw.append({
+					"project": proj_name,
+					"name": board_name,
+					"board_id": board_id,
+					"created_at": created_at,
+					"last_updated": last_updated,
+					"days_since_active": days_since_active,
+					"cards": active_cards,  # list of (ts, name, list_name, desc)
+					"is_operator": is_operator,
+					"is_crew": is_crew
+				})
+	except Exception as exc:
+		logger.warning("get_briefing_boards_data failed: %s", exc)
+
+	operator_board = None
+	crew_boards = []
+	project_boards = []
+
+	for b in boards_raw:
+		if b["is_operator"] and not operator_board:
+			operator_board = b
+		elif b["is_crew"]:
+			crew_boards.append(b)
+		elif not b["is_operator"]:
+			project_boards.append(b)
+			
+	# Sort Crew boards by last modification date descending
+	crew_boards.sort(key=lambda x: x["last_updated"], reverse=True)
+	
+	# Sort Project boards by creation and modification date descending -> max(created_at, last_updated)
+	project_boards.sort(key=lambda x: max(x["created_at"], x["last_updated"]), reverse=True)
+
+	return {
+		"operator_board": operator_board,
+		"crew_boards": crew_boards,
+		"project_boards": project_boards
+	}
