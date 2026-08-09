@@ -1521,6 +1521,8 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 		ci_session = get_session("telegram", chat_id)
 		if ci_session:
 			curr = ci_session.current
+			_lang_names = {"de": "German", "en": "English", "fr": "French", "es": "Spanish"}
+			lang_name = _lang_names.get(lang, "English")
 			board_info = f"Board: '{curr.title}'" if curr.board_id else f"Category: '{curr.title}'"
 			
 			ack_prompt = (
@@ -1548,15 +1550,19 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 					timeout=8.0
 				)
 				clean_ack, _, _ = await parse_and_execute_actions(raw_ack)
+				clean_ack = clean_ack.strip()
 				
 				checkin_markup = _build_checkin_keyboard(ci_session, t)
+				formatted_reply = f"<blockquote>👌 <i>{_md_to_html(clean_ack)}</i></blockquote>"
+				
+				_typing_task.cancel()
 				if thinking_msg:
-					await safe_edit(thinking_msg, clean_ack, parse_mode="HTML", reply_markup=checkin_markup)
+					await safe_edit(thinking_msg, formatted_reply, parse_mode="HTML", reply_markup=checkin_markup)
 				elif update.message:
-					await update.message.reply_text(clean_ack, parse_mode="HTML", reply_markup=checkin_markup)
+					await update.message.reply_text(formatted_reply, parse_mode="HTML", reply_markup=checkin_markup)
 				else:
-					await context.bot.send_message(chat_id=chat_id, text=clean_ack, parse_mode="HTML", reply_markup=checkin_markup)
-				return
+					await context.bot.send_message(chat_id=chat_id, text=formatted_reply, parse_mode="HTML", reply_markup=checkin_markup)
+				return False
 			except Exception as exc:
 				logger.warning("Check-in text handling failed: %s", exc)
 
