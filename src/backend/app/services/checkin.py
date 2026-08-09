@@ -373,10 +373,22 @@ async def _build_stops(data: dict) -> list[CheckinStop]:
 	try:
 		raw = await asyncio.wait_for(
 			chat(prompt, tier="cloud", _feature="checkin_build", include_health=False),
-			timeout=90.0,
+			timeout=180.0,
 		)
 		cleaned = _JSON_STRIP_RE.sub("", raw).strip()
-		parsed = json.loads(cleaned)
+		try:
+			parsed = json.loads(cleaned)
+		except json.JSONDecodeError as e:
+			logger.warning("checkin: JSONDecodeError (%s), attempting regex extraction of partial JSON", e)
+			parsed = {}
+			matches = re.finditer(r'"([a-zA-Z0-9_-]+)"\s*:\s*"((?:\\.|[^"\\])*)"', cleaned)
+			for m in matches:
+				try:
+					key = m.group(1)
+					val = m.group(2).replace('\\"', '"').replace('\\n', '\n').replace('\\t', '\t')
+					parsed[key] = val
+				except Exception:
+					pass
 		
 		# Map the parsed text back to our programmatic stops using robust regex for [OPTION]
 		for s in stops:
