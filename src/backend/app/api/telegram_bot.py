@@ -279,56 +279,14 @@ def _format_raw_changes_html(changes: str) -> str:
 async def _send_changes_notification_if_needed():
 	"""Send the deployment-changes banner if a latest_changes.txt exists.
 	Called at startup after watchdog recovery handles any unanswered messages.
-	Retries once if the LLM is still warming up, then falls back to raw diff."""
+	Now sends the raw changelog in the original language directly."""
 	await asyncio.sleep(15)
 	changes = _read_latest_changes()
 	if not changes:
 		await _send_online_notification()
 		return
-	logger.info("Startup: deployment changes detected, summarising for user.")
-	from app.services.llm import chat
-	lang = await get_user_lang()
-	lang_name = "German" if lang == "de" else "English"
-	changes_prompt = (
-		"You just came back online after a deployment. Tell the user what was shipped by summarizing the raw git commit notes below — "
-		"factually, like reading out a human-readable changelog. One sentence per change maximum. "
-		f"Write in clean, natural, grammatically correct {lang_name}. Plain language, no fluff.\n"
-		f"For example, instead of 'Der System wurde...' write 'Dem System wurde...' or 'Es wurde...'\n\n"
-		"STRICT RULES:\n"
-		"- Do NOT translate commit messages literally if it breaks the meaning. For example, if a commit says 'transient action generation' or 'fix: something', it means a bug was fixed or a feature adjusted, NOT that something was newly generated. Summarize the actual intent (e.g. 'Fehler bei der Generierung von transienten Aktionen behoben').\n"
-		"- Do NOT say 'I am now better', 'I have been improved', 'I was fixed', 'I work better now', "
-		"'die letzten Updates haben', 'ich wurde gefixt', 'ich bin jetzt besser', or any equivalent.\n"
-		"- Do NOT frame changes as improvements to yourself. Just report what the system now does.\n"
-		"- Do NOT use bullet lists or headers.\n"
-		"- Keep it under 60 words total.\n\n"
-		f"Deployment notes:\n{changes[:1500]}"
-	)
-	# Try up to 2 times — the second attempt gives the local LLM model
-	# 45 extra seconds to finish warming up after a cold container start.
-	for attempt in range(2):
-		try:
-			raw = await asyncio.wait_for(
-				chat(
-					changes_prompt,
-					system_override="You are a helpful assistant. Keep it very brief.",
-					tier="fast"
-				),
-				timeout=60,
-			)
-			if raw and not _is_error_stub(raw):
-				clean = strip_llm_time_header(raw)
-				_consume_latest_changes()
-				await _send_online_notification(recovery_html=_md_to_html(clean))
-				return
-			if attempt == 0:
-				logger.info("Startup: LLM stub on attempt 1, retrying in 45s.")
-				await asyncio.sleep(45)
-		except Exception as _ce:
-			logger.warning("Startup: changes LLM attempt %d failed (%r).", attempt + 1, _ce)
-			if attempt == 0:
-				await asyncio.sleep(45)
-	# Both attempts failed — send raw commit list so changes are never lost.
-	logger.warning("Startup: LLM unavailable, sending raw changelog as fallback.")
+	logger.info("Startup: deployment changes detected, sending raw changelog.")
+	
 	_consume_latest_changes()
 	fallback_html = _format_raw_changes_html(changes)
 	await _send_online_notification(recovery_html=fallback_html or "")
