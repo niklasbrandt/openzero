@@ -741,21 +741,29 @@ async def cmd_personal(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 @owner_only
 async def cmd_week(update: Update, context: ContextTypes.DEFAULT_TYPE):
-	try:
-		from app.tasks.weekly import weekly_review
-		report = await weekly_review()
-		await safe_reply(update, report)
-	except Exception as e:
-		await safe_reply(update, f"Weekly review failed: {e}")
+	"""Show choice: Full Briefing or Guided Check-in for the week."""
+	lang = await get_user_lang()
+	t = get_translations(lang)
+	keyboard = InlineKeyboardMarkup([
+		[
+			InlineKeyboardButton(t.get("checkin_btn_full", "Read Full Briefing"), callback_data="checkin_weekly_legacy"),
+			InlineKeyboardButton(t.get("checkin_btn_guided", "Start Guided Check-in"), callback_data="checkin_weekly_start"),
+		]
+	])
+	await safe_reply(update, t.get("checkin_choose_prompt", "How would you like to start your day?").replace("day", "week").replace("Tag", "Woche"), reply_markup=keyboard)
 
 @owner_only
 async def cmd_month(update: Update, context: ContextTypes.DEFAULT_TYPE):
-	try:
-		from app.tasks.monthly import monthly_review
-		report = await monthly_review()
-		await safe_reply(update, report)
-	except Exception as e:
-		await safe_reply(update, f"Monthly review failed: {e}")
+	"""Show choice: Full Briefing or Guided Check-in for the month."""
+	lang = await get_user_lang()
+	t = get_translations(lang)
+	keyboard = InlineKeyboardMarkup([
+		[
+			InlineKeyboardButton(t.get("checkin_btn_full", "Read Full Briefing"), callback_data="checkin_monthly_legacy"),
+			InlineKeyboardButton(t.get("checkin_btn_guided", "Start Guided Check-in"), callback_data="checkin_monthly_start"),
+		]
+	])
+	await safe_reply(update, t.get("checkin_choose_prompt", "How would you like to start your day?").replace("day", "month").replace("Tag", "Monat"), reply_markup=keyboard)
 
 @owner_only
 async def cmd_protocols(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -971,25 +979,31 @@ async def handle_checkin_callback(update: Update, context: ContextTypes.DEFAULT_
 			f"1. Write ONE short, natural spoken confirmation sentence in {lang_name} acknowledging the action (max 15 words).\n"
 			f"2. If this action should create a card on Planka, append an action tag at the end: [ACTION: CREATE_TASK | BOARD: {curr.title} | LIST: Today | TITLE: {selected_option}]\n"
 			f"   If it requires a reminder, append: [ACTION: REMIND | MESSAGE: {selected_option} | MINUTES: 60]\n"
-			f"   If no board/reminder action is required, do NOT append an action tag.\n"
+			f"   If the action is transient, conversational, or trivial (e.g. 'choose a movie', 'share reflection'), do NOT append an action tag.\n"
 			f"Output format: <Short confirmation sentence> [ACTION: ...] (optional)"
 		)
 
 		ack_text = ""
 		try:
 			from app.services.llm import chat as _fast_chat
-			from app.services.agent_actions import parse_and_execute_actions
+			from app.services.message_bus import bus
 			raw_ack = await asyncio.wait_for(
 				_fast_chat(
 					ack_prompt,
 					tier="cloud",
-					system_override="You are an execution assistant. Confirm the user's action step briefly and emit an appropriate [ACTION: ...] tag if a task or reminder should be created."
+					system_override="You are an execution assistant. Confirm the user's action step briefly and emit an appropriate [ACTION: ...] tag if a task or reminder should be created. Do NOT write 'Response:' or 'Hier ist die Antwort:'."
 				),
 				timeout=5.0
 			)
 			raw_ack = raw_ack.strip().strip('"')
-			# Execute any generated action tag (create task, set reminder, etc.)
-			ack_text, executed_actions, _ = await parse_and_execute_actions(raw_ack)
+			# Execute any generated action tag (create task, set reminder, etc.) and save to history
+			ack_text, executed_actions, _ = await bus.commit_reply(
+				channel="telegram",
+				raw_reply=raw_ack,
+				model="cloud",
+				user_text=f"[User clicked action: {selected_option}]",
+				save=True
+			)
 			ack_text = ack_text.strip()
 		except Exception as exc:
 			logger.warning("checkin_okay fast ack & action execution failed: %s", exc)
@@ -1536,20 +1550,27 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 				f"   If they want a new task created, output [ACTION: CREATE_TASK | BOARD: {curr.title} | LIST: Today | TITLE: <user_task>]\n"
 				f"   If they want a reminder, output [ACTION: REMIND | MESSAGE: <text> | MINUTES: 60]\n"
 				f"   If no database action is needed, output no action tag.\n"
+				f"3. Do NOT write meta-text like 'Response:' or 'Hier ist die Antwort:'. Just output the spoken response and tags.\n"
 			)
 
 			try:
 				from app.services.llm import chat as _fast_chat
-				from app.services.agent_actions import parse_and_execute_actions
+				from app.services.message_bus import bus
 				raw_ack = await asyncio.wait_for(
 					_fast_chat(
 						ack_prompt,
 						tier="cloud",
-						system_override="You are a conversational check-in assistant. Respond directly to the user's check-in reply and emit any appropriate [ACTION: ...] tag."
+						system_override="You are a conversational check-in assistant. Respond directly to the user's check-in reply and emit any appropriate [ACTION: ...] tag. Do NOT write 'Response:' or 'Hier ist die Antwort:'."
 					),
 					timeout=8.0
 				)
-				clean_ack, _, _ = await parse_and_execute_actions(raw_ack)
+				clean_ack, _, _ = await bus.commit_reply(
+					channel="telegram",
+					raw_reply=raw_ack,
+					model="cloud",
+					user_text=user_text,
+					save=True
+				)
 				clean_ack = clean_ack.strip()
 				
 				checkin_markup = _build_checkin_keyboard(ci_session, t)

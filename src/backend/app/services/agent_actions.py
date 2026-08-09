@@ -949,19 +949,22 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 		raw_tag = match.group(0)
 		params = _parse_tag_params(raw_tag)
 		message = params.get("MESSAGE") or ""
-		interval = params.get("INTERVAL") or params.get("INTERVAL_MINUTES") or ""
+		interval = params.get("INTERVAL") or params.get("INTERVAL_MINUTES") or params.get("MINUTES") or ""
 		duration = params.get("DURATION") or params.get("DURATION_HOURS") or ""
-		if not message or not interval or not duration:
+		
+		if not message or not interval:
 			clean_reply = strip_tag(clean_reply, raw_tag)
 			continue
 
 		async def _exec_remind(message=message, interval=interval, duration=duration):
 			try:
-				res = await schedule_reminder.ainvoke({
+				kwargs = {
 					"message": message,
 					"interval_minutes": int(interval.strip()),
-					"duration_hours": int(duration.strip())
-				})
+				}
+				if duration:
+					kwargs["duration_hours"] = int(duration.strip())
+				res = await schedule_reminder.ainvoke(kwargs)
 				if isinstance(res, str) and res.lower().startswith("error"):
 					return f"\u26a0 Reminder not set: {res}"
 				return res
