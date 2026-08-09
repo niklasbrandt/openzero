@@ -341,7 +341,7 @@ async def send_nudge_notification(text: str, reply_markup=None, nav_footer: str 
 	# Fresh send — always triggers audible notification on the user's device.
 	sent = await bot.send_message(
 		chat_id=chat_id,
-		text=f"{combined}{nav_footer}",
+		text=f"<blockquote>{combined}</blockquote>{nav_footer}",
 		parse_mode="HTML",
 		reply_markup=reply_markup,
 	)
@@ -360,13 +360,13 @@ async def send_notification(text: str, reply_markup=None, nav_footer: str = ""):
 	bot = Bot(token=settings.TELEGRAM_BOT_TOKEN)
 	html_text = _md_to_html(text)
 
-	MAX_CHARS = 3800  # Leave headroom for  wrapper tags
+	MAX_CHARS = 3800  # Leave headroom for <blockquote> wrapper tags
 	chat_id = int(settings.TELEGRAM_ALLOWED_USER_ID)
 
 	if len(html_text) <= MAX_CHARS:
 		await bot.send_message(
 			chat_id=chat_id,
-			text=f"{html_text}{nav_footer}",
+			text=f"<blockquote>{html_text}</blockquote>{nav_footer}",
 			parse_mode="HTML",
 			reply_markup=reply_markup,
 		)
@@ -390,7 +390,7 @@ async def send_notification(text: str, reply_markup=None, nav_footer: str = ""):
 		is_last = (i == len(chunks) - 1)
 		await bot.send_message(
 			chat_id=chat_id,
-			text=f"{chunk}{nav_footer if is_last else ''}",
+			text=f"<blockquote>{chunk}</blockquote>{nav_footer if is_last else ''}",
 			parse_mode="HTML",
 			reply_markup=reply_markup if is_last else None,
 		)
@@ -453,7 +453,7 @@ async def send_voice_message(audio_bytes: bytes, caption: Optional[str] = None):
 	await bot.send_voice(
 		chat_id=settings.TELEGRAM_ALLOWED_USER_ID,
 		voice=voice_file,
-		caption=f"{_md_to_html(caption)}" if caption else None,
+		caption=f"<blockquote>{_md_to_html(caption)}</blockquote>" if caption else None,
 		parse_mode="HTML"
 	)
 
@@ -470,7 +470,7 @@ async def safe_reply(update: Update, text: str, reply_markup=None, nav_footer: s
 	msg = update.effective_message
 	try:
 		html_text = _md_to_html(text)
-		await msg.reply_text(f"{html_text}{nav_footer}", parse_mode="HTML", reply_markup=reply_markup)
+		await msg.reply_text(f"<blockquote>{html_text}</blockquote>{nav_footer}", parse_mode="HTML", reply_markup=reply_markup)
 	except Exception as e:
 		logger.debug("HTML reply failed, falling back to plain: %s", e)
 		await msg.reply_text(text, reply_markup=reply_markup)
@@ -494,7 +494,7 @@ async def _send_chunked_reply(thinking_msg, html_body: str, reply_markup=None, n
 	If the content exceeds 3800 chars it is split at paragraph boundaries and
 	delivered as a sequence of new messages.
 	"""
-	MAX_CHARS = 3800  # Headroom for  wrapper tags
+	MAX_CHARS = 3800  # Headroom for <blockquote> wrapper tags
 
 	# Always delete the thinking placeholder and send the final reply as a new
 	# message so the response appears as a fresh bubble, not an edited placeholder.
@@ -507,7 +507,7 @@ async def _send_chunked_reply(thinking_msg, html_body: str, reply_markup=None, n
 		chat_id = thinking_msg.chat_id
 		await bot.send_message(
 			chat_id=chat_id,
-			text=f"{html_body}{nav_footer}",
+			text=f"<blockquote>{html_body}</blockquote>{nav_footer}",
 			parse_mode="HTML",
 			reply_markup=reply_markup,
 		)
@@ -562,7 +562,7 @@ async def _send_chunked_reply(thinking_msg, html_body: str, reply_markup=None, n
 		try:
 			await bot.send_message(
 				chat_id=chat_id,
-				text=f"{chunk}{nav_footer if is_last else ''}",
+				text=f"<blockquote>{chunk}</blockquote>{nav_footer if is_last else ''}",
 				parse_mode="HTML",
 				reply_markup=reply_markup if is_last else None,
 			)
@@ -810,7 +810,7 @@ async def handle_checkin_callback(update: Update, context: ContextTypes.DEFAULT_
 
 	if data.endswith("_legacy"):
 		await query.edit_message_text(
-			"Generating report...",
+			"<blockquote>Generating report...</blockquote>",
 			parse_mode="HTML",
 		)
 		try:
@@ -838,7 +838,7 @@ async def handle_checkin_callback(update: Update, context: ContextTypes.DEFAULT_
 
 		status_msg = await context.bot.send_message(
 			chat_id=chat_id,
-			text=f"{t.get('checkin_building', 'Building your check-in. This takes a moment...')}",
+			text=f"<blockquote>{t.get('checkin_building', 'Building your check-in. This takes a moment...')}</blockquote>",
 			parse_mode="HTML",
 		)
 		from app.services.checkin import start_session
@@ -850,7 +850,7 @@ async def handle_checkin_callback(update: Update, context: ContextTypes.DEFAULT_
 			logger.error("handle_checkin_callback start failed: %s", exc)
 			await context.bot.send_message(
 				chat_id=chat_id,
-				text="Could not build check-in. Try again.",
+				text="<blockquote>Could not build check-in. Try again.</blockquote>",
 				parse_mode="HTML",
 			)
 			return
@@ -865,7 +865,7 @@ async def handle_checkin_callback(update: Update, context: ContextTypes.DEFAULT_
 		if not session:
 			await context.bot.send_message(
 				chat_id=chat_id,
-				text=f"{t.get('checkin_no_session', 'No active check-in. Use /day to start one.')}",
+				text=f"<blockquote>{t.get('checkin_no_session', 'No active check-in. Use /day to start one.')}</blockquote>",
 				parse_mode="HTML",
 			)
 			return
@@ -877,7 +877,7 @@ async def handle_checkin_callback(update: Update, context: ContextTypes.DEFAULT_
 		if not session:
 			await context.bot.send_message(
 				chat_id=chat_id,
-				text=f"{t.get('checkin_no_session', 'No active check-in. Use /day to start one.')}",
+				text=f"<blockquote>{t.get('checkin_no_session', 'No active check-in. Use /day to start one.')}</blockquote>",
 				parse_mode="HTML",
 			)
 			return
@@ -895,7 +895,7 @@ async def handle_checkin_callback(update: Update, context: ContextTypes.DEFAULT_
 		close_session(channel, chat_id)
 		await context.bot.send_message(
 			chat_id=chat_id,
-			text=f"{t.get('checkin_done_msg', 'Check-in complete. Go make something move.')}",
+			text=f"<blockquote>{t.get('checkin_done_msg', 'Check-in complete. Go make something move.')}</blockquote>",
 			parse_mode="HTML",
 		)
 		return
@@ -905,7 +905,7 @@ async def handle_checkin_callback(update: Update, context: ContextTypes.DEFAULT_
 		if not session:
 			await context.bot.send_message(
 				chat_id=chat_id,
-				text=f"{t.get('checkin_no_session', 'No active check-in. Use /day to start one.')}",
+				text=f"<blockquote>{t.get('checkin_no_session', 'No active check-in. Use /day to start one.')}</blockquote>",
 				parse_mode="HTML",
 			)
 			return
@@ -971,7 +971,7 @@ async def handle_checkin_callback(update: Update, context: ContextTypes.DEFAULT_
 		# Send the intermediate acknowledgement message
 		await context.bot.send_message(
 			chat_id=chat_id,
-			text=f"👌 <i>{_md_to_html(ack_text)}</i>",
+			text=f"<blockquote>👌 <i>{_md_to_html(ack_text)}</i></blockquote>",
 			parse_mode="HTML",
 		)
 
@@ -1059,7 +1059,7 @@ async def _deliver_checkin_stop(bot, chat_id: int, session, t: dict) -> None:
 
 	msg = await bot.send_message(
 		chat_id=chat_id,
-		text=f"{text}",
+		text=f"<blockquote>{text}</blockquote>",
 		parse_mode="HTML",
 		reply_markup=markup,
 	)
@@ -1075,7 +1075,7 @@ async def _deliver_checkin_stop(bot, chat_id: int, session, t: dict) -> None:
 			v_msg = await bot.send_voice(
 				chat_id=chat_id,
 				voice=voice_file,
-				caption=f"{_md_to_html(caption_text)}",
+				caption=f"<blockquote>{_md_to_html(caption_text)}</blockquote>",
 				parse_mode="HTML",
 			)
 			session.last_msg_ids.append(v_msg.message_id)
@@ -1240,11 +1240,11 @@ async def cmd_crews(update: Update, context: ContextTypes.DEFAULT_TYPE):
 			return
 		elif config and not config.enabled:
 			import html as _html
-			await update.message.reply_text(f"⚠️ <i>Crew '<b>{_html.escape(crew_id)}</b>' {t.get('is_disabled', 'is disabled')}.</i>", parse_mode="HTML")
+			await update.message.reply_text(f"<blockquote>⚠️ <i>Crew '<b>{_html.escape(crew_id)}</b>' {t.get('is_disabled', 'is disabled')}.</i></blockquote>", parse_mode="HTML")
 			return
 		# If first arg doesn't look like a crew ID, we fall through to list all (useful if user typed junk)
 
-	await update.message.reply_text(f"📡 <i>{t.get('interrogating_topology', 'Interrogating internal Crew topology...')}</i>", parse_mode="HTML")
+	await update.message.reply_text(f"<blockquote>📡 <i>{t.get('interrogating_topology', 'Interrogating internal Crew topology...')}</i></blockquote>", parse_mode="HTML")
 	
 	try:
 		msg_parts = [f"🛸 <b>{t.get('crews_registry_status', 'Native Tactical Crews Status')}</b>\n"]
@@ -1325,7 +1325,7 @@ async def cmd_purge(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	)
 	default_body = "This will permanently delete <b>all</b> facts stored in Z\u2019s long-term memory vault (Qdrant)."
 	await update.message.reply_text(
-		""
+		"<blockquote>"
 		f"\u26a0\ufe0f <b>{t.get('purge_heading', 'Semantic Memory Purge')}</b>\n\n"
 		f"{t.get('purge_body', default_body)}\n\n"
 		f"<b>{t.get('purge_deleted_label', 'What gets deleted:')}</b>\n"
@@ -1333,7 +1333,7 @@ async def cmd_purge(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		f"<b>{t.get('purge_safe_label', 'What is NOT affected:')}</b>\n"
 		f"{t.get('purge_safe_items', default_safe)}\n\n"
 		f"{t.get('purge_irreversible', 'This action is <b>irreversible</b>. Z will start with a blank knowledge slate.')}"
-		"",
+		"</blockquote>",
 		parse_mode="HTML",
 		reply_markup=reply_markup
 	)
@@ -1533,7 +1533,7 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 				clean_ack = clean_ack.strip()
 				
 				checkin_markup = _build_checkin_keyboard(ci_session, t)
-				formatted_reply = f"👌 <i>{_md_to_html(clean_ack)}</i>"
+				formatted_reply = f"<blockquote>👌 <i>{_md_to_html(clean_ack)}</i></blockquote>"
 				
 				_typing_task.cancel()
 				if thinking_msg:
@@ -1551,7 +1551,7 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 		async def _status_update(text: str) -> None:
 			nonlocal thinking_msg, _panel_html_cache
 			try:
-				_html_block = f"<i>{text}</i>"
+				_html_block = f"<blockquote><i>{text}</i></blockquote>"
 				_panel_html_cache = _html_block
 				if thinking_msg is None:
 					# First status update — send the actual message now
@@ -1620,7 +1620,7 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 						partial = "".join(chunks)
 						if len(partial.strip()) > 3:
 							try:
-								display = f"<i>{_md_to_html(partial)}...</i>"
+								display = f"<blockquote><i>{_md_to_html(partial)}...</i></blockquote>"
 								if thinking_msg is None:
 									if is_followup:
 										thinking_msg = await context.bot.send_message(chat_id=chat_id, text=display, parse_mode="HTML")
@@ -1664,12 +1664,12 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 			if is_followup:
 				thinking_msg = await context.bot.send_message(
 					chat_id=chat_id,
-					text=f"<i>{t.get('thinking_followup', 'Processing your follow-up...')}</i>",
+					text=f"<blockquote><i>{t.get('thinking_followup', 'Processing your follow-up...')}</i></blockquote>",
 					parse_mode="HTML",
 				)
 			else:
 				thinking_msg = await update.message.reply_text(
-					f"<i>{t.get('thinking', 'Thinking...')}</i>",
+					f"<blockquote><i>{t.get('thinking', 'Thinking...')}</i></blockquote>",
 					parse_mode="HTML",
 				)
 
@@ -1696,9 +1696,9 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 		if _panel_mode:
 			# Persistent panel: Finalize the debate bubble instead of overwriting it
 			try:
-				_panel_html = _panel_html_cache if _panel_html_cache else "<i>Debate Complete</i>"
-				if not _panel_html.endswith(""):
-					_panel_html = f"<i>{_panel_html}</i>"
+				_panel_html = _panel_html_cache if _panel_html_cache else "<blockquote><i>Debate Complete</i></blockquote>"
+				if not _panel_html.endswith("</blockquote>"):
+					_panel_html = f"<blockquote><i>{_panel_html}</i></blockquote>"
 				await safe_edit(thinking_msg, _panel_html + "\n\n✅ <b>Debate Concluded</b>", parse_mode="HTML")
 			except Exception as _e:
 				logger.debug("Panel finalization skipped: %s", _e)
@@ -1730,7 +1730,7 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	"""Process voice messages."""
 	try:
-		status_msg = await update.message.reply_text("🎙️ <i>Z is listening...</i>", parse_mode="HTML")
+		status_msg = await update.message.reply_text("<blockquote>🎙️ <i>Z is listening...</i></blockquote>", parse_mode="HTML")
 		
 		# 1. Download voice file
 		voice_file = await context.bot.get_file(update.message.voice.file_id)
@@ -1742,10 +1742,10 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		
 		import html as _html
 		if not transcript or transcript.startswith("["):
-			await safe_edit(status_msg, f"⚠️ <i>{_html.escape(transcript or 'Could not transcribe voice.')}</i>", parse_mode="HTML")
+			await safe_edit(status_msg, f"<blockquote>⚠️ <i>{_html.escape(transcript or 'Could not transcribe voice.')}</i></blockquote>", parse_mode="HTML")
 			return
 
-		await safe_edit(status_msg, f"📝 <b>Transcript:</b>\n<i>{_html.escape(transcript)}</i>\n\n<i>Thinking...</i>", parse_mode="HTML")
+		await safe_edit(status_msg, f"<blockquote>📝 <b>Transcript:</b>\n<i>{_html.escape(transcript)}</i>\n\n<i>Thinking...</i></blockquote>", parse_mode="HTML")
 		
 		# 3. Process as text
 		from app.services.llm import chat_with_context, last_model_used
@@ -1775,7 +1775,7 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		footer = await _get_stats_footer()
 		lang = await get_user_lang()
 		t = get_translations(lang)
-		await safe_edit(status_msg, f"{display_reply}{footer}", parse_mode="HTML", nav_footer=get_nav_footer(t))
+		await safe_edit(status_msg, f"<blockquote>{display_reply}{footer}</blockquote>", parse_mode="HTML", nav_footer=get_nav_footer(t))
 	except Exception as e:
 		logger.error("handle_voice failed: %s", e)
 		await safe_reply(update, "Voice processing failed. There might be an issue with the transcription or intelligence layer.")
@@ -1785,7 +1785,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	"""Process photo and image document messages via the cloud vision LLM."""
 	try:
 		import html as _html
-		status_msg = await update.message.reply_text("👁️ <i>Z is looking...</i>", parse_mode="HTML")
+		status_msg = await update.message.reply_text("<blockquote>👁️ <i>Z is looking...</i></blockquote>", parse_mode="HTML")
 
 		# Download — prefer highest-resolution photo; fall back to document
 		if update.message.photo:
@@ -1800,10 +1800,10 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		caption = await caption_image(image_bytes, user_hint)
 
 		if not caption or caption.startswith("["):
-			await safe_edit(status_msg, f"⚠️ <i>{_html.escape(caption or 'Could not process image.')}</i>", parse_mode="HTML")
+			await safe_edit(status_msg, f"<blockquote>⚠️ <i>{_html.escape(caption or 'Could not process image.')}</i></blockquote>", parse_mode="HTML")
 			return
 
-		await safe_edit(status_msg, f"🖼️ <b>Seen:</b>\n<i>{_html.escape(caption)}</i>\n\n<i>Thinking...</i>", parse_mode="HTML")
+		await safe_edit(status_msg, f"<blockquote>🖼️ <b>Seen:</b>\n<i>{_html.escape(caption)}</i>\n\n<i>Thinking...</i></blockquote>", parse_mode="HTML")
 
 		# Feed caption into the full router pipeline (crew routing, memory, etc.)
 		from app.services.message_bus import bus
@@ -1856,7 +1856,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		html_reply = _md_to_html(clean_reply)
 		display_reply = f"🖼️ <b>Seen:</b>\n<i>{_html.escape(caption)}</i>\n\n<b>{format_time()}</b>\n\n{html_reply}"
 		footer = await _get_stats_footer()
-		await safe_edit(status_msg, f"{display_reply}{footer}", parse_mode="HTML", nav_footer=get_nav_footer(t))
+		await safe_edit(status_msg, f"<blockquote>{display_reply}{footer}</blockquote>", parse_mode="HTML", nav_footer=get_nav_footer(t))
 
 	except Exception as e:
 		logger.error("handle_photo failed: %s", e)
@@ -1899,7 +1899,7 @@ async def _process_crew_stream(update: Update, context: ContextTypes.DEFAULT_TYP
 	abort_event = asyncio.Event()
 
 	thinking_msg = await update.message.reply_text(
-		f"<i>...thinking (crew: <b>{crew_display}</b>)</i>",
+		f"<blockquote><i>...thinking (crew: <b>{crew_display}</b>)</i></blockquote>",
 		parse_mode="HTML",
 		reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Cancel", callback_data="crew_abort_0")]])
 	)
@@ -1950,7 +1950,7 @@ async def _process_crew_stream(update: Update, context: ContextTypes.DEFAULT_TYP
 						partial_text = "".join(chunks)
 						if len(partial_text.strip()) > 3:
 							try:
-								display = f"<i>...thinking (crew: <b>{crew_display}</b>)</i>\n\n{_md_to_html(partial_text)}..."
+								display = f"<blockquote><i>...thinking (crew: <b>{crew_display}</b>)</i>\n\n{_md_to_html(partial_text)}...</blockquote>"
 								await safe_edit(thinking_msg, display, parse_mode="HTML",
 									reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Abort", callback_data=f"crew_abort_{thinking_msg.message_id}")]]))
 							except Exception as _e:
@@ -1958,7 +1958,7 @@ async def _process_crew_stream(update: Update, context: ContextTypes.DEFAULT_TYP
 							last_edit_time = now
 		except asyncio.TimeoutError:
 			logger.warning("_process_crew_stream: crew '%s' timed out after 180 s — aborting", crew_display)
-			await safe_edit(thinking_msg, f"<i>Crew <b>{crew_display}</b> timed out. Please try again.</i>", parse_mode="HTML")
+			await safe_edit(thinking_msg, f"<blockquote><i>Crew <b>{crew_display}</b> timed out. Please try again.</i></blockquote>", parse_mode="HTML")
 			return
 
 		# Save last (or only) section
@@ -1966,7 +1966,7 @@ async def _process_crew_stream(update: Update, context: ContextTypes.DEFAULT_TYP
 			all_sections[current_crew_id] = "".join(current_section_chunks)
 
 		if aborted:
-			await safe_edit(thinking_msg, f"<i>stopped (crew: <b>{crew_display}</b>)</i>", parse_mode="HTML")
+			await safe_edit(thinking_msg, f"<blockquote><i>stopped (crew: <b>{crew_display}</b>)</i></blockquote>", parse_mode="HTML")
 			return
 
 		# Commit each section separately for correct action attribution.
@@ -2016,7 +2016,7 @@ async def _process_crew_stream(update: Update, context: ContextTypes.DEFAULT_TYP
 	except Exception as e:
 		logger.error("Telegram Crew Stream Failed: %s", e)
 		try:
-			await safe_edit(thinking_msg, f"<i>Crew execution failed: {e}</i>", parse_mode="HTML")
+			await safe_edit(thinking_msg, f"<blockquote><i>Crew execution failed: {e}</i></blockquote>", parse_mode="HTML")
 		except Exception as _e:
 			logger.debug("Telegram crew error edit ignored: %s", _e)
 	finally:
@@ -2035,7 +2035,7 @@ async def cmd_think(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		await safe_reply(update, "What should I think deeply about?")
 		return
 	
-	await update.message.reply_text("⏳ <b>Z is analyzing required context...</b>", parse_mode="HTML")
+	await update.message.reply_text("<blockquote>⏳ <b>Z is analyzing required context...</b></blockquote>", parse_mode="HTML")
 	
 	from app.services.llm import generate_context_proposal
 	from app.models.db import store_pending_thought
@@ -2057,10 +2057,10 @@ async def cmd_think(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	
 	import html as _html
 	disclosure_msg = (
-		f"\u2696\ufe0f <b>Privacy Disclosure</b>\n\n"
+		f"<blockquote>\u2696\ufe0f <b>Privacy Disclosure</b>\n\n"
 		f"To answer this deeply, I need to send the following to {_html.escape(str(settings.DEEP_THINK_PROVIDER))}:\n"
 		f"{_html.escape(proposal['summary'])}\n\n"
-		f"<b>Question:</b> {_html.escape(query)}"
+		f"<b>Question:</b> {_html.escape(query)}</blockquote>"
 	)
 	await update.message.reply_text(disclosure_msg, parse_mode="HTML", reply_markup=reply_markup)
 
@@ -2074,7 +2074,7 @@ async def handle_approval(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		await update.callback_query.edit_message_text("🚫 Deep Thinking cancelled. Context was not shared.")
 		return
 
-	await update.callback_query.edit_message_text("📡 <b>Access granted. Sending to Cloud API...</b>", parse_mode="HTML")
+	await update.callback_query.edit_message_text("<blockquote>📡 <b>Access granted. Sending to Cloud API...</b></blockquote>", parse_mode="HTML")
 	
 	from app.models.db import get_pending_thought
 	from app.services.llm import chat
@@ -2098,7 +2098,7 @@ async def handle_approval(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	html_response = _md_to_html(response)
 	await context.bot.send_message(
 		chat_id=update.effective_chat.id,
-		text=f"{html_response}",
+		text=f"<blockquote>{html_response}</blockquote>",
 		parse_mode="HTML"
 	)
 
@@ -2137,7 +2137,7 @@ async def handle_calendar_approval(update: Update, context: ContextTypes.DEFAULT
 			db.add(new_event)
 			await db.commit()
 		
-		await query.edit_message_text(f"🚀 <b>Added to Calendar:</b> {event_data['summary']}", parse_mode="HTML")
+		await query.edit_message_text(f"<blockquote>🚀 <b>Added to Calendar:</b> {event_data['summary']}</blockquote>", parse_mode="HTML")
 	except Exception as e:
 		logger.warning("Calendar approval failed: %s", e)
 		await query.edit_message_text("❌ Failed to add event. Check logs.")
