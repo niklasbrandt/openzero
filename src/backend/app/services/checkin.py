@@ -216,21 +216,21 @@ async def _gather_day_data() -> dict:
 			logger.debug("checkin gather: %s", exc)
 			return fallback
 
+	lang = await _safe(get_user_lang(), "en")
+
 	(
 		calendar_events,
 		weather,
 		boards_data,
 		recent_activity,
 		stale_cards,
-		lang,
 		crew_histories,
 	) = await asyncio.gather(
 		_safe(fetch_calendar_events(days_ahead=0), []),
-		_safe(get_weather_forecast()),
+		_safe(get_weather_forecast(lang=lang)),
 		_safe(get_briefing_boards_data(), {}),
 		_safe(get_recent_activity(hours=96)),
 		_safe(get_stale_cards(min_days=5)),
-		_safe(get_user_lang(), "en"),
 		_safe(_fetch_recent_crew_conversations(), {}),
 	)
 	return {
