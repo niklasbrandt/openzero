@@ -946,32 +946,43 @@ async def handle_checkin_callback(update: Update, context: ContextTypes.DEFAULT_
 			except ValueError:
 				pass
 
-		# Generate a fast 1-sentence acknowledgement for the current step suggestion
+		# Generate a fast confirmation and optional action tag for the selected step
 		lang = await get_user_lang()
 		_lang_names = {"de": "German", "en": "English", "fr": "French", "es": "Spanish"}
 		lang_name = _lang_names.get(lang, "English")
 
+		board_info = f"Board: '{curr.title}'" if curr.board_id else f"Category: '{curr.title}'"
+
 		ack_prompt = (
-			f"The user clicked the action button '{selected_option}' on this check-in briefing step titled '{curr.title}': \"{curr.body}\".\n"
-			f"Write ONE short, natural spoken confirmation sentence in {lang_name} acknowledging the action or recommendation discussed "
-			f"(e.g. 'Alles klar, ich kümmere mich um die Rezepte!' or 'Verstanden, machen wir so!').\n"
-			f"Rules: Maximum 15 words. Do NOT ask any questions. Output ONLY the short confirmation sentence."
+			f"The user clicked the action step button '{selected_option}' during their check-in.\n"
+			f"{board_info}\n"
+			f"Context: \"{curr.body}\"\n\n"
+			f"Instructions:\n"
+			f"1. Write ONE short, natural spoken confirmation sentence in {lang_name} acknowledging the action (max 15 words).\n"
+			f"2. If this action should create a card on Planka, append an action tag at the end: [ACTION: CREATE_TASK | BOARD: {curr.title} | LIST: Today | TITLE: {selected_option}]\n"
+			f"   If it requires a reminder, append: [ACTION: REMIND | MESSAGE: {selected_option} | MINUTES: 60]\n"
+			f"   If no board/reminder action is required, do NOT append an action tag.\n"
+			f"Output format: <Short confirmation sentence> [ACTION: ...] (optional)"
 		)
 
 		ack_text = ""
 		try:
 			from app.services.llm import chat as _fast_chat
-			ack_text = await asyncio.wait_for(
+			from app.services.agent_actions import parse_and_execute_actions
+			raw_ack = await asyncio.wait_for(
 				_fast_chat(
 					ack_prompt,
 					tier="cloud",
-					system_override="You are a brief conversational assistant. Reply with ONLY a one-sentence confirmation."
+					system_override="You are an execution assistant. Confirm the user's action step briefly and emit an appropriate [ACTION: ...] tag if a task or reminder should be created."
 				),
 				timeout=5.0
 			)
-			ack_text = ack_text.strip().strip('"')
+			raw_ack = raw_ack.strip().strip('"')
+			# Execute any generated action tag (create task, set reminder, etc.)
+			ack_text, executed_actions, _ = await parse_and_execute_actions(raw_ack)
+			ack_text = ack_text.strip()
 		except Exception as exc:
-			logger.warning("checkin_okay fast ack generation failed: %s", exc)
+			logger.warning("checkin_okay fast ack & action execution failed: %s", exc)
 			ack_text = "Alles klar, machen wir so!" if lang == "de" else "All right, let's do that!"
 
 		# Send the intermediate acknowledgement message
