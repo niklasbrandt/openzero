@@ -1,5 +1,11 @@
 from app.services.llm import chat, last_model_used
-from app.services.planka import get_project_tree, get_recent_activity, get_stale_cards
+from app.services.planka import (
+	get_project_tree,
+	get_recent_activity,
+	get_stale_cards,
+	get_board_walkthrough,
+	get_crew_board_snapshot,
+)
 from app.models.db import AsyncSessionLocal, Briefing
 import asyncio
 import datetime
@@ -9,56 +15,87 @@ async def weekly_review():
 	import logging
 	logger = logging.getLogger(__name__)
 	logger.info("Weekly Review started...")
-	
+
 	try:
 		from app.services.crew_memory import get_recent_crew_outputs
-		tree, recent_activity, stale_cards, crew_outputs = await asyncio.gather(
+		(
+			tree,
+			recent_activity,
+			stale_cards,
+			crew_outputs,
+			board_walkthrough,
+			crew_snapshot,
+		) = await asyncio.gather(
 			get_project_tree(as_html=False),
 			get_recent_activity(hours=336),
 			get_stale_cards(min_days=14),
 			get_recent_crew_outputs(hours=168),
+			get_board_walkthrough(min_stale_days=7),
+			get_crew_board_snapshot(),
 		)
 
-		activity_block = recent_activity if recent_activity and not recent_activity.startswith("### RECENT ACTIVITY FETCH FAILED") else "[EMPTY — omit the activity/accomplishments section entirely]"
-		stale_block = stale_cards if stale_cards and stale_cards != "[NO STALE ITEMS]" and not stale_cards.startswith("### STALE") else "[NO STALE ITEMS — all active cards have been touched recently]"
+		activity_block = (
+			recent_activity
+			if recent_activity and not recent_activity.startswith("### RECENT ACTIVITY FETCH FAILED")
+			else "[EMPTY — omit the activity/accomplishments section entirely]"
+		)
+		stale_block = (
+			stale_cards
+			if stale_cards and stale_cards != "[NO STALE ITEMS]" and not stale_cards.startswith("### STALE")
+			else "[NO STALE ITEMS — all active cards have been touched recently]"
+		)
 		tree_block = tree if tree and str(tree).strip() else "[EMPTY — omit the project tree section entirely]"
+		board_walkthrough_block = (
+			board_walkthrough
+			if board_walkthrough and "UNAVAILABLE" not in board_walkthrough and "no boards" not in board_walkthrough
+			else "[EMPTY — board walkthrough unavailable]"
+		)
+		crew_snapshot_block = (
+			crew_snapshot
+			if crew_snapshot and "UNAVAILABLE" not in crew_snapshot and "no crew boards" not in crew_snapshot
+			else "[EMPTY — crew snapshot unavailable]"
+		)
 
-		# Load crew registry and collect insights from all active crews
+		# Batch all active crew insights in a SINGLE inference call instead of N separate calls.
+		# This replaces the previous asyncio.gather(*[run_crew(c) for c in active_crews]) pattern.
 		crew_insights = []
 		try:
 			from app.services.crews import crew_registry
 			await crew_registry.load()
 			active_crews = crew_registry.list_active()
 			if active_crews:
-				from app.services.crews_native import native_crew_engine
 				import re
 				_ACTION_STRIP_RE = re.compile(r'\[ACTION:[^\]]*\]', re.IGNORECASE)
-
-				async def _get_crew_insight(crew_config):
-					try:
-						crew_prompt = (
-							f"You are the {crew_config.name} crew. We are preparing the weekly review for the operator.\n"
-							f"Here is the week's raw data:\n\n"
-							f"ACTIVITY:\n{activity_block}\n\n"
-							f"PROJECTS:\n{tree_block}\n\n"
-							f"Based on your specialized domain, review this data and generate a single short paragraph (under 40 words) with your top insight, recommendation, or warning for this week. "
-							f"Be extremely concise. Write only the paragraph. Do not introduce yourself."
-						)
-						res = await native_crew_engine.run_crew(crew_config.id, crew_prompt, skip_memory=True)
-						res_clean = _ACTION_STRIP_RE.sub("", res).strip()
-						if res_clean:
-							return f"**{crew_config.name}**: {res_clean}"
-					except Exception as ex:
-						logger.warning("Failed to get weekly insight from crew %s: %s", crew_config.id, ex)
-					return None
-
-				insights_results = await asyncio.wait_for(
-					asyncio.gather(*[_get_crew_insight(c) for c in active_crews]),
-					timeout=90.0
+				crew_list = "\n".join(
+					f"- {c.id} ({c.name}): {c.description}" for c in active_crews
 				)
-				crew_insights = [ins for ins in insights_results if ins]
+				batch_prompt = (
+					"The following specialist crews are reviewing the week's data.\n"
+					"For each crew, write one paragraph (under 40 words) grounded strictly in their domain.\n"
+					"Output EXACTLY one line per crew in this format: '<crew_id>: <paragraph>'\n\n"
+					f"Crews:\n{crew_list}\n\n"
+					f"Weekly data:\nACTIVITY:\n{activity_block}\n\nPROJECTS:\n{tree_block}\n\n"
+					"Rules: base each paragraph only on the data above. "
+					"No intros. Do not say 'Here is my insight'. Do not invent data."
+				)
+				try:
+					batch_result = await asyncio.wait_for(
+						chat(batch_prompt, _feature="weekly_crew_batch_insights", include_health=False),
+						timeout=60.0,
+					)
+					batch_result = _ACTION_STRIP_RE.sub("", batch_result)
+					for line in batch_result.strip().splitlines():
+						if ":" in line:
+							cid, _, paragraph = line.partition(":")
+							cid = cid.strip()
+							paragraph = paragraph.strip()
+							if paragraph:
+								crew_name = next((c.name for c in active_crews if c.id == cid), cid)
+								crew_insights.append(f"**{crew_name}**: {paragraph}")
+				except Exception as batch_err:
+					logger.warning("Batch crew insights for weekly review failed: %s", batch_err)
 		except Exception as e:
-			logger.warning("Gathering active crew insights for weekly review failed: %s", e)
+			logger.warning("Crew registry load for weekly review failed: %s", e)
 
 		crew_outputs_block = ""
 		if crew_outputs or crew_insights:
@@ -86,6 +123,8 @@ async def weekly_review():
 			f"RECENT ACTIVITY (LAST 14 DAYS):\n{activity_block}\n\n"
 			f"STALE / NO MOVEMENT (14+ DAYS):\n{stale_block}\n\n"
 			f"PROJECT TREE:\n{tree_block}\n\n"
+			f"BOARD WALKTHROUGH (per-board active + stale detail):\n{board_walkthrough_block}\n\n"
+			f"CREW BOARD SNAPSHOT (top active items per crew board):\n{crew_snapshot_block}\n\n"
 			f"{crew_outputs_block}\n\n"
 			"HALLUCINATION RULES (never break these):\n"
 			"- Only include a section if real data for it was provided in the context above.\n"
@@ -118,7 +157,7 @@ async def weekly_review():
 			"- End with: 'Soll ich bei einem dieser Boards die Listen anpassen?' (or equivalent).\n"
 			"'Board Setup:' must be the last section."
 		)
-		
+
 		try:
 			content = await asyncio.wait_for(chat(prompt, _feature="weekly_review", include_health=False), timeout=300.0)
 		except asyncio.TimeoutError:
@@ -133,7 +172,7 @@ async def weekly_review():
 			briefing = Briefing(type="week", content=content, model=last_model_used.get())
 			session.add(briefing)
 			await session.commit()
-			
+
 		# Precision Delivery SLEEP logic
 		try:
 			from app.services.timezone import get_current_timezone
@@ -148,7 +187,7 @@ async def weekly_review():
 				await asyncio.sleep(delta)
 		except Exception as e:
 			logger.warning("weekly_review — Precision SLEEP failed: %s", e)
-		
+
 		# Send Telegram Notification
 		from app.services.notifier import send_notification
 		from app.config import settings

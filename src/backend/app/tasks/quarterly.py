@@ -7,64 +7,60 @@ logger = logging.getLogger(__name__)
 async def quarterly_review():
 	"""Generate and store the quarterly strategic review."""
 	from app.services.llm import chat, last_model_used
-	from app.services.planka import get_project_tree, get_activity_report
+	from app.services.planka import (
+		get_project_tree,
+		get_activity_report,
+		get_board_walkthrough,
+		get_crew_board_snapshot,
+		get_stale_cards,
+	)
 	from app.services.crew_memory import get_recent_crew_outputs
 	logger.info("Quarterly Review started...")
 	try:
-		tree, activity, crew_outputs = await asyncio.gather(
+		(
+			tree,
+			activity,
+			crew_outputs,
+			board_walkthrough,
+			crew_snapshot,
+			stale_cards,
+		) = await asyncio.gather(
 			get_project_tree(as_html=False),
 			get_activity_report(days=90),
 			get_recent_crew_outputs(hours=2160),
+			get_board_walkthrough(min_stale_days=30),
+			get_crew_board_snapshot(),
+			get_stale_cards(min_days=60),
 		)
 
-		activity_block = activity if activity and not str(activity).strip().startswith("### OPERATIONAL DATA FAILURE") else "[EMPTY — omit the activity/accomplishments section entirely]"
+		activity_block = (
+			activity
+			if activity and not str(activity).strip().startswith("### OPERATIONAL DATA FAILURE")
+			else "[EMPTY — omit the activity/accomplishments section entirely]"
+		)
 		tree_block = tree if tree and str(tree).strip() else "[EMPTY — omit the project tree section entirely]"
+		board_walkthrough_block = (
+			board_walkthrough
+			if board_walkthrough and "UNAVAILABLE" not in board_walkthrough and "no boards" not in board_walkthrough
+			else "[EMPTY — board walkthrough unavailable]"
+		)
+		crew_snapshot_block = (
+			crew_snapshot
+			if crew_snapshot and "UNAVAILABLE" not in crew_snapshot and "no crew boards" not in crew_snapshot
+			else "[EMPTY — crew snapshot unavailable]"
+		)
+		stale_block = (
+			stale_cards
+			if stale_cards and stale_cards != "[NO STALE ITEMS]" and not stale_cards.startswith("### STALE")
+			else "[NO STALE ITEMS — all active cards have been touched recently]"
+		)
 
-		# Load crew registry and collect insights from all active crews
-		crew_insights = []
-		try:
-			from app.services.crews import crew_registry
-			await crew_registry.load()
-			active_crews = crew_registry.list_active()
-			if active_crews:
-				from app.services.crews_native import native_crew_engine
-				import re
-				_ACTION_STRIP_RE = re.compile(r'\[ACTION:[^\]]*\]', re.IGNORECASE)
-
-				async def _get_crew_insight(crew_config):
-					try:
-						crew_prompt = (
-							f"You are the {crew_config.name} crew. We are preparing the quarterly review for the operator.\n"
-							f"Here is the quarter's raw data:\n\n"
-							f"ACTIVITY:\n{activity_block}\n\n"
-							f"PROJECTS:\n{tree_block}\n\n"
-							f"Based on your specialized domain, review this data and generate a single short paragraph (under 40 words) with your top insight, recommendation, or warning for this quarter. "
-							f"Be extremely concise. Write only the paragraph. Do not introduce yourself."
-						)
-						res = await native_crew_engine.run_crew(crew_config.id, crew_prompt, skip_memory=True)
-						res_clean = _ACTION_STRIP_RE.sub("", res).strip()
-						if res_clean:
-							return f"**{crew_config.name}**: {res_clean}"
-					except Exception as ex:
-						logger.warning("Failed to get quarterly insight from crew %s: %s", crew_config.id, ex)
-					return None
-
-				insights_results = await asyncio.wait_for(
-					asyncio.gather(*[_get_crew_insight(c) for c in active_crews]),
-					timeout=90.0
-				)
-				crew_insights = [ins for ins in insights_results if ins]
-		except Exception as e:
-			logger.warning("Gathering active crew insights for quarterly review failed: %s", e)
-
+		# Quarterly relies on scheduled crew run outputs only.
+		# get_recent_crew_outputs(hours=2160) covers 90 days of crew analysis;
+		# per-crew dynamic insight calls would be redundant and costly at this cadence.
 		crew_outputs_block = ""
-		if crew_outputs or crew_insights:
-			parts = []
-			if crew_outputs:
-				for cid, text in crew_outputs.items():
-					parts.append(f"--- {cid} (scheduled run) ---\n{text}")
-			if crew_insights:
-				parts.append("--- Active Crew Insights ---\n" + "\n".join(crew_insights))
+		if crew_outputs:
+			parts = [f"--- {cid} (scheduled run) ---\n{text}" for cid, text in crew_outputs.items()]
 			crew_outputs_block = "CREW REASONING & DOMAIN INSIGHTS:\n" + "\n\n".join(parts)
 		else:
 			crew_outputs_block = "[EMPTY — no recent crew outputs]"
@@ -78,6 +74,9 @@ async def quarterly_review():
 			"OPERATIONAL DATA (PAST 90 DAYS ACTIVITY):\n"
 			f"{activity_block}\n\n"
 			f"FULL PROJECT TREE:\n{tree_block}\n\n"
+			f"BOARD WALKTHROUGH (per-board active + stale detail):\n{board_walkthrough_block}\n\n"
+			f"CREW BOARD SNAPSHOT (top active items per crew board):\n{crew_snapshot_block}\n\n"
+			f"STALE / NO MOVEMENT (60+ DAYS):\n{stale_block}\n\n"
 			f"{crew_outputs_block}\n\n"
 			"HALLUCINATION RULES (never break these):\n"
 			"- Only include a section if real data for it was provided in the context above.\n"
