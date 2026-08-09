@@ -828,15 +828,12 @@ async def cmd_day(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ─── Check-in callback handler ─────────────────────────────────────────────────
 
-@owner_only
 async def handle_checkin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	"""Handle all checkin_* inline button callbacks."""
 	query = update.callback_query
-	await query.answer()
-	try:
-		await query.edit_message_reply_markup(reply_markup=None)
-	except Exception:
-		pass
+	if not query:
+		return
+
 	data = query.data  # e.g. "checkin_start", "checkin_next", "checkin_done", "checkin_legacy"
 
 	lang = await get_user_lang()
@@ -844,36 +841,49 @@ async def handle_checkin_callback(update: Update, context: ContextTypes.DEFAULT_
 	chat_id = update.effective_chat.id
 	channel = "telegram"
 
-	if data == "checkin_legacy":
-		# Full briefing path — run morning_briefing normally
+	if data.endswith("_legacy"):
 		await query.edit_message_text(
-			"<blockquote>Generating your full daily briefing...</blockquote>",
+			"<blockquote>Generating report...</blockquote>",
 			parse_mode="HTML",
 		)
 		try:
-			from app.tasks.morning import morning_briefing
-			await morning_briefing()
+			if "weekly" in data:
+				from app.tasks.weekly import weekly_review
+				report = await weekly_review()
+				await safe_reply(update, report)
+			elif "monthly" in data:
+				from app.tasks.monthly import monthly_review
+				report = await monthly_review()
+				await safe_reply(update, report)
+			else:
+				from app.tasks.morning import morning_briefing
+				await morning_briefing()
 		except Exception as exc:
-			logger.error("handle_checkin_callback legacy briefing failed: %s", exc)
+			logger.error("handle_checkin_callback legacy report failed: %s", exc)
 		return
 
-	if data == "checkin_start":
+	if data in ["checkin_start", "checkin_weekly_start", "checkin_monthly_start"]:
+		cadence = "daily"
+		if "weekly" in data:
+			cadence = "weekly"
+		elif "monthly" in data:
+			cadence = "monthly"
+
 		status_msg = await context.bot.send_message(
 			chat_id=chat_id,
 			text=f"<blockquote>{t.get('checkin_building', 'Building your check-in. This takes a moment...')}</blockquote>",
 			parse_mode="HTML",
 		)
-		# Clear existing context if user restarts
 		from app.services.checkin import start_session
 		try:
-			session = await start_session(channel, chat_id)
+			session = await start_session(channel, chat_id, cadence=cadence)
 			if status_msg:
 				session.last_msg_ids.append(status_msg.message_id)
 		except Exception as exc:
 			logger.error("handle_checkin_callback start failed: %s", exc)
 			await context.bot.send_message(
 				chat_id=chat_id,
-				text="<blockquote>Could not build check-in. Try /day again.</blockquote>",
+				text="<blockquote>Could not build check-in. Try again.</blockquote>",
 				parse_mode="HTML",
 			)
 			return
@@ -1509,17 +1519,46 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 
 		from app.services.checkin import get_session
 		ci_session = get_session("telegram", chat_id)
-		checkin_markup = None
 		if ci_session:
 			curr = ci_session.current
-			user_text = user_text + (
-				f"\n\n(System: We are currently in a guided check-in. The user is currently on the step "
-				f"\"{curr.title}\" (ID: {curr.id}) and just heard this briefing: \"{curr.body}\". "
-				f"Address the user's message in the context of this specific step. "
-				f"Briefly answer the user, then ask if they are ready to proceed to the next step.)"
+			board_info = f"Board: '{curr.title}'" if curr.board_id else f"Category: '{curr.title}'"
+			
+			ack_prompt = (
+				f"The user sent a text reply during their morning check-in step '{curr.title}'.\n"
+				f"{board_info}\n"
+				f"Step context: \"{curr.body}\"\n"
+				f"User reply: \"{user_text}\"\n\n"
+				f"Instructions:\n"
+				f"1. Write ONE short, natural spoken response in {lang_name} addressing what the user said (max 20 words).\n"
+				f"2. If the user indicates an action was completed (e.g. 'ist besorgt' / 'erledigt'), output [ACTION: MARK_DONE | CARD: <card_title>] or [ACTION: ARCHIVE_CARD | CARD: ...]\n"
+				f"   If they want a new task created, output [ACTION: CREATE_TASK | BOARD: {curr.title} | LIST: Today | TITLE: <user_task>]\n"
+				f"   If they want a reminder, output [ACTION: REMIND | MESSAGE: <text> | MINUTES: 60]\n"
+				f"   If no database action is needed, output no action tag.\n"
 			)
-			# Re-attach navigation buttons so user can continue the check-in
-			checkin_markup = _build_checkin_keyboard(ci_session, t)
+
+			try:
+				from app.services.llm import chat as _fast_chat
+				from app.services.agent_actions import parse_and_execute_actions
+				raw_ack = await asyncio.wait_for(
+					_fast_chat(
+						ack_prompt,
+						tier="cloud",
+						system_override="You are a conversational check-in assistant. Respond directly to the user's check-in reply and emit any appropriate [ACTION: ...] tag."
+					),
+					timeout=8.0
+				)
+				clean_ack, _, _ = await parse_and_execute_actions(raw_ack)
+				
+				checkin_markup = _build_checkin_keyboard(ci_session, t)
+				if thinking_msg:
+					await safe_edit(thinking_msg, clean_ack, parse_mode="HTML", reply_markup=checkin_markup)
+				elif update.message:
+					await update.message.reply_text(clean_ack, parse_mode="HTML", reply_markup=checkin_markup)
+				else:
+					await context.bot.send_message(chat_id=chat_id, text=clean_ack, parse_mode="HTML", reply_markup=checkin_markup)
+				return
+			except Exception as exc:
+				logger.warning("Check-in text handling failed: %s", exc)
 
 		# Stream via unified router — collect tokens for progressive edits
 		_panel_html_cache = ""

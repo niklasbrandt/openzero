@@ -292,7 +292,9 @@ async def _build_stops(data: dict) -> list[CheckinStop]:
 	# Extract operator board details
 	op_b = boards_data.get("operator_board")
 	if op_b:
-		stops.append(CheckinStop(id="operator", title="Operator Board", body="", board_id=op_b.get("board_id")))
+		op_days = op_b.get("days_since_active", 0)
+		op_title = f"Operator Board ({op_days}d inaktiv)" if op_days > 0 else "Operator Board (heute aktiv)"
+		stops.append(CheckinStop(id="operator", title=op_title, body="", board_id=op_b.get("board_id")))
 		for _, cname, clist, _ in op_b.get("cards", []):
 			if clist.lower() not in ["archive", "erledigt", "done", "trash"]:
 				op_cards_lines.append(f"  - {cname} (List: {clist})")
@@ -313,8 +315,12 @@ async def _build_stops(data: dict) -> list[CheckinStop]:
 			slug = f"{orig_slug}-{counter}"
 			counter += 1
 
+		days = b.get("days_since_active", 0)
+		days_str = f" ({days}d seit letzter Aktivität)" if days > 0 else " (heute aktiv)"
+		full_title = f"{b['name']}{days_str}"
+
 		board_slug_map[slug] = b["name"]
-		stops.append(CheckinStop(id=slug, title=b["name"], body="", board_id=b.get("board_id")))
+		stops.append(CheckinStop(id=slug, title=full_title, body="", board_id=b.get("board_id")))
 
 	stops.append(CheckinStop(id="meta", title="Meta Thoughts", body=""))
 
@@ -337,12 +343,16 @@ async def _build_stops(data: dict) -> list[CheckinStop]:
 		"Key Descriptions:\n"
 		"- 'calibration': A breathing or grounding exercise (12–20 seconds spoken, calm, physical, present-moment).\n"
 		"- 'weather': Detail the weather forecast using the chronological 3-hour slots provided in the Today's data (e.g. '0-3: 17°C klar, 3-6: 20°C wolkig' etc.). List them all in order. Then mention any calendar events. Max 4 sentences.\n"
-		"- 'operator': Operator Board active tasks. You MUST ONLY reference card titles explicitly listed under 'EXACT OPERATOR BOARD CARDS' below. Do NOT invent card names and do NOT take topics from recent chats. Provide 1 to 3 distinct actionable steps (ordered by highest outcome/significance first). Format EACH actionable step at the end of the text on a new line starting with '[OPTION] ' followed by a short (max 4 words) label for the action.\n"
-		"- Board slugs: For each domain board, look at its active cards, recent activity, AND 'Recent Crew Conversations'. You MUST extract active task topics or recent chat points. Provide 1 to 3 distinct concrete actionable steps (ordered by highest outcome/significance first). Format EACH actionable step at the end of the text on a new line starting with '[OPTION] ' followed by a short (max 4 words) label for the action.\n"
-		"- 'meta': Overarching meta thoughts, mood, direction. Provide 1 to 3 distinct actionable steps (ordered by highest outcome/significance first). Format EACH actionable step at the end of the text on a new line starting with '[OPTION] ' followed by a short (max 4 words) label for the action. End with a question about if there is anything new today.\n\n"
+		"- 'operator': Operator Board active tasks. You MUST ONLY reference card titles explicitly listed under 'EXACT OPERATOR BOARD CARDS' below. Do NOT invent card names and do NOT take topics from recent chats. Provide 1 to 3 distinct actionable steps (ordered by highest outcome/significance first). Format EACH actionable step at the end of the text as '[OPTION] Action Label'.\n"
+		"- Board slugs: For each domain board, look at its active cards, recent activity, AND 'Recent Crew Conversations'. You MUST extract active task topics or recent chat points. Provide 1 to 3 distinct concrete actionable steps (ordered by highest outcome/significance first). Format EACH actionable step at the end of the text as '[OPTION] Action Label'.\n"
+		"- 'meta': Overarching meta thoughts, mood, direction. Synthesize top 1 to 3 actionable steps from across ALL areas (ordered by highest significance). Format EACH actionable step at the end as '[OPTION] Action Label'. End with a question about if there is anything new today.\n\n"
 		"Rules:\n"
 		f"- Write every value in {_lang_name}.\n"
 		"- Keep each value short (1-2 natural spoken sentences, max 40 words per key, except 'weather' which can list the slots and be up to 80 words) so the overall check-in is efficient and does not get cut off.\n"
+		"- ACTIVITY METRIC RULE: For every board stop, you MUST state how many days since last activity in the text (e.g. '25 Tage seit letzter Aktivität.' or 'Seit 12 Tagen inaktiv.').\n"
+		"- CARD PRESENCE RULE: If a board has active cards listed under 'Boards and Projects', those cards ARE active items and existing tasks. You MUST NOT say 'Keine Aktivitäten' (No activity) or 'Keine Tasks' when cards exist!\n"
+		"- DIGITAL RECORDING RULE FOR AUREL / STOIC: NEVER ask or advise the user to write something down on physical paper or with a pen. Always tell the user to reply directly here in the chat so Aurel / Z can save and record it in memory and on the board.\n"
+		"- OPTION TAG RULE: You MUST append 1 to 3 option tags to EVERY board stop and 'meta' stop at the end of the text (e.g. '[OPTION] Rollo reparieren [OPTION] Vermieter anrufen').\n"
 		"- UNIVERSAL ANTI-HALLUCINATION / GROUNDING RULE: ONLY reference card names, tasks, or facts that are explicitly listed in the provided data or recent conversations. NEVER invent or fabricate pickup times, appointments, meeting schedules, or card titles not present in the context.\n"
 		"- Output ONLY the JSON object, no markdown, no wrapping other than valid JSON.\n\n"
 		f"Today's data:\n"
@@ -366,20 +376,15 @@ async def _build_stops(data: dict) -> list[CheckinStop]:
 		cleaned = _JSON_STRIP_RE.sub("", raw).strip()
 		parsed = json.loads(cleaned)
 		
-		# Map the parsed text back to our programmatic stops
+		# Map the parsed text back to our programmatic stops using robust regex for [OPTION]
 		for s in stops:
 			if s.id in parsed and parsed[s.id]:
 				body_text = str(parsed[s.id])
-				options = []
-				clean_lines = []
-				for line in body_text.splitlines():
-					if line.strip().startswith("[OPTION]"):
-						opt_text = line.strip().replace("[OPTION]", "").strip()
-						if opt_text:
-							options.append(opt_text)
-					else:
-						clean_lines.append(line)
-				s.body = "\n".join(clean_lines).strip()
+				# Robust regex extraction of options anywhere in the text
+				options = [opt.strip() for opt in re.findall(r'\[OPTION\]\s*([^\[\n]+)', body_text) if opt.strip()]
+				clean_body = re.sub(r'\[OPTION\]\s*([^\[\n]+)', '', body_text).strip()
+				clean_body = re.sub(r'\s+', ' ', clean_body).strip()
+				s.body = clean_body
 				s.options = options
 			else:
 				# A fallback body message in the target language if the key was skipped
@@ -423,8 +428,6 @@ async def _compile_audio(stops: list[CheckinStop], lang: str = "en") -> None:
 				"voice": "alloy",
 				"speed": 0.80,
 			}
-			# Pass language hint — OpenAI API ignores it; local servers (kokoro,
-			# xtts) use it to select the correct pronunciation model.
 			if lang and lang != "en":
 				payload["language"] = lang
 			async with httpx.AsyncClient(timeout=60.0) as client:
@@ -444,8 +447,9 @@ async def start_session(
 	chat_id: str | int,
 	*,
 	compile_audio: bool = True,
+	cadence: str = "daily",
 ) -> CheckinSession:
-	"""Build and store a new check-in session, replacing any existing one."""
+	"""Build and store a new check-in session (daily, weekly, or monthly)."""
 	key = f"{channel}:{chat_id}"
 	data = await _gather_day_data()
 	stops = await _build_stops(data)
@@ -454,10 +458,8 @@ async def start_session(
 	_SESSIONS[key] = session
 
 	if compile_audio:
-		# Fire audio compilation in background; Telegram can display text immediately
 		_lang = data.get("lang", "en")
 		task = asyncio.create_task(_compile_audio(stops, lang=_lang))
-		# Keep a strong reference so GC doesn't collect it
 		_audio_tasks.add(task)
 		task.add_done_callback(_audio_tasks.discard)
 
