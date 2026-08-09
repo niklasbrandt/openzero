@@ -290,11 +290,12 @@ async def _send_changes_notification_if_needed():
 	lang = await get_user_lang()
 	lang_name = "German" if lang == "de" else "English"
 	changes_prompt = (
-		"You just came back online after a deployment. Tell the user what was shipped — "
-		"factually, like reading out a changelog. One sentence per change maximum. "
+		"You just came back online after a deployment. Tell the user what was shipped by summarizing the raw git commit notes below — "
+		"factually, like reading out a human-readable changelog. One sentence per change maximum. "
 		f"Write in clean, natural, grammatically correct {lang_name}. Plain language, no fluff.\n"
 		f"For example, instead of 'Der System wurde...' write 'Dem System wurde...' or 'Es wurde...'\n\n"
 		"STRICT RULES:\n"
+		"- Do NOT translate commit messages literally if it breaks the meaning. For example, if a commit says 'transient action generation' or 'fix: something', it means a bug was fixed or a feature adjusted, NOT that something was newly generated. Summarize the actual intent (e.g. 'Fehler bei der Generierung von transienten Aktionen behoben').\n"
 		"- Do NOT say 'I am now better', 'I have been improved', 'I was fixed', 'I work better now', "
 		"'die letzten Updates haben', 'ich wurde gefixt', 'ich bin jetzt besser', or any equivalent.\n"
 		"- Do NOT frame changes as improvements to yourself. Just report what the system now does.\n"
