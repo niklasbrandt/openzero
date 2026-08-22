@@ -884,6 +884,18 @@ async def handle_checkin_callback(update: Update, context: ContextTypes.DEFAULT_
 		await _deliver_checkin_stop(context.bot, chat_id, session, t)
 		return
 
+	if data == "checkin_abort":
+		session = get_session(channel, chat_id)
+		if session and hasattr(session, "last_msg_ids") and session.last_msg_ids:
+			for mid in session.last_msg_ids:
+				try:
+					await context.bot.delete_message(chat_id=chat_id, message_id=mid)
+				except Exception:
+					pass
+		close_session(channel, chat_id)
+		await query.answer("Check-in aborted.")
+		return
+
 	if data == "checkin_done":
 		session = get_session(channel, chat_id)
 		if session and hasattr(session, "last_msg_ids") and session.last_msg_ids:
@@ -936,9 +948,10 @@ async def handle_checkin_callback(update: Update, context: ContextTypes.DEFAULT_
 			f"Context: \"{curr.body}\"\n\n"
 			f"Instructions:\n"
 			f"1. Write ONE short, natural spoken confirmation sentence in {lang_name} acknowledging the action (max 15 words).\n"
-			f"2. If this action should create a card on Planka, append an action tag at the end: [ACTION: CREATE_TASK | BOARD: {curr.title} | LIST: Today | TITLE: {selected_option}]\n"
+			f"2. If this action refers to an existing task/card from the board, append: [ACTION: MOVE_CARD | BOARD: {curr.title} | CARD: {selected_option} | LIST: Heute]\n"
+			f"   If it is a completely new task that does not exist yet, append: [ACTION: CREATE_TASK | BOARD: {curr.title} | LIST: Heute | TITLE: {selected_option}]\n"
 			f"   If it requires a reminder, append: [ACTION: REMIND | MESSAGE: {selected_option} | MINUTES: 60]\n"
-			f"   If the action is transient, conversational, or trivial (e.g. 'choose a movie', 'share reflection'), do NOT append an action tag.\n"
+			f"   If the action is transient, conversational, or trivial (e.g. 'choose a movie', 'share reflection', 'Pool-Tag genießen'), do NOT append an action tag.\n"
 			f"Output format: <Short confirmation sentence> [ACTION: ...] (optional)"
 		)
 
@@ -1030,6 +1043,8 @@ def _build_checkin_keyboard(session, t: dict):
 
 	if nav_row:
 		keyboard.append(nav_row)
+
+	keyboard.append([InlineKeyboardButton(f"🛑 {t.get('abort', 'Abbrechen')}", callback_data="checkin_abort")])
 
 	return InlineKeyboardMarkup(keyboard)
 

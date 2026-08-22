@@ -52,6 +52,7 @@ class CheckinSession:
 	stops: list[CheckinStop]
 	index: int = 0                  # active stop index
 	last_msg_ids: list[int] = field(default_factory=list) # IDs of messages sent for the current stop
+	created_at: float = field(default_factory=lambda: __import__('time').time())
 
 	@property
 	def current(self) -> CheckinStop:
@@ -82,7 +83,11 @@ _SESSIONS: dict[str, CheckinSession] = {}
 
 
 def get_session(channel: str, chat_id: str | int) -> Optional[CheckinSession]:
-	return _SESSIONS.get(f"{channel}:{chat_id}")
+	session = _SESSIONS.get(f"{channel}:{chat_id}")
+	if session and __import__('time').time() - session.created_at > 7200:
+		close_session(channel, chat_id)
+		return None
+	return session
 
 
 def get_any_session_for_channel(channel: str) -> Optional[CheckinSession]:
@@ -224,15 +229,27 @@ async def _gather_day_data() -> dict:
 		boards_data,
 		recent_activity,
 		stale_cards,
-		crew_histories,
+		crew_data,
 	) = await asyncio.gather(
 		_safe(fetch_calendar_events(days_ahead=0), []),
 		_safe(get_weather_forecast(lang=lang)),
 		_safe(get_briefing_boards_data(), {}),
 		_safe(get_recent_activity(hours=96)),
 		_safe(get_stale_cards(min_days=5)),
-		_safe(_fetch_recent_crew_conversations(), {}),
+		_safe(_fetch_recent_crew_conversations(), ({}, {})),
 	)
+	crew_histories, crew_activity_ts = crew_data if isinstance(crew_data, tuple) and len(crew_data) == 2 else ({}, {})
+	from datetime import datetime
+	
+	# Update boards_data in-place so LLM gets the true activity metric including chat
+	for b_list in [boards_data.get("crew_boards", []), boards_data.get("project_boards", [])]:
+		for b in b_list:
+			bname_lower = (b.get("name") or "").lower()
+			if bname_lower in crew_activity_ts:
+				diff = (datetime.utcnow() - crew_activity_ts[bname_lower]).days
+				if diff < 0: diff = 0
+				b["days_since_active"] = min(b.get("days_since_active", 0), diff)
+
 	return {
 		"calendar": calendar_events,
 		"weather": weather,
@@ -241,6 +258,7 @@ async def _gather_day_data() -> dict:
 		"stale_cards": stale_cards,
 		"lang": lang,
 		"crew_histories": crew_histories,
+		"crew_activity_ts": crew_activity_ts,
 	}
 
 
@@ -256,8 +274,76 @@ _FALLBACK_STOPS = [
 _JSON_STRIP_RE = re.compile(r'^```(?:json)?\s*|\s*```$', re.MULTILINE)
 
 
-async def _build_stops(data: dict) -> list[CheckinStop]:
-	"""Ask the LLM to produce a JSON object of check-in stop bodies from today's data."""
+def _init_stops(data: dict) -> list[CheckinStop]:
+	"""Synchronously initialize the stops structure with placeholder bodies."""
+	_lang_code = data.get("lang", "en")
+	boards_data = data.get("boards_raw", {})
+
+	calendar_lines = []
+	for ev in data.get("calendar", []):
+		start = ev.get("start", "")
+		time_str = start.split("T")[1][:5] if "T" in start else ""
+		calendar_lines.append(f"- {time_str} {ev.get('summary', '')}".strip())
+	calendar_text = "\n".join(calendar_lines) if calendar_lines else "No events today."
+
+	stops: list[CheckinStop] = []
+	stops.append(CheckinStop(
+		id="calibration", 
+		title="Calibration", 
+		body="Take a slow breath in for four counts, hold for four, and out for four. Let today begin deliberately. You are here." if _lang_code != "de" else "Atme langsam ein und aus. Du bist hier."
+	))
+	
+	cal_hdr = "📅 Kalender:" if _lang_code == "de" else "📅 Calendar:"
+	stops.append(CheckinStop(
+		id="weather", 
+		title="Weather & Calendar", 
+		body=f"{data.get('weather', '')}\n\n{cal_hdr}\n{calendar_text}"
+	))
+	
+	# Extract operator board details
+	op_b = boards_data.get("operator_board")
+	if op_b:
+		op_days = op_b.get("days_since_active", 0)
+		op_title = f"Operator Board ({op_days}d inaktiv)" if op_days > 0 else "Operator Board (heute aktiv)"
+		stops.append(CheckinStop(id="operator", title=op_title, body="", board_id=op_b.get("board_id")))
+	else:
+		stops.append(CheckinStop(id="operator", title="Operator Board", body=""))
+
+	# Process Crews and Projects
+	for b in (boards_data.get("crew_boards", []) + boards_data.get("project_boards", [])):
+		bname_lower = b["name"].lower()
+		if bname_lower in ["scrum", "focus"]:
+			continue
+		slug = bname_lower.replace(" ", "-").replace("/", "-")
+		orig_slug = slug
+		counter = 1
+		while any(s.id == slug for s in stops):
+			slug = f"{orig_slug}-{counter}"
+			counter += 1
+		days = b.get("days_since_active", 0)
+		crew_activity_ts = data.get("crew_activity_ts", {})
+		if bname_lower in crew_activity_ts:
+			from datetime import datetime
+			diff = (datetime.utcnow() - crew_activity_ts[bname_lower]).days
+			if diff < 0: diff = 0
+			days = min(days, diff)
+
+		days_str = f" ({days}d seit letzter Aktivität)" if days > 0 else " (heute aktiv)"
+		stops.append(CheckinStop(id=slug, title=f"{b['name']}{days_str}", body="", board_id=b.get("board_id")))
+
+	stops.append(CheckinStop(id="meta", title="Meta Thoughts", body=""))
+
+	# Fill in placeholders for LLM stops
+	loading_txt = "⏳ KI-Analyse wird noch erstellt..." if _lang_code == "de" else "⏳ AI analysis is still generating..."
+	for s in stops:
+		if s.id not in ["calibration", "weather"]:
+			s.body = loading_txt
+
+	return stops
+
+
+async def _populate_llm_stops(stops: list[CheckinStop], data: dict) -> None:
+	"""Ask the LLM to produce a JSON object of check-in stop bodies from today's data and update stops in place."""
 	from app.services.llm import chat
 	from app.services.personal_context import get_personal_context_for_prompt_no_health
 
@@ -281,55 +367,16 @@ async def _build_stops(data: dict) -> list[CheckinStop]:
 		calendar_lines.append(f"- {time_str} {ev.get('summary', '')}".strip())
 	calendar_text = "\n".join(calendar_lines) if calendar_lines else "No events today."
 
-	# 1. Programmatically define all stops to ensure NO boards are skipped
-	stops: list[CheckinStop] = []
-	stops.append(CheckinStop(id="calibration", title="Calibration", body=""))
-	stops.append(CheckinStop(id="weather", title="Weather & Calendar", body=""))
-
-	board_slug_map = {}
 	op_cards_lines = []
-	
-	# Extract operator board details
 	op_b = boards_data.get("operator_board")
 	if op_b:
-		op_days = op_b.get("days_since_active", 0)
-		op_title = f"Operator Board ({op_days}d inaktiv)" if op_days > 0 else "Operator Board (heute aktiv)"
-		stops.append(CheckinStop(id="operator", title=op_title, body="", board_id=op_b.get("board_id")))
 		for _, cname, clist, _ in op_b.get("cards", []):
 			if clist.lower() not in ["archive", "erledigt", "done", "trash"]:
 				op_cards_lines.append(f"  - {cname} (List: {clist})")
-	else:
-		stops.append(CheckinStop(id="operator", title="Operator Board", body=""))
-
-	# Process Crews and Projects
-	for b in (boards_data.get("crew_boards", []) + boards_data.get("project_boards", [])):
-		bname_lower = b["name"].lower()
-		# Exclude Scrum and Focus stops as requested (handled in Meta/outro or standalone)
-		if bname_lower in ["scrum", "focus"]:
-			continue
-
-		slug = bname_lower.replace(" ", "-").replace("/", "-")
-		orig_slug = slug
-		counter = 1
-		while any(s.id == slug for s in stops):
-			slug = f"{orig_slug}-{counter}"
-			counter += 1
-
-		days = b.get("days_since_active", 0)
-		days_str = f" ({days}d seit letzter Aktivität)" if days > 0 else " (heute aktiv)"
-		full_title = f"{b['name']}{days_str}"
-
-		board_slug_map[slug] = b["name"]
-		stops.append(CheckinStop(id=slug, title=full_title, body="", board_id=b.get("board_id")))
-
-	stops.append(CheckinStop(id="meta", title="Meta Thoughts", body=""))
-
 	operator_cards_ctx = "\n".join(op_cards_lines) if op_cards_lines else "  (No active cards on Operator Board)"
 
-	# Expected JSON keys list
-	expected_keys = [s.id for s in stops if s.id != "weather"]
+	expected_keys = [s.id for s in stops if s.id not in ("weather", "calibration")]
 
-	# Format crew histories context
 	crew_history_lines = []
 	for dom, hist in data.get("crew_histories", {}).items():
 		crew_history_lines.append(f"[{dom.upper()} Crew Recent Conversation]:\n{hist}")
@@ -341,7 +388,6 @@ async def _build_stops(data: dict) -> list[CheckinStop]:
 		f"You MUST return a JSON object containing exactly the following keys, with the spoken text as string values. Do not omit any keys:\n"
 		f"{json.dumps(expected_keys)}\n\n"
 		"Key Descriptions:\n"
-		"- 'calibration': A breathing or grounding exercise (12–20 seconds spoken, calm, physical, present-moment).\n"
 		"- 'operator': Operator Board active tasks. You MUST ONLY reference card titles explicitly listed under 'EXACT OPERATOR BOARD CARDS' below. Do NOT invent card names and do NOT take topics from recent chats. Provide 1 to 3 distinct actionable steps (ordered by highest outcome/significance first). Format EACH actionable step at the end of the text as '[OPTION] Action Label'.\n"
 		"- Board slugs: For each domain board, look at its active cards, recent activity, AND 'Recent Crew Conversations'. You MUST extract active task topics or recent chat points. Provide 1 to 3 distinct concrete actionable steps (ordered by highest outcome/significance first). Format EACH actionable step at the end of the text as '[OPTION] Action Label'.\n"
 		"- 'meta': Overarching meta thoughts, mood, direction. Synthesize top 1 to 3 actionable steps from across ALL areas (ordered by highest significance). Format EACH actionable step at the end as '[OPTION] Action Label'. End with a question about if there is anything new today.\n\n"
@@ -352,7 +398,7 @@ async def _build_stops(data: dict) -> list[CheckinStop]:
 		"- CARD PRESENCE RULE: If a board has active cards listed under 'Boards and Projects', those cards ARE active items and existing tasks. You MUST NOT say 'Keine Aktivitäten' (No activity) or 'Keine Tasks' when cards exist!\n"
 		"- DIGITAL RECORDING RULE FOR AUREL / STOIC: NEVER ask or advise the user to write something down on physical paper or with a pen. Always tell the user to reply directly here in the chat so Aurel / Z can save and record it in memory and on the board.\n"
 		"- OPTION TAG RULE: You MUST append 1 to 3 option tags to EVERY board stop and 'meta' stop at the end of the text (e.g. '[OPTION] Rollo reparieren [OPTION] Vermieter anrufen').\n"
-		"- STRICT DOMAIN ADHERENCE: Action options MUST strictly match the specific domain/board of the current stop. Do not suggest actions unrelated to the current board's topic.\n"
+		"- STRICT DOMAIN ADHERENCE: Action options MUST strictly match the specific domain/board of the current stop. Do not suggest actions unrelated to the current board's topic. For example, if you are looking at the 'Home' board, only extract tasks listed under 'Home'. If a task is listed under 'Operator Board', do NOT mention it in 'Home'. Each board's context block starts with '[Project / BoardName]'. You MUST ONLY use information from that specific block for that board.\n"
 		"- LOGICAL SEQUENCING (BOTTLENECKS FIRST): For action steps, always suggest the immediate next logical bottleneck. For example, if a project needs a decision (e.g., choosing a species) before buying equipment, the option MUST be to make that decision first, NOT to buy the equipment. Do not jump to distant future actions.\n"
 		"- HIGH-VALUE ACTIONS ONLY: Options must be persistent, meaningful tasks worth tracking on a Kanban board. Do NOT suggest transient, trivial, or conversational actions (e.g., 'Film aussuchen', 'Reflexion teilen', 'Idee notieren') that do not warrant a permanent card.\n"
 		"- UNIVERSAL ANTI-HALLUCINATION / GROUNDING RULE: ONLY reference card names, tasks, or facts that are explicitly listed in the provided data or recent conversations. NEVER invent or fabricate pickup times, appointments, meeting schedules, or card titles not present in the context.\n"
@@ -392,24 +438,17 @@ async def _build_stops(data: dict) -> list[CheckinStop]:
 				except Exception:
 					pass
 		
-		# Map the parsed text back to our programmatic stops using robust regex for [OPTION]
 		for s in stops:
-			if s.id == "weather":
-				# Bypass LLM and use fixed template
-				cal_hdr = "📅 Kalender:" if _lang_code == "de" else "📅 Calendar:"
-				cal_body = calendar_text
-				s.body = f"{data.get('weather', '')}\n\n{cal_hdr}\n{cal_body}"
-				s.options = []
-			elif s.id in parsed and parsed[s.id]:
+			if s.id in ("weather", "calibration"):
+				continue
+			if s.id in parsed and parsed[s.id]:
 				body_text = str(parsed[s.id])
-				# Robust regex extraction of options anywhere in the text
 				options = [opt.strip() for opt in re.findall(r'\[OPTION\]\s*([^\[\n]+)', body_text) if opt.strip()]
 				clean_body = re.sub(r'\[OPTION\]\s*([^\[\n]+)', '', body_text).strip()
 				clean_body = re.sub(r'\s+', ' ', clean_body).strip()
 				s.body = clean_body
 				s.options = options
 			else:
-				# A fallback body message in the target language if the key was skipped
 				if s.id == "meta" and json_truncated:
 					if _lang_code == "de":
 						s.body = "⚠️ *Hinweis:* Z's Token-Limit wurde erreicht. Einige der letzten Boards wurden in diesem Check-in übersprungen."
@@ -421,20 +460,15 @@ async def _build_stops(data: dict) -> list[CheckinStop]:
 					else:
 						s.body = f"Let's check in on {s.title}. Are there any new updates or next steps you want to define?"
 					
-		return stops
 	except Exception as exc:
 		logger.warning("checkin: stop builder LLM failed (%s), using fallback stops", exc)
-
-	# Basic fallback
-	for s in _FALLBACK_STOPS:
-		if _lang_code == "de":
-			if s.id == "calibration":
-				s.body = "Atme langsam ein und aus. Du bist hier."
-			elif s.id == "review":
-				s.body = "Hier ist dein Tagesüberblick. Lass uns deine Boards durchgehen."
-			elif s.id == "meta":
-				s.body = "Das ist dein Check-in. Bring heute eine Sache in Bewegung. Irgendwas Neues?"
-	return _FALLBACK_STOPS
+		for s in stops:
+			if s.id in ("weather", "calibration"):
+				continue
+			if _lang_code == "de":
+				s.body = f"Lass uns über {s.title} sprechen. Gibt es hier neue Entwicklungen oder nächste Schritte?"
+			else:
+				s.body = f"Let's check in on {s.title}. Are there any new updates or next steps you want to define?"
 
 
 # ─── TTS pre-compilation ──────────────────────────────────────────────────────
@@ -470,26 +504,36 @@ async def _compile_audio(stops: list[CheckinStop], lang: str = "en") -> None:
 
 # ─── Public API ───────────────────────────────────────────────────────────────
 
+async def _background_build_and_audio(stops, data, compile_audio, on_ready, session):
+	await _populate_llm_stops(stops, data)
+	if on_ready:
+		try:
+			await on_ready(session)
+		except Exception as e:
+			logger.error("on_ready callback failed: %s", e)
+	if compile_audio:
+		_lang = data.get("lang", "en")
+		await _compile_audio(stops, lang=_lang)
+
 async def start_session(
 	channel: str,
 	chat_id: str | int,
 	*,
 	compile_audio: bool = True,
 	cadence: str = "daily",
+	on_ready = None,
 ) -> CheckinSession:
 	"""Build and store a new check-in session (daily, weekly, or monthly)."""
 	key = f"{channel}:{chat_id}"
 	data = await _gather_day_data()
-	stops = await _build_stops(data)
+	stops = _init_stops(data)
 
 	session = CheckinSession(key=key, stops=stops, index=0)
 	_SESSIONS[key] = session
 
-	if compile_audio:
-		_lang = data.get("lang", "en")
-		task = asyncio.create_task(_compile_audio(stops, lang=_lang))
-		_audio_tasks.add(task)
-		task.add_done_callback(_audio_tasks.discard)
+	task = asyncio.create_task(_background_build_and_audio(stops, data, compile_audio, on_ready, session))
+	_audio_tasks.add(task)
+	task.add_done_callback(_audio_tasks.discard)
 
 	return session
 
