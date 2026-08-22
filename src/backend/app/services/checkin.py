@@ -84,7 +84,7 @@ _SESSIONS: dict[str, CheckinSession] = {}
 
 def get_session(channel: str, chat_id: str | int) -> Optional[CheckinSession]:
 	session = _SESSIONS.get(f"{channel}:{chat_id}")
-	if session and __import__('time').time() - session.created_at > 7200:
+	if session and __import__('time').time() - session.created_at > 600:
 		close_session(channel, chat_id)
 		return None
 	return session
