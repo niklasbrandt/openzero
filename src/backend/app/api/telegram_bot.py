@@ -487,7 +487,7 @@ async def safe_edit(message, text: str, parse_mode="HTML", reply_markup=None, na
 			logger.debug("safe_edit final fallback failed: %s", _pe)
 
 
-async def _send_chunked_reply(thinking_msg, html_body: str, reply_markup=None, nav_footer: str = ""):
+async def _send_chunked_reply(thinking_msg, html_body: str, reply_markup=None, nav_footer: str = "", delete_thinking_msg: bool = True):
 	"""Deliver a response by deleting the thinking placeholder and sending a new message.
 
 	Always sends the final reply as a new message bubble (never edits-in-place).
@@ -499,10 +499,11 @@ async def _send_chunked_reply(thinking_msg, html_body: str, reply_markup=None, n
 	# Always delete the thinking placeholder and send the final reply as a new
 	# message so the response appears as a fresh bubble, not an edited placeholder.
 	if len(html_body) <= MAX_CHARS:
-		try:
-			await thinking_msg.delete()
-		except Exception as _e:
-			logger.debug("thinking_msg delete (short reply) ignored: %s", _e)
+		if delete_thinking_msg:
+			try:
+				await thinking_msg.delete()
+			except Exception as _e:
+				logger.debug("thinking_msg delete (short reply) ignored: %s", _e)
 		bot = thinking_msg.get_bot()
 		chat_id = thinking_msg.chat_id
 		await bot.send_message(
@@ -515,10 +516,11 @@ async def _send_chunked_reply(thinking_msg, html_body: str, reply_markup=None, n
 
 	# Content too long for a single message -- delete the thinking placeholder
 	# and send as multiple messages.
-	try:
-		await thinking_msg.delete()
-	except Exception as _e:
-		logger.debug("Telegram delete (chunked reply) ignored: %s", _e)
+	if delete_thinking_msg:
+		try:
+			await thinking_msg.delete()
+		except Exception as _e:
+			logger.debug("Telegram delete (chunked reply) ignored: %s", _e)
 
 	bot = thinking_msg.get_bot()
 	chat_id = thinking_msg.chat_id
@@ -1719,21 +1721,13 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 				logger.debug("Panel finalization skipped: %s", _e)
 			
 			# Send the final synthesis as a brand new message below the panel
-			_nav = get_nav_footer(t)
-			if _nav:
-				display_reply += f"\n\n{_nav}"
-			if is_followup or not update.message:
-				try:
-					await context.bot.send_message(chat_id=chat_id, text=display_reply, parse_mode="HTML", reply_markup=checkin_markup)
-				except Exception as _pe:
-					logger.warning("Telegram panel delivery HTML parse error: %s", _pe)
-					await context.bot.send_message(chat_id=chat_id, text=display_reply, parse_mode=None, reply_markup=checkin_markup)
-			else:
-				try:
-					await update.message.reply_text(display_reply, parse_mode="HTML", reply_markup=checkin_markup)
-				except Exception as _pe:
-					logger.warning("Telegram panel delivery HTML parse error: %s", _pe)
-					await update.message.reply_text(display_reply, parse_mode=None, reply_markup=checkin_markup)
+			await _send_chunked_reply(
+				thinking_msg, 
+				display_reply, 
+				nav_footer=get_nav_footer(t), 
+				reply_markup=checkin_markup, 
+				delete_thinking_msg=False
+			)
 		else:
 			await _send_chunked_reply(thinking_msg, display_reply, nav_footer=get_nav_footer(t), reply_markup=checkin_markup)
 		

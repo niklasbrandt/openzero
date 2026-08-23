@@ -54,23 +54,62 @@ async def send_whatsapp_message(text: str) -> None:
 		"Authorization": f"Bearer {settings.WHATSAPP_ACCESS_TOKEN}",
 		"Content-Type": "application/json",
 	}
-	payload = {
-		"messaging_product": "whatsapp",
-		"to": settings.WHATSAPP_ALLOWED_PHONE,
-		"type": "text",
-		"text": {"body": text},
-	}
-	try:
-		async with httpx.AsyncClient(timeout=30.0) as client:
-			resp = await client.post(url, headers=headers, json=payload)
-			if resp.status_code not in (200, 201):
-				logger.error(
-					"WhatsApp send failed: HTTP %s — %s",
-					resp.status_code,
-					resp.text[:300],
-				)
-	except Exception as exc:
-		logger.error("WhatsApp send exception: %s", exc)
+
+	# WhatsApp Cloud API text limit is 4096. Chunk safely below that.
+	MAX_CHARS = 3800
+	chunks = []
+	if len(text) <= MAX_CHARS:
+		chunks = [text]
+	else:
+		paragraphs = text.split("\n\n")
+		current = ""
+		for para in paragraphs:
+			segment = (para + "\n\n") if current else para
+			if len(current) + len(segment) > MAX_CHARS and current:
+				chunks.append(current.rstrip())
+				current = para + "\n\n"
+			else:
+				current += segment
+		if current.strip():
+			chunks.append(current.rstrip())
+
+		# Handle oversized single paragraphs by splitting at sentence boundaries
+		final_chunks = []
+		import re
+		for chunk in chunks:
+			if len(chunk) <= MAX_CHARS:
+				final_chunks.append(chunk)
+			else:
+				sentences = re.split(r'(?<=[.!?])\s+', chunk)
+				sub = ""
+				for s in sentences:
+					if len(sub) + len(s) + 1 > MAX_CHARS and sub:
+						final_chunks.append(sub.rstrip())
+						sub = s
+					else:
+						sub = f"{sub} {s}" if sub else s
+				if sub.strip():
+					final_chunks.append(sub.rstrip())
+		chunks = final_chunks
+
+	async with httpx.AsyncClient(timeout=30.0) as client:
+		for chunk in chunks:
+			payload = {
+				"messaging_product": "whatsapp",
+				"to": settings.WHATSAPP_ALLOWED_PHONE,
+				"type": "text",
+				"text": {"body": chunk},
+			}
+			try:
+				resp = await client.post(url, headers=headers, json=payload)
+				if resp.status_code not in (200, 201):
+					logger.error(
+						"WhatsApp send failed: HTTP %s — %s",
+						resp.status_code,
+						resp.text[:300],
+					)
+			except Exception as exc:
+				logger.error("WhatsApp send exception: %s", exc)
 
 
 # ─── Signature Verification ───────────────────────────────────────────────────
