@@ -1178,6 +1178,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 		dest_list = params.get("LIST", "").strip()
 		board = params.get("BOARD", "").strip()
 		if not card_frag or not dest_list:
+			clean_reply = strip_tag(clean_reply, raw_tag)
 			continue
 		async def _exec_move(card_frag=card_frag, dest_list=dest_list, board=board):
 			return await execute_move_card(card_frag, dest_list, board)
@@ -1196,6 +1197,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 				params[k.strip().upper()] = v.strip().strip('"\'')
 		card_frag = params.get("CARD", "").strip()
 		if not card_frag:
+			clean_reply = strip_tag(clean_reply, raw_tag)
 			continue
 		async def _exec_done(card_frag=card_frag):
 			return await execute_mark_done(card_frag)

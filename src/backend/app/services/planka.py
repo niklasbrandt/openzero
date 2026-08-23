@@ -41,12 +41,31 @@ def _card_title_matches(card_name: str, fragment: str) -> bool:
 	
 	Supports bidirectional substring matching to handle cases where either the
 	card name or the query fragment has extra words or embellishments (e.g. LLM output).
+	Also supports fuzzy token matching for long words.
 	"""
 	name_clean = (card_name or "").strip().lower()
 	frag_clean = (fragment or "").strip().strip('"\'').strip().lower()
 	if not frag_clean or not name_clean:
 		return False
-	return frag_clean in name_clean or name_clean in frag_clean
+	if frag_clean in name_clean or name_clean in frag_clean:
+		return True
+		
+	# Fuzzy token intersection for robust LLM matching
+	def get_tokens(s):
+		return set(re.findall(r'\b\w{5,}\b', s))
+		
+	name_tokens = get_tokens(name_clean)
+	frag_tokens = get_tokens(frag_clean)
+	if name_tokens.intersection(frag_tokens):
+		return True
+		
+	# Fallback: check if any token is a substring of the other (handles LLM paraphrasing compound nouns)
+	for f in frag_tokens:
+		for n in name_tokens:
+			if f in n or n in f:
+				return True
+				
+	return False
 
 def _extract_latest_timestamp(*items) -> str:
 	"""Extract the latest ISO timestamp string from a list of objects or strings."""
@@ -557,7 +576,7 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 
 			if not target_list:
 				# Create a clean entry list ("Tasks" or "Inbox") at position 1 so tasks do not land in domain lists (e.g. 'children', 'physique')
-				fallback_name = "Inbox" if (board_name.lower() == "operator board" or is_date) else "Tasks"
+				fallback_name = "Inbox" if (target_board["name"].lower() == "operator board" or is_date) else "Tasks"
 				l_resp = await client.post(f"/api/boards/{board_id}/lists", json={"name": fallback_name, "type": "active", "position": 1})
 				l_resp.raise_for_status()
 				target_list = l_resp.json().get("item")
@@ -2242,9 +2261,6 @@ async def get_briefing_boards_data() -> dict:
 		- crew_boards: list[dict]
 		- project_boards: list[dict]
 	"""
-	import httpx
-	from datetime import datetime
-
 	try:
 		crew_board_names = await _get_crew_board_names()
 	except Exception:
