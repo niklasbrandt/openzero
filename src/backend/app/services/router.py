@@ -1238,8 +1238,10 @@ async def route_message_stream(
 			except Exception as _exp_e:
 				logger.debug("Router: profile_vectors expansion failed: %s", _exp_e)
 
-		_word_count = len(user_text.split())
-		_is_simple_q = user_text.rstrip().endswith("?") and _word_count < 8
+		import re
+		_clean_for_count = re.sub(r'^\[(?:Follow-up messages sent while you were thinking:|Replying to:).*?\]\s*', '', user_text, flags=re.IGNORECASE | re.DOTALL)
+		_word_count = len(_clean_for_count.split())
+		_is_simple_q = _clean_for_count.rstrip().endswith("?") and _word_count < 8
 		_panel = routed_crews[:3]
 		_requires_panel = False
 
