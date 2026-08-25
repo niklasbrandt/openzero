@@ -1324,8 +1324,9 @@ async def route_message_stream(
 
 			if not _requires_panel:
 				# Debate-OFF: degrade to single-crew
-				logger.info("Router: panel debate-OFF (requires_panel=False) — single crew '%s'", _panel[0])
-				routed_crews = [_panel[0]]
+				if _panel:
+					logger.info("Router: panel debate-OFF (requires_panel=False) — single crew '%s'", _panel[0])
+					routed_crews = [_panel[0]]
 			else:
 				# Panel mode — run 2-3 crews, then multi-round debate, then Z synthesises
 				_force_cloud = True
