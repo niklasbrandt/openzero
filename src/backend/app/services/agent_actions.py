@@ -1493,6 +1493,14 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 			)
 			logger.warning("parse_and_execute_actions: phantom confirmation — hallucinated action execution (no tags)")
 
+	if not clean_reply.strip():
+		if executed_cmds:
+			_non_crew_cmds = [c for c in executed_cmds if not c.startswith("__CREW_RUN__:")]
+			if _non_crew_cmds:
+				clean_reply = "\n".join(f"✓ {c}" for c in _non_crew_cmds)
+		elif pending_actions:
+			clean_reply = "\n".join(f"⏳ Pending: {p['description']}" for p in pending_actions)
+
 	return clean_reply, executed_cmds, pending_actions
 
 async def execute_crew_programmatically(crew_id: str, input_context: str = "Scheduled execution sequence"):
