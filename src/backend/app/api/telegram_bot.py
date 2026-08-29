@@ -1479,6 +1479,7 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 
 	lang = await get_user_lang()
 	t = get_translations(lang)
+	checkin_markup = None
 
 	# Use native Telegram typing indicator. thinking_msg is created lazily
 	# on first status update so we don't send a placeholder that just sits there.
