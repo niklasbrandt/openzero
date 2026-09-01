@@ -153,6 +153,19 @@ def _crew_board_name(crew_id: str) -> str:
 	return crew_id.replace("-", " ").title()
 
 
+def _crew_project_name(crew_id: str, t: dict) -> str:
+	"""Return the Planka project name for a crew, honoring crew.group == 'operations'."""
+	try:
+		from app.services.crews import crew_registry
+		c = crew_registry.get(crew_id)
+		if c and (c.group or "").lower() == "operations":
+			from app.services.operator_board import operator_service
+			return operator_service.project_name or "Operations"
+	except Exception:
+		pass
+	return t.get("crews_project_name", "Crews")
+
+
 async def _planka_client():
 	"""Return an authenticated httpx.AsyncClient for Planka."""
 	from app.services.planka_common import get_planka_auth_token
@@ -465,7 +478,7 @@ async def append_crew_exchange(crew_id: str, user_msg: str, crew_response: str) 
 		from app.services.translations import get_translations, get_user_lang
 		lang = await get_user_lang()
 		t = get_translations(lang)
-		project_name: str = t.get("crews_project_name", "Crews")
+		project_name: str = _crew_project_name(crew_id, t)
 		list_name: str = t.get("crew_conversation_list", "Conversation")
 
 		date_fmt = await _get_user_date_format()
@@ -517,7 +530,7 @@ async def get_crew_board_work_context(crew_id: str) -> str:
 		from app.services.translations import get_translations, get_user_lang
 		lang = await get_user_lang()
 		t = get_translations(lang)
-		project_name: str = t.get("crews_project_name", "Crews")
+		project_name: str = _crew_project_name(crew_id, t)
 		board_name = _crew_board_name(crew_id)
 
 		async with await _planka_client() as client:
@@ -585,7 +598,7 @@ async def get_crew_memory_context(crew_id: str) -> str:
 		from app.services.translations import get_translations, get_user_lang
 		lang = await get_user_lang()
 		t = get_translations(lang)
-		project_name: str = t.get("crews_project_name", "Crews")
+		project_name: str = _crew_project_name(crew_id, t)
 		board_name = _crew_board_name(crew_id)
 
 		date_fmt = await _get_user_date_format()
@@ -678,7 +691,8 @@ async def get_recent_crew_outputs(hours: Optional[int] = None) -> dict[str, str]
 			for crew in active_crews:
 				crew_id = crew.id
 				board_name = _crew_board_name(crew_id)
-				project_id, board_id = await _resolve_crew_board_ids(client, project_name, board_name)
+				p_name = _crew_project_name(crew_id, t)
+				project_id, board_id = await _resolve_crew_board_ids(client, p_name, board_name)
 				if not project_id or not board_id:
 					continue
 

@@ -304,3 +304,82 @@ async def _do_audit_actions() -> None:
 		)
 
 	logger.info("Watchdog: %d action failure alert(s) delivered.", len(failures))
+
+# Track the last processed message ID so we only extract once per idle block
+_last_extracted_msg_id = None
+
+async def extract_idle_insights() -> None:
+    """
+    Checks if there has been 15+ minutes of silence after a substantial Z response.
+    If so, runs an LLM extraction to capture decisions, updates, or memory points
+    and executes them.
+    """
+    global _last_extracted_msg_id
+    from app.models.db import get_global_history
+    
+    history = await get_global_history(limit=50)
+    if not history:
+        return
+        
+    last_msg = history[-1]
+    msg_id = last_msg.get("id")
+    
+    # We only care if Z was the last one to speak (meaning we are waiting on user)
+    # OR if user was the last to speak but Z ignored it (handled by check_unanswered_messages).
+    # Either way, if 15 mins passed, the conversation "died down".
+    try:
+        last_ts = datetime.fromisoformat(last_msg["at"]).replace(tzinfo=timezone.utc)
+        now_utc = datetime.now(timezone.utc)
+        age_s = (now_utc - last_ts).total_seconds()
+        
+        if age_s < 15 * 60:
+            return  # Not idle yet
+            
+        if _last_extracted_msg_id == msg_id:
+            return  # Already extracted for this conversation block
+            
+        _last_extracted_msg_id = msg_id
+        
+    except Exception as e:
+        logger.debug("Idle extractor: could not parse timestamp: %s", e)
+        return
+
+    # Conversation is idle. Gather recent back-and-forth (e.g. last 1-2 hours)
+    recent_msgs = []
+    for m in reversed(history):
+        m_ts = datetime.fromisoformat(m["at"]).replace(tzinfo=timezone.utc)
+        if (now_utc - m_ts).total_seconds() > 2 * 3600:
+            break
+        recent_msgs.insert(0, m)
+        
+    if len(recent_msgs) < 3:
+        return # Not a substantial turn
+
+    # Format for LLM
+    transcript = "\n".join([f"[{m['role']}]: {m.get('content', '')}" for m in recent_msgs])
+    
+    prompt = (
+        "The following is a recent conversation that has now gone idle.\n\n"
+        f"\"\"\"\n{transcript}\n\"\"\"\n\n"
+        "Review the conversation. Did the user make any decisions, provide status updates on tasks, "
+        "or share new facts that should be persisted? If no meaningful new information emerged, reply ONLY with 'NO_EXTRACTION'.\n"
+        "Otherwise, use PLANKA ACTION TAGS (e.g. [AUDIT:MOVE...], [AUDIT:DONE...], [ACTION:TASK...]) or "
+        "[ACTION:LEARN ...] to persist the insights. Output only the tags."
+    )
+    
+    from app.services.llm import chat
+    try:
+        logger.info("Idle extractor: Conversation idle for 15+ mins. Running extraction.")
+        result = await chat(prompt, tier="cloud", _feature="idle_extraction")
+        if "NO_EXTRACTION" in result or not result.strip():
+            logger.debug("Idle extractor: No insights to extract.")
+            return
+            
+        # Execute the tags
+        from app.services.agent_actions import parse_and_execute_actions
+        logger.info("Idle extractor: Insights found, executing tags.")
+        await parse_and_execute_actions(result)
+        
+    except Exception as e:
+        logger.error("Idle extractor failed: %s", e)
+
