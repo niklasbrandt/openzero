@@ -55,6 +55,10 @@ async def send_whatsapp_message(text: str) -> None:
 		"Content-Type": "application/json",
 	}
 
+	import re
+	# Convert markdown headers: '# Title', '## Title' -> '*Title*'
+	text = re.sub(r'^(#{1,6})\s+([^\n]+)', r'*\2*', text, flags=re.MULTILINE)
+
 	# WhatsApp Cloud API text limit is 4096. Chunk safely below that.
 	MAX_CHARS = 3800
 	chunks = []

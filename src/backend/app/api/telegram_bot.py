@@ -442,6 +442,9 @@ def _md_to_html(text: str) -> str:
 	# Escape raw HTML chars BEFORE injecting intentional tags.
 	safe = _html.escape(text)
 
+	# Markdown headers: '# Title', '## Title', '### Title' -> <b>Title</b>
+	safe = re.sub(r'^(#{1,6})\s+([^\n]+)', r'<b>\2</b>', safe, flags=re.MULTILINE)
+
 	# Bold: **text** or *text* -> <b>text</b>
 	html = re.sub(r'\*\*([^\n*]{1,500})\*\*', r'<b>\1</b>', safe)
 	html = re.sub(r'\*([^\n*]{1,300})\*', r'<b>\1</b>', html)

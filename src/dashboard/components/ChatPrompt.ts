@@ -533,6 +533,11 @@ export class ChatPrompt extends HTMLElement {
 			.replace(/</g, '&lt;')
 			.replace(/>/g, '&gt;');
 
+		// Headers
+		html = html.replace(/^###\s+([^\n]+)/gm, '<h4 class="chat-h4" style="margin:0.5rem 0 0.25rem 0;font-size:0.95rem;font-weight:600;">$1</h4>');
+		html = html.replace(/^##\s+([^\n]+)/gm, '<h3 class="chat-h3" style="margin:0.65rem 0 0.25rem 0;font-size:1rem;font-weight:600;color:var(--accent-color, #14B8A6);">$1</h3>');
+		html = html.replace(/^#\s+([^\n]+)/gm, '<h2 class="chat-h2" style="margin:0.75rem 0 0.35rem 0;font-size:1.1rem;font-weight:700;">$1</h2>');
+
 		// 2. Bold: **text**
 		html = html.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
 

@@ -9,6 +9,20 @@ def test_format_review_markdown_glued_header():
 	assert formatted == expected
 
 
+def test_format_review_markdown_glued_h2():
+	raw = "# Monatsrückblick (02.08.2026 – 01.09.2026)## Erledigt\nDrei Dinge hast du durchgezogen."
+	formatted = format_review_markdown(raw, "Monatsrückblick", "02.08.2026 – 01.09.2026")
+	expected = "# Monatsrückblick (02.08.2026 – 01.09.2026)\n\n## Erledigt\nDrei Dinge hast du durchgezogen."
+	assert formatted == expected
+
+
+def test_format_review_markdown_glued_h2_no_space():
+	raw = "# Monatsrückblick (02.08.2026 – 01.09.2026)##Erledigt\nDrei Dinge hast du durchgezogen."
+	formatted = format_review_markdown(raw, "Monatsrückblick", "02.08.2026 – 01.09.2026")
+	expected = "# Monatsrückblick (02.08.2026 – 01.09.2026)\n\n## Erledigt\nDrei Dinge hast du durchgezogen."
+	assert formatted == expected
+
+
 def test_format_review_markdown_standard_h1():
 	raw = "# Monatsrückblick (02.08.2026 – 01.09.2026)\n\n## Erledigt\nDrei Dinge hast du durchgezogen."
 	formatted = format_review_markdown(raw, "Monatsrückblick", "02.08.2026 – 01.09.2026")

@@ -94,7 +94,7 @@ export class BriefingHistory extends HTMLElement {
 						role="region"
 						aria-label="${this.tr('aria_briefing_content', 'Briefing content from')} ${new Date(b.created_at).toLocaleDateString()}">
 						<div class="content-inner">
-							<div class="content">${b.content}</div>
+							<div class="content">${this.renderMarkdown(b.content)}</div>
 						</div>
 					</div>
 				</div>
@@ -111,6 +111,33 @@ export class BriefingHistory extends HTMLElement {
 		if (loadMoreBtn) {
 			loadMoreBtn.addEventListener('click', () => this.showMore());
 		}
+	}
+
+	private renderMarkdown(str: string): string {
+		if (!str) return '';
+		let html = str
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;');
+
+		// Headers
+		html = html.replace(/^###\s+([^\n]+)/gm, '<h4 class="briefing-h4">$1</h4>');
+		html = html.replace(/^##\s+([^\n]+)/gm, '<h3 class="briefing-h3">$1</h3>');
+		html = html.replace(/^#\s+([^\n]+)/gm, '<h2 class="briefing-h2">$1</h2>');
+
+		// Bold: **text**
+		html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+		// Links: [text](url) — safe scheme only
+		html = html.replace(/\[(.*?)\]\((.*?)\)/g, (_match, text, url) => {
+			const safeUrl = /^(https?:\/\/|\/)/i.test(url) ? url : '#';
+			return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="briefing-link">${text}</a>`;
+		});
+
+		// Newlines to <br>
+		html = html.replace(/\n/g, '<br>');
+
+		return html;
 	}
 
 	render() {
@@ -239,11 +266,33 @@ export class BriefingHistory extends HTMLElement {
 					.content { 
 						padding: 0 1.25rem 1.25rem 1.25rem;
 						font-size: 0.95rem; 
-						white-space: pre-wrap; 
+						white-space: normal; 
 						line-height: 1.6; 
 						color: var(--text-secondary, hsla(0, 0%, 100%, 0.7)); 
 						border-top: 1px solid var(--border-subtle, hsla(0, 0%, 100%, 0.08));
 						padding-top: 1rem;
+					}
+					.content .briefing-h2 {
+						font-size: 1.05rem;
+						font-weight: 700;
+						color: var(--text-primary, hsla(0, 0%, 100%, 0.95));
+						margin: 0.5rem 0 0.25rem 0;
+					}
+					.content .briefing-h3 {
+						font-size: 0.95rem;
+						font-weight: 600;
+						color: var(--accent-color, hsla(173, 80%, 40%, 1));
+						margin: 0.75rem 0 0.25rem 0;
+					}
+					.content .briefing-h4 {
+						font-size: 0.88rem;
+						font-weight: 600;
+						color: var(--text-secondary, hsla(0, 0%, 100%, 0.8));
+						margin: 0.5rem 0 0.25rem 0;
+					}
+					.content .briefing-link {
+						color: var(--accent-color, hsla(173, 80%, 40%, 1));
+						text-decoration: underline;
 					}
 					.load-more {
 						width: 100%;
