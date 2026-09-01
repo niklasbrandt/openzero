@@ -282,7 +282,7 @@ async def start_scheduler():
 	# Message & Action Integrity Watchdog
 	# check_unanswered_messages: every 5 minutes — recovers user messages that
 	# arrived while Z was down, the LLM was loading, or Telegram dropped them.
-	from app.services.message_watchdog import check_unanswered_messages, audit_action_integrity
+	from app.services.message_watchdog import check_unanswered_messages, audit_action_integrity, extract_idle_insights
 	scheduler.add_job(
 		check_unanswered_messages,
 		IntervalTrigger(minutes=5),
@@ -295,6 +295,13 @@ async def start_scheduler():
 		audit_action_integrity,
 		IntervalTrigger(minutes=15),
 		id="action_integrity_audit",
+		replace_existing=True,
+	)
+	# extract_idle_insights: every 5 minutes — extracts decisions/tasks from idle threads
+	scheduler.add_job(
+		extract_idle_insights,
+		IntervalTrigger(minutes=5),
+		id="extract_idle_insights",
 		replace_existing=True,
 	)
 
@@ -414,11 +421,12 @@ async def start_scheduler():
 		elif crew.schedule:
 			trigger = CronTrigger.from_crontab(crew.schedule, timezone=tz)
 
+		is_silent = bool(crew.feeds_briefing)
 		if trigger:
 			scheduler.add_job(
 				execute_crew_programmatically,
 				trigger,
-				args=[crew.id, "Scheduled cron context window initialized."],
+				args=[crew.id, "Scheduled cron context window initialized.", is_silent],
 				id=f"crew_{crew.id}",
 				replace_existing=True,
 			)

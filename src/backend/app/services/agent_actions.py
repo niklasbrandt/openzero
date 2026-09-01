@@ -1503,7 +1503,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 
 	return clean_reply, executed_cmds, pending_actions
 
-async def execute_crew_programmatically(crew_id: str, input_context: str = "Scheduled execution sequence"):
+async def execute_crew_programmatically(crew_id: str, input_context: str = "Scheduled execution sequence", silent: bool = False):
 	"""
 	Public API for the Scheduler to legitimately run Crews without a raw LLM action tag.
 	Uses the native crew engine.
@@ -1519,7 +1519,28 @@ async def execute_crew_programmatically(crew_id: str, input_context: str = "Sche
 	logger.info("Programmatically executing Crew '%s'...", crew_id)
 
 	try:
-		ans = await native_crew_engine.run_crew(crew_id, input_context)
+		ans = await native_crew_engine.run_crew(crew_id, input_context, skip_memory=False)
 		logger.info("Crew '%s' completed. Output length: %d", crew_id, len(ans))
+		
+		# 1. Parse tags and save to universal history
+		from app.services.message_bus import bus
+		from app.services.crews_native import crew_board_name_for_id
+		clean_ans, cmds, pending = await bus.commit_reply(
+			channel="telegram",
+			raw_reply=ans,
+			model=f"crew:{crew_id}",
+			user_text=input_context,
+			save=True,
+			require_hitl=False,
+			crew_board_hint=crew_board_name_for_id(crew_id)
+		)
+		
+		# 2. Deliver the clean output to the operator (unless silent)
+		if clean_ans.strip() and not silent:
+			from app.services.notifier import send_notification
+			
+			msg = f"🔔 [{config.name}]\n\n{clean_ans.strip()}"
+			await send_notification(msg)
+			
 	except Exception as e:
 		logger.error("Programmatic execute_crew failed for '%s': %s", crew_id, e)
