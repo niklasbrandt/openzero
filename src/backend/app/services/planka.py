@@ -15,7 +15,7 @@ import html as _html
 import httpx
 import logging
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Any
 from app.config import settings
 
@@ -24,6 +24,31 @@ logger = logging.getLogger(__name__)
 from app.services.planka_common import get_planka_auth_token, _tree_cache
 import asyncio
 import time
+
+def _parse_iso_dt(val: Any) -> Optional[datetime]:
+	"""Parse an ISO timestamp string into a naive UTC datetime, or None if invalid/empty/pre-2000."""
+	if not val or not isinstance(val, str):
+		return None
+	clean = val.strip().replace("Z", "+00:00")
+	try:
+		dt = datetime.fromisoformat(clean)
+		if dt.tzinfo is not None:
+			dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+		if dt.year < 2000:
+			return None
+		return dt
+	except Exception:
+		return None
+
+def _get_card_activity_dt(card: dict, fallback: Optional[datetime] = None) -> datetime:
+	"""Get the most recent activity timestamp for a card (updatedAt -> createdAt -> fallback -> now)."""
+	dt = _parse_iso_dt(card.get("updatedAt"))
+	if dt is not None:
+		return dt
+	dt = _parse_iso_dt(card.get("createdAt"))
+	if dt is not None:
+		return dt
+	return fallback or datetime.now()
 
 def _sanitize_for_log(text: Any) -> str:
 	"""Built-in sanitizer for CodeQL Log Injection (CWE-117)."""
@@ -1813,8 +1838,7 @@ async def get_activity_report(days: int = 30) -> str:
 				
 				for card in cards:
 					c_name = card.get("name") or "?"
-					_raw_updated = card.get("updatedAt") or ""
-					c_updated = datetime.fromisoformat(_raw_updated.replace('Z', '')) if _raw_updated else datetime.min
+					c_updated = _get_card_activity_dt(card)
 					c_labels = card_to_labels.get(card["id"], [])
 					c_label_names = [(l.get("name") or "").lower() for l in c_labels]
 					
@@ -1913,22 +1937,20 @@ async def get_recent_activity(hours: int = 48) -> str:
 				# Capture newly created lists (new column/stage added to board)
 				for lst in lists:
 					_raw_l_created = lst.get("createdAt") or ""
-					l_created = datetime.fromisoformat(_raw_l_created.replace("Z", "")) if _raw_l_created else datetime.min
-					if l_created >= cutoff:
+					l_created = _parse_iso_dt(_raw_l_created)
+					if l_created and l_created >= cutoff:
 						lines.append(f"- [new list] {lst.get('name') or '?'} added to {b_name} | created")
 
 				for card in cards:
 					if card["listId"] in done_list_ids:
 						continue
-					_raw_created = card.get("createdAt") or ""
-					_raw_updated = card.get("updatedAt") or ""
-					c_created = datetime.fromisoformat(_raw_created.replace("Z", "")) if _raw_created else datetime.min
-					c_updated = datetime.fromisoformat(_raw_updated.replace("Z", "")) if _raw_updated else datetime.min
-					most_recent = max(c_created, c_updated)
-					if most_recent < cutoff:
+					c_created = _parse_iso_dt(card.get("createdAt"))
+					c_updated = _parse_iso_dt(card.get("updatedAt"))
+					most_recent = c_updated or c_created
+					if not most_recent or most_recent < cutoff:
 						continue
 					list_name = list_map.get(card["listId"], "?")
-					change = "created" if c_created >= cutoff else "updated"
+					change = "created" if (c_created and c_created >= cutoff and not c_updated) else "updated"
 					lines.append(f"- {card.get('name') or '?'} | {b_name} -> {list_name} | {change}")
 
 		if not lines:
@@ -1981,8 +2003,7 @@ async def get_stale_cards(min_days: int = 5) -> str:
 				for card in cards:
 					if card["listId"] in done_list_ids:
 						continue
-					_raw_updated = card.get("updatedAt") or ""
-					c_updated = datetime.fromisoformat(_raw_updated.replace("Z", "")) if _raw_updated else datetime.min
+					c_updated = _get_card_activity_dt(card)
 					if c_updated >= threshold:
 						continue
 					days_stale = (datetime.now() - c_updated).days
@@ -2047,17 +2068,13 @@ async def get_stale_cards_raw(min_hours: int = 48) -> list[dict]:
 				for card in cards:
 					if card["listId"] in done_list_ids:
 						continue
-					_raw_updated = card.get("updatedAt") or ""
-					try:
-						c_updated = datetime.fromisoformat(_raw_updated.replace("Z", "")) if _raw_updated else datetime.min
-					except Exception:
-						continue
+					c_updated = _get_card_activity_dt(card)
 					if c_updated >= threshold:
 						continue
 					result.append({
 						"id": card.get("id", ""),
 						"name": card.get("name", ""),
-						"updatedAt": _raw_updated,
+						"updatedAt": card.get("updatedAt") or card.get("createdAt") or "",
 						"boardName": b_name,
 						"listName": list_map.get(card["listId"], "?"),
 					})
@@ -2138,7 +2155,7 @@ async def get_crew_board_snapshot() -> str:
 				if not active_cards:
 					line = f"{b_name}: no active items"
 				else:
-					top = sorted(active_cards, key=lambda c: c.get("updatedAt") or "", reverse=True)[:2]
+					top = sorted(active_cards, key=lambda c: _get_card_activity_dt(c), reverse=True)[:2]
 					card_strs = ", ".join(f"{c.get('name') or '?'} ({list_map.get(c['listId'], '?')})" for c in top)
 					line = f"{b_name}: {card_strs}"
 
@@ -2209,8 +2226,7 @@ async def get_board_walkthrough(min_stale_days: int = 5) -> str:
 				stale_entries: list[str] = []
 				alive_entries: list[str] = []
 				for c in active_cards:
-					_raw_updated = c.get("updatedAt") or ""
-					c_updated = datetime.fromisoformat(_raw_updated.replace("Z", "")) if _raw_updated else datetime.min
+					c_updated = _get_card_activity_dt(c)
 					days_stale = (datetime.now() - c_updated).days
 					cname = c.get("name") or "?"
 					if c_updated < stale_threshold:
@@ -2242,9 +2258,6 @@ async def get_briefing_boards_data() -> dict:
 		- crew_boards: list[dict]
 		- project_boards: list[dict]
 	"""
-	import httpx
-	from datetime import datetime
-
 	try:
 		crew_board_names = await _get_crew_board_names()
 	except Exception:
@@ -2281,8 +2294,6 @@ async def get_briefing_boards_data() -> dict:
 				return_exceptions=True,
 			)
 
-			_epoch = datetime(1970, 1, 1)
-
 			for (proj_name, board_name, board_id), b_resp in zip(board_stubs, board_resps):
 				if isinstance(b_resp, BaseException):
 					continue
@@ -2291,10 +2302,7 @@ async def get_briefing_boards_data() -> dict:
 				# Get board creation date from data section if available
 				b_obj = b_data.get("data", {})
 				raw_c = b_obj.get("createdAt") or ""
-				try:
-					created_at = datetime.fromisoformat(raw_c.replace("Z", "")) if raw_c else _epoch
-				except ValueError:
-					created_at = _epoch
+				created_at = _parse_iso_dt(raw_c) or datetime.now()
 
 				lists = b_data.get("included", {}).get("lists", [])
 				cards = b_data.get("included", {}).get("cards", [])
@@ -2305,11 +2313,7 @@ async def get_briefing_boards_data() -> dict:
 				for card in cards:
 					if card.get("listId") in done_ids:
 						continue
-					raw_u = card.get("updatedAt") or card.get("createdAt") or ""
-					try:
-						ts = datetime.fromisoformat(raw_u.replace("Z", "")) if raw_u else _epoch
-					except ValueError:
-						ts = _epoch
+					ts = _get_card_activity_dt(card, fallback=created_at)
 					list_name = list_map.get(card.get("listId", ""), "?")
 					desc = card.get("description") or ""
 					if len(desc) > 100:
@@ -2317,13 +2321,8 @@ async def get_briefing_boards_data() -> dict:
 					active_cards.append((ts, card.get("name") or "?", list_name, desc))
 
 				# latest_mod is max of card updates, or board creation if no cards
-				last_updated = max(card[0] for card in active_cards) if active_cards else created_at
-				if last_updated == _epoch:
-					last_updated = datetime.utcnow() # fallback to not break logic
-
-				days_since_active = (datetime.utcnow() - last_updated).days
-				if days_since_active < 0:
-					days_since_active = 0
+				last_updated = max((card[0] for card in active_cards), default=created_at)
+				days_since_active = max(0, (datetime.now() - last_updated).days)
 				
 				# Determine Bucket
 				b_name_lower = (board_name or "").strip().lower()

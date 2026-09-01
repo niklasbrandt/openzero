@@ -386,8 +386,31 @@ async def send_notification(text: str, reply_markup=None, nav_footer: str = ""):
 	if current.strip():
 		chunks.append(current.rstrip())
 
-	for i, chunk in enumerate(chunks):
-		is_last = (i == len(chunks) - 1)
+	# Handle oversized single paragraphs by splitting on sentence / line boundaries
+	final_chunks: list[str] = []
+	for chunk in chunks:
+		if len(chunk) <= MAX_CHARS:
+			final_chunks.append(chunk)
+		else:
+			lines = chunk.split("\n")
+			sub = ""
+			for l in lines:
+				if len(sub) + len(l) + 1 > MAX_CHARS and sub:
+					final_chunks.append(sub.rstrip())
+					sub = l
+				elif len(l) > MAX_CHARS:
+					if sub.strip():
+						final_chunks.append(sub.rstrip())
+						sub = ""
+					for idx in range(0, len(l), MAX_CHARS):
+						final_chunks.append(l[idx:idx + MAX_CHARS])
+				else:
+					sub = f"{sub}\n{l}" if sub else l
+			if sub.strip():
+				final_chunks.append(sub.rstrip())
+
+	for i, chunk in enumerate(final_chunks):
+		is_last = (i == len(final_chunks) - 1)
 		await bot.send_message(
 			chat_id=chat_id,
 			text=f"<blockquote>{chunk}</blockquote>{nav_footer if is_last else ''}",
@@ -1479,7 +1502,6 @@ async def _process_freetext(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 
 	lang = await get_user_lang()
 	t = get_translations(lang)
-	checkin_markup = None
 
 	# Use native Telegram typing indicator. thinking_msg is created lazily
 	# on first status update so we don't send a placeholder that just sits there.

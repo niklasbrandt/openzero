@@ -98,10 +98,10 @@ async def monthly_review():
 		)
 
 		try:
-			content = await asyncio.wait_for(chat(prompt, _feature="monthly_review", include_health=False), timeout=300.0)
+			content = await asyncio.wait_for(chat(prompt, tier="cloud", _feature="monthly_review", max_tokens=2000, include_health=False), timeout=300.0)
 		except asyncio.TimeoutError:
 			logger.warning("monthly_review — cloud tier timed out, retrying")
-			content = await chat(prompt, _feature="monthly_review", include_health=False)
+			content = await chat(prompt, tier="cloud", _feature="monthly_review", max_tokens=2000, include_health=False)
 
 		from app.services.agent_actions import parse_and_execute_actions
 		content, _, _ = await parse_and_execute_actions(content)

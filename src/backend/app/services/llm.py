@@ -1127,7 +1127,7 @@ SMART_KEYWORDS = [
 # Per-tier max_tokens caps — prevents runaway generation on CPU.
 # Cloud cap is intentionally bounded to limit token-inflation attacks.
 TIER_MAX_TOKENS = {
-	"local": 250,
+	"local": 800,
 	"cloud": 4000,
 }
 
