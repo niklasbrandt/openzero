@@ -994,12 +994,12 @@ async def route_message_stream(
 				_board_names_hint = ", ".join((b.get("name") or "") for b in _all_boards) or "none"
 				_sem_prompt = (
 					f"Available Planka boards: {_board_names_hint}\n"
-					"Does the user EXPLICITLY ask to sort, reorganise, tidy, clean up, reorder, or restructure one of those boards?\n"
-					"IMPORTANT: The message must contain a clear intent to REARRANGE or REORGANISE board content.\n"
-					"Talking ABOUT a topic (e.g. fitness, work, cooking) does NOT count — only explicit board manipulation commands count.\n"
+					"Does the user EXPLICITLY command to sort, reorganise, tidy, clean up, reorder, or restructure one of those boards?\n"
+					"IMPORTANT: The message must contain an explicit command to REARRANGE or REORGANISE a board's cards/lists.\n"
+					"Asking for ideas, discussing business, asking questions, conversational chatting, or talking to a crew (e.g. iced, chef, coach, etc.) does NOT count — reply NO.\n"
 					f"Message: \"{user_text[:300]}\"\n"
-					"If YES (explicit sort/reorganise request): reply SORT_BOARD:<exact board name from the list above>\n"
-					"If NO (conversational message, question, or anything other than explicit board reorganisation): reply NO"
+					"If YES (explicit board sort/reorganise command): reply SORT_BOARD:<exact board name from the list above>\n"
+					"If NO (conversational message, questions, idea requests, or crew chat): reply NO"
 				)
 				# Use tier="cloud" — "auto" is not a valid tier value and falls to local silently.
 				# The classify prompt is tiny (~100 tokens). Cloud response < 500 ms.
@@ -1014,7 +1014,9 @@ async def route_message_stream(
 				)
 				_sem = _sem.strip()
 				if _sem.upper().startswith("SORT_BOARD:"):
-					_board_frag = _sem.split(":", 1)[1].strip().rstrip(".,;!?")
+					import re as _sre
+					_raw_b = _sem.split(":", 1)[1]
+					_board_frag = _sre.sub(r'[*_`#]|\bboard\s*:\s*', '', _raw_b, flags=_sre.IGNORECASE).strip().rstrip(".,;!?")
 					if _board_frag:
 						# Try direct name match first (fast model may return exact name)
 						_best = None

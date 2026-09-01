@@ -2302,7 +2302,7 @@ async def dispatch_structural_intent(intent: StructuralIntent, lang: str) -> str
 
 				# ── Step 4: Build summary ─────────────────────────────────────
 				lines = [f"Reorganised '{board_name}':"]
-				lines.append(f"Lists (alphabetical): {', '.join(l.get('name','?') for l in sorted_lists)}")
+				lines.append(f"Lists (alphabetical): {', '.join((l.get('name') or '?') for l in sorted_lists)}")
 				if _sort_results:
 					lines.append("")
 					lines.extend(_sort_results)
