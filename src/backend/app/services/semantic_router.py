@@ -186,7 +186,23 @@ async def route_semantic(
 
 	await crew_registry.reload_if_changed()
 
-	# ── Guard bypasses ──────────────────────────────────────────────────────
+	# ── Active routable crews ────────────────────────────────────────────────
+	active_crews = [
+		c for c in crew_registry.list_active()
+		if not getattr(c, "routing_disabled", False)
+	]
+	if not active_crews:
+		return []
+
+	# ── L1: explicit crew ID mention (highest priority) ─────────────────────
+	lower_msg = _msg.lower()
+	for crew in active_crews:
+		pattern = r"(?<![a-z0-9])" + re.escape(crew.id.lower()) + r"(?![a-z0-9])"
+		if re.search(pattern, lower_msg):
+			logger.info("semantic_router: explicit crew mention '%s'", crew.id)
+			return [crew.id]
+
+	# ── Guard bypasses (only for general messages without explicit crew mention) ──
 	if _SYSTEM_ACTION_RE.search(message[:500]):
 		logger.debug("semantic_router: system action — Z-direct")
 		return []
@@ -196,22 +212,6 @@ async def route_semantic(
 	if await is_system_action_or_operational_query(message):
 		logger.debug("semantic_router: system action or operational query detected (reasoning) — Z-direct")
 		return []
-
-	# ── Active routable crews ────────────────────────────────────────────────
-	active_crews = [
-		c for c in crew_registry.list_active()
-		if not getattr(c, "routing_disabled", False)
-	]
-	if not active_crews:
-		return []
-
-	# ── L1: explicit crew ID mention ─────────────────────────────────────────
-	lower_msg = _msg.lower()
-	for crew in active_crews:
-		pattern = r"(?<![a-z0-9])" + re.escape(crew.id.lower()) + r"(?![a-z0-9])"
-		if re.search(pattern, lower_msg):
-			logger.debug("semantic_router: explicit crew mention '%s'", crew.id)
-			return [crew.id]
 
 	routable_ids = {c.id for c in active_crews}
 

@@ -883,38 +883,52 @@ async def route_message_stream(
 		# mark-done). Bypasses the chat LLM entirely so verbs that the cloud
 		# model occasionally describes in prose without emitting an ACTION tag
 		# still execute. Falls through to crew/LLM when no intent matches.
-		_clf_timeout = 3.0  # default; overridden below for sort/board phrases
+		_explicit_crew: str | None = None
 		try:
-			from app.services.intent_router import (
-				classify_structural_intent, dispatch_structural_intent,
-			)
-			# SORT_BOARD classification can include a fast-model call to resolve colloquial
-			# board names (e.g. "aquarium" → "reef tank"). Budget 12s for that path;
-			# keep 3s for all other intents so normal latency is unaffected.
-			_SORT_RE_QUICK = re.compile(
-				# English
-				r'\b(?:sort|reorgani[sz]|restructur|clean\s+up|tidy\s+up|reorder|rearrang'
-				# German
-				r'|sortier|reorganisier|aufr[äa]um|umstrukturieren|neu\s+anordnen'
-				# Spanish / Portuguese
-				r'|reorganiza|reestructura|reestrutura|reordena|arruma'
-				# French
-				r'|r[ée]organise|restructure|r[ée]ordonne'
-				# Russian
-				r'|\u043e\u0442\u0441\u043e\u0440\u0442\u0438\u0440|\u0441\u043e\u0440\u0442\u0438\u0440|\u0440\u0435\u043e\u0440\u0433\u0430\u043d\u0438\u0437|\u0443\u043f\u043e\u0440\u044f\u0434\u043e\u0447|\u0440\u0430\u0437\u043b\u043e\u0436\u0438'
-				r')',
-				re.IGNORECASE,
-			)
-			_clf_timeout = 25.0 if _SORT_RE_QUICK.search(user_text[:200]) else 3.0
-			intent = await asyncio.wait_for(
-				classify_structural_intent(user_text, lang), timeout=_clf_timeout,
-			)
-		except asyncio.TimeoutError:
-			intent = None
-			logger.warning("Router: intent classifier timeout (>%.0fs) — falling through to LLM", _clf_timeout)
-		except Exception as _ie:
-			intent = None
-			logger.warning("Router: intent classifier failed: %s — falling through to LLM", _sanitize_for_log(_ie))
+			from app.services.crews import crew_registry as _creg
+			_u_low = user_text.lower()
+			for _c in _creg.list_active():
+				if not getattr(_c, "routing_disabled", False):
+					if re.search(r"(?<![a-z0-9])" + re.escape(_c.id.lower()) + r"(?![a-z0-9])", _u_low):
+						_explicit_crew = _c.id
+						break
+		except Exception:
+			pass
+
+		_clf_timeout = 3.0  # default; overridden below for sort/board phrases
+		intent = None
+		if not _explicit_crew:
+			try:
+				from app.services.intent_router import (
+					classify_structural_intent, dispatch_structural_intent,
+				)
+				# SORT_BOARD classification can include a fast-model call to resolve colloquial
+				# board names (e.g. "aquarium" → "reef tank"). Budget 12s for that path;
+				# keep 3s for all other intents so normal latency is unaffected.
+				_SORT_RE_QUICK = re.compile(
+					# English
+					r'\b(?:sort|reorgani[sz]|restructur|clean\s+up|tidy\s+up|reorder|rearrang'
+					# German
+					r'|sortier|reorganisier|aufr[äa]um|umstrukturieren|neu\s+anordnen'
+					# Spanish / Portuguese
+					r'|reorganiza|reestructura|reestrutura|reordena|arruma'
+					# French
+					r'|r[ée]organise|restructure|r[ée]ordonne'
+					# Russian
+					r'|\u043e\u0442\u0441\u043e\u0440\u0442\u0438\u0440|\u0441\u043e\u0440\u0442\u0438\u0440|\u0440\u0435\u043e\u0440\u0433\u0430\u043d\u0438\u0437|\u0443\u043f\u043e\u0440\u044f\u0434\u043e\u0447|\u0440\u0430\u0437\u043b\u043e\u0436\u0438'
+					r')',
+					re.IGNORECASE,
+				)
+				_clf_timeout = 25.0 if _SORT_RE_QUICK.search(user_text[:200]) else 3.0
+				intent = await asyncio.wait_for(
+					classify_structural_intent(user_text, lang), timeout=_clf_timeout,
+				)
+			except asyncio.TimeoutError:
+				intent = None
+				logger.warning("Router: intent classifier timeout (>%.0fs) — falling through to LLM", _clf_timeout)
+			except Exception as _ie:
+				intent = None
+				logger.warning("Router: intent classifier failed: %s — falling through to LLM", _sanitize_for_log(_ie))
 		if intent and intent.confidence >= 0.85:
 			logger.info(
 				"Router: structural intent '%s' (conf=%.2f) for '%s...'",
@@ -1191,6 +1205,9 @@ async def route_message_stream(
 		if _sq_topic:
 			logger.info("Router: bypassing semantic crew routing because state query was detected for topic: '%s'", _sq_topic)
 			routed_crews = []
+		elif _explicit_crew:
+			logger.info("Router: explicit crew mention '%s' overrides semantic routing", _explicit_crew)
+			routed_crews = [_explicit_crew]
 		else:
 			routed_crews = await route_semantic(
 				user_text, _ctx_history, channel, think_mode=_think_mode, lang=lang,
