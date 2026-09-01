@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from datetime import datetime, timedelta
 from app.models.db import AsyncSessionLocal, Briefing
 
 logger = logging.getLogger(__name__)
@@ -65,12 +66,18 @@ async def quarterly_review():
 		else:
 			crew_outputs_block = "[EMPTY — no recent crew outputs]"
 
+		now = datetime.now()
+		start_dt = now - timedelta(days=90)
+		date_range_str = f"{start_dt.strftime('%d.%m.%Y')} – {now.strftime('%d.%m.%Y')}"
+
 		prompt = (
-			"Z, three months have passed — write the quarterly review.\n"
+			f"Z, three months have passed — write the quarterly review covering the 90-day period: {date_range_str}.\n"
 			"Write like a smart colleague summing up a quarter: natural, direct, slightly informal — not a literary reflection, not a bullet dump.\n"
 			"Short sentences. Plain words. Sections are fine — the language inside should sound human, not generated.\n"
+			f"IMPORTANT: The header/title must explicitly name the exact date range being reviewed (e.g. '[Quartalsrückblick – {date_range_str}]').\n"
 			"What actually moved, what stalled, and what matters going forward — based only on the data provided. Be specific.\n"
-			"Aim for 350-500 words. Over 750 words is a failure.\n\n"
+			"Aim for 900-1400 words. Provide an extensive, highly elaborated macro strategic review across all domains — evaluate 90-day trajectory, systemic blockers, project velocities, complete cross-crew analysis, and strategic horizons for next quarter. Use bullets for lists; use short prose for observations and context.\n\n"
+			f"REVIEW PERIOD: {date_range_str} (covers the past 90 days / past quarter)\n\n"
 			"OPERATIONAL DATA (PAST 90 DAYS ACTIVITY):\n"
 			f"{activity_block}\n\n"
 			f"FULL PROJECT TREE:\n{tree_block}\n\n"
@@ -84,6 +91,8 @@ async def quarterly_review():
 			"- Never invent board cards, calendar events, emails, metrics, or completed tasks.\n"
 			"- Never assume what happened during the quarter if no data confirms it.\n"
 			"- The 'What was accomplished' section must only contain items explicitly present in OPERATIONAL DATA or PROJECT TREE above. If no cards moved, state that plainly — do not invent progress.\n"
+			"- Never treat stale or aged WIP cards (cards in 'In Progress' without recent completion) as accomplishments or positive progress — they are stalled bottlenecks.\n"
+			"- NO SELF-REFERENTIAL BIAS: Do not highlight or give special prominence/praise to the 'openZero' board, openZero tasks, or system self-development unless actual tangible cards moved to Done in the data. Treat openZero identically to every other project board.\n"
 			"- Proactive suggestions for the next quarter are allowed but must be clearly framed as suggestions, not as confirmed facts.\n\n"
 			"CREW REASONING SECTION:\n"
 			"- The CREW REASONING & DOMAIN INSIGHTS section contains domain-specific analysis from scheduled crew runs over this period.\n"
@@ -98,10 +107,10 @@ async def quarterly_review():
 		)
 
 		try:
-			content = await asyncio.wait_for(chat(prompt, tier="cloud", _feature="quarterly_review", max_tokens=2000, include_health=False), timeout=300.0)
+			content = await asyncio.wait_for(chat(prompt, tier="cloud", _feature="quarterly_review", max_tokens=3500, include_health=False), timeout=300.0)
 		except asyncio.TimeoutError:
 			logger.warning("quarterly_review — cloud tier timed out, retrying")
-			content = await chat(prompt, tier="cloud", _feature="quarterly_review", max_tokens=2000, include_health=False)
+			content = await chat(prompt, tier="cloud", _feature="quarterly_review", max_tokens=3500, include_health=False)
 
 		from app.services.agent_actions import parse_and_execute_actions
 		content, _, _ = await parse_and_execute_actions(content)

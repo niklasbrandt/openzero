@@ -109,16 +109,22 @@ async def weekly_review():
 		else:
 			crew_outputs_block = "[EMPTY — no recent crew outputs]"
 
+		now = datetime.datetime.now()
+		start_dt = now - datetime.timedelta(days=7)
+		date_range_str = f"{start_dt.strftime('%d.%m.%Y')} – {now.strftime('%d.%m.%Y')}"
+
 		prompt = (
 			"ABSOLUTE RULE — FABRICATION IS FORBIDDEN:\n"
 			"Every statement in this review must reference data from one of the sections below.\n"
 			"If a section is marked [EMPTY] or [NO STALE ITEMS], do not mention that topic.\n"
 			"Do not generate project guesses, suggestions, or next-week plans from your own knowledge.\n\n"
-			"Z, it's the end of the week — write the weekly review.\n"
+			f"Z, write the weekly review covering the 7-day period: {date_range_str}.\n"
 			"Write like a smart colleague summing up the week in a message. Natural, direct, slightly informal — not a literary reflection, not a bullet dump.\n"
 			"Short sentences. Plain words. Sections with headers are fine — the language inside should sound like a person, not a report generator.\n"
+			f"IMPORTANT: The header/title must explicitly name the exact date range being reviewed (e.g. '[Wochenrückblick – {date_range_str}]').\n"
 			"Be specific: name actual boards, cards, and progress mentioned in the data. Don't be vague.\n"
-			"Write only as much as the data warrants. If activity is light, a short focused review is better than a padded one. If there is a lot happening, up to ~600 words is fine. Never pad. Use bullets for lists of items; use short prose for observations and context.\n\n"
+			"Aim for 450-700 words. Provide thorough, well-elaborated analysis across all sections — dive into what moved, why stalled items are blocked, and what the strategic focus for next week should be. Use bullets for lists of items; use short prose for observations and context.\n\n"
+			f"REVIEW PERIOD: {date_range_str} (covers the past 7 days)\n\n"
 			f"RECENCY NOTE: Activity covers the last 14 days. Focus your analysis on the most recent 7 days; treat the prior 7 days as comparison context only.\n\n"
 			f"RECENT ACTIVITY (LAST 14 DAYS):\n{activity_block}\n\n"
 			f"STALE / NO MOVEMENT (14+ DAYS):\n{stale_block}\n\n"
@@ -132,6 +138,8 @@ async def weekly_review():
 			"- Never invent board cards, calendar events, emails, metrics, or completed tasks.\n"
 			"- Never assume what happened during the week if no data confirms it.\n"
 			"- The 'What was accomplished' section must only contain items explicitly present in RECENT ACTIVITY or PROJECT TREE above. If no cards moved, state that plainly — do not invent progress.\n"
+			"- Never treat stale or aged WIP cards (cards in 'In Progress' without recent completion) as accomplishments or positive progress — they are stalled bottlenecks.\n"
+			"- NO SELF-REFERENTIAL BIAS: Do not highlight or give special prominence/praise to the 'openZero' board, openZero tasks, or system self-development unless actual tangible cards moved to Done in the data. Treat openZero identically to every other project board.\n"
 			"- Every bullet must trace back to a card name, board name, or list name that appears verbatim in the data above.\n\n"
 			"CREW REASONING SECTION:\n"
 			"- The CREW REASONING & DOMAIN INSIGHTS section contains domain-specific analysis from scheduled crew runs over this period.\n"

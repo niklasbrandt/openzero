@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from datetime import datetime, timedelta
 from app.services.llm import chat, last_model_used
 from app.services.planka import (
 	get_project_tree,
@@ -65,12 +66,18 @@ async def yearly_review():
 		else:
 			crew_outputs_block = "[EMPTY — no recent crew outputs]"
 
+		now = datetime.now()
+		start_dt = now - timedelta(days=365)
+		date_range_str = f"{start_dt.strftime('%d.%m.%Y')} – {now.strftime('%d.%m.%Y')}"
+
 		prompt = (
-			"Z, it's been a full year — write the yearly review.\n"
+			f"Z, it's been a full year — write the yearly review covering the 365-day period: {date_range_str}.\n"
 			"Write like a smart colleague summing up twelve months: natural, direct, slightly informal — not a literary reflection, not a bullet dump.\n"
 			"Short sentences. Plain words. Sections are fine — the language inside should sound human, not generated.\n"
+			f"IMPORTANT: The header/title must explicitly name the exact date range being reviewed (e.g. '[Jahresrückblick – {date_range_str}]').\n"
 			"What actually moved, what themes emerged, what the year looked like from the data. Be specific.\n"
-			"Aim for 400-600 words. Over 900 words is a failure.\n\n"
+			"Aim for 1400-2000 words. Provide an exhaustive, deeply elaborated annual retrospective covering life & work trajectories, major accomplishments across all boards, structural pivots, deep cross-domain crew retrospectives across the full year, and strategic horizon goals for the year ahead. Use bullets for lists; use short prose for observations and context.\n\n"
+			f"REVIEW PERIOD: {date_range_str} (covers the past 365 days / past year)\n\n"
 			"OPERATIONAL DATA (PAST 365 DAYS ACTIVITY):\n"
 			f"{activity_block}\n\n"
 			f"FULL PROJECT TREE:\n{tree_block}\n\n"
@@ -84,6 +91,8 @@ async def yearly_review():
 			"- Never invent board cards, calendar events, emails, metrics, or completed tasks.\n"
 			"- Never assume what happened during the year if no data confirms it.\n"
 			"- The 'What was accomplished' section must only contain items explicitly present in OPERATIONAL DATA or PROJECT TREE above. If no cards moved, state that plainly — do not invent progress.\n"
+			"- Never treat stale or aged WIP cards (cards in 'In Progress' without recent completion) as accomplishments or positive progress — they are stalled bottlenecks.\n"
+			"- NO SELF-REFERENTIAL BIAS: Do not highlight or give special prominence/praise to the 'openZero' board, openZero tasks, or system self-development unless actual tangible cards moved to Done in the data. Treat openZero identically to every other project board.\n"
 			"- Proposed goals for next year are allowed but must be clearly framed as suggestions, not as confirmed plans.\n\n"
 			"CREW REASONING SECTION:\n"
 			"- The CREW REASONING & DOMAIN INSIGHTS section contains domain-specific analysis from scheduled crew runs over this period.\n"
@@ -93,16 +102,16 @@ async def yearly_review():
 			"2. If OPERATIONAL DATA is marked [EMPTY], do not list any specific card names or board progress — acknowledge honestly that no activity data is available for this period.\n"
 			"3. CRITICAL: Ignore any placeholder or '[e.g., ...]' values in your personal context.\n"
 			"4. Be specific about what the data shows — no fabricated accomplishments, no assumed themes.\n"
-			"5. Propose 3 year-long goals — frame them as suggestions, not scheduled commitments.\n"
+			"5. Propose 3-5 year-long goals — frame them as suggestions, not scheduled commitments.\n"
 			"6. NO metaphors, NO literary prose, NO filler phrases. Write like a human, not an LLM trying to sound visionary.\n"
 			"7. NEVER use emoji or unicode decorative symbols."
 		)
 
 		try:
-			content = await asyncio.wait_for(chat(prompt, tier="cloud", _feature="yearly_review", max_tokens=2500, include_health=False), timeout=600.0)
+			content = await asyncio.wait_for(chat(prompt, tier="cloud", _feature="yearly_review", max_tokens=4000, include_health=False), timeout=600.0)
 		except asyncio.TimeoutError:
 			logger.warning("yearly_review — cloud tier timed out, retrying")
-			content = await chat(prompt, tier="cloud", _feature="yearly_review", max_tokens=2500, include_health=False)
+			content = await chat(prompt, tier="cloud", _feature="yearly_review", max_tokens=4000, include_health=False)
 
 		from app.services.agent_actions import parse_and_execute_actions
 		content, _, _ = await parse_and_execute_actions(content)

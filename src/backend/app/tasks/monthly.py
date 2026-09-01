@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from datetime import datetime, timedelta
 from app.models.db import AsyncSessionLocal, Briefing
 
 logger = logging.getLogger(__name__)
@@ -65,12 +66,18 @@ async def monthly_review():
 		else:
 			crew_outputs_block = "[EMPTY — no recent crew outputs]"
 
+		now = datetime.now()
+		start_dt = now - timedelta(days=30)
+		date_range_str = f"{start_dt.strftime('%d.%m.%Y')} – {now.strftime('%d.%m.%Y')}"
+
 		prompt = (
-			"Z, it's been a full month — write the monthly review.\n"
+			f"Z, write the monthly review covering the 30-day period: {date_range_str}.\n"
 			"Write like a smart colleague giving a frank summary after a month of work. Natural, direct, slightly informal — not a literary essay, not a raw data dump.\n"
 			"Short sentences. Plain words. Sections are fine — the language inside should sound like a person, not a report generator.\n"
+			f"IMPORTANT: The header/title must explicitly name the exact date range being reviewed (e.g. '[Monatsrückblick – {date_range_str}]' or referencing the month actually covered). Do NOT label it as the new/current month if the activity reviewed occurred during the preceding 30 days.\n"
 			"Be specific: name actual boards, cards, and progress mentioned in the data. Don't be vague.\n"
-			"Aim for 250-400 words. Use bullets for lists; use short prose for observations and context.\n\n"
+			"Aim for 600-900 words. Provide thorough, well-elaborated analysis across all sections — dive deep into what was completed across all projects/boards, provide structured root-cause analysis for stalled work, synthesize all crew reasoning comprehensively across domains, and propose 3-5 concrete strategic focus areas for next month. Use bullets for lists; use short prose for observations and context.\n\n"
+			f"REVIEW PERIOD: {date_range_str} (covers the past 30 days)\n\n"
 			"STRICT OPERATIONAL DATA (THE ONLY TRUTH):\n"
 			f"{activity_block}\n\n"
 			f"FULL PROJECT TREE:\n{tree_block}\n\n"
@@ -84,6 +91,8 @@ async def monthly_review():
 			"- Never invent board cards, calendar events, emails, metrics, or completed tasks.\n"
 			"- Never assume what happened during the month if no data confirms it.\n"
 			"- The 'What was accomplished' section must only contain items explicitly present in OPERATIONAL DATA or PROJECT TREE above. If no cards moved, state that plainly — do not invent progress.\n"
+			"- Never treat stale or aged WIP cards (cards in 'In Progress' without recent completion) as accomplishments or positive progress — they are stalled bottlenecks.\n"
+			"- NO SELF-REFERENTIAL BIAS: Do not highlight or give special prominence/praise to the 'openZero' board, openZero tasks, or system self-development unless actual tangible cards moved to Done in the data. Treat openZero identically to every other project board.\n"
 			"- Proactive goals for next month are allowed but must be clearly framed as suggestions, not as confirmed plans.\n\n"
 			"CREW REASONING SECTION:\n"
 			"- The CREW REASONING & DOMAIN INSIGHTS section contains domain-specific analysis from scheduled crew runs over this period.\n"
@@ -92,16 +101,16 @@ async def monthly_review():
 			"1. Respond ONLY based on the OPERATIONAL DATA, PROJECT TREE, BOARD WALKTHROUGH, and CREW REASONING & DOMAIN INSIGHTS above.\n"
 			"2. If OPERATIONAL DATA is marked [EMPTY], do not list any specific card names or board progress — acknowledge honestly that no activity data is available for this period.\n"
 			"3. CRITICAL: Ignore any placeholder or '[e.g., ...]' values from personal/business context.\n"
-			"4. Suggest 3 meaningful goals for next month — frame them as suggestions, not scheduled commitments.\n"
+			"4. Suggest 3-5 meaningful goals for next month — frame them as suggestions, not scheduled commitments.\n"
 			"5. NO metaphors, NO literary prose, NO filler phrases. Write like a human, not an LLM trying to sound reflective.\n"
 			"6. NEVER use emoji or unicode decorative symbols.\n"
 		)
 
 		try:
-			content = await asyncio.wait_for(chat(prompt, tier="cloud", _feature="monthly_review", max_tokens=2000, include_health=False), timeout=300.0)
+			content = await asyncio.wait_for(chat(prompt, tier="cloud", _feature="monthly_review", max_tokens=3000, include_health=False), timeout=300.0)
 		except asyncio.TimeoutError:
 			logger.warning("monthly_review — cloud tier timed out, retrying")
-			content = await chat(prompt, tier="cloud", _feature="monthly_review", max_tokens=2000, include_health=False)
+			content = await chat(prompt, tier="cloud", _feature="monthly_review", max_tokens=3000, include_health=False)
 
 		from app.services.agent_actions import parse_and_execute_actions
 		content, _, _ = await parse_and_execute_actions(content)

@@ -1861,7 +1861,10 @@ async def get_activity_report(days: int = 30) -> str:
 							blocked_cards.append(f"- {c_name}{cos_tag} ({b_name})")
 						elif is_ip:
 							age = (datetime.now() - c_updated).days
-							in_progress_cards.append(f"- {c_name}{cos_tag} ({b_name}, {age} days active)")
+							if age > 14:
+								stalled_cards.append(f"- {c_name}{cos_tag} ({b_name}, {age} days stalled in WIP without update)")
+							else:
+								in_progress_cards.append(f"- {c_name}{cos_tag} ({b_name}, {age} days active)")
 						elif c_updated < (datetime.now() - stall_threshold):
 							stalled_cards.append(f"- {c_name}{cos_tag} ({b_name}, last activity {c_updated.strftime('%Y-%m-%d')})")
 
