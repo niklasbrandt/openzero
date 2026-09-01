@@ -190,7 +190,17 @@ async def _handle_inbound(sender: str, text: str) -> None:
 		)
 		try:
 			from app.services.router import _REORGANIZE_BOARD_RE as _reorg_re
-			_stream_timeout = 900.0 if _reorg_re.search(text[:500]) else 900.0
+			_is_complex_reorg = bool(_reorg_re.search(text[:500]))
+		except Exception:
+			_is_complex_reorg = False
+		
+		import re
+		_is_bulk_save = bool(re.search(
+			r'\b([5-9]|[1-9]\d+)\s+(?:rezepte?|recipes?|mahlzeiten|gerichte?|workouts?|trainings?|pl[aä]ne?|items?|notizen?)\b',
+			text[:500], re.IGNORECASE,
+		))
+		_stream_timeout = 900.0 if (_is_complex_reorg or _is_bulk_save) else 900.0
+		try:
 			async with _asyncio.timeout(_stream_timeout):
 				async for _ in token_stream:
 					pass
@@ -264,7 +274,17 @@ async def _handle_inbound_image(sender: str, media_id: str, user_hint: str) -> N
 	)
 	try:
 		from app.services.router import _REORGANIZE_BOARD_RE as _reorg_re
-		_stream_timeout = 900.0 if _reorg_re.search(caption[:500]) else 900.0
+		_is_complex_reorg = bool(_reorg_re.search(caption[:500]))
+	except Exception:
+		_is_complex_reorg = False
+	
+	import re
+	_is_bulk_save = bool(re.search(
+		r'\b([5-9]|[1-9]\d+)\s+(?:rezepte?|recipes?|mahlzeiten|gerichte?|workouts?|trainings?|pl[aä]ne?|items?|notizen?)\b',
+		caption[:500], re.IGNORECASE,
+	))
+	_stream_timeout = 900.0 if (_is_complex_reorg or _is_bulk_save) else 900.0
+	try:
 		async with _asyncio.timeout(_stream_timeout):
 			async for _ in token_stream:
 				pass
