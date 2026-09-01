@@ -119,9 +119,15 @@ async def weekly_review():
 			"If a section is marked [EMPTY] or [NO STALE ITEMS], do not mention that topic.\n"
 			"Do not generate project guesses, suggestions, or next-week plans from your own knowledge.\n\n"
 			f"Z, write the weekly review covering the 7-day period: {date_range_str}.\n"
-			"Write like a smart colleague summing up the week in a message. Natural, direct, slightly informal — not a literary reflection, not a bullet dump.\n"
-			"Short sentences. Plain words. Sections with headers are fine — the language inside should sound like a person, not a report generator.\n"
-			f"IMPORTANT: The header/title must explicitly name the exact date range being reviewed (e.g. '[Wochenrückblick – {date_range_str}]').\n"
+			"Tone: Direct, grounded, objective, professional yet conversational. Natural, clear, concise — not a literary reflection, not a snarky commentary, not a bullet dump.\n"
+			"Short sentences. Plain words. Use standard markdown headings on their own lines (e.g. '## Erledigt', '## In Arbeit / Offen', '## Stillstand / Bottlenecks', '## Crews & Insights', '## Vorschlag für nächste Woche', '## Board Setup').\n"
+			f"IMPORTANT TITLE & FORMATTING RULES:\n"
+			f"- The very first line MUST be a standard Markdown H1 title: '# Wochenrückblick ({date_range_str})' followed by a blank line.\n"
+			f"- NEVER wrap the title in square brackets like '[Wochenrückblick – ...]'.\n"
+			f"- NO cringy, folksy, or cynical metaphors/similes (e.g. absolutely NO 'wie Wäsche...', 'wie ein langer Sonntag', 'wie ein Haufen ungeladener Gäste').\n"
+			f"- NO sarcastic or patronizing parenthetical commentary on tasks. Report completed items straightforwardly.\n"
+			f"- NO whimsical, metaphorical, or sarcastic section headings. Use plain, clear headings.\n"
+			f"- NO cynical remarks about lack of progress. State facts objectively.\n"
 			"Be specific: name actual boards, cards, and progress mentioned in the data. Don't be vague.\n"
 			"Aim for 450-700 words. Provide thorough, well-elaborated analysis across all sections — dive into what moved, why stalled items are blocked, and what the strategic focus for next week should be. Use bullets for lists of items; use short prose for observations and context.\n\n"
 			f"REVIEW PERIOD: {date_range_str} (covers the past 7 days)\n\n"
@@ -173,7 +179,9 @@ async def weekly_review():
 			content = await chat(prompt, tier="cloud", _feature="weekly_review", max_tokens=2000, include_health=False)
 
 		from app.services.agent_actions import parse_and_execute_actions
+		from app.tasks.review_utils import format_review_markdown
 		content, _, _ = await parse_and_execute_actions(content)
+		content = format_review_markdown(content, "Wochenrückblick", date_range_str)
 
 		# Store in Database
 		async with AsyncSessionLocal() as session:

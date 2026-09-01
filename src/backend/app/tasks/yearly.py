@@ -72,9 +72,15 @@ async def yearly_review():
 
 		prompt = (
 			f"Z, it's been a full year — write the yearly review covering the 365-day period: {date_range_str}.\n"
-			"Write like a smart colleague summing up twelve months: natural, direct, slightly informal — not a literary reflection, not a bullet dump.\n"
-			"Short sentences. Plain words. Sections are fine — the language inside should sound human, not generated.\n"
-			f"IMPORTANT: The header/title must explicitly name the exact date range being reviewed (e.g. '[Jahresrückblick – {date_range_str}]').\n"
+			"Tone: Direct, grounded, objective, professional yet conversational. Natural and clear — not a literary reflection, not a snarky commentary, not a bullet dump.\n"
+			"Short sentences. Plain words. Use standard markdown headings on their own lines (e.g. '## Erledigt', '## In Arbeit / Offen', '## Stillstand / Bottlenecks', '## Crews & Insights', '## Jahresziele & Strategie').\n"
+			f"IMPORTANT TITLE & FORMATTING RULES:\n"
+			f"- The very first line MUST be a standard Markdown H1 title: '# Jahresrückblick ({date_range_str})' followed by a blank line.\n"
+			f"- NEVER wrap the title in square brackets like '[Jahresrückblick – ...]'.\n"
+			f"- NO cringy, folksy, or cynical metaphors/similes (e.g. absolutely NO 'wie Wäsche...', 'wie ein langer Sonntag', 'wie ein Haufen ungeladener Gäste').\n"
+			f"- NO sarcastic or patronizing parenthetical commentary on tasks. Report completed items straightforwardly.\n"
+			f"- NO whimsical, metaphorical, or sarcastic section headings. Use plain, clear headings.\n"
+			f"- NO cynical remarks about lack of progress. State facts objectively.\n"
 			"What actually moved, what themes emerged, what the year looked like from the data. Be specific.\n"
 			"Aim for 1400-2000 words. Provide an exhaustive, deeply elaborated annual retrospective covering life & work trajectories, major accomplishments across all boards, structural pivots, deep cross-domain crew retrospectives across the full year, and strategic horizon goals for the year ahead. Use bullets for lists; use short prose for observations and context.\n\n"
 			f"REVIEW PERIOD: {date_range_str} (covers the past 365 days / past year)\n\n"
@@ -114,7 +120,9 @@ async def yearly_review():
 			content = await chat(prompt, tier="cloud", _feature="yearly_review", max_tokens=4000, include_health=False)
 
 		from app.services.agent_actions import parse_and_execute_actions
+		from app.tasks.review_utils import format_review_markdown
 		content, _, _ = await parse_and_execute_actions(content)
+		content = format_review_markdown(content, "Jahresrückblick", date_range_str)
 
 		# Store in Database
 		async with AsyncSessionLocal() as session:

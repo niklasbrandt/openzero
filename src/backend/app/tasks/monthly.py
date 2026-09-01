@@ -72,9 +72,16 @@ async def monthly_review():
 
 		prompt = (
 			f"Z, write the monthly review covering the 30-day period: {date_range_str}.\n"
-			"Write like a smart colleague giving a frank summary after a month of work. Natural, direct, slightly informal — not a literary essay, not a raw data dump.\n"
-			"Short sentences. Plain words. Sections are fine — the language inside should sound like a person, not a report generator.\n"
-			f"IMPORTANT: The header/title must explicitly name the exact date range being reviewed (e.g. '[Monatsrückblick – {date_range_str}]' or referencing the month actually covered). Do NOT label it as the new/current month if the activity reviewed occurred during the preceding 30 days.\n"
+			"Tone: Direct, grounded, objective, professional yet conversational. Natural and clear — not a literary essay, not a raw data dump.\n"
+			"Short sentences. Plain words. Use standard markdown headings on their own lines (e.g. '## Erledigt', '## In Arbeit / Offen', '## Stillstand / Bottlenecks', '## Crews & Insights', '## Fokus nächste 30 Tage').\n"
+			f"IMPORTANT TITLE & FORMATTING RULES:\n"
+			f"- The very first line MUST be a standard Markdown H1 title: '# Monatsrückblick ({date_range_str})' followed by a blank line.\n"
+			f"- NEVER wrap the title in square brackets like '[Monatsrückblick – ...]'.\n"
+			f"- NO cringy, folksy, or cynical metaphors/similes (e.g. absolutely NO 'wie Wäsche...', 'wie ein langer Sonntag', 'wie ein Haufen ungeladener Gäste').\n"
+			f"- NO sarcastic or patronizing parenthetical commentary on tasks (e.g. do NOT write '(jetzt kann der Garten nicht mehr jammern)' or '(sieht aus, als hättest du doch einen grünen Daumen)'). Report completed items straightforwardly.\n"
+			f"- NO whimsical, metaphorical, or sarcastic section headings (e.g. NEVER 'Was rumliegt wie...'). Use plain, clear headings.\n"
+			f"- NO cynical remarks about lack of progress ('Das ist es. Keine wilden Experimente.'). State facts objectively.\n"
+			f"- Do NOT label it as the new/current month if the activity reviewed occurred during the preceding 30 days.\n"
 			"Be specific: name actual boards, cards, and progress mentioned in the data. Don't be vague.\n"
 			"Aim for 600-900 words. Provide thorough, well-elaborated analysis across all sections — dive deep into what was completed across all projects/boards, provide structured root-cause analysis for stalled work, synthesize all crew reasoning comprehensively across domains, and propose 3-5 concrete strategic focus areas for next month. Use bullets for lists; use short prose for observations and context.\n\n"
 			f"REVIEW PERIOD: {date_range_str} (covers the past 30 days)\n\n"
@@ -113,7 +120,9 @@ async def monthly_review():
 			content = await chat(prompt, tier="cloud", _feature="monthly_review", max_tokens=3000, include_health=False)
 
 		from app.services.agent_actions import parse_and_execute_actions
+		from app.tasks.review_utils import format_review_markdown
 		content, _, _ = await parse_and_execute_actions(content)
+		content = format_review_markdown(content, "Monatsrückblick", date_range_str)
 
 		# Store in Database
 		async with AsyncSessionLocal() as session:
