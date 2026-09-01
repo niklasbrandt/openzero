@@ -56,6 +56,8 @@ async def send_whatsapp_message(text: str) -> None:
 	}
 
 	import re
+	# Normalize glued markdown headers (e.g. 'Text## Header' -> 'Text\n\n## Header')
+	text = re.sub(r'([^\n#])\s*(#{1,6})\s*([^\n#]+)', r'\1\n\n\2 \3', text)
 	# Convert markdown headers: '# Title', '## Title' -> '*Title*'
 	text = re.sub(r'^(#{1,6})\s+([^\n]+)', r'*\2*', text, flags=re.MULTILINE)
 

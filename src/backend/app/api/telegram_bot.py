@@ -442,7 +442,10 @@ def _md_to_html(text: str) -> str:
 	# Escape raw HTML chars BEFORE injecting intentional tags.
 	safe = _html.escape(text)
 
-	# Markdown headers: '# Title', '## Title', '### Title' -> <b>Title</b>
+	# 1. Normalize glued headings before line-start matching (e.g. 'Text## Header' -> 'Text\n\n## Header')
+	safe = re.sub(r'([^\n#])\s*(#{1,6})\s*([^\n#]+)', r'\1\n\n\2 \3', safe)
+
+	# 2. Markdown headers: '# Title', '## Title', '### Title' -> <b>Title</b>
 	safe = re.sub(r'^(#{1,6})\s+([^\n]+)', r'<b>\2</b>', safe, flags=re.MULTILINE)
 
 	# Bold: **text** or *text* -> <b>text</b>

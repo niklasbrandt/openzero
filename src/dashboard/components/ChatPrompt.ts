@@ -533,6 +533,9 @@ export class ChatPrompt extends HTMLElement {
 			.replace(/</g, '&lt;')
 			.replace(/>/g, '&gt;');
 
+		// 1.5. Normalize glued headings before line-start matching (e.g. 'Title## Header' -> 'Title\n\n## Header')
+		html = html.replace(/([^\n#])\s*(#{1,6})\s*([^\n#]+)/g, '$1\n\n$2 $3');
+
 		// Headers
 		html = html.replace(/^###\s+([^\n]+)/gm, '<h4 class="chat-h4" style="margin:0.5rem 0 0.25rem 0;font-size:0.95rem;font-weight:600;">$1</h4>');
 		html = html.replace(/^##\s+([^\n]+)/gm, '<h3 class="chat-h3" style="margin:0.65rem 0 0.25rem 0;font-size:1rem;font-weight:600;color:var(--accent-color, #14B8A6);">$1</h3>');

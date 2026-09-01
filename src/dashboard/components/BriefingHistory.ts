@@ -120,21 +120,24 @@ export class BriefingHistory extends HTMLElement {
 			.replace(/</g, '&lt;')
 			.replace(/>/g, '&gt;');
 
-		// Headers
+		// 1. Normalize glued headings before line-start matching (e.g. 'Title## Header' -> 'Title\n\n## Header')
+		html = html.replace(/([^\n#])\s*(#{1,6})\s*([^\n#]+)/g, '$1\n\n$2 $3');
+
+		// 2. Headers
 		html = html.replace(/^###\s+([^\n]+)/gm, '<h4 class="briefing-h4">$1</h4>');
 		html = html.replace(/^##\s+([^\n]+)/gm, '<h3 class="briefing-h3">$1</h3>');
 		html = html.replace(/^#\s+([^\n]+)/gm, '<h2 class="briefing-h2">$1</h2>');
 
-		// Bold: **text**
+		// 3. Bold: **text**
 		html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 
-		// Links: [text](url) — safe scheme only
+		// 4. Links: [text](url) — safe scheme only
 		html = html.replace(/\[(.*?)\]\((.*?)\)/g, (_match, text, url) => {
 			const safeUrl = /^(https?:\/\/|\/)/i.test(url) ? url : '#';
 			return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="briefing-link">${text}</a>`;
 		});
 
-		// Newlines to <br>
+		// 5. Newlines to <br>
 		html = html.replace(/\n/g, '<br>');
 
 		return html;
