@@ -479,7 +479,6 @@ async def append_crew_exchange(crew_id: str, user_msg: str, crew_response: str) 
 		lang = await get_user_lang()
 		t = get_translations(lang)
 		project_name: str = _crew_project_name(crew_id, t)
-		list_name: str = t.get("crew_conversation_list", "Conversation")
 
 		date_fmt = await _get_user_date_format()
 		try:
@@ -532,7 +531,6 @@ async def get_crew_board_work_context(crew_id: str) -> str:
 		t = get_translations(lang)
 		project_name: str = _crew_project_name(crew_id, t)
 		board_name = _crew_board_name(crew_id)
-
 		async with await _planka_client() as client:
 			project_id, board_id = await _resolve_crew_board_ids(client, project_name, board_name)
 			if not project_id or not board_id:
@@ -601,7 +599,6 @@ async def get_crew_memory_context(crew_id: str) -> str:
 		project_name: str = _crew_project_name(crew_id, t)
 		board_name = _crew_board_name(crew_id)
 
-		date_fmt = await _get_user_date_format()
 		try:
 			tz = await _get_user_timezone()
 			now_local = datetime.now(tz)
@@ -695,8 +692,6 @@ async def get_recent_crew_outputs(hours: Optional[int] = None) -> dict[str, str]
 				project_id, board_id = await _resolve_crew_board_ids(client, p_name, board_name)
 				if not project_id or not board_id:
 					continue
-
-				# Get board cards
 				bd = await client.get(f"/api/boards/{board_id}", params={"included": "lists,cards"})
 				if bd.status_code != 200:
 					continue

@@ -223,29 +223,6 @@ class RouterResult:
 	routed_to_crew: str | None = None  # crew_id if a crew handled it
 
 
-async def _validate_routing_intent(text: str, expected_intent: str) -> bool:
-	"""Call LLM reasoning to verify if the user text actually expresses the expected routing intent."""
-	from app.services.llm import chat
-	prompt = (
-		f"The user said: '{text}'.\n"
-		f"The system matched a keyword trigger for: '{expected_intent}'.\n"
-		"Determine if the user is genuinely requesting this action/intent right now, "
-		"or if they are just discussing it, referencing it, or saying something else entirely.\n"
-		"Explain your reasoning briefly, then output exactly VALID or OVERRULE at the end."
-	)
-	try:
-		response = await chat(
-			prompt,
-			tier="fast",
-			system_override="You are a strict intent routing classifier. You must output VALID or OVERRULE at the very end of your response.",
-			_feature="router_validation"
-		)
-		return "OVERRULE" not in response.upper()
-	except Exception as e:
-		logger.warning("Router validation failed for %s: %s", expected_intent, e)
-		return True  # Fallback to trusting the keyword match on LLM error
-
-
 async def _classify_state_query(text: str, history: list) -> Optional[str]:
 	"""Reasoning-based check to determine if the message is a state query/lookup.
 
@@ -424,6 +401,15 @@ async def route_message_stream(
 					_ci_close(channel)
 					_ci_msg = _ci_tr.get("checkin_done_msg", "Check-in complete.")
 					yield _ci_msg
+					_ci_clean, _ci_cmds, _ci_pending = await bus.commit_reply(
+						channel=channel, raw_reply=_ci_msg,
+						model="checkin", user_text=user_text, save=save_history,
+					)
+					if not result_future.done():
+						result_future.set_result(RouterResult(
+							reply=_ci_clean or _ci_msg, model="checkin",
+							executed_cmds=_ci_cmds, pending_actions=_ci_pending,
+						))
 					return
 				elif _CHECKIN_NEXT_RE.match(_trimmed_ci[:64]):
 					_ci_session = _ci_adv(channel, _ci_chat_id)
@@ -434,7 +420,17 @@ async def route_message_stream(
 					_ci_label = _ci_tr.get("checkin_step_label", "Step {index} of {total}").format(
 						index=_ci_session.index + 1, total=_ci_session.total
 					)
-					yield f"**{_ci_stop.title}** — {_ci_label}\n\n{_ci_stop.body}"
+					_ci_step_text = f"**{_ci_stop.title}** — {_ci_label}\n\n{_ci_stop.body}"
+					yield _ci_step_text
+					_ci_clean, _ci_cmds, _ci_pending = await bus.commit_reply(
+						channel=channel, raw_reply=_ci_step_text,
+						model="checkin", user_text=user_text, save=save_history,
+					)
+					if not result_future.done():
+						result_future.set_result(RouterResult(
+							reply=_ci_clean or _ci_step_text, model="checkin",
+							executed_cmds=_ci_cmds, pending_actions=_ci_pending,
+						))
 					return
 
 
@@ -497,23 +493,22 @@ async def route_message_stream(
 			and not _HAS_ACTION_VERB_RE.search(_trimmed[:_MAX_RE_INPUT])
 			and not _EMOTIONAL_MARKER_RE.search(_trimmed[:_MAX_RE_INPUT])
 		):
-			if await _validate_routing_intent(user_text, "FAST_PATH_TRIVIAL_BYPASS"):
-				logger.debug("Router 0.0: fast-path bypass for '%s'", _sanitize_for_log(user_text))
-				_fp_chunks = []
-				async for _fp_token in chat_stream_with_context(user_text, history=history, extra_system_context=_z_core_ctx):
-					_fp_chunks.append(_fp_token)
-					yield _fp_token
-				_fp_response = sanitise_output("".join(_fp_chunks))
-				_fp_response = rehydrate_response(_fp_response, get_active_rep_map())
-				_fp_clean, _fp_cmds, _fp_pending = await bus.commit_reply(
-					channel=channel, raw_reply=_fp_response,
-					model=last_model_used.get(), user_text=user_text, save=save_history,
-				)
-				result_future.set_result(RouterResult(
-					reply=_fp_clean, model=last_model_used.get(),
-					executed_cmds=_fp_cmds, pending_actions=_fp_pending,
-				))
-				return
+			logger.debug("Router 0.0: fast-path bypass for '%s'", _sanitize_for_log(user_text))
+			_fp_chunks = []
+			async for _fp_token in chat_stream_with_context(user_text, history=history, extra_system_context=_z_core_ctx):
+				_fp_chunks.append(_fp_token)
+				yield _fp_token
+			_fp_response = sanitise_output("".join(_fp_chunks))
+			_fp_response = rehydrate_response(_fp_response, get_active_rep_map())
+			_fp_clean, _fp_cmds, _fp_pending = await bus.commit_reply(
+				channel=channel, raw_reply=_fp_response,
+				model=last_model_used.get(), user_text=user_text, save=save_history,
+			)
+			result_future.set_result(RouterResult(
+				reply=_fp_clean, model=last_model_used.get(),
+				executed_cmds=_fp_cmds, pending_actions=_fp_pending,
+			))
+			return
 
 		# ── -1. Manual audit intercept ───────────────────────────────────────
 		# Explicit self-audit requests ("audit your actions", "look back and audit",
@@ -521,35 +516,34 @@ async def route_message_stream(
 		# Placed before the recall intercept so "look back … audit" is not swallowed
 		# by the conversation-history recall logic.
 		if _AUDIT_INTENT_RE.search(user_text[:_MAX_RE_INPUT]):
-			if await _validate_routing_intent(user_text, "RUN_SELF_AUDIT"):
-				logger.info("Router: audit intent detected — running full self-audit")
-				from app.services.self_audit import run_full_audit
-				from app.services.translations import get_translations, get_user_lang
-				try:
-					audit_report = await run_full_audit()
-				except Exception as _ae:
-					logger.error("Router audit intercept: run_full_audit failed: %s", _ae)
-					audit_report = ""
-				if audit_report:
-					response = audit_report
-				else:
-					_lang = await get_user_lang()
-					_t = get_translations(_lang)
-					response = _t.get(
-						"audit_clean_msg",
-						"Self-audit complete — no issues found. "
-						"All tracked actions are verified and consistent with Planka's live state.",
-					)
-				yield response
-				clean, cmds, pending = await bus.commit_reply(
-					channel=channel, raw_reply=response,
-					model="self_audit", user_text=user_text, save=save_history,
+			logger.info("Router: audit intent detected — running full self-audit")
+			from app.services.self_audit import run_full_audit
+			from app.services.translations import get_translations, get_user_lang
+			try:
+				audit_report = await run_full_audit()
+			except Exception as _ae:
+				logger.error("Router audit intercept: run_full_audit failed: %s", _ae)
+				audit_report = ""
+			if audit_report:
+				response = audit_report
+			else:
+				_lang = await get_user_lang()
+				_t = get_translations(_lang)
+				response = _t.get(
+					"audit_clean_msg",
+					"Self-audit complete — no issues found. "
+					"All tracked actions are verified and consistent with Planka's live state.",
 				)
-				result_future.set_result(RouterResult(
-					reply=clean, model="self_audit",
-					executed_cmds=cmds, pending_actions=pending,
-				))
-				return
+			yield response
+			clean, cmds, pending = await bus.commit_reply(
+				channel=channel, raw_reply=response,
+				model="self_audit", user_text=user_text, save=save_history,
+			)
+			result_future.set_result(RouterResult(
+				reply=clean, model="self_audit",
+				executed_cmds=cmds, pending_actions=pending,
+			))
+			return
 
 		# ── 0. Recall-history intercept ──────────────────────────────────────
 		# When the user asks to recall messages from today, yesterday, N days ago, etc.,
@@ -557,10 +551,9 @@ async def route_message_stream(
 		# Pre-filter: only run heavy regex if common recall keywords are present.
 		_common_recall_words = ("recall", "look up", "review", "show me", "last", "yesterday", "today", "did you")
 		if any(w in user_text.lower() for w in _common_recall_words) and _RECALL_HISTORY_RE.search(user_text[:_MAX_RE_INPUT]):
-			if await _validate_routing_intent(user_text, "RECALL_CONVERSATION_HISTORY"):
-				from app.models.db import get_day_exchanges, get_range_exchanges
-				from app.services.planka import find_item_in_planka
-				days_ago, is_range = _resolve_timeframe(user_text)
+			from app.models.db import get_day_exchanges, get_range_exchanges
+			from app.services.planka import find_item_in_planka
+			days_ago, is_range = _resolve_timeframe(user_text)
 			if is_range:
 				all_exchanges = await get_range_exchanges(days_ago)
 			else:

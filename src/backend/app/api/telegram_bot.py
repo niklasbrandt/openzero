@@ -465,7 +465,14 @@ def _md_to_html(text: str) -> str:
 
 def strip_llm_time_header(text: str) -> str:
 	"""Remove LLM-generated time headers like '16:40 - Tuesday 3rd' from the start of text."""
-	return re.sub(r'^\d{1,2}:\d{2}\s*[-\u2013]?\s*[^\n]*\n*', '', text, count=1).strip()
+	return re.sub(
+		r'^\d{1,2}:\d{2}(?:\s*[-\u2013]\s*[^\n]+)?\s*\n+',
+		'',
+		text,
+		count=1,
+		flags=re.IGNORECASE,
+	).strip()
+
 
 async def send_voice_message(audio_bytes: bytes, caption: Optional[str] = None):
 	"""Send voice message to the owner."""

@@ -212,20 +212,19 @@ async def route_semantic(
 	if await is_system_action_or_operational_query(message):
 		logger.debug("semantic_router: system action or operational query detected (reasoning) — Z-direct")
 		return []
-
 	routable_ids = {c.id for c in active_crews}
 
 	# ── L2: Primary Cloud LLM Routing ────────────────────────────────────────
 	logger.info("semantic_router: evaluating user intent using primary Cloud LLM router")
 	try:
 		from app.services.llm import chat as cloud_chat
-		
+
 		# Build a detailed, clean crew manifest
 		crew_manifest = []
 		for crew in active_crews:
 			kws = ", ".join(crew.keywords or [])
 			crew_manifest.append(f"- ID: {crew.id}\n  Name: {crew.name}\n  Description: {crew.description}\n  Keywords: {kws}")
-		
+
 		crews_list_str = "\n\n".join(crew_manifest)
 		
 		routing_prompt = (

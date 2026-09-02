@@ -242,7 +242,7 @@ export class ChatPrompt extends HTMLElement {
 				for (const line of lines) {
 					if (!line.startsWith('data: ')) continue;
 					const dataStr = line.slice(6).trim();
-					if (!dataStr) continue;
+					if (!dataStr || dataStr === '[DONE]') continue;
 
 					try {
 						const data = JSON.parse(dataStr);

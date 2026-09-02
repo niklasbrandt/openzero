@@ -1055,7 +1055,7 @@ async def dashboard_chat_stream(req: ChatRequest, request: Request, _rl: None = 
 			result = await _asyncio.wait_for(_asyncio.shield(result_fut), timeout=30.0)
 		except _asyncio.TimeoutError:
 			logger.error("Dashboard: result_fut never resolved — generator may have crashed silently")
-			yield f"data: {json.dumps({'error': 'Response processing timed out. Please try again.'})}"
+			yield f"data: {json.dumps({'error': 'Response processing timed out. Please try again.'})}\n\n"
 			return
 
 		from app.services.llm import last_model_used
