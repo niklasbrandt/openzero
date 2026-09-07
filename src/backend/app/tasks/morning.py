@@ -112,7 +112,6 @@ async def morning_briefing():
 		await crew_registry.load()
 
 		from app.services.llm import chat, last_model_used
-		from app.services.planka import get_project_tree
 		from app.services.gmail import fetch_unread_emails
 		from app.services.calendar import fetch_calendar_events
 		from app.services.weather import get_weather_forecast
@@ -447,7 +446,7 @@ async def morning_briefing():
 
 		# --- Multi-Modal (TTS) — fire as background task so text delivery is not blocked ---
 		clean_text = content.replace("*", "").replace("#", "").replace("_", "")
-		tts_task = asyncio.create_task(generate_speech(clean_text))
+		tts_task = asyncio.create_task(generate_speech(clean_text, language=user_language))
 
 		# 4. Store in Database for Dashboard (briefing history widget)
 		from app.models.db import save_global_message

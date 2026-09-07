@@ -1,7 +1,7 @@
 import httpx
 from app.config import settings
 
-async def generate_speech(text: str) -> bytes:
+async def generate_speech(text: str, language: str = "en") -> bytes:
 	"""
 	Generate speech from text using the local TTS service.
 	Returns audio bytes (mp3).
@@ -15,6 +15,8 @@ async def generate_speech(text: str) -> bytes:
 		"voice": "alloy",
 		"speed": 0.85
 	}
+	if language and language != "en":
+		data["language"] = language
 	
 	async with httpx.AsyncClient(timeout=60.0) as client:
 		response = await client.post(url, json=data)
