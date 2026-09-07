@@ -206,7 +206,7 @@ Email and calendar integrations are opt-in. When `email_monitoring: false`, no e
 **`.env`** (secrets and infrastructure)
 
 See `.env.example` for the full list. Critical vars: `TELEGRAM_BOT_TOKEN`, `REDIS_PASSWORD`, `DASHBOARD_TOKEN`, `BASE_URL`, `LLM_LOCAL_MODEL_URL`. Optional: `LLM_CLOUD_BASE_URL` and `LLM_CLOUD_API_KEY` for cloud fallback, `BACKUP_PASSPHRASE` for encrypted exports.
-Voice capabilities can be upgraded from the fast Piper engine to the multilingual XTTS engine (which supports auto-detecting language per word) by setting `TTS_MODEL=tts-1-hd` and `TTS_RAM_LIMIT=4096M`.
+Voice capabilities can be upgraded from the fast Piper engine to the multilingual XTTS engine (which supports auto-detecting language per word) by setting `TTS_MODEL=tts-1-hd` and `TTS_RAM_LIMIT=8192M`.
 
 **`agent/` folder** (operator identity and crews)
 
