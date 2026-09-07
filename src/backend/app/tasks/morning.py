@@ -505,7 +505,7 @@ async def morning_briefing():
 
 		# 5b. Wait for TTS to finish and send voice (with generous timeout — non-blocking for text above)
 		try:
-			audio_briefing = await asyncio.wait_for(tts_task, timeout=300.0)
+			audio_briefing = await asyncio.wait_for(tts_task, timeout=600.0)
 			if audio_briefing:
 				caption_text = t.get("audio_briefing_caption", "🎙️ Audio Briefing")
 				await send_voice_message(audio_briefing, caption=caption_text)
