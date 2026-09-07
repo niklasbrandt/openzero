@@ -505,12 +505,18 @@ async def morning_briefing():
 
 		# 5b. Wait for TTS to finish and send voice (with generous timeout — non-blocking for text above)
 		try:
-			audio_briefing = await asyncio.wait_for(tts_task, timeout=600.0)
+			audio_briefing = await asyncio.wait_for(tts_task, timeout=3600.0)
 			if audio_briefing:
 				caption_text = t.get("audio_briefing_caption", "🎙️ Audio Briefing")
 				await send_voice_message(audio_briefing, caption=caption_text)
-		except (asyncio.TimeoutError, Exception) as e:
-			logger.warning("TTS briefing skipped: %s", e)
+		except asyncio.TimeoutError:
+			logger.warning("TTS briefing skipped due to timeout")
+			msg = "⚠️ Audio generation timed out." if lang == "en" else "⚠️ Audio-Generierung abgebrochen (Timeout)."
+			await send_notification(msg)
+		except Exception as e:
+			logger.warning("TTS briefing skipped due to error: %s", e)
+			msg = "⚠️ Audio generation failed." if lang == "en" else "⚠️ Fehler bei der Audio-Generierung."
+			await send_notification(msg)
 
 		return content
 
