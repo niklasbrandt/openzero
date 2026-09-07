@@ -92,6 +92,8 @@ services:
     image: ghcr.io/matatonic/openedai-speech:0.18.2
     restart: always
     profiles: [ "voice" ]
+    volumes:
+      - tts_models:/app/voices
     deploy:
       resources:
         limits:

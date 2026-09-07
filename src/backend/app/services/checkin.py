@@ -484,15 +484,20 @@ async def _compile_audio(stops: list[CheckinStop], lang: str = "en") -> None:
 		try:
 			import httpx
 			url = f"{settings.TTS_BASE_URL}/v1/audio/speech"
+			
+			voice_map = {
+				"en": "alloy",
+				"de": "de_DE-thorsten-medium",
+			}
+			voice = voice_map.get(lang, "alloy")
+			
 			payload: dict = {
 				"model": "tts-1",
 				"input": stop.body,
-				"voice": "alloy",
+				"voice": voice,
 				"speed": 0.80,
 			}
-			if lang and lang != "en":
-				payload["language"] = lang
-			async with httpx.AsyncClient(timeout=60.0) as client:
+			async with httpx.AsyncClient(timeout=120.0) as client:
 				resp = await client.post(url, json=payload)
 				if resp.status_code == 200:
 					stop.audio = resp.content
