@@ -94,6 +94,7 @@ services:
     profiles: [ "voice" ]
     volumes:
       - tts_models:/app/voices
+      - ./config/tts/voice_to_speaker.yaml:/app/config/voice_to_speaker.yaml
     deploy:
       resources:
         limits:
