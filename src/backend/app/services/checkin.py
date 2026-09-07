@@ -489,10 +489,14 @@ async def _compile_audio(stops: list[CheckinStop], lang: str = "en") -> None:
 				"en": "alloy",
 				"de": "de_DE-thorsten-medium",
 			}
-			voice = voice_map.get(lang, "alloy")
+			model = settings.TTS_MODEL
+			if model == "tts-1-hd":
+				voice = "alloy"
+			else:
+				voice = voice_map.get(lang, "alloy")
 			
 			payload: dict = {
-				"model": "tts-1",
+				"model": model,
 				"input": stop.body,
 				"voice": voice,
 				"speed": 0.80,

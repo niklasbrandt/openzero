@@ -15,10 +15,14 @@ async def generate_speech(text: str, language: str = "en") -> bytes:
 		raise Exception("TTS service not configured (voice profile disabled)")
 	url = f"{settings.TTS_BASE_URL}/v1/audio/speech"
 	
-	voice = VOICE_MAP.get(language, "alloy")
+	model = settings.TTS_MODEL
+	if model == "tts-1-hd":
+		voice = "alloy"  # XTTS is multilingual and auto-detects language
+	else:
+		voice = VOICE_MAP.get(language, "alloy")
 	
 	data = {
-		"model": "tts-1",
+		"model": model,
 		"input": text,
 		"voice": voice,
 		"speed": 0.85

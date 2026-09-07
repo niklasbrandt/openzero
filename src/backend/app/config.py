@@ -67,6 +67,7 @@ class Settings(BaseSettings):
 
     # TTS
     TTS_BASE_URL: str = "http://tts:8000"
+    TTS_MODEL: str = "tts-1"
 
     # Qdrant
     QDRANT_HOST: str = "qdrant"

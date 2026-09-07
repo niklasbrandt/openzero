@@ -98,7 +98,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1024M
+          memory: ${TTS_RAM_LIMIT:-1024M}
     networks:
       - internal
 
