@@ -351,6 +351,7 @@ async def morning_briefing():
 			f"{_crew_prompt_block}"
 			"5. End with 'Irgendwas Neues fuer heute?' (or equivalent in the user's language)\n\n"
 			"=== HARD RULES (violation = failure) ===\n"
+			"- PRONUNCIATION: Wrap any English words, technical terms, or English project names (e.g., 'Dashboard', 'Meeting', 'Updates') in <en>...</en> tags. This is critical for the text-to-speech engine to switch to an English voice for those words.\n"
 			"- STRICT LENGTH: Target 150-250 words. Over 400 words is a hard failure. If the skeleton has few active items, a 100-word briefing is ideal.\n"
 			"- DO NOT invent board names, card titles, or project names. Only reference what appears in the skeleton.\n"
 			"- DO NOT add parenthetical status annotations to card names (e.g. '(verschoben von gestern?)', '(HRV im Stressbereich)', '(Vermieter wartet)'). Report card names EXACTLY as written in the skeleton — verbatim, no additions.\n"
@@ -451,10 +452,12 @@ async def morning_briefing():
 		clean_text = clean_text.replace("*", "").replace("_", "")
 		tts_task = asyncio.create_task(generate_speech(clean_text, language=user_language))
 
+		display_content = re.sub(r'</?(en|de)>', '', content)
+
 		# 4. Store in Database for Dashboard (briefing history widget)
 		from app.models.db import save_global_message
 		async with AsyncSessionLocal() as session:
-			briefing = Briefing(type="day", content=content, model=last_model_used.get())
+			briefing = Briefing(type="day", content=display_content, model=last_model_used.get())
 			session.add(briefing)
 			await session.commit()
 
@@ -487,6 +490,8 @@ async def morning_briefing():
 
 		lang = await get_user_lang()
 		t = get_translations(lang)
+		
+
 
 		btn_text = t.get("checkin_btn_guided", "Geführtes Check-in")
 		keyboard = InlineKeyboardMarkup([
@@ -494,14 +499,14 @@ async def morning_briefing():
 		])
 
 		await send_notification(
-			f"---\n{content}",
+			f"---\n{display_content}",
 			reply_markup=keyboard,
 			nav_footer=get_nav_footer(t)
 		)
 
 		# 6b. Persist to global_messages NOW — after delivery so dashboard and
 		# Telegram show the briefing at the same time (not 15 min early).
-		await save_global_message("telegram", "z", content, model=last_model_used.get())
+		await save_global_message("telegram", "z", display_content, model=last_model_used.get())
 		# Record that a briefing was delivered this week for coach earning tracking
 		from app.services.coach_earning import record_briefing_sent
 		await record_briefing_sent()
