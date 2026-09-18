@@ -351,7 +351,7 @@ async def morning_briefing():
 			f"{_crew_prompt_block}"
 			"5. End with 'Irgendwas Neues fuer heute?' (or equivalent in the user's language)\n\n"
 			"=== HARD RULES (violation = failure) ===\n"
-			"- PRONUNCIATION: Wrap any English words or technical terms in `<en>` tags. Example: 'Zeige mir das <en>Dashboard</en>'. Do NOT add dots/ellipsis.\n"
+			"- PRONUNCIATION: You MUST wrap EVERY English word or technical term in `<en>` and `</en>` tags so the TTS engine switches voices! Example: 'Wir brauchen einen neuen <en>PC Case</en> für das <en>Dashboard</en>'. Do NOT add dots/ellipsis.\n"
 			"- STRICT LENGTH: Target 150-250 words. Over 400 words is a hard failure. If the skeleton has few active items, a 100-word briefing is ideal.\n"
 			"- DO NOT invent board names, card titles, or project names. Only reference what appears in the skeleton.\n"
 			"- DO NOT add parenthetical status annotations to card names (e.g. '(verschoben von gestern?)', '(HRV im Stressbereich)', '(Vermieter wartet)'). Report card names EXACTLY as written in the skeleton — verbatim, no additions.\n"
@@ -450,6 +450,7 @@ async def morning_briefing():
 		clean_text = re.sub(r'(?m)^#+\s*(.*)$', r'\1.', content)
 		clean_text = re.sub(r'(?m)^[-*]\s*(.*)$', r'\1.', clean_text)
 		clean_text = clean_text.replace("*", "").replace("_", "")
+		logger.info(f"TTS Text: {clean_text}")
 		tts_task = asyncio.create_task(generate_speech(clean_text, language=user_language))
 
 		display_content = re.sub(r'</?(en|de)>', '', content)
