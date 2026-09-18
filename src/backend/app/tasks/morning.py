@@ -445,7 +445,10 @@ async def morning_briefing():
 			content += f"\n\n---\n*{method_name} Calibration:*\n_{method_prompt}_"
 
 		# --- Multi-Modal (TTS) — fire as background task so text delivery is not blocked ---
-		clean_text = content.replace("*", "").replace("#", "").replace("_", "")
+		import re
+		clean_text = re.sub(r'(?m)^#+\s*(.*)$', r'\1.', content)
+		clean_text = re.sub(r'(?m)^[-*]\s*(.*)$', r'\1.', clean_text)
+		clean_text = clean_text.replace("*", "").replace("_", "")
 		tts_task = asyncio.create_task(generate_speech(clean_text, language=user_language))
 
 		# 4. Store in Database for Dashboard (briefing history widget)
