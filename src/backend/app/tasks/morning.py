@@ -351,7 +351,6 @@ async def morning_briefing():
 			f"{_crew_prompt_block}"
 			"5. End with 'Irgendwas Neues fuer heute?' (or equivalent in the user's language)\n\n"
 			"=== HARD RULES (violation = failure) ===\n"
-			"- PRONUNCIATION: You must mark ALL English words or technical terms so the TTS engine switches voices. To do this, put the EXACT literal string \"<en>\" before the English word, and the EXACT literal string \"</en>\" after it. Example: Wir brauchen ein <en>PC Case</en> für das <en>Dashboard</en>. Do not invent other tags (like <edible>). ONLY use <en> and </en>.\n"
 			"- STRICT LENGTH: Target 150-250 words. Over 400 words is a hard failure. If the skeleton has few active items, a 100-word briefing is ideal.\n"
 			"- DO NOT invent board names, card titles, or project names. Only reference what appears in the skeleton.\n"
 			"- DO NOT add parenthetical status annotations to card names (e.g. '(verschoben von gestern?)', '(HRV im Stressbereich)', '(Vermieter wartet)'). Report card names EXACTLY as written in the skeleton — verbatim, no additions.\n"
