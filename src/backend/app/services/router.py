@@ -1218,42 +1218,9 @@ async def route_message_stream(
 
 
 		# ── Multi-crew panel synthesis (spec 9f) ────────────────────────────
-		# Always expand the candidate pool via domain-similarity panel candidates,
-		# regardless of whether the semantic router returned 1 or more crews.
-		# This ensures cross-domain queries (e.g. stress + workout) always reach
-		# the LLM dispatcher even when only one crew clears the semantic threshold.
 		_ACTION_STRIP_RE = re.compile(r'\[ACTION:[^\]]*\]', re.IGNORECASE)
 		_primary_crew = routed_crews[0] if routed_crews else None
-		_all_candidates: list[str] = list(routed_crews)  # start with semantic results
-
-		if _primary_crew:
-			from app.services.crews import crew_registry as _cr
-			_panel_pool = _cr._panel_candidates.get(_primary_crew, [])
-			for _cid in _panel_pool:
-				if _cid not in _all_candidates:
-					_all_candidates.append(_cid)
-
-		# Belt-and-suspenders: if panel_candidates is empty/short (e.g. cold-start
-		# before embeddings are computed), expand directly from profile_vectors.
-		# This ensures multi-domain messages always have a candidate pool to evaluate.
-		if _primary_crew and len(_all_candidates) < 2:
-			try:
-				from app.services.crews import crew_registry as _cr2
-				from app.services.semantic_router import _cosine as _r_cosine
-				_pvecs = getattr(_cr2, "_profile_vectors", {})
-				if _pvecs and _primary_crew in _pvecs:
-					_pv = _pvecs[_primary_crew]
-					_sims = [
-						(cid, _r_cosine(_pv, v))
-						for cid, v in _pvecs.items() if cid != _primary_crew
-					]
-					_sims.sort(key=lambda x: -x[1])
-					for _scid, _ssim in _sims[:4]:
-						if _scid not in _all_candidates:
-							_all_candidates.append(_scid)
-					logger.debug("Router: expanded candidates from profile_vectors: %s", _all_candidates)
-			except Exception as _exp_e:
-				logger.debug("Router: profile_vectors expansion failed: %s", _exp_e)
+		_all_candidates: list[str] = list(routed_crews)  # candidate pool strictly follows routed crews
 
 		_clean_for_count = re.sub(r'^\[(?:Follow-up messages sent while you were thinking:|Replying to:)[^\]]*\]\s*', '', user_text, flags=re.IGNORECASE)
 		_word_count = len(_clean_for_count.split())
@@ -1615,46 +1582,20 @@ async def route_message_stream(
 							except Exception as _e:
 								logger.warning("Router: Scrum Round 3 failed: %s", _e)
 
-					# Check cosine similarity to decide labelling (on the rebuttals)
-					import numpy as np
-					from app.services.semantic_router import _cosine as _vec_cosine
-					from app.services.memory import get_embedder
-					_loop = asyncio.get_event_loop()
-					_disagree = False
-					try:
-						_vecs = []
-						for _, _draft in _r2_contributions:
-							_vec = await _loop.run_in_executor(None, lambda d=_draft: np.array(get_embedder().encode(d[:500])))
-							_vecs.append(_vec)
-						_sims = []
-						for i in range(len(_vecs)):
-							for j in range(i+1, len(_vecs)):
-								_sims.append(_vec_cosine(_vecs[i], _vecs[j]))
-						_min_sim = min(_sims) if _sims else 1.0
-						_disagree = _min_sim < 0.3
-						logger.info("Router: panel cosine similarity=%.3f → %s", _min_sim, "disagree (labeled)" if _disagree else "agree (silent merge)")
-					except Exception as _se:
-						logger.warning("Router: panel cosine check failed: %s — assuming disagreement", _se)
-						_disagree = True
-
-					# Build synthesis preview from what the crews agreed/disagreed on
+					# Build synthesis preview for the user
 					_names_str = " and ".join([c[0].title() for c in _r2_contributions])
-					_agree_str = "broadly converge" if not _disagree else "disagree on key points"
-					await _status(f"**Z · Synthesizing**\n{_names_str} {_agree_str}. Composing final answer...")
+					await _status(f"**Z · Synthesizing**\nIntegrating perspectives from {_names_str}. Composing final answer...")
 					yield "\n\n**[Z - Executive Synthesis]**\n"
 
-					# Build synthesis body
-					if _disagree:
-						_synth_body = "\n\n".join([f"{c[0].title()}: {c[1]}" for c in _r2_contributions])
-						_merge_inst = "The crews disagree. Prefix each section with the crew's name label. Your final word overrules them."
-					else:
-						_synth_body = "\n\n".join([f"{c[1]}" for c in _r2_contributions])
-						_merge_inst = "The crews broadly agree. Synthesize silently into one response — no section labels."
-
+					# Build synthesis body from crew contributions
+					_synth_body = "\n\n".join([f"### {c[0].title()}:\n{c[1]}" for c in _r2_contributions])
 					_synth_prompt = (
-						f"A panel of {len(_r2_contributions)} specialist crews debated the user question: \"{_crew_prompt[:200]}\"\n\n"
-						f"Their final stances are:\n\n{_synth_body}\n\n"
-						f"{_merge_inst} Reply in the user's language."
+						f"A panel of {len(_r2_contributions)} specialist crews debated the user question: \"{_crew_prompt[:300]}\"\n\n"
+						f"Their stances and contributions are:\n\n{_synth_body}\n\n"
+						"Synthesize these perspectives into a single clear, cohesive, actionable response for the user. "
+						"If the crews offered complementary or differing insights, resolve and integrate them logically. "
+						"Deliver a direct, high-value answer without meta-commentary about the debate itself. "
+						"Reply in the user's language."
 					)
 					_synth_system = "You are Z. Synthesize crew outputs into a single clear, direct response. No meta-commentary about the synthesis process."
 					if _emotional_ctx:
