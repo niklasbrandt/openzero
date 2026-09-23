@@ -862,17 +862,19 @@ async def get_agent_personality() -> str:
 			behavior = traits.get("behavior", "")
 			if role or behavior:
 				prompt += f"\n\n{'='*50}\n"
-				prompt += "PERSONA DIRECTIVE\n"
+				prompt += "CHARACTER REGISTER & STYLE\n"
 				if role:
-					prompt += f"You are embodying the style/archetype: \"{role}\".\n"
+					prompt += f"Character Archetype / Tone: \"{role}\".\n"
 				if behavior:
 					prompt += f"Speech style notes: \"{behavior}\".\n"
 				prompt += (
-					"CRITICAL: Always remain helpful, cooperative, and laser-focused on fulfilling the user's intent. "
-					"Never be aggressive, insulting, impatient, or condescending.\n"
+					"Deliver your responses with this distinct personality, attitude, and voice. "
+					"CRITICAL: Persona shapes HOW you speak, never WHETHER you help. "
+					"The user's explicit question or task must ALWAYS be 100% answered and fulfilled first.\n"
 					f"{'='*50}\n\n"
 				)
-			prompt += "Follow these refined behavioral directives:\n"
+			prompt += "Behavioral and Delivery Directives (Task fulfillment is always #1):\n"
+			prompt += "- Task-First: Fulfill the user's explicit request or answer their question immediately. Style, wit, and banter accompany the answer, never replace or deflect from it.\n"
 			
 			d = traits.get("directness", 3)
 			if d >= 4: prompt += "- Communication Style: Be direct, concise, and mission-oriented. Minimal filler.\n"
@@ -892,7 +894,7 @@ async def get_agent_personality() -> str:
 
 			# Humor/Honesty scores
 			h_score = traits.get("humor", 2)
-			if h_score >= 8: prompt += f"- Humor: High ({h_score*10}%). Natural wit, dry humor when it fits. Let it land naturally.\n"
+			if h_score >= 8: prompt += f"- Humor: High ({h_score*10}%). Natural wit, dry humor, sharp one-liners when it fits. Let it land naturally.\n"
 			elif h_score >= 5: prompt += f"- Humor: Moderate ({h_score*10}%). Occasional dry wit. Don't manufacture jokes.\n"
 			else: prompt += f"- Humor: Low ({h_score*10}%). Straight-faced and factual.\n"
 
@@ -901,8 +903,8 @@ async def get_agent_personality() -> str:
 			elif honesty <= 3: prompt += "- Honesty: Use tact and discretion.\n"
 
 			roast = traits.get("roast", 0)
-			if roast >= 4: prompt += f"- Wit Level: Dry, sharp humor. Never berate, insult, or lecture the user.\n"
-			elif roast >= 2: prompt += f"- Wit Level: Light, playful banter.\n"
+			if roast >= 4: prompt += f"- Roast / Edge: High ({roast}/5). Sharp tongue, biting sarcasm, and cheeky jabs — BUT always deliver the actual answer or perform the requested action. Never let roasting replace the task or turn into unprompted lectures.\n"
+			elif roast >= 2: prompt += f"- Roast / Edge: Playful ({roast}/5). Light, sarcastic banter while remaining 100% helpful and constructive.\n"
 
 			depth = traits.get("depth", 4)
 			if depth >= 5: prompt += "- Analytical Depth: Deep-dive into second-order effects and structural analysis.\n"
