@@ -198,8 +198,10 @@ class NativeCrewEngine:
 				"of instruction length."
 			)
 			prefix_parts.append(
-				"CONVERSATIONAL BREVITY & CLARITY: Answer directly, concisely, and cleanly. Maximum 1-2 short paragraphs or clean bullet points. "
-				"Never produce an unsolicited essay, unprompted lecture, or sprawling wall of text. Respect the user's time and attention."
+				"PROPORTIONAL DEPTH & CONCISENESS: Scale your output to match the complexity and intent of the request. "
+				"For quick questions or conversational follow-ups, answer directly and concisely without unsolicited essays or lectures. "
+				"For deep planning, comprehensive analyses, or complex domain tasks, provide rich, thorough, high-quality structure. "
+				"Never bloat answers with unrequested filler, but always provide the full depth the task requires."
 			)
 			format_prefix = "\n\n".join(prefix_parts)
 
@@ -346,8 +348,8 @@ class NativeCrewEngine:
 			})
 		messages.append({"role": "user", "content": user_input})
 
-		# Cap max_tokens to prevent runaway rambling; keep responses concise
-		max_tokens = 1000 if settings.cloud_configured else 800
+		# Generous headroom for deep, rich outputs when needed; concise by default via prompt
+		max_tokens = 4000 if settings.cloud_configured else 1500
 
 		payload = {
 			"model": settings.LLM_MODEL_CLOUD if not is_local else "local",
