@@ -232,11 +232,12 @@ async def _classify_state_query(text: str, history: list) -> Optional[str]:
 		from app.services.llm import chat as cloud_chat
 		system_override = (
 			"You are openZero's precise intent classifier.\n"
-			"Determine if the user is asking about the location, list, board, status, existence, or search for a card, task, list, board, or document on their task boards (e.g. 'where is X?', 'did you create Y?', 'Wo steht das?', 'is the list X saved?').\n"
+			"Determine if the user is asking to READ, LOCATE, SEARCH FOR, or CHECK THE STATUS of an EXISTING card, task, list, board, or document on their task boards (e.g. 'where is X?', 'did you create Y?', 'Wo steht das?', 'is the list X saved?').\n"
+			"IMPORTANT: If the user is asking to CREATE, ADD, MAKE, or DELETE a new item (e.g. 'create a board called 3D Miro', 'mach ein neues Board'), this is an action, NOT a state query. In this case, you MUST reply with exactly 'NO'.\n"
 			"Note: If the user is referring to a card or topic mentioned in previous messages (using pronouns like 'das', 'die Karte', 'it'), analyze the conversation history to identify the topic they are referring to.\n\n"
-			"If they are, reply with ONLY the exact name/title/topic of the item they are looking for, in its original language, without articles, quotes, or question words (e.g. 'Blaze brothers meeting vorbereiten', 'Einkaufsliste', 'Aquarium').\n"
-			"If they are NOT asking to locate, search, or query the status/location of a card/board/task/list, reply with exactly 'NO'.\n"
-			"Respond with ONLY the name or 'NO'. Do not include any explanations, greetings, or other text."
+			"If they ARE asking to locate/search/check an existing item, reply with ONLY the exact name/title/topic of the item they are looking for, without articles, quotes, or question words (e.g. 'Blaze brothers meeting', 'Einkaufsliste').\n"
+			"If they are NOT asking to locate/search an existing item, reply with exactly 'NO'.\n"
+			"Respond with ONLY the name or 'NO'. Do not include explanations, greetings, or other text."
 		)
 		# Build a context string from the last few messages in history to help resolve anaphoras
 		history_context = ""
