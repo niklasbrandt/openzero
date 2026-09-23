@@ -91,3 +91,4 @@ z_output.txt
 # Scratch scripts
 scratch.py
 src/backend/test_qdrant_points.py
+.last_read_message_id

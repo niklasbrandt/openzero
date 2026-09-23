@@ -1690,11 +1690,7 @@ async def chat_with_context(
 
 	async def fetch_projects():
 		if not include_projects: return ""
-		# Skip for single-word/trivial messages — all other messages get board data.
 		# get_project_tree() has a 60s TTL cache so repeated calls are free.
-		if len(user_message.strip().split()) < 3:
-			return ""
-
 		try:
 			from app.services.planka import get_project_tree, get_activity_report
 			tree, activity = await asyncio.wait_for(
@@ -2066,10 +2062,7 @@ async def chat_stream_with_context(
 
 	async def fetch_projects():
 		if not include_projects: return ""
-		# Skip for single-word/trivial messages — all other messages get board data.
 		# get_project_tree() has a 60s TTL cache so repeated calls are free.
-		if len(user_message.strip().split()) < 3:
-			return ""
 		try:
 			from app.services.planka import get_project_tree
 			tree = await asyncio.wait_for(get_project_tree(as_html=False), timeout=12)

@@ -224,6 +224,7 @@ async def route_semantic(
 		for crew in active_crews:
 			kws = ", ".join(crew.keywords or [])
 			crew_manifest.append(f"- ID: {crew.id}\n  Name: {crew.name}\n  Description: {crew.description}\n  Keywords: {kws}")
+		crews_list_str = "\n\n".join(crew_manifest)
 
 		# Format recent conversation context for the cloud router to recognize follow-ups
 		history_lines = []
@@ -278,128 +279,10 @@ async def route_semantic(
 			return []
 			
 	except Exception as _e:
-		logger.warning("semantic_router: primary cloud router failed/timed out (%s) — falling back to local similarity check", _e)
+		logger.warning("semantic_router: primary router failed/timed out (%s) — defaulting to Z-direct", _e)
+		return []
 
-	# ── L3: Local Embedding Fallback ──────────────────────────────────────────
-	logger.info("semantic_router: executing local embedding fallback check")
-	from app.services.memory import get_embedder
-	profile_vectors: dict[str, np.ndarray] = getattr(crew_registry, "_profile_vectors", {})
-	if not profile_vectors:
-		logger.warning("semantic_router: no profile vectors — skipping local embedding check")
-		scores = []
-	else:
-		loop = asyncio.get_event_loop()
-		try:
-			q_vec: np.ndarray = await loop.run_in_executor(
-				None, lambda: np.array(get_embedder().encode(_msg[:1000]))
-			)
-			scores = [
-				(cid, _cosine(q_vec, vec))
-				for cid, vec in profile_vectors.items()
-				if cid in routable_ids
-			]
-			scores.sort(key=lambda x: -x[1])
-		except Exception as _e:
-			logger.warning("semantic_router: local embed fallback failed (%s)", _e)
-			scores = []
-
-	# ── Threshold selection for local embedding ──────────────────────────────
-	cfg_vals = get_routing_config()
-	if think_mode:
-		t_match: float = 0.50
-		t_opt_in: float = 0.45
-		max_crews: int = 0  # 0 = unlimited
-	else:
-		t_match = float(cfg_vals["t_match"])
-		t_opt_in = float(cfg_vals["t_opt_in"])
-		max_crews = int(cfg_vals["max_crews"])
-	gap = float(cfg_vals["gap"])
-	cont_bias = float(cfg_vals.get("cont_bias", 0.05))
-
-	# ── Continuity bias ──────────────────────────────────────────────────────
-	if scores and _has_followup_signal(_msg):
-		prev_crew: Optional[str] = None
-		if channel:
-			prev_crew = get_active_crew_session(channel)
-		if not prev_crew:
-			for _ch in ("telegram", "dashboard", "whatsapp"):
-				prev_crew = get_active_crew_session(_ch)
-				if prev_crew:
-					break
-		if not prev_crew:
-			prev_crew = _last_attributed_crew(history)
-		if prev_crew:
-			scores = [
-				(cid, s + cont_bias if cid == prev_crew else s)
-				for cid, s in scores
-			]
-			scores.sort(key=lambda x: -x[1])
-			logger.debug("semantic_router: continuity bias +%.2f → '%s'", cont_bias, _sanitize_for_log(prev_crew))
-
-	if scores:
-		top_id, top_score = scores[0]
-		if top_score >= t_match:
-			panel = [top_id]
-			primary_cfg = crew_registry.get(top_id)
-			exclude = set((primary_cfg.panel_exclude or []) if primary_cfg else [])
-			for cid, score in scores[1:]:
-				if max_crews > 0 and len(panel) >= max_crews:
-					break
-				if score < t_opt_in:
-					break
-				if (top_score - score) > gap:
-					break
-				if cid in exclude:
-					continue
-				panel.append(cid)
-
-			logger.info(
-				"semantic_router: local embedding success '%s...' → %s (scores: %s)",
-				_sanitize_for_log(_msg[:40]),
-				panel,
-				", ".join(f"{cid}={s:.3f}" for cid, s in scores[:5]),
-			)
-			return panel
-
-		logger.warning(
-			"semantic_router: local embedding miss — top '%s'=%.3f < T_MATCH=%.2f. Falling back to local keyword sweep.",
-			top_id, top_score, t_match
-		)
-
-	# ── L4: Local Keyword Fallback ────────────────────────────────────────────
-	logger.info("semantic_router: executing local prefix-bounded keyword sweep fallback")
-	fallback_scores: list[tuple[str, int]] = []
-	for crew in active_crews:
-		kws = set()
-		if crew.keywords:
-			for k in crew.keywords:
-				kws.add(str(k).lower())
-		if crew.keywords_i18n:
-			for lang_kws in crew.keywords_i18n.values():
-				for k in lang_kws:
-					kws.add(str(k).lower())
-		
-		match_count = 0
-		matched_kws = []
-		for kw in kws:
-			if re.search(r"(?<![a-zA-Z])" + re.escape(kw), lower_msg):
-				match_count += 1
-				matched_kws.append(kw)
-		
-		if match_count > 0:
-			fallback_scores.append((crew.id, match_count))
-			logger.debug("semantic_router local fallback: crew '%s' matched keywords: %s", crew.id, matched_kws)
-
-	if fallback_scores:
-		semantic_score_map = {cid: s for cid, s in scores} if scores else {}
-		fallback_scores.sort(key=lambda x: (-x[1], -semantic_score_map.get(x[0], 0.0)))
-		fallback_panel = [cid for cid, _ in fallback_scores]
-		logger.info(
-			"semantic_router: local keyword fallback success → %s (matches: %s)",
-			fallback_panel,
-			", ".join(f"{cid}={count}" for cid, count in fallback_scores),
-		)
-		return fallback_panel
-
-	logger.warning("semantic_router: all routing layers missed. Routing to Z-direct.")
+	# Default to Z-direct for safety: vector embeddings do not understand intent and must not be used as fallback
+	logger.info("semantic_router: defaulting to Z-direct")
 	return []
+
