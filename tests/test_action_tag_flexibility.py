@@ -26,8 +26,8 @@ def test_parse_tag_params_key_order():
 	assert params4.get("_UNKEYED_PARTS") == ["openZero", "Today", "Buy microphone"]
 
 
-@patch("app.services.agent_actions.planka_create_board", new_callable=AsyncMock)
-@patch("app.services.agent_actions.get_planka_auth_token", new_callable=AsyncMock)
+@patch("app.services.planka.create_board", new_callable=AsyncMock)
+@patch("app.services.planka_common.get_planka_auth_token", new_callable=AsyncMock)
 def test_create_board_reversed_keys_executes(mock_auth, mock_create_board):
 	mock_auth.return_value = "fake_token"
 	mock_create_board.return_value = {"id": "board_123"}
@@ -38,7 +38,7 @@ def test_create_board_reversed_keys_executes(mock_auth, mock_create_board):
 	with patch("httpx.AsyncClient") as mock_client_cls:
 		mock_client = AsyncMock()
 		mock_resp = AsyncMock()
-		mock_resp.json.return_value = {"items": [{"id": "proj_999", "name": "My projects"}]}
+		mock_resp.json = lambda: {"items": [{"id": "proj_999", "name": "My projects"}]}
 		mock_client.get.return_value = mock_resp
 		mock_client_cls.return_value.__aenter__.return_value = mock_client
 
@@ -52,7 +52,7 @@ def test_create_board_reversed_keys_executes(mock_auth, mock_create_board):
 	assert "Producing Setup" in executed[0]
 
 
-@patch("app.services.agent_actions.planka_create_task", new_callable=AsyncMock)
+@patch("app.services.planka.create_task", new_callable=AsyncMock)
 def test_create_task_unkeyed_positional_executes(mock_create_task):
 	mock_create_task.return_value = "My projects → openZero → Today"
 
