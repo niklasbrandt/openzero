@@ -291,6 +291,7 @@ class ChatRequest(BaseModel):
 	message: str
 	history: List[ChatMessage] = []
 	skip_history: bool = False
+	force_z: bool = False
 
 @router.get("/chat/history")
 async def chat_history(request: Request, limit: int = 30, _rl: None = Depends(_check_rate_limit)):
@@ -1023,6 +1024,7 @@ async def dashboard_chat_stream(req: ChatRequest, request: Request, _rl: None = 
 			channel="dashboard",
 			lang=_lang,
 			save_history=not req.skip_history,
+			force_z=req.force_z,
 		)
 
 		try:

@@ -199,7 +199,7 @@ export class ChatPrompt extends HTMLElement {
 				<div class="bubble-footer">
 					<span class="model-tag">${isCrew ? 'cloud' : '...'}</span>
 					<span class="time">${this.formatDateTime(new Date())}</span>
-					${isCrew ? `<button class="abort-btn" type="button" aria-label="${this.tr('aria_abort_crew', 'Abort crew')}">${this.tr('abort', 'Abort')}</button>` : ''}
+					${isCrew ? `<button class="abort-btn" type="button" aria-label="${this.tr('aria_cancel_crew', 'Cancel crew debate and ask Z directly')}">${this.tr('cancel_crew_ask_z', 'Cancel — ask Z directly')}</button>` : ''}
 				</div>
 			</div>
 		`;
@@ -207,9 +207,30 @@ export class ChatPrompt extends HTMLElement {
 		this.applyBubbleTextColor();
 		this.scrollToBottom();
 
+		let wasCancelledForZ = false;
+		const cancelAndAskZ = () => {
+			if (wasCancelledForZ) return;
+			wasCancelledForZ = true;
+			abortCtrl.abort();
+			const contentDiv = msgEl.querySelector('.bubble-content') as HTMLElement;
+			if (contentDiv) {
+				contentDiv.innerHTML = `<span style="opacity:0.6"><i>${this.tr('crew_cancelled_asking_z', 'Crew debate cancelled. Asking Z directly...')}</i></span>`;
+			}
+			const originalMsg = body?.message || '';
+			if (originalMsg) {
+				setTimeout(() => {
+					this.streamResponse('/api/dashboard/chat/stream', {
+						message: originalMsg,
+						skip_history: true,
+						force_z: true,
+					}, false);
+				}, 100);
+			}
+		};
+
 		const abortBtn = msgEl.querySelector('.abort-btn') as HTMLButtonElement | null;
 		if (abortBtn) {
-			abortBtn.addEventListener('click', () => abortCtrl.abort());
+			abortBtn.addEventListener('click', cancelAndAskZ);
 		}
 
 		const contentArea = msgEl.querySelector('.tokens') as HTMLElement;
@@ -248,6 +269,19 @@ export class ChatPrompt extends HTMLElement {
 						const data = JSON.parse(dataStr);
 						if (data.token) {
 							fullText += data.token;
+							// If we detect a crew debate in the stream and no cancel button exists yet, show one
+							if (!isCrew && !msgEl.querySelector('.abort-btn') && /\*\*\[[^\n\]]+ - Round [12]/i.test(fullText)) {
+								const footer = msgEl.querySelector('.bubble-footer');
+								if (footer) {
+									const dynamicCancelBtn = document.createElement('button');
+									dynamicCancelBtn.className = 'abort-btn';
+									dynamicCancelBtn.type = 'button';
+									dynamicCancelBtn.setAttribute('aria-label', this.tr('aria_cancel_crew', 'Cancel crew debate and ask Z directly'));
+									dynamicCancelBtn.textContent = this.tr('cancel_crew_ask_z', 'Cancel — ask Z directly');
+									dynamicCancelBtn.addEventListener('click', cancelAndAskZ);
+									footer.appendChild(dynamicCancelBtn);
+								}
+							}
 							const now = performance.now();
 							if (now - lastRenderTime > RENDER_THROTTLE_MS) {
 								contentArea.innerHTML = this.renderContent(fullText);
@@ -297,18 +331,22 @@ export class ChatPrompt extends HTMLElement {
 			}
 		} catch (err) {
 			const contentDiv = msgEl.querySelector('.bubble-content') as HTMLElement;
-			if ((err as any)?.name === 'AbortError') {
+			if (wasCancelledForZ) {
+				// Handled cleanly by cancelAndAskZ
+			} else if ((err as any)?.name === 'AbortError') {
 				if (contentDiv) contentDiv.innerHTML = `<span style="opacity:0.4"><i>stopped</i></span>`;
 			} else {
 				console.error("Streaming failed", err);
 				contentArea.innerHTML += `<br><br><span style="color:var(--text-error)">Connection failed. Response truncated.</span>`;
 			}
 		} finally {
-			abortBtn?.remove();
+			msgEl.querySelector('.abort-btn')?.remove();
 			this.pendingRequests = Math.max(0, this.pendingRequests - 1);
 			this.updateSendButton();
 			msgEl.classList.remove('live');
-			this.loadHistory(); // Final sync
+			if (!wasCancelledForZ) {
+				this.loadHistory(); // Final sync
+			}
 		}
 	}
 

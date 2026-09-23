@@ -274,6 +274,7 @@ async def route_message_stream(
 	lang: str = "en",
 	save_history: bool = True,
 	status_callback: "Callable[[str], Awaitable[None]] | None" = None,
+	force_z: bool = False,
 ) -> tuple[AsyncIterator[str], "asyncio.Future[RouterResult]"]:
 	"""Return (token_stream, result_future).
 
@@ -1195,8 +1196,11 @@ async def route_message_stream(
 		# ── 1. Semantic crew routing ─────────────────────────────────────────
 		from app.services.semantic_router import route_semantic
 		_think_mode = user_text.strip().lower().startswith("/think")
+		if force_z:
+			logger.info("Router: force_z requested — bypassing all crew routing and panel mode")
+			routed_crews = []
 		# If it's a state query, we completely bypass semantic crew routing
-		if _sq_topic:
+		elif _sq_topic:
 			logger.info("Router: bypassing semantic crew routing because state query was detected for topic: '%s'", _sq_topic)
 			routed_crews = []
 		elif _explicit_crew:
@@ -1810,13 +1814,17 @@ async def route_message_stream(
 		if _search_ctx:
 			_search_augmented_text = user_text + _search_ctx
 			logger.info("Router: injected search context (%d chars) into conversational path", len(_search_ctx))
+		_z_direct_ctx = _z_core_ctx
+		if force_z:
+			_force_directive = "\n\nCRITICAL DIRECTIVE: The user cancelled crew routing. You must answer directly as Z right now. Do NOT route to any crew or emit [ACTION: ROUTE] or [ACTION: RUN_CREW] tags."
+			_z_direct_ctx = (_z_core_ctx or "") + _force_directive
 		async for token in chat_stream_with_context(
 			_search_augmented_text,
 			history=_ctx_history,
 			include_projects=True,
 			include_people=True,
 			tier_override="cloud" if _force_cloud else None,
-			extra_system_context=_z_core_ctx,
+			extra_system_context=_z_direct_ctx,
 		):
 			_reply_chunks.append(token)
 			if _l5_mode == 2:
@@ -1931,6 +1939,9 @@ async def route_message_stream(
 				"I described the action without executing it. Please try again."
 			)
 			logger.warning("Router: phantom confirmation detected (no executed_cmds)")
+
+		if force_z and pending:
+			pending = [p for p in pending if p.get("type") not in ("RUN_CREW", "ROUTE")]
 
 		result_future.set_result(RouterResult(
 			reply=clean, model=last_model_used.get(),

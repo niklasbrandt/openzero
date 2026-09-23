@@ -431,4 +431,7 @@ translations: dict[str, str] = {
 	"aria_doc_retry": "Try again",
 	"aria_doc_drop_zone": "Click or drop a file to process. Supported types: PDF, DOCX, TXT, MD.",
 	"aria_doc_file_input": "Choose a file",
+	"cancel_crew_ask_z": "Cancel — ask Z directly",
+	"aria_cancel_crew": "Cancel crew debate and ask Z directly",
+	"crew_cancelled_asking_z": "Crew debate cancelled. Asking Z directly...",
 }

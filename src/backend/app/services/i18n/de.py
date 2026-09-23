@@ -429,4 +429,7 @@ translations: dict[str, str] = {
 	"aria_doc_retry": "Erneut versuchen",
 	"aria_doc_drop_zone": "Klicken oder Datei ablegen. Unterstützte Typen: PDF, DOCX, TXT, MD.",
 	"aria_doc_file_input": "Datei auswählen",
+	"cancel_crew_ask_z": "Abbrechen — Z direkt fragen",
+	"aria_cancel_crew": "Crew-Debatte abbrechen und Z direkt fragen",
+	"crew_cancelled_asking_z": "Crew-Debatte abgebrochen. Frage Z direkt...",
 }
