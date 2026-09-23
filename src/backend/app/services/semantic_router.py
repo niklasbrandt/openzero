@@ -225,15 +225,30 @@ async def route_semantic(
 			kws = ", ".join(crew.keywords or [])
 			crew_manifest.append(f"- ID: {crew.id}\n  Name: {crew.name}\n  Description: {crew.description}\n  Keywords: {kws}")
 
-		crews_list_str = "\n\n".join(crew_manifest)
-		
+		# Format recent conversation context for the cloud router to recognize follow-ups
+		history_lines = []
+		if history:
+			for m in history[-4:]:
+				r = getattr(m, "role", None) or (m.get("role") if isinstance(m, dict) else "unknown")
+				c = getattr(m, "content", None) or (m.get("content") if isinstance(m, dict) else str(m))
+				if r and c:
+					history_lines.append(f"{r.capitalize()}: {str(c)[:250]}")
+		history_ctx_str = ""
+		if history_lines:
+			history_ctx_str = "Recent Conversation History (for context):\n" + "\n".join(history_lines) + "\n\n"
+
 		routing_prompt = (
-			f"User Message: \"{_msg[:1000]}\"\n\n"
+			f"{history_ctx_str}"
+			f"Latest User Message: \"{_msg[:1000]}\"\n\n"
 			f"Available Expert Crews:\n{crews_list_str}\n\n"
-			"Your task is to determine if this message should be handled by one or more specialized expert crews. "
-			"Reply with a comma-separated list of the expert crew IDs that are highly relevant to answering the user's message. "
-			"Choose at most 3 crews. Order them with the most important crew first. "
-			"If the message is purely general conversation (greetings, simple thanks, small talk) and does not touch any of the specialized crew domains, reply with 'NO'."
+			"Determine if this message specifically requires dispatching to one of the specialized expert crews above, "
+			"or if Z should handle it directly (e.g. general conversation, task/board management, continuing an ongoing thread, follow-ups).\n\n"
+			"CRITICAL RULES:\n"
+			"- If the user is replying to Z's previous message, answering Z's question, or discussing boards, lists, cards, or reminders, reply with 'NO'. Z handles all task/board operations directly.\n"
+			"- If the message is a general query, casual conversation, or follow-up, reply with 'NO'.\n"
+			"- ONLY select a crew ID if the user's message specifically asks for deep domain analysis that belongs uniquely to that crew (e.g. detailed workout program for fitness, cooking recipes for chef).\n"
+			"- When in doubt, reply with 'NO'.\n\n"
+			"Reply with ONLY a comma-separated list of relevant crew IDs (max 3), or 'NO'."
 		)
 		
 		# Execute the routing decision on cloud LLM with a 5.0 second timeout
@@ -241,7 +256,7 @@ async def route_semantic(
 			cloud_chat(
 				routing_prompt,
 				tier="cloud",
-				system_override="You are openZero's master router. Analyze the user's query and return a comma-separated list of relevant crew IDs, or 'NO'."
+				system_override="You are openZero's master router. Analyze the user's message with its conversation context and determine if a specialized crew is strictly needed, or reply with 'NO' for Z-direct."
 			),
 			timeout=5.0
 		)
