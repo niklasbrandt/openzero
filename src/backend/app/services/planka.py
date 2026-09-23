@@ -460,7 +460,7 @@ async def create_task(board_name: str, list_name: str, title: str, description: 
 	# Normalize any translated project/board name variant to operator board
 	from app.services.translations import get_all_values
 	all_project_names = get_all_values("project_name")
-	all_project_names.update({"openZero", "Boards"})  # legacy names
+	all_project_names.update({"Boards"})  # legacy names (openZero board exists under My projects)
 	all_board_names = get_all_values("board_name")
 	all_board_names.add("Operator Board")
 

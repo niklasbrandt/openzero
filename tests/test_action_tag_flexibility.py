@@ -21,6 +21,10 @@ def test_parse_tag_params_key_order():
 	params3 = _parse_tag_params(tag3)
 	assert params3 == {"TITLE": "Buy microphone", "BOARD": "Producing Setup", "LIST": "Todo"}
 
+	tag4 = "[ACTION: CREATE_TASK | openZero | Today | Buy microphone]"
+	params4 = _parse_tag_params(tag4)
+	assert params4.get("_UNKEYED_PARTS") == ["openZero", "Today", "Buy microphone"]
+
 
 @patch("app.services.agent_actions.planka_create_board", new_callable=AsyncMock)
 @patch("app.services.agent_actions.get_planka_auth_token", new_callable=AsyncMock)
@@ -46,3 +50,43 @@ def test_create_board_reversed_keys_executes(mock_auth, mock_create_board):
 	assert "No action was executed" not in clean
 	assert len(executed) == 1
 	assert "Producing Setup" in executed[0]
+
+
+@patch("app.services.agent_actions.planka_create_task", new_callable=AsyncMock)
+def test_create_task_unkeyed_positional_executes(mock_create_task):
+	mock_create_task.return_value = "My projects → openZero → Today"
+
+	reply = "Adding task.\n[ACTION: CREATE_TASK | openZero | Today | Debatten abbrechen]"
+
+	import asyncio
+	clean, executed, pending = asyncio.run(
+		parse_and_execute_actions(reply, require_hitl=False, user_text="task hinzufügen")
+	)
+
+	assert "No action was executed" not in clean
+	assert len(executed) == 1
+	mock_create_task.assert_called_once_with(
+		board_name="openZero",
+		list_name="Today",
+		title="Debatten abbrechen",
+		description=""
+	)
+
+
+def test_system_receipt_phantom_and_hygiene():
+	from app.common.phantom import is_phantom
+
+	fake_reply = (
+		"**[SYSTEM RECEIPT: 2026-09-23 19:31:26 UTC]**\n"
+		"**Aktion:** Board **3D Miro** unter **My Projects** erstellt.\n"
+		"**Status:** Erfolgreich. Board existiert."
+	)
+	# Phantom detector must catch fake receipt when no commands executed
+	assert is_phantom(fake_reply, executed_cmds=[]) is True
+
+	# Hygiene must strip fake receipt headers and lines
+	import asyncio
+	clean, executed, pending = asyncio.run(
+		parse_and_execute_actions(fake_reply, require_hitl=False, user_text="")
+	)
+	assert "SYSTEM RECEIPT" not in clean

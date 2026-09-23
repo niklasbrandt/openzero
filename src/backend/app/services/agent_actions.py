@@ -20,6 +20,23 @@ def _parse_tag_params(tag_text: str) -> dict[str, str]:
 		key = match.group(1).strip().upper()
 		val = match.group(2).strip().strip('"\'')
 		params[key] = val
+
+	# Extract unkeyed pipe segments (e.g. '| openZero | Today | Buy milk')
+	unkeyed: list[str] = []
+	clean_body = tag_text.strip().lstrip("[").rstrip("]")
+	pipe_parts = clean_body.split("|")
+	for part in pipe_parts[1:]:
+		part = part.strip()
+		if not part:
+			continue
+		if ":" in part:
+			k, _ = part.split(":", 1)
+			if re.match(r'^[A-Za-z0-9_]+$', k.strip()):
+				continue  # already handled by keyed regex
+		unkeyed.append(part.strip('"\''))
+	if unkeyed:
+		params["_UNKEYED"] = unkeyed[0]
+		params["_UNKEYED_PARTS"] = unkeyed
 	return params
 
 
@@ -840,11 +857,29 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 	_task_coros: list = []
 	for match in re.finditer(task_pattern, reply[:200_000], re.IGNORECASE):
 		raw_tag = match.group(0)
+		body = match.group(1).strip()
 		params = _parse_tag_params(raw_tag)
-		board = params.get("BOARD") or "Operator Board"
+		board = params.get("BOARD") or ""
 		llist = params.get("LIST") or ""
 		title = params.get("TITLE") or params.get("NAME") or ""
 		desc = params.get("DESCRIPTION") or ""
+
+		# Positional unkeyed parameter fallback (e.g. [ACTION: CREATE_TASK | openZero | Today | Task Title])
+		unkeyed_parts = params.get("_UNKEYED_PARTS", [])
+		if not title and unkeyed_parts:
+			if len(unkeyed_parts) >= 3 and not board and not llist:
+				board, llist, title = unkeyed_parts[0], unkeyed_parts[1], unkeyed_parts[2]
+			elif len(unkeyed_parts) == 2 and not board:
+				board, title = unkeyed_parts[0], unkeyed_parts[1]
+			else:
+				title = unkeyed_parts[-1]
+
+		# Support colon syntax: [ACTION: CREATE_TASK: Task Title]
+		if not title and body.startswith(":"):
+			title = body[1:].strip().strip('"\'')
+
+		if not board:
+			board = "Operator Board"
 
 		if not title:
 			clean_reply = strip_tag(clean_reply, raw_tag)
@@ -1387,9 +1422,10 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 	# --- FINAL AGGRESSIVE HYGIENE ---
 	# This prevents 'leaking' of internal agent thoughts or malformed tags to the user.
 	
-	# 1. First Pass: Strip known bracketed action tags
+	# 1. First Pass: Strip known bracketed action tags and spoofed system receipts
 	# Use [^\]] to avoid polynomial backtracking on adversarial input.
 	clean_reply = re.sub(r'\[?ACTION:[^\]]*\]?', '', clean_reply, flags=re.IGNORECASE)
+	clean_reply = re.sub(r'\**\[?SYSTEM RECEIPT[^\]\n]*\]?\**', '', clean_reply, flags=re.IGNORECASE)
 	
 	# 2. Second Pass: Split into lines and filter out anything that looks like internal metadata
 	lines = clean_reply.split('\n')
@@ -1397,7 +1433,7 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 	
 	# Markers that indicate a line is internal metadata/action logging
 	# We catch these anywhere in the line now for maximum safety
-	bad_tokens = ["ACTION:", "CONTEXT:", "MEMORY:", "UPDATE_CONTEXT", "TAGGED:", "MISSION:", "LEARN", "ADD_FACT"]
+	bad_tokens = ["ACTION:", "CONTEXT:", "MEMORY:", "UPDATE_CONTEXT", "TAGGED:", "MISSION:", "LEARN", "ADD_FACT", "SYSTEM RECEIPT", "SYSTEM_RECEIPT"]
 	
 	for line in lines:
 		trimmed = line.strip()

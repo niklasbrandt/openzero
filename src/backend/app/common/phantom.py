@@ -18,9 +18,11 @@ PHANTOM_RE = re.compile(
 	r'|done\s*[\u2014\u2013\-]+\s*(create|add|new)'
 	# German phantom patterns
 	r'|erledigt[\s\u2014\u2013\-]+(board|karte|aufgabe|liste)'
-	r'|board[^.]{0,80}(neu\s+strukturiert|reorganisiert|sortiert|umstrukturiert)'
-	r'|karten?[^.]{0,80}(verschoben|sortiert|erstellt)'
+	r'|board[^.]{0,80}(neu\s+strukturiert|reorganisiert|sortiert|umstrukturiert|erstellt|angelegt)'
+	r'|karten?[^.]{0,80}(verschoben|sortiert|erstellt|angelegt)'
 	r'|listen?[^.]{0,80}(erstellt|angelegt|umbenannt)'
+	# System receipt spoofing (LLM fabricating server-generated receipts)
+	r'|system\s+receipt\b'
 	# Spanish / French
 	r'|tablero[^.]{0,80}(reorganizado|reestructurado)'
 	r'|tableau[^.]{0,80}(réorganisé|restructuré)'
