@@ -198,10 +198,8 @@ class NativeCrewEngine:
 				"of instruction length."
 			)
 			prefix_parts.append(
-				"ABSOLUTE RULE: Reply in plain conversational prose only. "
-				"No numbered lists, no bullet points, no headers, no bold text, "
-				"no labels like 'Next Steps' or 'Protocol'. "
-				"Apply the voice and persona above to every sentence of your response."
+				"CONVERSATIONAL BREVITY & CLARITY: Answer directly, concisely, and cleanly. Maximum 1-2 short paragraphs or clean bullet points. "
+				"Never produce an unsolicited essay, unprompted lecture, or sprawling wall of text. Respect the user's time and attention."
 			)
 			format_prefix = "\n\n".join(prefix_parts)
 
@@ -348,8 +346,8 @@ class NativeCrewEngine:
 			})
 		messages.append({"role": "user", "content": user_input})
 
-		# Local model: CTX_SIZE=4096, so cap max_tokens to leave room for the prompt
-		max_tokens = 4000 if settings.cloud_configured else 1500
+		# Cap max_tokens to prevent runaway rambling; keep responses concise
+		max_tokens = 1000 if settings.cloud_configured else 800
 
 		payload = {
 			"model": settings.LLM_MODEL_CLOUD if not is_local else "local",
