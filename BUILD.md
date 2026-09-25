@@ -587,8 +587,6 @@ AUDIT_INTERVAL_HOURS=6
 AUDIT_REACTIVE_DELAY_SECONDS=15
 ```
 
-See `docs/artifacts/self_audit.md` for a full description of the audit design.
-
 ---
 
 ## 🎨 Phase 9: Customizing the Interface (UI & Theming)

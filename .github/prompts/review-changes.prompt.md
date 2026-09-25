@@ -21,6 +21,4 @@ Review all staged changes before committing:
 
 3. Flag if `BUILD.md` needs updating (new env vars, setup steps, config changes).
 
-4. Flag if any `docs/artifacts/` file is stale based on the changes.
-
-5. Provide a summary: PASS (ready to commit) or ISSUES FOUND (with list).
+4. Provide a summary: PASS (ready to commit) or ISSUES FOUND (with list).

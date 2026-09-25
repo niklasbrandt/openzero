@@ -3,7 +3,7 @@ Cross-channel memory continuity regression test.
 Guards the core openZero invariant: a fact stored via one channel
 must be retrievable via any other channel.
 
-This is the Phase 2 CI gate per docs/artifacts/refocus_plan.md section 16.
+This is the Phase 2 cross-channel memory CI gate.
 
 Channels exercised:
   Dashboard -> Telegram

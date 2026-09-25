@@ -1,6 +1,6 @@
 """Tracks whether Recipe/Fitness crews have earned proactive messaging rights.
 
-Earning rule (refocus_plan.md section 9g):
+Earning rule:
   A crew earns proactive messaging only after 2 consecutive weeks of the
   operator reading the daily briefing without skipping.
 

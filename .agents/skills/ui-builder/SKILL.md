@@ -36,6 +36,6 @@ You own the full internationalisation workflow:
 - CSS stays inside the `.ts` file. Never extract to separate CSS files.
 
 ## Conventions
-- Read `docs/artifacts/DESIGN.md` before modifying any styling.
+- Read `src/dashboard/css/tokens.css` before modifying any styling.
 - `rem` for spacing, `var(--token, fallback)` for colors, HSLA format.
 - WCAG 2.1 AA + EN 301 549. Native HTML elements first. Min 44x44px touch targets.

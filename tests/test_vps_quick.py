@@ -99,10 +99,7 @@ class RegressionSuite:
 			self._save_report(timestamp)
 
 	def _save_report(self, timestamp):
-		docs_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "docs")
-		artifacts_dir = os.path.join(docs_dir, "artifacts")
-		os.makedirs(artifacts_dir, exist_ok=True)
-		report_path = os.path.join(artifacts_dir, "regression_results.md")
+		report_path = "/tmp/regression_results.md"
 		try:
 			content = (
 				f"# Regression Test Report\n"
@@ -114,7 +111,7 @@ class RegressionSuite:
 			)
 			with open(report_path, "w") as f:
 				f.write(content)
-			print("📄 Report saved to docs/artifacts/regression_results.md")
+			print(f"📄 Report saved to {report_path}")
 		except Exception as e:
 			print(f"⚠️ Failed to save report: {e}")
 

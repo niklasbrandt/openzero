@@ -1,6 +1,6 @@
 # openZero -- Copilot Workspace Instructions
 
-> Canonical reference: `agents.md` at repository root. Read it, `docs/artifacts/DESIGN.md`, and `README.md` at the start of every task. Scan `docs/artifacts/` for existing context before starting work.
+> Canonical reference: `agents.md` at repository root. Read it and `README.md` at the start of every task.
 
 ## Project Identity
 
@@ -54,7 +54,6 @@
 - Verify the installed version of any dependency before suggesting config. Behaviours change between major versions (e.g. Pi-hole v5 vs v6).
 - Check version-specific docs rather than guessing.
 
-## BUILD.md and Artifacts
+## BUILD.md Maintenance
 
 - After completing changes, check if `BUILD.md` needs updating (new env vars, manual setup steps, config changes).
-- Before starting a task, check `docs/artifacts/` for existing context. After significant changes, create or update the relevant artifact.

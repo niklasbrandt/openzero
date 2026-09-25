@@ -539,7 +539,7 @@ Multi-specialist review (security, backend, infra, qa, ui-builder, perf, ai-engi
 
 - `SHARE_SCOPE` / `REVOKE_SHARE` ownership: this artifact wires them into `SENSITIVE_ACTIONS`. Voice-edge §9.2 must remove `SHARE_SCOPE` from spoken HITL list (federation §9.3 is dashboard-only in v1).
 - F2 channel parity now includes voice-edge.
-- `MERGE_INSTANCE` / `EXPORT_ALL` / `WIPE_REMOTE` decision ledger captured in agents.md or `docs/artifacts/self_audit.md` follow-up to prevent reintroduction.
+- `MERGE_INSTANCE` / `EXPORT_ALL` / `WIPE_REMOTE` decision ledger captured in agents.md or self-audit follow-up to prevent reintroduction.
 - Profile labels (`micro` / `standard` / `performance` vs `Tier A/B/C`) reconciled via the `HARDWARE_PROFILE` enum prerequisite owned by the unified ambient roadmap.
 - Audit retention `FEDERATION_AUDIT_RETENTION_DAYS` defaults are profile-aware (`micro` Pi 5 needs a smaller default than `performance`).
 

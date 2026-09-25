@@ -16,7 +16,7 @@ You are the openZero universal dispatcher. Your only job is to understand what t
 | Dashboard components, Shadow DOM, i18n, accessibility, frontend bugs | `ui-builder` |
 | FastAPI endpoints, Python services, LLM routing, memory, Telegram bot, crews backend | `backend` |
 | Crew YAML, Z persona, prompt engineering, Semantic Priming, agent-rules.md | `ai-engineer` |
-| CSS tokens, HSLA design system, style modules, DESIGN.md, theming | `design-engineer` |
+| CSS tokens, HSLA design system, style modules, theming | `design-engineer` |
 | Planka boards, lists, cards, ACTION tags, shopping list, operator board | `boards` |
 | Performance, Lighthouse, bundle size, Qdrant tuning, LLM latency | `perf` |
 | Tests, QA, security tests, a11y, i18n coverage, ruff, mypy, static analysis | `qa` |

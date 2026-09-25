@@ -14,7 +14,7 @@ applyTo: "**/*.css"
 - Color format: HSLA (`hsla(H, S%, L%, A)`).
 - Full token chain for accent colors: `-h`, `-s`, `-l`, `-rgb`, plus composite.
 - When updating a color, set the ENTIRE chain (H, S, L, RGB, composite, aliases).
-- Reference `docs/artifacts/DESIGN.md` for the full token architecture.
+- Reference `src/dashboard/css/tokens.css` for the full token architecture.
 
 ## Class Naming
 - Section header icons: `.h-icon`

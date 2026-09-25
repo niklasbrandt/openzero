@@ -159,10 +159,10 @@ fi
 if python3 -u tests/test_live_regression.py --url "$TEST_URL" && python3 -u tests/test_native_crew.py; then
   echo ""
   echo "✅ All regression tests passed (including Native Tactical Brain)."
-  echo "📄 Full report saved to: docs/artifacts/regression_results.md"
+  echo "📄 Full report saved to: /tmp/regression_results.md"
 else
   echo ""
   echo "❌ REGRESSION DETECTED — review output above before proceeding."
-  echo "📄 Partial/Failed report saved to: docs/artifacts/regression_results.md"
+  echo "📄 Partial/Failed report saved to: /tmp/regression_results.md"
   exit 1
 fi

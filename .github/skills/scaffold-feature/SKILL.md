@@ -35,7 +35,6 @@ Creates the skeleton for a complete full-stack openZero feature.
 
 6. **Documentation check:**
    - If the feature introduces new env vars or setup steps, update `BUILD.md`.
-   - If it's architecturally significant, create or update a `docs/artifacts/` file.
 
 7. **Verify:**
    ```bash

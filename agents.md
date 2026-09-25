@@ -6,9 +6,8 @@
 
 ## 0. Mandatory Initial Step
 
-- **CRITICAL:** At the beginning of EVERY interaction or whenever you are prompted for a new task, you MUST read and analyze **agents.md**, **docs/artifacts/DESIGN.md** and **README.md**.
+- **CRITICAL:** At the beginning of EVERY interaction or whenever you are prompted for a new task, you MUST read and analyze **agents.md** and **README.md**.
 - You must use the context from these files to ensure your behavior aligns with the project's specific boundaries and that you do not repeat errors recorded in the log.
-- **Artifact Scan:** List the `docs/artifacts/` directory and read the first 20 lines of each artifact file to understand available context before starting work. Do not read entire artifacts unless the task directly requires their content.
 
 ## 1. AI Tooling & Customizations (.agent vs .agents)
 
@@ -88,7 +87,7 @@ All code written for the openZero dashboard **MUST** conform to **WCAG 2.1 Level
 
 ## 13. Artifact Management & Consistency
 
-- **Proactive Artifact Creation**: For any significant architectural change, complex feature implementation, or strategic shift, you MUST proactively create or update a dedicated artifact (typically in `docs/artifacts/`).
+- **Proactive Artifact Creation**: For any significant architectural change, complex feature implementation, or strategic shift, you MUST proactively create or update a dedicated artifact.
 - **Summarize into Artifacts**: Artifacts should capture requirements, design decisions, technical constraints, and phased implementation plans.
 - **Context Adherence**: Always refer to existing artifacts before starting a task. They represent the project's ground truth and help prevent context drift over long interactions.
 - **Persistence of Knowledge**: Use artifacts to "save" complex states or long-term goals that might otherwise be lost in chat history. If a task spans multiple sessions, the artifact is your primary source of continuity.
@@ -124,7 +123,7 @@ All code written for the openZero dashboard **MUST** conform to **WCAG 2.1 Level
 
 ## 18. Design System & CSS Architecture
 
-- **Canonical Reference:** All visual decisions are documented in `docs/artifacts/DESIGN.md`. Read it before modifying any component styling.
+- **Canonical Reference:** All visual decisions use a token-based CSS custom property system with HSLA color decomposition defined in `src/dashboard/css/tokens.css`. Read it before modifying any component styling.
 - **Design Tokens:** Never use hardcoded hex colors in component CSS. Always reference `:root` custom properties via `var(--token, fallback)`. The fallback value ensures standalone functionality.
 - **Shared Style Modules:** Reusable CSS lives in `src/dashboard/services/*Styles.ts` as exported template string constants. Components interpolate them via `${MODULE_NAME}` inside `<style>` blocks. Do not duplicate sr-only, reduced-motion, scrollbar, or section-header CSS.
 - **rem Not em:** Use `rem` for all spacing (margin, padding, gap, width, height). The only acceptable use of `em` is `letter-spacing`.
@@ -171,9 +170,7 @@ openZero is a thinking **substrate**, not a tools dashboard. The operating heuri
 
 A "surface" is a UI element, settings panel, wizard, or rule engine that asks the human to arrange, classify, drag, tag, schedule, or otherwise do the cognitive work the substrate should be doing. A "substrate" change is a new MemorySource plugin, a crew that reasons over existing memory, a spine summariser pass, a contradiction or decision detector, a "why?" hook, or any derivation that shrinks the operator's hand-authored config. When in doubt, prefer the substrate option.
 
-The canonical guide for architecture and roadmap is `docs/artifacts/refocus_plan.md`. Read it before starting any feature touching memory, briefings, channels, or routing.
-
-**Historical surface-creep removed under this rule** (do NOT re-introduce without explicit operator approval recorded in `docs/artifacts/refocus_plan.md`):
+**Historical surface-creep removed under this rule** (do NOT re-introduce without explicit operator approval):
 
 - Person / Circle / `inner_circle` subsystem and `CircleManager.ts` -- replaced by substrate-derived people nodes in memory.
 - `ShoppingList` standalone widget -- absorbed into the nutrition crew briefing slot.
@@ -184,6 +181,6 @@ The canonical guide for architecture and roadmap is `docs/artifacts/refocus_plan
 - Static `ATLAS_TEMPLATE` config-driven ontology -- replaced by `ATLAS_TEMPLATE_HINT` (bootstrap-only) plus the `domain_inference` crew that writes `agent/domain.derived.yaml`.
 - Translations beyond `en` and `de` while their dicts were stubs -- removed from `_TRANSLATIONS` and the `UserCard` selector. Stubs return only when populated to parity.
 
-If a future task seems to require re-introducing any of these patterns, stop and surface the conflict in your summary rather than proceeding silently. Operator approval recorded in the refocus plan is the only path to overturning a locked cut.
+If a future task seems to require re-introducing any of these patterns, stop and surface the conflict in your summary rather than proceeding silently. Explicit operator approval is the only path to overturning a locked cut.
 
 

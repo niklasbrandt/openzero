@@ -321,7 +321,7 @@ The full test suite includes 268 security tests across 25 attack classes, Playwr
 ```
 	agent/              operator skills, rules, and crew definitions (not committed)
 	agent.example/      template for agent/ (committed, sanitized)
-	docs/artifacts/     design decisions, phase plans, architectural records
+	docs/               documentation, schemas, and federation specs
 	personal/           highest-priority context injected into every prompt (not committed)
 	personal.example/   template for personal/ (committed, sanitized)
 	scripts/            sync, backup, dev utilities

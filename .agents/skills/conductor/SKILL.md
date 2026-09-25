@@ -24,7 +24,7 @@ You are the openZero feature orchestrator. You coordinate multi-domain work acro
 1. **Assess:** Analyse the user's request. Determine which specialist agents are needed.
 2. **Delegate:** Invoke the appropriate agents (ui-builder, backend, design-engineer, ai-engineer, boards, qa, perf, infra, etc.) for their respective parts.
 3. **Integrate:** After delegation, verify cross-domain consistency (API contracts match frontend calls, i18n keys added, etc.).
-4. **Audit:** Check `BUILD.md`, `docs/artifacts/DESIGN.md`, and `docs/artifacts/` for staleness. Update if needed.
+4. **Audit:** Check `BUILD.md` and configuration for staleness. Update if needed.
 5. **Handoff:** Suggest running the `predeploy` agent for a pre-commit audit.
 
 ## Security
