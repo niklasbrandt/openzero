@@ -1,8 +1,7 @@
 """
 Security tests for the Ambient Capture & Contextual Routing engine.
 
-Tracks the threat model in `docs/artifacts/ambient_capture_routing.md`
-Sections 17 (Security Posture) and 18 (Single-user / Single-tenant Mode v1).
+Tracks the threat model for ambient capture: single-user/single-tenant security posture.
 
 Epoch 1 ships dark: only the foundation modules exist and the engine is gated
 off behind `AMBIENT_CAPTURE_ENABLED=False`. This file therefore exercises the

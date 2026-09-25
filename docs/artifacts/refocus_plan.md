@@ -1,8 +1,8 @@
 # openZero Refocus Plan
 
-> Single source of truth for the May 2026 repositioning of openZero from "thinking substrate" back into a sharp, hackable, self-hosted AI companion that lives in your messengers. This artifact overrules `docs/artifacts/substrate_master_plan.md` and `docs/artifacts/substrate_pivot.md` wherever they conflict.
+> Single source of truth for the May 2026 repositioning of openZero from "thinking substrate" back into a sharp, hackable, self-hosted AI companion that lives in your messengers.
 > Status: LOCKED -- all operator decisions resolved 2026-05-18 | Phase 1 ready to start
-> Companions: `docs/artifacts/semantic_routing.md` (router spec), `docs/artifacts/substrate_master_plan.md` (historical, partially overruled), `agents.md`, `README.md`, `BUILD.md`.
+> Companions: `docs/artifacts/semantic_routing.md` (router spec), `agents.md`, `README.md`, `BUILD.md`.
 
 ---
 
@@ -361,4 +361,4 @@ Permanently retired from the openZero roadmap as of this artifact:
 - CrewBuilder dashboard widget (substrate alternative chosen per Q12 -- edit `personal/crews.yaml` + hot-reload).
 - Automatic `/quarter` and `/year` scheduled briefings (slash commands kept on-demand per Q10; scheduler dropped).
 
-`docs/artifacts/substrate_master_plan.md` and `docs/artifacts/substrate_pivot.md` remain on disk for historical reference. **Where they conflict with this artifact, this artifact wins.** Future agents must read `refocus_plan.md` first.
+The historical substrate master plans have been retired. **This artifact is the single source of truth.** Future agents must read `refocus_plan.md` first.

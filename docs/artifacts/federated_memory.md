@@ -350,7 +350,7 @@ Mirror in `.env.example` and `config.example.yaml`. `BUILD.md` gains a phase: "F
 
 ### Phase F0 -- Foundations (single instance, no traffic)
 
-DoD: schema migrations land on producer side; nothing federates yet. Phase A of the unified ambient roadmap (`full_ambient_intelligence_roadmap.md`) -- shared sanitiser module + unified pending queue + `SENSITIVE_ACTIONS` extension surface -- is a prerequisite.
+DoD: schema migrations land on producer side; nothing federates yet. Shared sanitiser module + unified pending queue + `SENSITIVE_ACTIONS` extension surface is a prerequisite.
 
 - Startup-DDL migration for `share_contracts`, `federation_audit`, and `board_scopes` (no Alembic).
 - Qdrant payload migration (scope + share_tags) with default values; idempotent dry-run flag.

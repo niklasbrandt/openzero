@@ -113,7 +113,6 @@ self_audit:
   lookback_hours: 48
 
 # ── Ambient Capture & Contextual Routing ───────────────────────────────────
-# See docs/artifacts/ambient_capture_routing.md for the full architectural plan.
 # Epoch 1 ships dark — the engine code is in place but no message path
 # invokes it until enabled is true (Epoch 2). Single-user / single-tenant only;
 # multi-user flows are explicitly disabled until re-audited (Section 18).
@@ -152,7 +151,6 @@ ambient_capture:
   routing_lesson_retention_days: 0
 
 # ── Ambient Intelligence (State-Diff Engine) ────────────────────────────────
-# See docs/artifacts/ambient_intelligence.md for the full architectural plan.
 # Separate from ambient_capture (which routes inbound user messages).
 # This engine reacts to observed state changes and fires crews proactively.
 # All settings are optional; the feature ships dark (enabled: false).
@@ -196,8 +194,7 @@ anti_hallucination:
   phantom_async_classifier: false
 
 # ── Memory Atlas ────────────────────────────────────────────────────────────
-# See docs/artifacts/memory_atlas.md for the full architectural plan.
-# MA0 ships the backend schema and API stubs. The home screen (Phase Z) and
+# The backend schema and API stubs. The home screen and
 # diff ribbon (Phase D) are gated behind their own toggles.
 atlas:
   # One-time bootstrap hint for the domain_inference crew. After the first

@@ -10,8 +10,6 @@ Tests:
   - P1: calendar / email / hardware signal rules
   - P2: composite overload, sedentary drift, today-list overload, health/planka signals,
         drain_briefing_queue
-
-See docs/artifacts/ambient_intelligence.md §12 (P0 unit tests).
 """
 
 from __future__ import annotations

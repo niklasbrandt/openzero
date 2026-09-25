@@ -156,8 +156,7 @@ class Settings(BaseSettings):
     AUDIT_LOOKBACK_HOURS: int = 48
 
     # ── Ambient Capture & Contextual Routing ─────────────────────────────────
-    # See docs/artifacts/ambient_capture_routing.md for the full architectural
-    # plan. Epoch 1 ships dark; the engine code is in place but no message
+    # Epoch 1 ships dark; the engine code is in place but no message
     # path invokes it until AMBIENT_CAPTURE_ENABLED is True (Epoch 2).
     #
     # Single-user / single-tenant operator identity (Section 18). REQUIRED
@@ -187,7 +186,6 @@ class Settings(BaseSettings):
     AMBIENT_ROUTING_LESSON_RETENTION_DAYS: int = 0
 
     # ── Ambient Intelligence (State-Diff Engine) ──────────────────────────────
-    # See docs/artifacts/ambient_intelligence.md for the full architectural plan.
     # Separate from AMBIENT_CAPTURE_* (which routes inbound user messages).
     # This engine reacts to observed state changes and fires crews proactively.
     #

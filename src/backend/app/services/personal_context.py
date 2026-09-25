@@ -431,7 +431,7 @@ def get_personal_context_for_prompt_no_health() -> str:
 	"""Return the cached personal context block with health.md excluded.
 
 	Used for crews whose domain is not food, nutrition, health, or wellness.
-	Health-specific data (histamine intolerance, dietary restrictions, medical
+	Health-specific data (allergies, dietary restrictions, medical
 	conditions) must not appear in prompts for unrelated crews.
 	"""
 	filtered = {k: v for k, v in _state.final.items() if k != "health.md"}

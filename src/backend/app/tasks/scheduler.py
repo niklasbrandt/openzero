@@ -319,7 +319,6 @@ async def start_scheduler():
 	# Ambient Intelligence — State-Diff Engine
 	# Snapshots data sources, diffs state, fires crews proactively.
 	# Gated behind AMBIENT_ENABLED (default False). Ships dark.
-	# See docs/artifacts/ambient_intelligence.md.
 	if getattr(settings, "AMBIENT_ENABLED", False):
 		from app.services.ambient import ambient_loop
 		scheduler.add_job(
