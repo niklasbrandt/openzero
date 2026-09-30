@@ -702,10 +702,24 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 					if not proj_id:
 						resp = await client.get("/api/projects")
 						projects = resp.json().get("items", [])
+						_proj_lower = proj_name.lower().strip()
+						_MY_PROJECTS_ALIASES = {
+							"my projects", "my project", "projekte", "projekte ordner",
+							"projekt ordner", "projektordner", "meine projekte", "user projects"
+						}
 						for p in projects:
-							if p["name"].lower() == proj_name.lower():
+							p_name = (p.get("name") or "").lower()
+							if p_name == _proj_lower:
 								proj_id = p["id"]
 								break
+							if _proj_lower in _MY_PROJECTS_ALIASES and p_name == settings.AUDIT_MY_PROJECTS_PARENT.lower():
+								proj_id = p["id"]
+								break
+						if not proj_id and _proj_lower in _MY_PROJECTS_ALIASES:
+							for p in projects:
+								if "project" in (p.get("name") or "").lower():
+									proj_id = p["id"]
+									break
 					if not proj_id:
 						return f"\u26a0 Project '{proj_name}' not found. Board not created."
 					board_result = await planka_create_board(project_id=proj_id, name=board_name)

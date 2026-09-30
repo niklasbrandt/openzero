@@ -765,9 +765,10 @@ CRITICAL — USE EXACT NAMES IN PROSE: When confirming a CREATE_TASK, your prose
   PARSING — "new <noun> goal/item/todo <title>" → CREATE_TASK on the matching user board. Example: "new project task report" → `[ACTION: CREATE_TASK | BOARD: projects | TITLE: report]`. Example: "new task review proposal" → `[ACTION: CREATE_TASK | BOARD: tasks | TITLE: review proposal]`. Pluralise the noun for the board name when natural (goal → goals). Do NOT route these to a crew, and do NOT route them to Operator Board if a matching named board exists.
   TITLE RULE: Use the user's exact words as the TITLE — do NOT rephrase, translate, embellish, or expand the title. "home" → TITLE: home. Never substitute with a creative reworded version. The user owns the title. VIOLATION EXAMPLE: user says "home" → WRONG: TITLE: [verbose elaboration on what home might mean to the user] → CORRECT: TITLE: home.
   BOARD vs LIST: BOARD is the Planka board name (e.g. "projects"). LIST is a column inside that board (e.g. "Backlog", "To Do"). When adding a card to a board, use the board's name in BOARD: and the list/column name in LIST:. Never write the board name in both BOARD: and LIST:. If you do not know which list/column exists on the board, omit LIST: — the system will use the first available list.
-  CRITICAL — "My projects" IS A PARENT CONTAINER, NOT A BOARD: User-created boards like "projects", "tasks", "research" live inside the "My projects" parent. NEVER use `BOARD: My projects | LIST: projects` — that puts the card on the wrong board. The correct tag is always `BOARD: projects` (the board's own name). "My projects" must never appear as the BOARD value for user content.
+  CRITICAL — "My projects" IS A PARENT CONTAINER, NOT A BOARD: User-created boards like "projects", "tasks", "research" live inside the "My projects" parent (also referred to as "Projekte", "Projekte Ordner", or "Meine Projekte" by the user). NEVER use `BOARD: My projects | LIST: projects` — that puts the card on the wrong board. The correct tag is always `BOARD: projects` (the board's own name). "My projects" must never appear as the BOARD value for user content.
 - Create Project: `[ACTION: CREATE_PROJECT | NAME: text | DESCRIPTION: text]`
 - Create Board: `[ACTION: CREATE_BOARD | PROJECT: project_name | NAME: text]`
+  (Default PROJECT for user boards is "My projects". When the user asks to put a board in "Projekte", "Projekte Ordner", or "my projects", use `PROJECT: My projects`.)
 - Create List (Column): `[ACTION: CREATE_LIST | BOARD: board_name | NAME: text]`
   PARSING — "new list on [board] [name]" or "add list [name] to [board]": BOARD = the board name, NAME = the column name. Example: "new list on projects 'phase two'" → `[ACTION: CREATE_LIST | BOARD: projects | NAME: phase two]`. Do NOT include the preposition or board name inside NAME.
 - Create Event: `[ACTION: CREATE_EVENT | TITLE: text | START: YYYY-MM-DD HH:MM | END: YYYY-MM-DD HH:MM]`
@@ -1702,8 +1703,8 @@ async def chat_with_context(
 				timeout=12,
 			)
 			context_str = f"PROJECT MISSION CONTROL:\n{tree}\n\n7-DAY ACTIVITY:\n{activity}"
-			if len(context_str) > 4000:
-				context_str = context_str[:4000] + "... [Project Context Truncated]"
+			if len(context_str) > 10000:
+				context_str = context_str[:10000] + "... [Project Context Truncated]"
 			return context_str
 		except Exception:
 			return "PROJECTS: (Board integration unavailable)"
@@ -2067,8 +2068,8 @@ async def chat_stream_with_context(
 		try:
 			from app.services.planka import get_project_tree
 			tree = await asyncio.wait_for(get_project_tree(as_html=False), timeout=12)
-			if tree and len(tree) > 3000:
-				tree = tree[:3000] + "... [Project Tree Truncated]"
+			if tree and len(tree) > 10000:
+				tree = tree[:10000] + "... [Project Tree Truncated]"
 			return f"PROJECT MISSION CONTROL:\n{tree}"
 		except Exception:
 			return "PROJECTS: (Board integration unavailable)"

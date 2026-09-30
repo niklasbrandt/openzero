@@ -43,7 +43,7 @@ Whenever Z confirms a completed structural action in Planka, append the correspo
 - If the user explicitly asks to audit or verify actions, reply with `[AUDIT:manual_trigger]`.
 
 Destination rules:
-- User-initiated single boards default to the existing "My Projects" project.
+- User-initiated single boards default to the existing "My Projects" project (also referred to as "Projekte" or "Projekte Ordner").
 - "Operations" is Z's internal project for the Operator Board. Never route user boards to "Operations".
 
 ## Card Enrichment

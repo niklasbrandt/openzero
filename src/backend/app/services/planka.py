@@ -193,11 +193,13 @@ async def get_project_tree(as_html: bool = True) -> str:
 					p_display = f"**[{project_name}]({settings.BASE_URL}/api/dashboard/planka-redirect?targetprojectid={project_id})**"
 
 				proj_ts = _extract_latest_timestamp(project, detail)
+				p_desc = (project.get("description") or "").strip()
 				project_meta_list.append({
 					"idx": i,
 					"id": project_id,
 					"name": project_name,
 					"display": p_display,
+					"description": p_desc,
 					"project_ts": proj_ts,
 					"boards": []
 				})
@@ -217,13 +219,18 @@ async def get_project_tree(as_html: bool = True) -> str:
 				b_name = meta["name"]
 				b_id = meta["id"]
 				b_obj = meta["board_obj"]
+				project_name = project_meta_list[proj_idx]["name"]
 
 				if isinstance(b_resp, BaseException):
 					latest_ts = _extract_latest_timestamp(b_obj)
 					project_meta_list[proj_idx]["boards"].append({
 						"name": b_name,
 						"id": b_id,
+						"description": "",
 						"latest_mod": latest_ts,
+						"header_line": f" • [{b_name}](Stats offline)" if not as_html else "",
+						"list_line": "",
+						"card_lines": [],
 						"lines": [f"  └── {b_name} (Stats offline)"]
 					})
 					continue
@@ -242,16 +249,37 @@ async def get_project_tree(as_html: bool = True) -> str:
 
 				progress_pct = int((done_cards / total_cards) * 100) if total_cards > 0 else 0
 
+				# Extract board description (or crew description if under Crews)
+				b_desc = (b_obj.get("description") or b_detail.get("item", {}).get("description") or "").strip()
+				if not b_desc and project_name.lower() in ("crews", "crew boards"):
+					try:
+						from app.services.crews import crew_registry
+						crew = crew_registry.get(b_name.lower())
+						if crew and crew.description:
+							b_desc = crew.description.strip()
+					except Exception:
+						pass
+
 				b_lines = []
 				board_name = b_name
 				if as_html:
 					progress_str = f" <span style='color: #4ade80; font-size: 0.8rem;'>({progress_pct}%)</span>" if total_cards > 0 else ""
-					b_lines.append(f"  └── <a href='/api/dashboard/planka-redirect?target_board_id={b_id}' target='_blank' style='color: inherit; text-decoration: none;'>{_html.escape(board_name)}</a>{progress_str}")
+					desc_str = f" <span style='color: #94a3b8; font-size: 0.8rem;'>— {_html.escape(b_desc)}</span>" if b_desc else ""
+					b_lines.append(f"  └── <a href='/api/dashboard/planka-redirect?target_board_id={b_id}' target='_blank' style='color: inherit; text-decoration: none;'>{_html.escape(board_name)}</a>{progress_str}{desc_str}")
+					header_line = ""
+					list_line = ""
+					card_lines = []
 				else:
 					progress_str = f" ({progress_pct}%)" if total_cards > 0 else ""
-					# Use version without underscores for Telegram Markdown
-					b_lines.append(f" • [{b_name}]({settings.BASE_URL}/api/dashboard/planka-redirect?targetboardid={b_id}){progress_str}")
-					# Add list+card detail so LLM can reason about the actual board structure
+					desc_str = f" — {b_desc}" if b_desc else ""
+					header_line = f" • [{b_name}]({settings.BASE_URL}/api/dashboard/planka-redirect?targetboardid={b_id}){progress_str}{desc_str}"
+
+					# Lists overview for this board
+					non_done_lists = [l['name'] for l in lists if not _is_done_list(l.get('name', ''))]
+					list_line = f"   Lists: [{', '.join(non_done_lists)}]" if non_done_lists else ""
+
+					# Active card detail for operator board
+					card_lines = []
 					label_map: dict[str, str] = {}
 					for lbl in b_detail.get("included", {}).get("labels", []):
 						label_map[lbl["id"]] = lbl.get("name") or lbl.get("color", "")
@@ -274,12 +302,16 @@ async def get_project_tree(as_html: bool = True) -> str:
 						if not l_cards:
 							continue
 						visible = l_cards[:10]
-						b_lines.append(f"   [{lst['name']}]: {', '.join(visible)}")
+						card_lines.append(f"   [{lst['name']}]: {', '.join(visible)}")
 
 				project_meta_list[proj_idx]["boards"].append({
 					"name": b_name,
 					"id": b_id,
+					"description": b_desc,
 					"latest_mod": latest_mod,
+					"header_line": header_line,
+					"list_line": list_line,
+					"card_lines": card_lines,
 					"lines": b_lines
 				})
 
@@ -317,27 +349,89 @@ async def get_project_tree(as_html: bool = True) -> str:
 					or any(b.get("is_operator", False) for b in p_meta["boards"])
 				)
 
-			# Sort projects: Operations / Operator project always comes first, others by overall_ts descending
-			project_meta_list.sort(
-				key=lambda p: (
-					p.get("is_operator", False),
-					p["overall_ts"]
-				),
-				reverse=True
-			)
+			# Sort projects:
+			# Tier 2: Operations / Operator project always comes first
+			# Tier 1: User projects (e.g. My projects / user folders)
+			# Tier 0: Background system Crews
+			# Within each tier, sort by overall_ts descending
+			def _proj_sort_key(p):
+				if p.get("is_operator", False):
+					tier = 2
+				elif p.get("name", "").lower() in ("crews", "crew boards"):
+					tier = 0
+				else:
+					tier = 1
+				return (tier, p["overall_ts"])
+
+			project_meta_list.sort(key=_proj_sort_key, reverse=True)
 
 			# Sync sorted positions to Planka Postgres DB so Planka's navigation bar is sorted accordingly
 			await _sync_planka_db_positions(project_meta_list)
 
 			# Assemble final tree
-			final_lines = []
-			for p_meta in project_meta_list:
-				final_lines.append(p_meta["display"])
-				for b_meta in p_meta["boards"]:
-					final_lines.extend(b_meta["lines"])
-				final_lines.append("")
+			if as_html:
+				final_lines = []
+				for p_meta in project_meta_list:
+					p_desc = p_meta.get("description")
+					p_display = p_meta["display"]
+					if p_desc:
+						p_display += f" <span style='color: #94a3b8; font-size: 0.85rem;'>— {_html.escape(p_desc)}</span>"
+					final_lines.append(p_display)
+					for b_meta in p_meta["boards"]:
+						final_lines.extend(b_meta["lines"])
+					final_lines.append("")
+				result = "\n".join(final_lines)
+			else:
+				# Plain-text assembly for LLM:
+				# 1. Base overview: all projects & all boards (with descriptions).
+				#    For Operator Board, include active cards.
+				base_lines = []
+				for p_meta in project_meta_list:
+					p_label = p_meta["name"]
+					if p_label.lower() in ("my projects", "meine projekte"):
+						p_label += ' (User Projects / "Projekte")'
+					p_desc = p_meta.get("description")
+					p_head = f"**[{p_label}]({settings.BASE_URL}/api/dashboard/planka-redirect?targetprojectid={p_meta['id']})**"
+					if p_desc:
+						p_head += f" — {p_desc}"
+					base_lines.append(p_head)
 
-			result = "\n".join(final_lines)
+					for b_meta in p_meta["boards"]:
+						base_lines.append(b_meta["header_line"])
+						if b_meta.get("is_operator"):
+							base_lines.extend(b_meta["card_lines"])
+					base_lines.append("")
+
+				base_tree = "\n".join(base_lines)
+
+				# 2. If under 5000 chars, know the lists inside those boards too!
+				if len(base_tree) < 5000:
+					expanded_lines = []
+					for p_meta in project_meta_list:
+						p_label = p_meta["name"]
+						if p_label.lower() in ("my projects", "meine projekte"):
+							p_label += ' (User Projects / "Projekte")'
+						p_desc = p_meta.get("description")
+						p_head = f"**[{p_label}]({settings.BASE_URL}/api/dashboard/planka-redirect?targetprojectid={p_meta['id']})**"
+						if p_desc:
+							p_head += f" — {p_desc}"
+						expanded_lines.append(p_head)
+
+						for b_meta in p_meta["boards"]:
+							expanded_lines.append(b_meta["header_line"])
+							if b_meta.get("is_operator"):
+								expanded_lines.extend(b_meta["card_lines"])
+							elif b_meta.get("list_line"):
+								expanded_lines.append(b_meta["list_line"])
+						expanded_lines.append("")
+
+					expanded_tree = "\n".join(expanded_lines)
+					if len(expanded_tree) < 5000:
+						result = expanded_tree
+					else:
+						result = base_tree
+				else:
+					result = base_tree
 			_tree_cache[cache_key] = (time.time(), result)
 			return result
 	except Exception as e:
@@ -1410,8 +1504,12 @@ async def create_board_in_project(board_name: str, project_fragment: str = "") -
 	if not board_name:
 		logger.warning("create_board_in_project: refusing to create board with empty name")
 		return None
-	# When no project is specified, default to "My Projects" to avoid landing in Operations
-	if not project_fragment:
+	# Normalize project fragment aliases for My Projects / Projekte Ordner
+	_MY_PROJECTS_ALIASES = {
+		"my projects", "my project", "projekte", "projekte ordner",
+		"projekt ordner", "projektordner", "meine projekte", "user projects"
+	}
+	if not project_fragment or project_fragment in _MY_PROJECTS_ALIASES:
 		project_fragment = settings.AUDIT_MY_PROJECTS_PARENT.lower()
 	logger.debug("create_board_in_project: board=%s, project=%s", _sanitize_for_log(board_name), _sanitize_for_log(project_fragment))
 	try:
@@ -1423,9 +1521,16 @@ async def create_board_in_project(board_name: str, project_fragment: str = "") -
 			projects = projects_resp.json().get("items", [])
 			found_project = None
 			for p in projects:
-				if project_fragment in (p.get("name") or "").lower():
+				p_name_lower = (p.get("name") or "").lower()
+				if project_fragment == p_name_lower or project_fragment in p_name_lower:
 					found_project = p
 					break
+			if not found_project:
+				for p in projects:
+					p_name_lower = (p.get("name") or "").lower()
+					if "project" in p_name_lower or p_name_lower in ("my projects", "projekte"):
+						found_project = p
+						break
 			if not found_project:
 				logger.debug("create_board_in_project: no project matching %r found", project_fragment)
 				return None
