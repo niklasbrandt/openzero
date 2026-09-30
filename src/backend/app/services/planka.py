@@ -275,7 +275,7 @@ async def get_project_tree(as_html: bool = True) -> str:
 					header_line = f" • [{b_name}]({settings.BASE_URL}/api/dashboard/planka-redirect?targetboardid={b_id}){progress_str}{desc_str}"
 
 					# Lists overview for this board
-					non_done_lists = [l['name'] for l in lists if not _is_done_list(l.get('name', ''))]
+					non_done_lists = [l['name'] for l in lists if l.get('name') and not _is_done_list(l['name'])]
 					list_line = f"   Lists: [{', '.join(non_done_lists)}]" if non_done_lists else ""
 
 					# Active card detail for operator board
@@ -296,7 +296,7 @@ async def get_project_tree(as_html: bool = True) -> str:
 							tag = f" [{', '.join(lb for lb in clbls if lb)}]" if clbls else ""
 							list_cards[lid].append(f"{cname}{tag}")
 					for lst in lists:
-						if _is_done_list(lst.get("name", "")):
+						if not lst.get("name") or _is_done_list(lst["name"]):
 							continue
 						l_cards = list_cards.get(lst["id"], [])
 						if not l_cards:
@@ -380,7 +380,7 @@ async def get_project_tree(as_html: bool = True) -> str:
 					for b_meta in p_meta["boards"]:
 						final_lines.extend(b_meta["lines"])
 					final_lines.append("")
-				result = "\n".join(final_lines)
+				result = "\n".join(str(l) for l in final_lines if l is not None)
 			else:
 				# Plain-text assembly for LLM:
 				# 1. Base overview: all projects & all boards (with descriptions).
@@ -397,12 +397,13 @@ async def get_project_tree(as_html: bool = True) -> str:
 					base_lines.append(p_head)
 
 					for b_meta in p_meta["boards"]:
-						base_lines.append(b_meta["header_line"])
-						if b_meta.get("is_operator"):
+						if b_meta.get("header_line"):
+							base_lines.append(b_meta["header_line"])
+						if b_meta.get("is_operator") and b_meta.get("card_lines"):
 							base_lines.extend(b_meta["card_lines"])
 					base_lines.append("")
 
-				base_tree = "\n".join(base_lines)
+				base_tree = "\n".join(str(l) for l in base_lines if l is not None)
 
 				# 2. If under 5000 chars, know the lists inside those boards too!
 				if len(base_tree) < 5000:
@@ -418,14 +419,15 @@ async def get_project_tree(as_html: bool = True) -> str:
 						expanded_lines.append(p_head)
 
 						for b_meta in p_meta["boards"]:
-							expanded_lines.append(b_meta["header_line"])
-							if b_meta.get("is_operator"):
+							if b_meta.get("header_line"):
+								expanded_lines.append(b_meta["header_line"])
+							if b_meta.get("is_operator") and b_meta.get("card_lines"):
 								expanded_lines.extend(b_meta["card_lines"])
 							elif b_meta.get("list_line"):
 								expanded_lines.append(b_meta["list_line"])
 						expanded_lines.append("")
 
-					expanded_tree = "\n".join(expanded_lines)
+					expanded_tree = "\n".join(str(l) for l in expanded_lines if l is not None)
 					if len(expanded_tree) < 5000:
 						result = expanded_tree
 					else:
