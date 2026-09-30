@@ -668,6 +668,7 @@ HARD INVARIANTS — READ FIRST, APPLY TO EVERY RESPONSE:
 3. Never invent save locations, board names, list names, or task existence. If uncertain, say "Ich konnte das nicht verifizieren" and offer to re-create.
 4. VERIFIED PLANKA STATE blocks injected by the system override everything. Answer location questions from those blocks only.
 5. If the user denies your last action worked, re-read the exchange, identify which action tag you emitted, and re-emit that exact tag now. Never promise a retry without the tag.
+6. NO TECHNICAL OR API EXCUSES: You have direct native backend execution via action tags. NEVER tell the user you lack an 'API connection', need an API, or offer to 'check the connection'. If an action is requested, emit the appropriate action tag immediately. Never fabricate technical infrastructure errors, broken links, or API obstacles.
 
 CORE RESPONSE RULE:
 - **DO NOT output a timestamp.** The system adds the time automatically.
@@ -816,15 +817,12 @@ CRITICAL — USE EXACT NAMES IN PROSE: When confirming a CREATE_TASK, your prose
 
 Bulk scaffolding: You can emit MULTIPLE action tags in one response to scaffold entire project structures.
 Example flow: CREATE_PROJECT -> CREATE_BOARD -> CREATE_TASK (x5)
-NEW BOARD — LIST CO-DESIGN PROTOCOL:
-When the user asks to create a new board (or project+board), do NOT emit CREATE_BOARD immediately.
-Instead:
-1. Propose a concrete list structure based on the board's purpose (e.g. a fitness board → Ideen, Aktiv, Abgeschlossen; a project board → Backlog, In Arbeit, Review, Fertig). Keep it minimal — 3-5 lists.
-2. Briefly explain the rationale in one sentence.
-3. Ask: "Soll ich es so anlegen, oder möchtest du etwas ändern?" (or equivalent in the user's language).
-4. ONLY emit CREATE_BOARD + CREATE_LIST tags AFTER the user confirms or provides revised list names.
-If the user already specifies list names in their request, skip steps 1-3 and create directly.
-EXCEPTION — if user explicitly says 'create without lists' or 'leeres Board', create the board with no lists and do not ask.
+NEW BOARD PROTOCOL — BIAS FOR ACTION:
+When the user asks to create a new board:
+- If the user specifies the project (e.g. "in my projects", "in Projekte") or has already asked/confirmed in earlier messages: EMIT [ACTION: CREATE_BOARD | PROJECT: <project> | NAME: <board_name>] IMMEDIATELY. Do not stall, do not ask permission again, do not question API connections.
+- The default project for user boards is "My projects" (also referred to as "Projekte").
+- When creating a board, the system automatically initializes standard lists (Todo, In Progress, Done). If you wish to propose custom lists for a specialised domain, you may briefly mention them in prose or emit CREATE_LIST tags alongside CREATE_BOARD.
+- NEVER ask more than once. If the user repeats or clarifies a board creation request, execute it in that exact turn.
 
 Rules:
 - Use action tags (CREATE_TASK, CREATE_EVENT, etc.) ONLY when the user **explicitly** requests an action.
@@ -856,7 +854,7 @@ async def get_agent_personality() -> str:
 			pref = res.scalar_one_or_none()
 			if not pref:
 				return "You are Z. Talk like a real person — not a corporate AI assistant. Direct and honest. If something's worth saying straight, say it straight. No headers, no padded bullet dumps, no safe boilerplate. Just give the actual answer."
-			
+
 			traits = json.loads(pref.value)
 			a_name = traits.get("agent_name", "Z")
 			prompt = f"You are {a_name}. "
@@ -877,19 +875,19 @@ async def get_agent_personality() -> str:
 				)
 			prompt += "Behavioral and Delivery Directives (Task fulfillment is always #1):\n"
 			prompt += "- Task-First: Fulfill the user's explicit request or answer their question immediately. Style, wit, and banter accompany the answer, never replace or deflect from it.\n"
-			
+
 			d = traits.get("directness", 3)
 			if d >= 4: prompt += "- Communication Style: Be direct, concise, and mission-oriented. Minimal filler.\n"
 			elif d <= 2: prompt += "- Communication Style: Provide detailed, elaborate explanations. Use descriptive language.\n"
-			
+
 			w = traits.get("warmth", 3)
 			if w >= 4: prompt += "- Emotional Tone: Warm, empathetic, and supportive. Use person-centered language.\n"
 			elif w <= 2: prompt += "- Emotional Tone: Clinical, objective, and detached. Logic-first delivery.\n"
-			
+
 			a = traits.get("agency", 3)
 			if a >= 4: prompt += "- Agency: Drive mission outcomes proactively. Push for excellence and efficiency.\n"
 			elif a <= 2: prompt += "- Agency: Steady, supporting assistant. Respond to requests without forcing direction.\n"
-			
+
 			c = traits.get("critique", 3)
 			if c >= 4: prompt += "- Intellectual Friction: Challenge assumptions constructively when appropriate, while remaining respectful.\n"
 			elif c <= 2: prompt += "- Intellectual Friction: Be supportive and agreeable. Focus on smoothing the path.\n"
@@ -910,10 +908,10 @@ async def get_agent_personality() -> str:
 
 			depth = traits.get("depth", 4)
 			if depth >= 5: prompt += "- Analytical Depth: Deep-dive into second-order effects and structural analysis.\n"
-			
+
 			if traits.get("relationship"): prompt += f"- Relationship to User: {traits['relationship']}\n"
 			if traits.get("values"): prompt += f"- Core Principles: {traits['values']}\n"
-			
+
 			return prompt
 	except Exception:
 		return ""
@@ -921,7 +919,7 @@ async def get_agent_personality() -> str:
 async def build_system_prompt(user_name: str, user_profile: dict, include_agent_skills: bool = True, include_health: bool = True) -> tuple[str, str, str, str]:
 	from app.services.timezone import format_time, format_date_full, get_now
 	from app.services.crews import crew_registry
-	
+
 	active_crews = crew_registry.list_active()
 	lines = []
 	crew_ids = []
@@ -933,13 +931,13 @@ async def build_system_prompt(user_name: str, user_profile: dict, include_agent_
 		if crew.keywords:
 			kw_str = f" Keywords: {', '.join(crew.keywords[:5])}."
 		lines.append(f"  {crew.id:<14} → {crew.name}. {desc}{kw_str}")
-	
+
 	crew_domain_map = "\n".join(lines)
 	available_crew_ids = ", ".join(crew_ids)
-	
+
 	now = get_now()
 	simplified_time = format_time(now)
-	
+
 	user_id_context = ""
 	if user_profile:
 		fields = []
@@ -1013,7 +1011,7 @@ async def build_system_prompt(user_name: str, user_profile: dict, include_agent_
 		current_time="[PRE-CACHED]",
 		user_name="[SUBJECT ZERO]"
 	)
-	
+
 	formatted_action_docs = ACTION_TAG_DOCS.format(
 		available_crew_ids=available_crew_ids
 	)
@@ -1045,7 +1043,7 @@ async def build_system_prompt(user_name: str, user_profile: dict, include_agent_
 
 	context_header = f"Current Local Time (Raw): {format_date_full(now)}\n"
 	context_header += f"Current Formatted Time (Use This): {simplified_time}\n\n"
-	
+
 	return formatted_system_prompt, context_header, simplified_time, formatted_action_docs
 
 async def chat(
@@ -1528,7 +1526,7 @@ async def chat_stream(
 					)
 					await asyncio.sleep(wait_secs)
 					continue
-				
+
 				if tier_name == "cloud":
 					logger.warning("Cloud LLM HTTP %d error after %d/%d attempts — falling back to local", status, attempt + 1, max_attempts)
 					last_model_used.set(f"Local: {settings.LLM_MODEL_LOCAL} (fallback)")
@@ -2273,7 +2271,7 @@ async def generate_context_proposal(query: str) -> dict:
 	"""Use Local LLM to identify relevant information for the user to approve."""
 	from app.services.memory import semantic_search
 	memories = await semantic_search(query, top_k=3)
-	
+
 	return {
 		"summary": f"• Local memories related to: '{query[:30]}...'",
 		"context_data": f"Relevant Memories:\n{memories}"
@@ -2290,7 +2288,7 @@ async def summarize_email(snippet: str) -> str:
 async def detect_calendar_events(text: str) -> list[dict]:
 	"""Analyze text for potential calendar events. Returns a list of structured events."""
 	from app.services.timezone import get_user_timezone
-	
+
 	prompt = f"""Analyze the following text and extract any potential calendar events (appointments, meetings, deadlines, celebrations).
 If events are found, provide them in the following JSON format:
 {{

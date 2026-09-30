@@ -124,7 +124,7 @@ async def start_scheduler():
 	from datetime import datetime, timedelta, time
 	target_time = datetime.combine(datetime.today(), time(hour=brief_hour, minute=brief_min))
 	fire_time = target_time - timedelta(minutes=15)
-	
+
 	scheduler.add_job(
 		morning_briefing,
 		CronTrigger(hour=fire_time.hour, minute=fire_time.minute, timezone=tz),
@@ -209,7 +209,7 @@ async def start_scheduler():
 
 	# Proactive Mission Follow-up — Dynamic Activity Window
 	from app.services.follow_up import run_proactive_follow_up, check_active_tracking_sessions, evening_reminder
-	
+
 	# Compute APScheduler hour ranges respecting Quiet Hours
 	if quiet_enabled and qh_start_hour != qh_end_hour:
 		if qh_end_hour < qh_start_hour:
@@ -223,11 +223,20 @@ async def start_scheduler():
 			active_hours = f"{p1},{p2}".strip(",")
 	else:
 		active_hours = "6-23" # Fallback if disabled
-	
+
 	scheduler.add_job(
 		run_proactive_follow_up,
 		CronTrigger(hour=active_hours, minute="*/10", timezone=tz),
 		id="proactive_follow_up",
+		replace_existing=True,
+	)
+
+	# Proactive Executive Engine — Drives momentum on open loops & projects
+	from app.services.proactive_engine import run_proactive_cycle
+	scheduler.add_job(
+		run_proactive_cycle,
+		IntervalTrigger(minutes=15),
+		id="proactive_executive_cycle",
 		replace_existing=True,
 	)
 
@@ -400,9 +409,9 @@ async def start_scheduler():
 			# Create a dummy anchor to test the offset
 			target_time = datetime.combine(datetime.today(), time(hour=brief_hour, minute=brief_min))
 			crew_time = target_time - timedelta(minutes=lead_time_m)
-			
+
 			day_shift = (crew_time.date() - target_time.date()).days  # 0 or -1
-			
+
 			if crew.feeds_briefing == "/day":
 				trigger = CronTrigger(hour=crew_time.hour, minute=crew_time.minute, timezone=tz)
 			elif crew.feeds_briefing == "/week" and crew.briefing_day:
@@ -416,7 +425,7 @@ async def start_scheduler():
 				doms = [int(x.strip()) for x in str(crew.briefing_dom).split(",")]
 				shifted_doms = [(d + day_shift) if (d + day_shift) > 0 else 28 for d in doms]
 				trigger = CronTrigger(day=",".join(map(str, shifted_doms)), hour=crew_time.hour, minute=crew_time.minute, timezone=tz)
-				
+
 		elif crew.schedule:
 			trigger = CronTrigger.from_crontab(crew.schedule, timezone=tz)
 

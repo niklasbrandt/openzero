@@ -8,7 +8,7 @@ from app.services.translations import get_all_values
 # Record when this module was first loaded (proxy for container startup time).
 _STARTUP_TIME: float = time.monotonic()
 # Silence follow-up for this many seconds after startup so recovery has clear LLM access.
-_STARTUP_QUIET_SECONDS: int = 15 * 60
+_STARTUP_QUIET_SECONDS: int = 60
 
 logger = logging.getLogger(__name__)
 
@@ -253,6 +253,11 @@ async def run_proactive_follow_up() -> None:
 			lang = await get_user_lang()
 			t = get_translations(lang)
 			await send_nudge_notification(f"{nudge}{footer}", nav_footer=get_nav_footer(t))
+			try:
+				from app.models.db import save_global_message
+				await save_global_message("telegram", "z", nudge, model="follow_up:nudge")
+			except Exception as _ge:
+				logger.debug("Follow-up: could not save global message: %s", _ge)
 			logger.info("Follow-up: Sent nudge for %s tasks.", len(due_cards))
 
 	except Exception as e:
@@ -307,29 +312,34 @@ async def evening_reminder() -> None:
 			lang = await get_user_lang()
 			t = get_translations(lang)
 			await send_nudge_notification(f"{nudge}{footer}", nav_footer=get_nav_footer(t))
+			try:
+				from app.models.db import save_global_message
+				await save_global_message("telegram", "z", nudge, model="follow_up:evening")
+			except Exception as _ge:
+				logger.debug("Evening reminder: could not save global message: %s", _ge)
 			logger.info("Evening reminder: sent for %d tasks.", len(today_cards))
 	except Exception as e:
 		logger.error("Evening reminder failed: %s", e)
 
 async def check_active_tracking_sessions() -> None:
 	"""
-	Monitors active TrackingSessions and delivers granular, 
+	Monitors active TrackingSessions and delivers granular,
 	item-specific progress nudges as requested.
 	"""
 	from app.models.db import TrackingSession, AsyncSessionLocal
 	from sqlalchemy import select
-	
+
 	try:
 		async with AsyncSessionLocal() as db:
 			result = await db.execute(select(TrackingSession).where(TrackingSession.is_active.is_(True)))
 			sessions = result.scalars().all()
-			
+
 			now = datetime.datetime.now()
-			
+
 			for session in sessions:
 				modified = False
 				milestones = json.loads(session.milestones_json) if session.milestones_json else []
-				
+
 				# 1. Process Individual Milestones (In-Progress)
 				for m in milestones:
 					due_dt = datetime.datetime.fromisoformat(m["due_at"])
@@ -354,7 +364,7 @@ async def check_active_tracking_sessions() -> None:
 							await send_notification(f"{nudge}{footer}", nav_footer=get_nav_footer(t))
 							m["sent"] = True
 						modified = True
-				
+
 				# 2. Final Session Wrap-up
 				if now >= session.end_time and not session.final_nudge_sent:
 					logger.info("Proximity: Final check (Session %s)", session.id)
@@ -381,6 +391,6 @@ async def check_active_tracking_sessions() -> None:
 				if modified:
 					session.milestones_json = json.dumps(milestones)
 					await db.commit()
-					
+
 	except Exception as e:
 		logger.error("Tracking Session Check failed: %s", e)

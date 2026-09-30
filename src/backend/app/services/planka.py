@@ -63,7 +63,7 @@ def _is_done_list(list_name: str) -> bool:
 
 def _card_title_matches(card_name: str, fragment: str) -> bool:
 	"""Return True if the card name matches the query fragment (case-insensitive).
-	
+
 	Supports bidirectional substring matching to handle cases where either the
 	card name or the query fragment has extra words or embellishments (e.g. LLM output).
 	"""
@@ -272,7 +272,7 @@ async def get_project_tree(as_html: bool = True) -> str:
 				else:
 					progress_str = f" ({progress_pct}%)" if total_cards > 0 else ""
 					desc_str = f" — {b_desc}" if b_desc else ""
-					header_line = f" • [{b_name}]({settings.BASE_URL}/api/dashboard/planka-redirect?targetboardid={b_id}){progress_str}{desc_str}"
+					header_line = f" • BOARD: {b_name}{progress_str}{desc_str}"
 
 					# Lists overview for this board
 					non_done_lists = [l['name'] for l in lists if l.get('name') and not _is_done_list(l['name'])]
@@ -391,7 +391,7 @@ async def get_project_tree(as_html: bool = True) -> str:
 					if p_label.lower() in ("my projects", "meine projekte"):
 						p_label += ' (User Projects / "Projekte")'
 					p_desc = p_meta.get("description")
-					p_head = f"**[{p_label}]({settings.BASE_URL}/api/dashboard/planka-redirect?targetprojectid={p_meta['id']})**"
+					p_head = f"**PROJECT: {p_label}**"
 					if p_desc:
 						p_head += f" — {p_desc}"
 					base_lines.append(p_head)
@@ -413,7 +413,7 @@ async def get_project_tree(as_html: bool = True) -> str:
 						if p_label.lower() in ("my projects", "meine projekte"):
 							p_label += ' (User Projects / "Projekte")'
 						p_desc = p_meta.get("description")
-						p_head = f"**[{p_label}]({settings.BASE_URL}/api/dashboard/planka-redirect?targetprojectid={p_meta['id']})**"
+						p_head = f"**PROJECT: {p_label}**"
 						if p_desc:
 							p_head += f" — {p_desc}"
 						expanded_lines.append(p_head)
@@ -914,6 +914,16 @@ async def create_board(project_id: str, name: str) -> dict:
 		except Exception as e:
 			logger.debug("create_board failed for project %s: %s", _sanitize_for_log(project_id), _sanitize_for_log(e))
 			return None
+
+		if default_lists and board and board.get("id"):
+			for idx, list_name in enumerate(["To Do", "In Progress", "Done"]):
+				try:
+					await client.post(f"/api/boards/{board['id']}/lists", json={
+						"name": list_name,
+						"position": (idx + 1) * 65535
+					})
+				except Exception as _le:
+					logger.debug("create_board: failed to add default list '%s': %s", list_name, _le)
 
 		return board
 
@@ -1705,14 +1715,14 @@ async def get_board_summary(board_name: str = "Operator Board") -> str:
 	# get_planka_auth_token imported from planka_common at module level
 	token = await get_planka_auth_token()
 	headers = {"Authorization": f"Bearer {token}"}
-	
+
 	try:
 		async with httpx.AsyncClient(base_url=settings.PLANKA_BASE_URL, timeout=10.0, headers=headers) as client:
 			# 1. Resolve Board ID
 			projects_resp = await client.get("/api/projects")
 			projects = projects_resp.json().get("items", [])
 			board_id = None
-			
+
 			for p in projects:
 				p_det = await client.get(f"/api/projects/{p['id']}")
 				boards = p_det.json().get("included", {}).get("boards", [])
@@ -1721,19 +1731,19 @@ async def get_board_summary(board_name: str = "Operator Board") -> str:
 					board_id = match["id"]
 					break
 
-			
+
 			if not board_id:
 				return f"Board '{board_name}' not found."
-				
+
 			# 2. Fetch Lists and Cards
 			b_detail_resp = await client.get(f"/api/boards/{board_id}", params={"included": "lists,cards"})
 			b_detail = b_detail_resp.json()
 			lists = b_detail.get("included", {}).get("lists", [])
 			cards = b_detail.get("included", {}).get("cards", [])
-			
+
 			# Sort by position
 			lists.sort(key=lambda x: x.get("position", 0))
-			
+
 			summary_lines = [f"### Planka Board: {board_name} Summary ###"]
 			for lst in lists:
 				lst_cards = [c for c in cards if c["listId"] == lst["id"]]
@@ -1743,7 +1753,7 @@ async def get_board_summary(board_name: str = "Operator Board") -> str:
 					summary_lines.append("  (Empty)")
 				for c in lst_cards:
 					summary_lines.append(f"  - {c['name']}")
-			
+
 			return "\n".join(summary_lines)
 	except Exception as e:
 		logger.warning("get_board_summary error: %s", e)
@@ -1891,7 +1901,7 @@ async def get_activity_report(days: int = 30) -> str:
 
 			all_details_tasks = [client.get(f"/api/projects/{p['id']}") for p in projects]
 			all_details_resps = await asyncio.gather(*all_details_tasks)
-			
+
 			board_tasks = []
 			board_names = []
 			for r in all_details_resps:
@@ -1900,21 +1910,21 @@ async def get_activity_report(days: int = 30) -> str:
 				for b in boards:
 					board_tasks.append(client.get(f"/api/boards/{b['id']}", params={"included": "lists,cards,labels,cardLabels"}))
 					board_names.append(b.get("name") or "")
-			
+
 			board_details = await asyncio.gather(*board_tasks)
-			
+
 			from app.services.translations import get_done_keywords
 			_done_kw = get_done_keywords()
 			stall_threshold = timedelta(days=max(1, days // 2))
-			
+
 			# Categories
 			completed_cards = []
 			in_progress_cards = []
 			blocked_cards = []
 			stalled_cards = []
-			
+
 			wip_violations = [] # List of (board, list, count)
-			
+
 			for b_idx, b_resp in enumerate(board_details):
 				b_data = b_resp.json()
 				b_name = board_names[b_idx]
@@ -1922,7 +1932,7 @@ async def get_activity_report(days: int = 30) -> str:
 				cards = b_data.get("included", {}).get("cards", [])
 				labels = b_data.get("included", {}).get("labels", [])
 				card_labels = b_data.get("included", {}).get("cardLabels", [])
-				
+
 				# Map labels for lookups
 				label_map = {l["id"]: l for l in labels}
 				card_to_labels: dict[str, list] = {}
@@ -1933,33 +1943,33 @@ async def get_activity_report(days: int = 30) -> str:
 					if lid in label_map: card_to_labels[cid].append(label_map[lid])
 
 				done_list_ids = {l['id'] for l in lists if l.get('name') and l['name'].lower() in _done_kw}
-				
+
 				# Define "In Progress" lists (e.g. "Doing", "In Progress", "Today")
 				in_progress_kw = {"in progress", "doing", "active", "today", "im gang", "en curso"}
 				ip_list_ids = {l['id'] for l in lists if l.get('name') and l['name'].lower() in in_progress_kw}
-				
+
 				for lst in lists:
 					lst_cards = [c for c in cards if c["listId"] == lst["id"]]
 					if lst["id"] in ip_list_ids and len(lst_cards) > 3:
 						wip_violations.append(f"{b_name} → {lst['name']} ({len(lst_cards)} cards, limit 3)")
-				
+
 				for card in cards:
 					c_name = card.get("name") or "?"
 					c_updated = _get_card_activity_dt(card)
 					c_labels = card_to_labels.get(card["id"], [])
 					c_label_names = [(l.get("name") or "").lower() for l in c_labels]
-					
+
 					is_done = card["listId"] in done_list_ids
 					is_ip = card["listId"] in ip_list_ids
 					is_blocked = "blocked" in c_label_names or "block" in c_name.lower()
-					
+
 					# Class of Service detection
 					is_expedite = "expedite" in c_label_names or "!!" in c_name
 					is_fixed_date = "fixed date" in c_label_names or "!" in c_name
 					cos_tag = ""
 					if is_expedite: cos_tag = " [EXPEDITE]"
 					elif is_fixed_date: cos_tag = " [FIXED DATE]"
-					
+
 					if is_done:
 						if c_updated > cutoff:
 							completed_cards.append(f"- {c_name}{cos_tag} ({b_name})")
@@ -1976,20 +1986,20 @@ async def get_activity_report(days: int = 30) -> str:
 							stalled_cards.append(f"- {c_name}{cos_tag} ({b_name}, last activity {c_updated.strftime('%Y-%m-%d')})")
 
 			report = f"### {days}-DAY OPERATIONAL ACTIVITY REPORT ###\n\n"
-			
+
 			report += f"COMPLETED IN LAST {days} DAYS:\n"
 			if completed_cards:
 				report += "\n".join(completed_cards[:30]) # Cap at 30
 				if len(completed_cards) > 30: report += f"\n...and {len(completed_cards)-30} more."
 			else:
 				report += "(None found in Done lists)"
-			
+
 			report += "\n\nCURRENTLY IN PROGRESS:\n"
 			if in_progress_cards:
 				report += "\n".join(in_progress_cards)
 			else:
 				report += "(No tasks in active columns)"
-				
+
 			report += "\n\nBLOCKED / STALLED INITIATIVES:\n"
 			if blocked_cards or stalled_cards:
 				if blocked_cards:
@@ -1998,7 +2008,7 @@ async def get_activity_report(days: int = 30) -> str:
 					report += f"STALLED (>{stall_threshold.days} days inactive):\n" + "\n".join(stalled_cards[:15])
 			else:
 				report += "(None detected)"
-				
+
 			if wip_violations:
 				report += "\n\nWIP LIMIT VIOLATIONS (Limit=3):\n"
 				report += "\n".join(wip_violations)
@@ -2361,7 +2371,7 @@ async def get_board_walkthrough(min_stale_days: int = 5) -> str:
 
 async def get_briefing_boards_data() -> dict:
 	"""Fetch all boards, categorize into exactly three buckets, and calculate days_since_active.
-	
+
 	Returns:
 		dict with keys:
 		- operator_board: dict | None
@@ -2408,7 +2418,7 @@ async def get_briefing_boards_data() -> dict:
 				if isinstance(b_resp, BaseException):
 					continue
 				b_data = b_resp.json()
-				
+
 				# Get board creation date from data section if available
 				b_obj = b_data.get("data", {})
 				raw_c = b_obj.get("createdAt") or ""
@@ -2433,7 +2443,7 @@ async def get_briefing_boards_data() -> dict:
 				# latest_mod is max of card updates, or board creation if no cards
 				last_updated = max((card[0] for card in active_cards), default=created_at)
 				days_since_active = max(0, (datetime.now() - last_updated).days)
-				
+
 				# Determine Bucket
 				b_name_lower = (board_name or "").strip().lower()
 				is_operator = _is_operator_name(board_name) or proj_name.lower() in ["operationen", "operations"]
@@ -2464,10 +2474,10 @@ async def get_briefing_boards_data() -> dict:
 			crew_boards.append(b)
 		elif not b["is_operator"]:
 			project_boards.append(b)
-			
+
 	# Sort Crew boards by last modification date descending
 	crew_boards.sort(key=lambda x: x["last_updated"], reverse=True)
-	
+
 	# Sort Project boards by creation and modification date descending -> max(created_at, last_updated)
 	project_boards.sort(key=lambda x: max(x["created_at"], x["last_updated"]), reverse=True)
 
