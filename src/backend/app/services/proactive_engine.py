@@ -110,6 +110,28 @@ async def get_seconds_since_last_user_message() -> float:
 	return 999999.0
 
 
+async def get_seconds_since_last_z_message() -> float:
+	"""Return seconds elapsed since Z sent any message across all channels."""
+	try:
+		async with AsyncSessionLocal() as session:
+			result = await session.execute(
+				select(GlobalMessage.created_at)
+				.where(GlobalMessage.role.in_(("z", "assistant")))
+				.order_by(GlobalMessage.created_at.desc())
+				.limit(1)
+			)
+			row = result.scalar_one_or_none()
+			if row:
+				if row.tzinfo is None:
+					row = row.replace(tzinfo=timezone.utc)
+				now = datetime.now(timezone.utc)
+				return (now - row).total_seconds()
+	except Exception as e:
+		logger.warning("proactive_engine: error getting last Z message age: %s", e)
+	return 999999.0
+
+
+
 async def get_last_used_channel() -> str:
 	"""Return the channel the user last used (Telegram as fallback)."""
 	try:

@@ -150,6 +150,36 @@ async def run_proactive_follow_up() -> None:
 		)
 		return
 
+	# Respect Quiet Hours
+	from app.services.proactive_engine import (
+		is_quiet_hours,
+		get_seconds_since_last_user_message,
+		get_seconds_since_last_z_message,
+		check_rate_limits,
+		record_contact_event,
+	)
+	if await is_quiet_hours():
+		logger.info("Proactive Follow-up: skipping (quiet hours).")
+		return
+
+	# Silence if user was active recently (< 25 min)
+	user_age_s = await get_seconds_since_last_user_message()
+	if user_age_s < 25 * 60:
+		logger.info("Proactive Follow-up: skipping (user active %.0fm ago).", user_age_s / 60)
+		return
+
+	# Global anti-nag cooldown: at least 45 min since last Z message across all channels
+	z_age_s = await get_seconds_since_last_z_message()
+	if z_age_s < 45 * 60:
+		logger.info("Proactive Follow-up: skipping (Z spoke %.0fm ago, min gap 45m).", z_age_s / 60)
+		return
+
+	# Check shared daily cap & cooldown
+	allowed, reason = await check_rate_limits()
+	if not allowed:
+		logger.info("Proactive Follow-up: skipping (%s).", reason)
+		return
+
 	from app.services.operator_board import operator_service
 	try:
 		logger.info("Proactive Follow-up: Checking mission status...")
@@ -256,6 +286,7 @@ async def run_proactive_follow_up() -> None:
 			try:
 				from app.models.db import save_global_message
 				await save_global_message("telegram", "z", nudge, model="follow_up:nudge")
+				await record_contact_event()
 			except Exception as _ge:
 				logger.debug("Follow-up: could not save global message: %s", _ge)
 			logger.info("Follow-up: Sent nudge for %s tasks.", len(due_cards))

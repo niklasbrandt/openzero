@@ -1634,47 +1634,69 @@ async def create_list(board_name: str, list_name: str, project_name: Optional[st
 		resp.raise_for_status()
 		projects = resp.json().get("items", [])
 
-		# Normalize board name with overrides/synonyms dynamically (mirrors create_task)
-		search_board_names = {board_name.lower()}
-		try:
-			from app.services.crews import crew_registry
-			from app.services.crews_native import crew_board_name_for_id
-
-			for c in crew_registry.list_active():
-				c_bname = crew_board_name_for_id(c.id).lower()
-				if c_bname == board_name.lower() or c.id.lower() == board_name.lower():
-					search_board_names.add(c.id.lower())
-					search_board_names.add(c_bname)
-					if c.id == "chef" or c.id == "recipe":
-						search_board_names.update({"nutrition", "recipe", "chef"})
-		except Exception as _ex:
-			logger.debug("create_list: dynamic crew board resolution failed: %s", _ex)
-			# Static fallback mapping
-			if board_name.lower() in ("nutrition", "chef", "recipe"):
-				search_board_names.update({"nutrition", "chef", "recipe"})
-
+		# 1. SPECIAL CASE: Operator Board
 		board_id = None
-		existing_lists = []
-		for proj in projects:
-			if project_name and proj["name"].lower() != project_name.lower():
-				continue
-			det = await client.get(f"/api/projects/{proj['id']}")
-			det.raise_for_status()
-			det_data = det.json()
-			# Boards might be in 'included' or 'boards' key depending on version/sideloading
-			_included = det_data.get("included")
-			if isinstance(_included, dict):
-				boards = _included.get("boards", [])
-			else:
-				boards = det_data.get("boards", [])
-			if not boards:
-				boards = []
-			for b in boards:
-				if (b.get("name") or "").lower() in search_board_names:
-					board_id = b["id"]
+		if _is_operator_name(board_name) or board_name.lower().replace("-", " ") in ("operator board", "operations", "operator"):
+			try:
+				from app.services.operator_board import operator_service
+				_, board_id = await operator_service.initialize_board(client)
+				logger.debug("create_list: resolved Operator Board (id=%s)", board_id)
+			except Exception as _oe:
+				logger.warning("create_list: operator_service.initialize_board failed: %s", _oe)
+
+		if not board_id:
+			# Normalize board name with overrides/synonyms dynamically (mirrors create_task)
+			b_clean = board_name.strip().lower()
+			search_board_names = {
+				b_clean,
+				b_clean.replace("-", " "),
+				b_clean.replace(" ", "-"),
+			}
+			try:
+				from app.services.crews import crew_registry
+				from app.services.crews_native import crew_board_name_for_id
+
+				for c in crew_registry.list_active():
+					c_bname = crew_board_name_for_id(c.id).lower()
+					if c_bname == b_clean or c.id.lower() == b_clean or c_bname.replace("-", " ") == b_clean.replace("-", " "):
+						search_board_names.add(c.id.lower())
+						search_board_names.add(c_bname)
+						search_board_names.add(c_bname.replace("-", " "))
+						if c.id in ("chef", "recipe"):
+							search_board_names.update({"nutrition", "recipe", "chef"})
+			except Exception as _ex:
+				logger.debug("create_list: dynamic crew board resolution failed: %s", _ex)
+				# Static fallback mapping
+				if b_clean in ("nutrition", "chef", "recipe"):
+					search_board_names.update({"nutrition", "chef", "recipe"})
+
+			existing_lists = []
+			for proj in projects:
+				if project_name and proj["name"].lower() != project_name.lower():
+					continue
+				det = await client.get(f"/api/projects/{proj['id']}")
+				det.raise_for_status()
+				det_data = det.json()
+				# Boards might be in 'included' or 'boards' key depending on version/sideloading
+				_included = det_data.get("included")
+				if isinstance(_included, dict):
+					boards = _included.get("boards", [])
+				else:
+					boards = det_data.get("boards", [])
+				if not boards:
+					boards = []
+				for b in boards:
+					b_name = (b.get("name") or "").lower()
+					if (
+						b_name in search_board_names
+						or b_name.replace("-", " ") in search_board_names
+						or b_name.replace(" ", "-") in search_board_names
+						or (_is_operator_name(board_name) and _is_operator_name(b.get("name", "")))
+					):
+						board_id = b["id"]
+						break
+				if board_id:
 					break
-			if board_id:
-				break
 
 		if not board_id:
 			logger.debug("create_list - board '%s' not found (searched: %s)", _sanitize_for_log(board_name), search_board_names)

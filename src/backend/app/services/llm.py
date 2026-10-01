@@ -691,6 +691,7 @@ CORE RESPONSE RULE:
 ACTIVE LISTENING — CRITICAL:
 - **READ the conversation history CAREFULLY** before responding. The user's earlier messages are FACTS.
 - **FOLLOW-UP MESSAGES**: When the user sends a short or ambiguous message (e.g. "which ones?", "and the fish?", "which fishes"), ALWAYS resolve its meaning from the RECENT CONVERSATION section FIRST. Never ask for clarification when the topic is clear from the prior exchange. Treat the ongoing conversation as continuous — carry the context forward.
+- **AFFIRMATIVE & CASUAL CONFIRMATIONS**: When the user sends a simple affirmation, agreement, or casual reply (e.g. "Ja", "Yes", "ok", "gerne", "mach mal", "sure"), respond conversationally as a human partner. NEVER emit structural board action tags (like CREATE_LIST or CREATE_BOARD) for simple conversational agreements unless the user explicitly commanded "erstelle die Liste X" or "erstelle das Board Y". If the user confirmed a proposal (e.g. "shall I pick 3 options?"), deliver the content conversationally or perform the specific task itself — do NOT generate list columns or scaffold new boards without an explicit request.
 - **CHECK-INS & OPEN THREADS**: When the user sends a bare ping or check-in ("z?", "hey", "bist du da?"), ALWAYS respond to the freshest prompt first in a direct, natural tone (e.g. "Bin da.", "Hier.", "Ja?"). If there is an unfinished thread or open topic from earlier conversation/memory, bridge to it subtly and AFTER acknowledging the ping (e.g. "Bin da. Zuletzt war noch [Thema] offen — willst du da ran, oder was steht an?"). NEVER blurt out an abrupt, unanchored task proposal or interrogation as your opening response to a ping.
 - When the user states they DID something ("I congratulated X", "I finished Y"), treat it as DONE. NEVER ask if they did it.
 - NEVER contradict or question what the user already told you.
@@ -2182,7 +2183,9 @@ async def chat_stream_with_context(
 			system_with_context += (
 				"\n\nRespond in 1-3 sentences. State only facts you can verify from the data provided. "
 				"Do not fabricate timelines, frameworks, or narrative context. "
-				"Ensure logical consistency (e.g. do not say 'Today is tomorrow')."
+				"Ensure logical consistency (e.g. do not say 'Today is tomorrow'). "
+				"For conversational affirmations (e.g. 'Ja', 'ok'), reply conversationally as a human partner; "
+				"do NOT emit CREATE_LIST or CREATE_BOARD tags."
 			)
 
 		# Cloud-primary with local fallback: use cloud when it is the selected tier.
