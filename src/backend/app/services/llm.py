@@ -2231,7 +2231,7 @@ async def chat_stream_with_context(
 			fetch_people(), fetch_projects(), fetch_memories()
 		)
 		full_prompt = "\n\n".join(filter(None, [people_p, project_p, memory_p]))
-		# Short conversational messages: skip agent skills (~1800 tokens) and cap history
+		# Short conversational messages: skip agent skills (~1800 tokens)
 		# to reduce input token count and improve TTFT on cloud inference.
 		_is_short_msg = len(user_message.strip()) < 40
 		formatted_system_prompt, _, _, _ = await build_system_prompt(
@@ -2242,8 +2242,7 @@ async def chat_stream_with_context(
 		tier_name, base_url, display_name = select_tier(user_message, tier_override)
 		last_model_used.set(display_name)
 
-		_history_slice = history[-6:] if _is_short_msg else history
-		history_text = _build_history_text(_history_slice)
+		history_text = _build_history_text(history)
 		context_injection = "\n\n".join(filter(None, [full_prompt, history_text]))
 		system_with_context = f"{formatted_system_prompt}\n\n{context_injection}" if context_injection else formatted_system_prompt
 
