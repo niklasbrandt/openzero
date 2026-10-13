@@ -1300,6 +1300,18 @@ _BOARD_WORD_RE = re.compile(
 	re.IGNORECASE,
 )
 
+# Reject intent routing on messages that contain relative clauses, description requests,
+# or compound multi-sentence instructions so they fall through to the full LLM agent.
+_COMPLEX_INSTRUCTION_RE = re.compile(
+	r'\b(?:'
+	r'where\s+i|where\s+we|wo\s+ich|wo\s+wir|which\s+(?:will|is)|das\s+f[üu]r|die\s+f[üu]r|der\s+f[üu]r|'
+	r'(?:write|schreib[e]?|mit|with|fitting|passende[rsn]?)\s+(?:a\s+)?(?:description|beschreibung)|'
+	r'description\s+for|beschreibung\s+f[üu]r|'
+	r'and\s+create|und\s+erstelle|mit\s+listen|with\s+lists'
+	r')\b',
+	re.IGNORECASE,
+)
+
 
 async def _classify_structural_intent_regex(text: str, lang: str) -> Optional[StructuralIntent]:
 	"""Detect a high-confidence Planka mutation intent in the user message via Regex.
@@ -1312,12 +1324,15 @@ async def _classify_structural_intent_regex(text: str, lang: str) -> Optional[St
 	Returns None when:
 	  - no verb pattern matches in any supported language
 	  - the message is hedged ("thinking about", "should I", "wie kann ich", ...)
+	  - the message contains complex descriptive context or generative instructions
 	  - the entity could not be resolved against live Planka state
 	"""
 	if not text:
 		return None
 	snippet = text[:_MAX_INPUT].strip()
 	if _is_hedged(snippet, lang):
+		return None
+	if _COMPLEX_INSTRUCTION_RE.search(snippet):
 		return None
 
 	# ── MOVE_BOARD ────────────────────────────────────────────────────────
@@ -1682,10 +1697,39 @@ async def _classify_structural_intent_regex(text: str, lang: str) -> Optional[St
 	for pat in _patterns_for("create_board", lang):
 		m = pat.search(snippet)
 		if m:
-			board_name_q = _strip_filler(m.group(1)) if m.lastindex and m.lastindex >= 1 else ""
-			project_q = _strip_filler(m.group(2)) if m.lastindex and m.lastindex >= 2 and m.group(2) else ""
+			raw_g1 = m.group(1) if m.lastindex and m.lastindex >= 1 else ""
+			raw_g2 = m.group(2) if m.lastindex and m.lastindex >= 2 and m.group(2) else ""
+
+			# Prefer quoted board name if user wrapped it in quotes
+			quote_m = re.search(r'["\']([^"\']+)["\']', snippet)
+			if quote_m:
+				board_name_q = quote_m.group(1).strip()
+				after_quote = snippet[quote_m.end():].strip()
+				if after_quote:
+					proj_m = re.match(r'^(?:in|unter|bei|to|inside|under)\s+(?:the\s+)?(?:project\s+|projekt\s+)?(.+)$', after_quote, re.IGNORECASE)
+					if proj_m:
+						project_q = _strip_filler(proj_m.group(1))
+					else:
+						# Additional instructions or context after the quoted name -> delegate to LLM
+						return None
+				else:
+					project_q = _strip_filler(raw_g2)
+			else:
+				board_name_q = _strip_filler(raw_g1)
+				project_q = _strip_filler(raw_g2)
+
 			if not board_name_q:
 				continue
+
+			# If a project was captured, ensure it actually matches a project in Planka.
+			# Otherwise words from the user's sentence were mistakenly parsed as a project preposition.
+			if project_q:
+				projects = await _get_planka_snapshot()
+				if projects:
+					proj_match, _ = _match_name(project_q, projects)
+					if not proj_match:
+						return None
+
 			return StructuralIntent(
 				verb="CREATE_BOARD",
 				entities={"board_name": board_name_q, "project_fragment": project_q},
