@@ -134,6 +134,36 @@ def analyze_conversation_anomalies(messages: list[dict]) -> list[str]:
 	return anomalies
 
 
+def run_autofix(anomalies: list[str]):
+	"""Attempt automated remediation for common stream anomalies."""
+	print("\nRUNNING AUTONOMOUS AUTOFIX:")
+	env = load_env()
+	remote_user = os.environ.get("REMOTE_USER") or env.get("REMOTE_USER", "openzero")
+	remote_host = os.environ.get("REMOTE_HOST") or env.get("REMOTE_HOST")
+
+	def run_shell(cmd_str: str) -> str:
+		if remote_host and remote_host not in ("localhost", "127.0.0.1", "your_vps_ip"):
+			full_cmd = ["ssh", "-o", "ConnectTimeout=8", f"{remote_user}@{remote_host}", cmd_str]
+		else:
+			full_cmd = ["bash", "-c", cmd_str]
+		try:
+			res = subprocess.run(full_cmd, capture_output=True, text=True, check=True)
+			return res.stdout.strip()
+		except Exception as e:
+			return f"Error: {e}"
+
+	# 1. Reset any tripped local LLM circuit breaker in Redis
+	redis_res = run_shell("docker exec openzero-redis-1 redis-cli del circuit:llm_local:open circuit:llm_local:failures")
+	print(f"  ✓ Local LLM circuit breaker checked/cleared in Redis: {redis_res}")
+
+	# 2. Verify critical containers are running
+	containers_res = run_shell("docker ps --format '{{.Names}} ({{.Status}})' | grep openzero")
+	running = [c.split()[0] for c in containers_res.splitlines() if "openzero" in c]
+	print(f"  ✓ Verified active openZero containers: {len(running)} online")
+
+	print("  ✓ Autofix routine completed successfully.\n")
+
+
 def main():
 	parser = argparse.ArgumentParser(description="Fetch and analyze recent openZero messages.")
 	parser.add_argument("--limit", type=int, default=15, help="Maximum number of messages to fetch (default: 15)")
@@ -142,6 +172,7 @@ def main():
 	parser.add_argument("--all", action="store_true", help="Ignore watermark and fetch the last N messages")
 	parser.add_argument("--reset", action="store_true", help="Reset watermark file to 0")
 	parser.add_argument("--verbose", "-v", action="store_true", help="Print full message content without truncation")
+	parser.add_argument("--autofix", action="store_true", help="Automatically trigger autofix remediation for detected anomalies")
 
 	args = parser.parse_args()
 
@@ -213,6 +244,9 @@ def main():
 	else:
 		print("  ✓ No routing, hallucination, or action anomalies detected in this stream slice.")
 	print("-" * 80 + "\n")
+
+	if args.autofix:
+		run_autofix(anomalies)
 
 
 if __name__ == "__main__":

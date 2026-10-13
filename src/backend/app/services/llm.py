@@ -771,6 +771,7 @@ CRITICAL — USE EXACT NAMES IN PROSE: When confirming a CREATE_TASK, your prose
 - Create Project: `[ACTION: CREATE_PROJECT | NAME: text | DESCRIPTION: text]`
 - Create Board: `[ACTION: CREATE_BOARD | PROJECT: project_name | NAME: text]`
   (Default PROJECT for user boards is "My projects". When the user asks to put a board in "Projekte", "Projekte Ordner", or "my projects", use `PROJECT: My projects`.)
+  CRITICAL — BOARDS HAVE NO DESCRIPTIONS: In Planka's architecture, boards do NOT have a description attribute (only Projects and Cards support descriptions). NEVER offer, promise, or confirm saving a "Board-Beschreibung" or "board description". If the user asks to save background knowledge, goals, or descriptions for a board, persist it as an Overview card on that board via `[ACTION: CREATE_TASK | BOARD: <board_name> | TITLE: Context & Goals | DESCRIPTION: <full content>]` or create a list column. Never claim to have set a board description.
 - Create List (Column): `[ACTION: CREATE_LIST | BOARD: board_name | NAME: text]`
   PARSING — "new list on [board] [name]" or "add list [name] to [board]": BOARD = the board name, NAME = the column name. Example: "new list on projects 'phase two'" → `[ACTION: CREATE_LIST | BOARD: projects | NAME: phase two]`. Do NOT include the preposition or board name inside NAME.
 - Create Event: `[ACTION: CREATE_EVENT | TITLE: text | START: YYYY-MM-DD HH:MM | END: YYYY-MM-DD HH:MM]`
@@ -1171,6 +1172,57 @@ def select_tier(user_message: str, tier_override: Optional[str] = None) -> tuple
 	return tier, base_url, display_name
 
 
+def _budget_prompt_for_local(system_prompt: str, user_message: str = "", max_chars: int = 14000) -> str:
+	"""Budget system prompt down to fit within local llama.cpp context window (8192 tokens).
+
+	Targeting max_chars (~3,500-4,000 tokens) leaves ample room for max_tokens and user_message.
+	"""
+	if not system_prompt or len(system_prompt) <= max_chars:
+		return system_prompt
+
+	# Step 1: Truncate PROJECT MISSION CONTROL if present
+	if "PROJECT MISSION CONTROL:\n" in system_prompt:
+		parts = system_prompt.split("PROJECT MISSION CONTROL:\n", 1)
+		rest = parts[1]
+		tree_end = rest.find("\n\n")
+		if tree_end != -1:
+			tree_content = rest[:tree_end]
+			after_tree = rest[tree_end:]
+			truncated_tree = tree_content[:1500] + "\n... [Project overview compacted for local model]"
+			system_prompt = f"{parts[0]}PROJECT MISSION CONTROL:\n{truncated_tree}{after_tree}"
+
+	if len(system_prompt) <= max_chars:
+		return system_prompt
+
+	# Step 2: Compact RECENT CONVERSATION if present
+	if "RECENT CONVERSATION:\n" in system_prompt:
+		parts = system_prompt.split("RECENT CONVERSATION:\n", 1)
+		conv_lines = parts[1].strip().split("\n")
+		tail_turns = "\n".join(conv_lines[-6:])
+		system_prompt = f"{parts[0]}RECENT CONVERSATION:\n{tail_turns}"
+
+	if len(system_prompt) <= max_chars:
+		return system_prompt
+
+	# Step 3: Compact RELEVANT MEMORIES if present
+	if "RELEVANT MEMORIES" in system_prompt:
+		parts = system_prompt.split("RELEVANT MEMORIES", 1)
+		mem_part = parts[1]
+		end_mem = mem_part.find("\n\n")
+		if end_mem != -1:
+			mem_content = mem_part[:end_mem]
+			after_mem = mem_part[end_mem:]
+			system_prompt = f"{parts[0]}RELEVANT MEMORIES{mem_content[:800]}\n[Memories truncated]{after_mem}"
+
+	if len(system_prompt) <= max_chars:
+		return system_prompt
+
+	# Step 4: Hard slice keeping core system instructions (first 6000 chars) and recent directives (last 6000 chars)
+	head = system_prompt[:6000]
+	tail = system_prompt[-6000:]
+	return f"{head}\n\n[... Context condensed for local inference ...]\n\n{tail}"
+
+
 async def chat_stream(
 	user_message: str,
 	system_override: Optional[str] = None,
@@ -1240,6 +1292,9 @@ async def chat_stream(
 						yield chunk
 					return
 				logger.warning("LLM: circuit breaker open but cloud not configured — attempting local anyway")
+
+		if tier_name == "local":
+			system_prompt = _budget_prompt_for_local(system_prompt, user_message)
 
 		messages: list[dict[str, Any]] = [
 			{"role": "system", "content": system_prompt},
@@ -1519,6 +1574,7 @@ async def chat_stream(
 						return
 			except httpx.HTTPStatusError as http_err:
 				status = http_err.response.status_code
+				err_body = str(http_err.response.text if hasattr(http_err.response, "text") else "")
 				if status in (503, 429, 502) and attempt < max_attempts - 1:
 					wait_secs = 3 * (attempt + 1)
 					logger.warning(
@@ -1528,12 +1584,26 @@ async def chat_stream(
 					await asyncio.sleep(wait_secs)
 					continue
 
+				if status == 400 and tier_name == "local" and "exceeds the available context size" in err_body:
+					logger.warning("Local LLM context limit exceeded (400) — retrying with aggressively budgeted context")
+					compact_system = _budget_prompt_for_local(system_prompt, user_message, max_chars=5000)
+					async for chunk in chat_stream(
+						user_message,
+						system_override=compact_system,
+						tier="local",
+						sanitize=False,
+						**{k: v for k, v in kwargs.items() if k not in ("thinking",)},
+					):
+						yield chunk
+					return
+
 				if tier_name == "cloud":
 					logger.warning("Cloud LLM HTTP %d error after %d/%d attempts — falling back to local", status, attempt + 1, max_attempts)
 					last_model_used.set(f"Local: {settings.LLM_MODEL_LOCAL} (fallback)")
+					compact_system = _budget_prompt_for_local(system_prompt, user_message)
 					async for chunk in chat_stream(
 						user_message,
-						system_override=system_prompt,
+						system_override=compact_system,
 						tier="local",
 						sanitize=False,
 						**{k: v for k, v in kwargs.items() if k not in ("thinking",)},
@@ -1549,9 +1619,10 @@ async def chat_stream(
 					# Cloud connection error — fall back to local silently
 					logger.warning("Cloud LLM error (%s) — falling back to local", type(e).__name__)
 					last_model_used.set(f"Local: {settings.LLM_MODEL_LOCAL} (fallback)")
+					compact_system = _budget_prompt_for_local(system_prompt, user_message)
 					async for chunk in chat_stream(
 						user_message,
-						system_override=system_prompt,
+						system_override=compact_system,
 						tier="local",
 						sanitize=False,
 						**{k: v for k, v in kwargs.items() if k not in ("thinking",)},
@@ -2214,6 +2285,10 @@ async def chat_stream_with_context(
 				from app.services.llm_peers import get_active_local_endpoint
 				last_model_used.set(f"Local: {get_active_local_endpoint()[1]}")
 				tier_name = "local"
+				system_with_context = _budget_prompt_for_local(system_with_context, user_message)
+
+		if tier_name == "local":
+			system_with_context = _budget_prompt_for_local(system_with_context, user_message)
 
 		async for chunk in chat_stream(
 			user_message,

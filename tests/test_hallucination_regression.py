@@ -50,7 +50,7 @@ class TestL1PhantomHistoryFilter:
 		async def mock_save(channel, role, content, model=None):
 			saved_calls.append({"role": role, "content": content})
 
-		async def mock_parse(raw_reply, db=None, require_hitl=False, user_text=""):
+		async def mock_parse(raw_reply, db=None, require_hitl=False, user_text="", **kwargs):
 			# Simulate phantom: clean reply has confirmation prose, no commands
 			return raw_reply, [], []
 
@@ -60,10 +60,10 @@ class TestL1PhantomHistoryFilter:
 		phantom_reply = "Done — I've added it to your Operator Board under Today."
 
 		with (
-			patch("app.services.message_bus.save_global_message", new=AsyncMock(side_effect=mock_save)),
-			patch("app.services.message_bus.AsyncSessionLocal"),
+			patch("app.models.db.save_global_message", new=AsyncMock(side_effect=mock_save)),
+			patch("app.models.db.AsyncSessionLocal"),
 			patch("app.services.agent_actions.parse_and_execute_actions", new=AsyncMock(side_effect=mock_parse)),
-			patch("app.services.message_bus.extract_and_store_facts", new=AsyncMock()),
+			patch("app.services.learning.extract_and_store_facts", new=AsyncMock()),
 		):
 			from app.services.message_bus import MessageBus
 			bus = MessageBus()
@@ -86,16 +86,16 @@ class TestL1PhantomHistoryFilter:
 		async def mock_save(channel, role, content, model=None):
 			saved_calls.append({"role": role, "content": content})
 
-		async def mock_parse(raw_reply, db=None, require_hitl=False, user_text=""):
+		async def mock_parse(raw_reply, db=None, require_hitl=False, user_text="", **kwargs):
 			return raw_reply, ["CREATE_TASK(board=Operator Board, list=Today, title=milk)"], []
 
 		real_reply = "Adding milk to your list."
 
 		with (
-			patch("app.services.message_bus.save_global_message", new=AsyncMock(side_effect=mock_save)),
-			patch("app.services.message_bus.AsyncSessionLocal"),
+			patch("app.models.db.save_global_message", new=AsyncMock(side_effect=mock_save)),
+			patch("app.models.db.AsyncSessionLocal"),
 			patch("app.services.agent_actions.parse_and_execute_actions", new=AsyncMock(side_effect=mock_parse)),
-			patch("app.services.message_bus.extract_and_store_facts", new=AsyncMock()),
+			patch("app.services.learning.extract_and_store_facts", new=AsyncMock()),
 		):
 			from app.services.message_bus import MessageBus
 			bus = MessageBus()
@@ -122,14 +122,14 @@ class TestL2SystemReceipt:
 		async def mock_save(channel, role, content, model=None):
 			saved_calls.append({"role": role, "content": content})
 
-		async def mock_parse(raw_reply, db=None, require_hitl=False, user_text=""):
+		async def mock_parse(raw_reply, db=None, require_hitl=False, user_text="", **kwargs):
 			return raw_reply, ["CREATE_TASK(board=Operator Board, list=Today, title=milk)"], []
 
 		with (
-			patch("app.services.message_bus.save_global_message", new=AsyncMock(side_effect=mock_save)),
-			patch("app.services.message_bus.AsyncSessionLocal"),
+			patch("app.models.db.save_global_message", new=AsyncMock(side_effect=mock_save)),
+			patch("app.models.db.AsyncSessionLocal"),
 			patch("app.services.agent_actions.parse_and_execute_actions", new=AsyncMock(side_effect=mock_parse)),
-			patch("app.services.message_bus.extract_and_store_facts", new=AsyncMock()),
+			patch("app.services.learning.extract_and_store_facts", new=AsyncMock()),
 		):
 			from app.services.message_bus import MessageBus
 			bus = MessageBus()
@@ -151,14 +151,14 @@ class TestL2SystemReceipt:
 		async def mock_save(channel, role, content, model=None):
 			saved_calls.append({"role": role, "content": content})
 
-		async def mock_parse(raw_reply, db=None, require_hitl=False, user_text=""):
+		async def mock_parse(raw_reply, db=None, require_hitl=False, user_text="", **kwargs):
 			return raw_reply, [], []
 
 		with (
-			patch("app.services.message_bus.save_global_message", new=AsyncMock(side_effect=mock_save)),
-			patch("app.services.message_bus.AsyncSessionLocal"),
+			patch("app.models.db.save_global_message", new=AsyncMock(side_effect=mock_save)),
+			patch("app.models.db.AsyncSessionLocal"),
 			patch("app.services.agent_actions.parse_and_execute_actions", new=AsyncMock(side_effect=mock_parse)),
-			patch("app.services.message_bus.extract_and_store_facts", new=AsyncMock()),
+			patch("app.services.learning.extract_and_store_facts", new=AsyncMock()),
 		):
 			from app.services.message_bus import MessageBus
 			bus = MessageBus()
@@ -211,7 +211,7 @@ class TestL3StateQueryRegex:
 			r'|\bdid\s+you\s+(?:save|create|add|store|put|make)\b'
 			r'|\bwas\s+(?:it|that|the\s+(?:task|card|board|todo|item))\s+(?:saved|created|added|stored)\b'
 			r'|\bwere\s+(?:they|those|the\s+(?:tasks?|cards?|items?))\s+(?:saved|created|added|stored)\b'
-			r'|\b(?:d[oó]nde|où)\s+(?:est[aá]|son|est|sont)\b'
+			r'|\b(?:d[oó]nde|où)\s+(?:est[aá]n?|son|est|sont)\b'
 			r'|\b(?:guardaste|enregistr[eé])\b',
 			re.IGNORECASE,
 		)
