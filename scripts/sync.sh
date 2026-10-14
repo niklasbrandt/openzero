@@ -40,6 +40,7 @@ EXCLUDES=(
 # Written to agent/latest_changes.txt so the backend can read it via the
 # already-mounted ./agent volume without requiring an image rebuild.
 if [ -d .git ]; then
+  mkdir -p agent
   LAST_SYNC_FILE=".last_sync_commit"
   if [ -f "$LAST_SYNC_FILE" ]; then
     LAST_COMMIT=$(cat "$LAST_SYNC_FILE")
