@@ -18,7 +18,9 @@ def _parse_tag_params(tag_text: str) -> dict[str, str]:
 	params: dict[str, str] = {}
 	for match in re.finditer(r'\|\s*([A-Za-z0-9_]+)\s*:\s*([^\|\]]+)', tag_text):
 		key = match.group(1).strip().upper()
-		val = match.group(2).strip().strip('"\'')
+		val = match.group(2).strip()
+		if (val.startswith('"') and val.endswith('"')) or (val.startswith("'") and val.endswith("'")):
+			val = val[1:-1].strip()
 		params[key] = val
 
 	# Extract unkeyed pipe segments (e.g. '| openZero | Today | Buy milk')
@@ -677,13 +679,28 @@ async def parse_and_execute_actions(reply: str, db=None, require_hitl: bool = Fa
 			clean_reply = strip_tag(clean_reply, raw_tag)
 			continue
 		# Safety net: if the LLM emitted the full user sentence as the name instead of
-		# extracting just the label, and that sentence contains a quoted substring,
-		# the last quoted value is the intended label. No keyword matching — purely
-		# structural: "if there's a quoted span in a suspiciously long name, use it."
+		# extracting just the label, or included a quoted substring with trailing explanation,
+		# extract only the intended label.
 		if len(board_name) > 30:
 			_quotes = re.findall(r'["\']([^"\']{1,80})["\']', board_name)
 			if _quotes:
-				board_name = _quotes[-1].strip()
+				board_name = _quotes[0].strip()
+			else:
+				# Single closing quote with opening quote missing or stripped: e.g. `coral catalog" where i...`
+				_closing_m = re.match(r'^(?:["\']\s*)?([^"\']{1,80})["\']\s+', board_name)
+				if _closing_m:
+					board_name = _closing_m.group(1).strip()
+				else:
+					# Trailing descriptive clauses (e.g. "where i will be...", "wo ich...", "for...")
+					_clause_m = re.match(
+						r'^([^,;:\n]{2,50}?)\s+(?:where\s+i|where\s+we|where\s+it|that\s+|which\s+|wo\s+ich|wo\s+wir|damit\s+|f\u00fcr\s+|for\s+)\b',
+						board_name,
+						re.IGNORECASE,
+					)
+					if _clause_m:
+						board_name = _clause_m.group(1).strip()
+		# Clean any stray quotes or surrounding punctuation from the final name
+		board_name = board_name.strip(' "\'')
 
 		async def _exec_board(proj_name=proj_name, board_name=board_name):
 			try:

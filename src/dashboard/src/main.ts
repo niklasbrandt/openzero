@@ -38,6 +38,12 @@ console.log('openZero Dashboard Initialized');
 
 const AUTH_TOKEN_KEY = 'z_auth_token';
 
+function syncAuthCookie(token: string): void {
+	if (!token) return;
+	// Keep cookie in sync so link navigations (like Planka SSO) and new browser tabs carry authentication
+	document.cookie = `z_auth_token=${encodeURIComponent(token)}; path=/; max-age=31536000; SameSite=Lax`;
+}
+
 // On page load: if ?token= is in the URL, save it to localStorage and strip
 // it from the address bar so it never appears in browser history or logs.
 // This lets you bookmark http://open.zero/dashboard?token=xxx once on any device.
@@ -46,6 +52,7 @@ const AUTH_TOKEN_KEY = 'z_auth_token';
 	const urlToken = params.get('token');
 	if (urlToken) {
 		localStorage.setItem(AUTH_TOKEN_KEY, urlToken);
+		syncAuthCookie(urlToken);
 		params.delete('token');
 		const newSearch = params.toString();
 		const newUrl = window.location.pathname + (newSearch ? '?' + newSearch : '');
@@ -56,7 +63,10 @@ const AUTH_TOKEN_KEY = 'z_auth_token';
 function getAuthToken(): string {
 	// localStorage takes priority
 	const localToken = localStorage.getItem(AUTH_TOKEN_KEY);
-	if (localToken) return localToken;
+	if (localToken) {
+		syncAuthCookie(localToken);
+		return localToken;
+	}
 	// Fall back to cookie set by /api/auth redirect
 	// (iOS SFSafariViewController and Android Chrome Custom Tab share cookies
 	// with the system browser, but NOT localStorage — cookie is the reliable path)
@@ -64,6 +74,7 @@ function getAuthToken(): string {
 	if (match) {
 		const cookieToken = decodeURIComponent(match[1]);
 		localStorage.setItem(AUTH_TOKEN_KEY, cookieToken); // migrate to localStorage
+		syncAuthCookie(cookieToken);
 		return cookieToken;
 	}
 	return '';
@@ -79,9 +90,57 @@ function promptForToken(): string {
 	) || '';
 	if (token) {
 		localStorage.setItem(AUTH_TOKEN_KEY, token);
+		syncAuthCookie(token);
 	}
 	return token;
 }
+
+// On page load: if ?redirect= is in the URL, once authenticated, redirect to destination
+(function handlePostAuthRedirect() {
+	const params = new URLSearchParams(window.location.search);
+	const redirectUrl = params.get('redirect');
+	if (!redirectUrl) return;
+
+	// Only allow relative paths starting with safe prefixes
+	const isSafe = redirectUrl.startsWith('/api/dashboard/planka-redirect') ||
+		redirectUrl.startsWith('/boards') ||
+		redirectUrl.startsWith('/projects');
+	if (!isSafe) return;
+
+	const token = getAuthToken();
+	if (token) {
+		try {
+			const target = new URL(redirectUrl, window.location.origin);
+			if (!target.searchParams.has('token')) {
+				target.searchParams.set('token', token);
+			}
+			window.location.replace(target.toString());
+		} catch {
+			window.location.replace(redirectUrl);
+		}
+	}
+})();
+
+// Automatically inject auth token into any Planka redirect links clicked by the user
+document.addEventListener('click', (e: MouseEvent) => {
+	const path = (e.composedPath ? e.composedPath() : [e.target]) as Element[];
+	for (const el of path) {
+		if (el instanceof HTMLAnchorElement && el.href && el.href.includes('/api/dashboard/planka-redirect')) {
+			const token = getAuthToken();
+			if (token && !el.href.includes('token=')) {
+				try {
+					const url = new URL(el.href, window.location.origin);
+					url.searchParams.set('token', token);
+					el.href = url.toString();
+				} catch {
+					const sep = el.href.includes('?') ? '&' : '?';
+					el.href += `${sep}token=${encodeURIComponent(token)}`;
+				}
+			}
+			break;
+		}
+	}
+}, true);
 
 // Patch window.fetch to inject Authorization header for all /api/ requests.
 // When no token is stored, API calls are short-circuited with a synthetic

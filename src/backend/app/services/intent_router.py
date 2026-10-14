@@ -1710,8 +1710,12 @@ async def _classify_structural_intent_regex(text: str, lang: str) -> Optional[St
 					if proj_m:
 						project_q = _strip_filler(proj_m.group(1))
 					else:
-						# Additional instructions or context after the quoted name -> delegate to LLM
-						return None
+						# Look for project preposition in trailing text (e.g. "... in Projekte")
+						proj_later = re.search(r'\b(?:in|unter|bei|to|inside|under)\s+(?:the\s+)?(?:project\s+|projekt\s+)?([a-z0-9äöüÄÖÜß\-_ ]{1,50})$', after_quote, re.IGNORECASE)
+						if proj_later:
+							project_q = _strip_filler(proj_later.group(1))
+						else:
+							project_q = _strip_filler(raw_g2)
 				else:
 					project_q = _strip_filler(raw_g2)
 			else:
@@ -1728,7 +1732,10 @@ async def _classify_structural_intent_regex(text: str, lang: str) -> Optional[St
 				if projects:
 					proj_match, _ = _match_name(project_q, projects)
 					if not proj_match:
-						return None
+						if quote_m:
+							project_q = ""
+						else:
+							return None
 
 			return StructuralIntent(
 				verb="CREATE_BOARD",

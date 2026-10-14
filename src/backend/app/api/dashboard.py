@@ -77,10 +77,16 @@ async def require_auth(
     if not provided:
         provided = request.cookies.get("z_auth_token")
 
-    if not provided:
-        raise HTTPException(status_code=401, detail="Unauthorized") from None
-
-    if not hmac.compare_digest(provided, token):
+    if not provided or not hmac.compare_digest(provided, token):
+        if request.url.path.endswith("/planka-redirect"):
+            import urllib.parse
+            target = request.url.path
+            if request.url.query:
+                target += f"?{request.url.query}"
+            raise HTTPException(
+                status_code=302,
+                headers={"Location": f"/dashboard?redirect={urllib.parse.quote(target, safe='')}"},
+            )
         raise HTTPException(status_code=401, detail="Unauthorized") from None
 
 
@@ -1451,6 +1457,12 @@ async def planka_redirect(request: Request, target: str = "", background: bool =
 			"""
 			
 			response = HTMLResponse(content=html_content)
+			# Dual-layer cookie delivery: set HTTP cookies in addition to document.cookie
+			if access_token:
+				response.set_cookie(key="accessToken", value=access_token, path="/", samesite="strict")
+				response.set_cookie(key="accessTokenVersion", value="1", path="/", samesite="strict")
+			if settings.DASHBOARD_TOKEN:
+				response.set_cookie(key="z_auth_token", value=settings.DASHBOARD_TOKEN, path="/", samesite="lax", max_age=365 * 24 * 3600)
 			return response
 
 		except Exception as e:
